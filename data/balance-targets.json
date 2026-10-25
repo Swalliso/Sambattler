@@ -1,0 +1,9 @@
+{
+  "G1": { "seeds": 3, "goldBudget": 600, "seconds": 180, "maxPairingWinShare": 0.8, "clearLossRatio": 1.3 },
+  "G2": { "seeds": 5, "supply": 12, "minSeedsForEdge": 4, "maxSeconds": 180 },
+  "G3": { "seeds": 20, "maxMonoWinRate": 0.55 },
+  "G4": { "seeds": 40, "medianMinSeconds": 330, "medianMaxSeconds": 510, "maxDecisionShare": 0.15, "botWinMin": 0.3, "botWinMax": 0.7 },
+  "G5": { "seeds": 20, "bonusGold": 150, "minWinRate": 0.55, "maxWinRate": 0.75 },
+  "G6": { "seeds": 40, "scenario": "comeback-6", "minBehindWinRate": 0.2 },
+  "G11": { "tickMeanMs": 1.0, "tickP99Ms": 2.5, "battleWallMs": 3000, "benchTicks": 2000, "quickTicks": 400 }
+}

@@ -1,0 +1,16 @@
+{
+  "id": "home-never-flips",
+  "description": "An overwhelming enemy army sits in the player's home columns; home columns never change owner.",
+  "map": "bogwater-hollow",
+  "lanes": [{ "pBorder": 3, "eBorder": 4 }],
+  "sides": {
+    "player": { "gold": 0 },
+    "enemy": {
+      "gold": 0,
+      "units": [
+        { "unit": "capguard", "x": 1.5, "y": 1.0, "count": 6, "rows": 6, "dy": 1.2 },
+        { "unit": "sporeling", "x": 2.8, "y": 0.5, "count": 8, "rows": 8, "dy": 0.9 }
+      ]
+    }
+  }
+}

@@ -1,0 +1,110 @@
+{
+  "sheet": "terrain",
+  "sprites": [
+    {"id": "t-soil", "w": 16, "h": 16, "anchor": [0, 0], "palette": {"a": "#4a3526", "b": "#3b2a1e", "c": "#5e4532"},
+     "frames": [
+      [
+        "aaaaabaaaaaaaabb",
+        "aaaacabcbaaaabaa",
+        "aaaaaaaaaaacaabb",
+        "aaaabaaacaacaaaa",
+        "aaabbcaccbaaaaaa",
+        "aaaaaacaaaaaaaaa",
+        "aaabaaccbabaaaaa",
+        "babcababacabbaaa",
+        "bbccaaaaabaaaaaa",
+        "aaaaaaaaababbaca",
+        "aacaaabaaaaaaaaa",
+        "acaaaabaaaaaaaaa",
+        "aaaaacaaaaaabaaa",
+        "cacaaaaaaaaaabaa",
+        "caacaaaaaabaaaca",
+        "caaaaabaaaaaaaba"
+      ]
+     ]},
+    {"id": "t-soil2", "w": 16, "h": 16, "anchor": [0, 0], "palette": {"a": "#4a3526", "b": "#3b2a1e", "c": "#5e4532"},
+     "frames": [
+      [
+        "aaaaaaaaaabaacaa",
+        "acbbaaaaaabaaaaa",
+        "aaabacbaaacaaaaa",
+        "aaabaabaacbbaaca",
+        "aaabaaaaaaccaaaa",
+        "aacaaaaaaaaaaaaa",
+        "aaaaaaaabaaaacaa",
+        "aaaabaaaaabbaaab",
+        "bcaaaaaaaaaaacaa",
+        "aaaaaaabaabaabaa",
+        "aabaaaaacbaacaaa",
+        "aaaacaaccaaaaaab",
+        "aaaaaabaaaacaaaa",
+        "aabaccaaaacaaaaa",
+        "cbcaacbbaaaabcca",
+        "aaabaccaaaaaaaaa"
+      ]
+     ]},
+    {"id": "t-loam", "w": 16, "h": 16, "anchor": [0, 0], "palette": {"g": "#e0b84e", "x": "#251b14", "z": "#17110d"},
+     "frames": [
+      [
+        "zzzxzxzzxzzzzzzz",
+        "zzzzzxzzzzzzzgxx",
+        "zzzxzzzzzzzzzzzz",
+        "xxzzzzzzzxzzzxzz",
+        "xzxzzzzzzzzxgxzx",
+        "zzxzzzzzzzzzzxxg",
+        "zzzxzzzzzzzgzzzx",
+        "zzzzzzzzzzxxzzzz",
+        "xzxzzzzzzzzzzxzz",
+        "zzzzzxzzzgzzzxzz",
+        "zzzzxzzzzzzzzzxz",
+        "zxzzzzzzxzzzzxzz",
+        "zxxzzzzzzgxzzzzx",
+        "xzzzzzzzzzzzzzzz",
+        "zzxzzzzzxzgzzzzz",
+        "xzzggzzzzzzzzzzz"
+      ]
+     ]},
+    {"id": "t-stump", "w": 16, "h": 16, "anchor": [0, 0], "palette": {"a": "#4a3526", "b": "#3b2a1e", "c": "#5e4532", "h": "#7a5236", "j": "#4e3322", "q": "#a77b55"},
+     "frames": [
+      [
+        "aaaaaaaaaaaaaaaa",
+        "ccabaabbaaaacaca",
+        "aaaaaaaabaaaacba",
+        "aaaabaaaabaaacaa",
+        "baaaahhhhhhabaaa",
+        "aaahhqqqqqqhhaab",
+        "aacqqqhhhhqqqbaa",
+        "aahqqhhqqhhqqhaa",
+        "abhqqhhqqhhqqhba",
+        "cchqqqhhhhqqqhaa",
+        "abhhhqqqqqqhhhaa",
+        "aaahhhhhhhhhhaab",
+        "aaajjjjjjjjjjaaa",
+        "abbjjjjjjjjjjaca",
+        "aaaaaacaabaaaaaa",
+        "cbaaaaaaaaaaaaab"
+      ]
+     ]},
+    {"id": "t-wall", "w": 16, "h": 16, "anchor": [0, 0], "palette": {"h": "#7a5236", "j": "#4e3322", "m": "#1c140f"},
+     "frames": [
+      [
+        "hjmmmjhjjmmjhjmm",
+        "hjmmmjhjmmmjhjmm",
+        "hjmmmjhjmjmjhjmj",
+        "hjjmmjhjmmmjhjmm",
+        "jmmjhjmmmjhjmmmj",
+        "mmmjhjmmmjhjmmmj",
+        "mmmjhjmmmjhjmmmj",
+        "mmmjhjmmmjhjmmmj",
+        "mjhjmmjjhjmmjjhj",
+        "mjhjmmmjhjmjmjhj",
+        "mjhjmmmjhjmjmjhj",
+        "mjhjmmmjhjmmmjhj",
+        "hjmmjjhjmmmjhjmm",
+        "hjjjmjhjmjmjhjmm",
+        "hjmmmjhjjmmjhjmj",
+        "hjmjmjhjjmmjhjmm"
+      ]
+     ]}
+  ]
+}

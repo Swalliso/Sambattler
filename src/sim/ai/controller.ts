@@ -1,0 +1,159 @@
+// The shared AI framework for the scripted general and the strategy bots (SPEC §7.2–7.3, §7.9).
+// It acts only by queueing ordinary commands for the next tick, and draws randomness only from
+// the `ai` stream.
+import { queueCommand } from '../commands.ts';
+import { legalPlacements } from '../placement.ts';
+import { nextFloat, nextSigned } from '../rng.ts';
+import { other } from '../state.ts';
+import type { AiState, BattleState, Side } from '../state.ts';
+import { buildingDef } from '../world.ts';
+
+interface Plan { col: number; row: number; w: number; h: number }
+interface Pressure { pressured: boolean[]; anyPressured: boolean; mostLane: number }
+
+export function aiOpener(state: BattleState, side: Side): void {
+  const ai = state.sides[side].ai;
+  if (!ai || ai.openerDone) return;
+  ai.openerDone = true;
+  const pressure = assessPressure(state, side);
+  let gold = state.sides[side].gold;
+  const planned: Plan[] = [];
+  for (const id of ai.opener) {
+    const choice = choosePlacement(state, side, id, planned, pressure);
+    if (!choice || choice.price > gold) continue;
+    gold -= choice.price;
+    const def = state.compiled[side].buildings[id]!;
+    planned.push({ col: choice.col, row: choice.row, w: def.w, h: def.h });
+    queueCommand(state, { tick: state.tick + 1, side, type: 'place', buildingId: id, lane: choice.lane, col: choice.col, row: choice.row });
+  }
+}
+
+export function aiThink(state: BattleState, side: Side): void {
+  const ss = state.sides[side];
+  const ai = ss.ai;
+  if (!ai) return;
+  const pressure = assessPressure(state, side);
+  if (ai.target && state.tick - ai.targetSince >= state.rules.ai.stickyTicks) ai.target = null;
+  if (!ai.target) {
+    ai.target = pickTarget(state, side, ai, pressure);
+    ai.targetSince = state.tick;
+  }
+  if (!ai.target) return;
+  const def = state.compiled[side].buildings[ai.target]!;
+  if (ss.gold < def.cost) return; // price is never below cost; wait without consuming noise
+  const choice = choosePlacement(state, side, ai.target, [], pressure);
+  if (!choice) { ai.target = null; return; }
+  if (choice.price > ss.gold) return;
+  queueCommand(state, { tick: state.tick + 1, side, type: 'place', buildingId: ai.target, lane: choice.lane, col: choice.col, row: choice.row });
+  ai.target = null;
+}
+
+/** Per lane: is the enemy out-massing us within the window around our border? */
+export function assessPressure(state: BattleState, side: Side): Pressure {
+  const win = state.rules.ai.pressureWindow;
+  const pressured: boolean[] = [];
+  let anyPressured = false, mostLane = 0, mostScore = -Infinity;
+  for (let li = 0; li < state.lanes.length; li++) {
+    const L = state.lanes[li]!;
+    const border = side === 'player' ? L.pBorder : L.eBorder;
+    let own = 0, enemy = 0;
+    for (const u of state.units) {
+      if (u.lane !== li) continue;
+      const c = Math.floor(u.x);
+      if (c < border - win || c > border + win) continue;
+      if (u.side === side) own += u.supply; else enemy += u.supply;
+    }
+    const p = enemy > own && enemy >= state.rules.ai.pressureMin;
+    pressured.push(p);
+    if (p) anyPressured = true;
+    if (enemy - own > mostScore) { mostScore = enemy - own; mostLane = li; }
+  }
+  return { pressured, anyPressured, mostLane };
+}
+
+function ownedCount(state: BattleState, side: Side, buildingId: string): number {
+  let n = 0;
+  for (const b of state.buildings) if (b.side === side && b.buildingId === buildingId) n++;
+  return n;
+}
+
+function pickTarget(state: BattleState, side: Side, ai: AiState, pressure: Pressure): string | null {
+  const clock = state.tick;
+  const r = state.rules;
+  let total = 0;
+  const eff: number[] = [];
+  for (const w of ai.weights) {
+    let x = w.weight;
+    const kind = state.compiled[side].buildings[w.building]!.kind;
+    if (w.maxOwned >= 0 && ownedCount(state, side, w.building) >= w.maxOwned) x = 0;
+    if (clock < w.afterTick) x = 0;
+    if (kind === 'economy') {
+      if (clock < r.ai.economyEarlyTick) x *= r.ai.economyEarlyMult;
+      else if (clock > r.ai.economyLateTick) x *= r.ai.economyLateMult;
+    }
+    if (kind === 'tower' && pressure.anyPressured) x *= r.ai.towerPressureMult;
+    eff.push(x);
+    total += x;
+  }
+  if (total <= 0) return null;
+  let roll = nextFloat(state.rng.ai) * total;
+  for (let i = 0; i < eff.length; i++) {
+    roll -= eff[i]!;
+    if (roll < 0 && eff[i]! > 0) return ai.weights[i]!.building;
+  }
+  for (let i = eff.length - 1; i >= 0; i--) if (eff[i]! > 0) return ai.weights[i]!.building;
+  return null;
+}
+
+/** Best-scoring legal position (SPEC §7.3), or null if none. */
+export function choosePlacement(
+  state: BattleState, side: Side, buildingId: string, planned: Plan[], pressure: Pressure,
+): { lane: number; col: number; row: number; price: number } | null {
+  const def = state.compiled[side].buildings[buildingId];
+  if (!def) return null;
+  const r = state.rules;
+  const ai = state.sides[side].ai;
+  const enemy = other(side);
+  const threatR2 = r.ai.threatRadius * r.ai.threatRadius;
+  const candidates = legalPlacements(state, side, buildingId);
+  let best: { lane: number; col: number; row: number; price: number } | null = null;
+  let bestScore = -Infinity;
+  for (const p of candidates) {
+    if (planned.some((q) => q.col < p.col + def.w && p.col < q.col + q.w && q.row < p.row + def.h && p.row < q.row + q.h)) continue;
+    const L = state.lanes[p.lane]!;
+    // never plan into our border column while the opponent is about to flip it
+    const border = side === 'player' ? L.pBorder : L.eBorder;
+    const touchesBorder = border >= p.col && border < p.col + def.w;
+    if (touchesBorder && L.capture[enemy].column === border && L.capture[enemy].progress >= r.captureThreshold - 2 * r.captureStep) continue;
+    const cx = p.col + def.w / 2, cy = p.row + def.h / 2;
+    let threat = 0;
+    for (const u of state.units) {
+      if (u.side !== enemy || u.lane !== p.lane) continue;
+      const dx = u.x - cx, dy = u.y - cy;
+      if (dx * dx + dy * dy <= threatR2) threat += u.supply;
+    }
+    for (const b of state.buildings) {
+      if (b.side !== enemy || b.lane !== p.lane) continue;
+      const bd = buildingDef(state, b);
+      if (!bd.attack) continue;
+      const dx = b.col + bd.w / 2 - cx, dy = b.row + bd.h / 2 - cy;
+      if (dx * dx + dy * dy <= bd.attack.range * bd.attack.range) { threat += r.ai.towerRangeThreat; break; }
+    }
+    const sc = r.ai.score;
+    let score: number;
+    if (def.kind === 'spawner') {
+      score = (ai?.spawnerDepthWeight ?? sc.spawnerDepth) * p.depth - sc.spawnerThreat * threat - sc.spawnerSurcharge * (p.price - def.cost);
+    } else if (def.kind === 'economy') {
+      score = (p.loam ? sc.economyLoam : 0) - sc.economyDepth * p.depth - sc.economyThreat * threat;
+    } else if (def.kind === 'tower') {
+      const front = p.lane === pressure.mostLane &&
+        (side === 'player' ? p.col + def.w - 1 >= L.pBorder - 1 : p.col <= L.eBorder + 1);
+      score = (front ? sc.towerFront : 0) - sc.towerThreat * threat;
+    } else {
+      score = -sc.economyDepth * p.depth - sc.towerThreat * threat;
+    }
+    score += nextSigned(state.rng.ai) * r.ai.noise;
+    if (score > bestScore) { bestScore = score; best = { lane: p.lane, col: p.col, row: p.row, price: p.price }; }
+  }
+  return best;
+}

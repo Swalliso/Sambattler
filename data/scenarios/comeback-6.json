@@ -1,0 +1,38 @@
+{
+  "id": "comeback-6",
+  "description": "G6: at 3:00 the player trails by 6 columns (7 vs 13). Both sides have five buildings and equal armies; the side that is ahead has two of its buildings forward in its extra ground. Both sides are played by bot:balanced.",
+  "map": "bogwater-hollow",
+  "clockSeconds": 180,
+  "controllers": { "player": "bot:balanced", "enemy": "bot:balanced" },
+  "lanes": [{ "pBorder": 6, "eBorder": 19 }],
+  "sides": {
+    "player": {
+      "gold": 60,
+      "buildings": [
+        { "building": "sporelingBurrow", "col": 2, "row": 0 },
+        { "building": "truffleCellar", "col": 0, "row": 2 },
+        { "building": "capguardHall", "col": 2, "row": 4 },
+        { "building": "gillNest", "col": 0, "row": 6 },
+        { "building": "sporelingBurrow", "col": 2, "row": 6 }
+      ],
+      "units": [
+        { "unit": "sporeling", "x": 7.5, "y": 1.5, "count": 6, "rows": 6, "dy": 1.0 },
+        { "unit": "capguard", "x": 6.8, "y": 2.5, "count": 2, "rows": 2, "dy": 2.5 }
+      ]
+    },
+    "enemy": {
+      "gold": 60,
+      "buildings": [
+        { "building": "sporelingBurrow", "col": 28, "row": 6 },
+        { "building": "truffleCellar", "col": 30, "row": 4 },
+        { "building": "capguardHall", "col": 22, "row": 2 },
+        { "building": "gillNest", "col": 30, "row": 0 },
+        { "building": "sporelingBurrow", "col": 20, "row": 5 }
+      ],
+      "units": [
+        { "unit": "sporeling", "x": 18.5, "y": 1.5, "count": 6, "rows": 6, "dy": 1.0 },
+        { "unit": "capguard", "x": 19.2, "y": 2.5, "count": 2, "rows": 2, "dy": 2.5 }
+      ]
+    }
+  }
+}

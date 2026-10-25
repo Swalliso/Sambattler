@@ -1,0 +1,38 @@
+[
+  {
+    "id": "sporelingBurrow", "name": "Sporeling Burrow", "sprite": "b-sporelingBurrow", "milestone": 1,
+    "description": "A warm burrow that buds two Sporelings at a time. Cheap bodies that hold ground.",
+    "kind": "spawner", "footprint": { "w": 2, "h": 2 }, "cost": 110, "hp": 450,
+    "spawn": { "unit": "sporeling", "count": 2, "interval": 16 }
+  },
+  {
+    "id": "capguardHall", "name": "Capguard Hall", "sprite": "b-capguardHall", "milestone": 1,
+    "description": "Trains Capguards: sturdy line troops that shred Light swarms.",
+    "kind": "spawner", "footprint": { "w": 2, "h": 2 }, "cost": 150, "hp": 600,
+    "spawn": { "unit": "capguard", "count": 1, "interval": 15 }
+  },
+  {
+    "id": "gillNest", "name": "Gill Archer Nest", "sprite": "b-gillNest", "milestone": 1,
+    "description": "Gill Archers loose spore darts from range. Pierce breaks Medium line troops.",
+    "kind": "spawner", "footprint": { "w": 2, "h": 2 }, "cost": 150, "hp": 450,
+    "spawn": { "unit": "gillArcher", "count": 1, "interval": 15 }
+  },
+  {
+    "id": "rootbreakerDen", "name": "Rootbreaker Den", "sprite": "b-rootbreakerDen", "milestone": 1,
+    "description": "Rootbreakers are slow rams that crack buildings and Heartcaps (siege).",
+    "kind": "spawner", "footprint": { "w": 2, "h": 2 }, "cost": 200, "hp": 650,
+    "spawn": { "unit": "rootbreaker", "count": 1, "interval": 20 }
+  },
+  {
+    "id": "puffballMortar", "name": "Puffball Mortar", "sprite": "b-puffballMortar", "milestone": 1,
+    "description": "A tower that lobs bursting puffballs. Crush splash; cannot hit units hugging it.",
+    "kind": "tower", "footprint": { "w": 2, "h": 2 }, "cost": 160, "hp": 500,
+    "attack": { "damage": 24, "damageType": "crush", "interval": 3.0, "range": 6, "minRange": 1.5, "splashRadius": 1.0, "projectileSpeed": 6 }
+  },
+  {
+    "id": "truffleCellar", "name": "Truffle Cellar", "sprite": "b-truffleCellar", "milestone": 1,
+    "description": "Grows truffles for gold every income tick. +50% on Rich Loam.",
+    "kind": "economy", "footprint": { "w": 2, "h": 2 }, "cost": 150, "hp": 400,
+    "economy": { "goldPerTick": 4 }
+  }
+]

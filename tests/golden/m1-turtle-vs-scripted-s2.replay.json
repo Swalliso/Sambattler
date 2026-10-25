@@ -1,0 +1,73 @@
+{
+  "name": "m1-turtle-vs-scripted-s2",
+  "description": "bot:turtle vs the scripted general, seed 2",
+  "config": {
+    "seed": 2,
+    "battleIndex": 1,
+    "mapId": "bogwater-hollow",
+    "player": {
+      "faction": "velvet-bloom",
+      "controller": {
+        "kind": "bot",
+        "id": "turtle"
+      },
+      "kit": [
+        "sporelingBurrow",
+        "capguardHall",
+        "gillNest",
+        "rootbreakerDen",
+        "puffballMortar",
+        "truffleCellar"
+      ],
+      "heartcapHp": 3000,
+      "heartcapMaxHp": 3000,
+      "startingGold": 300
+    },
+    "enemy": {
+      "faction": "gray-rot",
+      "controller": {
+        "kind": "general",
+        "id": "scripted"
+      },
+      "kit": [
+        "sporelingBurrow",
+        "capguardHall",
+        "gillNest",
+        "rootbreakerDen",
+        "puffballMortar",
+        "truffleCellar"
+      ],
+      "heartcapHp": 2000,
+      "heartcapMaxHp": 2000,
+      "startingGold": 300
+    },
+    "flags": {
+      "merging": false,
+      "drafts": false,
+      "adaptiveGeneral": false,
+      "powers": false
+    }
+  },
+  "commands": [
+    {
+      "tick": 0,
+      "side": "player",
+      "seq": 0,
+      "type": "begin"
+    }
+  ],
+  "expected": {
+    "600": "5a373dfb2ab442cb",
+    "1200": "f4345fc3b6b12388",
+    "1800": "bc9bc2a9cd401012",
+    "2400": "be1d43c48b71febb",
+    "3000": "0c876bc91af5b810",
+    "3600": "c3ad715a74733a45",
+    "4200": "708ef7ad2275259d",
+    "4800": "db5f56488f6baab2",
+    "5400": "cb75f2468566ed30",
+    "6000": "090f296ad5b6d814",
+    "6600": "a3a86c77ed1193c6",
+    "final": "43f991e7d039897b"
+  }
+}

@@ -1,0 +1,535 @@
+{
+ "id": "bench-300",
+ "description": "Benchmark: the 3-lane test map with 150 units per side placed mid-field and 20 buildings per side (SPEC \u00a715.4).",
+ "map": "test-3lane",
+ "lanes": [
+  {
+   "pBorder": 9,
+   "eBorder": 20
+  },
+  {
+   "pBorder": 9,
+   "eBorder": 20
+  },
+  {
+   "pBorder": 9,
+   "eBorder": 20
+  }
+ ],
+ "sides": {
+  "player": {
+   "gold": 0,
+   "buildings": [
+    {
+     "building": "sporelingBurrow",
+     "col": 0,
+     "row": 0
+    },
+    {
+     "building": "capguardHall",
+     "col": 0,
+     "row": 2
+    },
+    {
+     "building": "gillNest",
+     "col": 2,
+     "row": 0
+    },
+    {
+     "building": "rootbreakerDen",
+     "col": 2,
+     "row": 2
+    },
+    {
+     "building": "puffballMortar",
+     "col": 4,
+     "row": 0
+    },
+    {
+     "building": "truffleCellar",
+     "col": 4,
+     "row": 2
+    },
+    {
+     "building": "sporelingBurrow",
+     "col": 6,
+     "row": 0
+    },
+    {
+     "building": "capguardHall",
+     "col": 6,
+     "row": 2
+    },
+    {
+     "building": "gillNest",
+     "col": 0,
+     "row": 6
+    },
+    {
+     "building": "rootbreakerDen",
+     "col": 0,
+     "row": 8
+    },
+    {
+     "building": "puffballMortar",
+     "col": 2,
+     "row": 6
+    },
+    {
+     "building": "truffleCellar",
+     "col": 2,
+     "row": 8
+    },
+    {
+     "building": "sporelingBurrow",
+     "col": 4,
+     "row": 6
+    },
+    {
+     "building": "capguardHall",
+     "col": 4,
+     "row": 8
+    },
+    {
+     "building": "gillNest",
+     "col": 6,
+     "row": 6
+    },
+    {
+     "building": "rootbreakerDen",
+     "col": 6,
+     "row": 8
+    },
+    {
+     "building": "puffballMortar",
+     "col": 0,
+     "row": 12
+    },
+    {
+     "building": "truffleCellar",
+     "col": 0,
+     "row": 14
+    },
+    {
+     "building": "sporelingBurrow",
+     "col": 2,
+     "row": 12
+    },
+    {
+     "building": "capguardHall",
+     "col": 2,
+     "row": 14
+    }
+   ],
+   "units": [
+    {
+     "unit": "sporeling",
+     "lane": 0,
+     "x": 9.0,
+     "y": 0.5,
+     "count": 10,
+     "rows": 5,
+     "dx": 0.6,
+     "dy": 0.95
+    },
+    {
+     "unit": "capguard",
+     "lane": 0,
+     "x": 10.3,
+     "y": 0.5,
+     "count": 10,
+     "rows": 5,
+     "dx": 0.6,
+     "dy": 0.95
+    },
+    {
+     "unit": "gillArcher",
+     "lane": 0,
+     "x": 11.6,
+     "y": 0.5,
+     "count": 10,
+     "rows": 5,
+     "dx": 0.6,
+     "dy": 0.95
+    },
+    {
+     "unit": "rootbreaker",
+     "lane": 0,
+     "x": 12.9,
+     "y": 0.5,
+     "count": 10,
+     "rows": 5,
+     "dx": 0.6,
+     "dy": 0.95
+    },
+    {
+     "unit": "sporeling",
+     "lane": 0,
+     "x": 14.2,
+     "y": 0.5,
+     "count": 10,
+     "rows": 5,
+     "dx": 0.6,
+     "dy": 0.95
+    },
+    {
+     "unit": "sporeling",
+     "lane": 1,
+     "x": 9.0,
+     "y": 6.5,
+     "count": 10,
+     "rows": 5,
+     "dx": 0.6,
+     "dy": 0.95
+    },
+    {
+     "unit": "capguard",
+     "lane": 1,
+     "x": 10.3,
+     "y": 6.5,
+     "count": 10,
+     "rows": 5,
+     "dx": 0.6,
+     "dy": 0.95
+    },
+    {
+     "unit": "gillArcher",
+     "lane": 1,
+     "x": 11.6,
+     "y": 6.5,
+     "count": 10,
+     "rows": 5,
+     "dx": 0.6,
+     "dy": 0.95
+    },
+    {
+     "unit": "rootbreaker",
+     "lane": 1,
+     "x": 12.9,
+     "y": 6.5,
+     "count": 10,
+     "rows": 5,
+     "dx": 0.6,
+     "dy": 0.95
+    },
+    {
+     "unit": "sporeling",
+     "lane": 1,
+     "x": 14.2,
+     "y": 6.5,
+     "count": 10,
+     "rows": 5,
+     "dx": 0.6,
+     "dy": 0.95
+    },
+    {
+     "unit": "sporeling",
+     "lane": 2,
+     "x": 9.0,
+     "y": 12.5,
+     "count": 10,
+     "rows": 5,
+     "dx": 0.6,
+     "dy": 0.95
+    },
+    {
+     "unit": "capguard",
+     "lane": 2,
+     "x": 10.3,
+     "y": 12.5,
+     "count": 10,
+     "rows": 5,
+     "dx": 0.6,
+     "dy": 0.95
+    },
+    {
+     "unit": "gillArcher",
+     "lane": 2,
+     "x": 11.6,
+     "y": 12.5,
+     "count": 10,
+     "rows": 5,
+     "dx": 0.6,
+     "dy": 0.95
+    },
+    {
+     "unit": "rootbreaker",
+     "lane": 2,
+     "x": 12.9,
+     "y": 12.5,
+     "count": 10,
+     "rows": 5,
+     "dx": 0.6,
+     "dy": 0.95
+    },
+    {
+     "unit": "sporeling",
+     "lane": 2,
+     "x": 14.2,
+     "y": 12.5,
+     "count": 10,
+     "rows": 5,
+     "dx": 0.6,
+     "dy": 0.95
+    }
+   ]
+  },
+  "enemy": {
+   "gold": 0,
+   "buildings": [
+    {
+     "building": "sporelingBurrow",
+     "col": 28,
+     "row": 15
+    },
+    {
+     "building": "capguardHall",
+     "col": 28,
+     "row": 13
+    },
+    {
+     "building": "gillNest",
+     "col": 26,
+     "row": 15
+    },
+    {
+     "building": "rootbreakerDen",
+     "col": 26,
+     "row": 13
+    },
+    {
+     "building": "puffballMortar",
+     "col": 24,
+     "row": 15
+    },
+    {
+     "building": "truffleCellar",
+     "col": 24,
+     "row": 13
+    },
+    {
+     "building": "sporelingBurrow",
+     "col": 22,
+     "row": 15
+    },
+    {
+     "building": "capguardHall",
+     "col": 22,
+     "row": 13
+    },
+    {
+     "building": "gillNest",
+     "col": 28,
+     "row": 9
+    },
+    {
+     "building": "rootbreakerDen",
+     "col": 28,
+     "row": 7
+    },
+    {
+     "building": "puffballMortar",
+     "col": 26,
+     "row": 9
+    },
+    {
+     "building": "truffleCellar",
+     "col": 26,
+     "row": 7
+    },
+    {
+     "building": "sporelingBurrow",
+     "col": 24,
+     "row": 9
+    },
+    {
+     "building": "capguardHall",
+     "col": 24,
+     "row": 7
+    },
+    {
+     "building": "gillNest",
+     "col": 22,
+     "row": 9
+    },
+    {
+     "building": "rootbreakerDen",
+     "col": 22,
+     "row": 7
+    },
+    {
+     "building": "puffballMortar",
+     "col": 28,
+     "row": 3
+    },
+    {
+     "building": "truffleCellar",
+     "col": 28,
+     "row": 1
+    },
+    {
+     "building": "sporelingBurrow",
+     "col": 26,
+     "row": 3
+    },
+    {
+     "building": "capguardHall",
+     "col": 26,
+     "row": 1
+    }
+   ],
+   "units": [
+    {
+     "unit": "sporeling",
+     "lane": 0,
+     "x": 21.0,
+     "y": 0.5,
+     "count": 10,
+     "rows": 5,
+     "dy": 0.95,
+     "dx": -0.6
+    },
+    {
+     "unit": "capguard",
+     "lane": 0,
+     "x": 19.7,
+     "y": 0.5,
+     "count": 10,
+     "rows": 5,
+     "dy": 0.95,
+     "dx": -0.6
+    },
+    {
+     "unit": "gillArcher",
+     "lane": 0,
+     "x": 18.4,
+     "y": 0.5,
+     "count": 10,
+     "rows": 5,
+     "dy": 0.95,
+     "dx": -0.6
+    },
+    {
+     "unit": "rootbreaker",
+     "lane": 0,
+     "x": 17.1,
+     "y": 0.5,
+     "count": 10,
+     "rows": 5,
+     "dy": 0.95,
+     "dx": -0.6
+    },
+    {
+     "unit": "sporeling",
+     "lane": 0,
+     "x": 15.8,
+     "y": 0.5,
+     "count": 10,
+     "rows": 5,
+     "dy": 0.95,
+     "dx": -0.6
+    },
+    {
+     "unit": "sporeling",
+     "lane": 1,
+     "x": 21.0,
+     "y": 6.5,
+     "count": 10,
+     "rows": 5,
+     "dy": 0.95,
+     "dx": -0.6
+    },
+    {
+     "unit": "capguard",
+     "lane": 1,
+     "x": 19.7,
+     "y": 6.5,
+     "count": 10,
+     "rows": 5,
+     "dy": 0.95,
+     "dx": -0.6
+    },
+    {
+     "unit": "gillArcher",
+     "lane": 1,
+     "x": 18.4,
+     "y": 6.5,
+     "count": 10,
+     "rows": 5,
+     "dy": 0.95,
+     "dx": -0.6
+    },
+    {
+     "unit": "rootbreaker",
+     "lane": 1,
+     "x": 17.1,
+     "y": 6.5,
+     "count": 10,
+     "rows": 5,
+     "dy": 0.95,
+     "dx": -0.6
+    },
+    {
+     "unit": "sporeling",
+     "lane": 1,
+     "x": 15.8,
+     "y": 6.5,
+     "count": 10,
+     "rows": 5,
+     "dy": 0.95,
+     "dx": -0.6
+    },
+    {
+     "unit": "sporeling",
+     "lane": 2,
+     "x": 21.0,
+     "y": 12.5,
+     "count": 10,
+     "rows": 5,
+     "dy": 0.95,
+     "dx": -0.6
+    },
+    {
+     "unit": "capguard",
+     "lane": 2,
+     "x": 19.7,
+     "y": 12.5,
+     "count": 10,
+     "rows": 5,
+     "dy": 0.95,
+     "dx": -0.6
+    },
+    {
+     "unit": "gillArcher",
+     "lane": 2,
+     "x": 18.4,
+     "y": 12.5,
+     "count": 10,
+     "rows": 5,
+     "dy": 0.95,
+     "dx": -0.6
+    },
+    {
+     "unit": "rootbreaker",
+     "lane": 2,
+     "x": 17.1,
+     "y": 12.5,
+     "count": 10,
+     "rows": 5,
+     "dy": 0.95,
+     "dx": -0.6
+    },
+    {
+     "unit": "sporeling",
+     "lane": 2,
+     "x": 15.8,
+     "y": 12.5,
+     "count": 10,
+     "rows": 5,
+     "dy": 0.95,
+     "dx": -0.6
+    }
+   ]
+  }
+ }
+}

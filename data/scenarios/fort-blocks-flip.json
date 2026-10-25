@@ -1,0 +1,44 @@
+{
+  "id": "fort-blocks-flip",
+  "description": "Enemy units stand in the player's border column (7), which holds a Truffle Cellar (cols 6-7). The border holds until the cellar falls (about tick 400), then flips; the next column is anchored by a second cellar (cols 5-6). Heartcap turrets are off so only the fort rule is under test.",
+  "map": "bogwater-hollow",
+  "test": {
+    "noTurrets": true
+  },
+  "lanes": [
+    {
+      "pBorder": 7,
+      "eBorder": 8
+    }
+  ],
+  "sides": {
+    "player": {
+      "gold": 0,
+      "buildings": [
+        {
+          "building": "truffleCellar",
+          "col": 6,
+          "row": 2
+        },
+        {
+          "building": "truffleCellar",
+          "col": 5,
+          "row": 5
+        }
+      ]
+    },
+    "enemy": {
+      "gold": 0,
+      "units": [
+        {
+          "unit": "capguard",
+          "x": 7.7,
+          "y": 2.2,
+          "count": 3,
+          "rows": 3,
+          "dy": 0.7
+        }
+      ]
+    }
+  }
+}

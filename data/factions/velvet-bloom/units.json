@@ -1,0 +1,30 @@
+[
+  {
+    "id": "sporeling", "name": "Sporeling", "sprite": "u-sporeling", "milestone": 1,
+    "hp": 72, "armor": "light", "damage": 7, "damageType": "slash", "attackInterval": 0.8,
+    "range": 0.4, "projectileSpeed": 0, "speed": 1.5, "supply": 1, "aggroRange": 4, "radius": 0.25,
+    "tags": ["swarm"],
+    "mergePerks": { "2": { "speedMult": 1.15 }, "3": { "splashRadius": 0.6 } }
+  },
+  {
+    "id": "capguard", "name": "Capguard", "sprite": "u-capguard", "milestone": 1,
+    "hp": 220, "armor": "medium", "damage": 14, "damageType": "slash", "attackInterval": 1.0,
+    "range": 0.5, "projectileSpeed": 0, "speed": 0.75, "supply": 2, "aggroRange": 4, "radius": 0.35,
+    "tags": [],
+    "mergePerks": { "2": { "resist": { "pierce": 0.85 } }, "3": { "resist": { "pierce": 0.7 }, "radiusAdd": 0.1 } }
+  },
+  {
+    "id": "gillArcher", "name": "Gill Archer", "sprite": "u-gillArcher", "milestone": 1,
+    "hp": 110, "armor": "light", "damage": 14, "damageType": "pierce", "attackInterval": 1.2,
+    "range": 5.0, "projectileSpeed": 8, "speed": 1.0, "supply": 2, "aggroRange": 6, "radius": 0.25,
+    "tags": ["ranged"],
+    "mergePerks": { "2": { "rangeAdd": 0.75 }, "3": { "rangeAdd": 1.5, "attackIntervalMult": 0.9 } }
+  },
+  {
+    "id": "rootbreaker", "name": "Rootbreaker", "sprite": "u-rootbreaker", "milestone": 1,
+    "hp": 460, "armor": "medium", "damage": 28, "damageType": "crush", "attackInterval": 2.0,
+    "range": 0.6, "projectileSpeed": 0, "speed": 0.6, "supply": 3, "aggroRange": 4, "radius": 0.45,
+    "tags": ["siege"],
+    "mergePerks": { "2": { "speedMult": 1.1 }, "3": { "splashRadius": 0.6 } }
+  }
+]

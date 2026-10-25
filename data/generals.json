@@ -1,0 +1,25 @@
+[
+  {
+    "id": "scripted",
+    "name": "The Gray Rot",
+    "sprite": "g-scripted",
+    "faction": "gray-rot",
+    "milestone": 1,
+    "description": "Milestone 1's scripted general: no analysis, no counters, no intel (SPEC §7.9).",
+    "opener": ["sporelingBurrow", "truffleCellar"],
+    "weights": {
+      "sporelingBurrow": 3,
+      "capguardHall": 3,
+      "gillNest": 2,
+      "truffleCellar": 2,
+      "rootbreakerDen": 1,
+      "puffballMortar": 1
+    },
+    "limits": {
+      "truffleCellar": { "maxOwned": 3 },
+      "rootbreakerDen": { "afterSeconds": 180 }
+    },
+    "laneStyle": "defensive",
+    "appearsIn": [1]
+  }
+]

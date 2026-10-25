@@ -1,0 +1,36 @@
+[
+  {
+    "id": "balanced",
+    "description": "A bit of everything, economy early (the reference bot for guardrails).",
+    "opener": ["sporelingBurrow", "truffleCellar"],
+    "weights": { "sporelingBurrow": 3, "capguardHall": 3, "gillNest": 2, "truffleCellar": 2, "rootbreakerDen": 1, "puffballMortar": 1 },
+    "limits": { "truffleCellar": { "maxOwned": 3 }, "rootbreakerDen": { "afterSeconds": 180 } },
+    "mergePolicy": "on"
+  },
+  {
+    "id": "rush",
+    "description": "No economy; floods forward spawners.",
+    "opener": ["sporelingBurrow", "sporelingBurrow"],
+    "weights": { "sporelingBurrow": 4, "capguardHall": 3, "gillNest": 1, "rootbreakerDen": 1 },
+    "limits": {},
+    "placement": { "spawnerDepthWeight": 3 },
+    "mergePolicy": "on"
+  },
+  {
+    "id": "turtle",
+    "description": "Towers and line troops held close to home.",
+    "opener": ["capguardHall", "truffleCellar"],
+    "weights": { "capguardHall": 3, "puffballMortar": 3, "gillNest": 2, "truffleCellar": 2, "rootbreakerDen": 1 },
+    "limits": { "truffleCellar": { "maxOwned": 4 }, "puffballMortar": { "maxOwned": 4 }, "rootbreakerDen": { "afterSeconds": 240 } },
+    "placement": { "spawnerDepthWeight": 0 },
+    "mergePolicy": "on"
+  },
+  {
+    "id": "greedy",
+    "description": "Economy first, then a late army.",
+    "opener": ["truffleCellar", "truffleCellar"],
+    "weights": { "truffleCellar": 4, "capguardHall": 2, "sporelingBurrow": 2, "gillNest": 2, "rootbreakerDen": 1, "puffballMortar": 1 },
+    "limits": { "truffleCellar": { "maxOwned": 5 } },
+    "mergePolicy": "on"
+  }
+]

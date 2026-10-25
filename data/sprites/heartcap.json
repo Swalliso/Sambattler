@@ -1,0 +1,117 @@
+{
+  "sheet": "heartcap",
+  "sprites": [
+    {"id": "heartcap-cap", "w": 32, "h": 32, "anchor": [0, 0], "factionSwap": true, "palette": {".": null, "d": "#5a2f99", "k": "#1a1020", "l": "#c9a2ff", "s": "#e8d9b5", "t": "#b9a77f", "v": "#8a4fd8"},
+     "frames": [
+      [
+        "................................",
+        "............kkkkkk..............",
+        ".........kkkllllvvkkk...........",
+        ".......kklllllllvvvvvkk.........",
+        "......klllllllllvvvvvvvk........",
+        ".....kllllllllllvllllvvvk.......",
+        "....klllllllllllllllllvvvk......",
+        "...kllllllllllllllllllvvvvk.....",
+        "...kllllllllllllvllllvvvvvk.....",
+        "..klllllllllllllvvvvvvvvvvvk....",
+        ".kvvvvllllvvvvvvvvvvvvvvvvvvk...",
+        ".kvvvllllllvvvvvvvvvvvvvvvvvk...",
+        "kvvvvllllllvvvvvvvvvvvvvvvvvvk..",
+        "kvvvvvllllvvvvvvvvvvvvvvllvvvk..",
+        "kvvvvvvvvvvvvvvvvvvvvvvllllvvk..",
+        "vvvvvvvvvvvvvvvvvvvvvvvllllvvvk.",
+        "vvvvvvvvvvvvvvvvvvvvvvvvllvvvvk.",
+        "vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvk.",
+        "vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvk.",
+        "vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvk.",
+        "vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvk.",
+        "vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvk.",
+        "kdddddddddddddddddddddddddddddk.",
+        "kdddddddddddddddddddddddddddddk.",
+        ".kkkkkkkssssssssssssttttkkkkkk..",
+        ".......kssssssssssssttttk.......",
+        ".......kssssssssssssttttk.......",
+        ".......kssssssssssssttttk.......",
+        ".......kssssssssssssttttk.......",
+        ".......kssssssssssssttttk.......",
+        ".......kssssssssssssttttk.......",
+        ".......kssssssssssssttttk......."
+      ]
+     ]},
+    {"id": "heartcap-stalk", "w": 32, "h": 16, "anchor": [0, 0], "factionSwap": true, "palette": {".": null, "d": "#5a2f99", "k": "#1a1020", "l": "#c9a2ff", "s": "#e8d9b5", "t": "#b9a77f", "v": "#8a4fd8", "w": "#fbf6ff"},
+     "frames": [
+      [
+        ".......kssssdsssssssttttk.......",
+        ".......kssssdsssssssttttk.......",
+        ".......kssssdsssssssttttk.......",
+        ".......ksssssdssssssttttk.......",
+        ".......ksssssdssssssttttk.......",
+        ".......ksssssdsvvvvsttttk.......",
+        ".......kssssdsvvwvvvttttk.......",
+        ".......kssssdsvvvvvvttttk.......",
+        ".......kssssdsvvvvvvttttk.......",
+        ".......ksssssdvvvvvvttttk.......",
+        ".......ksssssdsvvvvsttttk.......",
+        ".......ksssssdssssssttttk.......",
+        ".......kssssdsssssssttttk.......",
+        ".......kssssdsssssssttttk.......",
+        ".......kssssdsssssssttttk.......",
+        ".......ksssssdssssssttttk......."
+      ],
+      [
+        ".......kssssdsssssssttttk.......",
+        ".......kssssdsssssssttttk.......",
+        ".......kssssdsssssssttttk.......",
+        ".......ksssssdssssssttttk.......",
+        ".......ksssssdssssssttttk.......",
+        ".......ksssssdsllllsttttk.......",
+        ".......kssssdsllwlllttttk.......",
+        ".......kssssdsllllllttttk.......",
+        ".......kssssdsllllllttttk.......",
+        ".......ksssssdllllllttttk.......",
+        ".......ksssssdsllllsttttk.......",
+        ".......ksssssdssssssttttk.......",
+        ".......kssssdsssssssttttk.......",
+        ".......kssssdsssssssttttk.......",
+        ".......kssssdsssssssttttk.......",
+        ".......ksssssdssssssttttk......."
+      ]
+     ]},
+    {"id": "heartcap-base", "w": 32, "h": 16, "anchor": [0, 0], "factionSwap": true, "palette": {".": null, "b": "#3b2a1e", "h": "#7a5236", "k": "#1a1020", "n": "#5c4330", "s": "#e8d9b5", "t": "#b9a77f"},
+     "frames": [
+      [
+        ".......kssssssssssssttttk.......",
+        ".......kssssssssssssttttk.......",
+        ".......kssssssssssssttttk.......",
+        ".......kssssssssssssttttk.......",
+        ".......kssssssssssssttttk.......",
+        ".......kssssssssssssttttk.......",
+        ".......kssssssssssssttttk.......",
+        ".......kssssssssssssttttk.......",
+        ".......kssssssssssssttttk.......",
+        "......kkssnnnnnnnnnnnnttkk......",
+        "....kkbnnnnnnnnnnnnnbbbbnbkkkkk.",
+        "..kknnbnnnbnnnnnnnnnnnhhhhhhhhhk",
+        ".khhhhhhhhbnbbnnnnnnbbnnnnnnnkk.",
+        ".kbnnnnnnbnnnnnbnnnnnnnnbnbnnnk.",
+        "knnnhhhhhhhhhbnbbnnnbbnnnnnnnnnk",
+        "knnbnbnbbnnbnnnnbnnbnnnnnnnnbnnk"
+      ]
+     ]},
+    {"id": "turret", "w": 10, "h": 10, "anchor": [5, 5], "factionSwap": true, "palette": {".": null, "e": "#120a16", "g": "#f0c85a", "k": "#1a1020", "l": "#c9a2ff", "v": "#8a4fd8"},
+     "frames": [
+      [
+        "..kkkkkk..",
+        ".klllvvvk.",
+        "klllvvvvvk",
+        "kllvvveevk",
+        "klvvveegek",
+        "kvvvveeeek",
+        "kvvvvveevk",
+        "kvvvvvvvvk",
+        ".kvvvvvvk.",
+        "..kkkkkk.."
+      ]
+     ]}
+  ]
+}

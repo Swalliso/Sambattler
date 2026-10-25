@@ -1,0 +1,23 @@
+{
+  "id": "besieged-control",
+  "description": "Control for besieged-half-speed (same setup, turrets off, no harassment): the hall spawns at ticks 150 and 450.",
+  "map": "bogwater-hollow",
+  "test": {
+    "noTurrets": true
+  },
+  "sides": {
+    "player": {
+      "gold": 0,
+      "buildings": [
+        {
+          "building": "capguardHall",
+          "col": 1,
+          "row": 3
+        }
+      ]
+    },
+    "enemy": {
+      "gold": 0
+    }
+  }
+}

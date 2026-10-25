@@ -1,0 +1,266 @@
+// Attacks, projectiles, damage and deaths (SPEC §5.3, §4.5 turrets).
+import { HEARTCAP_ID, SIDES, other } from '../state.ts';
+import type { Armor, BattleState, DamageType, Effectiveness, PendingHit, Side } from '../state.ts';
+import { nearBuffer, queryNear } from '../spatial.ts';
+import { MAX_RADIUS, edgeDistance, tp } from '../targets.ts';
+import { buildingDef, findBuilding, findUnit, heartcapEdgeX, rectDistance, tierMult, unitDef, unitRadius } from '../world.ts';
+
+const EPS = 1e-6;
+
+/** Source id used in hits fired by Heartcap turrets. */
+export function turretSourceId(side: Side, index: number): number {
+  return side === 'player' ? -(100 + index) : -(200 + index);
+}
+
+/** Turret position for turret `index` (lane-major). */
+export function turretPos(state: BattleState, side: Side, index: number, out: { x: number; y: number; lane: number }): void {
+  const per = state.compiled[side].turret.perLane;
+  const lane = Math.floor(index / per);
+  const j = index % per;
+  const L = state.lanes[lane]!;
+  const h = L.rowEnd + 1 - L.rowStart;
+  out.x = heartcapEdgeX(state, side);
+  out.y = L.rowStart + (h * (j + 1)) / (per + 1);
+  out.lane = lane;
+}
+
+function insertHit(state: BattleState, h: PendingHit): void {
+  const hits = state.hits;
+  let lo = 0, hi = hits.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    const m = hits[mid]!;
+    const before = m.tick < h.tick || (m.tick === h.tick && (m.sourceId < h.sourceId || (m.sourceId === h.sourceId && m.seq < h.seq)));
+    if (before) lo = mid + 1; else hi = mid;
+  }
+  hits.splice(lo, 0, h);
+}
+
+function stormMult(state: BattleState): number {
+  return 1 + state.rules.storm.unitDamage * state.sporestorm;
+}
+
+function fire(
+  state: BattleState, side: Side, sourceId: number, fromX: number, fromY: number, lane: number, targetId: number,
+  distance: number, damage: number, damageType: DamageType, projectileSpeed: number, splashRadius: number,
+  siege: boolean, slayer: boolean, sourceBuildingId: number, sourceType: string,
+): void {
+  const ranged = projectileSpeed > 0;
+  const delay = ranged ? Math.ceil((distance / projectileSpeed) * state.rules.tickRate) : 0;
+  insertHit(state, {
+    tick: state.tick + delay, sourceId, seq: state.nextHitSeq++, side, targetId,
+    x: tp.cx, y: tp.cy, fromX, fromY, fireTick: state.tick, lane,
+    damage, damageType, splashRadius, siege, slayer, sourceBuildingId, sourceType, ranged,
+  });
+}
+
+const turretScratch = { x: 0, y: 0, lane: 0 };
+
+export function attackSystem(state: BattleState): void {
+  const tick = state.tick;
+  const storm = stormMult(state);
+  for (const u of state.units) {
+    if (u.cooldown > 0) u.cooldown--;
+    if (u.cooldown > 0 || u.targetId === 0) continue;
+    const def = unitDef(state, u);
+    const r = unitRadius(state, u);
+    const d = edgeDistance(state, u.x, u.y, r, u.targetId, other(u.side), u.lane);
+    if (d < 0 || d > def.range + EPS) continue;
+    u.cooldown = def.attackTicks;
+    u.lastAttackTick = tick;
+    fire(state, u.side, u.id, u.x, u.y, u.lane, u.targetId, d, def.damage * tierMult(state, u.tier) * storm,
+      def.damageType, def.projectileSpeed, def.splashRadius, def.siege, def.slayer, u.sourceBuildingId, u.unitId);
+  }
+  for (const b of state.buildings) {
+    const def = buildingDef(state, b);
+    const a = def.attack;
+    if (!a) continue;
+    if (b.cooldown > 0) b.cooldown--;
+    if (b.cooldown > 0 || b.targetId === 0) continue;
+    const cx = b.col + def.w / 2, cy = b.row + def.h / 2;
+    const d = edgeDistance(state, cx, cy, 0, b.targetId, other(b.side), b.lane);
+    if (d < 0 || d < a.minRange - EPS || d > a.range + EPS) continue;
+    b.cooldown = a.intervalTicks;
+    b.lastAttackTick = tick;
+    fire(state, b.side, b.id, cx, cy, b.lane, b.targetId, d, a.damage * storm, a.damageType, a.projectileSpeed,
+      a.splashRadius, false, false, b.id, b.buildingId);
+  }
+  if (!state.rules.test.turrets) return;
+  for (const side of SIDES) {
+    const ss = state.sides[side];
+    const t = state.compiled[side].turret;
+    const enemy = other(side);
+    const mult = Math.max(0, 1 + state.rules.storm.turretDamage * state.sporestorm);
+    for (let i = 0; i < ss.turretCooldowns.length; i++) {
+      if (ss.turretCooldowns[i]! > 0) ss.turretCooldowns[i]!--;
+      if (ss.turretCooldowns[i]! > 0) continue;
+      turretPos(state, side, i, turretScratch);
+      const { x, y, lane } = turretScratch;
+      // nearest enemy unit in range, else nearest enemy building
+      let best = 0, bestD = Infinity;
+      const n = queryNear(x, y, t.range + MAX_RADIUS);
+      const near = nearBuffer();
+      for (let k = 0; k < n; k++) {
+        const v = state.units[near[k]!]!;
+        if (v.side !== enemy || v.lane !== lane || v.hp <= 0) continue;
+        const dx = v.x - x, dy = v.y - y;
+        let d = Math.sqrt(dx * dx + dy * dy) - unitRadius(state, v);
+        if (d < 0) d = 0;
+        if (d <= t.range && (d < bestD || (d === bestD && v.id < best))) { best = v.id; bestD = d; }
+      }
+      if (best === 0) {
+        for (const o of state.buildings) {
+          if (o.side !== enemy || o.lane !== lane || o.hp <= 0) continue;
+          const od = buildingDef(state, o);
+          const d = rectDistance(x, y, o.col, o.row, od.w, od.h);
+          if (d <= t.range && (d < bestD || (d === bestD && o.id < best))) { best = o.id; bestD = d; }
+        }
+      }
+      if (best === 0) continue;
+      edgeDistance(state, x, y, 0, best, enemy, lane);
+      ss.turretCooldowns[i] = t.intervalTicks;
+      fire(state, side, turretSourceId(side, i), x, y, lane, best, bestD, t.damage * mult, t.damageType,
+        t.projectileSpeed, 0, false, false, 0, 'turret');
+    }
+  }
+}
+
+let effMult = 1;
+
+/**
+ * The damage formula (SPEC §5.3): attacker-side damage (base × tier × upgrades × storm) times the
+ * matrix, tag multipliers (siege vs structure, slayer vs tier ≥ 2) and target-side multipliers
+ * (resistances, Heartcap storm vulnerability), rounded, minimum 1. Also records the combined
+ * matrix × tag multiplier for the effectiveness class.
+ */
+export function damageFor(
+  r: BattleState['rules'], attackerDamage: number, type: DamageType, siege: boolean, slayer: boolean,
+  armor: Armor, tier: number, targetMult: number,
+): number {
+  let tag = 1;
+  if (siege && armor === 'structure') tag *= r.siegeMult;
+  if (slayer && tier >= 2) tag *= r.slayerMult;
+  const matrix = r.matrix[type][armor];
+  effMult = matrix * tag;
+  const dmg = Math.round(attackerDamage * matrix * tag * targetMult);
+  return dmg < 1 ? 1 : dmg;
+}
+
+function classify(state: BattleState, m: number): Effectiveness {
+  return m >= state.rules.strongAt ? 'strong' : m <= state.rules.weakAt ? 'weak' : 'normal';
+}
+
+/** Applies one hit (or its splash share) to a target. */
+function applyDamage(state: BattleState, h: PendingHit, targetId: number, falloff: number, ix: number, iy: number): void {
+  const r = state.rules;
+  let armor: Armor;
+  let tier = 1;
+  let taken = 1;
+  let resist = 1;
+  const u = targetId > 0 ? findUnit(state, targetId) : undefined;
+  const b = targetId > 0 && !u ? findBuilding(state, targetId) : undefined;
+  const heart: Side | undefined = targetId === HEARTCAP_ID.player ? 'player' : targetId === HEARTCAP_ID.enemy ? 'enemy' : undefined;
+  if (u) {
+    const ud = unitDef(state, u);
+    armor = ud.armor; tier = u.tier; resist = ud.resist[h.damageType];
+  } else if (b) {
+    armor = 'structure';
+  } else if (heart) {
+    armor = 'structure';
+    taken = 1 + r.storm.heartcapTaken * state.sporestorm;
+  } else {
+    return;
+  }
+  const dmg = damageFor(r, h.damage * falloff, h.damageType, h.siege, h.slayer, armor, tier, resist * taken);
+  const combined = effMult;
+  let dealt = dmg;
+  if (u) {
+    if (dealt > u.hp) dealt = u.hp;
+    u.hp -= dmg;
+    u.lastCombatTick = state.tick;
+  } else if (b) {
+    if (dealt > b.hp) dealt = b.hp;
+    b.hp -= dmg;
+    b.lastDamagedTick = state.tick;
+  } else if (heart) {
+    const hs = state.sides[heart];
+    if (dealt > hs.heartcapHp) dealt = hs.heartcapHp;
+    hs.heartcapHp = Math.max(0, hs.heartcapHp - dmg);
+    state.stats[heart].heartcapDamageTaken += dealt;
+  }
+  const attacker = h.sourceId > 0 ? findUnit(state, h.sourceId) : undefined;
+  if (attacker) attacker.lastCombatTick = state.tick;
+  const st = state.stats[h.side];
+  st.damageDealt += dealt;
+  const key = String(h.sourceBuildingId);
+  st.damageByBuilding[key] = (st.damageByBuilding[key] ?? 0) + dealt;
+  st.damageBySource[h.sourceType] = (st.damageBySource[h.sourceType] ?? 0) + dealt;
+  state.events.push({ t: 'hit', target: targetId, src: h.sourceId, amount: dmg, eff: classify(state, combined), x: ix, y: iy, splash: falloff !== 1 });
+}
+
+export function resolveHitsSystem(state: BattleState): void {
+  const hits = state.hits;
+  let n = 0;
+  while (n < hits.length && hits[n]!.tick <= state.tick) n++;
+  if (n === 0) return;
+  const falloff = state.rules.splashFalloff;
+  for (let i = 0; i < n; i++) {
+    const h = hits[i]!;
+    const enemy = other(h.side);
+    let ix = h.x, iy = h.y;
+    let alive = false;
+    if (h.targetId > 0) {
+      const u = findUnit(state, h.targetId);
+      if (u) { if (u.hp > 0) { alive = true; ix = u.x; iy = u.y; } }
+      else {
+        const b = findBuilding(state, h.targetId);
+        if (b && b.hp > 0) { alive = true; const bd = buildingDef(state, b); ix = b.col + bd.w / 2; iy = b.row + bd.h / 2; }
+      }
+    } else if (h.targetId === HEARTCAP_ID[enemy]) {
+      alive = state.sides[enemy].heartcapHp > 0;
+    }
+    if (alive) applyDamage(state, h, h.targetId, 1, ix, iy);
+    if (h.splashRadius > 0) {
+      const s = h.splashRadius;
+      const cnt = queryNear(ix, iy, s + MAX_RADIUS + 1);
+      const near = nearBuffer();
+      for (let k = 0; k < cnt; k++) {
+        const v = state.units[near[k]!]!;
+        if (v.side !== enemy || v.lane !== h.lane || v.hp <= 0 || v.id === h.targetId) continue;
+        const dx = v.x - ix, dy = v.y - iy;
+        if (Math.sqrt(dx * dx + dy * dy) - unitRadius(state, v) <= s) applyDamage(state, h, v.id, falloff, v.x, v.y);
+      }
+      for (const b of state.buildings) {
+        if (b.side !== enemy || b.lane !== h.lane || b.hp <= 0 || b.id === h.targetId) continue;
+        const bd = buildingDef(state, b);
+        if (rectDistance(ix, iy, b.col, b.row, bd.w, bd.h) <= s) applyDamage(state, h, b.id, falloff, b.col + bd.w / 2, b.row + bd.h / 2);
+      }
+    }
+  }
+  hits.splice(0, n);
+}
+
+/** Removes dead units and buildings after all hits resolve (SPEC §5.3). */
+export function deathSystem(state: BattleState): void {
+  const units = state.units;
+  let w = 0;
+  for (let i = 0; i < units.length; i++) {
+    const u = units[i]!;
+    if (u.hp > 0) { units[w++] = u; continue; }
+    state.sides[u.side].supplyUsed -= u.supply;
+    state.stats[u.side].unitsLost++;
+    state.events.push({ t: 'died', id: u.id, side: u.side, unitId: u.unitId, x: u.x, y: u.y });
+    for (const h of state.hits) if (h.targetId === u.id) { h.x = u.x; h.y = u.y; }
+  }
+  units.length = w;
+  const bs = state.buildings;
+  w = 0;
+  for (let i = 0; i < bs.length; i++) {
+    const b = bs[i]!;
+    if (b.hp > 0) { bs[w++] = b; continue; }
+    state.stats[b.side].buildingsLost++;
+    state.stats[other(b.side)].buildingsDestroyed++;
+    state.events.push({ t: 'buildingDestroyed', id: b.id, side: b.side, buildingId: b.buildingId, col: b.col, row: b.row });
+  }
+  bs.length = w;
+}

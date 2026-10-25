@@ -1,0 +1,82 @@
+{
+  "name": "m1-balanced-vs-scripted-s1",
+  "description": "bot:balanced vs the scripted general, seed 1",
+  "config": {
+    "seed": 1,
+    "battleIndex": 1,
+    "mapId": "bogwater-hollow",
+    "player": {
+      "faction": "velvet-bloom",
+      "controller": {
+        "kind": "bot",
+        "id": "balanced"
+      },
+      "kit": [
+        "sporelingBurrow",
+        "capguardHall",
+        "gillNest",
+        "rootbreakerDen",
+        "puffballMortar",
+        "truffleCellar"
+      ],
+      "heartcapHp": 3000,
+      "heartcapMaxHp": 3000,
+      "startingGold": 300
+    },
+    "enemy": {
+      "faction": "gray-rot",
+      "controller": {
+        "kind": "general",
+        "id": "scripted"
+      },
+      "kit": [
+        "sporelingBurrow",
+        "capguardHall",
+        "gillNest",
+        "rootbreakerDen",
+        "puffballMortar",
+        "truffleCellar"
+      ],
+      "heartcapHp": 2000,
+      "heartcapMaxHp": 2000,
+      "startingGold": 300
+    },
+    "flags": {
+      "merging": false,
+      "drafts": false,
+      "adaptiveGeneral": false,
+      "powers": false
+    }
+  },
+  "commands": [
+    {
+      "tick": 0,
+      "side": "player",
+      "seq": 0,
+      "type": "begin"
+    }
+  ],
+  "expected": {
+    "600": "4c3ba1de3da97feb",
+    "1200": "c057a008616e05e9",
+    "1800": "970ccc863d7b9442",
+    "2400": "046006310bfadc30",
+    "3000": "4366926222db89ec",
+    "3600": "ade7bff3b84871bb",
+    "4200": "9c5ae9077145933a",
+    "4800": "cf9a80c32daafa0a",
+    "5400": "c215590c188e77f4",
+    "6000": "423889f3ea716efa",
+    "6600": "893f5a8adc052cd4",
+    "7200": "3df1d3ca424e5907",
+    "7800": "8912347772c07adf",
+    "8400": "9785be57b8a37f7a",
+    "9000": "230c0f17087fd990",
+    "9600": "7a5ee3c1d33933fa",
+    "10200": "b8b1c91a92b284e7",
+    "10800": "e6b391b6e7c6559e",
+    "11400": "6e13670b0d88044d",
+    "12000": "e9f7639f389bdf88",
+    "final": "e9f7639f389bdf88"
+  }
+}
