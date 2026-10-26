@@ -44,7 +44,7 @@ export function runBench(content: Content, ticks: number): BenchResult {
   const q = (p: number) => sorted[Math.min(sorted.length - 1, Math.floor(p * sorted.length))]!;
   const mean = sorted.reduce((a, b) => a + b, 0) / sorted.length;
 
-  // one full M1 battle, headless (warm)
+  // one full battle, headless (warm)
   runBattle(content, { seed: 99, player: 'bot:balanced', enemy: 'general:scripted' });
   const battle = runBattle(content, { seed: 1, player: 'bot:balanced', enemy: 'general:scripted' });
 

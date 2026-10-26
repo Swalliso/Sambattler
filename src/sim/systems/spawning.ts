@@ -20,7 +20,7 @@ export function spawningSystem(state: BattleState): void {
     if (b.timer > 0) continue;
     const ss = state.sides[b.side];
     const unit = state.compiled[b.side].units[sp.unit]!;
-    const need = sp.count * unit.supply;
+    const need = sp.count * unit.tiers[0].supply;
     if (ss.supplyUsed + need > ss.supplyCap) {
       b.holding = true;
       b.timer = 0;

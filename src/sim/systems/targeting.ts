@@ -21,6 +21,7 @@ export function targetingSystem(state: BattleState): void {
   const every = state.rules.retargetEvery;
   const tick = state.tick;
   for (const u of state.units) {
+    if (u.knit) { u.targetId = 0; continue; } // knitting units stop retargeting (SPEC §5.6)
     const enemy = other(u.side);
     const r = unitRadius(state, u);
     const curD = u.targetId !== 0 ? edgeDistance(state, u.x, u.y, r, u.targetId, enemy, u.lane) : -1;

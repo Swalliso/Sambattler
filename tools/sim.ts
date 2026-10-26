@@ -1,4 +1,4 @@
-// npm run sim -- [options]: headless battle simulator (SPEC §15.2), Milestone 1 subset.
+// npm run sim -- [options]: headless battle simulator (SPEC §15.2), Milestone 2 subset.
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, isAbsolute, join } from 'node:path';
 import { nodeContent, ROOT } from './lib/content.ts';
@@ -6,9 +6,11 @@ import { fmtTicks, median, runBattle } from './lib/run.ts';
 import type { BattleResult, RunSpec } from './lib/run.ts';
 import { checkAssert, parseAssert } from './lib/asserts.ts';
 import type { Assertion } from './lib/asserts.ts';
+import { MILESTONE, parseFlags } from '../src/sim/index.ts';
 import type { BattleConfig, Command } from '../src/sim/index.ts';
 
-const NOT_IN_M1 = ['--auto-draft', '--commander', '--power-policy', '--bot', '--run', '--auto-route', '--meta-progress', '--runs'];
+/** Options for later milestones' features (runs, drafts, commanders, meta-progression). */
+const NOT_YET = ['--auto-draft', '--commander', '--power-policy', '--bot', '--run', '--auto-route', '--meta-progress', '--runs'];
 
 interface Args {
   map?: string; seeds: number[]; player?: string; enemy?: string; scenario?: string; replay?: string;
@@ -24,15 +26,10 @@ function parseUntil(v: string): 'end' | number {
   throw new Error(`bad --until "${v}"`);
 }
 
-function parseFlags(v: string): Partial<BattleConfig['flags']> {
-  const flags: Partial<BattleConfig['flags']> = {};
-  for (const f of v.split(',').map((s) => s.trim()).filter(Boolean)) {
-    if (f === 'merging' || f === 'drafts' || f === 'powers') {
-      throw new Error(`--flags ${f}: not available in Milestone 1`);
-    }
-    if (f === 'adaptive') throw new Error('--flags adaptive: not available in Milestone 1');
-    throw new Error(`unknown flag ${f}`);
-  }
+/** `--flags a,b` turns on exactly those features (`none` for none); without it, the milestone's defaults apply. */
+function flagsArg(v: string): BattleConfig['flags'] {
+  const { flags, problems } = parseFlags(v);
+  if (problems.length) throw new Error(`--flags: ${problems.join('; ')}`);
   return flags;
 }
 
@@ -45,7 +42,7 @@ function parseArgs(argv: string[]): Args {
       if (x === undefined) throw new Error(`${k} needs a value`);
       return x;
     };
-    if (NOT_IN_M1.includes(k)) throw new Error(`${k} is not available in Milestone 1`);
+    if (NOT_YET.includes(k)) throw new Error(`${k} is not available in Milestone ${MILESTONE}`);
     switch (k) {
       case '--map': a.map = v(); break;
       case '--seed': a.seeds = [Number(v())]; break;
@@ -62,7 +59,7 @@ function parseArgs(argv: string[]): Args {
       case '--replay': a.replay = v(); break;
       case '--until': a.until = parseUntil(v()); break;
       case '--battle-index': a.battleIndex = Number(v()); break;
-      case '--flags': a.flags = parseFlags(v()); break;
+      case '--flags': a.flags = flagsArg(v()); break;
       case '--hash-every': a.hashEvery = Number(v()); break;
       case '--assert': a.asserts.push(parseAssert(v())); break;
       case '--out': a.out = v(); break;
@@ -134,11 +131,12 @@ function main(): number {
 }
 
 export function printSummary(results: BattleResult[]): void {
+  const merges = (r: BattleResult, s: 'player' | 'enemy') => `${r.merges[s]['2']}/${r.merges[s]['3']}`;
   const rows = results.map((r) => [
     String(r.seed), r.winner ?? '-', r.by ?? '-', r.duration, `${r.columns.player}:${r.columns.enemy}`,
-    `${r.heartcap.player}/${r.heartcap.enemy}`, String(r.rejectedCommands), `${r.wallMs}ms`,
+    `${r.heartcap.player}/${r.heartcap.enemy}`, `${merges(r, 'player')} : ${merges(r, 'enemy')}`, String(r.rejectedCommands), `${r.wallMs}ms`,
   ]);
-  const head = ['seed', 'winner', 'by', 'length', 'cols', 'heartcaps', 'rejected', 'wall'];
+  const head = ['seed', 'winner', 'by', 'length', 'cols', 'heartcaps', 'merges (B/E)', 'rejected', 'wall'];
   const widths = head.map((h, i) => Math.max(h.length, ...rows.map((r) => r[i]!.length)));
   const line = (cells: string[]) => cells.map((c, i) => c.padEnd(widths[i]!)).join('  ');
   console.log(line(head));
@@ -151,6 +149,9 @@ export function printSummary(results: BattleResult[]): void {
   console.log('');
   console.log(`battles ${n} · ended ${ended.length} · player wins ${wins('player')} (${pct(wins('player'), n)}) · enemy wins ${wins('enemy')} (${pct(wins('enemy'), n)})`);
   console.log(`length median ${fmtTicks(median(lens))} · min ${fmtTicks(Math.min(...lens))} · max ${fmtTicks(Math.max(...lens))} · decisions ${decisions} (${pct(decisions, n)})`);
+  const merged = results.filter((r) => r.merges.player['2'] + r.merges.enemy['2'] > 0).length;
+  const elders = results.filter((r) => r.merges.player['3'] + r.merges.enemy['3'] > 0).length;
+  console.log(`battles with merges ${merged} (${pct(merged, n)}) · with an Elder ${elders} (${pct(elders, n)})`);
   console.log(`mean wall ${(results.reduce((a, r) => a + r.wallMs, 0) / n).toFixed(0)} ms · rejected commands ${results.reduce((a, r) => a + r.rejectedCommands, 0)}`);
 }
 

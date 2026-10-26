@@ -1,7 +1,7 @@
 // Entity lookup and geometry helpers shared by the systems. Entities live in arrays sorted by id,
 // so lookups are binary searches (no Maps, no allocation).
 import { HEARTCAP_ID } from './state.ts';
-import type { BattleState, BuildingState, CompiledBuilding, CompiledUnit, Side, UnitState } from './state.ts';
+import type { BattleState, BuildingState, CompiledBuilding, CompiledTier, CompiledUnit, Side, UnitState } from './state.ts';
 
 export function findUnit(state: BattleState, id: number): UnitState | undefined {
   const a = state.units;
@@ -35,10 +35,14 @@ export function buildingDef(state: BattleState, b: BuildingState): CompiledBuild
   return state.compiled[b.side].buildings[b.buildingId] as CompiledBuilding;
 }
 
-/** Unit body radius (×1.25 per tier above 1, SPEC §5.6). */
+/** A unit's stats at its current merge tier. */
+export function tierDef(state: BattleState, u: UnitState): CompiledTier {
+  return (state.compiled[u.side].units[u.unitId] as CompiledUnit).tiers[u.tier - 1]!;
+}
+
+/** Unit body radius (grows with the merge tier, SPEC §5.6). */
 export function unitRadius(state: BattleState, u: UnitState): number {
-  const r = unitDef(state, u).radius;
-  return u.tier === 1 ? r : u.tier === 2 ? r * 1.25 : r * 1.5625;
+  return tierDef(state, u).radius;
 }
 
 /** x of a side's attackable Heartcap edge. */
@@ -88,9 +92,4 @@ export function columnsOwned(state: BattleState, side: Side): number {
   const W = state.map.width;
   for (const l of state.lanes) n += side === 'player' ? l.pBorder + 1 : W - l.eBorder;
   return n;
-}
-
-export function tierMult(state: BattleState, tier: number): number {
-  const m = state.rules.tierStatMult;
-  return tier === 1 ? 1 : tier === 2 ? m : m * m;
 }

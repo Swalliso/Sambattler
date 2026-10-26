@@ -1,23 +1,29 @@
 // Fixed-capacity ring buffer of short-lived visual effects (SPEC §13.6): hit sparks tinted by
-// effectiveness, death puffs, building rubble and spawn puffs. Entries are reused, never allocated
-// after construction.
+// effectiveness, death puffs, building rubble, spawn puffs, merge pops and damage numbers. Entries
+// are reused, never allocated after construction.
+import { GLYPH_H, pixelText, textWidth } from './pixelText.ts';
 
-/** kind: 1 strong spark, 2 normal spark, 3 weak spark, 4/5 death puff (player/enemy), 6 rubble, 7 spawn puff */
-interface Fx { kind: number; x: number; y: number; t0: number; flag: number }
+/**
+ * kind: 1 strong spark, 2 normal spark, 3 weak spark, 4/5 death puff (player/enemy), 6 rubble,
+ * 7 spawn puff, 8 merge pop (flag = tier, value = 0 player / 1 enemy), 9 damage number
+ * (flag = 1 strong / 2 normal / 3 weak, value = amount)
+ */
+interface Fx { kind: number; x: number; y: number; t0: number; flag: number; value: number }
 
-const LIFE = [0, 220, 160, 140, 380, 380, 600, 300];
+const LIFE = [0, 220, 160, 140, 380, 380, 600, 300, 1100, 650];
+const NUMBER_COLOR = ['', '#f0c85a', '#ffffff', '#a39cab'];
 
 export class Effects {
   private buf: Fx[];
   private head = 0;
 
   constructor(capacity: number) {
-    this.buf = Array.from({ length: capacity }, () => ({ kind: 0, x: 0, y: 0, t0: -1e9, flag: 0 }));
+    this.buf = Array.from({ length: capacity }, () => ({ kind: 0, x: 0, y: 0, t0: -1e9, flag: 0, value: 0 }));
   }
 
-  add(kind: number, x: number, y: number, t0: number, flag: number): void {
+  add(kind: number, x: number, y: number, t0: number, flag: number, value = 0): void {
     const e = this.buf[this.head]!;
-    e.kind = kind; e.x = x; e.y = y; e.t0 = t0; e.flag = flag;
+    e.kind = kind; e.x = x; e.y = y; e.t0 = t0; e.flag = flag; e.value = value;
     this.head = (this.head + 1) % this.buf.length;
   }
 
@@ -67,6 +73,31 @@ export class Effects {
           g.fillStyle = '#e8d9b5';
           const r = 1 + Math.round(k * 4);
           g.fillRect(x - r, y - r, r * 2, r * 2);
+          g.globalAlpha = 1;
+          break;
+        }
+        case 8: { // "BLOOMED!" / "ELDER!" rising from the merge point, with a burst ring
+          const text = e.flag === 3 ? 'ELDER!' : 'BLOOMED!';
+          const color = e.flag === 3 ? '#f0c85a' : e.value === 0 ? '#c9a2ff' : '#b8c4a8';
+          if (k < 0.35) {
+            const r = 3 + Math.round((k / 0.35) * 9);
+            g.globalAlpha = 1 - k / 0.35;
+            g.fillStyle = color;
+            for (let a = 0; a < 12; a++) {
+              const dx = [r, 0, -r, 0, r * 0.7, -r * 0.7, r * 0.7, -r * 0.7, r * 0.38, -r * 0.38, r * 0.92, -r * 0.92][a]!;
+              const dy = [0, r, 0, -r, r * 0.7, r * 0.7, -r * 0.7, -r * 0.7, r * 0.92, -r * 0.92, -r * 0.38, r * 0.38][a]!;
+              g.fillRect(Math.round(x + dx), Math.round(y + dy), 1, 1);
+            }
+          }
+          g.globalAlpha = k < 0.75 ? 1 : (1 - k) / 0.25;
+          pixelText(g, text, x - textWidth(text) / 2, y - 18 - Math.round(k * 8), color);
+          g.globalAlpha = 1;
+          break;
+        }
+        case 9: { // damage number, tinted by effectiveness
+          const text = String(e.value);
+          g.globalAlpha = k < 0.7 ? 1 : (1 - k) / 0.3;
+          pixelText(g, text, x - textWidth(text) / 2, y - 10 - GLYPH_H - Math.round(k * 7), NUMBER_COLOR[e.flag] ?? '#ffffff');
           g.globalAlpha = 1;
           break;
         }

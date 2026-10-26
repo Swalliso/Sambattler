@@ -40,25 +40,38 @@ export interface BattleConfig {
   test?: { noTurrets?: boolean; noTerritory?: boolean; noHeartcapTargets?: boolean; timeLimitSeconds?: number };
 }
 
+/**
+ * Stats of a unit at one merge tier (SPEC §5.5–5.6): HP and damage ×tierStatMult per tier, radius
+ * ×tierRadiusMult per tier, supply ×tierSupplyMult, plus the tier's merge perks.
+ */
+export interface CompiledTier {
+  hp: number;
+  /** Damage per hit before the matrix and the Sporestorm. */
+  damage: number;
+  attackTicks: number;
+  range: number;
+  speedPerTick: number;
+  radius: number;
+  splashRadius: number;
+  /** Multiplier against Bloomed and Elder targets (1 for units without the slayer tag). */
+  slayerMult: number;
+  /** Damage-taken multipliers from merge perks. */
+  resist: Record<DamageType, number>;
+  supply: number;
+}
+
 /** Resolved, tick-based unit definition (SPEC §14.1 "compiled definitions"). */
 export interface CompiledUnit {
   id: string;
-  hp: number;
   armor: Exclude<Armor, 'structure'>;
-  damage: number;
   damageType: DamageType;
-  attackTicks: number;
-  range: number;
   projectileSpeed: number;
-  speedPerTick: number;
-  supply: number;
   aggroRange: number;
-  radius: number;
-  splashRadius: number;
   siege: boolean;
   slayer: boolean;
   tags: string[];
-  resist: Record<DamageType, number>;
+  /** Index 0 is the base unit, 1 Bloomed, 2 Elder. */
+  tiers: [CompiledTier, CompiledTier, CompiledTier];
 }
 
 export interface CompiledBuilding {
@@ -115,7 +128,7 @@ export interface Rules {
   matrix: Record<DamageType, Record<Armor, number>>;
   siegeMult: number;
   slayerMult: number;
-  tierStatMult: number;
+  merge: { radius: number; cooldownTicks: number; knitTicks: number; every: number };
   strongAt: number;
   weakAt: number;
   spawnOffset: number;
@@ -125,7 +138,7 @@ export interface Rules {
   ai: {
     thinkEvery: number; stickyTicks: number; pressureWindow: number; pressureMin: number; threatRadius: number;
     towerRangeThreat: number; noise: number; economyEarlyTick: number; economyEarlyMult: number;
-    economyLateTick: number; economyLateMult: number; towerPressureMult: number;
+    economyLateTick: number; economyLateMult: number; towerPressureMult: number; mergeOffSlayerShare: number;
     score: { spawnerDepth: number; spawnerThreat: number; spawnerSurcharge: number; economyLoam: number;
       economyDepth: number; economyThreat: number; towerFront: number; towerThreat: number };
   };
@@ -156,7 +169,7 @@ export interface UnitState {
   side: Side;
   lane: number;
   unitId: string;
-  tier: 1 | 2 | 3;
+  tier: Tier;
   x: number;
   y: number;
   px: number;
@@ -171,7 +184,22 @@ export interface UnitState {
   lastAttackTick: number;
   mergeOn: boolean;
   sourceBuildingId: number;
+  /** Set while the unit knits with two others (SPEC §5.6); undefined otherwise. */
+  knit?: KnitState;
 }
+
+export interface KnitState {
+  /** The trio's lowest unit id. */
+  group: number;
+  untilTick: number;
+  /** The centroid the trio walks toward. */
+  x: number;
+  y: number;
+  /** Set when this member takes damage; the knit cancels at the merge step. */
+  hurt: boolean;
+}
+
+export type Tier = 1 | 2 | 3;
 
 export interface BuildingState {
   id: number;
@@ -211,7 +239,8 @@ export interface PendingHit {
   damageType: DamageType;
   splashRadius: number;
   siege: boolean;
-  slayer: boolean;
+  /** Attacker's multiplier against Bloomed and Elder targets (1 if it is not a slayer). */
+  slayerMult: number;
   sourceBuildingId: number;
   /** Unit id, tower building id or 'turret' (for damage-by-source stats). */
   sourceType: string;
@@ -233,6 +262,9 @@ export type SimEvent =
   | { t: 'spawned'; id: number }
   | { t: 'died'; id: number; side: Side; unitId: string; x: number; y: number }
   | { t: 'hit'; target: number; src: number; amount: number; eff: Effectiveness; x: number; y: number; splash: boolean }
+  | { t: 'knitStart'; side: Side; ids: number[]; x: number; y: number }
+  | { t: 'knitCancel'; side: Side; ids: number[] }
+  | { t: 'merged'; side: Side; id: number; unitId: string; tier: 2 | 3; x: number; y: number }
   | { t: 'columnFlipped'; lane: number; column: number; to: Side }
   | { t: 'buildingPlaced'; id: number }
   | { t: 'buildingDestroyed'; id: number; side: Side; buildingId: string; col: number; row: number }
@@ -246,8 +278,11 @@ export type SimEvent =
   | { t: 'ended'; winner: Side; by: 'rout' | 'decision' };
 
 export interface AiWeight { building: string; weight: number; maxOwned: number; afterTick: number }
+/** on/off: every spawner's merge toggle; auto: SPEC §7.2 step 5 (swarm merging off against Slayers). */
+export type MergePolicy = 'on' | 'off' | 'auto';
 export interface AiState {
   profileId: string;
+  mergePolicy: MergePolicy;
   opener: string[];
   weights: AiWeight[];
   spawnerDepthWeight: number;
@@ -274,6 +309,8 @@ export interface SideStats {
   damageDealt: number;
   /** Building entity id → damage dealt by it or its units. Key "0" is the Heartcap turrets. */
   damageByBuilding: Record<string, number>;
+  /** Building entity id → building type, for every building this side ever had (reports). */
+  buildingTypes: Record<string, string>;
   /** Attacker kind (unit id, tower building id or 'turret') → damage dealt. */
   damageBySource: Record<string, number>;
   heartcapDamageTaken: number;

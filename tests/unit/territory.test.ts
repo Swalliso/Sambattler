@@ -9,8 +9,7 @@ describe('territory: column tug-of-war (SPEC §4.3)', () => {
     expect(s.lanes[0]!.pBorder).toBe(3);
     unit(s, 'player', 'capguard', 6.5, 4); // in column 6, not the frontier (4)
     s.units[0]!.spawnY = 4;
-    const sp = s.compiled.player.units.capguard!;
-    sp.speedPerTick = 0; // hold still
+    s.compiled.player.units.capguard!.tiers[0].speedPerTick = 0; // hold still
     steps(s, flipTicks(s) + 5);
     expect(s.lanes[0]!.pBorder).toBe(3);
     s.units[0]!.x = 4.5; // now in the frontier
@@ -23,8 +22,8 @@ describe('territory: column tug-of-war (SPEC §4.3)', () => {
 
   it('needs presence ≥ 1.5× the defender, and decays otherwise', () => {
     const s = liveState();
-    for (const side of ['player', 'enemy'] as const) s.compiled[side].units.capguard!.speedPerTick = 0;
-    for (const side of ['player', 'enemy'] as const) s.compiled[side].units.sporeling!.speedPerTick = 0;
+    for (const side of ['player', 'enemy'] as const) s.compiled[side].units.capguard!.tiers[0].speedPerTick = 0;
+    for (const side of ['player', 'enemy'] as const) s.compiled[side].units.sporeling!.tiers[0].speedPerTick = 0;
     s.rules.test.turrets = false;
     // 2 (capguard) vs 2 (two sporelings, too far apart to fight? place them in column 4 out of aggro is impossible) → use ratios
     unit(s, 'player', 'capguard', 4.2, 0.5);
@@ -45,7 +44,7 @@ describe('territory: column tug-of-war (SPEC §4.3)', () => {
     s.rules.test.turrets = false;
     const b = building(s, 'player', 'truffleCellar', 6, 0);
     unit(s, 'enemy', 'capguard', 7.5, 6);
-    s.compiled.enemy.units.capguard!.speedPerTick = 0;
+    s.compiled.enemy.units.capguard!.tiers[0].speedPerTick = 0;
     s.units[0]!.cooldown = 1e9;
     steps(s, flipTicks(s) * 3);
     expect(s.lanes[0]!.pBorder).toBe(7);
@@ -59,7 +58,7 @@ describe('territory: column tug-of-war (SPEC §4.3)', () => {
     h.rules.test.turrets = false;
     h.rules.test.heartcapTargets = false;
     unit(h, 'enemy', 'capguard', 3.5, 4);
-    h.compiled.enemy.units.capguard!.speedPerTick = 0;
+    h.compiled.enemy.units.capguard!.tiers[0].speedPerTick = 0;
     steps(h, flipTicks(h) * 4);
     expect(h.lanes[0]!.pBorder).toBe(3);
     expect(h.lanes[0]!.owner[3]).toBe(1);
@@ -71,7 +70,7 @@ describe('territory: column tug-of-war (SPEC §4.3)', () => {
     expect(s.lanes[0]!.capture.player.column).toBe(15);
     expect(s.lanes[0]!.capture.enemy.column).toBe(15);
     unit(s, 'enemy', 'capguard', 15.5, 1);
-    s.compiled.enemy.units.capguard!.speedPerTick = 0;
+    s.compiled.enemy.units.capguard!.tiers[0].speedPerTick = 0;
     steps(s, flipTicks(s));
     expect(s.lanes[0]!.eBorder).toBe(15);
     expect(s.lanes[0]!.pBorder).toBe(14);

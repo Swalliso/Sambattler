@@ -1,0 +1,19 @@
+{
+  "id": "merge-under-fire",
+  "description": "Three player Capguards hack at an enemy Capguard Hall while an enemy Gill Archer shoots them. They deal or take damage every second, so they never go 2 s out of combat and never knit (merges stay 0 through tick 200). Heartcap turrets are off so only the combat timer is under test.",
+  "map": "bogwater-hollow",
+  "test": { "noTurrets": true },
+  "flags": { "merging": true },
+  "lanes": [{ "pBorder": 9, "eBorder": 12 }],
+  "sides": {
+    "player": {
+      "gold": 0,
+      "units": [{ "unit": "capguard", "x": 11.5, "y": 3.4, "count": 3, "rows": 3, "dy": 0.6 }]
+    },
+    "enemy": {
+      "gold": 0,
+      "buildings": [{ "building": "capguardHall", "col": 12, "row": 3 }],
+      "units": [{ "unit": "gillArcher", "x": 16.0, "y": 4.0 }]
+    }
+  }
+}

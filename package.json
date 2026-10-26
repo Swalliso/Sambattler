@@ -2,7 +2,7 @@
   "name": "spore-and-sprawl",
   "version": "0.1.0",
   "private": true,
-  "description": "Spore & Sprawl: a lane tug-of-war auto-battler roguelite (Milestone 1: territory core).",
+  "description": "Spore & Sprawl: a lane tug-of-war auto-battler roguelite (Milestone 2: merging and combat depth).",
   "type": "module",
   "engines": {
     "node": ">=20"

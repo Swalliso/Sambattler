@@ -1,7 +1,8 @@
 {
  "id": "bench-300",
- "description": "Benchmark: the 3-lane test map with 150 units per side placed mid-field and 20 buildings per side (SPEC \u00a715.4).",
+ "description": "Benchmark: the 3-lane test map with 150 units per side placed mid-field and 20 buildings per side (SPEC \u00a715.4). Merging is off so all 300 units stay live; the full-battle check covers merging's cost.",
  "map": "test-3lane",
+ "flags": { "merging": false },
  "lanes": [
   {
    "pBorder": 9,

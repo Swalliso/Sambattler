@@ -3,7 +3,7 @@ import { HEARTCAP_ID, SIDES, other } from '../state.ts';
 import type { Armor, BattleState, DamageType, Effectiveness, PendingHit, Side } from '../state.ts';
 import { nearBuffer, queryNear } from '../spatial.ts';
 import { MAX_RADIUS, edgeDistance, tp } from '../targets.ts';
-import { buildingDef, findBuilding, findUnit, heartcapEdgeX, rectDistance, tierMult, unitDef, unitRadius } from '../world.ts';
+import { buildingDef, findBuilding, findUnit, heartcapEdgeX, rectDistance, tierDef, unitDef, unitRadius } from '../world.ts';
 
 const EPS = 1e-6;
 
@@ -43,14 +43,14 @@ function stormMult(state: BattleState): number {
 function fire(
   state: BattleState, side: Side, sourceId: number, fromX: number, fromY: number, lane: number, targetId: number,
   distance: number, damage: number, damageType: DamageType, projectileSpeed: number, splashRadius: number,
-  siege: boolean, slayer: boolean, sourceBuildingId: number, sourceType: string,
+  siege: boolean, slayerMult: number, sourceBuildingId: number, sourceType: string,
 ): void {
   const ranged = projectileSpeed > 0;
   const delay = ranged ? Math.ceil((distance / projectileSpeed) * state.rules.tickRate) : 0;
   insertHit(state, {
     tick: state.tick + delay, sourceId, seq: state.nextHitSeq++, side, targetId,
     x: tp.cx, y: tp.cy, fromX, fromY, fireTick: state.tick, lane,
-    damage, damageType, splashRadius, siege, slayer, sourceBuildingId, sourceType, ranged,
+    damage, damageType, splashRadius, siege, slayerMult, sourceBuildingId, sourceType, ranged,
   });
 }
 
@@ -63,13 +63,13 @@ export function attackSystem(state: BattleState): void {
     if (u.cooldown > 0) u.cooldown--;
     if (u.cooldown > 0 || u.targetId === 0) continue;
     const def = unitDef(state, u);
-    const r = unitRadius(state, u);
-    const d = edgeDistance(state, u.x, u.y, r, u.targetId, other(u.side), u.lane);
-    if (d < 0 || d > def.range + EPS) continue;
-    u.cooldown = def.attackTicks;
+    const t = def.tiers[u.tier - 1]!;
+    const d = edgeDistance(state, u.x, u.y, t.radius, u.targetId, other(u.side), u.lane);
+    if (d < 0 || d > t.range + EPS) continue;
+    u.cooldown = t.attackTicks;
     u.lastAttackTick = tick;
-    fire(state, u.side, u.id, u.x, u.y, u.lane, u.targetId, d, def.damage * tierMult(state, u.tier) * storm,
-      def.damageType, def.projectileSpeed, def.splashRadius, def.siege, def.slayer, u.sourceBuildingId, u.unitId);
+    fire(state, u.side, u.id, u.x, u.y, u.lane, u.targetId, d, t.damage * storm,
+      def.damageType, def.projectileSpeed, t.splashRadius, def.siege, t.slayerMult, u.sourceBuildingId, u.unitId);
   }
   for (const b of state.buildings) {
     const def = buildingDef(state, b);
@@ -83,7 +83,7 @@ export function attackSystem(state: BattleState): void {
     b.cooldown = a.intervalTicks;
     b.lastAttackTick = tick;
     fire(state, b.side, b.id, cx, cy, b.lane, b.targetId, d, a.damage * storm, a.damageType, a.projectileSpeed,
-      a.splashRadius, false, false, b.id, b.buildingId);
+      a.splashRadius, false, 1, b.id, b.buildingId);
   }
   if (!state.rules.test.turrets) return;
   for (const side of SIDES) {
@@ -120,7 +120,7 @@ export function attackSystem(state: BattleState): void {
       edgeDistance(state, x, y, 0, best, enemy, lane);
       ss.turretCooldowns[i] = t.intervalTicks;
       fire(state, side, turretSourceId(side, i), x, y, lane, best, bestD, t.damage * mult, t.damageType,
-        t.projectileSpeed, 0, false, false, 0, 'turret');
+        t.projectileSpeed, 0, false, 1, 0, 'turret');
     }
   }
 }
@@ -129,17 +129,17 @@ let effMult = 1;
 
 /**
  * The damage formula (SPEC §5.3): attacker-side damage (base × tier × upgrades × storm) times the
- * matrix, tag multipliers (siege vs structure, slayer vs tier ≥ 2) and target-side multipliers
- * (resistances, Heartcap storm vulnerability), rounded, minimum 1. Also records the combined
- * matrix × tag multiplier for the effectiveness class.
+ * matrix, tag multipliers (siege vs structure, the attacker's slayer multiplier vs tier ≥ 2) and
+ * target-side multipliers (merge-perk resistances, Heartcap storm vulnerability), rounded, minimum
+ * 1. Also records the combined matrix × tag multiplier for the effectiveness class.
  */
 export function damageFor(
-  r: BattleState['rules'], attackerDamage: number, type: DamageType, siege: boolean, slayer: boolean,
+  r: BattleState['rules'], attackerDamage: number, type: DamageType, siege: boolean, slayerMult: number,
   armor: Armor, tier: number, targetMult: number,
 ): number {
   let tag = 1;
   if (siege && armor === 'structure') tag *= r.siegeMult;
-  if (slayer && tier >= 2) tag *= r.slayerMult;
+  if (slayerMult !== 1 && tier >= 2) tag *= slayerMult;
   const matrix = r.matrix[type][armor];
   effMult = matrix * tag;
   const dmg = Math.round(attackerDamage * matrix * tag * targetMult);
@@ -161,8 +161,7 @@ function applyDamage(state: BattleState, h: PendingHit, targetId: number, fallof
   const b = targetId > 0 && !u ? findBuilding(state, targetId) : undefined;
   const heart: Side | undefined = targetId === HEARTCAP_ID.player ? 'player' : targetId === HEARTCAP_ID.enemy ? 'enemy' : undefined;
   if (u) {
-    const ud = unitDef(state, u);
-    armor = ud.armor; tier = u.tier; resist = ud.resist[h.damageType];
+    armor = unitDef(state, u).armor; tier = u.tier; resist = tierDef(state, u).resist[h.damageType];
   } else if (b) {
     armor = 'structure';
   } else if (heart) {
@@ -171,13 +170,14 @@ function applyDamage(state: BattleState, h: PendingHit, targetId: number, fallof
   } else {
     return;
   }
-  const dmg = damageFor(r, h.damage * falloff, h.damageType, h.siege, h.slayer, armor, tier, resist * taken);
+  const dmg = damageFor(r, h.damage * falloff, h.damageType, h.siege, h.slayerMult, armor, tier, resist * taken);
   const combined = effMult;
   let dealt = dmg;
   if (u) {
     if (dealt > u.hp) dealt = u.hp;
     u.hp -= dmg;
     u.lastCombatTick = state.tick;
+    if (u.knit) u.knit.hurt = true;
   } else if (b) {
     if (dealt > b.hp) dealt = b.hp;
     b.hp -= dmg;

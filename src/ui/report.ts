@@ -1,0 +1,177 @@
+// Battle report (SPEC §10.4, §10.5): the outcome and how it was decided, the front-line graph
+// (columns owned over time, one band per lane), damage by building, gold by source, and units
+// spawned and merged. Shown when a battle ends and for `scene=report`.
+import type { Content } from '../data/registry.ts';
+import type { BattleState, Side } from '../sim/index.ts';
+import { formatClock } from '../sim/index.ts';
+import { columnsOwned } from '../sim/world.ts';
+import { h } from './h.ts';
+
+const SVG = 'http://www.w3.org/2000/svg';
+const COLOR: Record<Side, string> = { player: '#8a4fd8', enemy: '#7d8a7a' };
+const LIGHT: Record<Side, string> = { player: '#c9a2ff', enemy: '#b8c4a8' };
+const NAME: Record<Side, string> = { player: 'Velvet Bloom', enemy: 'Gray Rot' };
+
+function svg(tag: string, attrs: Record<string, string | number>, ...children: (SVGElement | string)[]): SVGElement {
+  const el = document.createElementNS(SVG, tag);
+  for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, String(v));
+  for (const c of children) el.append(c);
+  return el;
+}
+
+/** How the battle was decided, in words. */
+export function outcomeText(state: BattleState): string {
+  const o = state.outcome!;
+  const won = o.winner === 'player';
+  const pc = columnsOwned(state, 'player'), ec = columnsOwned(state, 'enemy');
+  let how: string;
+  if (o.by === 'rout') {
+    how = won ? 'by Rout: the Gray Rot\'s Heartcap fell.' : 'by Rout: your Heartcap fell.';
+  } else {
+    const p = state.sides.player, e = state.sides.enemy;
+    how = pc !== ec
+      ? `by Decision at 10:00: ${pc} vs ${ec} columns.`
+      : p.heartcapHp * e.heartcapMaxHp !== e.heartcapHp * p.heartcapMaxHp
+        ? `by Decision at 10:00: columns tied ${pc}–${ec}; Heartcap health ${Math.round((100 * p.heartcapHp) / p.heartcapMaxHp)}% vs ${Math.round((100 * e.heartcapHp) / e.heartcapMaxHp)}%.`
+        : 'by Decision at 10:00: dead even, so the general wins.';
+  }
+  return `${won ? 'The Velvet Bloom wins' : 'The Gray Rot wins'} ${how}`;
+}
+
+/** Columns owned over time, one band per lane: violet climbs from the bottom, gray hangs from the top. */
+export function frontLineGraph(state: BattleState, width = 900): SVGElement {
+  const W = state.map.width;
+  const home = state.map.homeCols;
+  const end = Math.max(state.tick, 1);
+  const pad = { l: 34, r: 8, t: 6, b: 18 };
+  const band = state.lanes.length === 1 ? 132 : state.lanes.length === 2 ? 86 : 64;
+  const gap = 8;
+  const plotW = width - pad.l - pad.r;
+  const height = pad.t + state.lanes.length * band + (state.lanes.length - 1) * gap + pad.b;
+  const x = (tick: number) => pad.l + (tick / end) * plotW;
+  const root = svg('svg', { viewBox: `0 0 ${width} ${height}`, width, height, id: 'report-frontline', role: 'img', 'aria-label': 'Front line over time' });
+  const wave = state.rules.waveTicks;
+  state.frontLine.forEach((series, li) => {
+    const top = pad.t + li * (band + gap);
+    const y = (col: number) => top + band * (1 - col / W);
+    root.append(svg('rect', { x: pad.l, y: top, width: plotW, height: band, fill: '#3a2a1f' }));
+    const pts = series.length ? series : [[0, home - 1, W - home] as [number, number, number]];
+    const last = pts[pts.length - 1]!;
+    const steps: [number, number, number][] = [...pts, [end, last[1], last[2]]];
+    // step areas: a border holds until the next sample changes it
+    let p = `M${x(0)},${y(0)}`, e = `M${x(0)},${y(W)}`;
+    for (let i = 0; i < steps.length; i++) {
+      const [t, pb, eb] = steps[i]!;
+      const prev = i > 0 ? steps[i - 1]! : steps[0]!;
+      p += ` L${x(t)},${y(prev[1] + 1)} L${x(t)},${y(pb + 1)}`;
+      e += ` L${x(t)},${y(prev[2])} L${x(t)},${y(eb)}`;
+    }
+    p += ` L${x(end)},${y(0)} Z`;
+    e += ` L${x(end)},${y(W)} Z`;
+    root.append(svg('path', { d: p, fill: COLOR.player, 'fill-opacity': 0.85 }));
+    root.append(svg('path', { d: e, fill: COLOR.enemy, 'fill-opacity': 0.85 }));
+    // home zones, the midline and wave beats
+    for (const c of [home, W - home]) root.append(svg('line', { x1: pad.l, x2: pad.l + plotW, y1: y(c), y2: y(c), stroke: '#120a16', 'stroke-dasharray': '3 3', 'stroke-width': 1 }));
+    root.append(svg('line', { x1: pad.l, x2: pad.l + plotW, y1: y(W / 2), y2: y(W / 2), stroke: '#ece4f4', 'stroke-opacity': 0.35, 'stroke-width': 1 }));
+    for (let t = wave; t < end; t += wave) root.append(svg('line', { x1: x(t), x2: x(t), y1: top, y2: top + band, stroke: '#120a16', 'stroke-opacity': 0.5 }));
+    if (state.rules.storm.startTick < end) {
+      const sx = x(state.rules.storm.startTick);
+      root.append(svg('line', { x1: sx, x2: sx, y1: top, y2: top + band, stroke: '#c9a2ff', 'stroke-dasharray': '2 3', 'stroke-width': 1.5 }));
+      if (li === 0) root.append(svg('text', { x: sx + 4, y: top + 12, fill: '#c9a2ff', 'font-size': 11 }, 'Sporestorm'));
+    }
+    root.append(svg('text', { x: pad.l - 6, y: top + 12, fill: LIGHT.enemy, 'font-size': 11, 'text-anchor': 'end' }, 'them'));
+    root.append(svg('text', { x: pad.l - 6, y: top + band - 4, fill: LIGHT.player, 'font-size': 11, 'text-anchor': 'end' }, 'you'));
+    if (state.lanes.length > 1) root.append(svg('text', { x: pad.l + 4, y: top + band / 2 + 4, fill: '#ece4f4', 'font-size': 11 }, `lane ${li + 1}`));
+  });
+  const axisY = height - 4;
+  for (let t = 0; t <= end; t += wave) root.append(svg('text', { x: x(t), y: axisY, fill: '#a99bb8', 'font-size': 11, 'text-anchor': t === 0 ? 'start' : 'middle' }, formatClock(t, state.rules.tickRate)));
+  return root;
+}
+
+interface Bar { label: string; value: number; side: Side }
+
+function bars(id: string, rows: Bar[], unit = ''): HTMLElement {
+  const max = Math.max(1, ...rows.map((r) => r.value));
+  return h('div', { class: 'bars', id },
+    ...rows.map((r) => h('div', { class: `bar ${r.side}` },
+      h('span', { class: 'label' }, r.label),
+      h('span', { class: 'track' }, h('span', { class: 'fill', style: `width:${((100 * r.value) / max).toFixed(1)}%` })),
+      h('span', { class: 'value' }, `${r.value.toLocaleString('en-US')}${unit}`),
+    )),
+  );
+}
+
+/** Damage per building type (turrets as their own row), largest first. */
+export function damageByType(content: Content, state: BattleState, side: Side): { label: string; value: number }[] {
+  const st = state.stats[side];
+  const byType = new Map<string, { value: number; count: number }>();
+  for (const [id, dmg] of Object.entries(st.damageByBuilding)) {
+    const type = id === '0' ? 'turret' : st.buildingTypes[id] ?? '?';
+    const cur = byType.get(type) ?? { value: 0, count: 0 };
+    cur.value += dmg;
+    byType.set(type, cur);
+  }
+  for (const type of Object.values(st.buildingTypes)) {
+    const cur = byType.get(type);
+    if (cur) cur.count++;
+  }
+  return [...byType.entries()]
+    .map(([type, { value, count }]) => ({
+      label: type === 'turret' ? 'Heartcap turrets' : `${content.buildings[type]?.name ?? type}${count > 1 ? ` ×${count}` : ''}`,
+      value,
+    }))
+    .sort((a, b) => b.value - a.value || (a.label < b.label ? -1 : 1));
+}
+
+export function battleReport(content: Content, state: BattleState, actions: { again: () => void; rematch: () => void }): HTMLElement {
+  const o = state.outcome!;
+  const won = o.winner === 'player';
+  const st = state.stats;
+  const sum = (x: Record<string, number>) => Object.values(x).reduce((a, b) => a + b, 0);
+  const damage: Bar[] = [];
+  for (const side of ['player', 'enemy'] as Side[]) {
+    for (const r of damageByType(content, state, side).slice(0, 5)) damage.push({ ...r, side });
+  }
+  const gold: Bar[] = [];
+  const SOURCES: [keyof typeof st.player.goldEarned, string][] = [['stipend', 'Stipend'], ['economy', 'Economy'], ['interest', 'Interest'], ['comeback', 'Comeback']];
+  for (const side of ['player', 'enemy'] as Side[]) {
+    for (const [k, label] of SOURCES) if (st[side].goldEarned[k] > 0) gold.push({ label, value: st[side].goldEarned[k], side });
+  }
+  const row = (label: string, f: (s: Side) => string | number) => h('tr', null, h('td', null, label), h('td', null, String(f('player'))), h('td', null, String(f('enemy'))));
+  const card = h('div', { class: 'reportcard', id: 'report', role: 'dialog', 'aria-label': 'Battle report' },
+    h('div', { class: 'reporthead' },
+      h('div', null,
+        h('h1', { class: won ? 'win' : 'loss', id: 'end-title' }, won ? 'Victory' : 'Defeat'),
+        h('div', { class: 'how', id: 'end-how' }, outcomeText(state)),
+      ),
+      h('div', { class: 'hint' }, `Battle length ${formatClock(o.tick, state.rules.tickRate)} · Sporestorm ${state.sporestorm} stack${state.sporestorm === 1 ? '' : 's'}`),
+    ),
+    h('h3', null, 'Front line'),
+    frontLineGraph(state),
+    h('div', { class: 'reportgrid' },
+      h('section', null,
+        h('h3', null, 'Damage by building', h('span', { class: 'legend' }, h('i', { class: 'player' }), NAME.player, h('i', { class: 'enemy' }), NAME.enemy)),
+        bars('report-damage', damage),
+      ),
+      h('section', null,
+        h('h3', null, 'Gold by source'),
+        bars('report-gold', gold),
+        h('h3', null, 'Units'),
+        h('table', { id: 'report-units' },
+          h('tr', null, h('th', null, ''), h('th', null, NAME.player), h('th', null, NAME.enemy)),
+          row('Spawned', (s) => sum(st[s].spawned)),
+          row('Merged: Bloomed / Elder', (s) => `${st[s].merges['2']} / ${st[s].merges['3']}`),
+          row('Most Elders at once', (s) => st[s].maxEldersAlive),
+          row('Lost', (s) => st[s].unitsLost),
+          row('Buildings built / lost', (s) => `${st[s].buildingsBuilt} / ${st[s].buildingsLost}`),
+          row('Heartcap HP', (s) => `${state.sides[s].heartcapHp} / ${state.sides[s].heartcapMaxHp}`),
+        ),
+      ),
+    ),
+    h('div', { class: 'actions' },
+      h('button', { class: 'btn', onclick: actions.rematch, id: 'rematch' }, 'Rematch (same seed)'),
+      h('button', { class: 'btn on', onclick: actions.again, id: 'play-again' }, 'Play again'),
+    ),
+  );
+  return h('div', { class: 'overlay' }, card);
+}

@@ -1,11 +1,35 @@
 [
   {
     "id": "balanced",
-    "description": "A bit of everything, economy early (the reference bot for guardrails).",
+    "description": "A bit of everything from the whole roster, economy early (the reference bot for guardrails).",
     "opener": ["sporelingBurrow", "truffleCellar"],
-    "weights": { "sporelingBurrow": 3, "capguardHall": 3, "gillNest": 2, "truffleCellar": 2, "rootbreakerDen": 1, "puffballMortar": 1 },
+    "weights": { "sporelingBurrow": 3, "capguardHall": 3, "gillNest": 2, "truffleCellar": 2, "rootbreakerDen": 1, "puffballMortar": 1, "scythecapGrove": 2, "veilstalkerHollow": 1 },
     "limits": { "truffleCellar": { "maxOwned": 3 }, "rootbreakerDen": { "afterSeconds": 180 } },
     "mergePolicy": "on"
+  },
+  {
+    "id": "balanced-nomerge",
+    "description": "bot:balanced with every merge toggle switched off (the G7 merge-off mirror).",
+    "opener": ["sporelingBurrow", "truffleCellar"],
+    "weights": { "sporelingBurrow": 3, "capguardHall": 3, "gillNest": 2, "truffleCellar": 2, "rootbreakerDen": 1, "puffballMortar": 1, "scythecapGrove": 2, "veilstalkerHollow": 1 },
+    "limits": { "truffleCellar": { "maxOwned": 3 }, "rootbreakerDen": { "afterSeconds": 180 } },
+    "mergePolicy": "off"
+  },
+  {
+    "id": "slayer",
+    "description": "bot:balanced with extra Veilstalker Hollows for about a 25% Slayer spawn share (G7).",
+    "opener": ["sporelingBurrow", "truffleCellar"],
+    "weights": { "sporelingBurrow": 3, "capguardHall": 3, "gillNest": 2, "truffleCellar": 2, "rootbreakerDen": 1, "puffballMortar": 1, "scythecapGrove": 2, "veilstalkerHollow": 8 },
+    "limits": { "truffleCellar": { "maxOwned": 3 }, "rootbreakerDen": { "afterSeconds": 180 } },
+    "mergePolicy": "on"
+  },
+  {
+    "id": "slayer-nomerge",
+    "description": "bot:slayer with every merge toggle switched off (the G7 Slayer mirror).",
+    "opener": ["sporelingBurrow", "truffleCellar"],
+    "weights": { "sporelingBurrow": 3, "capguardHall": 3, "gillNest": 2, "truffleCellar": 2, "rootbreakerDen": 1, "puffballMortar": 1, "scythecapGrove": 2, "veilstalkerHollow": 8 },
+    "limits": { "truffleCellar": { "maxOwned": 3 }, "rootbreakerDen": { "afterSeconds": 180 } },
+    "mergePolicy": "off"
   },
   {
     "id": "rush",

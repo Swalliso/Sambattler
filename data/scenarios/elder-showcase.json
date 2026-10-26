@@ -1,0 +1,31 @@
+{
+  "id": "elder-showcase",
+  "description": "Screenshot showcase (m2-elders): every M2-roster unit at base, Bloomed and Elder size on both sides, one of each so nothing merges. Heartcap turrets are off.",
+  "map": "bogwater-hollow",
+  "test": { "noTurrets": true },
+  "flags": { "merging": true },
+  "sides": {
+    "player": {
+      "gold": 0,
+      "units": [
+        { "unit": "sporeling", "tier": 1, "x": 5.0, "y": 1.2 }, { "unit": "sporeling", "tier": 2, "x": 6.4, "y": 1.2 }, { "unit": "sporeling", "tier": 3, "x": 8.2, "y": 1.3 },
+        { "unit": "capguard", "tier": 1, "x": 5.0, "y": 3.0 }, { "unit": "capguard", "tier": 2, "x": 6.6, "y": 3.0 }, { "unit": "capguard", "tier": 3, "x": 8.6, "y": 3.1 },
+        { "unit": "gillArcher", "tier": 1, "x": 5.0, "y": 4.9 }, { "unit": "gillArcher", "tier": 2, "x": 6.4, "y": 4.9 }, { "unit": "gillArcher", "tier": 3, "x": 8.2, "y": 5.0 },
+        { "unit": "scythecap", "tier": 1, "x": 11.0, "y": 1.3 }, { "unit": "scythecap", "tier": 2, "x": 12.7, "y": 1.4 }, { "unit": "scythecap", "tier": 3, "x": 14.8, "y": 1.6 },
+        { "unit": "rootbreaker", "tier": 1, "x": 11.0, "y": 4.0 }, { "unit": "rootbreaker", "tier": 2, "x": 12.8, "y": 4.0 }, { "unit": "rootbreaker", "tier": 3, "x": 15.0, "y": 4.1 },
+        { "unit": "veilstalker", "tier": 1, "x": 5.0, "y": 6.9 }, { "unit": "veilstalker", "tier": 2, "x": 6.4, "y": 6.9 }, { "unit": "veilstalker", "tier": 3, "x": 8.2, "y": 6.9 }
+      ]
+    },
+    "enemy": {
+      "gold": 0,
+      "units": [
+        { "unit": "sporeling", "tier": 1, "x": 27.0, "y": 6.8 }, { "unit": "sporeling", "tier": 2, "x": 25.6, "y": 6.8 }, { "unit": "sporeling", "tier": 3, "x": 23.8, "y": 6.7 },
+        { "unit": "capguard", "tier": 1, "x": 27.0, "y": 5.0 }, { "unit": "capguard", "tier": 2, "x": 25.4, "y": 5.0 }, { "unit": "capguard", "tier": 3, "x": 23.4, "y": 4.9 },
+        { "unit": "gillArcher", "tier": 1, "x": 27.0, "y": 3.1 }, { "unit": "gillArcher", "tier": 2, "x": 25.6, "y": 3.1 }, { "unit": "gillArcher", "tier": 3, "x": 23.8, "y": 3.0 },
+        { "unit": "scythecap", "tier": 1, "x": 21.0, "y": 6.7 }, { "unit": "scythecap", "tier": 2, "x": 19.3, "y": 6.6 }, { "unit": "scythecap", "tier": 3, "x": 17.2, "y": 6.4 },
+        { "unit": "rootbreaker", "tier": 1, "x": 21.0, "y": 4.0 }, { "unit": "rootbreaker", "tier": 2, "x": 19.2, "y": 4.0 }, { "unit": "rootbreaker", "tier": 3, "x": 17.0, "y": 3.9 },
+        { "unit": "veilstalker", "tier": 1, "x": 27.0, "y": 1.1 }, { "unit": "veilstalker", "tier": 2, "x": 25.6, "y": 1.1 }, { "unit": "veilstalker", "tier": 3, "x": 23.8, "y": 1.1 }
+      ]
+    }
+  }
+}

@@ -38,6 +38,21 @@ export class Session {
     return this.state.queue.filter((c) => c.side === 'player');
   }
 
+  /** A building's merge toggle as it will be once pending commands run (so double presses while paused flip back). */
+  mergeShown(id: number): boolean {
+    let on = this.state.buildings.find((b) => b.id === id)?.mergeOn ?? true;
+    for (const c of this.pending()) if (c.type === 'toggleMerge' && c.entityId === id) on = c.on;
+    return on;
+  }
+
+  /** Flips the merge toggle on one of the player's spawners. */
+  toggleMerge(id: number): boolean {
+    const b = this.state.buildings.find((x) => x.id === id);
+    if (!b || b.side !== 'player' || !this.state.compiled.player.buildings[b.buildingId]?.spawn || this.state.phase === 'ended') return false;
+    this.issue({ type: 'toggleMerge', entityId: id, on: !this.mergeShown(id) });
+    return true;
+  }
+
   /** Gold left after pending placements execute. */
   available(): number {
     let g = this.state.sides.player.gold;

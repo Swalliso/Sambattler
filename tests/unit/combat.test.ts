@@ -6,7 +6,7 @@ import { building, liveState, steps, unit } from '../helpers.ts';
 function frozen() {
   const s = liveState();
   s.rules.test.turrets = false;
-  for (const side of ['player', 'enemy'] as const) for (const u of Object.values(s.compiled[side].units)) u.speedPerTick = 0;
+  for (const side of ['player', 'enemy'] as const) for (const u of Object.values(s.compiled[side].units)) for (const t of u.tiers) t.speedPerTick = 0;
   return s;
 }
 
