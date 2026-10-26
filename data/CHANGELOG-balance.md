@@ -46,3 +46,40 @@ size and several reference-bot mixes all leave it at 78–100%; only a near-halv
 pushes mono Capguard above 55%. Mechanism: ranged units win every trickle skirmish, never trade, and
 accumulate to the supply cap, while a mixed army never fields its counter (Sporelings) in bulk.
 Raised with the user as a rules question.
+
+**Diagnosis** (instrumented mono Gill Nest vs `script:balanced`, all prototypes reverted):
+- Production suppression: archers besiege home-front buildings from x≈22.7, just outside turret
+  reach 9 (x ≥ 23). The defender's spawners are besieged 36% of the time and ~7 buildings fall per
+  battle, so it fields ~50 units per battle against archer spam versus ~220 against Capguard spam.
+  Turrets still kill most archers (42 of 62 per battle); the defending army kills few.
+- Trickle fights: every building spawns on its own timer, so defenders walk out one or two at a
+  time and die in their own half 5–10 s after spawning. Melee crossing ~5 tiles under fire from two
+  or more archers dies before it swings.
+- Archers are the only reliable way to break a defended home: nerfing the Gill Nest enough to matter
+  (interval 22–24 s) stalls G4 (median ~9:40, 30–50% Decisions).
+- Counters that are narrow at 12 supply become blowouts at 60 (Lanchester square law: every archer
+  fires, only the front melee row swings). Supply-duel margins at 60 supply each: Sporeling > Gill
+  Archer +8, Gill Archer > Capguard +39, Gill Archer > Rootbreaker +46, Capguard > Sporeling +40,
+  Capguard > Rootbreaker +8, Rootbreaker > Sporeling +30. For a uniform mix to hold against every
+  mono strategy, Sporeling > Gill Archer must be the largest margin (c = a + b, a = d + e, f = b + e
+  with a = Ga>Ca, b = Ga>Ro, c = Sp>Ga, d = Ca>Sp, e = Ca>Ro, f = Ro>Sp); today it is the smallest.
+
+**Prototypes that helped but did not fix it:**
+- Mustering (units wait at their own frontier until ≥ 8 supply has gathered or 15 s pass, then
+  march together; a change to §5.2 "units always advance"): G4 median 6:11–6:49 with 0–10%
+  Decisions, G5 ~50–60%. Mono Gill Nest stays 85–100%, mono Rootbreaker rises to 50–100%.
+- A per-unit damage-type resistance (not in the data model yet): Sporeling Pierce ×0.6 lifts
+  Sporeling > Gill Archer to +31 at 60 supply; Capguard ×0.75 and Rootbreaker ×0.7 Pierce cut Gill
+  Archer's wins to +19 and +33. Capguard > Sporeling stays +40. Best combination with mustering:
+  mono Gill Nest 85–90%.
+
+**No effect on G3:** Capguard or Rootbreaker resistance alone, heavy-armor Capguard, a cleave unit,
+turret reach 10–12, turret damage type or splash, ranged damage falloff, archer pinning,
+synchronised spawns, slash Mortar, balanced-bot mixes and openers, AI threat radius, and a head
+start (+600 gold for the balanced bot reaches only 45%).
+
+**Decision (2026-10-25): deferred.** The user chose not to change rules or rebalance yet, to see how
+Milestone 2 (Scythecap Grove, Veilstalker Hollow, merging) changes the picture. Until then G3 is a
+known failure in `npm run test:slow`. When it is picked up, the recommended order is: mustering (needs
+the user's OK, as it changes §5.2), then a per-unit resistance field and an army-scale (60 supply)
+check in G2, with G3 as the acceptance test.
