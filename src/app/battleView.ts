@@ -2,15 +2,21 @@
 // HP pinned at each end, and the bottom band (speed/pause, building tray, inspect panel).
 import type { Content } from '../data/registry.ts';
 import { Renderer, TILE } from '../render/renderer.ts';
+import type { DamageNumbers } from '../render/renderer.ts';
 import type { Atlas } from '../render/atlas.ts';
 import { Callouts } from '../ui/callouts.ts';
-import { endScreen } from '../ui/endScreen.ts';
 import { h, setText, toggleClass } from '../ui/h.ts';
+import { helpOverlay } from '../ui/help.ts';
+import { battleReport } from '../ui/report.ts';
 import { TopBand } from '../ui/hud/top.ts';
 import { Tray } from '../ui/hud/tray.ts';
 import { CombatLog, InspectPanel } from '../ui/inspect.ts';
 import type { BattleState } from '../sim/index.ts';
 import type { Session } from './session.ts';
+import { loadSettings, saveSettings } from './settings.ts';
+
+const NUMBERS_LABEL: Record<DamageNumbers, string> = { off: 'off', big: 'big hits', all: 'all' };
+const NUMBERS_NEXT: Record<DamageNumbers, DamageNumbers> = { off: 'big', big: 'all', all: 'off' };
 
 export interface ViewActions {
   begin(): void;
@@ -36,6 +42,9 @@ export class BattleView {
   private beginBox: HTMLElement;
   private speedBtns: HTMLButtonElement[] = [];
   private pauseBtn: HTMLButtonElement;
+  private numbersBtn: HTMLButtonElement;
+  private help: HTMLElement | null = null;
+  private pausedBeforeHelp = false;
   private ended = false;
   scale = 1;
 
@@ -45,7 +54,8 @@ export class BattleView {
     this.renderer = new Renderer(this.canvas, content, atlas, state);
     this.top = new TopBand(content, atlas, state);
     this.tray = new Tray(content, atlas, state, (id) => this.pick(id));
-    this.inspect = new InspectPanel(content, this.log, (id) => session.issue({ type: 'sell', entityId: id }));
+    this.inspect = new InspectPanel(content, this.log, (id) => session.issue({ type: 'sell', entityId: id }),
+      (id) => session.toggleMerge(id), (_state, id) => session.mergeShown(id));
     this.fieldWrap = h('div', { class: 'fieldwrap' }, this.canvas, this.hpP, this.hpE, this.tip, this.pauseBadge);
     this.beginBox = h('div', { class: 'begin', id: 'begin-box' },
       h('button', { class: 'btn', id: 'begin-btn', onclick: () => actions.begin() }, 'Begin'),
@@ -56,10 +66,15 @@ export class BattleView {
       this.speedBtns.push(h('button', { class: 'btn', 'data-speed': s, onclick: () => { session.speed = s; } }, `${s}×`));
     }
     this.pauseBtn = h('button', { class: 'btn', id: 'pause-btn', onclick: () => { session.paused = !session.paused; } }, '❚❚');
+    this.renderer.damageNumbers = loadSettings().damageNumbers;
+    this.numbersBtn = h('button', {
+      class: 'btn', id: 'numbers-btn', title: 'Damage numbers: off, big hits only, or all',
+      onclick: () => this.cycleNumbers(),
+    }, '');
     const controls = h('div', { class: 'controls' },
       h('div', { class: 'speed' }, ...this.speedBtns, this.pauseBtn),
       h('div', { class: 'hint' }, 'Space pause · [ ] speed'),
-      h('div', { class: 'hint' }, 'Right-click / Esc cancel'),
+      h('div', { class: 'row' }, h('button', { class: 'btn', id: 'help-btn', onclick: () => this.toggleHelp() }, 'Help [H]'), this.numbersBtn),
       debug ? h('div', { class: 'hint' }, 'F3 debug overlay') : null,
     );
     this.root = h('div', { id: 'battle', style: 'display:contents' },
@@ -69,6 +84,28 @@ export class BattleView {
       h('footer', { class: 'bottom' }, controls, this.tray.el, this.inspect.el),
     );
     window.addEventListener('resize', () => this.fit());
+  }
+
+  /** Opens or closes the help overlay; the battle pauses while it is open. */
+  toggleHelp(): void {
+    if (this.help) {
+      this.help.remove();
+      this.help = null;
+      this.session.paused = this.pausedBeforeHelp;
+      return;
+    }
+    this.pausedBeforeHelp = this.session.paused;
+    this.session.paused = true;
+    this.help = helpOverlay(this.session.content, this.session.state, () => this.toggleHelp());
+    document.body.append(this.help);
+  }
+
+  get helpOpen(): boolean { return this.help !== null; }
+
+  private cycleNumbers(): void {
+    const next = NUMBERS_NEXT[this.renderer.damageNumbers];
+    this.renderer.damageNumbers = next;
+    saveSettings({ damageNumbers: next });
   }
 
   pick(id: string): void {
@@ -114,6 +151,10 @@ export class BattleView {
         this.callouts.push('info', `The Sporestorm thickens (${e.stacks})`, '', now);
       } else if (e.t === 'begin') {
         this.callouts.push('info', 'The battle begins', '', now);
+      } else if (e.t === 'merged' && (e.side === 'player' || e.tier === 3)) {
+        const name = this.session.content.units[e.unitId]?.name ?? e.unitId;
+        const tier = e.tier === 3 ? 'Elder' : 'Bloomed';
+        this.callouts.push('merge', e.side === 'player' ? `${tier} ${name}!` : `Enemy ${tier} ${name}`, e.side === 'player' ? 'good' : 'bad', now);
       }
     }
   }
@@ -135,6 +176,7 @@ export class BattleView {
     setText(this.hpP, `♥ ${state.sides.player.heartcapHp}/${state.sides.player.heartcapMaxHp}`);
     setText(this.hpE, `♥ ${state.sides.enemy.heartcapHp}/${state.sides.enemy.heartcapMaxHp}`);
     this.speedBtns.forEach((b, i) => toggleClass(b, 'on', s.speed === i + 1));
+    setText(this.numbersBtn, `Numbers: ${NUMBERS_LABEL[this.renderer.damageNumbers]}`);
     toggleClass(this.pauseBtn, 'on', s.paused);
     this.pauseBadge.hidden = !(s.paused && state.phase === 'live');
     this.beginBox.hidden = state.phase !== 'deploy';
@@ -160,7 +202,8 @@ export class BattleView {
     if (state.phase === 'ended' && !this.ended) {
       this.ended = true;
       s.placing = null;
-      document.body.append(endScreen(state, { again: this.actions.again, rematch: this.actions.rematch }));
+      if (this.help) this.toggleHelp();
+      document.body.append(battleReport(s.content, state, { again: this.actions.again, rematch: this.actions.rematch }));
     }
   }
 }

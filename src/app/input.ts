@@ -1,4 +1,5 @@
 // Mouse and keyboard (SPEC §10.3). Everything becomes a Session change or a queued command.
+import { unitRadius } from '../sim/world.ts';
 import type { BattleView } from './battleView.ts';
 import type { Session } from './session.ts';
 
@@ -37,7 +38,7 @@ export function bindInput(session: Session, view: BattleView, hooks: InputHooks)
     const s = session.state;
     let best: number | null = null, bestD = Infinity;
     for (const u of s.units) {
-      const r = s.compiled[u.side].units[u.unitId]!.radius + 0.3;
+      const r = unitRadius(s, u) + 0.3;
       const d = Math.hypot(u.x - x, u.y - y);
       if (d <= r && d < bestD) { best = u.id; bestD = d; }
     }
@@ -55,6 +56,11 @@ export function bindInput(session: Session, view: BattleView, hooks: InputHooks)
     if (ev.target instanceof HTMLInputElement) return;
     session.shift = ev.shiftKey;
     const s = session.state;
+    if (view.helpOpen) {
+      // the help overlay is modal: H or Esc closes it, everything else waits
+      if (ev.key === 'h' || ev.key === 'H' || ev.key === 'Escape') { ev.preventDefault(); view.toggleHelp(); }
+      return;
+    }
     if (/^[1-9]$/.test(ev.key)) {
       const id = s.sides.player.kit[Number(ev.key) - 1];
       if (id) view.pick(id);
@@ -79,6 +85,10 @@ export function bindInput(session: Session, view: BattleView, hooks: InputHooks)
       case 'x': case 'X': case 'Delete': case 'Backspace':
         if (session.selected !== null) view.inspect.requestSell(s, session.selected);
         break;
+      case 'm': case 'M':
+        if (session.selected !== null) session.toggleMerge(session.selected);
+        break;
+      case 'h': case 'H': view.toggleHelp(); break;
       case 'F3': ev.preventDefault(); hooks.toggleDebug(); break;
     }
   });

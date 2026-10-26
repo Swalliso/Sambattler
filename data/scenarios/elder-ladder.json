@@ -1,0 +1,13 @@
+{
+  "id": "elder-ladder",
+  "description": "Nine idle player Capguards in a 3 × 3 block: three trios knit at tick 10 and bloom at tick 30, then the three Bloomed Capguards knit straight away and become one Elder at tick 50.",
+  "map": "bogwater-hollow",
+  "flags": { "merging": true },
+  "sides": {
+    "player": {
+      "gold": 0,
+      "units": [{ "unit": "capguard", "x": 8.0, "y": 3.3, "count": 9, "rows": 3, "dx": 0.7, "dy": 0.7 }]
+    },
+    "enemy": { "gold": 0 }
+  }
+}

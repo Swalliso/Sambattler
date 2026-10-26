@@ -4,7 +4,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 
 import { join } from 'node:path';
 import { nodeContent, ROOT } from './lib/content.ts';
 import { createBattle, makeConfig, runHeadless } from '../src/sim/index.ts';
-import type { BattleConfig, Command } from '../src/sim/index.ts';
+import type { BattleConfig, Command, Flags } from '../src/sim/index.ts';
 
 const DIR = join(ROOT, 'tests', 'golden');
 const CHECK_EVERY = 600;
@@ -17,11 +17,23 @@ interface Replay {
   expected: Record<string, string>;
 }
 
-/** The replays Milestone 1 ships (SPEC §16 M1 verification step 2). */
-const M1_REPLAYS: { name: string; description: string; seed: number; player: string; enemy: string }[] = [
-  { name: 'm1-balanced-vs-scripted-s1', description: 'bot:balanced vs the scripted general, seed 1', seed: 1, player: 'bot:balanced', enemy: 'general:scripted' },
-  { name: 'm1-turtle-vs-scripted-s2', description: 'bot:turtle vs the scripted general, seed 2', seed: 2, player: 'bot:turtle', enemy: 'general:scripted' },
+const M1_KIT = ['sporelingBurrow', 'capguardHall', 'gillNest', 'rootbreakerDen', 'puffballMortar', 'truffleCellar'];
+
+/**
+ * The replays each milestone ships (SPEC §16 verification). Each pins its milestone's flags (and
+ * M1's roster), so a refresh after a balance change keeps M1 replays free of later features.
+ */
+const REPLAYS: { name: string; description: string; seed: number; player: string; enemy: string; flags: Partial<Flags>; kit?: string[] }[] = [
+  { name: 'm1-balanced-vs-scripted-s1', description: 'bot:balanced vs the scripted general, seed 1', seed: 1, player: 'bot:balanced', enemy: 'general:scripted', flags: { merging: false }, kit: M1_KIT },
+  { name: 'm1-turtle-vs-scripted-s2', description: 'bot:turtle vs the scripted general, seed 2', seed: 2, player: 'bot:turtle', enemy: 'general:scripted', flags: { merging: false }, kit: M1_KIT },
+  { name: 'm2-merge-mirror-s3', description: 'merge-on vs merge-off mirror (bot:balanced vs bot:balanced-nomerge, the G7 setup), seed 3', seed: 3, player: 'bot:balanced', enemy: 'bot:balanced-nomerge', flags: { merging: true } },
 ];
+
+function replayConfig(r: (typeof REPLAYS)[number]): BattleConfig {
+  const config = makeConfig(nodeContent(), { seed: r.seed, player: r.player, enemy: r.enemy, flags: r.flags });
+  if (r.kit) { config.player.kit = [...r.kit]; config.enemy.kit = [...r.kit]; }
+  return config;
+}
 
 export function replayHashes(config: BattleConfig, commands: Command[]): Record<string, string> {
   const content = nodeContent();
@@ -62,19 +74,18 @@ function verify(): number {
 
 function update(): number {
   mkdirSync(DIR, { recursive: true });
-  const content = nodeContent();
   const existing = new Set(files());
-  for (const r of M1_REPLAYS) {
+  for (const r of REPLAYS) {
     const file = `${r.name}.replay.json`;
     let rep: Replay;
     if (existing.has(file)) {
       rep = JSON.parse(readFileSync(join(DIR, file), 'utf8')) as Replay;
       // refresh the config from the current data so balance changes flow into the replay
-      rep.config = makeConfig(content, { seed: r.seed, player: r.player, enemy: r.enemy });
+      rep.config = replayConfig(r);
     } else {
       rep = {
         name: r.name, description: r.description,
-        config: makeConfig(content, { seed: r.seed, player: r.player, enemy: r.enemy }),
+        config: replayConfig(r),
         commands: [{ tick: 0, side: 'player', seq: 0, type: 'begin' }],
         expected: {},
       };
@@ -84,7 +95,7 @@ function update(): number {
     console.log(`updated ${file}: ${Object.keys(rep.expected).length} checkpoints, final ${rep.expected.final}`);
   }
   for (const f of files()) {
-    if (M1_REPLAYS.some((r) => `${r.name}.replay.json` === f)) continue;
+    if (REPLAYS.some((r) => `${r.name}.replay.json` === f)) continue;
     const rep = JSON.parse(readFileSync(join(DIR, f), 'utf8')) as Replay;
     rep.expected = replayHashes(rep.config, rep.commands);
     writeFileSync(join(DIR, f), JSON.stringify(rep, null, 2) + '\n');

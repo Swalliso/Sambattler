@@ -1,13 +1,15 @@
 // Balance harness (SPEC §12): production and supply duels, bot tournaments and the guardrail
-// evaluations G1–G6. Shared by `npm run balance` and the slow test suite.
+// evaluations G1–G7. Shared by `npm run balance` and the slow test suite. Duels measure the base
+// counter matrix, so they run with merging off; battles use the milestone's default flags.
 import type { Content } from '../../src/data/registry.ts';
 import { addBuilding, addUnit } from '../../src/sim/create.ts';
 import { createBattle, makeConfig, runHeadless, summarize } from '../../src/sim/index.ts';
-import type { BattleState, Side } from '../../src/sim/index.ts';
+import type { BattleState, Side, Tier } from '../../src/sim/index.ts';
 import { buildingDef } from '../../src/sim/world.ts';
 import { median, runBattle } from './run.ts';
 
 const DUEL_TEST = { noTurrets: true, noTerritory: true, noHeartcapTargets: true };
+const ROSTER = 'velvet-bloom';
 
 /** Deterministic tool-side jitter (positions only; the sim keeps its own seeded streams). */
 function toolRand(seed: number): () => number {
@@ -23,7 +25,7 @@ function toolRand(seed: number): () => number {
 
 function duelState(content: Content, seed: number, seconds: number): BattleState {
   const config = makeConfig(content, {
-    seed, mapId: 'test-flat', player: 'human', enemy: 'human',
+    seed, mapId: 'test-flat', player: 'human', enemy: 'human', flags: { merging: false },
     test: { ...DUEL_TEST, timeLimitSeconds: seconds },
   });
   const state = createBattle(content, config);
@@ -31,8 +33,19 @@ function duelState(content: Content, seed: number, seconds: number): BattleState
   return state;
 }
 
+/** The player roster's buildings (the faction list; the Gray Rot mirrors it until M7). */
+export function rosterIds(content: Content): string[] {
+  return [...content.factions[ROSTER]!.buildings];
+}
+
 export function spawnerIds(content: Content): string[] {
-  return content.buildingOrder.filter((id) => content.buildings[id]!.kind === 'spawner' && content.buildings[id]!.milestone <= 1);
+  return rosterIds(content).filter((id) => content.buildings[id]!.kind === 'spawner');
+}
+
+/** `capguard@2` → { unit: 'capguard', tier: 2 }. */
+export function duelUnit(ref: string): { unit: string; tier: Tier } {
+  const [unit, tier] = ref.split('@');
+  return { unit: unit!, tier: (tier ? Number(tier) : 1) as Tier };
 }
 
 /** Gold value of one unit: its building's cost amortised over a minute of production. */
@@ -78,14 +91,18 @@ export function productionDuel(content: Content, a: string, b: string, seed: num
   return { a, b, seed, valueA, valueB, winner: valueA > valueB ? 'a' : valueB > valueA ? 'b' : 'draw' };
 }
 
-/** 12 supply of unit A against 12 supply of unit B, fought to the death. */
-export function supplyDuel(content: Content, a: string, b: string, seed: number): DuelOutcome & { seconds: number } {
+/**
+ * 12 supply of unit A against 12 supply of unit B, fought to the death. Units are `id` or `id@tier`
+ * (a merged unit costs 2s or 4s supply, so fewer of them take the field).
+ */
+export function supplyDuel(content: Content, a: string, b: string, seed: number, supply = content.targets.G2.supply): DuelOutcome & { seconds: number } {
   const t = content.targets.G2;
   const state = duelState(content, seed, t.maxSeconds);
   const rand = toolRand(seed * 7919 + a.length * 31 + b.length);
-  const put = (side: Side, unitId: string) => {
-    const u = content.units[unitId]!;
-    const n = Math.floor(t.supply / u.supply);
+  const put = (side: Side, ref: string) => {
+    const { unit: unitId, tier } = duelUnit(ref);
+    const per = state.compiled[side].units[unitId]!.tiers[tier - 1]!.supply;
+    const n = Math.floor(supply / per);
     // spread the army over the lane height (up to 7 rows) so frontage is not an artefact of the setup
     const rows = Math.min(n, 7);
     const span = state.map.height - 1.2;
@@ -94,10 +111,10 @@ export function supplyDuel(content: Content, a: string, b: string, seed: number)
       const x0 = side === 'player' ? 10 - col * 0.9 : 22 + col * 0.9;
       const y = 0.6 + (rows > 1 ? (row * span) / (rows - 1) : span / 2) + (rand() - 0.5) * 0.4;
       const x = x0 + (rand() - 0.5) * 0.6;
-      addUnit(state, side, unitId, 0, x, y, 0);
+      addUnit(state, side, unitId, 0, x, y, 0, tier);
     }
   };
-  // units without a building in the kit still need compiled defs: the default kit covers all M1 units
+  // every roster unit has a compiled def: the default kit is the whole roster
   put('player', a);
   put('enemy', b);
   const maxTicks = t.maxSeconds * 20;
@@ -176,25 +193,39 @@ export function evaluateG2(content: Content): { verdict: Verdict; outcomes: Duel
     if (!ok) pass = false;
     details.push(`${ok ? 'ok  ' : 'FAIL'} ${a}: beats [${beats.join(', ')}] · loses to [${losesTo.join(', ')}]`);
   }
-  const intended: [string, string][] = [
-    ['capguard', 'sporeling'], ['gillArcher', 'capguard'], ['sporeling', 'gillArcher'],
-    ['gillArcher', 'rootbreaker'], ['capguard', 'rootbreaker'], ['rootbreaker', 'sporeling'],
-  ];
-  for (const [a, b] of intended) {
-    const w = edges[`${a}>${b}`] ?? 0;
+  for (const [a, b] of t.intendedEdges) {
+    if (edges[`${a}>${b}`] === undefined) {
+      // an edge outside the base matrix (e.g. against a Bloomed unit): duel it now
+      let wins = 0;
+      for (let seed = 1; seed <= t.seeds; seed++) {
+        const o = supplyDuel(content, a, b, seed);
+        outcomes.push(o);
+        if (o.winner === 'a') wins++;
+      }
+      edges[`${a}>${b}`] = wins;
+    }
+    const w = edges[`${a}>${b}`]!;
     details.push(`${w >= t.minSeedsForEdge ? 'held' : 'MISS'} intended edge ${a} > ${b}: ${w}/${t.seeds} seeds (report only)`);
   }
   return { verdict: { id: 'G2', pass, summary: 'supply duels form a healthy counter graph (≥4/5 seeds per edge)', details }, outcomes, edges };
 }
 
-export interface MatchStats { games: number; winsA: number; decisions: number; lengths: number[]; rejected: number; wallMs: number[] }
+export interface MatchStats {
+  games: number; winsA: number; decisions: number; lengths: number[]; rejected: number; wallMs: number[];
+  /** Supply spawned per unit type, summed over games, for A and B. */
+  spawnedSupply: { a: Record<string, number>; b: Record<string, number> };
+  merges: { a: number; b: number };
+}
 
 /**
  * Plays `a` against `b` over seeds, in both seats when `symmetric` (A as player, then A as enemy),
  * and reports A's results. `goldA` gives A extra starting gold.
  */
 export function matchup(content: Content, a: string, b: string, seeds: number, symmetric: boolean, goldA = 0, map = 'bogwater-hollow'): MatchStats {
-  const st: MatchStats = { games: 0, winsA: 0, decisions: 0, lengths: [], rejected: 0, wallMs: [] };
+  const st: MatchStats = {
+    games: 0, winsA: 0, decisions: 0, lengths: [], rejected: 0, wallMs: [],
+    spawnedSupply: { a: {}, b: {} }, merges: { a: 0, b: 0 },
+  };
   for (let seed = 1; seed <= seeds; seed++) {
     const seats: ['player' | 'enemy'][] = symmetric ? [['player'], ['enemy']] : [['player']];
     for (const [seatA] of seats) {
@@ -210,16 +241,33 @@ export function matchup(content: Content, a: string, b: string, seeds: number, s
       st.lengths.push(result.durationTicks);
       st.rejected += result.rejectedCommands;
       st.wallMs.push(result.wallMs);
+      const seatB: Side = seatA === 'player' ? 'enemy' : 'player';
+      for (const [who, side] of [['a', seatA], ['b', seatB]] as const) {
+        for (const [unit, n] of Object.entries(result.spawned[side])) {
+          st.spawnedSupply[who][unit] = (st.spawnedSupply[who][unit] ?? 0) + n * content.units[unit]!.supply;
+        }
+        st.merges[who] += result.merges[side]['2'] + result.merges[side]['3'];
+      }
     }
   }
   return st;
+}
+
+/** Share of spawned supply that came from units with `tag`. */
+export function tagShare(content: Content, spawnedSupply: Record<string, number>, tag: string): number {
+  let all = 0, tagged = 0;
+  for (const [unit, n] of Object.entries(spawnedSupply)) {
+    all += n;
+    if ((content.units[unit]!.tags as string[]).includes(tag)) tagged += n;
+  }
+  return all > 0 ? tagged / all : 0;
 }
 
 export function evaluateG3(content: Content): Verdict {
   const t = content.targets.G3;
   const details: string[] = [];
   let pass = true;
-  for (const id of content.buildingOrder.filter((b) => content.buildings[b]!.milestone <= 1)) {
+  for (const id of rosterIds(content)) {
     const m = matchup(content, `bot:mono:${id}`, 'bot:balanced', t.seeds, true);
     const rate = m.winsA / m.games;
     const ok = rate <= t.maxMonoWinRate;
@@ -271,6 +319,31 @@ export function evaluateG6(content: Content): Verdict {
   return {
     id: 'G6', pass: ok, summary: `comeback: behind by 6 columns at 3:00, still wins ≥${pct(t.minBehindWinRate)}`,
     details: [`${ok ? 'ok  ' : 'FAIL'} behind side wins ${(rate * 100).toFixed(0)}% over ${t.seeds} seeds (scenario ${t.scenario})`],
+  };
+}
+
+/**
+ * G7: merging is a real but honest edge. Each check plays a bot against its own merge-off twin (both
+ * seats), so the merge toggle is the only difference: with the reference mix merging should win
+ * 55–70%; when both armies field ~25% Slayers it should win at most 50%.
+ */
+export function evaluateG7(content: Content): Verdict {
+  const t = content.targets.G7;
+  const run = (c: { mergeBot: string; noMergeBot: string }) => matchup(content, `bot:${c.mergeBot}`, `bot:${c.noMergeBot}`, t.seeds, true);
+  const mirror = run(t.mirror);
+  const slayers = run(t.slayers);
+  const mRate = mirror.winsA / mirror.games;
+  const sRate = slayers.winsA / slayers.games;
+  const share = (tagShare(content, slayers.spawnedSupply.a, 'slayer') + tagShare(content, slayers.spawnedSupply.b, 'slayer')) / 2;
+  const mirrorOk = mRate >= t.mirror.minWinRate && mRate <= t.mirror.maxWinRate;
+  const slayerOk = sRate <= t.slayers.maxWinRate;
+  return {
+    id: 'G7', pass: mirrorOk && slayerOk,
+    summary: `merging: merge-on wins ${pct(t.mirror.minWinRate)}–${pct(t.mirror.maxWinRate)} of the mirror, ≤${pct(t.slayers.maxWinRate)} when both sides field ~${pct(t.slayers.share)} Slayers`,
+    details: [
+      `${mirrorOk ? 'ok  ' : 'FAIL'} bot:${t.mirror.mergeBot} vs its merge-off twin: ${(mRate * 100).toFixed(0)}% over ${mirror.games} games (both seats), ${(mirror.merges.a / mirror.games).toFixed(1)} merges per game`,
+      `${slayerOk ? 'ok  ' : 'FAIL'} bot:${t.slayers.mergeBot} vs its merge-off twin: ${(sRate * 100).toFixed(0)}% over ${slayers.games} games; realised Slayer share ${(share * 100).toFixed(0)}% of spawned supply (target ~${pct(t.slayers.share)})`,
+    ],
   };
 }
 

@@ -1,9 +1,10 @@
 // Entry point: reads URL parameters, loads and validates content, builds the battle and starts the
-// loop. Milestone 1 ships the battle screen (with deploy) and a simple end screen.
+// loop. Milestone 2 ships the battle screen (with deploy) and the battle report (`scene=report`
+// plays the battle out headlessly and opens on its report).
 import '../ui/styles.css';
 import { bakeAtlas } from '../render/atlas.ts';
 import {
-  createBattle, createFromScenario, makeConfig, parseController, queueCommand, runHeadless,
+  MILESTONE, createBattle, createFromScenario, makeConfig, parseController, queueCommand, runHeadless,
 } from '../sim/index.ts';
 import type { BattleState, Content } from '../sim/index.ts';
 import { h } from '../ui/h.ts';
@@ -16,7 +17,7 @@ import { parseParams } from './urlParams.ts';
 import type { Params } from './urlParams.ts';
 import { Session } from './session.ts';
 
-const M1_SCENES = new Set(['battle', 'deploy']);
+const SCENES = new Set(['battle', 'deploy', 'report']);
 const errors: string[] = [];
 window.addEventListener('error', (e) => errors.push(String(e.message)));
 window.addEventListener('unhandledrejection', (e) => errors.push(String(e.reason)));
@@ -38,21 +39,24 @@ function buildState(content: Content, p: Params, seed: number): BattleState {
       seed,
       ...(p.player !== 'human' ? { player: p.player } : {}),
       ...(p.enemy !== null ? { enemy: p.enemy } : {}),
+      ...(p.flags ? { flags: p.flags } : {}),
     });
   }
   return createBattle(content, makeConfig(content, {
     seed, mapId: p.map, battleIndex: p.battleIndex,
     player: parseController(p.player), enemy: parseController(p.enemy ?? 'general:scripted'),
+    ...(p.flags ? { flags: p.flags } : {}),
   }));
 }
 
 function boot(): void {
   const params = parseParams(location.search);
-  if (!M1_SCENES.has(params.scene)) {
-    fatal(`scene=${params.scene} is not part of Milestone 1 (only battle and deploy exist yet).`);
+  if (!SCENES.has(params.scene)) {
+    fatal(`scene=${params.scene} is not part of Milestone ${MILESTONE} (only ${[...SCENES].join(', ')} exist yet).`);
     return;
   }
-  for (const f of params.flags) console.warn(`flag "${f}" is not available in Milestone 1 and is ignored`);
+  for (const problem of params.flagProblems) console.warn(`${problem}; ignored`);
+  if (params.scene === 'report') params.ticks = 'end';
   let content: Content;
   try {
     content = browserContent();

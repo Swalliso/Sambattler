@@ -1,8 +1,9 @@
 // Public sim API (SPEC §14.6).
 export { loadContent, ContentError } from '../data/registry.ts';
 export type { Content, RawContent } from '../data/registry.ts';
-export { createBattle, createFromScenario, makeConfig, parseController, controllerLabel } from './create.ts';
-export type { BattleOptions } from './create.ts';
+export { createBattle, createFromScenario, makeConfig, parseController, controllerLabel, parseFlags, DEFAULT_FLAGS, MILESTONE } from './create.ts';
+export type { BattleOptions, Flags } from './create.ts';
+export { canMerge } from './systems/merging.ts';
 export { queueCommand, nextCommandTick, sellValue } from './commands.ts';
 export { step } from './step.ts';
 export { runHeadless } from './headless.ts';

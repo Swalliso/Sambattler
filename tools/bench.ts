@@ -11,7 +11,7 @@ const r = runBench(content, quick ? g.quickTicks : g.benchTicks);
 const checks: [string, boolean, string][] = [
   ['tick mean', r.meanMs <= g.tickMeanMs, `${r.meanMs.toFixed(3)} ms (budget ${g.tickMeanMs} ms)`],
   ['tick p99', r.p99Ms <= g.tickP99Ms, `${r.p99Ms.toFixed(3)} ms (budget ${g.tickP99Ms} ms)`],
-  ['full M1 battle', r.battleWallMs <= g.battleWallMs, `${r.battleWallMs} ms wall (budget ${g.battleWallMs} ms)`],
+  ['full battle', r.battleWallMs <= g.battleWallMs, `${r.battleWallMs} ms wall (budget ${g.battleWallMs} ms)`],
 ];
 console.log(`bench-300 · ${r.ticks} ticks${quick ? ' (quick)' : ''} · units ${r.startUnits} at start, peak ${r.peakUnits}`);
 console.log(`  mean ${r.meanMs.toFixed(3)} ms · p95 ${r.p95Ms.toFixed(3)} ms · p99 ${r.p99Ms.toFixed(3)} ms · max ${r.maxMs.toFixed(3)} ms · heap growth ${r.heapGrowthKb} KB`);

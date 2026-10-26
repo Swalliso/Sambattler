@@ -3,6 +3,62 @@
 Every change from the SPEC's first-pass numbers, with the guardrail or verification result that
 motivated it. Tools: `npm run balance -- duel`, `npm run balance -- tournament`, `npm run test:slow`.
 
+## Milestone 2 (2026-10-25)
+
+Merging (SPEC §5.5–5.6), Scythecap Grove and Veilstalker Hollow. Merging is on by default from M2
+(feature flags follow the milestone); M1 golden replays pin `merging: false` and the M1 roster, and a
+66-battle behaviour fingerprint confirmed M1 play is bit-identical with merging off.
+
+### Scythecap (first-pass numbers kept)
+G1: the Grove wins 2/5 pairings. G2: beats Sporeling and Veilstalker, loses to Gill Archer; the
+intended edge Scythecap > Sporeling holds 5/5.
+
+### Veilstalker and the slayer multiplier
+First-pass Veilstalker (110 HP, 18 pierce, 1 per 16 s, slayer ×1.75) was ~1.7× the M1 units' value
+per supply (§11.4: 42 vs 23–29) and 0.8× per gold (1.19 vs 1.45): it won every 12-supply duel
+(G2 FAIL: loses to nothing) and no production pairing (G1 FAIL). Cutting it to a normal per-supply
+value made it lose the intended edge to Bloomed Capguards (0/5): a Bloomed Capguard hits Light for
+52.5 and soaks split fire, so square-law estimates overrate swarms of small slayers. The slayer
+multiplier therefore carries the counter (picked from a sweep of 14 variants):
+- Veilstalker `hp` 110 → **80**, `damage` 18 → **12**; Veilstalker Hollow spawns **2 per 18 s**
+  (was 1 per 16 s).
+- `tagMult.slayerVsElite` 1.75 → **3.0**; the Elder Veilstalker perk `slayerMult` 2.0 → **3.4** (it
+  keeps its bump over the base multiplier).
+Result: G1 PASS (the Hollow wins 1/5 pairings), G2 PASS. The Veilstalker beats Sporeling, Gill
+Archer, Rootbreaker and every Bloomed unit but the Scythecap; base Capguards and Scythecaps (Slash vs
+Light) beat it. So merging your Capguards opens a weakness to Slayers, and the answer to Slayers is
+unmerged line troops. Value check: 6.67/min × sqrt(80 × 10.9) × 1.2 / 160 = 1.48 per gold.
+
+### Reference bots
+- `bot:balanced` builds the whole roster: + Scythecap Grove 2, Veilstalker Hollow 1. With the M1 mix
+  and merging on, G4 had 19–20% Decisions and G5 was 74–80%; with the new mix G4 is median 8:17,
+  13% Decisions, G5 64–70%.
+- New G7 bots: `balanced-nomerge`, `slayer` (+Veilstalker Hollow 8: a 23–25% realised Slayer share)
+  and `slayer-nomerge`.
+
+### G3 (mono Gill Nest) after M2: unchanged
+Mono Gill Nest still wins 100% against `bot:balanced` with merging on, with both the M1 reference
+mix and the full-roster mix. Every other mono bot, including the new ones, stays ≤ 48% (mono
+Scythecap Grove 15–20%, mono Veilstalker Hollow 3–8%). Still deferred (see Milestone 1).
+
+### G7 (merging's edge): `tierStatMult` 2.5 → 2.8
+G7 compares each bot with its own merge-off twin, both seats, so the merge toggle is the only
+difference. (The second clause, "against an opponent with a 25% Slayer share", is measured as a
+Slayer mirror: pitting merge-on against a different, Slayer-heavy bot mixed roster strength into the
+result, since Slayer-heavy armies are weaker overall: merge-off `balanced` beats them 58–63%.)
+- At ×2.5 merging was a near-neutral sidegrade in bot play: merge-on won 48% of the reference mirror
+  over 120 games (target 55–70%). A Bloomed unit had ~83% of its parts' HP and damage (§5.5) and paid
+  off mainly when the 60-supply cap bound, which bot armies rarely reach. Slayer mirror: 39–48%.
+- Single-knob sweep of the reference mirror (120 games each): `tierStatMult` 2.7 → 51%, 2.8 → 56%,
+  3.0 → 58%; knit 0.5 s → 54%; merge radius 2.0 → 51%; combat cooldown 1.0 s → 48%; supply cap
+  45 → 48%. Only the stat multiplier reached the band.
+- **`tierStatMult` 2.5 → 2.8** (user's decision, 2026-10-26). A Bloomed unit now has ~93% of its
+  parts' HP and damage for ⅔ of their supply. Over 200 games: reference mirror **58%**, Slayer mirror
+  **50%** (Slayers now neutralise merging rather than punish it; that clause sits on its threshold).
+- G7 `seeds` 20 → **100**: at 40 games the standard error (~8 points) is wider than the effects G7
+  measures, so the verdict flipped between runs.
+- Knock-on checks at ×2.8: G1, G2 (every intended edge held), G4, G5, G6 and G11 still pass.
+
 ## Milestone 1 (2026-10-25)
 
 ### Territory capture

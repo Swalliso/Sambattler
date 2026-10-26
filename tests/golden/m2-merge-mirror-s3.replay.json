@@ -1,0 +1,82 @@
+{
+  "name": "m2-merge-mirror-s3",
+  "description": "merge-on vs merge-off mirror (bot:balanced vs bot:balanced-nomerge, the G7 setup), seed 3",
+  "config": {
+    "seed": 3,
+    "battleIndex": 1,
+    "mapId": "bogwater-hollow",
+    "player": {
+      "faction": "velvet-bloom",
+      "controller": {
+        "kind": "bot",
+        "id": "balanced"
+      },
+      "kit": [
+        "sporelingBurrow",
+        "capguardHall",
+        "gillNest",
+        "rootbreakerDen",
+        "puffballMortar",
+        "truffleCellar",
+        "scythecapGrove",
+        "veilstalkerHollow"
+      ],
+      "heartcapHp": 3000,
+      "heartcapMaxHp": 3000,
+      "startingGold": 300
+    },
+    "enemy": {
+      "faction": "gray-rot",
+      "controller": {
+        "kind": "bot",
+        "id": "balanced-nomerge"
+      },
+      "kit": [
+        "sporelingBurrow",
+        "capguardHall",
+        "gillNest",
+        "rootbreakerDen",
+        "puffballMortar",
+        "truffleCellar",
+        "scythecapGrove",
+        "veilstalkerHollow"
+      ],
+      "heartcapHp": 2000,
+      "heartcapMaxHp": 2000,
+      "startingGold": 300
+    },
+    "flags": {
+      "merging": true,
+      "drafts": false,
+      "adaptiveGeneral": false,
+      "powers": false
+    }
+  },
+  "commands": [
+    {
+      "tick": 0,
+      "side": "player",
+      "seq": 0,
+      "type": "begin"
+    }
+  ],
+  "expected": {
+    "600": "ef91ac8cf1a48d4a",
+    "1200": "ccebc997fd265f8f",
+    "1800": "10af99903a21ae57",
+    "2400": "11217b843fd1c3fb",
+    "3000": "4337c83aef7bc2e1",
+    "3600": "4c3b01e1ffb2f912",
+    "4200": "cff50010ed862ddf",
+    "4800": "401c3c680e521d3a",
+    "5400": "0b42984a2052d99a",
+    "6000": "087b232ca59bccf6",
+    "6600": "5e507ebdf0c5c664",
+    "7200": "05f0529628b67795",
+    "7800": "3a6340051cb7c2dd",
+    "8400": "94b12b02b9a6851a",
+    "9000": "7e435589c7620fe6",
+    "9600": "9e409a08c4efb2b6",
+    "final": "dc21a0690aec568c"
+  }
+}

@@ -1,4 +1,4 @@
-// zod schemas for every data file (SPEC §14). Milestone 1 subset: balance, factions, buildings,
+// zod schemas for every data file (SPEC §14). Milestone 2 subset: balance, factions, buildings,
 // units, maps, sprites, generals, bots, scenarios and balance targets.
 import { z } from 'zod';
 
@@ -8,6 +8,9 @@ export const UnitArmor = z.enum(['light', 'medium', 'heavy']);
 export const ArmorType = z.enum(['light', 'medium', 'heavy', 'structure']);
 export const Tag = z.enum(['siege', 'slayer', 'ranged', 'swarm', 'support']);
 const Seconds = z.number().nonnegative();
+/** A unit id, optionally at a merge tier: `capguard` or `capguard@2`. */
+const DuelUnit = z.string().regex(/^[a-zA-Z0-9_-]+(@[123])?$/, 'duel units are <unitId> or <unitId>@<tier>');
+const MergePolicy = z.enum(['on', 'off', 'auto']);
 const Pos = z.number().positive();
 const Hex = z.string().regex(/^#[0-9a-fA-F]{6}$/, 'colors are #rrggbb');
 
@@ -48,6 +51,7 @@ export const BalanceSchema = z.object({
   mergeCheckEveryTicks: z.number().int().positive(),
   tierStatMult: Pos,
   tierSupplyMult: z.tuple([Pos, Pos, Pos]),
+  tierRadiusMult: Pos,
   retargetEveryTicks: z.number().int().positive(),
   leashMult: Pos,
   splashFalloff: z.number().min(0).max(1),
@@ -70,6 +74,7 @@ export const BalanceSchema = z.object({
     economyEarly: z.object({ beforeSeconds: Seconds, mult: z.number().nonnegative() }).strict(),
     economyLate: z.object({ afterSeconds: Seconds, mult: z.number().nonnegative() }).strict(),
     towerPressureMult: z.number().nonnegative(),
+    mergeOffSlayerShare: z.number().min(0).max(1),
     score: z.object({
       spawnerDepth: z.number(), spawnerThreat: z.number(), spawnerSurcharge: z.number(),
       economyLoam: z.number(), economyDepth: z.number(), economyThreat: z.number(),
@@ -80,11 +85,21 @@ export const BalanceSchema = z.object({
 
 export const BalanceTargetsSchema = z.object({
   G1: z.object({ seeds: z.number().int().positive(), goldBudget: z.number().int().positive(), seconds: Pos, maxPairingWinShare: z.number(), clearLossRatio: z.number() }).strict(),
-  G2: z.object({ seeds: z.number().int().positive(), supply: z.number().int().positive(), minSeedsForEdge: z.number().int().positive(), maxSeconds: Pos }).strict(),
+  G2: z.object({
+    seeds: z.number().int().positive(), supply: z.number().int().positive(), minSeedsForEdge: z.number().int().positive(), maxSeconds: Pos,
+    /** Intended counter edges [winner, loser], reported (not asserted); `unit@tier` duels a merged unit. */
+    intendedEdges: z.array(z.tuple([DuelUnit, DuelUnit])),
+  }).strict(),
   G3: z.object({ seeds: z.number().int().positive(), maxMonoWinRate: z.number() }).strict(),
   G4: z.object({ seeds: z.number().int().positive(), medianMinSeconds: Pos, medianMaxSeconds: Pos, maxDecisionShare: z.number(), botWinMin: z.number(), botWinMax: z.number() }).strict(),
   G5: z.object({ seeds: z.number().int().positive(), bonusGold: z.number().int(), minWinRate: z.number(), maxWinRate: z.number() }).strict(),
   G6: z.object({ seeds: z.number().int().positive(), scenario: Id, minBehindWinRate: z.number() }).strict(),
+  /** Each check pits a bot against its own merge-off twin, so merging is the only difference. */
+  G7: z.object({
+    seeds: z.number().int().positive(),
+    mirror: z.object({ mergeBot: Id, noMergeBot: Id, minWinRate: z.number(), maxWinRate: z.number() }).strict(),
+    slayers: z.object({ mergeBot: Id, noMergeBot: Id, share: z.number(), maxWinRate: z.number() }).strict(),
+  }).strict(),
   G11: z.object({ tickMeanMs: Pos, tickP99Ms: Pos, battleWallMs: Pos, benchTicks: z.number().int().positive(), quickTicks: z.number().int().positive() }).strict(),
 }).strict();
 
@@ -175,16 +190,19 @@ export const GeneralSchema = z.object({
   id: Id, name: z.string(), sprite: Id, faction: Id, milestone: z.number().int().positive(), description: z.string().optional(),
   opener: z.array(Id), weights: z.record(Id, z.number().nonnegative()), limits: z.record(Id, Limit).optional(),
   laneStyle: z.enum(['defensive', 'aggressive']), appearsIn: z.array(z.number().int().positive()),
+  /** Default auto: merging off on swarm buildings while the opponent's Slayer share is high (SPEC §7.2). */
+  mergePolicy: MergePolicy.optional(),
 }).strict();
 
 export const BotSchema = z.object({
   id: Id, description: z.string().optional(), opener: z.array(Id), weights: z.record(Id, z.number().nonnegative()),
-  limits: z.record(Id, Limit).optional(), mergePolicy: z.enum(['on', 'off']), adaptive: z.boolean().optional(),
+  limits: z.record(Id, Limit).optional(), mergePolicy: MergePolicy, adaptive: z.boolean().optional(),
   placement: z.object({ spawnerDepthWeight: z.number().optional() }).strict().optional(),
 }).strict();
 
 const ScenarioUnits = z.object({
-  unit: Id, lane: z.number().int().nonnegative().optional(), x: z.number(), y: z.number(),
+  unit: Id, tier: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
+  lane: z.number().int().nonnegative().optional(), x: z.number(), y: z.number(),
   count: z.number().int().positive().optional(), rows: z.number().int().positive().optional(),
   dx: z.number().optional(), dy: z.number().optional(),
 }).strict();
@@ -203,6 +221,8 @@ export const ScenarioSchema = z.object({
   lanes: z.array(z.object({ pBorder: z.number().int(), eBorder: z.number().int() }).strict()).optional(),
   /** Rule switches that isolate the rule a scenario tests (e.g. no Heartcap turrets). */
   test: z.object({ noTurrets: z.boolean().optional(), noTerritory: z.boolean().optional(), noHeartcapTargets: z.boolean().optional() }).strict().optional(),
+  /** Feature flags this scenario needs, over the milestone defaults (an explicit --flags still wins). */
+  flags: z.object({ merging: z.boolean().optional(), drafts: z.boolean().optional(), adaptiveGeneral: z.boolean().optional(), powers: z.boolean().optional() }).strict().optional(),
   sides: z.object({ player: ScenarioSide, enemy: ScenarioSide }).strict(),
 }).strict();
 

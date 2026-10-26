@@ -175,6 +175,19 @@ export function loadContent(raw: RawContent): Content {
       if (map.lanes.length > 3) problems.push(`map ${map.id}: at most 3 lanes`);
     }
   }
+  if (targets) {
+    for (const edge of targets.G2.intendedEdges) {
+      for (const ref of edge) {
+        const id = ref.split('@')[0]!;
+        if (!(id in units)) problems.push(`balance-targets.json G2: unit "${id}" does not exist`);
+      }
+    }
+    for (const check of [targets.G7.mirror, targets.G7.slayers]) {
+      for (const id of [check.mergeBot, check.noMergeBot]) {
+        if (!(id in bots)) problems.push(`balance-targets.json G7: bot "${id}" does not exist`);
+      }
+    }
+  }
 
   if (problems.length || !balance || !targets) throw new ContentError(problems.length ? problems : ['balance files failed to parse']);
   return { balance, targets, factions, buildings, buildingOrder, units, maps, sprites, spriteOrder, generals, bots, scenarios };

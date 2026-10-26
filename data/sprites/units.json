@@ -183,6 +183,99 @@
         "..kk...kk.....",
         ".kkk...kkk...."
       ]
+     ]},
+    {"id": "u-scythecap", "w": 14, "h": 13, "anchor": [6, 12], "factionSwap": true, "palette": {".": null, "d": "#5a2f99", "e": "#120a16", "h": "#7a5236", "k": "#1a1020", "l": "#c9a2ff", "p": "#cfd3dc", "s": "#e8d9b5", "v": "#8a4fd8", "w": "#fbf6ff"},
+     "frames": [
+      [
+        "....kk....kkk.",
+        "...kvlk..kppwk",
+        "..kvvlvk..hkpk",
+        ".kvvvvlvk.h.pk",
+        "kvvvvvvvvkh..k",
+        "kddddddddkh...",
+        ".kk.ksk.kkh...",
+        "...ksesk.kh...",
+        "..ksssssksh...",
+        "..ksssssk.h...",
+        "...ksssk..h...",
+        "...k...k..h...",
+        "..kk...kk.k..."
+      ],
+      [
+        "....kk....kkk.",
+        "...kvlk..kppwk",
+        "..kvvlvk..hkpk",
+        ".kvvvvlvk.h.pk",
+        "kvvvvvvvvkh..k",
+        "kddddddddkh...",
+        ".kk.ksk.kkh...",
+        "...ksesk.kh...",
+        "..ksssssksh...",
+        "..ksssssk.h...",
+        "...ksssk..h...",
+        "....k.k...h...",
+        "...kk.kk..k..."
+      ],
+      [
+        "....kk........",
+        "...kvlk.......",
+        "..kvvlvk......",
+        ".kvvvvlvk.....",
+        "kvvvvvvvvk....",
+        "kddddddddk....",
+        ".kk.ksk.kk..k.",
+        "...ksesk...kpk",
+        "..kssssssshhwk",
+        "..ksssssk..kpk",
+        "...ksssk..kpk.",
+        "...k...k.kpk..",
+        "..kk...kk.k..."
+      ]
+     ]},
+    {"id": "u-veilstalker", "w": 12, "h": 12, "anchor": [6, 11], "factionSwap": true, "palette": {".": null, "d": "#5a2f99", "k": "#1a1020", "l": "#c9a2ff", "p": "#cfd3dc", "s": "#e8d9b5", "v": "#8a4fd8", "w": "#fbf6ff"},
+     "frames": [
+      [
+        "....kkkk....",
+        "...kvvvdk...",
+        "..kvlvvvdk..",
+        "..kdkwwkdk..",
+        "..kdddddk...",
+        "..klwlwlk...",
+        ".klllslllk..",
+        ".klslllslkpp",
+        "kl.l.l.l.lk.",
+        "...kssk.....",
+        "...k..k.....",
+        "..kk..kk...."
+      ],
+      [
+        "....kkkk....",
+        "...kvvvdk...",
+        "..kvlvvvdk..",
+        "..kdkwwkdk..",
+        "..kdddddk...",
+        "..klwlwlk...",
+        ".klllslllk..",
+        ".klslllslkpp",
+        "kl.l.l.l.lk.",
+        "...kssk.....",
+        "....kk......",
+        "...kkkk....."
+      ],
+      [
+        ".....kkkk...",
+        "....kvvvdk..",
+        "...kvlvvvdk.",
+        "...kdkwwkdk.",
+        "...kdddddk..",
+        "...klwlwlk..",
+        "..klllslllk.",
+        "..klslllslpw",
+        ".kl.l.l.l.lk",
+        "....kssk....",
+        "...k...k....",
+        "..kk...kk..."
+      ]
      ]}
   ]
 }

@@ -1,6 +1,6 @@
 // The shared AI framework for the scripted general and the strategy bots (SPEC §7.2–7.3, §7.9).
-// It acts only by queueing ordinary commands for the next tick, and draws randomness only from
-// the `ai` stream.
+// It acts only by queueing ordinary commands for the next tick (placements and merge toggles), and
+// draws randomness only from the `ai` stream.
 import { queueCommand } from '../commands.ts';
 import { legalPlacements } from '../placement.ts';
 import { nextFloat, nextSigned } from '../rng.ts';
@@ -32,6 +32,7 @@ export function aiThink(state: BattleState, side: Side): void {
   const ss = state.sides[side];
   const ai = ss.ai;
   if (!ai) return;
+  applyMergePolicy(state, side, ai);
   const pressure = assessPressure(state, side);
   if (ai.target && state.tick - ai.targetSince >= state.rules.ai.stickyTicks) ai.target = null;
   if (!ai.target) {
@@ -46,6 +47,40 @@ export function aiThink(state: BattleState, side: Side): void {
   if (choice.price > ss.gold) return;
   queueCommand(state, { tick: state.tick + 1, side, type: 'place', buildingId: ai.target, lane: choice.lane, col: choice.col, row: choice.row });
   ai.target = null;
+}
+
+/**
+ * Share of a side's spawn supply rate (count × supply / interval over its standing spawners) that
+ * comes from `slayer` units (SPEC §7.2 step 5, §7.4).
+ */
+export function slayerSpawnShare(state: BattleState, side: Side): number {
+  let all = 0, slayer = 0;
+  for (const b of state.buildings) {
+    if (b.side !== side) continue;
+    const sp = buildingDef(state, b).spawn;
+    if (!sp) continue;
+    const u = state.compiled[side].units[sp.unit]!;
+    const rate = (sp.count * u.tiers[0].supply) / sp.intervalHalfTicks;
+    all += rate;
+    if (u.slayer) slayer += rate;
+  }
+  return all > 0 ? slayer / all : 0;
+}
+
+/** Sets each spawner's merge toggle per the side's policy, through ordinary toggleMerge commands. */
+function applyMergePolicy(state: BattleState, side: Side, ai: AiState): void {
+  if (!state.config.flags.merging) return;
+  const swarmOff = ai.mergePolicy === 'auto' && slayerSpawnShare(state, other(side)) > state.rules.ai.mergeOffSlayerShare;
+  for (const b of state.buildings) {
+    if (b.side !== side) continue;
+    const sp = buildingDef(state, b).spawn;
+    if (!sp) continue;
+    const want = ai.mergePolicy === 'on' ? true : ai.mergePolicy === 'off' ? false
+      : !(swarmOff && state.compiled[side].units[sp.unit]!.tags.includes('swarm'));
+    if (b.mergeOn === want) continue;
+    if (state.queue.some((c) => c.side === side && c.type === 'toggleMerge' && c.entityId === b.id)) continue;
+    queueCommand(state, { tick: state.tick + 1, side, type: 'toggleMerge', entityId: b.id, on: want });
+  }
 }
 
 /** Per lane: is the enemy out-massing us within the window around our border? */

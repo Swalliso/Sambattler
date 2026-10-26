@@ -1,25 +1,37 @@
 // Movement and separation (SPEC §5.2). No pathfinding: units walk straight at their target, or
-// advance along the lane while drifting back to their spawn row. Overlapping units are pushed
-// apart by half their overlap each, for a fixed number of passes, using the spatial hash.
+// advance along the lane while drifting back to their spawn row; knitting trios walk to their
+// centroid (SPEC §5.6). Overlapping units are pushed apart by half their overlap each, for a fixed
+// number of passes, using the spatial hash.
 import { other } from '../state.ts';
 import type { BattleState } from '../state.ts';
 import { buildGrid, nearBuffer, queryNear } from '../spatial.ts';
 import { MAX_RADIUS, edgeDistance, tp } from '../targets.ts';
-import { clampToLane, unitDef, unitRadius } from '../world.ts';
+import { clampToLane, tierDef, unitRadius } from '../world.ts';
 
 export function movementSystem(state: BattleState): void {
   const r = state.rules;
   for (const u of state.units) {
-    const def = unitDef(state, u);
-    const rad = unitRadius(state, u);
-    const speed = def.speedPerTick;
+    const t = tierDef(state, u);
+    const rad = t.radius;
+    const speed = t.speedPerTick;
+    if (u.knit) {
+      const dx = u.knit.x - u.x, dy = u.knit.y - u.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist > 1e-9) {
+        const step = Math.min(speed, dist);
+        u.x += (dx / dist) * step;
+        u.y += (dy / dist) * step;
+      }
+      clampToLane(state, u, rad);
+      continue;
+    }
     if (u.targetId !== 0) {
       const d = edgeDistance(state, u.x, u.y, rad, u.targetId, other(u.side), u.lane);
       if (d >= 0) {
-        if (d > def.range) {
+        if (d > t.range) {
           const dx = tp.x - u.x, dy = tp.y - u.y;
           const dist = Math.sqrt(dx * dx + dy * dy);
-          const step = Math.min(speed, d - def.range);
+          const step = Math.min(speed, d - t.range);
           if (dist > 1e-9) {
             u.x += (dx / dist) * step;
             u.y += (dy / dist) * step;

@@ -1,10 +1,11 @@
-// npm run balance -- duel [--seeds n] | tournament [--seeds n] | guardrails
+// npm run balance -- duel [--seeds n] [--supply n] | tournament [--seeds n] | guardrails
 // Writes reports/balance/<timestamp>.{md,json} and prints the guardrail verdicts (SPEC §12.2, §15.3).
+// `--supply 60` re-runs the supply duels at army scale (G2 itself stays at its data value).
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { nodeContent, ROOT } from './lib/content.ts';
 import {
-  evaluateG1, evaluateG2, evaluateG3, evaluateG4, evaluateG5, evaluateG6, matchup, spawnerIds,
+  evaluateG1, evaluateG2, evaluateG3, evaluateG4, evaluateG5, evaluateG6, evaluateG7, matchup, spawnerIds, supplyDuel,
 } from './lib/balance.ts';
 import type { DuelOutcome, Verdict } from './lib/balance.ts';
 import { fmtTicks, median } from './lib/run.ts';
@@ -16,8 +17,10 @@ const content = nodeContent();
 if (seedsArg >= 0) {
   const n = Number(args[seedsArg + 1]);
   if (mode === 'duel') { content.targets.G1.seeds = n; content.targets.G2.seeds = n; }
-  else { content.targets.G3.seeds = n; content.targets.G4.seeds = n; content.targets.G5.seeds = n; }
+  else { content.targets.G3.seeds = n; content.targets.G4.seeds = n; content.targets.G5.seeds = n; content.targets.G7.seeds = n; }
 }
+const supplyArg = args.indexOf('--supply');
+const armySupply = supplyArg >= 0 ? Number(args[supplyArg + 1]) : 0;
 
 const md: string[] = [`# Balance report: ${mode}`, '', `Generated ${new Date().toISOString()}`, ''];
 const json: Record<string, unknown> = { mode };
@@ -49,6 +52,25 @@ if (mode === 'duel') {
   json.production = g1.outcomes;
   json.supply = g2.outcomes;
   json.edges = g2.edges;
+  if (armySupply) {
+    // army-scale duels: Lanchester effects make narrow 12-supply edges into blowouts (or reverse them)
+    const army = [];
+    for (const a of units) for (const b of units) {
+      if (a === b) continue;
+      for (let seed = 1; seed <= content.targets.G2.seeds; seed++) army.push(supplyDuel(content, a, b, seed, armySupply));
+    }
+    matrix(`Supply duels at army scale (${armySupply} supply each)`, army, units, (o) => (o.valueA + 0.01) / (o.valueB + 0.01));
+    md.push('Margins (mean remaining supply, A − B):', '');
+    for (const a of units) for (const b of units) {
+      if (a >= b) continue;
+      const games = army.filter((o) => o.a === a && o.b === b);
+      const m = games.reduce((x, o) => x + o.valueA - o.valueB, 0) / games.length;
+      md.push(`- ${m >= 0 ? `${a} > ${b}` : `${b} > ${a}`}: ${Math.abs(m).toFixed(1)}`);
+      console.log(`army ${armySupply}: ${m >= 0 ? `${a} > ${b}` : `${b} > ${a}`} by ${Math.abs(m).toFixed(1)} supply`);
+    }
+    md.push('');
+    json.army = army;
+  }
 } else if (mode === 'tournament') {
   const seeds = content.targets.G4.seeds;
   const bots = ['bot:balanced', 'bot:rush', 'bot:turtle', 'bot:greedy'];
@@ -61,11 +83,11 @@ if (mode === 'duel') {
   }
   md.push('');
   json.vsGeneral = rows;
-  verdicts.push(evaluateG3(content), evaluateG4(content), evaluateG5(content));
+  verdicts.push(evaluateG3(content), evaluateG4(content), evaluateG5(content), evaluateG7(content));
 } else if (mode === 'guardrails') {
-  verdicts.push(evaluateG1(content).verdict, evaluateG2(content).verdict, evaluateG3(content), evaluateG4(content), evaluateG5(content), evaluateG6(content));
+  verdicts.push(evaluateG1(content).verdict, evaluateG2(content).verdict, evaluateG3(content), evaluateG4(content), evaluateG5(content), evaluateG6(content), evaluateG7(content));
 } else {
-  console.error('usage: npm run balance -- duel | tournament | guardrails [--seeds n]');
+  console.error('usage: npm run balance -- duel [--supply n] | tournament | guardrails [--seeds n]');
   process.exit(2);
 }
 

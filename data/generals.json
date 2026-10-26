@@ -5,7 +5,7 @@
     "sprite": "g-scripted",
     "faction": "gray-rot",
     "milestone": 1,
-    "description": "Milestone 1's scripted general: no analysis, no counters, no intel (SPEC §7.9).",
+    "description": "The scripted general (SPEC §7.9): no analysis, no counters, no intel. Since M2 it merges, switching merging off on its swarm buildings while the player fields over 25% Slayers (§7.2).",
     "opener": ["sporelingBurrow", "truffleCellar"],
     "weights": {
       "sporelingBurrow": 3,
@@ -20,6 +20,7 @@
       "rootbreakerDen": { "afterSeconds": 180 }
     },
     "laneStyle": "defensive",
-    "appearsIn": [1]
+    "appearsIn": [1],
+    "mergePolicy": "auto"
   }
 ]

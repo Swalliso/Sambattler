@@ -4,11 +4,42 @@ import { compileRules, compileSide, secToTicks } from './compile.ts';
 import { seedStream } from './rng.ts';
 import { resolveAiProfile } from './ai/profiles.ts';
 import { placementProblem } from './placement.ts';
+import { MAX_RADIUS } from './targets.ts';
 import { clampToLane, laneOfRow, unitRadius } from './world.ts';
 import { SIDES } from './state.ts';
 import type {
-  BattleConfig, BattleState, BuildingState, Controller, LaneState, Side, SideConfig, SideState, SideStats, UnitState,
+  BattleConfig, BattleState, BuildingState, Controller, LaneState, Side, SideConfig, SideState, SideStats, Tier, UnitState,
 } from './state.ts';
+
+export type Flags = BattleConfig['flags'];
+
+/** The milestone this build implements. Feature flags default to what it ships (SPEC §15.2). */
+export const MILESTONE = 2;
+export const DEFAULT_FLAGS: Readonly<Flags> = { merging: true, drafts: false, adaptiveGeneral: false, powers: false };
+
+/** Flag names as written in `--flags` and `?flags=`, and the milestone each one arrives in. */
+const FLAG_NAMES: Record<string, { key: keyof Flags; milestone: number }> = {
+  merging: { key: 'merging', milestone: 2 },
+  drafts: { key: 'drafts', milestone: 3 },
+  adaptive: { key: 'adaptiveGeneral', milestone: 4 },
+  powers: { key: 'powers', milestone: 5 },
+};
+
+/**
+ * Parses a comma-separated flag list into the exact flag set it names (`none` or an empty list turns
+ * every feature off). Unknown flags and flags from later milestones are reported, not set.
+ */
+export function parseFlags(list: string): { flags: Flags; problems: string[] } {
+  const flags: Flags = { merging: false, drafts: false, adaptiveGeneral: false, powers: false };
+  const problems: string[] = [];
+  for (const name of list.split(',').map((f) => f.trim()).filter((f) => f && f !== 'none')) {
+    const f = FLAG_NAMES[name];
+    if (!f) problems.push(`unknown flag "${name}" (expected ${Object.keys(FLAG_NAMES).join(', ')} or none)`);
+    else if (f.milestone > MILESTONE) problems.push(`flag "${name}" is not available until Milestone ${f.milestone}`);
+    else flags[f.key] = true;
+  }
+  return { flags, problems };
+}
 
 export function emptyStats(): SideStats {
   return {
@@ -16,6 +47,7 @@ export function emptyStats(): SideStats {
     merges: { '2': 0, '3': 0 },
     damageDealt: 0,
     damageByBuilding: {},
+    buildingTypes: {},
     damageBySource: {},
     heartcapDamageTaken: 0,
     goldEarned: { stipend: 0, economy: 0, comeback: 0, interest: 0 },
@@ -32,7 +64,7 @@ export function emptyStats(): SideStats {
   };
 }
 
-/** Parses a controller string: human | bot:<id> | general:<id> (general:scripted in M1). */
+/** Parses a controller string: human | bot:<id> | general:<id> (general:scripted until M4). */
 export function parseController(text: string): Controller {
   if (text === 'human' || text === 'none' || text === 'idle') return { kind: 'human' };
   const m = text.match(/^(bot|general):(.+)$/);
@@ -55,7 +87,7 @@ export interface BattleOptions {
   test?: BattleConfig['test'];
 }
 
-/** Builds a Milestone 1 battle config with the rules' defaults. */
+/** Builds a battle config with the rules' defaults and the milestone's feature flags. */
 export function makeConfig(content: Content, opts: BattleOptions): BattleConfig {
   const bal = content.balance;
   const battleIndex = opts.battleIndex ?? 1;
@@ -77,7 +109,7 @@ export function makeConfig(content: Content, opts: BattleOptions): BattleConfig 
     mapId: opts.mapId ?? 'bogwater-hollow',
     player: side('player', asCtl(opts.player, 'human')),
     enemy: side('enemy', asCtl(opts.enemy, 'general:scripted')),
-    flags: { merging: false, drafts: false, adaptiveGeneral: false, powers: false, ...opts.flags },
+    flags: { ...DEFAULT_FLAGS, ...opts.flags },
   };
   if (opts.test) config.test = opts.test;
   return config;
@@ -100,6 +132,12 @@ export function createBattle(content: Content, config: BattleConfig): BattleStat
     };
   });
   const rules = compileRules(content, config);
+  const compiled = { player: compileSide(content, config.player), enemy: compileSide(content, config.enemy) };
+  for (const s of SIDES) {
+    for (const u of Object.values(compiled[s].units)) {
+      for (const t of u.tiers) if (t.radius > MAX_RADIUS) throw new Error(`unit ${u.id}: radius ${t.radius} exceeds MAX_RADIUS ${MAX_RADIUS}`);
+    }
+  }
   const sideState = (s: Side): SideState => {
     const sc = config[s];
     const turrets = rules.test.turrets ? content.balance.turret.perLane * lanes.length : 0;
@@ -141,7 +179,7 @@ export function createBattle(content: Content, config: BattleConfig): BattleStat
     queue: [],
     log: [],
     events: [],
-    compiled: { player: compileSide(content, config.player), enemy: compileSide(content, config.enemy) },
+    compiled,
     stats: { player: emptyStats(), enemy: emptyStats() },
     frontLine: lanes.map((l) => [[0, l.pBorder, l.eBorder]]),
   };
@@ -164,7 +202,7 @@ export function createFromScenario(content: Content, scenarioId: string, over: S
     mapId: sc.map,
     player: over.player ?? sc.controllers?.player ?? 'human',
     enemy: over.enemy ?? sc.controllers?.enemy ?? 'human',
-    flags: over.flags ?? {},
+    flags: over.flags ?? sc.flags ?? {},
   });
   config.scenario = sc.id;
   if (sc.test) config.test = { ...sc.test };
@@ -208,7 +246,8 @@ export function createFromScenario(content: Content, scenarioId: string, over: S
         const x = g.x + col * dx, y = g.y + row * dy;
         const lane = g.lane ?? laneOfRow(state, Math.floor(y));
         if (lane < 0) throw new Error(`scenario ${sc.id}: unit at y=${y} is not in a lane`);
-        addUnit(state, s, g.unit, lane, x, y, 0, true);
+        if (!state.compiled[s].units[g.unit]) throw new Error(`scenario ${sc.id}: ${s} has no compiled unit ${g.unit}; add its building to the scenario kit`);
+        addUnit(state, s, g.unit, lane, x, y, 0, g.tier ?? 1);
       }
     }
   }
@@ -239,21 +278,24 @@ export function addBuilding(state: BattleState, side: Side, buildingId: string, 
     holding: false,
   };
   state.buildings.push(b);
+  state.stats[side].buildingTypes[String(b.id)] = buildingId;
   return b;
 }
 
-export function addUnit(state: BattleState, side: Side, unitId: string, lane: number, x: number, y: number, sourceBuildingId: number, scenario = false): UnitState {
+export function addUnit(
+  state: BattleState, side: Side, unitId: string, lane: number, x: number, y: number, sourceBuildingId: number, tier: Tier = 1,
+): UnitState {
   const def = state.compiled[side].units[unitId];
-  if (!def) {
-    throw new Error(scenario ? `${side} has no compiled unit ${unitId}; add its building to the scenario kit` : `${side} cannot spawn ${unitId}`);
-  }
+  if (!def) throw new Error(`${side} cannot spawn ${unitId}`);
+  const t = def.tiers[tier - 1]!;
   const u: UnitState = {
     id: state.nextId++,
-    side, lane, unitId, tier: 1,
+    side, lane, unitId, tier,
     x, y, px: x, py: y, spawnY: y,
-    hp: def.hp, maxHp: def.hp, supply: def.supply,
+    hp: t.hp, maxHp: t.hp, supply: t.supply,
     cooldown: 0, targetId: 0, lastCombatTick: -100000, lastAttackTick: -1,
     mergeOn: true, sourceBuildingId,
+    knit: undefined, // declared up front so every unit keeps one object shape
   };
   clampToLane(state, u, unitRadius(state, u));
   u.px = u.x; u.py = u.y; u.spawnY = u.y;

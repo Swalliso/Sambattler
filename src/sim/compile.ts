@@ -1,7 +1,11 @@
 // Compiles data (seconds, ratios) into the tick- and integer-based definitions stored in state.
-// Milestone 1 has no strains, upgrades or relics, so a side's compiled set is its kit's base data.
+// There are no strains, upgrades or relics yet, so a side's compiled set is its kit's base data,
+// with every unit resolved at all three merge tiers.
 import type { Content } from '../data/registry.ts';
-import type { BattleConfig, CompiledBuilding, CompiledSide, CompiledUnit, Rules, SideConfig } from './state.ts';
+import type { UnitDef } from '../data/schema.ts';
+import type {
+  BattleConfig, CompiledBuilding, CompiledSide, CompiledTier, CompiledUnit, DamageType, Rules, SideConfig, Tier,
+} from './state.ts';
 
 export const secToTicks = (s: number, tickRate = 20): number => Math.round(s * tickRate);
 
@@ -40,7 +44,12 @@ export function compileRules(content: Content, config: BattleConfig): Rules {
     matrix: b.matrix,
     siegeMult: b.tagMult.siegeVsStructure,
     slayerMult: b.tagMult.slayerVsElite,
-    tierStatMult: b.tierStatMult,
+    merge: {
+      radius: b.mergeRadius,
+      cooldownTicks: secToTicks(b.mergeCombatCooldownSeconds, tr),
+      knitTicks: secToTicks(b.mergeKnitSeconds, tr),
+      every: b.mergeCheckEveryTicks,
+    },
     strongAt: b.effectiveness.strongAtLeast,
     weakAt: b.effectiveness.weakAtMost,
     spawnOffset: b.movement.spawnOffset,
@@ -60,6 +69,7 @@ export function compileRules(content: Content, config: BattleConfig): Rules {
       economyLateTick: secToTicks(b.ai.economyLate.afterSeconds, tr),
       economyLateMult: b.ai.economyLate.mult,
       towerPressureMult: b.ai.towerPressureMult,
+      mergeOffSlayerShare: b.ai.mergeOffSlayerShare,
       score: { ...b.ai.score },
     },
     test: {
@@ -70,28 +80,53 @@ export function compileRules(content: Content, config: BattleConfig): Rules {
   };
 }
 
+type Perk = UnitDef['mergePerks']['2'];
+
+/** The merge perk in force at a tier: tier 3 keeps tier 2's perk and overrides the keys it redefines. */
+export function perkAt(u: UnitDef, tier: Tier): Perk {
+  if (tier === 1) return {};
+  const p2 = u.mergePerks['2'];
+  if (tier === 2) return p2;
+  const p3 = u.mergePerks['3'];
+  const out: Perk = { ...p2, ...p3 };
+  if (p2.resist || p3.resist) out.resist = { ...p2.resist, ...p3.resist };
+  return out;
+}
+
+function compileTier(content: Content, u: UnitDef, tier: Tier): CompiledTier {
+  const b = content.balance;
+  const tr = b.tickRate;
+  const p = perkAt(u, tier);
+  const stat = tier === 1 ? 1 : tier === 2 ? b.tierStatMult : b.tierStatMult * b.tierStatMult;
+  const size = tier === 1 ? 1 : tier === 2 ? b.tierRadiusMult : b.tierRadiusMult * b.tierRadiusMult;
+  const resist = (t: DamageType) => p.resist?.[t] ?? 1;
+  return {
+    hp: Math.round(u.hp * stat * (p.hpMult ?? 1)),
+    damage: u.damage * stat * (p.damageMult ?? 1),
+    attackTicks: Math.max(1, secToTicks(u.attackInterval * (p.attackIntervalMult ?? 1), tr)),
+    range: u.range + (p.rangeAdd ?? 0),
+    speedPerTick: (u.speed * (p.speedMult ?? 1)) / tr,
+    radius: u.radius * size + (p.radiusAdd ?? 0),
+    splashRadius: p.splashRadius ?? u.splashRadius ?? 0,
+    slayerMult: u.tags.includes('slayer') ? (p.slayerMult ?? b.tagMult.slayerVsElite) : 1,
+    resist: { slash: resist('slash'), pierce: resist('pierce'), crush: resist('crush') },
+    supply: u.supply * b.tierSupplyMult[tier - 1]!,
+  };
+}
+
 export function compileUnit(content: Content, id: string): CompiledUnit {
   const u = content.units[id];
   if (!u) throw new Error(`unknown unit ${id}`);
-  const tr = content.balance.tickRate;
   return {
     id: u.id,
-    hp: u.hp,
     armor: u.armor,
-    damage: u.damage,
     damageType: u.damageType,
-    attackTicks: Math.max(1, secToTicks(u.attackInterval, tr)),
-    range: u.range,
     projectileSpeed: u.projectileSpeed,
-    speedPerTick: u.speed / tr,
-    supply: u.supply,
     aggroRange: u.aggroRange,
-    radius: u.radius,
-    splashRadius: u.splashRadius ?? 0,
     siege: u.tags.includes('siege'),
     slayer: u.tags.includes('slayer'),
     tags: [...u.tags],
-    resist: { slash: 1, pierce: 1, crush: 1 },
+    tiers: [compileTier(content, u, 1), compileTier(content, u, 2), compileTier(content, u, 3)],
   };
 }
 

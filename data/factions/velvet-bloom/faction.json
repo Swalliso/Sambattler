@@ -3,5 +3,5 @@
   "name": "the Velvet Bloom",
   "palette": { "v": "#8a4fd8", "l": "#c9a2ff", "d": "#5a2f99", "s": "#e8d9b5", "t": "#b9a77f" },
   "mat": { "base": "#3b2457", "strand": "#7a4cc0", "glow": "#c9a2ff" },
-  "buildings": ["sporelingBurrow", "capguardHall", "gillNest", "rootbreakerDen", "puffballMortar", "truffleCellar"]
+  "buildings": ["sporelingBurrow", "capguardHall", "gillNest", "rootbreakerDen", "puffballMortar", "truffleCellar", "scythecapGrove", "veilstalkerHollow"]
 }
