@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  MemoryStorage, battleRewards, battleSave, chooseNode, createRun, eventChoose, finishBattle, groveChoose, hashRun, loadRun,
+  MemoryStorage, battleRewards, battleSave, chooseNode, createRun, eventChoose, finishBattle, generalKit, groveChoose, hashRun, loadRun,
   mapPool, outcomeAvailable, promptAnswer, resumeBattle, saveRun, simulateRun, spoilsPick, spoilsReroll,
 } from '../../src/run/index.ts';
 import type { RunState } from '../../src/run/index.ts';
@@ -88,10 +88,33 @@ describe('battle setup and rewards (SPEC §6.1, §6.5, §8.5–8.6)', () => {
     expect(c3.player.startingGold).toBe(bal.startingGold + 2 * bal.startingGoldPerBattle);
     expect(c3.enemy.heartcapHp).toBe(bal.heartcapEnemyHp.base + 2 * bal.heartcapEnemyHp.perBattle);
     const elite = run.route[4]![1]!.elite!;
-    if (elite === 'veteran') expect(Object.values(c3.enemy.upgrades!).every((v) => v === 1)).toBe(true);
-    else expect(c3.modifiers![0]!.source).toBe(`elite:${elite}`);
+    if (elite !== 'veteran') expect(c3.modifiers![0]!.source).toBe(`elite:${elite}`);
+    expect(c3.enemy.kit).toEqual(generalKit(content, run, run.route[4]![1]!, 3).kit);
     enter(run, 5, 0);
     expect(configOf(run).enemy.heartcapHp).toBe(bal.heartcapEnemyHp.boss);
+  });
+
+  it('the general\'s kit grows with the battle index (SPEC §7.8)', () => {
+    const run = createRun(content, { seed: 12 });
+    const g = content.generals.scripted!;
+    const levels = (u: Record<string, number>) => Object.values(u).reduce((a, b) => a + b, 0);
+    const k1 = generalKit(content, run, { kind: 'battle', map: 'stumpfield', general: 'scripted' }, 1);
+    expect(k1.kit).toEqual(g.opener);
+    expect(levels(k1.upgrades)).toBe(0);
+    const k3 = generalKit(content, run, { kind: 'battle', map: 'stumpfield', general: 'scripted' }, 3);
+    expect(k3.kit).toEqual([...g.opener, ...g.preferred!.slice(0, 2)]);
+    expect(levels(k3.upgrades)).toBe(2);
+    for (const id of Object.keys(k3.upgrades)) expect(k3.kit).toContain(id);
+    const e3 = generalKit(content, run, { kind: 'elite', map: 'stumpfield', general: 'scripted', elite: 'swift' }, 3);
+    expect(levels(e3.upgrades)).toBe(3);
+    const boss = generalKit(content, run, { kind: 'boss', map: 'stumpfield', general: 'scripted' }, 4);
+    expect(boss.kit).toHaveLength(bal.enemyKit.bossBuildings);
+    expect(levels(boss.upgrades)).toBe(bal.enemyKit.bossUpgrades);
+    const vet = generalKit(content, run, { kind: 'elite', map: 'stumpfield', general: 'scripted', elite: 'veteran' }, 2);
+    const spawners = vet.kit.filter((id) => content.buildings[id]!.spawn);
+    for (const id of spawners) expect(vet.upgrades[id]).toBeGreaterThanOrEqual(1); // Veteran: +1 on every unit track
+    expect(levels(vet.upgrades)).toBe(spawners.length + 2); // plus (i − 1) + elite random levels
+    expect(generalKit(content, run, { kind: 'battle', map: 'stumpfield', general: 'scripted' }, 3)).toEqual(k3); // deterministic
   });
 
   it('the reward table', () => {

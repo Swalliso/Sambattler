@@ -48,6 +48,7 @@
   "draftWaves": [2, 4, 6, 8],
   "reroll": { "base": 20, "step": 10 },
   "skipGold": 40,
+  "enemyKit": { "blueprintsPerBattle": 1, "upgradesPerBattle": 1, "eliteUpgrades": 1, "bossBuildings": 7, "bossUpgrades": 4 },
   "draft": {
     "cards": 3,
     "typeWeights": { "blueprint": 35, "upgrade": 45, "relic": 20 },

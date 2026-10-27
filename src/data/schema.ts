@@ -65,6 +65,14 @@ export const BalanceSchema = z.object({
   draftWaves: z.array(z.number().int().positive()),
   reroll: z.object({ base: z.number().int(), step: z.number().int() }).strict(),
   skipGold: z.number().int(),
+  /** A general's kit across a run (SPEC §7.8): opener + preferred blueprints and random upgrade levels by battle index. */
+  enemyKit: z.object({
+    blueprintsPerBattle: z.number().int().nonnegative(),
+    upgradesPerBattle: z.number().int().nonnegative(),
+    eliteUpgrades: z.number().int().nonnegative(),
+    bossBuildings: z.number().int().positive(),
+    bossUpgrades: z.number().int().nonnegative(),
+  }).strict(),
   /** Draft offer generation (SPEC §8.3): type weights, rarity weights and their per-battle shift. */
   draft: z.object({
     cards: z.number().int().positive(),
@@ -273,6 +281,8 @@ const Limit = z.object({ maxOwned: z.number().int().nonnegative().optional(), af
 export const GeneralSchema = z.object({
   id: Id, name: z.string(), sprite: Id, faction: Id, milestone: z.number().int().positive(), description: z.string().optional(),
   opener: z.array(Id), weights: z.record(Id, z.number().nonnegative()), limits: z.record(Id, Limit).optional(),
+  /** Blueprints the general adds to its kit, one per battle index, in order (SPEC §7.8). */
+  preferred: z.array(Id).optional(),
   laneStyle: z.enum(['defensive', 'aggressive']), appearsIn: z.array(z.number().int().positive()),
   /** Default auto: merging off on swarm buildings while the opponent's Slayer share is high (SPEC §7.2). */
   mergePolicy: MergePolicy.optional(),

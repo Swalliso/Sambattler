@@ -5,7 +5,7 @@
     "sprite": "g-scripted",
     "faction": "gray-rot",
     "milestone": 1,
-    "description": "The scripted general (SPEC §7.9): no analysis, no counters, no intel. Since M2 it merges, switching merging off on its swarm buildings while the player fields over 25% Slayers (§7.2).",
+    "description": "The scripted general (SPEC §7.9): no analysis, no counters, no intel. Since M2 it merges, switching merging off on its swarm buildings while the player fields over 25% Slayers (§7.2). In runs (M3) its kit grows by battle index (§7.8): the opener plus one preferred blueprint per battle; single battles keep the whole roster.",
     "opener": ["sporelingBurrow", "truffleCellar"],
     "weights": {
       "sporelingBurrow": 3,
@@ -19,6 +19,7 @@
       "truffleCellar": { "maxOwned": 3 },
       "rootbreakerDen": { "afterSeconds": 180 }
     },
+    "preferred": ["capguardHall", "gillNest", "puffballMortar", "rootbreakerDen", "scythecapGrove", "veilstalkerHollow"],
     "laneStyle": "defensive",
     "appearsIn": [1],
     "mergePolicy": "auto"

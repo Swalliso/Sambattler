@@ -5,6 +5,7 @@
 import type { RunEffect } from '../data/schema.ts';
 import {
   RARITIES, applyCard, buildLibrary, draftPool, generateOffer, hashState, nextFloat, nextInt, parseCard, parseController,
+  seedStream,
 } from '../sim/index.ts';
 import type {
   BattleConfig, BattleModifier, BattleState, Content, DraftPool, Library, Loadout, Rarity, SideConfig,
@@ -68,7 +69,7 @@ export function battleConfig(content: Content, run: RunState, node: RouteNode): 
   const index = run.battles.length + 1;
   const gold = bal.startingGold + bal.startingGoldPerBattle * (index - 1);
   const enemyFaction = 'gray-rot';
-  const enemyKit = [...(content.factions[enemyFaction]?.buildings ?? [])];
+  const { kit: enemyKit, upgrades: enemyUpgrades } = generalKit(content, run, node, index);
   const enemyHp = node.kind === 'boss' ? bal.heartcapEnemyHp.boss : bal.heartcapEnemyHp.base + bal.heartcapEnemyHp.perBattle * (index - 1);
   const player: SideConfig = {
     faction: run.faction,
@@ -90,15 +91,10 @@ export function battleConfig(content: Content, run: RunState, node: RouteNode): 
     heartcapMaxHp: enemyHp,
     startingGold: gold,
   };
+  if (Object.keys(enemyUpgrades).length) enemy.upgrades = enemyUpgrades;
   const modifiers: BattleModifier[] = [];
   const elite = node.elite ? content.elites[node.elite] : undefined;
   if (elite?.effects) modifiers.push({ side: 'enemy', source: `elite:${elite.id}`, effects: elite.effects });
-  if (elite?.upgradeLevels) {
-    // Veteran: +N upgrade levels on every unit track in the general's kit
-    const ups: Record<string, number> = {};
-    for (const id of enemyKit) if (content.buildings[id]?.spawn && content.upgrades[id]) ups[id] = elite.upgradeLevels;
-    enemy.upgrades = ups;
-  }
   if (run.next.sporestormShiftSeconds) {
     modifiers.push({ side: 'both', source: 'event:next-battle', effects: { modifiers: [{ stat: 'battle.sporestormStart', op: 'add', value: run.next.sporestormShiftSeconds }] } });
   }
@@ -107,6 +103,43 @@ export function battleConfig(content: Content, run: RunState, node: RouteNode): 
   };
   if (modifiers.length) config.modifiers = modifiers;
   return config;
+}
+
+/**
+ * The general's kit for a battle (SPEC §7.8): its opener buildings plus (i − 1) blueprints from its
+ * preferred list and (i − 1) random upgrade levels on units in its kit; an elite adds a level, the
+ * boss fields 7 buildings and 4 levels, and the Veteran modifier adds a level on every unit track.
+ * The random levels come from the `ai` stream, sub-seeded per battle index so they don't depend on
+ * the path taken. A general without a preferred list fields its whole faction roster.
+ */
+export function generalKit(content: Content, run: RunState, node: RouteNode, index: number): { kit: string[]; upgrades: Record<string, number> } {
+  const rules = content.balance.enemyKit;
+  const g = content.generals[node.general ?? 'scripted']!;
+  const roster = content.factions[g.faction]?.buildings ?? [];
+  const boss = node.kind === 'boss';
+  let kit: string[];
+  if (!g.preferred) kit = [...roster];
+  else {
+    kit = [...new Set(g.opener)];
+    const size = boss ? rules.bossBuildings : kit.length + rules.blueprintsPerBattle * (index - 1);
+    for (const id of g.preferred) {
+      if (kit.length >= size) break;
+      if (!kit.includes(id) && roster.includes(id)) kit.push(id);
+    }
+  }
+  const upgrades: Record<string, number> = {};
+  const tracks = () => kit.filter((id) => content.buildings[id]!.spawn && content.upgrades[id] && (upgrades[id] ?? 0) < 3);
+  const levels = boss ? rules.bossUpgrades : rules.upgradesPerBattle * (index - 1) + (node.kind === 'elite' ? rules.eliteUpgrades : 0);
+  const rng = seedStream(run.seed, 'ai', 1000 + index);
+  for (let k = 0; k < levels; k++) {
+    const t = tracks();
+    if (!t.length) break;
+    const id = t[nextInt(rng, t.length)]!;
+    upgrades[id] = (upgrades[id] ?? 0) + 1;
+  }
+  const veteran = node.elite ? content.elites[node.elite]?.upgradeLevels ?? 0 : 0;
+  if (veteran) for (const id of kit) if (content.buildings[id]!.spawn && content.upgrades[id]) upgrades[id] = Math.min(3, (upgrades[id] ?? 0) + veteran);
+  return { kit, upgrades };
 }
 
 // ---- after a battle ----

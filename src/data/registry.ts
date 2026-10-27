@@ -182,6 +182,7 @@ export function loadContent(raw: RawContent): Content {
   for (const g of Object.values(generals)) {
     if (!(g.faction in factions)) problems.push(`general ${g.id}: faction "${g.faction}" does not exist`);
     kitRefs(`general ${g.id}`, g.opener, g.weights, g.limits);
+    for (const id of g.preferred ?? []) buildingRef(`general ${g.id} preferred`, id);
   }
   for (const b of Object.values(bots)) kitRefs(`bot ${b.id}`, b.opener, b.weights, b.limits);
   const effectRefs = (owner: string, fx: EffectBundle | undefined) => {
