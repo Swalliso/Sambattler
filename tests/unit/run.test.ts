@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
-  MemoryStorage, battleRewards, battleSave, chooseNode, createRun, eventChoose, finishBattle, generalKit, groveChoose, hashRun, loadRun,
-  mapPool, outcomeAvailable, promptAnswer, resumeBattle, saveRun, simulateRun, spoilsPick, spoilsReroll,
+  MemoryStorage, battleConfig, battleRewards, battleSave, chooseNode, createRun, eventChoose, finishBattle, generalKit, groveChoose, hashRun, loadRun,
+  mapPool, outcomeAvailable, promptAnswer, recoverPendingChoice, resumeBattle, runPool, saveRun, simulateRun, spoilsPick, spoilsReroll,
 } from '../../src/run/index.ts';
 import type { RunState } from '../../src/run/index.ts';
-import { createBattle, hashState, legalPlacements, queueCommand, runHeadless, step } from '../../src/sim/index.ts';
+import { createBattle, hashState, legalPlacements, makeConfig, queueCommand, runHeadless, step } from '../../src/sim/index.ts';
 import type { BattleConfig, BattleState, Side } from '../../src/sim/index.ts';
 import { content } from '../helpers.ts';
 
@@ -117,6 +117,33 @@ describe('battle setup and rewards (SPEC §6.1, §6.5, §8.5–8.6)', () => {
     expect(generalKit(content, run, { kind: 'battle', map: 'stumpfield', general: 'scripted' }, 3)).toEqual(k3); // deterministic
   });
 
+  it('the boss can purchase every kit building and every allocated upgrade, without changing single-battle profiles', () => {
+    for (let seed = 1; seed <= 20; seed++) {
+      const run = createRun(content, { seed });
+      run.battles = Array.from({ length: 3 }, (_, i) => ({ index: i + 1 }) as RunState['battles'][number]);
+      const config = battleConfig(content, run, { kind: 'boss', map: 'stumpfield', general: 'scripted' });
+      const state = createBattle(content, config);
+      const buyable = state.sides.enemy.ai!.weights.filter((w) => w.weight > 0).map((w) => w.building);
+      expect(config.enemy.kit).toContain('scythecapGrove');
+      for (const id of config.enemy.kit) expect(buyable).toContain(id);
+      for (const id of Object.keys(config.enemy.upgrades!)) expect(buyable).toContain(id);
+    }
+    const single = createBattle(content, makeConfig(content, { seed: 1, player: 'bot:balanced', enemy: 'general:scripted' }));
+    expect(single.config.enemy.aiWeights).toBeUndefined();
+    expect(single.sides.enemy.ai!.weights.map((w) => w.building)).not.toContain('scythecapGrove');
+    expect(content.generals.scripted!.weights.scythecapGrove).toBeUndefined();
+  });
+
+  it('the boss actually places its added Scythecap Grove during ordinary AI play', () => {
+    const run = createRun(content, { seed: 1, player: 'bot:balanced' });
+    run.battles = Array.from({ length: 3 }, (_, i) => ({ index: i + 1 }) as RunState['battles'][number]);
+    const state = createBattle(content, battleConfig(content, run, { kind: 'boss', map: 'stumpfield', general: 'scripted' }));
+    queueCommand(state, { tick: 0, side: 'player', type: 'begin' });
+    runHeadless(state, { until: 3600 });
+    expect(Object.values(state.stats.enemy.buildingTypes)).toContain('scythecapGrove');
+    expect(state.stats.enemy.rejectedCommands).toBe(0);
+  });
+
   it('the reward table', () => {
     const r = { routRepair: 0.1, decisionLossDamage: 0.25, rarityBiasStep: 10, eliteRareBonus: 10 };
     expect(battleRewards('battle', 'player', 'rout', r)).toMatchObject({ spores: 20, heartcapPct: 0.1, spoils: [{ cards: 3, freeRerolls: 1, rareBonus: 10 }] });
@@ -224,6 +251,190 @@ describe('Grove and events (SPEC §8.7)', () => {
     promptAnswer(content, run, 'sporelingBurrow');
     promptAnswer(content, run, 'sporelingBurrow');
     expect(run.upgrades).toEqual({ sporelingBurrow: 2 });
+    expect(run.screen.kind).toBe('route');
+  });
+
+  it('Spore Merchant rejects trades when removal leaves fewer than two upgrade levels, without spending anything', () => {
+    for (const sporeLevel of [2, 3]) {
+      const run = at('event', 'spore-merchant');
+      run.kit.push('gillNest');
+      run.upgrades = { sporelingBurrow: sporeLevel, capguardHall: 3, truffleCellar: 3, gillNest: 2 };
+      const before = hashRun(run);
+      const outcome = content.events['spore-merchant']!.choices[0]!.outcome;
+      expect(outcomeAvailable(content, run, outcome)).toBe(false);
+      expect(() => eventChoose(content, run, 0)).toThrow(/not available/);
+      expect(hashRun(run)).toBe(before);
+    }
+  });
+
+  it('Spore Merchant offers only sacrifices that preserve two upgrade slots and rejects an invalid sacrifice without loss', () => {
+    const run = at('event', 'spore-merchant');
+    run.kit.push('gillNest', 'puffballMortar');
+    run.upgrades = { sporelingBurrow: 3, capguardHall: 3, truffleCellar: 3, gillNest: 1, puffballMortar: 3 };
+    const beforeEligibility = hashRun(run);
+    const outcome = content.events['spore-merchant']!.choices[0]!.outcome;
+    for (let i = 0; i < 3; i++) expect(outcomeAvailable(content, run, outcome)).toBe(true);
+    expect(hashRun(run)).toBe(beforeEligibility);
+    eventChoose(content, run, 0);
+    expect(run.screen.kind === 'prompt' && run.screen.prompt.options).toEqual(['puffballMortar']);
+    const beforeInvalid = hashRun(run);
+    expect(() => promptAnswer(content, run, 'gillNest')).toThrow(/not an available option/);
+    expect(hashRun(run)).toBe(beforeInvalid);
+    promptAnswer(content, run, 'puffballMortar');
+    promptAnswer(content, run, 'gillNest');
+    promptAnswer(content, run, 'gillNest');
+    expect(run.kit).not.toContain('puffballMortar');
+    expect(run.upgrades.gillNest).toBe(3);
+    expect(run.cards.map((c) => c.card)).toEqual(['up:gillNest', 'up:gillNest']);
+    expect(run.screen.kind).toBe('route');
+  });
+
+  it('Spore Merchant delivers two levels split across nearly full tracks and rejects a maxed follow-up pick', () => {
+    const run = at('event', 'spore-merchant');
+    run.kit.push('gillNest');
+    run.upgrades = { sporelingBurrow: 2, capguardHall: 2, truffleCellar: 3, gillNest: 3 };
+    eventChoose(content, run, 0);
+    promptAnswer(content, run, 'gillNest');
+    promptAnswer(content, run, 'sporelingBurrow');
+    expect(run.screen.kind === 'prompt' && run.screen.prompt.options).toEqual(['capguardHall']);
+    const before = hashRun(run);
+    expect(() => promptAnswer(content, run, 'sporelingBurrow')).toThrow(/not an available option/);
+    expect(hashRun(run)).toBe(before);
+    promptAnswer(content, run, 'capguardHall');
+    expect(run.cards).toHaveLength(2);
+    expect(run.upgrades).toMatchObject({ sporelingBurrow: 3, capguardHall: 3 });
+    expect(run.screen.kind).toBe('route');
+  });
+
+  it('recovers a persisted legacy Merchant reward after the blueprint was already traded, preserving available levels and run progress', () => {
+    for (const sporeLevel of [2, 3]) {
+      const legacy = at('event', 'spore-merchant');
+      // Before the fix the trade could remove Gill Nest, then save an unaffordable two-level reward.
+      legacy.upgrades = { sporelingBurrow: sporeLevel, capguardHall: 3, truffleCellar: 3, gillNest: 2 };
+      legacy.pending = [{ upgrade: { count: 2, pick: 'choose' } }];
+      legacy.screen = { kind: 'prompt', prompt: {
+        title: 'Spore Merchant', text: 'Choose an upgrade track for +1 level.',
+        options: sporeLevel < 3 ? ['sporelingBurrow'] : [], optionKind: 'upgrade', remaining: 2,
+      } };
+      legacy.spores = 60;
+      const storage = new MemoryStorage();
+      saveRun(storage, legacy);
+      const run = loadRun(storage)!;
+      const rngBefore = structuredClone(run.rng);
+      const notice = recoverPendingChoice(content, run);
+      expect(notice).toContain(sporeLevel === 2 ? 'only 1 of its 2 remaining levels' : 'could not restore its 2 remaining levels');
+      expect(notice).toContain('without paying again');
+      expect(run.kit).toEqual(legacy.kit);
+      expect(run.path).toEqual(legacy.path);
+      expect(run.heartcap).toEqual(legacy.heartcap);
+      expect(run.spores).toBe(60);
+      expect(run.rng).toEqual(rngBefore);
+      expect(recoverPendingChoice(content, run)).toBeNull();
+      // The migrated state itself round-trips and no longer needs recovery after another reload.
+      saveRun(storage, run);
+      const recovered = loadRun(storage)!;
+      expect(recoverPendingChoice(content, recovered)).toBeNull();
+      if (sporeLevel === 2) {
+        expect(recovered.screen.kind === 'prompt' && recovered.screen.prompt.remaining).toBe(1);
+        promptAnswer(content, recovered, 'sporelingBurrow');
+        expect(recovered.upgrades.sporelingBurrow).toBe(3);
+        expect(recovered.cards.map((c) => c.card)).toEqual(['up:sporelingBurrow']);
+      }
+      expect(recovered.screen.kind).toBe('route');
+      expect(recovered.pending).toEqual([]);
+      expect(recovered.rng).toEqual(rngBefore);
+    }
+  });
+
+  it('returns persisted legacy blueprint and relic prompts to their event when no sacrifice can deliver the reward', () => {
+    for (const event of ['spore-merchant', 'hungry-roots']) {
+      for (const hasRouteOrigin of [true, false]) {
+        const legacy = at('event', event);
+        if (hasRouteOrigin) legacy.route[1]![1] = { kind: 'event', event };
+        else legacy.path = []; // An older prompt can still be recovered from its event title.
+        legacy.kit.push('gillNest');
+        legacy.upgrades = { sporelingBurrow: 3, capguardHall: 3, truffleCellar: 3, gillNest: 1 };
+        if (event === 'hungry-roots') legacy.relics = [...runPool(content, legacy).relics];
+        legacy.pending = structuredClone(content.events[event]!.choices[0]!.outcome);
+        legacy.screen = { kind: 'prompt', prompt: {
+          title: content.events[event]!.title, text: 'Choose an item to give up.', remaining: 1,
+          optionKind: event === 'spore-merchant' ? 'blueprint' : 'relic',
+          options: event === 'spore-merchant' ? ['gillNest'] : [...legacy.relics],
+        } };
+        const storage = new MemoryStorage();
+        saveRun(storage, legacy);
+        const run = loadRun(storage)!;
+        expect(recoverPendingChoice(content, run)).toContain('No items were spent');
+        expect(run.screen).toEqual({ kind: 'event', event });
+        expect(run.pending).toEqual([]);
+        expect(run.kit).toEqual(legacy.kit);
+        expect(run.relics).toEqual(legacy.relics);
+        expect(run.upgrades).toEqual(legacy.upgrades);
+        expect(run.path).toEqual(legacy.path);
+        expect(run.rng).toEqual(legacy.rng);
+        expect(recoverPendingChoice(content, run)).toBeNull();
+        expect(() => eventChoose(content, run, 0)).toThrow(/not available/);
+        eventChoose(content, run, 1);
+        expect(run.screen.kind).toBe('route');
+      }
+    }
+  });
+
+  it('rebuilds a persisted legacy Merchant sacrifice prompt to keep feasible trades available', () => {
+    const legacy = at('event', 'spore-merchant');
+    legacy.kit.push('gillNest', 'puffballMortar');
+    legacy.upgrades = { sporelingBurrow: 3, capguardHall: 3, truffleCellar: 3, gillNest: 1, puffballMortar: 3 };
+    legacy.pending = structuredClone(content.events['spore-merchant']!.choices[0]!.outcome);
+    legacy.screen = { kind: 'prompt', prompt: {
+      title: 'Spore Merchant', text: 'Choose a blueprint to give up.', remaining: 1,
+      optionKind: 'blueprint', options: ['gillNest', 'puffballMortar'],
+    } };
+    const storage = new MemoryStorage();
+    saveRun(storage, legacy);
+    const run = loadRun(storage)!;
+    expect(recoverPendingChoice(content, run)).toContain('Choose an available option');
+    expect(run.screen.kind === 'prompt' && run.screen.prompt.options).toEqual(['puffballMortar']);
+    expect(run.kit).toEqual(legacy.kit);
+    expect(run.rng).toEqual(legacy.rng);
+    expect(recoverPendingChoice(content, run)).toBeNull();
+    promptAnswer(content, run, 'puffballMortar');
+    promptAnswer(content, run, 'gillNest');
+    promptAnswer(content, run, 'gillNest');
+    expect(run.screen.kind).toBe('route');
+    expect(run.upgrades.gillNest).toBe(3);
+  });
+
+  it('relic trades and gains reject exhausted rewards before charging their cost, without consuming RNG', () => {
+    for (const event of ['hungry-roots', 'fallen-oak']) {
+      const run = at('event', event);
+      run.relics = [...runPool(content, run).relics];
+      const before = hashRun(run);
+      for (let i = 0; i < 3; i++) expect(outcomeAvailable(content, run, content.events[event]!.choices[0]!.outcome)).toBe(false);
+      expect(() => eventChoose(content, run, 0)).toThrow(/not available/);
+      expect(hashRun(run)).toBe(before);
+    }
+  });
+
+  it('Hungry Roots grants both relics at the pool boundary and rejects invalid or stale sacrifice choices without loss', () => {
+    const run = at('event', 'hungry-roots');
+    const pool = runPool(content, run).relics;
+    const absent = pool.at(-1)!;
+    run.relics = pool.filter((id) => id !== absent);
+    const beforeEligibility = hashRun(run);
+    expect(outcomeAvailable(content, run, content.events['hungry-roots']!.choices[0]!.outcome)).toBe(true);
+    expect(hashRun(run)).toBe(beforeEligibility);
+    eventChoose(content, run, 0);
+    const beforeInvalid = hashRun(run);
+    expect(() => promptAnswer(content, run, absent)).toThrow(/not an available option/);
+    expect(hashRun(run)).toBe(beforeInvalid);
+    const stale = structuredClone(run);
+    stale.relics.push(absent);
+    const beforeStale = hashRun(stale);
+    expect(() => promptAnswer(content, stale, stale.relics[0]!)).toThrow(/not an available option/);
+    expect(hashRun(stale)).toBe(beforeStale);
+    promptAnswer(content, run, run.relics[0]!);
+    expect(new Set(run.relics)).toEqual(new Set(pool));
+    expect(run.cards).toHaveLength(2);
     expect(run.screen.kind).toBe('route');
   });
 

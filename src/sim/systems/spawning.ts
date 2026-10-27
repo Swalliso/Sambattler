@@ -28,6 +28,7 @@ export function spawningSystem(state: BattleState): void {
       continue;
     }
     b.holding = false;
+    b.hasProduced = true;
     // a positional modifier (e.g. Mycorrhizal Link's adjacency) re-resolves the interval for this building
     b.timer += sp.positional
       ? Math.round(positionalValue(state, b, sp.positional, 'building.spawnInterval') * r.tickRate) * 2

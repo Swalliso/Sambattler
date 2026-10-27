@@ -15,6 +15,7 @@
     "lint": "eslint .",
     "test": "vitest run tests/unit",
     "test:slow": "vitest run tests/slow",
+    "test:browser": "vitest run tests/browser",
     "validate:data": "tsx tools/validate-data.ts",
     "sim": "tsx tools/sim.ts",
     "balance": "tsx tools/balance.ts",

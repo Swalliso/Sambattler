@@ -4,13 +4,14 @@
 // their command log (SPEC §8.9).
 import type { Atlas } from '../render/atlas.ts';
 import {
-  chooseNode, clearBattle, clearRun, createRun, eventChoose, finishBattle, groveChoose, loadBattle, promptAnswer, resumeBattle,
+  chooseNode, clearBattle, clearRun, createRun, eventChoose, finishBattle, groveChoose, loadBattle, promptAnswer, recoverPendingChoice, resumeBattle,
   saveBattle, saveRun, spoilsPick, spoilsReroll,
 } from '../run/index.ts';
 import type { RunState, Storage } from '../run/index.ts';
 import { createBattle, queueCommand, runHeadless } from '../sim/index.ts';
 import type { BattleState, Content } from '../sim/index.ts';
 import { eventScreen, groveScreen, promptScreen, routeScreen, spoilsScreen, summaryScreen } from '../ui/screens/run.ts';
+import { h } from '../ui/h.ts';
 import { BattleView } from './battleView.ts';
 import { bindInput } from './input.ts';
 import { GameLoop } from './loop.ts';
@@ -37,12 +38,15 @@ interface LiveBattle { state: BattleState; view: BattleView; loop: GameLoop; unb
 
 export class RunController {
   private battle: LiveBattle | null = null;
+  private rewardRecoveryNotice: string | null = null;
   /** `?ticks=` fast-forwards the first battle this page starts (screenshots, testing), then is spent. */
   pendingTicks: number | 'end' | null = null;
   private onHidden = () => { if (document.hidden && this.battle) this.saveBattle(this.battle.state); };
   onFrame: (() => void) | null = null;
 
   constructor(private env: RunEnv, public run: RunState) {
+    this.rewardRecoveryNotice = recoverPendingChoice(env.content, run);
+    if (this.rewardRecoveryNotice) this.save();
     document.addEventListener('visibilitychange', this.onHidden);
   }
 
@@ -55,6 +59,7 @@ export class RunController {
   /** Applies one decision, autosaves and redraws. */
   private act(f: () => void): void {
     f();
+    this.rewardRecoveryNotice = null;
     this.save();
     this.show();
   }
@@ -105,6 +110,7 @@ export class RunController {
         break;
     }
     if (el) {
+      if (this.rewardRecoveryNotice) el.prepend(h('div', { class: 'hint', id: 'reward-recovery', role: 'status' }, this.rewardRecoveryNotice));
       app.replaceChildren(el);
       // run screens have no game loop: report readiness on the next frame
       requestAnimationFrame(() => this.onFrame?.());
@@ -116,14 +122,23 @@ export class RunController {
     const { content, atlas } = this.env;
     const config = this.run.screen.config;
     let resumed: BattleState | null = null;
+    let recoveryNotice = false;
     const saved = this.env.persist ? loadBattle(this.env.storage) : null;
     if (saved && JSON.stringify(saved.config) === JSON.stringify(config)) {
-      try { resumed = resumeBattle(content, saved); } catch (e) { console.warn(`could not resume the saved battle: ${(e as Error).message}`); }
+      try { resumed = resumeBattle(content, saved); } catch (e) {
+        console.warn(`could not resume the saved battle: ${(e as Error).message}`);
+        clearBattle(this.env.storage);
+        recoveryNotice = true;
+      }
     }
     const state = resumed ?? createBattle(content, config);
     const session = new Session(state, content);
     const begin = () => { if (state.phase === 'deploy' && !state.queue.some((c) => c.type === 'begin')) session.issue({ type: 'begin' }); };
     const view = new BattleView(session, content, atlas, { begin, again: () => {}, rematch: () => {}, continueRun: () => this.finish() }, this.env.debug);
+    if (recoveryNotice) {
+      view.root.querySelector('#begin-box')!.prepend(h('div', { class: 'hint', id: 'save-recovery', role: 'status' },
+        'The saved battle could not be restored. This battle restarted from deployment; your run progress is preserved.'));
+    }
     document.getElementById('app')!.replaceChildren(view.root);
     if (state.phase === 'deploy' && (config.player.controller.kind !== 'human' || ticks !== null)) {
       queueCommand(state, { tick: 0, side: 'player', type: 'begin' });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { placementProblem, queueCommand } from '../../src/sim/index.ts';
+import { placementProblem, queueCommand, sellValue } from '../../src/sim/index.ts';
 import { building, liveState, setBorders, steps, unit } from '../helpers.ts';
 import { content } from '../helpers.ts';
 import { createBattle, makeConfig, step } from '../../src/sim/index.ts';
@@ -51,7 +51,7 @@ describe('buildings (SPEC §4.4)', () => {
     expect(s.stats.player.spawned.capguard).toBe(1);
   });
 
-  it('selling: 100% in deploy or within 10 s, 60% after, never while besieged', () => {
+  it('selling: 100% in deploy or before production within 10 s, 60% after, never while besieged', () => {
     const s = createBattle(content, makeConfig(content, { seed: 1, mapId: 'test-flat', player: 'human', enemy: 'human' }));
     queueCommand(s, { tick: 0, side: 'player', type: 'place', buildingId: 'capguardHall', lane: 0, col: 0, row: 0 });
     step(s);
@@ -60,6 +60,15 @@ describe('buildings (SPEC §4.4)', () => {
     queueCommand(s, { tick: 0, side: 'player', type: 'sell', entityId: id });
     step(s);
     expect(s.sides.player.gold).toBe(300);
+
+    const fresh = liveState();
+    const unproductive = building(fresh, 'player', 'capguardHall', 0, 0);
+    steps(fresh, 100); // still before its first spawn
+    expect(sellValue(fresh, unproductive.id)).toBe(150);
+    const before = fresh.sides.player.gold;
+    queueCommand(fresh, { tick: fresh.tick + 1, side: 'player', type: 'sell', entityId: unproductive.id });
+    step(fresh);
+    expect(fresh.sides.player.gold - before).toBe(150);
 
     const l = liveState();
     l.rules.test.turrets = false;
@@ -79,6 +88,89 @@ describe('buildings (SPEC §4.4)', () => {
     step(c);
     expect(c.buildings).toHaveLength(1);
     expect(c.events.some((e) => e.t === 'commandRejected' && e.reason.includes('besieged'))).toBe(true);
+  });
+
+  it('repeated spawn-and-sell cycles pay the normal refund instead of generating free units', () => {
+    const s = liveState();
+    s.rules.test.turrets = false;
+    for (let cycle = 0; cycle < 4; cycle++) {
+      queueCommand(s, { tick: s.tick + 1, side: 'player', type: 'place', buildingId: 'gillNest', lane: 0, col: 0, row: 0 });
+      step(s);
+      const b = s.buildings[0]!;
+      steps(s, 150);
+      expect(sellValue(s, b.id)).toBe(90);
+      const before = s.sides.player.gold;
+      queueCommand(s, { tick: s.tick + 1, side: 'player', type: 'sell', entityId: b.id });
+      step(s);
+      expect(s.sides.player.gold - before).toBe(90);
+    }
+    expect(s.stats.player.spawned.gillArcher).toBe(4);
+    expect(s.stats.player.buildingsSold).toBe(4);
+    expect(s.stats.player.rejectedCommands).toBe(0);
+    expect(s.sides.player.gold).toBe(300 + s.stats.player.goldEarned.stipend - 4 * 60);
+  });
+
+  it('losing its spawned units does not restore a full refund', () => {
+    const s = liveState();
+    const b = building(s, 'player', 'capguardHall', 0, 0);
+    steps(s, 150);
+    s.units[0]!.hp = 0;
+    step(s);
+    expect(s.units).toHaveLength(0);
+    expect(sellValue(s, b.id)).toBe(90);
+    queueCommand(s, { tick: s.tick + 1, side: 'player', type: 'sell', entityId: b.id });
+    const before = s.sides.player.gold;
+    step(s);
+    expect(s.sides.player.gold - before).toBe(90);
+  });
+
+  it('an income payout or tower shot also ends the full-refund grace period', () => {
+    const economy = liveState();
+    const cellar = building(economy, 'player', 'truffleCellar', 0, 0);
+    expect(sellValue(economy, cellar.id)).toBe(150);
+    steps(economy, 100);
+    expect(economy.stats.player.goldByBuilding[String(cellar.id)]).toBe(4);
+    expect(sellValue(economy, cellar.id)).toBe(90);
+    queueCommand(economy, { tick: economy.tick + 1, side: 'player', type: 'sell', entityId: cellar.id });
+    const before = economy.sides.player.gold;
+    step(economy);
+    expect(economy.sides.player.gold - before).toBe(90);
+
+    const battle = liveState();
+    battle.rules.test.turrets = false;
+    const mortar = building(battle, 'player', 'puffballMortar', 0, 0);
+    unit(battle, 'enemy', 'capguard', 5, 1);
+    expect(sellValue(battle, mortar.id)).toBe(160);
+    step(battle);
+    expect(mortar.lastAttackTick).toBe(1);
+    expect(sellValue(battle, mortar.id)).toBe(96); // even before the projectile lands
+  });
+
+  it('a supply-blocked spawner retains its refund until it actually spawns', () => {
+    const s = liveState();
+    s.sides.player.supplyCap = 0;
+    const b = building(s, 'player', 'capguardHall', 0, 0);
+    steps(s, 150);
+    expect(b.holding).toBe(true);
+    expect(sellValue(s, b.id)).toBe(150);
+    s.sides.player.supplyCap = 60;
+    step(s);
+    expect(sellValue(s, b.id)).toBe(90);
+  });
+
+  it('refund relics still apply after a building produces', () => {
+    const config = makeConfig(content, { seed: 1, mapId: 'test-flat', player: 'human', enemy: 'human' });
+    config.player.relics = ['secondFlush'];
+    const s = createBattle(content, config);
+    s.phase = 'live';
+    const b = building(s, 'player', 'gillNest', 0, 0);
+    expect(sellValue(s, b.id)).toBe(150);
+    steps(s, 150);
+    expect(sellValue(s, b.id)).toBe(120);
+    queueCommand(s, { tick: s.tick + 1, side: 'player', type: 'sell', entityId: b.id });
+    const before = s.sides.player.gold;
+    step(s);
+    expect(s.sides.player.gold - before).toBe(120);
   });
 
   it('units already spawned stay when their building is sold', () => {
