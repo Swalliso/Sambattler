@@ -26,6 +26,8 @@ jobs:
       - run: npm ci
       # typecheck, lint, validate:data, unit tests, golden replays, sim smoke, bench --quick (SPEC §15.1)
       - run: npm run verify
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:browser
 
   build:
     needs: verify

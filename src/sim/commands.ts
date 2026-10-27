@@ -108,8 +108,7 @@ function execute(state: BattleState, cmd: Command): boolean {
       const b = findBuilding(state, cmd.entityId);
       if (!b || b.side !== side) { reject(state, cmd, 'not your building'); return false; }
       if (isBesieged(state, b)) { reject(state, cmd, 'cannot sell while besieged'); return false; }
-      const full = state.phase === 'deploy' || state.tick - b.placedTick <= state.rules.fullRefundTicks;
-      const refund = full ? b.pricePaid : Math.floor((b.pricePaid * state.compiled[side].sellRefundPct) / 100);
+      const refund = sellValue(state, b.id);
       ss.gold += refund;
       state.buildings.splice(state.buildings.indexOf(b), 1);
       state.stats[side].buildingsSold++;
@@ -140,6 +139,6 @@ function execute(state: BattleState, cmd: Command): boolean {
 export function sellValue(state: BattleState, buildingId: number): number {
   const b = findBuilding(state, buildingId);
   if (!b) return 0;
-  const full = state.phase === 'deploy' || state.tick - b.placedTick <= state.rules.fullRefundTicks;
+  const full = state.phase === 'deploy' || (!b.hasProduced && state.tick - b.placedTick <= state.rules.fullRefundTicks);
   return full ? b.pricePaid : Math.floor((b.pricePaid * state.compiled[b.side].sellRefundPct) / 100);
 }

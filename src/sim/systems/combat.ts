@@ -73,6 +73,7 @@ export function attackSystem(state: BattleState): void {
     if (d < 0 || d < a.minRange - EPS || d > a.range + EPS) continue;
     b.cooldown = a.intervalTicks;
     b.lastAttackTick = tick;
+    b.hasProduced = true;
     fire(state, b.side, b.id, cx, cy, b.lane, b.targetId, d, a.damage * storm, a.damageType, a.projectileSpeed,
       a.splashRadius, 1, 1, b.id, b.buildingId);
   }

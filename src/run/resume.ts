@@ -3,7 +3,7 @@
 // state hash; resuming re-simulates from tick 0 (AI and bot commands regenerate deterministically),
 // checks the hash and continues. A battle is at most 12,000 ticks, so this takes about a second.
 import { createBattle, draftCommandDue, hashState, queueCommand, runHeadless, step } from '../sim/index.ts';
-import type { BattleConfig, BattleState, Command, Content } from '../sim/index.ts';
+import type { BattleConfig, BattleState, Command, Content, SimEvent } from '../sim/index.ts';
 import { RUN_VERSION } from './runState.ts';
 import type { RunState } from './runState.ts';
 import type { Storage } from './storage.ts';
@@ -32,7 +32,19 @@ export function clearRun(storage: Storage): void {
   storage.remove(BATTLE_KEY);
 }
 
-export interface BattleSave { config: BattleConfig; commands: Command[]; tick: number; hash: string }
+export interface BattleSave {
+  /** Missing on legacy saves, whose commands combine the log and queue. */
+  v?: 2;
+  config: BattleConfig;
+  /** Executed human commands in log order in v2; combined commands in legacy saves. */
+  commands: Command[];
+  pending?: Command[];
+  phase?: BattleState['phase'];
+  /** Events belong to the last step, including steps that do not advance the clock. */
+  events?: SimEvent[];
+  tick: number;
+  hash: string;
+}
 
 function cmp(a: Command, b: Command): number {
   if (a.tick !== b.tick) return a.tick - b.tick;
@@ -40,11 +52,13 @@ function cmp(a: Command, b: Command): number {
   return a.seq - b.seq;
 }
 
-/** A battle's save: config, the human sides' commands (executed and queued), the tick and the hash. */
+/** Keep executed and pending input separate: both can have tick T+1 while a draft holds tick T. */
 export function battleSave(state: BattleState): BattleSave {
   const human = (c: Command) => state.config[c.side].controller.kind === 'human';
-  const commands = [...state.log.filter(human), ...state.queue.filter(human)].sort(cmp);
-  return { config: state.config, commands, tick: state.tick, hash: hashState(state) };
+  return {
+    v: 2, config: state.config, commands: state.log.filter(human), pending: state.queue.filter(human),
+    phase: state.phase, events: [...state.events], tick: state.tick, hash: hashState(state),
+  };
 }
 
 export function saveBattle(storage: Storage, state: BattleState): void {
@@ -62,19 +76,61 @@ export function clearBattle(storage: Storage): void {
 }
 
 /**
- * Rebuilds a saved live battle: replays the command log from tick 0 up to the saved tick, re-queues
- * the commands that hadn't run yet, resolves a draft that was answered on the saved tick, and checks
- * the state hash. Throws if the replay diverges.
+ * Replays executed input, including answers applied without advancing a held clock, then restores
+ * pending input without executing it. A full hash check rejects incompatible or divergent saves.
  */
 export function resumeBattle(content: Content, save: BattleSave): BattleState {
+  if (save.v === undefined) return resumeLegacyBattle(content, save);
+  if (save.v !== 2 || !save.pending || !save.phase || !save.events) throw new Error('unsupported battle save format');
   const state = createBattle(content, save.config);
-  // a battle saved before it went live simply restarts its deploy phase
-  if (save.tick === 0) return state;
-  runHeadless(state, { until: save.tick, commands: save.commands.filter((c) => c.tick <= save.tick) });
-  const seen = new Set([...state.log, ...state.queue].map((c) => `${c.side}:${c.seq}`));
-  for (const c of save.commands) if (!seen.has(`${c.side}:${c.seq}`)) queueCommand(state, c);
-  while (state.held && draftCommandDue(state)) step(state);
+  if (save.tick > 0) {
+    runHeadless(state, { until: save.tick, commands: save.commands });
+  } else {
+    // Deploy commands and Begin also execute without advancing tick 0.
+    for (const c of save.commands) queueCommand(state, c);
+    if (state.queue.length) step(state);
+    // Headless bot games synthesize Begin rather than retaining it as human input.
+    if (state.phase === 'deploy' && save.phase !== 'deploy') {
+      queueCommand(state, { tick: 0, side: 'player', type: 'begin' });
+      step(state);
+    }
+  }
+  const executed = new Set(state.log.map((c) => `${c.side}:${c.seq}`));
+  for (const c of save.commands) {
+    if (executed.has(`${c.side}:${c.seq}`)) continue;
+    // The only remaining executed input can be a draft answer on the saved, held tick.
+    if (!state.held || c.tick > state.tick + 1 || !isDraft(c)) throw new Error('invalid executed command boundary');
+    queueCommand(state, c);
+    step(state);
+  }
+  for (const c of save.pending) queueCommand(state, c);
+  // Replaying several held/deploy steps together can combine their transient event arrays.
+  // Restore this presentation boundary explicitly; the rest of the replay must still hash exactly.
+  state.events = [...save.events];
+  assertHash(state, save);
+  return state;
+}
+
+const isDraft = (c: Command) => c.type === 'draftPick' || c.type === 'draftReroll' || c.type === 'draftSkip';
+
+function assertHash(state: BattleState, save: BattleSave): void {
   const hash = hashState(state);
   if (hash !== save.hash) throw new Error(`resume diverged at tick ${save.tick}: expected ${save.hash}, got ${hash}`);
+}
+
+/** Legacy saves lack a command boundary. Accept only a replay that matches their complete hash. */
+function resumeLegacyBattle(content: Content, save: BattleSave): BattleState {
+  const state = createBattle(content, save.config);
+  if (save.tick === 0) {
+    assertHash(state, save);
+    return state;
+  }
+  runHeadless(state, { until: save.tick, commands: save.commands.filter((c) => c.tick <= save.tick) });
+  const seen = new Set([...state.log, ...state.queue].map((c) => `${c.side}:${c.seq}`));
+  for (const c of [...save.commands].sort(cmp)) if (!seen.has(`${c.side}:${c.seq}`)) queueCommand(state, c);
+  // A queued answer must remain pending if the pre-execution state is what was saved.
+  if (hashState(state) === save.hash) return state;
+  while (state.held && draftCommandDue(state)) step(state);
+  assertHash(state, save);
   return state;
 }

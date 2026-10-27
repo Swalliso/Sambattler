@@ -6,7 +6,7 @@ import type { Content } from '../data/registry.ts';
 import { sellValue } from '../sim/index.ts';
 import type { BattleState } from '../sim/index.ts';
 import { findBuilding, findUnit, isBesieged, tierDef } from '../sim/world.ts';
-import { h } from './h.ts';
+import { h, setText, toggleClass } from './h.ts';
 import { strongVs, vulnerableTo, weakVs } from './matrixHints.ts';
 import { TIER_NAME, TIER_PIPS, perkText } from './mergeHints.ts';
 
@@ -44,36 +44,62 @@ export class CombatLog {
 export class InspectPanel {
   readonly el = h('section', { class: 'inspect', id: 'inspect' });
   private key = '';
-  private confirmSell = false;
+  private confirmSellFor: number | null = null;
+  private state: BattleState | null = null;
+  private selected: number | null = null;
+  private title = h('h3', null, 'INSPECT');
+  private details = h('div', { style: 'display:flex;flex-direction:column;gap:3px' });
+  private buttons: HTMLElement;
+  private mergeBtn: HTMLButtonElement;
+  private sellBtn: HTMLButtonElement;
 
   constructor(
     private content: Content, private log: CombatLog, private onSell: (id: number) => void,
     private onToggleMerge: (id: number) => void, private mergeShown: (state: BattleState, id: number) => boolean,
   ) {
-    this.el.append(h('h3', null, 'INSPECT'), h('div', { class: 'muted' }, 'Click a building or unit. Hotkeys: 1–8 build, Space pause, [ ] speed, Tab cycle, M merge, X sell, H help.'));
+    // Keep controls mounted across ticks and building selections. Replacing them between pointer
+    // down and up loses the click, and replacing a focused button also loses keyboard focus.
+    this.mergeBtn = h('button', {
+      class: 'btn', id: 'merge-btn',
+      title: 'Merge toggle: three idle units from your buildings knit into a Bloomed unit (three Bloomed make an Elder)',
+      onclick: () => { if (this.selected !== null) this.onToggleMerge(this.selected); },
+    });
+    this.sellBtn = h('button', {
+      class: 'btn', id: 'sell-btn',
+      onclick: () => { if (this.state && this.selected !== null) this.requestSell(this.state, this.selected); },
+    });
+    this.buttons = h('div', { class: 'buttons', hidden: true }, this.mergeBtn, this.sellBtn);
+    this.details.append(h('div', { class: 'muted' }, 'Click a building or unit. Hotkeys: 1–8 build, Space pause, [ ] speed, Tab cycle, M merge, X sell, H help.'));
+    this.el.append(this.title, this.details, this.buttons);
   }
 
   /** First press shows the refund, the second confirms (SPEC §10.3). */
   requestSell(state: BattleState, id: number): void {
     if (!findBuilding(state, id)) return;
-    if (this.confirmSell) { this.confirmSell = false; this.onSell(id); this.key = ''; }
-    else { this.confirmSell = true; this.key = ''; }
+    if (this.confirmSellFor === id) { this.confirmSellFor = null; this.onSell(id); }
+    else this.confirmSellFor = id;
+    this.key = '';
   }
 
-  resetConfirm(): void { this.confirmSell = false; }
+  resetConfirm(): void { this.confirmSellFor = null; }
 
   update(state: BattleState, selected: number | null): void {
+    this.state = state;
+    this.selected = selected;
+    if (this.confirmSellFor !== selected) this.confirmSellFor = null;
     const u = selected ? findUnit(state, selected) : undefined;
     const b = selected && !u ? findBuilding(state, selected) : undefined;
-    const key = `${selected}|${state.tick}|${this.confirmSell}|${state.queue.length}`;
+    const key = `${selected}|${state.tick}|${this.confirmSellFor}|${state.queue.length}`;
     if (key === this.key) return;
     this.key = key;
     if (u) this.renderUnit(state, u.id);
     else if (b) this.renderBuilding(state, b.id);
     else if (this.el.dataset.mode !== 'none') {
       this.el.dataset.mode = 'none';
-      this.confirmSell = false;
-      this.el.replaceChildren(h('h3', null, 'INSPECT'), h('div', { class: 'muted' }, 'Click a building or unit to inspect it. 1–8 build · Space pause · [ ] speed · Tab cycle · M merge · X sell · H help.'));
+      this.confirmSellFor = null;
+      this.buttons.hidden = true;
+      setText(this.title, 'INSPECT');
+      this.details.replaceChildren(h('div', { class: 'muted' }, 'Click a building or unit to inspect it. 1–8 build · Space pause · [ ] speed · Tab cycle · M merge · X sell · H help.'));
     }
   }
 
@@ -102,7 +128,9 @@ export class InspectPanel {
     if (u.knit) pairs.push(['Status', `knitting · ${TIER_NAME[u.tier === 1 ? 1 : 2]} in ${(Math.max(0, u.knit.untilTick - state.tick) / state.rules.tickRate).toFixed(1)}s`]);
     else if (state.config.flags.merging && u.tier < 3) pairs.push(['Merge', u.mergeOn ? 'on' : 'off (its building)']);
     pairs.push(['DPS (5 s)', this.log.dps(state, u.id).toFixed(1)], ['Kills', String(this.log.kills.get(u.id) ?? 0)]);
-    this.el.replaceChildren(h('h3', null, `${def.name} · ${u.side === 'player' ? 'Velvet Bloom' : 'Gray Rot'}`), ...this.rows(pairs));
+    this.buttons.hidden = true;
+    setText(this.title, `${def.name} · ${u.side === 'player' ? 'Velvet Bloom' : 'Gray Rot'}`);
+    this.details.replaceChildren(...this.rows(pairs));
   }
 
   private renderBuilding(state: BattleState, id: number): void {
@@ -123,24 +151,22 @@ export class InspectPanel {
     if (besieged) pairs.push(['Status', 'besieged: ½ speed, cannot sell']);
     const merging = state.config.flags.merging && !!cb.spawn;
     if (merging && b.side !== 'player') pairs.push(['Merging', b.mergeOn ? 'on' : 'off']);
-    const children: HTMLElement[] = [h('h3', null, `${def.name} · ${b.side === 'player' ? 'yours' : 'Gray Rot'}`), ...this.rows(pairs)];
+    setText(this.title, `${def.name} · ${b.side === 'player' ? 'yours' : 'Gray Rot'}`);
+    this.details.replaceChildren(...this.rows(pairs));
+    this.buttons.hidden = b.side !== 'player';
     if (b.side === 'player') {
       const refund = sellValue(state, b.id);
-      const buttons = h('div', { class: 'buttons' });
+      this.mergeBtn.hidden = !merging;
       if (merging) {
         const on = this.mergeShown(state, b.id);
-        buttons.append(h('button', {
-          class: `btn ${on ? 'on' : ''}`, id: 'merge-btn', disabled: state.phase === 'ended',
-          title: 'Merge toggle: three idle units from your buildings knit into a Bloomed unit (three Bloomed make an Elder)',
-          onclick: () => this.onToggleMerge(b.id),
-        }, `Merge ${on ? 'ON' : 'OFF'} [M]`));
+        toggleClass(this.mergeBtn, 'on', on);
+        this.mergeBtn.disabled = state.phase === 'ended';
+        setText(this.mergeBtn, `Merge ${on ? 'ON' : 'OFF'} [M]`);
       }
-      buttons.append(h('button', {
-        class: `btn ${this.confirmSell ? 'danger' : ''}`, id: 'sell-btn', disabled: besieged || state.phase === 'ended',
-        onclick: () => this.requestSell(state, b.id),
-      }, this.confirmSell ? `Confirm sell (+${refund}) [X]` : `Sell for ${refund} [X]`));
-      children.push(buttons);
+      const confirm = this.confirmSellFor === b.id;
+      toggleClass(this.sellBtn, 'danger', confirm);
+      this.sellBtn.disabled = besieged || state.phase === 'ended';
+      setText(this.sellBtn, confirm ? `Confirm sell (+${refund}) [X]` : `Sell for ${refund} [X]`);
     }
-    this.el.replaceChildren(...children);
   }
 }

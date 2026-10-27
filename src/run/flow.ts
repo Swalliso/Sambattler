@@ -91,6 +91,11 @@ export function battleConfig(content: Content, run: RunState, node: RouteNode): 
     heartcapMaxHp: enemyHp,
     startingGold: gold,
   };
+  // Run progression may introduce buildings the historical single-battle profile never bought.
+  // Give only those kit entries a purchase path, leaving the base profile and its replays intact.
+  const generalWeights = content.generals[node.general ?? 'scripted']!.weights;
+  const extraWeights = Object.fromEntries(enemyKit.filter((id) => !(generalWeights[id]! > 0)).map((id) => [id, 1]));
+  if (Object.keys(extraWeights).length) enemy.aiWeights = extraWeights;
   if (Object.keys(enemyUpgrades).length) enemy.upgrades = enemyUpgrades;
   const modifiers: BattleModifier[] = [];
   const elite = node.elite ? content.elites[node.elite] : undefined;
@@ -283,14 +288,62 @@ function repair(run: RunState, pct: number): void {
   run.heartcap.hp = Math.min(run.heartcap.max, run.heartcap.hp + Math.round(run.heartcap.max * pct));
 }
 
-/** Can this outcome apply right now? (A choice is offered only if every part of it can.) */
-export function outcomeAvailable(content: Content, run: RunState, outcome: readonly RunEffect[]): boolean {
-  for (const e of outcome) {
-    if ('removeBlueprint' in e && !nonStarter(content, run).length) return false;
-    if ('upgrade' in e && !upgradeable(content, run, e.upgrade.ownedOnly).length) return false;
-    if ('sacrificeRelic' in e && !run.relics.length) return false;
+const withoutBlueprint = (run: RunState, id: string): RunState => ({ ...run, kit: run.kit.filter((b) => b !== id) });
+const withUpgrade = (run: RunState, id: string): RunState => ({ ...run, upgrades: { ...run.upgrades, [id]: (run.upgrades[id] ?? 0) + 1 } });
+const withoutRelic = (run: RunState, id: string): RunState => ({ ...run, relics: run.relics.filter((r) => r !== id) });
+
+function sacrificeRarity(content: Content, id: string, shift: number): Rarity {
+  return RARITIES[Math.max(0, RARITIES.indexOf(content.relics[id]!.rarity) + shift)]!;
+}
+
+/** Remaining effects after one chosen upgrade level. */
+function afterUpgrade(e: Extract<RunEffect, { upgrade: unknown }>, rest: readonly RunEffect[]): readonly RunEffect[] {
+  return e.upgrade.count > 1 ? [{ upgrade: { ...e.upgrade, count: e.upgrade.count - 1 } }, ...rest] : rest;
+}
+
+/** A resource-only preview. Choosing a representative relic never advances an RNG stream. */
+function previewRelics(content: Content, run: RunState, count: number, rarity?: Rarity): RunState | null {
+  let preview = run;
+  for (let i = 0; i < count; i++) {
+    const id = relicCandidates(content, preview, rarity)[0];
+    if (!id) return null;
+    preview = { ...preview, relics: [...preview.relics, id] };
   }
-  return true;
+  return preview;
+}
+
+/** Prompt options that leave enough resources to pay the entire remaining outcome. */
+function outcomeOptions(content: Content, run: RunState, outcome: readonly RunEffect[]): string[] {
+  const [e, ...rest] = outcome;
+  if (!e) return [];
+  if ('removeBlueprint' in e) {
+    return nonStarter(content, run).filter((id) => outcomeAvailable(content, withoutBlueprint(run, id), rest));
+  }
+  if ('upgrade' in e) {
+    const options = upgradeable(content, run, e.upgrade.ownedOnly);
+    const slots = options.reduce((n, id) => n + content.upgrades[id]!.levels.length - (run.upgrades[id] ?? 0), 0);
+    if (slots < e.upgrade.count) return [];
+    return options.filter((id) => outcomeAvailable(content, withUpgrade(run, id), afterUpgrade(e, rest)));
+  }
+  if ('sacrificeRelic' in e) {
+    return run.relics.filter((id) => {
+      const preview = previewRelics(content, withoutRelic(run, id), e.sacrificeRelic.gain, sacrificeRarity(content, id, e.sacrificeRelic.rarityShift));
+      return preview !== null && outcomeAvailable(content, preview, rest);
+    });
+  }
+  return [];
+}
+
+/** Can every promised effect resolve, including the rewards after a blueprint or relic is removed? */
+export function outcomeAvailable(content: Content, run: RunState, outcome: readonly RunEffect[]): boolean {
+  const [e, ...rest] = outcome;
+  if (!e) return true;
+  if ('removeBlueprint' in e || 'upgrade' in e || 'sacrificeRelic' in e) return outcomeOptions(content, run, outcome).length > 0;
+  if ('gainRelic' in e) {
+    const preview = previewRelics(content, run, e.gainRelic.count ?? 1, e.gainRelic.rarity);
+    return preview !== null && outcomeAvailable(content, preview, rest);
+  }
+  return outcomeAvailable(content, run, rest);
 }
 
 export function eventChoose(content: Content, run: RunState, choice: number): void {
@@ -303,11 +356,50 @@ export function eventChoose(content: Content, run: RunState, choice: number): vo
   resolvePending(content, run, ev.title);
 }
 
+/** Recover legacy choices whose rewards are no longer feasible, preserving already-paid progress. */
+export function recoverPendingChoice(content: Content, run: RunState): string | null {
+  if (run.screen.kind !== 'prompt') return null;
+  const prompt = run.screen.prompt;
+  const e = run.pending[0];
+  if (e && ('removeBlueprint' in e || 'sacrificeRelic' in e)) {
+    const options = outcomeOptions(content, run, run.pending);
+    if (options.length) {
+      if (options.length === prompt.options.length && options.every((id, i) => id === prompt.options[i])) return null;
+      run.screen = { kind: 'prompt', prompt: { ...prompt, options } };
+      return 'Some saved trade options can no longer deliver their full reward. Choose an available option; no items have been spent.';
+    }
+    // In the current events the blueprint/relic prompt precedes its cost. Returning to the event
+    // lets the player decline an impossible trade without discarding their run or charging them.
+    const row = currentRow(run) - 1;
+    const node = nodeAt(run, row, run.path[row]!);
+    const event = node?.kind === 'event' && content.events[node.event!] ? node.event
+      : content.eventOrder.find((id) => content.events[id]!.title === prompt.title);
+    run.pending = [];
+    run.screen = event ? { kind: 'event', event } : { kind: 'route' };
+    return event
+      ? 'This saved trade can no longer deliver its full reward. No items were spent; choose another event option to continue.'
+      : 'This saved trade can no longer deliver its full reward. No items were spent; your run progress is preserved and you can continue along the route.';
+  }
+  if (prompt.optionKind !== 'upgrade') return null;
+  if (!e || !('upgrade' in e) || e.upgrade.pick !== 'choose') return null;
+  const slots = upgradeable(content, run, e.upgrade.ownedOnly)
+    .reduce((n, id) => n + content.upgrades[id]!.levels.length - (run.upgrades[id] ?? 0), 0);
+  if (slots >= e.upgrade.count) return null;
+  const promised = e.upgrade.count;
+  const title = prompt.title;
+  if (slots > 0) run.pending[0] = { upgrade: { ...e.upgrade, count: slots } };
+  else run.pending.shift();
+  resolvePending(content, run, title);
+  return slots > 0
+    ? `This saved upgrade choice has room for only ${slots} of its ${promised} remaining levels. Take the available upgrade${slots === 1 ? '' : 's'} and continue without paying again.`
+    : `This saved upgrade choice could not restore its ${promised} remaining level${promised === 1 ? '' : 's'} because every eligible track is full. Your run progress is preserved; you can continue without paying again.`;
+}
+
 /** Answers the open prompt with one of its options. */
 export function promptAnswer(content: Content, run: RunState, option: string): void {
   if (run.screen.kind !== 'prompt') throw new Error('no prompt open');
   const p = run.screen.prompt;
-  if (!p.options.includes(option)) throw new Error(`${option} is not an option`);
+  if (!p.options.includes(option) || !outcomeOptions(content, run, run.pending).includes(option)) throw new Error(`${option} is not an available option`);
   const e = run.pending[0]!;
   if ('removeBlueprint' in e) {
     run.kit = run.kit.filter((id) => id !== option);
@@ -318,27 +410,32 @@ export function promptAnswer(content: Content, run: RunState, option: string): v
     if (p.remaining > 1) run.pending[0] = { upgrade: { ...e.upgrade, count: p.remaining - 1 } };
     else run.pending.shift();
   } else if ('sacrificeRelic' in e) {
-    const rarity = content.relics[option]!.rarity;
     run.relics = run.relics.filter((id) => id !== option);
-    const target = RARITIES[Math.max(0, RARITIES.indexOf(rarity) + e.sacrificeRelic.rarityShift)]!;
+    const target = sacrificeRarity(content, option, e.sacrificeRelic.rarityShift);
     for (let i = 0; i < e.sacrificeRelic.gain; i++) gainRelic(content, run, target, p.title);
     run.pending.shift();
   }
   resolvePending(content, run, p.title);
 }
 
-/** A random unowned relic from the pool at `rarity` (falling back to lower, then higher rarities). */
-function gainRelic(content: Content, run: RunState, rarity: Rarity | undefined, source: string): void {
+/** Unowned relics at the requested rarity, falling back to lower, then higher rarities. */
+function relicCandidates(content: Content, run: RunState, rarity?: Rarity): string[] {
   const pool = runPool(content, run).relics.filter((id) => !run.relics.includes(id));
   const order = rarity ? [rarity, ...RARITIES.slice(0, RARITIES.indexOf(rarity)).reverse(), ...RARITIES.slice(RARITIES.indexOf(rarity) + 1)] : [...RARITIES];
   for (const r of order) {
     const list = rarity ? pool.filter((id) => content.relics[id]!.rarity === r) : pool;
-    if (!list.length) continue;
-    const id = list[nextInt(run.rng.events, list.length)]!;
-    run.relics.push(id);
-    run.cards.push({ card: `relic:${id}`, source });
-    return;
+    if (list.length) return list;
   }
+  return [];
+}
+
+/** A random unowned relic from the pool at `rarity` (falling back to lower, then higher rarities). */
+function gainRelic(content: Content, run: RunState, rarity: Rarity | undefined, source: string): void {
+  const list = relicCandidates(content, run, rarity);
+  if (!list.length) throw new Error('no relics left to gain');
+  const id = list[nextInt(run.rng.events, list.length)]!;
+  run.relics.push(id);
+  run.cards.push({ card: `relic:${id}`, source });
 }
 
 /** Applies pending outcomes in order, stopping at the first that needs a choice. */
@@ -358,12 +455,12 @@ function resolvePending(content: Content, run: RunState, title: string): void {
       run.next.sporestormShiftSeconds += e.nextBattle.sporestormShiftSeconds ?? 0;
     } else if ('halveIntel' in e) run.intelHalvings++;
     else if ('upgrade' in e) {
-      const options = upgradeable(content, run, e.upgrade.ownedOnly);
-      if (!options.length) { /* nothing left to upgrade */ }
-      else if (e.upgrade.pick === 'random') {
+      const options = outcomeOptions(content, run, run.pending);
+      if (!options.length) throw new Error('the remaining upgrades are not available');
+      if (e.upgrade.pick === 'random') {
         for (let i = 0; i < e.upgrade.count; i++) {
-          const opts = upgradeable(content, run, e.upgrade.ownedOnly);
-          if (!opts.length) break;
+          const remaining = [{ upgrade: { ...e.upgrade, count: e.upgrade.count - i } }, ...run.pending.slice(1)];
+          const opts = outcomeOptions(content, run, remaining);
           const id = opts[nextInt(run.rng.events, opts.length)]!;
           run.upgrades[id] = (run.upgrades[id] ?? 0) + 1;
           run.cards.push({ card: `up:${id}`, source: title });
@@ -372,10 +469,13 @@ function resolvePending(content: Content, run: RunState, title: string): void {
         prompt = { title, text: 'Choose an upgrade track for +1 level.', options, optionKind: 'upgrade', remaining: e.upgrade.count };
       }
     } else if ('removeBlueprint' in e) {
-      const options = nonStarter(content, run);
-      if (options.length) prompt = { title, text: 'Choose a blueprint to give up.', options, optionKind: 'blueprint', remaining: 1 };
+      const options = outcomeOptions(content, run, run.pending);
+      if (!options.length) throw new Error('no blueprint can be traded for the remaining rewards');
+      prompt = { title, text: 'Choose a blueprint to give up.', options, optionKind: 'blueprint', remaining: 1 };
     } else if ('sacrificeRelic' in e) {
-      if (run.relics.length) prompt = { title, text: 'Choose a relic to sacrifice.', options: [...run.relics], optionKind: 'relic', remaining: 1 };
+      const options = outcomeOptions(content, run, run.pending);
+      if (!options.length) throw new Error('no relic can be sacrificed for the remaining rewards');
+      prompt = { title, text: 'Choose a relic to sacrifice.', options, optionKind: 'relic', remaining: 1 };
     }
     if (prompt) { run.screen = { kind: 'prompt', prompt }; return; }
     run.pending.shift();

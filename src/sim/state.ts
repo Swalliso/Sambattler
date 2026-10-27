@@ -44,6 +44,8 @@ export interface SideConfig {
   draft?: DraftPool;
   /** Draft policy for an AI-controlled side (default greedy); humans always draft through the UI. */
   autoDraft?: DraftPolicy;
+  /** Battle-specific purchase weights, used when a run adds buildings outside the base AI profile. */
+  aiWeights?: Record<string, number>;
 }
 
 /** A battle-wide effect source: an event outcome, the elite modifier, later blights (SPEC §14.4). */
@@ -293,6 +295,8 @@ export interface BuildingState {
   lastDamagedTick: number;
   placedTick: number;
   pricePaid: number;
+  /** A spawn, gold payout or shot ends the live placement's full-refund grace period. */
+  hasProduced: boolean;
   mergeOn: boolean;
   holding: boolean;
 }

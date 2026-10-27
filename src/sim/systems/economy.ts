@@ -52,6 +52,7 @@ export function incomeSystem(state: BattleState): void {
         let g = baseGold(state, b, def);
         if (footprintOnLoam(state, b.col, b.row, def.w, def.h)) g = Math.floor((g * (100 + cs.loamBonusPct)) / 100);
         if (isBesieged(state, b)) g = Math.floor((g * r.besiegedIncomePct) / 100);
+        if (g > 0) b.hasProduced = true;
         total += g;
         stats.goldEarned.economy += g;
         const key = String(b.id);

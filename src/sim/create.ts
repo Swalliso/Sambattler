@@ -315,6 +315,7 @@ export function addBuilding(state: BattleState, side: Side, buildingId: string, 
     lastDamagedTick: -100000,
     placedTick: state.tick,
     pricePaid,
+    hasProduced: false,
     mergeOn: true,
     holding: false,
   };

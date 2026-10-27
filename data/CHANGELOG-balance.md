@@ -3,6 +3,26 @@
 Every change from the SPEC's first-pass numbers, with the guardrail or verification result that
 motivated it. Tools: `npm run balance -- duel`, `npm run balance -- tournament`, `npm run test:slow`.
 
+## Review fixes (2026-10-27)
+
+- A live building loses its full-refund entitlement when it first spawns units, earns gold, or
+  fires. The 10 s grace period still covers unused placements, and deploy refunds remain 100%.
+  This closes free-unit, free-income and free-shot placement/sale cycles. Normal refund relics
+  still apply after production; units already spawned remain on the field.
+- Run enemy kits now supply purchase weights for progression buildings absent from the original
+  general profile. The boss can buy its seventh building (Scythecap Grove), so upgrades on that
+  track are useful. Historical single-battle profiles and all unit/building numbers are unchanged.
+- Compared 40 single battles (seeds 1–20 on Bogwater Hollow and Twin Roots) with the pre-fix build:
+  identical gameplay fingerprints, including results, duration, spawns, damage, income and fronts.
+  The slow suite still passes G1, G2, G4, G5, G6, G7 and G11; G3 still fails at 100% mono Gill Nest.
+- Golden replay hashes were refreshed because `BuildingState.hasProduced` is now part of the
+  deterministic state. M1/M2 replays have hash-only changes. M3 seed 7 also changes actual boss
+  behavior: its first three battles retain their outcomes and lengths, but the boss now wins by
+  Rout at tick 8102, where it previously lost at tick 6757. This difficulty change is the intended
+  consequence of fixing the unusable boss kit; it is not an archer rebalance.
+- Archer-balance candidates are recorded in [the solutions backlog](../docs/balance-backlog.md).
+  No candidate is implemented by these fixes.
+
 ## Milestone 3 (2026-10-26)
 
 The run loop: drafts, upgrade tracks (SPEC §11.6), 21 relics (§11.7 plus five new ones), events, the

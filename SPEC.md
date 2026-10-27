@@ -255,7 +255,7 @@ Common fields: footprint (all v1 buildings are 2×2; footprint is data-driven), 
 - **Merge toggle:** every spawner has one, default **on** (§5.6).
 - **Selling:**
   - Allowed for your own buildings at any time, including while paused, **except while besieged**. This blocks selling a building just before it dies.
-  - Refund: **100%** of the price paid if you sell during `deploy` or within 10 s of placing it; otherwise **60%**, rounded down.
+  - Refund: **100%** of the price paid during `deploy`, or within 10 s of placement **before the building has spawned units, earned gold, or fired a shot**; otherwise **60%**, rounded down (modified by refund relics). Once a live building has produced anything, the full-refund entitlement does not return even if its units die. This prevents free production through repeated placement and selling.
   - The tiles free up at once, and units the building already spawned stay on the field.
 - **Destroyed:** the building is removed with no refund and emits an event. If it stood in your border column, that column becomes capturable again.
 
@@ -793,13 +793,15 @@ The route map has six rows. You pick one node per row, and every node connects t
 ### 8.9 Save and resume
 
 - **Autosave** run state at every node boundary.
-- **Mid-battle saves:** store the battle config plus the command log at every wave boundary and on `visibilitychange`.
+- **Mid-battle saves:** store the battle config, executed human command log, pending human command queue, phase, tick, last-step events and state hash at every wave boundary and on `visibilitychange`. Keep executed and pending commands separate: a draft can execute commands stamped tick T+1 while holding the clock at T.
 - **Resume:**
-  1. Re-simulate headlessly from tick 0, applying the log.
-  2. Verify the state hash.
+  1. Re-simulate headlessly from tick 0, applying only executed input, including draft decisions on the held tick. Restore pending commands without executing them, and restore the last-step event boundary.
+  2. Verify the state hash. Accept legacy checkpoints only if their replay matches; an incompatible checkpoint visibly restarts the current battle from deployment while preserving the run's progress.
   3. Continue play.
 
   A battle is at most 12,000 ticks, so replaying takes about a second.
+
+- **Legacy event prompts:** if an old save offers a sacrifice that can no longer pay its full reward, return to the event choices before charging that cost. If an older version already charged the cost for an upgrade reward, offer the levels its remaining tracks can hold (or continue if none fit), with a visible shortfall notice and preserved run progress.
 
 ---
 
@@ -2311,7 +2313,7 @@ The interview didn't cover these. Each is a deliberate default that's easy to ch
 | D15 | Desktop only, no audio in v1 | Focus on proving the gameplay first |
 | D16 | Milestone 1's enemy is a gray mirror of the Velvet Bloom roster; the distinct Gray Rot roster comes in M7 | The smallest slice that still has a real opponent |
 | D17 | Interest: +1 per 20 banked, capped at 10. Comeback: +1 per 2 columns behind per income tick, capped at 6. | Noticeable but not dominant; the Sporestorm punishes banking passively |
-| D18 | Selling refunds 100% during deploy or within 10 s of placing, otherwise 60%; no selling while besieged | Forgiving for misclicks, and blocks selling a building just before it dies |
+| D18 | Selling refunds 100% during deploy or within 10 s before a building produces units, gold or a shot; otherwise 60%; no selling while besieged | Forgiving for misclicks, prevents free-production cycles, and blocks selling a building just before it dies |
 | D19 | One input per meta system: feats unlock content, Spores buy traits and capacity, Amber buys strain ranks, XP feeds mastery | Four systems without currency soup |
 | D20 | Spores are kept on failed runs | Progress never feels wasted |
 | D21 | Route: pick one node per row, fully connected | Simpler than a path graph and still a real choice every step |

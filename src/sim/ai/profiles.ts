@@ -34,6 +34,7 @@ export function resolveAiProfile(content: Content, ctl: Controller, side: SideCo
     mergePolicy = bot.mergePolicy;
     if (bot.placement?.spawnerDepthWeight !== undefined) spawnerDepthWeight = bot.placement.spawnerDepthWeight;
   }
+  if (side.aiWeights) weights = { ...weights, ...side.aiWeights };
   const list: AiWeight[] = [];
   for (const id of content.buildingOrder) {
     const w = weights[id];
