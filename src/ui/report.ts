@@ -123,7 +123,7 @@ export function damageByType(content: Content, state: BattleState, side: Side): 
     .sort((a, b) => b.value - a.value || (a.label < b.label ? -1 : 1));
 }
 
-export function battleReport(content: Content, state: BattleState, actions: { again: () => void; rematch: () => void }): HTMLElement {
+export function battleReport(content: Content, state: BattleState, actions: { again: () => void; rematch: () => void; continueRun?: () => void }): HTMLElement {
   const o = state.outcome!;
   const won = o.winner === 'player';
   const st = state.stats;
@@ -168,10 +168,12 @@ export function battleReport(content: Content, state: BattleState, actions: { ag
         ),
       ),
     ),
-    h('div', { class: 'actions' },
-      h('button', { class: 'btn', onclick: actions.rematch, id: 'rematch' }, 'Rematch (same seed)'),
-      h('button', { class: 'btn on', onclick: actions.again, id: 'play-again' }, 'Play again'),
-    ),
+    actions.continueRun
+      ? h('div', { class: 'actions' }, h('button', { class: 'btn on', onclick: actions.continueRun, id: 'continue-run' }, 'Continue the run'))
+      : h('div', { class: 'actions' },
+        h('button', { class: 'btn', onclick: actions.rematch, id: 'rematch' }, 'Rematch (same seed)'),
+        h('button', { class: 'btn on', onclick: actions.again, id: 'play-again' }, 'Play again'),
+      ),
   );
   return h('div', { class: 'overlay' }, card);
 }

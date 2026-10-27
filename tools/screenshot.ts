@@ -9,8 +9,10 @@ import { existsSync, mkdirSync, readdirSync, statSync, writeFileSync } from 'nod
 import { join } from 'node:path';
 import { chromium, firefox } from 'playwright';
 import { nodeContent, ROOT } from './lib/content.ts';
-import { stateForParams } from './lib/params.ts';
+import { RUN_SCENES, runForParams, sceneOf, stateForParams } from './lib/params.ts';
+import { hashRun } from '../src/run/index.ts';
 import { hashState, summarize } from '../src/sim/index.ts';
+import type { BattleState } from '../src/sim/index.ts';
 
 interface Args { name: string; params: string; url?: string; browser: 'chromium' | 'firefox'; filter?: 'deuteranopia' | 'protanopia' }
 
@@ -107,57 +109,111 @@ async function main(): Promise<number> {
     const bridgeErrors = await page.evaluate(() => window.__GAME__!.errors);
     for (const e of [...consoleErrors, ...bridgeErrors]) failures.push(`console/page error: ${e}`);
 
-    // 2. browser hash == Node hash at the same tick
+    // 2. browser hash == Node hash at the same tick (the battle's state, or the run's on run screens)
+    const scene = sceneOf(q);
     const browserTick = await page.evaluate(() => window.__GAME__!.tick);
     const browserHash = await page.evaluate(() => window.__GAME__!.hash);
     const summary = await page.evaluate(() => window.__GAME__!.summary());
     const content = nodeContent();
-    const node = stateForParams(content, q);
-    if (node.tick !== browserTick) failures.push(`tick mismatch: browser ${browserTick}, node ${node.tick}`);
-    const nodeHash = hashState(node);
+    let node: BattleState | null;
+    let nodeHash: string;
+    let runBrief: unknown = null;
+    if (RUN_SCENES.includes(scene)) {
+      const r = runForParams(content, q);
+      node = r.battle;
+      nodeHash = node ? hashState(node) : hashRun(r.run);
+      runBrief = await page.evaluate(() => window.__GAME__!.run());
+    } else {
+      node = stateForParams(content, q);
+      nodeHash = hashState(node);
+    }
+    if ((node?.tick ?? 0) !== browserTick) failures.push(`tick mismatch: browser ${browserTick}, node ${node?.tick ?? 0}`);
     if (nodeHash !== browserHash) failures.push(`hash mismatch at tick ${browserTick}: browser ${browserHash}, node ${nodeHash}`);
 
-    // 3. canvas not blank: ≥12 distinct colours on a sampled grid; both team tints in their home columns
-    const pal = { player: content.factions['velvet-bloom']!.mat.strand, enemy: content.factions['gray-rot']!.mat.strand };
-    // (a script string, not a function: tsx would inject __name helpers the page does not have)
-    const canvasCheck = await page.evaluate(`(() => {
-      const pal = ${JSON.stringify(pal)}, homeCols = ${node.map.homeCols}, mapW = ${node.map.width};
-      const c = document.getElementById('battlefield');
-      const img = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
-      const hex = (i) => '#' + [img[i], img[i + 1], img[i + 2]].map((v) => v.toString(16).padStart(2, '0')).join('');
-      const colors = new Set();
-      for (let y = 2; y < c.height; y += 6) for (let x = 2; x < c.width; x += 6) colors.add(hex((y * c.width + x) * 4));
-      // a pixel counts as a team tint if it is within a small RGB distance of that team's strand colour
-      // (the Sporestorm haze and capture fills shift colours slightly) and nearer to it than to the other team's
-      const rgb = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
-      const P = rgb(pal.player), E = rgb(pal.enemy);
-      const d2 = (i, q) => (img[i] - q[0]) ** 2 + (img[i + 1] - q[1]) ** 2 + (img[i + 2] - q[2]) ** 2;
-      const has = (x0, x1, color) => {
-        const mine = color === pal.player ? P : E, theirs = color === pal.player ? E : P;
-        for (let y = 0; y < c.height; y++) for (let x = x0; x < x1; x++) {
-          const i = (y * c.width + x) * 4;
-          if (d2(i, mine) <= 40 * 40 && d2(i, mine) < d2(i, theirs)) return true;
-        }
-        return false;
-      };
-      const T = 16, strip = 2;
-      return {
-        distinct: colors.size,
-        playerTint: has(strip * T, (strip + homeCols) * T, pal.player),
-        enemyTint: has((strip + mapW - homeCols) * T, (strip + mapW) * T, pal.enemy),
-      };
-    })()`) as { distinct: number; playerTint: boolean; enemyTint: boolean };
-    if (canvasCheck.distinct < 12) failures.push(`canvas looks blank: ${canvasCheck.distinct} distinct colours sampled (need ≥12)`);
-    if (!canvasCheck.playerTint) failures.push('violet mat tint missing from the player home columns');
-    if (!canvasCheck.enemyTint) failures.push('gray mat tint missing from the enemy home columns');
+    let canvasCheck: { distinct: number; playerTint: boolean; enemyTint: boolean } | null = null;
+    let hud: { gold?: string | null; supply?: string | null } | null = null;
+    let dom: Record<string, unknown> | null = null;
+    if (node && summary) {
+      // 3. canvas not blank: ≥12 distinct colours on a sampled grid; both team tints in their home columns
+      const pal = { player: content.factions['velvet-bloom']!.mat.strand, enemy: content.factions['gray-rot']!.mat.strand };
+      // (a script string, not a function: tsx would inject __name helpers the page does not have)
+      canvasCheck = await page.evaluate(`(() => {
+        const pal = ${JSON.stringify(pal)}, homeCols = ${node.map.homeCols}, mapW = ${node.map.width};
+        const c = document.getElementById('battlefield');
+        const img = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+        const hex = (i) => '#' + [img[i], img[i + 1], img[i + 2]].map((v) => v.toString(16).padStart(2, '0')).join('');
+        const colors = new Set();
+        for (let y = 2; y < c.height; y += 6) for (let x = 2; x < c.width; x += 6) colors.add(hex((y * c.width + x) * 4));
+        // a pixel counts as a team tint if it is within a small RGB distance of that team's strand colour
+        // (the Sporestorm haze and capture fills shift colours slightly) and nearer to it than to the other team's
+        const rgb = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+        const P = rgb(pal.player), E = rgb(pal.enemy);
+        const d2 = (i, q) => (img[i] - q[0]) ** 2 + (img[i + 1] - q[1]) ** 2 + (img[i + 2] - q[2]) ** 2;
+        const has = (x0, x1, color) => {
+          const mine = color === pal.player ? P : E, theirs = color === pal.player ? E : P;
+          for (let y = 0; y < c.height; y++) for (let x = x0; x < x1; x++) {
+            const i = (y * c.width + x) * 4;
+            if (d2(i, mine) <= 40 * 40 && d2(i, mine) < d2(i, theirs)) return true;
+          }
+          return false;
+        };
+        const T = 16, strip = 2;
+        return {
+          distinct: colors.size,
+          playerTint: has(strip * T, (strip + homeCols) * T, pal.player),
+          enemyTint: has((strip + mapW - homeCols) * T, (strip + mapW) * T, pal.enemy),
+        };
+      })()`) as { distinct: number; playerTint: boolean; enemyTint: boolean };
+      if (canvasCheck.distinct < 12) failures.push(`canvas looks blank: ${canvasCheck.distinct} distinct colours sampled (need ≥12)`);
+      if (!canvasCheck.playerTint) failures.push('violet mat tint missing from the player home columns');
+      if (!canvasCheck.enemyTint) failures.push('gray mat tint missing from the enemy home columns');
 
-    // 4. the HUD agrees with the state
-    const hud = await page.evaluate(() => ({
-      gold: document.getElementById('hud-gold')?.textContent,
-      supply: document.getElementById('hud-supply')?.textContent,
-    }));
-    if (hud.gold !== String(summary.gold.player)) failures.push(`#hud-gold "${hud.gold}" != summary gold ${summary.gold.player}`);
-    if (hud.supply !== summary.supply.player.text) failures.push(`#hud-supply "${hud.supply}" != summary supply ${summary.supply.player.text}`);
+      // 4. the HUD agrees with the state
+      hud = await page.evaluate(() => ({
+        gold: document.getElementById('hud-gold')?.textContent,
+        supply: document.getElementById('hud-supply')?.textContent,
+      }));
+      if (hud.gold !== String(summary.gold.player)) failures.push(`#hud-gold "${hud.gold}" != summary gold ${summary.gold.player}`);
+      if (hud.supply !== summary.supply.player.text) failures.push(`#hud-supply "${hud.supply}" != summary supply ${summary.supply.player.text}`);
+    }
+
+    // 4b. run screens: the DOM shows what the run state holds
+    if (scene === 'draft') {
+      dom = await page.evaluate(() => [...document.querySelectorAll('#draft .draft-card')].map((c) => ({
+        type: c.querySelector('.draft-type')?.textContent ?? '', rarity: c.querySelector('.draft-rarity')?.textContent ?? '',
+        name: c.querySelector('.draft-name')?.textContent ?? '', text: c.querySelector('.draft-text')?.textContent ?? '',
+      }))).then((cards) => ({ cards }));
+      const cards = (dom as { cards: { type: string; rarity: string; name: string; text: string }[] }).cards;
+      const offer = node?.sides.player.draft?.offer.length ?? 0;
+      if (!offer) failures.push('no draft is open in the Node state');
+      if (cards.length !== offer) failures.push(`draft shows ${cards.length} cards, the state offers ${offer}`);
+      for (const c of cards) if (!c.type || !c.rarity || !c.name || !c.text) failures.push(`draft card missing type, rarity, name or text: ${JSON.stringify(c)}`);
+    } else if (scene === 'route' || scene === 'run') {
+      dom = await page.evaluate(() => ({
+        rows: document.querySelectorAll('.route-row').length,
+        nodes: [...document.querySelectorAll('.route-node')].map((n) => ({
+          kind: n.getAttribute('data-kind'), icon: !!n.querySelector('canvas.node-icon'), map: n.querySelector('.node-map')?.textContent ?? null,
+        })),
+        open: document.querySelectorAll('.route-node.open').length,
+      }));
+      const d = dom as { rows: number; nodes: { kind: string; icon: boolean; map: string | null }[]; open: number };
+      if (d.rows !== 6) failures.push(`route shows ${d.rows} rows (expected 6)`);
+      for (const n of d.nodes) {
+        if (!n.icon) failures.push(`a ${n.kind} node has no icon`);
+        if (['battle', 'elite', 'boss'].includes(n.kind) && !n.map) failures.push(`a ${n.kind} node does not name its map`);
+      }
+      if (!d.open) failures.push('no node is selectable in the current row');
+    } else if (scene === 'summary') {
+      dom = await page.evaluate(() => ({
+        title: document.getElementById('summary-title')?.textContent ?? '',
+        battles: [...document.querySelectorAll('.summary-battle')].map((r) => r.querySelector('.result')?.textContent ?? ''),
+      }));
+      const d = dom as { title: string; battles: string[] };
+      const n = (runBrief as { battles: unknown[] } | null)?.battles.length ?? -1;
+      if (!d.title) failures.push('the summary has no title');
+      if (d.battles.length !== n) failures.push(`summary lists ${d.battles.length} battles, the run has ${n}`);
+      for (const r of d.battles) if (!/^(Won|Lost) by (Rout|Decision)$/.test(r)) failures.push(`summary row without a result: "${r}"`);
+    }
 
     // 5. artifacts
     const dir = join(ROOT, 'artifacts', 'screenshots');
@@ -165,12 +221,12 @@ async function main(): Promise<number> {
     await page.screenshot({ path: join(dir, `${args.name}.png`) });
     const report = {
       name: args.name, url, browser: args.browser, filter: args.filter ?? null,
-      tick: browserTick, browserHash, nodeHash, canvas: canvasCheck, hud,
-      summary: { ...summarize(node), stats: undefined },
+      scene, tick: browserTick, browserHash, nodeHash, canvas: canvasCheck, hud, dom, run: runBrief,
+      summary: node ? { ...summarize(node), stats: undefined } : null,
       failures,
     };
     writeFileSync(join(dir, `${args.name}.json`), JSON.stringify(report, null, 2));
-    console.log(`${failures.length ? 'FAIL' : 'PASS'}  ${args.name}: tick ${browserTick} · hash ${browserHash} (node ${nodeHash}) · ${canvasCheck.distinct} colours · artifacts/screenshots/${args.name}.png`);
+    console.log(`${failures.length ? 'FAIL' : 'PASS'}  ${args.name}: ${scene} · tick ${browserTick} · hash ${browserHash} (node ${nodeHash})${canvasCheck ? ` · ${canvasCheck.distinct} colours` : ''} · artifacts/screenshots/${args.name}.png`);
     for (const f of failures) console.log(`      - ${f}`);
   } finally {
     await browser.close();
