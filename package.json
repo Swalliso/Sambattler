@@ -2,7 +2,7 @@
   "name": "spore-and-sprawl",
   "version": "0.1.0",
   "private": true,
-  "description": "Spore & Sprawl: a lane tug-of-war auto-battler roguelite (Milestone 3: run loop, drafts, relics, carryover).",
+  "description": "Spore & Sprawl: a lane tug-of-war auto-battler roguelite (Milestone 4: adaptive generals, counter cycles and the intel file).",
   "type": "module",
   "engines": {
     "node": ">=20"

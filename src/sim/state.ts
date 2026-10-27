@@ -23,6 +23,11 @@ export type Controller =
   | { kind: 'bot'; id: string };
 
 export type Rarity = 'common' | 'uncommon' | 'rare';
+/** The general's four counter kinds (SPEC §7.4). */
+export type CounterKind = 'swarm' | 'line' | 'armor' | 'elite';
+export const COUNTER_KINDS: readonly CounterKind[] = ['swarm', 'line', 'armor', 'elite'];
+/** A player profile over the four kinds: an analysis's scores or the run's intel file (SPEC §7.6). */
+export type IntelProfile = Record<CounterKind, number>;
 export type CardType = 'blueprint' | 'upgrade' | 'relic';
 /** How a bot side answers its own drafts: `none` leaves them to the player (UI). */
 export type DraftPolicy = 'first' | 'random' | 'greedy' | 'none';
@@ -46,6 +51,11 @@ export interface SideConfig {
   autoDraft?: DraftPolicy;
   /** Battle-specific purchase weights, used when a run adds buildings outside the base AI profile. */
   aiWeights?: Record<string, number>;
+  /**
+   * What an adaptive general knows of its opponent from earlier battles (SPEC §7.6): it opens with a
+   * doctrine against the top kind (the boss: a dual doctrine against the top two).
+   */
+  intel?: IntelProfile;
 }
 
 /** A battle-wide effect source: an event outcome, the elite modifier, later blights (SPEC §14.4). */
@@ -125,7 +135,9 @@ export interface CompiledBuilding {
     damage: number; damageType: DamageType; intervalTicks: number; range: number;
     minRange: number; splashRadius: number; projectileSpeed: number;
   };
-  economy?: { goldPerTick: number; positional?: PositionalStat };
+  economy?: { goldPerTick: number; positional?: PositionalStat; interestCapAdd?: number };
+  /** Rhizome Vault: supply cap while standing, counted for at most `maxCount` buildings of this type. */
+  utility?: { supplyCapAdd: number; maxCount: number };
 }
 
 /** A building stat with modifiers that depend on where the building stands (zone, loam, adjacency). */
@@ -191,6 +203,8 @@ export interface Rules {
   besiegedHalfTicks: number;
   normalHalfTicks: number;
   besiegedIncomePct: number;
+  /** Set only when production suppression differs from "any damage" (balance `besiegedBy`). */
+  suppressBy?: 'melee' | 'none';
   timeLimitTicks: number;
   captureThreshold: number;
   captureStep: number;
@@ -216,6 +230,11 @@ export interface Rules {
     thinkEvery: number; stickyTicks: number; pressureWindow: number; pressureMin: number; threatRadius: number;
     towerRangeThreat: number; noise: number; economyEarlyTick: number; economyEarlyMult: number;
     economyLateTick: number; economyLateMult: number; towerPressureMult: number; mergeOffSlayerShare: number;
+    counter: {
+      cycles: { analyzeTick: number; activeTick: number }[]; bossCycles: { analyzeTick: number; activeTick: number }[];
+      scoreNoise: number; swarmEliteDiscount: number; eliteScoreMult: number; counterMult: number; otherMult: number;
+      openingMult: number; openingOtherMult: number; dualMult: number; freeSlots: number; maxSells: number;
+    };
     score: { spawnerDepth: number; spawnerThreat: number; spawnerSurcharge: number; economyLoam: number;
       economyDepth: number; economyThreat: number; towerFront: number; towerThreat: number };
   };
@@ -293,6 +312,8 @@ export interface BuildingState {
   targetId: number;
   lastAttackTick: number;
   lastDamagedTick: number;
+  /** Last melee (non-projectile) hit; written only when `rules.suppressBy` is `melee`. */
+  lastMeleeDamagedTick?: number;
   placedTick: number;
   pricePaid: number;
   /** A spawn, gold payout or shot ends the live placement's full-refund grace period. */
@@ -359,9 +380,53 @@ export type SimEvent =
   | { t: 'drafted'; side: Side; cardId: string | null; skipped: boolean }
   | { t: 'effectGold'; side: Side; amount: number }
   | { t: 'healed'; target: number; src: number; amount: number; x: number; y: number }
+  | { t: 'counterWarned'; side: Side; kind: CounterKind; activatesAtTick: number }
+  | { t: 'counterActive'; side: Side; kind: CounterKind }
   | { t: 'ended'; winner: Side; by: 'rout' | 'decision' };
 
 export interface AiWeight { building: string; weight: number; maxOwned: number; afterTick: number }
+
+/** One counter cycle (SPEC §7.4): the analysis, its warning and its activation, for reports and the CLI. */
+export interface CounterRecord {
+  kind: CounterKind;
+  warnedAt: number;
+  activeAt: number;
+  /** Set once the counter has activated. */
+  active: boolean;
+  /** The analysis's scores before noise. */
+  scores: IntelProfile;
+  /** A counter blueprint added to the kit because none was there. */
+  drafted?: string;
+  /** Buildings sold for space at activation. */
+  sold: string[];
+  /** Buildings in the counter set placed while this counter was the active doctrine. */
+  built: Record<string, number>;
+}
+
+/** Spawn and merge counts by wave index for one of the observed side's spawners (Elite share, SPEC §7.4). */
+export interface SpawnTrack { spawned: Record<string, number>; merged: Record<string, number> }
+
+/** The counter cycle's state for an adaptive side (absent for every other side). */
+export interface CounterState {
+  /** Analysis and activation ticks still to come, in order. */
+  schedule: { analyzeTick: number; activeTick: number }[];
+  /** Every cycle so far, in order; pending ones have `active: false`. */
+  history: CounterRecord[];
+  /** The active counter doctrine (index into `history`), or -1. */
+  current: number;
+  /** Opponent spawner id → spawns and merges per wave index. */
+  track: Record<string, SpawnTrack>;
+  /** [wave index, first unit id the opponent spawned in that wave], in order. */
+  waveIds: [number, number][];
+  /** The kind scores sampled at analysis times (the intel profile reads 2:00 and 5:00). */
+  samples: { tick: number; scores: IntelProfile; total: number }[];
+}
+
+/**
+ * An opening doctrine from intel (SPEC §7.6): one kind (×2 / ×0.8) until the first counter activates,
+ * or the boss's dual doctrine (×2.5 on either kind's set) for the whole battle.
+ */
+export interface OpeningDoctrine { kinds: CounterKind[]; mult: number; otherMult: number; dual: boolean }
 /** on/off: every spawner's merge toggle; auto: SPEC §7.2 step 5 (swarm merging off against Slayers). */
 export type MergePolicy = 'on' | 'off' | 'auto';
 export interface AiState {
@@ -374,6 +439,17 @@ export interface AiState {
   target: string | null;
   targetSince: number;
   draftPolicy: DraftPolicy;
+  /** Aggressive generals send spawners to the lane where the opponent holds least (SPEC §7.3). */
+  laneStyle?: 'aggressive';
+  /** Present only for an adaptive general with `flags.adaptiveGeneral` on. */
+  counter?: CounterState;
+  /** Counter-set buildings per kind in the general's faction roster (fixed at battle start). */
+  counterSets?: Record<CounterKind, string[]>;
+  /** The doctrine intel gives it at the start of the battle. */
+  opening?: OpeningDoctrine;
+  /** The general's faction roster (missing counters are drafted from it). */
+  roster?: string[];
+  boss?: boolean;
 }
 
 export interface SideState {

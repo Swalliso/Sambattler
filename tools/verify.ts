@@ -1,5 +1,5 @@
 // npm run verify (SPEC §15.1): typecheck → lint → validate:data → test → golden verify → a sim
-// smoke test (3 seeds) → bench --quick. Stops at the first failure with a non-zero exit code.
+// smoke test (3 seeds, scripted general) → an adaptive-general smoke (2 seeds) → bench --quick. Stops at the first failure with a non-zero exit code.
 import { spawnSync } from 'node:child_process';
 import { ROOT } from './lib/content.ts';
 
@@ -10,6 +10,7 @@ const steps: [string, string[]][] = [
   ['test', ['run', 'test']],
   ['golden verify', ['run', 'golden', '--', 'verify']],
   ['sim smoke (3 seeds)', ['run', 'sim', '--', '--seeds', '1..3', '--player', 'bot:balanced', '--enemy', 'general:scripted', '--summary', '--assert', 'rejectedCommands=0', '--assert', 'durationTicks<=12000']],
+  ['sim smoke, adaptive general (2 seeds)', ['run', 'sim', '--', '--seeds', '4..5', '--player', 'bot:mono:sporelingBurrow', '--enemy', 'general:mother-mold', '--flags', 'merging,adaptive', '--summary', '--assert', 'rejectedCommands=0', '--assert', 'counters[0].kind=swarm', '--assert', 'counters[0].warnedAt=2400', '--assert', 'counters[0].activeAt=4800']],
   ['bench --quick', ['run', 'bench', '--', '--quick']],
 ];
 

@@ -5,7 +5,7 @@ import { HEARTCAP_ID, SIDES, other } from '../state.ts';
 import type { Armor, BattleState, DamageType, Effectiveness, PendingHit, Side } from '../state.ts';
 import { nearBuffer, queryNear } from '../spatial.ts';
 import { MAX_RADIUS, edgeDistance, tp } from '../targets.ts';
-import { buildingDef, findBuilding, findUnit, heartcapEdgeX, rectDistance, tierDef, unitDef, unitRadius } from '../world.ts';
+import { buildingDef, findBuilding, findUnit, heartcapEdgeX, rectDistance, supplyCapOf, tierDef, unitDef, unitRadius } from '../world.ts';
 
 const EPS = 1e-6;
 
@@ -174,6 +174,7 @@ function applyDamage(state: BattleState, h: PendingHit, targetId: number, fallof
     if (dealt > b.hp) dealt = b.hp;
     b.hp -= dmg;
     b.lastDamagedTick = state.tick;
+    if (r.suppressBy === 'melee' && !h.ranged) b.lastMeleeDamagedTick = state.tick;
   } else if (heart) {
     const hs = state.sides[heart];
     if (dealt > hs.heartcapHp) dealt = hs.heartcapHp;
@@ -259,6 +260,7 @@ export function deathSystem(state: BattleState): void {
   units.length = w;
   const bs = state.buildings;
   w = 0;
+  let utilityLost = false;
   for (let i = 0; i < bs.length; i++) {
     const b = bs[i]!;
     if (b.hp > 0) { bs[w++] = b; continue; }
@@ -266,9 +268,11 @@ export function deathSystem(state: BattleState): void {
     state.stats[other(b.side)].buildingsDestroyed++;
     state.events.push({ t: 'buildingDestroyed', id: b.id, side: b.side, buildingId: b.buildingId, col: b.col, row: b.row });
     const bd = buildingDef(state, b);
+    if (bd.utility) utilityLost = true;
     fireTriggers(state, b.side, 'buildingDestroyed', {
       x: b.col + bd.w / 2, y: b.row + bd.h / 2, lane: b.lane, buildingId: b.buildingId, sourceBuildingId: b.id,
     });
   }
   bs.length = w;
+  if (utilityLost) for (const s of SIDES) state.sides[s].supplyCap = supplyCapOf(state, s);
 }

@@ -1,9 +1,10 @@
 // The command queue and log (SPEC §14.5). Commands are validated when they execute, so an
 // illegal command becomes a deterministic `commandRejected` event on replay too.
+import { noteBuilt } from './ai/counter.ts';
 import { addBuilding } from './create.ts';
 import { executeDraftCommand } from './draft.ts';
 import { placementProblem, priceAt } from './placement.ts';
-import { findBuilding, isBesieged } from './world.ts';
+import { buildingDef, findBuilding, isBesieged, supplyCapOf } from './world.ts';
 import type { BattleState, Command, CommandBody, Side } from './state.ts';
 
 export type QueuedCommand = { tick: number; side: Side; seq?: number } & CommandBody;
@@ -102,6 +103,7 @@ function execute(state: BattleState, cmd: Command): boolean {
       const b = addBuilding(state, side, cmd.buildingId, cmd.lane, cmd.col, cmd.row, price);
       state.stats[side].buildingsBuilt++;
       state.events.push({ t: 'buildingPlaced', id: b.id });
+      noteBuilt(state, side, cmd.buildingId);
       return false;
     }
     case 'sell': {
@@ -110,7 +112,9 @@ function execute(state: BattleState, cmd: Command): boolean {
       if (isBesieged(state, b)) { reject(state, cmd, 'cannot sell while besieged'); return false; }
       const refund = sellValue(state, b.id);
       ss.gold += refund;
+      const utility = !!buildingDef(state, b).utility;
       state.buildings.splice(state.buildings.indexOf(b), 1);
+      if (utility) ss.supplyCap = supplyCapOf(state, side);
       state.stats[side].buildingsSold++;
       state.events.push({ t: 'buildingSold', id: b.id, refund });
       return false;

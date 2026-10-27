@@ -52,5 +52,35 @@
     "description": "A fairy ring that sends out Tenders: support units that heal the most-hurt ally nearby instead of fighting.",
     "kind": "spawner", "footprint": { "w": 2, "h": 2 }, "cost": 180, "hp": 450,
     "spawn": { "unit": "tender", "count": 1, "interval": 20 }
+  },
+  {
+    "id": "hammercapForge", "name": "Hammercap Forge", "sprite": "b-hammercapForge", "milestone": 4, "rarity": "uncommon",
+    "description": "Hammercaps swing crushing mauls: line troops that crack Heavy armor.",
+    "kind": "spawner", "footprint": { "w": 2, "h": 2 }, "cost": 170, "hp": 600,
+    "spawn": { "unit": "hammercap", "count": 1, "interval": 17 }
+  },
+  {
+    "id": "amanitaLodge", "name": "Amanita Lodge", "sprite": "b-amanitaLodge", "milestone": 4, "rarity": "rare",
+    "description": "Amanita Knights: slow, Heavy-armored champions that shrug off Slash and Pierce. Crush breaks them.",
+    "kind": "spawner", "footprint": { "w": 2, "h": 2 }, "cost": 260, "hp": 750,
+    "spawn": { "unit": "amanitaKnight", "count": 1, "interval": 30 }
+  },
+  {
+    "id": "morelWarren", "name": "Morel Warren", "sprite": "b-morelWarren", "milestone": 4,
+    "description": "Morel Runners dart out in pairs: fast Medium skirmishers with piercing spears.",
+    "kind": "spawner", "footprint": { "w": 2, "h": 2 }, "cost": 130, "hp": 450,
+    "spawn": { "unit": "morelRunner", "count": 2, "interval": 18 }
+  },
+  {
+    "id": "rhizomeVault", "name": "Rhizome Vault", "sprite": "b-rhizomeVault", "milestone": 4, "rarity": "uncommon",
+    "description": "Stores nutrients in a root mass: +6 supply cap while it stands (at most 2 Vaults count).",
+    "kind": "utility", "footprint": { "w": 2, "h": 2 }, "cost": 140, "hp": 500,
+    "utility": { "supplyCapAdd": 6, "maxCount": 2 }
+  },
+  {
+    "id": "sporeExchange", "name": "Spore Exchange", "sprite": "b-sporeExchange", "milestone": 4, "rarity": "uncommon",
+    "description": "Trades spores for interest: +1 gold per income tick and +10 to your interest cap while it stands.",
+    "kind": "economy", "footprint": { "w": 2, "h": 2 }, "cost": 160, "hp": 400,
+    "economy": { "goldPerTick": 1, "interestCapAdd": 10 }
   }
 ]

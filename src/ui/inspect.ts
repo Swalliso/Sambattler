@@ -5,7 +5,7 @@
 import type { Content } from '../data/registry.ts';
 import { sellValue } from '../sim/index.ts';
 import type { BattleState } from '../sim/index.ts';
-import { findBuilding, findUnit, isBesieged, tierDef } from '../sim/world.ts';
+import { findBuilding, findUnit, isBesieged, isSuppressed, tierDef } from '../sim/world.ts';
 import { h, setText, toggleClass } from './h.ts';
 import { strongVs, vulnerableTo, weakVs } from './matrixHints.ts';
 import { TIER_NAME, TIER_PIPS, perkText } from './mergeHints.ts';
@@ -139,16 +139,17 @@ export class InspectPanel {
     const cb = state.compiled[b.side].buildings[b.buildingId]!;
     this.el.dataset.mode = 'building';
     const besieged = isBesieged(state, b);
+    const slowed = isSuppressed(state, b);
     const pairs: [string, string][] = [['HP', `${b.hp} / ${b.maxHp}`]];
     if (cb.spawn) {
-      const ticks = b.holding ? 0 : Math.ceil(b.timer / (besieged ? state.rules.besiegedHalfTicks : state.rules.normalHalfTicks));
-      pairs.push(['Next spawn', b.holding ? 'waiting for supply ⬢!' : `${(ticks / state.rules.tickRate).toFixed(1)}s${besieged ? ' (½ speed)' : ''}`]);
+      const ticks = b.holding ? 0 : Math.ceil(b.timer / (slowed ? state.rules.besiegedHalfTicks : state.rules.normalHalfTicks));
+      pairs.push(['Next spawn', b.holding ? 'waiting for supply ⬢!' : `${(ticks / state.rules.tickRate).toFixed(1)}s${slowed ? ' (½ speed)' : ''}`]);
       pairs.push(['Living units', String(state.units.filter((x) => x.sourceBuildingId === b.id).length)]);
     }
     if (cb.attack) pairs.push(['Attack', `${cb.attack.damageType} ${cb.attack.damage} · range ${cb.attack.minRange}–${cb.attack.range}`]);
     pairs.push(['Damage dealt', String(state.stats[b.side].damageByBuilding[String(b.id)] ?? 0)]);
     if (cb.economy) pairs.push(['Gold produced', String(state.stats[b.side].goldByBuilding[String(b.id)] ?? 0)]);
-    if (besieged) pairs.push(['Status', 'besieged: ½ speed, cannot sell']);
+    if (besieged) pairs.push(['Status', slowed ? 'besieged: ½ speed, cannot sell' : 'under attack: cannot sell']);
     const merging = state.config.flags.merging && !!cb.spawn;
     if (merging && b.side !== 'player') pairs.push(['Merging', b.mergeOn ? 'on' : 'off']);
     setText(this.title, `${def.name} · ${b.side === 'player' ? 'yours' : 'Gray Rot'}`);

@@ -15,7 +15,7 @@ const bigKit = (): Loadout => ({ kit: ['sporelingBurrow', 'capguardHall', 'truff
 describe('draft offers (SPEC §8.3–8.4)', () => {
   it('the pool: Vesper core, the rest of the roster shared, Sporestorm Sigil held until powers', () => {
     expect(pool.core).toEqual(content.commanders.vesper!.core);
-    expect(pool.shared).toEqual(['scythecapGrove', 'veilstalkerHollow', 'tendersRing']);
+    expect(pool.shared).toEqual(['scythecapGrove', 'veilstalkerHollow', 'tendersRing', 'hammercapForge', 'amanitaLodge', 'morelWarren', 'rhizomeVault', 'sporeExchange']);
     expect(pool.relics).toHaveLength(20);
     expect(pool.relics).not.toContain('sporestormSigil');
     expect(draftPool(content, 'velvet-bloom', 'vesper', { ...flags, powers: true }).relics).toContain('sporestormSigil');

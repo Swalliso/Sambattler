@@ -34,6 +34,7 @@ export function compileRules(b: BalanceDef, config: BattleConfig): Rules {
     besiegedHalfTicks: Math.round(2 * b.besiegedRate),
     normalHalfTicks: 2,
     besiegedIncomePct: Math.round(b.besiegedRate * 100),
+    ...(b.besiegedBy && b.besiegedBy !== 'all' ? { suppressBy: b.besiegedBy } : {}),
     timeLimitTicks: secToTicks(test.timeLimitSeconds ?? b.timeLimitSeconds, tr),
     captureStep: 100,
     captureThreshold: Math.round(b.captureSeconds * tr * 100),
@@ -78,6 +79,20 @@ export function compileRules(b: BalanceDef, config: BattleConfig): Rules {
       economyLateMult: b.ai.economyLate.mult,
       towerPressureMult: b.ai.towerPressureMult,
       mergeOffSlayerShare: b.ai.mergeOffSlayerShare,
+      counter: {
+        cycles: b.ai.counter.cycles.map((c) => ({ analyzeTick: secToTicks(c.analyzeSeconds, tr), activeTick: secToTicks(c.activeSeconds, tr) })),
+        bossCycles: b.ai.counter.bossCycles.map((c) => ({ analyzeTick: secToTicks(c.analyzeSeconds, tr), activeTick: secToTicks(c.activeSeconds, tr) })),
+        scoreNoise: b.ai.counter.scoreNoise,
+        swarmEliteDiscount: b.ai.counter.swarmEliteDiscount,
+        eliteScoreMult: b.ai.counter.eliteScoreMult,
+        counterMult: b.ai.counter.counterMult,
+        otherMult: b.ai.counter.otherMult,
+        openingMult: b.ai.counter.openingMult,
+        openingOtherMult: b.ai.counter.openingOtherMult,
+        dualMult: b.ai.counter.dualMult,
+        freeSlots: b.ai.counter.freeSlots,
+        maxSells: b.ai.counter.maxSells,
+      },
       score: { ...b.ai.score },
     },
     test: {
@@ -213,7 +228,9 @@ export function compileBuilding(lib: Library, id: string, mods: readonly Modifie
     const gold = stat('building.goldPerTick', b.economy.goldPerTick);
     out.economy = { goldPerTick: Math.round(gold.value) };
     if (gold.positional) out.economy.positional = gold.positional;
+    if (b.economy.interestCapAdd) out.economy.interestCapAdd = b.economy.interestCapAdd;
   }
+  if (b.utility) out.utility = { ...b.utility };
   return out;
 }
 

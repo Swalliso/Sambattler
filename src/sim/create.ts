@@ -2,21 +2,21 @@
 import type { Content } from '../data/registry.ts';
 import { buildLibrary, compileRules, compileSides, configLoadout, creationStat, secToTicks } from './compile.ts';
 import { seedStream } from './rng.ts';
-import { resolveAiProfile } from './ai/profiles.ts';
+import { adaptiveRoster, isAdaptive, resolveAiProfile } from './ai/profiles.ts';
 import { placementProblem } from './placement.ts';
 import { MAX_RADIUS } from './targets.ts';
-import { clampToLane, laneOfRow, unitRadius } from './world.ts';
+import { clampToLane, laneOfRow, supplyCapOf, unitRadius } from './world.ts';
 import { SIDES } from './state.ts';
 import type {
-  BattleConfig, BattleState, BuildingState, Controller, DraftPool, LaneState, Loadout, Side, SideConfig, SideState, SideStats,
+  BattleConfig, BattleModifier, BattleState, BuildingState, Controller, DraftPool, LaneState, Loadout, Side, SideConfig, SideState, SideStats,
   Tier, UnitState,
 } from './state.ts';
 
 export type Flags = BattleConfig['flags'];
 
 /** The milestone this build implements. Feature flags default to what it ships (SPEC §15.2). */
-export const MILESTONE = 3;
-export const DEFAULT_FLAGS: Readonly<Flags> = { merging: true, drafts: false, adaptiveGeneral: false, powers: false };
+export const MILESTONE = 4;
+export const DEFAULT_FLAGS: Readonly<Flags> = { merging: true, drafts: false, adaptiveGeneral: true, powers: false };
 
 /** Flag names as written in `--flags` and `?flags=`, and the milestone each one arrives in. */
 const FLAG_NAMES: Record<string, { key: keyof Flags; milestone: number }> = {
@@ -67,7 +67,7 @@ export function emptyStats(): SideStats {
   };
 }
 
-/** Parses a controller string: human | bot:<id> | general:<id> (general:scripted until M4). */
+/** Parses a controller string: human | bot:<id> | general:<id> (e.g. general:mother-mold). */
 export function parseController(text: string): Controller {
   if (text === 'human' || text === 'none' || text === 'idle') return { kind: 'human' };
   const m = text.match(/^(bot|general):(.+)$/);
@@ -117,7 +117,20 @@ export function makeConfig(content: Content, opts: BattleOptions): BattleConfig 
   // a single battle with drafts on gives the player the stand-in commander's pool (SPEC §8.4)
   if (config.flags.drafts) config.player.draft = draftPool(content, config.player.faction, STAND_IN_COMMANDER, config.flags);
   if (opts.test) config.test = opts.test;
+  const passives = generalPassives(content, config);
+  if (passives.length) config.modifiers = passives;
   return config;
+}
+
+/** Each general's personality passive (SPEC §7.7) as a battle modifier on its own side. */
+export function generalPassives(content: Content, config: Pick<BattleConfig, 'player' | 'enemy'>): BattleModifier[] {
+  const out: BattleModifier[] = [];
+  for (const s of SIDES) {
+    const ctl = config[s].controller;
+    const g = ctl.kind === 'general' ? content.generals[ctl.id] : undefined;
+    if (g?.passive) out.push({ side: s, source: `general:${g.id}`, effects: g.passive });
+  }
+  return out;
 }
 
 /** The commander every run uses until commanders arrive in M5 (the kickoff stand-in: Vesper's pools, no power). */
@@ -163,6 +176,8 @@ export function createBattle(content: Content, config: BattleConfig): BattleStat
     const sc = config[s];
     for (const id of [...sc.kit, ...(sc.draft?.core ?? []), ...(sc.draft?.shared ?? [])]) buildingIds.add(id);
     for (const id of [...(sc.relics ?? []), ...(sc.draft?.relics ?? [])]) relicIds.add(id);
+    // an adaptive general may draft a missing counter from its roster (SPEC §7.4)
+    if (isAdaptive(content, sc.controller, config.flags)) for (const id of adaptiveRoster(content, sc)) buildingIds.add(id);
   }
   const library = buildLibrary(content, [...buildingIds].sort(), [...relicIds].sort());
   const loadouts: Record<Side, Loadout> = { player: configLoadout(config.player), enemy: configLoadout(config.enemy) };
@@ -191,7 +206,7 @@ export function createBattle(content: Content, config: BattleConfig): BattleStat
       relics: loadouts[s].relics,
       draftsOpened: 0,
     };
-    if (sc.controller.kind !== 'human') st.ai = resolveAiProfile(content, sc.controller, sc, rules, buildingIds);
+    if (sc.controller.kind !== 'human') st.ai = resolveAiProfile(content, sc.controller, sc, rules, buildingIds, config.flags, library);
     return st;
   };
   const state: BattleState = {
@@ -321,6 +336,7 @@ export function addBuilding(state: BattleState, side: Side, buildingId: string, 
   };
   state.buildings.push(b);
   state.stats[side].buildingTypes[String(b.id)] = buildingId;
+  if (def.utility) state.sides[side].supplyCap = supplyCapOf(state, side);
   return b;
 }
 

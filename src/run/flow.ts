@@ -4,12 +4,13 @@
 // the run's streams. Battles themselves run in the sim; the run only sees their final state.
 import type { RunEffect } from '../data/schema.ts';
 import {
-  RARITIES, applyCard, buildLibrary, draftPool, generateOffer, hashState, nextFloat, nextInt, parseCard, parseController,
-  seedStream,
+  RARITIES, applyCard, buildLibrary, counterSets, draftPool, generalPassives, generateOffer, hashState, nextFloat, nextInt, parseCard,
+  parseController, seedStream, topKinds,
 } from '../sim/index.ts';
 import type {
-  BattleConfig, BattleModifier, BattleState, Content, DraftPool, Library, Loadout, Rarity, SideConfig,
+  BattleConfig, BattleModifier, BattleState, Content, DraftPool, IntelProfile, Library, Loadout, Rarity, SideConfig,
 } from '../sim/index.ts';
+import { averageProfile, battleProfile, scaleProfile, updateIntel } from './intel.ts';
 import { battleRewards } from './rewards.ts';
 import { isBattle } from './route.ts';
 import type { RouteNode } from './route.ts';
@@ -91,13 +92,15 @@ export function battleConfig(content: Content, run: RunState, node: RouteNode): 
     heartcapMaxHp: enemyHp,
     startingGold: gold,
   };
+  const intel = generalIntel(content, run, node);
+  if (intel) enemy.intel = intel;
   // Run progression may introduce buildings the historical single-battle profile never bought.
   // Give only those kit entries a purchase path, leaving the base profile and its replays intact.
   const generalWeights = content.generals[node.general ?? 'scripted']!.weights;
   const extraWeights = Object.fromEntries(enemyKit.filter((id) => !(generalWeights[id]! > 0)).map((id) => [id, 1]));
   if (Object.keys(extraWeights).length) enemy.aiWeights = extraWeights;
   if (Object.keys(enemyUpgrades).length) enemy.upgrades = enemyUpgrades;
-  const modifiers: BattleModifier[] = [];
+  const modifiers: BattleModifier[] = generalPassives(content, { player, enemy });
   const elite = node.elite ? content.elites[node.elite] : undefined;
   if (elite?.effects) modifiers.push({ side: 'enemy', source: `elite:${elite.id}`, effects: elite.effects });
   if (run.next.sporestormShiftSeconds) {
@@ -108,6 +111,16 @@ export function battleConfig(content: Content, run: RunState, node: RouteNode): 
   };
   if (modifiers.length) config.modifiers = modifiers;
   return config;
+}
+
+/**
+ * What the general knows going into a battle (SPEC §7.6): the run's intel file, or for the boss the
+ * unweighted average of every battle's profile. None without the adaptive flag or an adaptive general.
+ */
+export function generalIntel(content: Content, run: RunState, node: RouteNode): IntelProfile | null {
+  const g = content.generals[node.general ?? 'scripted'];
+  if (!run.flags.adaptiveGeneral || !g?.adaptive) return null;
+  return g.boss ? averageProfile(run.profiles ?? []) : run.intel ?? null;
 }
 
 /**
@@ -127,7 +140,7 @@ export function generalKit(content: Content, run: RunState, node: RouteNode, ind
   else {
     kit = [...new Set(g.opener)];
     const size = boss ? rules.bossBuildings : kit.length + rules.blueprintsPerBattle * (index - 1);
-    for (const id of g.preferred) {
+    for (const id of [...bossCounters(content, run, node, roster), ...g.preferred]) {
       if (kit.length >= size) break;
       if (!kit.includes(id) && roster.includes(id)) kit.push(id);
     }
@@ -145,6 +158,23 @@ export function generalKit(content: Content, run: RunState, node: RouteNode, ind
   const veteran = node.elite ? content.elites[node.elite]?.upgradeLevels ?? 0 : 0;
   if (veteran) for (const id of kit) if (content.buildings[id]!.spawn && content.upgrades[id]) upgrades[id] = Math.min(3, (upgrades[id] ?? 0) + veteran);
   return { kit, upgrades };
+}
+
+/**
+ * The boss's first extra blueprints: the cheapest counters to the run's top two intel kinds, so its
+ * dual doctrine has buildings to lean on (empty for other generals or without intel).
+ */
+function bossCounters(content: Content, run: RunState, node: RouteNode, roster: readonly string[]): string[] {
+  const intel = node.kind === 'boss' ? generalIntel(content, run, node) : null;
+  if (!intel) return [];
+  const lib = buildLibrary(content, roster, []);
+  const sets = counterSets(lib, roster);
+  const out: string[] = [];
+  for (const k of topKinds(intel, 2)) {
+    const cheapest = [...sets[k]].sort((a, b) => content.buildings[a]!.cost - content.buildings[b]!.cost)[0];
+    if (cheapest && !out.includes(cheapest)) out.push(cheapest);
+  }
+  return out;
 }
 
 // ---- after a battle ----
@@ -203,6 +233,20 @@ export function finishBattle(content: Content, run: RunState, state: BattleState
     damageByBuilding: damage, drafted: [...state.stats.player.drafted], spores: r.spores,
   };
   if (node.elite) record.elite = node.elite;
+  const ai = state.sides.enemy.ai;
+  if (ai?.opening) record.opening = { kinds: [...ai.opening.kinds], dual: ai.opening.dual };
+  if (ai?.counter) {
+    record.counters = ai.counter.history.map((c) => ({
+      kind: c.kind, warnedAt: c.warnedAt, activeAt: c.activeAt, active: c.active, ...(c.drafted ? { drafted: c.drafted } : {}),
+      sold: [...c.sold], built: { ...c.built },
+    }));
+  }
+  const profile = battleProfile(state);
+  if (profile) {
+    record.profile = profile;
+    run.intel = updateIntel(run.intel, profile, content.balance.ai.counter.intelKeep);
+    run.profiles = [...(run.profiles ?? []), profile];
+  }
   run.battles.push(record);
   if (winner !== 'player' && (hp <= 0 || node.kind === 'boss')) {
     endRun(run, 'defeat');
@@ -453,7 +497,11 @@ function resolvePending(content: Content, run: RunState, title: string): void {
     else if ('nextBattle' in e) {
       run.next.startingGold += e.nextBattle.startingGold ?? 0;
       run.next.sporestormShiftSeconds += e.nextBattle.sporestormShiftSeconds ?? 0;
-    } else if ('halveIntel' in e) run.intelHalvings++;
+    } else if ('halveIntel' in e) {
+      run.intelHalvings++;
+      if (run.intel) run.intel = scaleProfile(run.intel, 0.5);
+      if (run.profiles) run.profiles = run.profiles.map((p) => scaleProfile(p, 0.5));
+    }
     else if ('upgrade' in e) {
       const options = outcomeOptions(content, run, run.pending);
       if (!options.length) throw new Error('the remaining upgrades are not available');

@@ -8,6 +8,7 @@ import { Callouts } from '../ui/callouts.ts';
 import { h, setText, toggleClass } from '../ui/h.ts';
 import { helpOverlay } from '../ui/help.ts';
 import { battleReport } from '../ui/report.ts';
+import { activeText, generalName, intentOf, rememberText, warningText } from '../ui/doctrine.ts';
 import { DraftOverlay } from '../ui/draftOverlay.ts';
 import { TopBand } from '../ui/hud/top.ts';
 import { Tray } from '../ui/hud/tray.ts';
@@ -172,6 +173,13 @@ export class BattleView {
         this.callouts.push('info', `The Sporestorm thickens (${e.stacks})`, '', now);
       } else if (e.t === 'begin') {
         this.callouts.push('info', 'The battle begins', '', now);
+        const opening = intentOf(state).opening;
+        if (opening.length) this.callouts.push('counter', rememberText(opening), 'bad', now);
+      } else if (e.t === 'counterWarned' && e.side === 'enemy') {
+        const waves = Math.max(1, Math.ceil((e.activatesAtTick - state.tick) / state.rules.waveTicks));
+        this.callouts.push('counter', warningText(generalName(this.session.content, state), e.kind, waves), 'bad', now);
+      } else if (e.t === 'counterActive' && e.side === 'enemy') {
+        this.callouts.push('counter', activeText(generalName(this.session.content, state), e.kind), 'bad', now);
       } else if (e.t === 'merged' && (e.side === 'player' || e.tier === 3)) {
         const name = this.session.content.units[e.unitId]?.name ?? e.unitId;
         const tier = e.tier === 3 ? 'Elder' : 'Bloomed';

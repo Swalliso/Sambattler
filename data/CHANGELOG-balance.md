@@ -3,6 +3,52 @@
 Every change from the SPEC's first-pass numbers, with the guardrail or verification result that
 motivated it. Tools: `npm run balance -- duel`, `npm run balance -- tournament`, `npm run test:slow`.
 
+## Milestone 4 (2026-10-27)
+
+The adaptive general and intel (SPEC §7.4–7.8): five buildings, three units, four named generals and
+the counter cycle. **No M1–M3 number, core rule or reference bot changed.** The structure commit was
+behavior-neutral: 110 single battles and 10 whole runs gave identical fingerprints (winners, lengths,
+spawns, merges, gold, damage, fronts), and the content commit left single battles identical too
+(bots and the scripted general never buy the new buildings).
+
+### New content: first-pass numbers and the two tuned units
+- Hammercap Forge, Morel Warren, Rhizome Vault and Spore Exchange use the §11.2–11.3 numbers, except
+  the Hammercap's damage (below). Upgrade tracks follow the §11.6 pattern.
+- **Amanita Knight `hp` 700 → 500, `damage` 34 → 28.** At first-pass numbers it won every 12-supply
+  duel (G2 FAIL: it lost to nothing, including the intended Hammercap > Amanita Knight edge) and mono
+  Amanita Lodge beat `bot:balanced` 80% (G3 FAIL). At 520/30 mono Amanita was 58%.
+- **Hammercap `damage` 22 → 25.** At 22 it lost the intended edge to the Knight 0/5; its value check
+  was 1.28 per gold (target 1.45 ± 0.15), now 1.36.
+- Result: G2 PASS with both M4 edges held 5/5 (Hammercap > Amanita Knight, Amanita Knight > Gill
+  Archer; now asserted). G3 mono bots for the new spawners: Amanita Lodge 50%, Hammercap Forge 40%,
+  Morel Warren 25%, Rhizome Vault and Spore Exchange 0%.
+- The Morel Runner keeps its first-pass numbers. It is the only new candidate that could take the
+  Gill Nest's production duel (G1, below), but that needs a cliff-edge buff (HP 95 and an interval of
+  15 s) that makes mono Morel Warren beat `bot:balanced` 68%.
+
+### Generals
+- §11.11 openers and weights, except **the Blightwright opens with Rootbreaker Den + Truffle Cellar**
+  (was Gill Archer Nest + Cellar) and its preferred list starts Capguard Hall, Gill Archer Nest. With
+  the archer opener its run kit at battle 2 was archer-led and it won 25 of 27 run battles over 80
+  runs; boss reach fell to 15% (main: 29%). Now the player wins 20 of 33 against it and boss reach is
+  25% over 80 runs. Its single-battle weights are unchanged.
+- Passives are the §7.7 ones (Mold's swarm buildings spawn interval ×0.91; the Baron's buildings
+  HP ×1.2; the Blightwright's siege speed ×1.15; the Sovereign's turret damage ×1.25).
+- The counter cycle uses the §7.4 numbers (×3 / ×0.6, ±0.03 noise, 2:00 → 4:00 and 5:00 → 7:00, boss
+  1:00 → 3:00) and §7.6 (×2 / ×0.8 opening, ×2.5 dual, ½ / ½ intel). Counter sets hold spawners only.
+  A harder lean (×5 / ×0.3) against the Lichen Baron fixed no failing G8 row (adaptive vs mono
+  Sporeling 37% → 40%, mono Gill Nest 100%, mono Rootbreaker 70% → 63%) and pushed `bot:balanced`
+  to the bottom of its band (57% → 47%), so the spec's numbers stay.
+
+### Re-measure after M4 (G1, G3, G8)
+- **G3 (mono Gill Nest): still 100%** against `bot:balanced` (40 games), unchanged by the Amanita
+  Knight or the adaptive general. Every other mono bot is ≤ 50%. Still deferred (backlog B1–B4).
+- **G1 now fails on the Gill Nest: it wins 7 of 8 production pairings (limit 80%).** It beat 5 of 6
+  in M3; the three new spawners field Medium or Heavy units and all lose the production duel to
+  massed archers (Lodge 0/6, Forge 0/6, Warren 0/6). Only the Sporeling Burrow beats it. Same root
+  cause as G3, so it waits on the same decision.
+- **G8 fails.** See `docs/m4-plan.md` (As built) for the table and the diagnosis.
+
 ## Review fixes (2026-10-27)
 
 - A live building loses its full-refund entitlement when it first spawns units, earns gold, or

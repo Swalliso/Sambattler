@@ -4,7 +4,9 @@ import type { Content } from '../../data/registry.ts';
 import type { Atlas } from '../../render/atlas.ts';
 import { spriteToCanvas } from '../../render/atlas.ts';
 import { formatClock } from '../../sim/index.ts';
-import { battlesWon, cardLabel, currentRow, outcomeAvailable, upgradeable } from '../../run/index.ts';
+import { battlesWon, cardLabel, currentRow, intelDots, outcomeAvailable, upgradeable } from '../../run/index.ts';
+import { COUNTER_KINDS } from '../../sim/index.ts';
+import { KIND_HINT, KIND_ICON, KIND_NAME, counterLine } from '../doctrine.ts';
 import type { BattleRecord, RouteNode, RunState } from '../../run/index.ts';
 import { cardView } from '../cards.ts';
 import { h } from '../h.ts';
@@ -61,6 +63,25 @@ function nodeView(content: Content, atlas: Atlas, node: RouteNode, state: 'chose
   }, icon(atlas, NODE_ICON[node.kind], 'node-icon'), h('div', { class: 'node-title' }, NODE_NAME[node.kind]), ...details);
 }
 
+/**
+ * The player's own intel bars (SPEC §7.6): what the Gray Rot has learned about them, shown fairly so
+ * they can plan a pivot before the boss. Four dots per kind; the boss reads the whole run's average.
+ */
+export function intelBars(atlas: Atlas, run: RunState): HTMLElement {
+  if (!run.flags.adaptiveGeneral) return h('div', { class: 'intel off', id: 'route-intel' }, h('span', { class: 'muted' }, 'Adaptive generals are off: no intel is kept.'));
+  const intel = run.intel;
+  const dots = intel ? intelDots(intel) : null;
+  return h('div', { class: 'intel', id: 'route-intel', title: 'Each new general opens against your top kind; the boss reads your whole run' },
+    h('span', { class: 'intel-title' }, 'Gray Rot intel on you'),
+    ...(dots ? COUNTER_KINDS.map((k) => {
+      const c = spriteToCanvas(atlas, KIND_ICON[k], 'velvet-bloom');
+      c.className = 'kind-icon';
+      return h('span', { class: 'intel-kind', 'data-kind': k, 'data-dots': dots[k], title: `${KIND_HINT[k]} · ${(intel![k] * 100).toFixed(0)}%` },
+        c, h('span', null, KIND_NAME[k]), h('span', { class: 'dots' }, '●'.repeat(dots[k]) + '○'.repeat(4 - dots[k])));
+    }) : [h('span', { class: 'muted' }, 'None yet: the first general knows nothing about you.')]),
+  );
+}
+
 export function routeScreen(content: Content, atlas: Atlas, run: RunState, actions: { choose(i: number): void; abandon(): void }): HTMLElement {
   const row = currentRow(run);
   const rows = run.route.map((nodes, r) => {
@@ -76,6 +97,7 @@ export function routeScreen(content: Content, atlas: Atlas, run: RunState, actio
   return h('div', { class: 'runscreen', id: 'route' },
     runBar(content, atlas, run),
     h('h1', { class: 'runtitle' }, 'The Route', h('span', { class: 'hint' }, ' Pick one node in the highlighted row; every node leads to every node in the next row.')),
+    intelBars(atlas, run),
     h('main', { class: 'route', id: 'route-map' }, ...joined),
     h('footer', { class: 'runfoot' },
       h('div', { class: 'hint' }, 'Battles: 4 or 5 per run. A loss by Rout ends the run; a loss by Decision costs 25% of your Heartcap.'),
@@ -203,9 +225,10 @@ export function summaryScreen(content: Content, atlas: Atlas, run: RunState, act
         h('h1', { class: won ? 'win' : 'loss', id: 'summary-title' }, won ? 'Victory: the boss falls' : 'Defeat'),
         h('div', { class: 'hint' }, `${run.battles.length} battles · ${formatClock(totalTicks)} of battle · seed ${run.seed}`),
       ),
+      intelBars(atlas, run),
       h('h3', null, 'Battles'),
       h('table', { class: 'summary-table', id: 'summary-battles' },
-        h('tr', null, ...['#', 'Node', 'Map', 'General', 'Result', 'Length', 'Heartcap', 'Front line'].map((t) => h('th', null, t))),
+        h('tr', null, ...['#', 'Node', 'Map', 'General', 'Result', 'Length', 'Heartcap', 'Front line', 'Countered'].map((t) => h('th', null, t))),
         ...run.battles.map((b) => h('tr', { class: `summary-battle ${b.winner === 'player' ? 'won' : 'lost'}` },
           h('td', null, String(b.index)),
           h('td', null, b.kind === 'elite' ? `Elite (${content.elites[b.elite!]?.name ?? b.elite})` : b.kind === 'boss' ? 'Boss' : 'Battle'),
@@ -215,6 +238,7 @@ export function summaryScreen(content: Content, atlas: Atlas, run: RunState, act
           h('td', null, formatClock(b.durationTicks)),
           h('td', null, `${b.heartcapBefore} → ${b.heartcapAfter}`),
           h('td', null, sparkline(b)),
+          h('td', { class: 'countered' }, (b.counters ?? []).filter((c) => c.active).map((c) => counterLine(content, c)).join('; ') || '-'),
         )),
       ),
       h('div', { class: 'reportgrid' },

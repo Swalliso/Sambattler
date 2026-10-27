@@ -6,6 +6,7 @@
 import { compileSides } from './compile.ts';
 import { nextFloat } from './rng.ts';
 import { SIDES } from './state.ts';
+import { supplyCapOf } from './world.ts';
 import type {
   BattleState, CardType, CompiledSide, DraftCard, DraftPool, Library, Loadout, Rarity, Rng4, Side,
 } from './state.ts';
@@ -221,8 +222,8 @@ export function recompile(state: BattleState): void {
   const next: Record<Side, CompiledSide> = compileSides(state.library, loadouts, state.config.modifiers);
   for (const side of SIDES) {
     state.compiled[side] = next[side];
-    state.sides[side].supplyCap = next[side].supplyCap;
   }
+  for (const side of SIDES) state.sides[side].supplyCap = supplyCapOf(state, side);
   for (const b of state.buildings) {
     const max = state.compiled[b.side].buildings[b.buildingId]?.hp ?? b.maxHp;
     if (max !== b.maxHp) { b.hp = Math.max(1, Math.round((b.hp * max) / b.maxHp)); b.maxHp = max; }

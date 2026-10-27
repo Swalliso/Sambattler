@@ -1,4 +1,4 @@
-// npm run sim -- [options]: headless battle and run simulator (SPEC §15.2), Milestone 3 subset.
+// npm run sim -- [options]: headless battle and run simulator (SPEC §15.2), Milestone 4 subset.
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, isAbsolute, join } from 'node:path';
 import { nodeContent, ROOT } from './lib/content.ts';
@@ -194,7 +194,7 @@ function mainRun(args: Args, content: ReturnType<typeof nodeContent>): number {
   const results: (RunResult & { wallMs: number })[] = [];
   for (const seed of args.seeds) {
     const t0 = performance.now();
-    const r = simulateRun(content, seed, { ...policies }, args.hashEvery ? { hashEvery: args.hashEvery } : {});
+    const r = simulateRun(content, seed, { ...policies }, { ...(args.hashEvery ? { hashEvery: args.hashEvery } : {}), ...(args.flags ? { flags: args.flags } : {}) });
     results.push({ ...r, wallMs: Math.round(performance.now() - t0) });
   }
   const failures: string[] = [];
@@ -213,7 +213,8 @@ function mainRun(args: Args, content: ReturnType<typeof nodeContent>): number {
   }
   if (results.length === 1 && !args.summary) {
     const { run: _run, battles, ...brief } = results[0]!;
-    console.log(JSON.stringify({ ...brief, battles: battles.map((b) => `${b.index} ${b.kind} ${b.map} ${b.winner} by ${b.by} ${fmtTicks(b.durationTicks)} hp ${b.heartcapAfter}`) }, null, 2));
+    console.log(JSON.stringify({ ...brief, intel: results[0]!.run.intel ?? null, battles: battles.map((b) => `${b.index} ${b.kind} ${b.map} ${b.general} ${b.winner} by ${b.by} ${fmtTicks(b.durationTicks)} hp ${b.heartcapAfter}` +
+      `${b.opening ? ` opening ${b.opening.dual ? 'dual ' : ''}${b.opening.kinds.join('+')}` : ''}${b.counters?.length ? ` counters ${b.counters.map((c) => `${c.kind}@${fmtTicks(c.activeAt)}`).join(',')}` : ''}`) }, null, 2));
   } else {
     printRunSummary(results);
   }
@@ -227,11 +228,14 @@ function mainRun(args: Args, content: ReturnType<typeof nodeContent>): number {
 
 function printRunSummary(results: (RunResult & { wallMs: number })[]): void {
   const mark = (b: RunResult['battles'][number]) => `${b.kind === 'boss' ? 'B' : b.kind === 'elite' ? 'E' : 'b'}${b.winner === 'player' ? '+' : '-'}${b.by[0]}`;
+  const KIND = { swarm: 'S', line: 'L', armor: 'A', elite: 'E' } as const;
+  const opening = (b: RunResult['battles'][number]) => (b.opening ? `${b.opening.dual ? '2:' : ''}${b.opening.kinds.map((k) => KIND[k]).join('')}` : '-');
   const rows = results.map((r) => [
     String(r.seed), r.outcome, String(r.battleCount), fmtTicks(r.totalBattleTicks), r.reachedBoss ? 'yes' : 'no',
-    `${r.heartcap.hp}/${r.heartcap.max}`, r.battles.map(mark).join(' '), String(r.cards.length), String(r.spores), `${r.wallMs}ms`,
+    `${r.heartcap.hp}/${r.heartcap.max}`, r.battles.map(mark).join(' '), r.battles.map((b) => b.general.split('-').map((w) => w[0]).join('')).join(' '),
+    r.battles.map(opening).join(' '), String(r.cards.length), String(r.spores), `${r.wallMs}ms`,
   ]);
-  const head = ['seed', 'outcome', 'battles', 'battle time', 'boss', 'heartcap', 'results', 'cards', 'spores', 'wall'];
+  const head = ['seed', 'outcome', 'battles', 'battle time', 'boss', 'heartcap', 'results', 'generals', 'opening', 'cards', 'spores', 'wall'];
   const widths = head.map((h, i) => Math.max(h.length, ...rows.map((r) => r[i]!.length)));
   const line = (cells: string[]) => cells.map((c, i) => c.padEnd(widths[i]!)).join('  ');
   console.log(line(head));
@@ -260,6 +264,18 @@ function printRunSummary(results: (RunResult & { wallMs: number })[]): void {
   expect(inCount === n, `4–5 battles per run (${inCount}/${n})`);
   expect(inTime === n, `${RUN_MINUTES[0]}–${RUN_MINUTES[1]} min of battle per run (${inTime}/${n})`);
   expect(boss / n >= 0.3, `≥30% of runs reach the boss (${pct(boss, n)})`);
+  // SPEC §16 Milestone 4, verification 4: the intel file
+  const later = results.filter((r) => r.battles.some((b) => b.index >= 2 && b.kind !== 'boss'));
+  if (!results.some((r) => r.run.flags.adaptiveGeneral)) return;
+  const top = (r: RunResult) => r.battles.filter((b) => b.index >= 2 && b.kind !== 'boss');
+  const kinds = new Map<string, number>();
+  for (const r of later) for (const b of top(r)) { const k = b.opening?.kinds[0] ?? 'none'; kinds.set(k, (kinds.get(k) ?? 0) + 1); }
+  const swarmRuns = later.filter((r) => top(r).every((b) => b.opening?.kinds[0] === 'swarm')).length;
+  const dual = bossRuns.filter((r) => r.battles.some((b) => b.kind === 'boss' && b.opening?.dual && b.opening.kinds.length === 2)).length;
+  console.log(`battle-2+ opening doctrines (non-boss): ${[...kinds.entries()].map(([k, v]) => `${k} ${v}`).join(' · ')}`);
+  console.log(`(the expectations below apply to a mono-Swarm player, as in SPEC §16 Milestone 4 verification 4)`);
+  expect(later.length > 0 && swarmRuns / later.length >= 0.8, `battle-2+ opening doctrine is Swarm in ≥80% of runs (${swarmRuns}/${later.length} runs)`);
+  expect(bossRuns.length > 0 && dual === bossRuns.length, `the boss runs a dual doctrine (${dual}/${bossRuns.length} boss battles)`);
 }
 
 function pct(a: number, n: number): string {

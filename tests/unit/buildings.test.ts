@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { placementProblem, queueCommand, sellValue } from '../../src/sim/index.ts';
+import { isBesieged, placementProblem, queueCommand, sellValue } from '../../src/sim/index.ts';
 import { building, liveState, setBorders, steps, unit } from '../helpers.ts';
 import { content } from '../helpers.ts';
 import { createBattle, makeConfig, step } from '../../src/sim/index.ts';
@@ -46,7 +46,7 @@ describe('buildings (SPEC §4.4)', () => {
     const s = liveState();
     s.rules.test.turrets = false;
     const b = building(s, 'player', 'capguardHall', 0, 0);
-    for (let i = 0; i < 300; i++) { b.lastDamagedTick = s.tick; step(s); }
+    for (let i = 0; i < 600; i++) { b.lastDamagedTick = s.tick; step(s); }
     expect(s.units.filter((u) => u.side === 'player')).toHaveLength(1);
     expect(s.stats.player.spawned.capguard).toBe(1);
   });
@@ -184,5 +184,33 @@ describe('buildings (SPEC §4.4)', () => {
     expect(s.buildings).toHaveLength(0);
     expect(s.units.length).toBe(2);
     void unit;
+  });
+});
+
+describe('production suppression (balance besiegedBy)', () => {
+  // A hit lands on a player spawner every tick for 600 ticks; how many spawns does it get?
+  function spawnsUnderFire(by: 'melee' | 'none' | undefined, ranged: boolean): { spawns: number; sellLocked: boolean } {
+    const s = liveState();
+    s.rules.test.turrets = false;
+    if (by) s.rules.suppressBy = by;
+    const b = building(s, 'player', 'capguardHall', 0, 0); // 15 s interval: first spawn at tick 150
+    let locked = false;
+    for (let i = 0; i < 600; i++) {
+      s.hits.push({
+        tick: s.tick + 1, sourceId: 0, seq: s.nextHitSeq++, side: 'enemy', targetId: b.id, x: 1, y: 1, fromX: 5, fromY: 1, fireTick: s.tick,
+        lane: 0, damage: 0.01, damageType: 'pierce', splashRadius: 0, siegeMult: 1, slayerMult: 1, sourceBuildingId: 0, sourceType: 'test', ranged,
+      });
+      step(s);
+      if (i === 200) locked = isBesieged(s, b);
+    }
+    return { spawns: s.units.filter((u) => u.side === 'player').length, sellLocked: locked };
+  }
+
+  it('any damage halves production by default; melee-only ignores projectiles; none never slows it', () => {
+    expect(spawnsUnderFire(undefined, true).spawns).toBe(1); // half speed: ticks 300 (and 900)
+    expect(spawnsUnderFire('melee', true).spawns).toBe(2); // arrows no longer slow it: ticks 150 and 450
+    expect(spawnsUnderFire('melee', false).spawns).toBe(1); // melee still does
+    expect(spawnsUnderFire('none', false).spawns).toBe(2);
+    for (const by of [undefined, 'melee', 'none'] as const) expect(spawnsUnderFire(by, true).sellLocked).toBe(true); // selling stays locked
   });
 });

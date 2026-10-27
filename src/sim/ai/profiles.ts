@@ -1,13 +1,31 @@
 // Resolves a controller (general:<id>, bot:<id>, bot:mono:<buildingId>) into the AI state the sim
-// keeps per side (SPEC §7.1). Profiles are copied into state so `step` needs no content lookups.
+// keeps per side (SPEC §7.1). Profiles are copied into state so `step` needs no content lookups. An
+// adaptive general with `flags.adaptiveGeneral` on also gets its counter cycle, counter sets and the
+// opening doctrine its intel gives (SPEC §7.4, §7.6).
 import type { Content } from '../../data/registry.ts';
-import type { AiState, AiWeight, Controller, MergePolicy, Rules, SideConfig } from '../state.ts';
+import type { AiState, AiWeight, BattleConfig, Controller, Library, MergePolicy, Rules, SideConfig } from '../state.ts';
+import { counterSets, newCounterState, openingDoctrine } from './counter.ts';
+
+/** Does this controller run the counter cycle in a battle with these flags? */
+export function isAdaptive(content: Content, ctl: Controller, flags: BattleConfig['flags']): boolean {
+  if (!flags.adaptiveGeneral || ctl.kind === 'human') return false;
+  return ctl.kind === 'general' ? !!content.generals[ctl.id]?.adaptive : !!content.bots[ctl.id]?.adaptive;
+}
+
+/** The roster an adaptive side drafts missing counters from (its faction's buildings). */
+export function adaptiveRoster(content: Content, side: SideConfig): string[] {
+  const g = side.controller.kind === 'general' ? content.generals[side.controller.id] : undefined;
+  return [...(content.factions[g?.faction ?? side.faction]?.buildings ?? [])];
+}
 
 /**
  * `available` is every building the side could own this battle (its kit plus its draft pool): the
  * weights keep those, and the AI only buys what is in its kit at the time.
  */
-export function resolveAiProfile(content: Content, ctl: Controller, side: SideConfig, rules: Rules, available: ReadonlySet<string>): AiState {
+export function resolveAiProfile(
+  content: Content, ctl: Controller, side: SideConfig, rules: Rules, available: ReadonlySet<string>,
+  flags: BattleConfig['flags'], lib: Library,
+): AiState {
   if (ctl.kind === 'human') throw new Error('humans have no AI profile');
   let opener: string[];
   let weights: Record<string, number>;
@@ -48,7 +66,7 @@ export function resolveAiProfile(content: Content, ctl: Controller, side: SideCo
     });
   }
   for (const id of opener) if (!side.kit.includes(id)) throw new Error(`${ctl.kind}:${ctl.id} opener uses ${id}, which is not in its kit`);
-  return {
+  const ai: AiState = {
     profileId: `${ctl.kind}:${ctl.id}`,
     mergePolicy,
     opener: [...opener],
@@ -59,4 +77,17 @@ export function resolveAiProfile(content: Content, ctl: Controller, side: SideCo
     targetSince: 0,
     draftPolicy: side.autoDraft ?? 'greedy',
   };
+  const general = ctl.kind === 'general' ? content.generals[ctl.id] : undefined;
+  if (general?.laneStyle === 'aggressive') ai.laneStyle = 'aggressive';
+  if (isAdaptive(content, ctl, flags)) {
+    const boss = !!general?.boss;
+    const roster = adaptiveRoster(content, side);
+    ai.roster = roster;
+    ai.counterSets = counterSets(lib, roster);
+    ai.counter = newCounterState(rules, boss);
+    if (boss) ai.boss = true;
+    const opening = openingDoctrine(rules, side.intel, boss);
+    if (opening) ai.opening = opening;
+  }
+  return ai;
 }

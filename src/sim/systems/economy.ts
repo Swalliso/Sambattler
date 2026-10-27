@@ -3,7 +3,7 @@ import { aiDraft } from '../ai/draftPolicy.ts';
 import { openDraft } from '../draft.ts';
 import { fireTriggers, positionalValue } from '../effects.ts';
 import { footprintOnLoam } from '../placement.ts';
-import { buildingDef, columnsOwned, isBesieged } from '../world.ts';
+import { buildingDef, columnsOwned, interestCapOf, isSuppressed } from '../world.ts';
 import { SIDES, other } from '../state.ts';
 import type { BattleState, BuildingState, CompiledBuilding } from '../state.ts';
 
@@ -51,7 +51,7 @@ export function incomeSystem(state: BattleState): void {
         if (!def.economy) continue;
         let g = baseGold(state, b, def);
         if (footprintOnLoam(state, b.col, b.row, def.w, def.h)) g = Math.floor((g * (100 + cs.loamBonusPct)) / 100);
-        if (isBesieged(state, b)) g = Math.floor((g * r.besiegedIncomePct) / 100);
+        if (isSuppressed(state, b)) g = Math.floor((g * r.besiegedIncomePct) / 100);
         if (g > 0) b.hasProduced = true;
         total += g;
         stats.goldEarned.economy += g;
@@ -71,7 +71,7 @@ export function incomeSystem(state: BattleState): void {
   if (t > 0 && t % r.waveTicks === 0) {
     for (const side of SIDES) {
       const ss = state.sides[side];
-      const interest = Math.min(state.compiled[side].interestCap, Math.floor(ss.gold / r.interestPer));
+      const interest = Math.min(interestCapOf(state, side), Math.floor(ss.gold / r.interestPer));
       ss.gold += interest;
       state.stats[side].goldEarned.interest += interest;
       if (interest > 0) state.events.push({ t: 'interest', side, amount: interest });
@@ -90,7 +90,7 @@ export function incomePerMinute(state: BattleState, side: 'player' | 'enemy'): n
     if (!def.economy) continue;
     let g = baseGold(state, b, def);
     if (footprintOnLoam(state, b.col, b.row, def.w, def.h)) g = Math.floor((g * (100 + cs.loamBonusPct)) / 100);
-    if (isBesieged(state, b)) g = Math.floor((g * r.besiegedIncomePct) / 100);
+    if (isSuppressed(state, b)) g = Math.floor((g * r.besiegedIncomePct) / 100);
     perTick += g;
   }
   const deficit = columnsOwned(state, other(side)) - columnsOwned(state, side);

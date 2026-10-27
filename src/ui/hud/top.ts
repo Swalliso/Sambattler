@@ -1,5 +1,6 @@
 // Top band (SPEC §10.2): gold and income, supply, wave and clock, Sporestorm, territory tug bar,
-// and the General's Intent panel.
+// and the General's Intent panel (SPEC §7.5): portrait, the active doctrine's icon and any pending
+// warning with its countdown in waves. It names counter kinds, never units.
 import type { Content } from '../../data/registry.ts';
 import { formatClock, incomePerMinute } from '../../sim/index.ts';
 import type { BattleState } from '../../sim/index.ts';
@@ -7,6 +8,8 @@ import { columnsOwned } from '../../sim/world.ts';
 import type { Atlas } from '../../render/atlas.ts';
 import { spriteToCanvas } from '../../render/atlas.ts';
 import { h, setText, toggleClass } from '../h.ts';
+import { KIND_HINT, KIND_ICON, KIND_LABEL, intentOf, wavesText } from '../doctrine.ts';
+import type { Intent } from '../doctrine.ts';
 
 export class TopBand {
   readonly el: HTMLElement;
@@ -20,9 +23,12 @@ export class TopBand {
   private tugP = h('div', { class: 'p' });
   private tugN = h('div', { class: 'n' });
   private tugE = h('div', { class: 'e' });
-  private doctrine = h('div', { class: 'doctrine' });
+  private doctrine = h('div', { class: 'doctrine', id: 'hud-doctrine' });
+  private warning = h('div', { class: 'warning', id: 'hud-warning', hidden: true });
+  private intentKey = '';
+  private fallback: string;
 
-  constructor(content: Content, atlas: Atlas, state: BattleState) {
+  constructor(content: Content, private atlas: Atlas, state: BattleState) {
     const ctl = state.config.enemy.controller;
     const general = ctl.kind === 'general' ? content.generals[ctl.id] : undefined;
     const portrait = spriteToCanvas(atlas, general?.sprite ?? 'g-scripted', 'gray-rot');
@@ -40,11 +46,40 @@ export class TopBand {
       h('aside', { class: 'intent', id: 'hud-intent' },
         portrait,
         h('div', { class: 'title' }, "GENERAL'S INTENT"),
-        h('div', { class: 'name' }, enemyName),
+        h('div', { class: 'name', id: 'hud-general' }, enemyName),
         this.doctrine,
+        this.warning,
       ),
     );
-    setText(this.doctrine, general ? 'Scripted: no counters yet (Milestone 4)' : 'No doctrine');
+    this.fallback = !general ? 'No doctrine' : general.adaptive ? 'Adaptation off' : 'Scripted: never adapts';
+    this.renderIntent(intentOf(state));
+  }
+
+  /** Doctrine row and warning row; rebuilt only when the intent changes. */
+  private renderIntent(i: Intent): void {
+    const key = JSON.stringify(i);
+    if (key === this.intentKey) return;
+    this.intentKey = key;
+    const icon = (kind: keyof typeof KIND_ICON) => {
+      const c = spriteToCanvas(this.atlas, KIND_ICON[kind], 'velvet-bloom');
+      c.className = 'kind-icon';
+      c.title = KIND_HINT[kind];
+      return c;
+    };
+    const kinds: HTMLElement[] = [];
+    if (i.active) kinds.push(h('span', { class: 'kind', 'data-kind': i.active }, icon(i.active), `Countering ${KIND_LABEL[i.active]}`));
+    if (i.opening.length) {
+      kinds.push(h('span', { class: 'kind', 'data-kind': i.opening.join('+') }, ...i.opening.map(icon),
+        `${i.dual ? 'Dual doctrine' : 'Remembers'}: ${i.opening.map((k) => KIND_LABEL[k]).join(' + ')}`));
+    }
+    if (!kinds.length) kinds.push(h('span', { class: 'kind none' }, i.adaptive ? 'Watching your army' : this.fallback));
+    this.doctrine.replaceChildren(...kinds);
+    this.warning.hidden = !i.pending;
+    if (i.pending) {
+      this.warning.replaceChildren(icon(i.pending.kind), h('span', null, 'Preparing to counter your ', h('b', null, KIND_LABEL[i.pending.kind])),
+        h('span', { class: 'countdown', id: 'hud-countdown' }, wavesText(i.pending.waves)));
+      this.warning.dataset.kind = i.pending.kind;
+    }
   }
 
   update(state: BattleState): void {
@@ -63,5 +98,6 @@ export class TopBand {
     this.tugN.style.width = `${(100 * (total - pc - ec)) / total}%`;
     this.tugE.style.width = `${(100 * ec) / total}%`;
     setText(this.columns, `${pc} : ${ec} columns`);
+    this.renderIntent(intentOf(state));
   }
 }

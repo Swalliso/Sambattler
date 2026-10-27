@@ -20,7 +20,12 @@
         "truffleCellar",
         "scythecapGrove",
         "veilstalkerHollow",
-        "tendersRing"
+        "tendersRing",
+        "hammercapForge",
+        "amanitaLodge",
+        "morelWarren",
+        "rhizomeVault",
+        "sporeExchange"
       ],
       "heartcapHp": 3000,
       "heartcapMaxHp": 3000,
@@ -41,7 +46,12 @@
         "truffleCellar",
         "scythecapGrove",
         "veilstalkerHollow",
-        "tendersRing"
+        "tendersRing",
+        "hammercapForge",
+        "amanitaLodge",
+        "morelWarren",
+        "rhizomeVault",
+        "sporeExchange"
       ],
       "heartcapHp": 2000,
       "heartcapMaxHp": 2000,
@@ -63,22 +73,22 @@
     }
   ],
   "expected": {
-    "600": "86947d70c13cb6d8",
-    "1200": "c22475c3b6a183ab",
-    "1800": "9ded4127d600e72a",
-    "2400": "1e6c3c7af0a5b42f",
-    "3000": "fb9c152b2e44ed60",
-    "3600": "8078968071f91f23",
-    "4200": "6928a41faa57d4a4",
-    "4800": "c1bc6b5bffd5c169",
-    "5400": "b98ad31d2da79c05",
-    "6000": "4df7c60a5896f40a",
-    "6600": "cab257af3aa6cf51",
-    "7200": "75f278ab00eaef27",
-    "7800": "b2778c9eae147f32",
-    "8400": "a958129f633d9fd1",
-    "9000": "c89f9a1e2c7065fa",
-    "9600": "9b29736fc9bdfeea",
-    "final": "ed769546a5129df0"
+    "600": "97517fe209bfc628",
+    "1200": "2085b6066d287bab",
+    "1800": "c4caf43e58ff31b6",
+    "2400": "e94450ffd70aa7f7",
+    "3000": "d8d2efd2df5c8350",
+    "3600": "2d842db1f3cef0bb",
+    "4200": "f65f8a1740032a3a",
+    "4800": "d5d341c5e675bd57",
+    "5400": "ae83d7357c82446d",
+    "6000": "dd91d7135de188d0",
+    "6600": "7a60044c38a805cd",
+    "7200": "1339588283c27693",
+    "7800": "ecd026be4c49ace4",
+    "8400": "d50c075c5b225265",
+    "9000": "0a12f65dade50a3a",
+    "9600": "7f0a1f008a55ea80",
+    "final": "27e307eb0bc14cb0"
   }
 }

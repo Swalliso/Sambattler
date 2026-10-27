@@ -88,7 +88,7 @@ describe('battle save command boundaries', () => {
     step(state);
     issue(state, { type: 'place', buildingId: 'sporelingBurrow', ...spot });
     const resumed = resume(state);
-    expect(resumed.queue).toHaveLength(2);
+    expect(resumed.queue.filter((c) => c.side === 'player')).toHaveLength(2);
     step(state);
     step(resumed);
     expect(hashState(resumed)).toBe(hashState(state));

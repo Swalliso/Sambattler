@@ -46,7 +46,10 @@ export interface BattleResult {
   merges: Record<Side, { '2': number; '3': number }>;
   goldEarned: BattleSummary['goldEarned'];
   frontLine: [number, number, number][][];
-  counters: unknown[];
+  /** The enemy general's counter cycles (SPEC §15.2): kind, warnedAt and activeAt per cycle. */
+  counters: CounterSummary[];
+  /** The enemy general's opening doctrine from intel, if any. */
+  opening: { kinds: string[]; dual: boolean } | null;
   rejectedCommands: number;
   events: Record<string, number>;
   stats: BattleSummary['stats'];
@@ -82,6 +85,17 @@ export function laneDivergence(frontLine: [number, number, number][][]): LaneDiv
     if (gap > maxGap) maxGap = gap;
   }
   return { maxGap, meanGap: n ? sum / n : 0, diverged: maxGap >= DIVERGE_COLUMNS };
+}
+
+export interface CounterSummary {
+  kind: string; warnedAt: number; activeAt: number; active: boolean; drafted: string | null; sold: string[]; built: Record<string, number>;
+}
+
+/** The counter records of a side's adaptive AI (empty for every other controller). */
+export function counterSummary(state: BattleState, side: Side = 'enemy'): CounterSummary[] {
+  return (state.sides[side].ai?.counter?.history ?? []).map((c) => ({
+    kind: c.kind, warnedAt: c.warnedAt, activeAt: c.activeAt, active: c.active, drafted: c.drafted ?? null, sold: [...c.sold], built: { ...c.built },
+  }));
 }
 
 export function buildState(content: Content, spec: RunSpec): BattleState {
@@ -143,7 +157,8 @@ export function runBattle(content: Content, spec: RunSpec): { state: BattleState
     merges: sum.merges,
     goldEarned: sum.goldEarned,
     frontLine: state.frontLine,
-    counters: [],
+    counters: counterSummary(state),
+    opening: state.sides.enemy.ai?.opening ? { kinds: [...state.sides.enemy.ai.opening.kinds], dual: state.sides.enemy.ai.opening.dual } : null,
     rejectedCommands: sum.rejectedCommands,
     events: res.eventCounts,
     stats: sum.stats,

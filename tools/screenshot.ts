@@ -10,7 +10,8 @@ import { join } from 'node:path';
 import { chromium, firefox } from 'playwright';
 import { nodeContent, ROOT } from './lib/content.ts';
 import { RUN_SCENES, runForParams, sceneOf, stateForParams } from './lib/params.ts';
-import { hashRun } from '../src/run/index.ts';
+import { hashRun, intelDots } from '../src/run/index.ts';
+import { COUNTER_KINDS } from '../src/sim/index.ts';
 import { hashState, summarize } from '../src/sim/index.ts';
 import type { BattleState } from '../src/sim/index.ts';
 
@@ -175,6 +176,29 @@ async function main(): Promise<number> {
       }));
       if (hud.gold !== String(summary.gold.player)) failures.push(`#hud-gold "${hud.gold}" != summary gold ${summary.gold.player}`);
       if (hud.supply !== summary.supply.player.text) failures.push(`#hud-supply "${hud.supply}" != summary supply ${summary.supply.player.text}`);
+
+      // 4c. the General's Intent panel (SPEC §7.5): the pending warning's kind and countdown, never units
+      const intent = await page.evaluate(() => ({
+        text: document.getElementById('hud-intent')?.textContent ?? '',
+        general: document.getElementById('hud-general')?.textContent ?? '',
+        doctrine: document.getElementById('hud-doctrine')?.textContent ?? '',
+        warningShown: !(document.getElementById('hud-warning')?.hidden ?? true),
+        warningKind: document.getElementById('hud-warning')?.dataset.kind ?? null,
+        countdown: document.getElementById('hud-countdown')?.textContent ?? null,
+      }));
+      dom = { ...(dom ?? {}), intent };
+      const names = [...Object.values(content.units).map((u) => u.name), ...Object.values(content.buildings).map((b) => b.name)];
+      for (const n of names) if (intent.text.includes(n)) failures.push(`the Intent panel names "${n}" (it must stay vague)`);
+      const c = node.sides.enemy.ai?.counter;
+      const pending = c?.history.filter((r) => !r.active).sort((a, b) => a.activeAt - b.activeAt)[0];
+      if (pending) {
+        const waves = Math.max(1, Math.ceil((pending.activeAt - node.tick) / node.rules.waveTicks));
+        if (!intent.warningShown) failures.push('a counter warning is pending but the Intent panel shows none');
+        if (intent.warningKind !== pending.kind) failures.push(`Intent warning kind ${intent.warningKind} != pending ${pending.kind}`);
+        if (intent.countdown !== `${waves} wave${waves === 1 ? '' : 's'}`) failures.push(`Intent countdown "${intent.countdown}" != ${waves} waves`);
+      } else if (intent.warningShown) {
+        failures.push('the Intent panel shows a warning with none pending');
+      }
     }
 
     // 4b. run screens: the DOM shows what the run state holds
@@ -213,6 +237,25 @@ async function main(): Promise<number> {
       if (!d.title) failures.push('the summary has no title');
       if (d.battles.length !== n) failures.push(`summary lists ${d.battles.length} battles, the run has ${n}`);
       for (const r of d.battles) if (!/^(Won|Lost) by (Rout|Decision)$/.test(r)) failures.push(`summary row without a result: "${r}"`);
+    }
+
+    // 4c. intel bars (SPEC §7.6) on the route and the summary: four kinds with the run's dots once a battle has been read
+    if (scene === 'route' || scene === 'run' || scene === 'summary') {
+      const intelDom = await page.evaluate(() => [...document.querySelectorAll('#route-intel .intel-kind')].map((e) => ({
+        kind: e.getAttribute('data-kind'), dots: Number(e.getAttribute('data-dots')), text: e.textContent ?? '',
+      })));
+      dom = { ...(dom ?? {}), intel: intelDom };
+      const r = runForParams(content, q).run;
+      if (r.intel) {
+        const want = intelDots(r.intel);
+        if (intelDom.length !== 4) failures.push(`${scene} shows ${intelDom.length} intel bars (expected 4)`);
+        for (const k of COUNTER_KINDS) {
+          const got = intelDom.find((x) => x.kind === k);
+          if (!got || got.dots !== want[k]) failures.push(`intel bar ${k}: ${got?.dots ?? '-'} dots, the run has ${want[k]}`);
+        }
+      } else if (intelDom.length) {
+        failures.push('intel bars shown before any battle was read');
+      }
     }
 
     // 5. artifacts
