@@ -1,0 +1,112 @@
+{
+  "name": "m4-adaptive-mold-s4",
+  "description": "mono Sporeling Burrow vs adaptive Old Mother Mold (two Swarm counters), seed 4",
+  "config": {
+    "seed": 4,
+    "battleIndex": 1,
+    "mapId": "bogwater-hollow",
+    "player": {
+      "faction": "velvet-bloom",
+      "controller": {
+        "kind": "bot",
+        "id": "mono:sporelingBurrow"
+      },
+      "kit": [
+        "sporelingBurrow",
+        "capguardHall",
+        "gillNest",
+        "rootbreakerDen",
+        "puffballMortar",
+        "truffleCellar",
+        "scythecapGrove",
+        "veilstalkerHollow",
+        "tendersRing",
+        "hammercapForge",
+        "amanitaLodge",
+        "morelWarren",
+        "rhizomeVault",
+        "sporeExchange"
+      ],
+      "heartcapHp": 3000,
+      "heartcapMaxHp": 3000,
+      "startingGold": 300
+    },
+    "enemy": {
+      "faction": "gray-rot",
+      "controller": {
+        "kind": "general",
+        "id": "mother-mold"
+      },
+      "kit": [
+        "sporelingBurrow",
+        "capguardHall",
+        "gillNest",
+        "rootbreakerDen",
+        "puffballMortar",
+        "truffleCellar",
+        "scythecapGrove",
+        "veilstalkerHollow",
+        "tendersRing",
+        "hammercapForge",
+        "amanitaLodge",
+        "morelWarren",
+        "rhizomeVault",
+        "sporeExchange"
+      ],
+      "heartcapHp": 2000,
+      "heartcapMaxHp": 2000,
+      "startingGold": 300
+    },
+    "flags": {
+      "merging": true,
+      "drafts": false,
+      "adaptiveGeneral": true,
+      "powers": false
+    },
+    "modifiers": [
+      {
+        "side": "enemy",
+        "source": "general:mother-mold",
+        "effects": {
+          "modifiers": [
+            {
+              "stat": "building.spawnInterval",
+              "op": "mul",
+              "value": 0.91,
+              "where": {
+                "tag": "swarm"
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "commands": [
+    {
+      "tick": 0,
+      "side": "player",
+      "seq": 0,
+      "type": "begin"
+    }
+  ],
+  "expected": {
+    "600": "3fd5cc84b0b1ca96",
+    "1200": "0c91f5902a048509",
+    "1800": "6cd332585ec9b13a",
+    "2400": "d455492553f32a05",
+    "3000": "a571198de33cf20c",
+    "3600": "34f04d54686d8382",
+    "4200": "fa76e18fb3ee6444",
+    "4800": "1c0745c3d4186fec",
+    "5400": "8dbc273ec695b744",
+    "6000": "fe36104927fde4e6",
+    "6600": "03eff2f5b54f6cef",
+    "7200": "dade83850c80021f",
+    "7800": "24fd44129fe64785",
+    "8400": "8b5af2e4c3721c70",
+    "9000": "06d90d5ea4d10ce9",
+    "9600": "d732638510e24199",
+    "final": "12b4e23852a6d3c9"
+  }
+}

@@ -20,27 +20,19 @@ const TIE_ORDER: readonly CounterKind[] = ['elite', 'armor', 'line', 'swarm'];
 export const zeroProfile = (): IntelProfile => ({ swarm: 0, line: 0, armor: 0, elite: 0 });
 
 /**
- * The kinds a building counters, from its base data: a spawner by its unit, a tower by its attack
- * (Anti-Swarm: splash or slash; Anti-Line: pierce; Anti-Armor: crush or siege; Anti-Elite: slayer).
+ * The kinds a spawner counters, from its unit's base data (Anti-Swarm: splash or slash; Anti-Line:
+ * pierce; Anti-Armor: crush or siege; Anti-Elite: slayer). Towers, economy and utility buildings have
+ * no unit, so they are in no counter set (SPEC §7.4); healers neither.
  */
 export function counterKindsOf(lib: Library, buildingId: string): CounterKind[] {
-  const b = lib.buildings[buildingId];
-  if (!b) return [];
-  let type: string, splash: boolean, tags: readonly string[] = [];
-  if (b.spawn) {
-    const u = lib.units[b.spawn.unit];
-    if (!u || u.heal) return [];
-    type = u.damageType; splash = (u.splashRadius ?? 0) > 0; tags = u.tags;
-  } else if (b.attack) {
-    type = b.attack.damageType; splash = (b.attack.splashRadius ?? 0) > 0;
-  } else {
-    return [];
-  }
+  const sp = lib.buildings[buildingId]?.spawn;
+  const u = sp ? lib.units[sp.unit] : undefined;
+  if (!u || u.heal) return [];
   const out: CounterKind[] = [];
-  if (splash || type === 'slash') out.push('swarm');
-  if (type === 'pierce') out.push('line');
-  if (type === 'crush' || tags.includes('siege')) out.push('armor');
-  if (tags.includes('slayer')) out.push('elite');
+  if ((u.splashRadius ?? 0) > 0 || u.damageType === 'slash') out.push('swarm');
+  if (u.damageType === 'pierce') out.push('line');
+  if (u.damageType === 'crush' || u.tags.includes('siege')) out.push('armor');
+  if (u.tags.includes('slayer')) out.push('elite');
   return out;
 }
 

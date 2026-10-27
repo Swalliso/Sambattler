@@ -5,7 +5,7 @@
 // battle index, so a run is reproducible from its seed and its decisions.
 import type { RunEffect } from '../data/schema.ts';
 import { hashValue, seedStream } from '../sim/index.ts';
-import type { BattleConfig, Content, DraftCard, DraftPolicy, Flags, Rng4, Side } from '../sim/index.ts';
+import type { BattleConfig, Content, CounterKind, DraftCard, DraftPolicy, Flags, IntelProfile, Rng4, Side } from '../sim/index.ts';
 import { generateRoute } from './route.ts';
 import type { RouteNode } from './route.ts';
 
@@ -35,6 +35,22 @@ export interface BattleRecord {
   /** Cards picked in this battle's drafts. */
   drafted: string[];
   spores: number;
+  /** The general's opening doctrine from intel (the boss's is dual). */
+  opening?: { kinds: CounterKind[]; dual: boolean };
+  /** The counter cycles the general ran (SPEC §7.4–7.5). */
+  counters?: CounterRecordBrief[];
+  /** The player's profile for this battle (SPEC §7.6); missing if the general did not adapt. */
+  profile?: IntelProfile;
+}
+
+export interface CounterRecordBrief {
+  kind: CounterKind;
+  warnedAt: number;
+  activeAt: number;
+  active: boolean;
+  drafted?: string;
+  sold: string[];
+  built: Record<string, number>;
 }
 
 export interface CardRecord { card: string; source: string }
@@ -92,8 +108,12 @@ export interface RunState {
   spores: number;
   amber: number;
   xp: number;
-  /** Times Burn the Notes halved the general's intel (intel itself arrives in M4). */
+  /** Times Burn the Notes halved the general's intel. */
   intelHalvings: number;
+  /** The Gray Rot's intel file on the player (SPEC §7.6); missing until a battle has been read. */
+  intel?: IntelProfile;
+  /** Every battle's profile so far, for the boss's unweighted average. */
+  profiles?: IntelProfile[];
   /** One-shot modifiers for the next battle (events). */
   next: { startingGold: number; sporestormShiftSeconds: number };
   /** Event outcomes still to resolve (some wait on a prompt). */
@@ -108,6 +128,8 @@ export interface RunOptions {
   player?: string;
   autoDraft?: DraftPolicy;
   commander?: string;
+  /** Feature flags for the run's battles (drafts stay on: they are part of the run loop). */
+  flags?: Partial<Flags>;
 }
 
 export const RUN_FLAGS: Flags = { merging: true, drafts: true, adaptiveGeneral: true, powers: false };
@@ -131,7 +153,7 @@ export function createRun(content: Content, opts: RunOptions): RunState {
     faction: 'velvet-bloom',
     player: opts.player ?? 'human',
     autoDraft: opts.autoDraft ?? (opts.player && opts.player !== 'human' ? 'greedy' : 'none'),
-    flags: { ...RUN_FLAGS },
+    flags: { ...RUN_FLAGS, ...opts.flags, drafts: true },
     route: generateRoute(content, rng.route),
     path: [],
     kit: [...cmd.starter],

@@ -58,7 +58,7 @@ describe('route (SPEC §8.2)', () => {
         expect(new Set(maps).size).toBe(maps.length);
         for (const n of row) {
           if (n.kind === 'elite') expect(content.eliteOrder).toContain(n.elite);
-          if (n.map) expect(n.general).toBe('scripted');
+          if (n.map) expect(content.generals[n.general!]?.adaptive).toBe(true);
         }
       }
       const events = r.flat().filter((n) => n.kind === 'event').map((n) => n.event!);
@@ -68,6 +68,25 @@ describe('route (SPEC §8.2)', () => {
       orders.add(r[3]!.map((n) => n.kind).join());
     }
     expect(orders.size).toBe(2); // row 4's order is drawn
+  });
+
+  it('generals (SPEC §7.7, §8.2): eligible by appearsIn, distinct within a row, the Pale Sovereign at the boss', () => {
+    const rowIndex = [1, 2, 3, 3, 4];
+    const seen = new Set<string>();
+    for (let seed = 1; seed <= 40; seed++) {
+      const r = createRun(content, { seed }).route;
+      r.forEach((row, i) => {
+        const gens = row.filter((n) => n.map && n.kind !== 'boss').map((n) => n.general!);
+        expect(new Set(gens).size).toBe(gens.length);
+        for (const g of gens) {
+          expect(content.generals[g]!.appearsIn).toContain(rowIndex[i]);
+          seen.add(g);
+        }
+      });
+      expect(r[5]![0]!.general).toBe('pale-sovereign');
+      expect(r[0]![0]!.general).not.toBe('blightwright'); // battles 2–4 only
+    }
+    expect([...seen].sort()).toEqual(['blightwright', 'lichen-baron', 'mother-mold']);
   });
 });
 
@@ -88,7 +107,8 @@ describe('battle setup and rewards (SPEC §6.1, §6.5, §8.5–8.6)', () => {
     expect(c3.player.startingGold).toBe(bal.startingGold + 2 * bal.startingGoldPerBattle);
     expect(c3.enemy.heartcapHp).toBe(bal.heartcapEnemyHp.base + 2 * bal.heartcapEnemyHp.perBattle);
     const elite = run.route[4]![1]!.elite!;
-    if (elite !== 'veteran') expect(c3.modifiers![0]!.source).toBe(`elite:${elite}`);
+    if (elite !== 'veteran') expect(c3.modifiers!.map((m) => m.source)).toContain(`elite:${elite}`);
+    expect(c3.modifiers!.map((m) => m.source)).toContain(`general:${run.route[4]![1]!.general}`); // the passive
     expect(c3.enemy.kit).toEqual(generalKit(content, run, run.route[4]![1]!, 3).kit);
     enter(run, 5, 0);
     expect(configOf(run).enemy.heartcapHp).toBe(bal.heartcapEnemyHp.boss);

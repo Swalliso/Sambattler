@@ -145,7 +145,9 @@ export interface SimulateOptions extends Partial<RunOptions> {
 
 /** Plays a whole run (or its first `maxBattles` battles) with the given policies. */
 export function simulateRun(content: Content, seed: number, policies: AutoPolicies, opts: SimulateOptions = {}): RunResult {
-  const run = createRun(content, { seed, player: policies.player, autoDraft: policies.draft, ...(opts.commander ? { commander: opts.commander } : {}) });
+  const run = createRun(content, {
+    seed, player: policies.player, autoDraft: policies.draft, ...(opts.commander ? { commander: opts.commander } : {}), ...(opts.flags ? { flags: opts.flags } : {}),
+  });
   const ctx = autoContext(content, seed, policies);
   const hashes: Record<string, string>[] = [];
   for (let guard = 0; !run.outcome && guard < 200; guard++) {

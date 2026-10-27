@@ -16,7 +16,7 @@ Written 2026-10-27 against `main` at `6eff1f2`. Scope and verification come from
 
 Each is easy to reverse; say so if you want one changed.
 
-1. **Towers in counter sets.** §7.4 defines counter sets by "buildings whose unit has…". Towers have no unit, so a tower is classed by its attack: the Puffball Mortar (crush, splash) counts for both Anti-Swarm and Anti-Armor.
+1. **Counter sets hold spawners only.** §7.4 defines them by "buildings whose unit has…"; towers, economy and utility buildings have no unit, and the Tender heals instead of attacking, so none of them is in a set.
 2. **Elite share.** The numerator sums `rate_b × mergedFraction_b` over merge-on spawners; the denominator is every spawner's rate, so Elite is a share of the whole mix. A consumed unit is a tier-1 unit spawned by `b` in the last two waves and knit into a Bloomed unit. A unit's spawn wave comes from its id (ids only grow), so no per-unit field is needed.
 3. **Nothing to read.** If the player has no standing spawner at an analysis, no counter is warned for that cycle; its slot passes.
 4. **Boss cycles.** "The boss also gets an early cycle" is read as an addition: the Pale Sovereign analyses at 1:00, 2:00 and 5:00 (active at 3:00, 4:00 and 7:00). Pending warnings queue; the Intent panel shows the soonest.

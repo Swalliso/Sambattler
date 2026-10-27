@@ -3,7 +3,7 @@ export { loadContent, ContentError } from '../data/registry.ts';
 export type { Content, RawContent } from '../data/registry.ts';
 export {
   createBattle, createFromScenario, makeConfig, parseController, controllerLabel, parseFlags, DEFAULT_FLAGS, MILESTONE,
-  draftPool, STAND_IN_COMMANDER,
+  draftPool, STAND_IN_COMMANDER, generalPassives,
 } from './create.ts';
 export type { BattleOptions, Flags } from './create.ts';
 export { canMerge } from './systems/merging.ts';
@@ -17,6 +17,10 @@ export { buildLibrary } from './compile.ts';
 export { generateOffer, applyCard, parseCard, cardId, rarityWeights, rerollCost, RARITIES } from './draft.ts';
 export type { OfferOptions } from './draft.ts';
 export { choosePick, greedyScore } from './ai/draftPolicy.ts';
+export {
+  activeCounter, analyzeMix, counterKindsOf, counterSets, doctrineMult, mergedFraction, openingActive, topKind, topKinds, zeroProfile,
+} from './ai/counter.ts';
+export type { MixAnalysis } from './ai/counter.ts';
 export { seedStream, hash32, nextFloat, nextInt } from './rng.ts';
 export { legalPlacements, priceAt, placementProblem, depthOf, footprintOnLoam } from './placement.ts';
 export type { Placement } from './placement.ts';

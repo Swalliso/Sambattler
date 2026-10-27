@@ -4,7 +4,7 @@
 import type { Content } from '../../src/data/registry.ts';
 import { addBuilding, addUnit } from '../../src/sim/create.ts';
 import { createBattle, makeConfig, runHeadless, summarize } from '../../src/sim/index.ts';
-import type { BattleState, Side, Tier } from '../../src/sim/index.ts';
+import type { BattleConfig, BattleState, Side, Tier } from '../../src/sim/index.ts';
 import { buildingDef } from '../../src/sim/world.ts';
 import { median, runBattle } from './run.ts';
 
@@ -230,7 +230,10 @@ export interface MatchStats {
  * Plays `a` against `b` over seeds, in both seats when `symmetric` (A as player, then A as enemy),
  * and reports A's results. `goldA` gives A extra starting gold.
  */
-export function matchup(content: Content, a: string, b: string, seeds: number, symmetric: boolean, goldA = 0, map = 'bogwater-hollow'): MatchStats {
+export function matchup(
+  content: Content, a: string, b: string, seeds: number, symmetric: boolean, goldA = 0, map = 'bogwater-hollow',
+  flags?: Partial<BattleConfig['flags']>,
+): MatchStats {
   const st: MatchStats = {
     games: 0, winsA: 0, decisions: 0, lengths: [], rejected: 0, wallMs: [],
     spawnedSupply: { a: {}, b: {} }, merges: { a: 0, b: 0 },
@@ -243,6 +246,7 @@ export function matchup(content: Content, a: string, b: string, seeds: number, s
         player: seatA === 'player' ? a : b,
         enemy: seatA === 'player' ? b : a,
         startingGold: goldA ? { [seatA]: goldA } : {},
+        ...(flags ? { flags } : {}),
       });
       st.games++;
       if (result.winner === seatA) st.winsA++;
@@ -353,6 +357,44 @@ export function evaluateG7(content: Content): Verdict {
       `${mirrorOk ? 'ok  ' : 'FAIL'} bot:${t.mirror.mergeBot} vs its merge-off twin: ${(mRate * 100).toFixed(0)}% over ${mirror.games} games (both seats), ${(mirror.merges.a / mirror.games).toFixed(1)} merges per game`,
       `${slayerOk ? 'ok  ' : 'FAIL'} bot:${t.slayers.mergeBot} vs its merge-off twin: ${(sRate * 100).toFixed(0)}% over ${slayers.games} games; realised Slayer share ${(share * 100).toFixed(0)}% of spawned supply (target ~${pct(t.slayers.share)})`,
     ],
+  };
+}
+
+export interface G8Row { bot: string; off: number; on: number; drop: number; asserted: boolean; ok: boolean }
+
+/**
+ * G8: adaptation matters. Each mono bot plays the G8 general with the counter cycle off and on (the
+ * mono bot as the player, merging on); its win rate must drop by at least `minDrop`. A bot already
+ * under `minBaseline` without adaptation cannot drop that far, so it is reported, not asserted.
+ * `bot:balanced` must win `balancedMin`–`balancedMax` against the adaptive general at battle index 1.
+ */
+export function evaluateG8(content: Content): Verdict & { rows: G8Row[] } {
+  const t = content.targets.G8;
+  const general = `general:${t.general}`;
+  const off = { merging: true, adaptiveGeneral: false };
+  const on = { merging: true, adaptiveGeneral: true };
+  const rows: G8Row[] = [];
+  const details: string[] = [];
+  let pass = true;
+  for (const id of rosterIds(content)) {
+    const a = matchup(content, `bot:mono:${id}`, general, t.seeds, false, 0, 'bogwater-hollow', off);
+    const b = matchup(content, `bot:mono:${id}`, general, t.seeds, false, 0, 'bogwater-hollow', on);
+    const rOff = a.winsA / a.games, rOn = b.winsA / b.games;
+    const asserted = rOff >= t.minBaseline;
+    const ok = !asserted || rOff - rOn >= t.minDrop;
+    if (!ok) pass = false;
+    rows.push({ bot: id, off: rOff, on: rOn, drop: rOff - rOn, asserted, ok });
+    details.push(`${!asserted ? 'n/a ' : ok ? 'ok  ' : 'FAIL'} mono:${id} vs ${t.general}: ${(rOff * 100).toFixed(0)}% → ${(rOn * 100).toFixed(0)}% with adaptation (drop ${((rOff - rOn) * 100).toFixed(0)} points${asserted ? '' : `; below the ${pct(t.minBaseline)} baseline, report only`})`);
+  }
+  const bal = matchup(content, 'bot:balanced', general, t.seeds, false, 0, 'bogwater-hollow', on);
+  const rate = bal.winsA / bal.games;
+  const balOk = rate >= t.balancedMin && rate <= t.balancedMax;
+  if (!balOk) pass = false;
+  details.push(`${balOk ? 'ok  ' : 'FAIL'} bot:balanced vs adaptive ${t.general} at battle index 1: ${(rate * 100).toFixed(0)}% (target ${pct(t.balancedMin)}–${pct(t.balancedMax)})`);
+  return {
+    id: 'G8', pass, rows,
+    summary: `adaptation: every mono bot drops ≥${Math.round(t.minDrop * 100)} points against adaptive ${t.general}; balanced wins ${pct(t.balancedMin)}–${pct(t.balancedMax)}`,
+    details,
   };
 }
 

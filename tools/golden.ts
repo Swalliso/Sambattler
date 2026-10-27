@@ -31,6 +31,7 @@ const REPLAYS: { name: string; description: string; seed: number; player: string
   { name: 'm1-balanced-vs-scripted-s1', description: 'bot:balanced vs the scripted general, seed 1', seed: 1, player: 'bot:balanced', enemy: 'general:scripted', flags: { merging: false, adaptiveGeneral: false }, kit: M1_KIT },
   { name: 'm1-turtle-vs-scripted-s2', description: 'bot:turtle vs the scripted general, seed 2', seed: 2, player: 'bot:turtle', enemy: 'general:scripted', flags: { merging: false, adaptiveGeneral: false }, kit: M1_KIT },
   { name: 'm2-merge-mirror-s3', description: 'merge-on vs merge-off mirror (bot:balanced vs bot:balanced-nomerge, the G7 setup), seed 3', seed: 3, player: 'bot:balanced', enemy: 'bot:balanced-nomerge', flags: { merging: true, adaptiveGeneral: false } },
+  { name: 'm4-adaptive-mold-s4', description: 'mono Sporeling Burrow vs adaptive Old Mother Mold (two Swarm counters), seed 4', seed: 4, player: 'bot:mono:sporelingBurrow', enemy: 'general:mother-mold', flags: { merging: true, adaptiveGeneral: true } },
 ];
 
 interface RunReplay {
