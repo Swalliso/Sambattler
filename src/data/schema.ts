@@ -1,6 +1,7 @@
-// zod schemas for every data file (SPEC §14). Milestone 3 subset: balance, factions, buildings,
-// units, maps, sprites, generals, bots, scenarios, balance targets, plus the run content (upgrade
-// tracks, relics, events, elite modifiers, the commander stand-in) and the effects DSL (§14.2).
+// zod schemas for every data file (SPEC §14). Milestone 4 subset: balance, factions, buildings,
+// units, maps, sprites, generals (with passives and the counter cycle), bots, scenarios, balance
+// targets, plus the run content (upgrade tracks, relics, events, elite modifiers, the commander
+// stand-in) and the effects DSL (§14.2).
 import { z } from 'zod';
 
 export const Id = z.string().min(1).regex(/^[a-zA-Z0-9:_-]+$/, 'ids use letters, digits, : _ -');
@@ -96,6 +97,25 @@ export const BalanceSchema = z.object({
     economyLate: z.object({ afterSeconds: Seconds, mult: z.number().nonnegative() }).strict(),
     towerPressureMult: z.number().nonnegative(),
     mergeOffSlayerShare: z.number().min(0).max(1),
+    /** The counter cycle and intel doctrines (SPEC §7.4, §7.6). */
+    counter: z.object({
+      /** Analysis times and the activation delay, in seconds; the boss adds `bossCycles`. */
+      cycles: z.array(z.object({ analyzeSeconds: Seconds, activeSeconds: Seconds }).strict()),
+      bossCycles: z.array(z.object({ analyzeSeconds: Seconds, activeSeconds: Seconds }).strict()),
+      scoreNoise: z.number().nonnegative(),
+      swarmEliteDiscount: z.number().min(0).max(1),
+      eliteScoreMult: z.number().nonnegative(),
+      counterMult: z.number().nonnegative(),
+      otherMult: z.number().nonnegative(),
+      openingMult: z.number().nonnegative(),
+      openingOtherMult: z.number().nonnegative(),
+      dualMult: z.number().nonnegative(),
+      /** Free 2×2 slots wanted at activation before the general sells (at most `maxSells`). */
+      freeSlots: z.number().int().nonnegative(),
+      maxSells: z.number().int().nonnegative(),
+      /** Intel: weight of the previous file in `intel = keep × intel + (1 − keep) × profile`. */
+      intelKeep: z.number().min(0).max(1),
+    }).strict(),
     score: z.object({
       spawnerDepth: z.number(), spawnerThreat: z.number(), spawnerSurcharge: z.number(),
       economyLoam: z.number(), economyDepth: z.number(), economyThreat: z.number(),
@@ -116,6 +136,11 @@ export const BalanceTargetsSchema = z.object({
   G5: z.object({ seeds: z.number().int().positive(), bonusGold: z.number().int(), minWinRate: z.number(), maxWinRate: z.number() }).strict(),
   G6: z.object({ seeds: z.number().int().positive(), scenario: Id, minBehindWinRate: z.number() }).strict(),
   /** Each check pits a bot against its own merge-off twin, so merging is the only difference. */
+  /** G8: adaptation matters. Mono bots against one general with and without `adaptive`. */
+  G8: z.object({
+    seeds: z.number().int().positive(), general: Id, minDrop: z.number(), minBaseline: z.number(),
+    balancedMin: z.number(), balancedMax: z.number(),
+  }).strict(),
   G7: z.object({
     seeds: z.number().int().positive(),
     mirror: z.object({ mergeBot: Id, noMergeBot: Id, minWinRate: z.number(), maxWinRate: z.number() }).strict(),
@@ -223,6 +248,8 @@ export const BuildingSchema = z.object({
     minRange: z.number().nonnegative().optional(), splashRadius: Pos.optional(), projectileSpeed: z.number().nonnegative(),
   }).strict().optional(),
   economy: z.object({ goldPerTick: z.number().int().nonnegative(), interestCapAdd: z.number().int().optional() }).strict().optional(),
+  /** Utility effects while the building stands (Rhizome Vault: +supply cap, at most `maxCount` count). */
+  utility: z.object({ supplyCapAdd: z.number().int().positive(), maxCount: z.number().int().positive() }).strict().optional(),
 }).strict().superRefine((b, ctx) => {
   const need = { spawner: 'spawn', tower: 'attack', economy: 'economy', utility: null } as const;
   const key = need[b.kind];
@@ -286,6 +313,14 @@ export const GeneralSchema = z.object({
   laneStyle: z.enum(['defensive', 'aggressive']), appearsIn: z.array(z.number().int().positive()),
   /** Default auto: merging off on swarm buildings while the opponent's Slayer share is high (SPEC §7.2). */
   mergePolicy: MergePolicy.optional(),
+  /** Personality passive (SPEC §7.7), applied as a battle modifier on the general's side. */
+  passive: EffectBundleSchema.optional(),
+  /** Runs the counter cycle and reads intel when `flags.adaptiveGeneral` is on (SPEC §7.4, §7.6). */
+  adaptive: z.boolean().optional(),
+  /** The run's final general: the early counter cycle, the dual doctrine and the boss kit (SPEC §7.6–7.8). */
+  boss: z.boolean().optional(),
+  /** Portrait line on the route and in the Intent panel. */
+  title: z.string().optional(),
 }).strict();
 
 export const BotSchema = z.object({

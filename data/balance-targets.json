@@ -17,5 +17,6 @@
     "mirror": { "mergeBot": "balanced", "noMergeBot": "balanced-nomerge", "minWinRate": 0.55, "maxWinRate": 0.70 },
     "slayers": { "mergeBot": "slayer", "noMergeBot": "slayer-nomerge", "share": 0.25, "maxWinRate": 0.50 }
   },
+  "G8": { "seeds": 20, "general": "lichen-baron", "minDrop": 0.2, "minBaseline": 0.2, "balancedMin": 0.4, "balancedMax": 0.65 },
   "G11": { "tickMeanMs": 1.0, "tickP99Ms": 2.5, "battleWallMs": 3000, "benchTicks": 2000, "quickTicks": 400 }
 }

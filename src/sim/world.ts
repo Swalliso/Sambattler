@@ -93,3 +93,34 @@ export function columnsOwned(state: BattleState, side: Side): number {
   for (const l of state.lanes) n += side === 'player' ? l.pBorder + 1 : W - l.eBorder;
   return n;
 }
+
+/**
+ * A side's supply cap: its compiled cap plus standing utility buildings (Rhizome Vault: each type
+ * counts for at most `maxCount` buildings).
+ */
+export function supplyCapOf(state: BattleState, side: Side): number {
+  const cs = state.compiled[side];
+  let cap = cs.supplyCap;
+  const counted: Record<string, number> = {};
+  for (const b of state.buildings) {
+    if (b.side !== side || b.hp <= 0) continue;
+    const u = cs.buildings[b.buildingId]?.utility;
+    if (!u) continue;
+    const n = counted[b.buildingId] ?? 0;
+    if (n >= u.maxCount) continue;
+    counted[b.buildingId] = n + 1;
+    cap += u.supplyCapAdd;
+  }
+  return cap;
+}
+
+/** A side's interest cap: its compiled cap plus standing economy buildings that raise it (Spore Exchange). */
+export function interestCapOf(state: BattleState, side: Side): number {
+  const cs = state.compiled[side];
+  let cap = cs.interestCap;
+  for (const b of state.buildings) {
+    if (b.side !== side || b.hp <= 0) continue;
+    cap += cs.buildings[b.buildingId]?.economy?.interestCapAdd ?? 0;
+  }
+  return cap;
+}

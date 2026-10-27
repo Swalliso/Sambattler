@@ -1,6 +1,8 @@
-// The shared AI framework for the scripted general and the strategy bots (SPEC §7.2–7.3, §7.9).
-// It acts only by queueing ordinary commands for the next tick (placements and merge toggles), and
-// draws randomness only from the `ai` stream.
+// The shared AI framework for the generals and the strategy bots (SPEC §7.2–7.3, §7.9). It acts
+// only by queueing ordinary commands for the next tick (placements, merge toggles and, during a
+// doctrine change, sales), and draws randomness only from the `ai` stream. The counter cycle lives in
+// counter.ts; here its doctrine scales the purchase weights.
+import { doctrineMult } from './counter.ts';
 import { queueCommand } from '../commands.ts';
 import { legalPlacements } from '../placement.ts';
 import { nextFloat, nextSigned } from '../rng.ts';
@@ -130,6 +132,7 @@ function pickTarget(state: BattleState, side: Side, ai: AiState, pressure: Press
       else if (clock > r.ai.economyLateTick) x *= r.ai.economyLateMult;
     }
     if (kind === 'tower' && pressure.anyPressured) x *= r.ai.towerPressureMult;
+    if (ai.counterSets) x *= doctrineMult(state, ai, w.building);
     eff.push(x);
     total += x;
   }
@@ -143,6 +146,16 @@ function pickTarget(state: BattleState, side: Side, ai: AiState, pressure: Press
   return null;
 }
 
+/** The lane where the opponent holds the fewest columns (ties to the lower lane): aggressive lane choice (SPEC §7.3). */
+export function weakestOpponentLane(state: BattleState, side: Side): number {
+  let best = 0, bestCols = Infinity;
+  state.lanes.forEach((L, i) => {
+    const cols = side === 'enemy' ? L.pBorder + 1 : state.map.width - L.eBorder;
+    if (cols < bestCols) { bestCols = cols; best = i; }
+  });
+  return best;
+}
+
 /** Best-scoring legal position (SPEC §7.3), or null if none. */
 export function choosePlacement(
   state: BattleState, side: Side, buildingId: string, planned: Plan[], pressure: Pressure,
@@ -153,7 +166,11 @@ export function choosePlacement(
   const ai = state.sides[side].ai;
   const enemy = other(side);
   const threatR2 = r.ai.threatRadius * r.ai.threatRadius;
-  const candidates = legalPlacements(state, side, buildingId);
+  let candidates = legalPlacements(state, side, buildingId);
+  if (ai?.laneStyle === 'aggressive' && def.kind === 'spawner' && state.lanes.length > 1) {
+    const lane = weakestOpponentLane(state, side);
+    candidates = candidates.filter((p) => p.lane === lane);
+  }
   let best: { lane: number; col: number; row: number; price: number } | null = null;
   let bestScore = -Infinity;
   for (const p of candidates) {

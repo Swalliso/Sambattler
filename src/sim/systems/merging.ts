@@ -2,6 +2,7 @@
 // knit for a second into one unit of the next tier. Active knits resolve every tick (a hit, a death
 // or a merge toggle switched off cancels them; otherwise they complete on time); new trios are
 // detected every `merge.every` ticks, per side, walking eligible units in id order.
+import { noteMerged } from '../ai/counter.ts';
 import { addUnit } from '../create.ts';
 import { fireTriggers } from '../effects.ts';
 import { SIDES } from '../state.ts';
@@ -81,6 +82,7 @@ function complete(state: BattleState, trio: UnitState[]): number {
     x += u.x; y += u.y; spawnY += u.spawnY;
     hp += u.hp; maxHp += u.maxHp; supply += u.supply;
     if (u.lastCombatTick > lastCombat) lastCombat = u.lastCombatTick;
+    if (u.tier === 1) noteMerged(state, side, u.id, u.sourceBuildingId);
     u.knit = undefined;
     removed.push(u.id);
   }

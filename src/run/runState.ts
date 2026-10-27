@@ -110,7 +110,7 @@ export interface RunOptions {
   commander?: string;
 }
 
-export const RUN_FLAGS: Flags = { merging: true, drafts: true, adaptiveGeneral: false, powers: false };
+export const RUN_FLAGS: Flags = { merging: true, drafts: true, adaptiveGeneral: true, powers: false };
 
 export function createRun(content: Content, opts: RunOptions): RunState {
   const seed = opts.seed >>> 0;

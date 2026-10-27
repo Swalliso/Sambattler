@@ -1,6 +1,7 @@
 // step(state): advances exactly one tick in the fixed system order of SPEC §14.6.
 import { executeCommands, executeHeldCommands } from './commands.ts';
 import { aiOpener, aiThink } from './ai/controller.ts';
+import { counterTick } from './ai/counter.ts';
 import { fireTriggers } from './effects.ts';
 import { healingSystem } from './systems/healing.ts';
 import { attackSystem, deathSystem, resolveHitsSystem } from './systems/combat.ts';
@@ -49,7 +50,8 @@ export function step(state: BattleState): void {
   incomeSystem(state);
   // 5. building timers and spawns
   spawningSystem(state);
-  // 6. AI think
+  // 6. AI: the counter cycle's analyses and activations (adaptive sides only), then think
+  for (const side of SIDES) if (state.sides[side].ai?.counter) counterTick(state, side);
   if (state.tick % state.rules.ai.thinkEvery === 0) {
     for (const side of SIDES) if (state.sides[side].ai) aiThink(state, side);
   }
