@@ -24,7 +24,7 @@ export class Tray {
         : b.economy ? `+${Math.round(content.balance.loamBonus * 100)}% on Rich Loam` : '';
       const sprite = spriteToCanvas(atlas, b.sprite, 'velvet-bloom');
       const el = h('button', { class: 'card', title: b.description, 'data-building': id, onclick: () => onPick(id) },
-        h('div', { class: 'head' }, h('span', { class: 'key' }, `[${i + 1}]`), h('span', { class: 'price' }, `◆ ${b.cost}`)),
+        h('div', { class: 'head' }, h('span', { class: 'key' }, i < 9 ? `[${i + 1}]` : ''), h('span', { class: 'price' }, `◆ ${b.cost}`)),
         sprite,
         h('div', { class: 'name' }, b.name),
         h('div', { class: 'out' }, out),

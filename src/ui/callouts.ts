@@ -22,7 +22,7 @@ export class Callouts {
     // replace an identical live callout instead of stacking duplicates
     const dup = this.items.find((i) => i.text === text);
     if (dup) { dup.t0 = now; return; }
-    const el = h('div', { class: `callout ${tone}` }, text);
+    const el = h('div', { class: `callout ${tone} ${kind}` }, text);
     this.items.push({ kind, text, tone, t0: now, el });
     this.render();
   }

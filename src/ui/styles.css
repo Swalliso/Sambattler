@@ -44,7 +44,15 @@ button { font: inherit; color: inherit; }
 .intent canvas { grid-row: span 2; width: 32px; height: 32px; image-rendering: pixelated; }
 .intent .title { font-size: 12px; color: var(--muted); letter-spacing: .06em; }
 .intent .name { font-weight: 600; }
-.intent .doctrine { grid-column: span 2; font-size: 12px; color: var(--muted); }
+.intent { width: 300px; }
+.intent .doctrine { grid-column: span 2; font-size: 12px; color: var(--muted); display: flex; flex-direction: column; gap: 2px; }
+.intent .kind { display: flex; align-items: center; gap: 4px; color: var(--text); }
+.intent .kind.none { color: var(--muted); }
+.intent canvas.kind-icon { grid-row: auto; width: 20px; height: 20px; flex: none; image-rendering: pixelated; }
+.intent .warning { grid-column: span 2; display: flex; align-items: center; gap: 4px; font-size: 12px; color: #ffd27a; border-top: 1px dashed var(--line); padding-top: 3px; }
+.intent .warning[hidden] { display: none; }
+.intent .warning .countdown { margin-left: auto; font-weight: 700; color: #ffb4a8; }
+.callout.counter { border-color: #b8862f; color: #ffd27a; font-weight: 600; }
 
 /* ---- callouts + field ---- */
 .callouts { height: 30px; display: flex; justify-content: center; align-items: center; gap: 10px; }
@@ -76,7 +84,7 @@ button { font: inherit; color: inherit; }
 .btn:disabled { opacity: .45; cursor: default; }
 .btn.danger { border-color: #7a3a33; }
 .hint { font-size: 12px; color: var(--muted); }
-.tray { display: grid; grid-template-columns: repeat(9, 1fr); gap: 5px; align-content: start; }
+.tray { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(84px, 1fr); gap: 5px; align-content: start; overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; }
 .card { border: 1px solid var(--line); background: var(--panel-2); border-radius: 4px; padding: 5px 6px 6px; cursor: pointer; display: flex; flex-direction: column; gap: 2px; min-width: 0; text-align: left; }
 .card:hover { border-color: var(--lilac); }
 .card.sel { border-color: var(--violet); box-shadow: inset 0 0 0 1px var(--violet); }
@@ -191,6 +199,13 @@ kbd { font-family: var(--mono); font-size: 12px; padding: 1px 5px; border: 1px s
 .route-node .node-title { font-size: 14px; font-weight: 600; }
 .route-node .node-map { color: var(--text); }
 .route-node .node-general { display: flex; align-items: center; gap: 4px; color: var(--muted); }
+.intel { display: flex; align-items: center; gap: 14px; margin: 0 14px 6px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 4px; background: var(--panel-2); font-size: 13px; }
+.intel .intel-title { color: var(--muted); letter-spacing: .04em; }
+.intel .intel-kind { display: flex; align-items: center; gap: 4px; }
+.intel .kind-icon { width: 20px; height: 20px; flex: none; image-rendering: pixelated; }
+.intel .dots { color: #ffd27a; letter-spacing: 1px; }
+.counterlist { margin: 4px 0 8px 18px; padding: 0; font-size: 13px; }
+.summary-table td.countered { font-size: 12px; color: var(--muted); max-width: 260px; }
 .route-node .node-general .portrait { width: 20px; height: 20px; image-rendering: pixelated; }
 .route-node .node-elite { color: #ffb4a8; }
 .route-node .node-sub { color: var(--muted); }

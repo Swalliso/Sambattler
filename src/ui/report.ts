@@ -6,6 +6,7 @@ import type { BattleState, Side } from '../sim/index.ts';
 import { formatClock } from '../sim/index.ts';
 import { columnsOwned } from '../sim/world.ts';
 import { h } from './h.ts';
+import { KIND_LABEL, counterLine, generalName } from './doctrine.ts';
 
 const SVG = 'http://www.w3.org/2000/svg';
 const COLOR: Record<Side, string> = { player: '#8a4fd8', enemy: '#7d8a7a' };
@@ -123,6 +124,21 @@ export function damageByType(content: Content, state: BattleState, side: Side): 
     .sort((a, b) => b.value - a.value || (a.label < b.label ? -1 : 1));
 }
 
+/** "The general countered…" (SPEC §7.5): each counter with its time and the buildings it used. */
+export function counterSection(content: Content, state: BattleState): HTMLElement | null {
+  const ai = state.sides.enemy.ai;
+  const c = ai?.counter;
+  if (!ai || !c) return null;
+  const name = generalName(content, state);
+  const lines: HTMLElement[] = [];
+  if (ai.opening) {
+    lines.push(h('li', null, `${ai.opening.dual ? 'Dual doctrine' : 'Opened'} against your ${ai.opening.kinds.map((k) => KIND_LABEL[k]).join(' and ')}, from the intel on you`));
+  }
+  for (const rec of c.history) lines.push(h('li', { class: 'counter-line', 'data-kind': rec.kind }, counterLine(content, rec, state.rules.tickRate)));
+  if (!lines.length) lines.push(h('li', { class: 'muted' }, 'No counters: the battle ended before the first analysis, or there was nothing to read.'));
+  return h('section', { id: 'report-counters' }, h('h3', null, `${name} countered…`), h('ul', { class: 'counterlist' }, ...lines));
+}
+
 export function battleReport(content: Content, state: BattleState, actions: { again: () => void; rematch: () => void; continueRun?: () => void }): HTMLElement {
   const o = state.outcome!;
   const won = o.winner === 'player';
@@ -148,6 +164,7 @@ export function battleReport(content: Content, state: BattleState, actions: { ag
     ),
     h('h3', null, 'Front line'),
     frontLineGraph(state),
+    counterSection(content, state),
     h('div', { class: 'reportgrid' },
       h('section', null,
         h('h3', null, 'Damage by building', h('span', { class: 'legend' }, h('i', { class: 'player' }), NAME.player, h('i', { class: 'enemy' }), NAME.enemy)),

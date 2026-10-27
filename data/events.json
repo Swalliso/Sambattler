@@ -26,7 +26,7 @@
   { "id": "burn-the-notes", "title": "Burn the Notes",
     "text": "A Gray Rot scout's notes on your colony lie by a cold fire. Burning them properly takes time and fuel.",
     "choices": [
-      { "label": "Burn them", "text": "Halve the Gray Rot's intel on you; next battle starting gold −75. (Intel arrives in Milestone 4.)", "outcome": [{ "halveIntel": true }, { "nextBattle": { "startingGold": -75 } }] },
+      { "label": "Burn them", "text": "Halve the Gray Rot's intel on you; next battle starting gold −75.", "outcome": [{ "halveIntel": true }, { "nextBattle": { "startingGold": -75 } }] },
       { "label": "Leave them", "text": "Nothing happens.", "outcome": [] }
     ] },
   { "id": "hungry-roots", "title": "Hungry Roots",

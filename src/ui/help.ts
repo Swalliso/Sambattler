@@ -54,6 +54,8 @@ export function helpOverlay(content: Content, state: BattleState, onClose: () =>
         h('h3', null, 'Merging'),
         h('p', null, `Three identical units that stay out of combat for ${b.mergeCombatCooldownSeconds} s within ${b.mergeRadius} tiles of each other knit for ${b.mergeKnitSeconds} s into one ${TIER_NAME[1]} unit: ×${b.tierStatMult} HP and damage, a perk, and only ⅔ of their supply. Three ${TIER_NAME[1]} units make an ${TIER_NAME[2]}.`),
         h('p', null, 'The catch: merged units hold ground more slowly (presence follows supply), field fewer bodies, and Slayers tear through them. A hit during the knit cancels it. Toggle merging per building with M.'),
+        h('h3', null, 'The general adapts'),
+        h('p', null, 'At 2:00 and 5:00 the general reads your spawn mix and warns which kind it will counter two waves later: SWARM (Light units), LINE (Medium), ARMOR (Heavy) or ELITE (units you actually merge). Then it leans its spending toward buildings that beat that kind. It remembers you across a run; your intel bars on the route show what it knows.'),
         h('h3', null, 'Selling'),
         h('p', null, `Full refund during deploy, or within ${r.fullRefundTicks / r.tickRate} s of placement before the building spawns units, earns gold, or fires. After that, selling refunds ${state.compiled.player.sellRefundPct}%. Spawned units stay. Besieged buildings cannot be sold.`),
         h('h3', null, 'Hotkeys'),
