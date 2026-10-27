@@ -78,7 +78,10 @@ export function bindInput(session: Session, view: BattleView, hooks: InputHooks)
       case ' ': ev.preventDefault(); session.paused = !session.paused; break;
       case ']': session.speed = Math.min(3, session.speed + 1); break;
       case '[': session.speed = Math.max(1, session.speed - 1); break;
-      case 'Enter': if (s.phase === 'deploy') hooks.begin(); break;
+      case 'Enter':
+        // Begin must not also activate a focused inspector button (a pending sell would confirm)
+        if (s.phase === 'deploy') { ev.preventDefault(); hooks.begin(); }
+        break;
       case 'Tab': {
         ev.preventDefault();
         const mine = s.buildings.filter((b) => b.side === 'player');

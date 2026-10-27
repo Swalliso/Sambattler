@@ -37,11 +37,6 @@ beforeEach(async () => {
   await page.keyboard.press('2');
   await canvas.click({ position: { x: box.width * 2.5 / 36, y: box.height * 3.5 / 8 } });
   await page.waitForFunction(() => window.__GAME__?.summary()?.buildings.player === 2);
-  await page.keyboard.press('Enter');
-  await page.keyboard.press('Tab');
-  await page.waitForFunction(() => document.querySelector('#inspect h3')?.textContent === 'Sporeling Burrow · yours');
-  await page.locator('[data-speed="3"]').click();
-  await page.keyboard.press('Space');
 });
 
 afterEach(async () => {
@@ -62,7 +57,32 @@ async function expectFocused(id: string): Promise<void> {
   expect(await page.evaluate(() => document.activeElement?.id)).toBe(id);
 }
 
+describe('deploy-phase inspection', () => {
+  it('begins with Enter without activating a focused inspector button', async () => {
+    await page.keyboard.press('Tab');
+    await expectText(page.locator('#inspect h3'), 'Sporeling Burrow · yours');
+    const sell = page.locator('#sell-btn');
+    await sell.click();
+    await expectText(sell, /^Confirm sell \(\+\d+\) \[X\]$/);
+    await expectFocused('sell-btn');
+
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(() => window.__GAME__?.summary()?.phase === 'live');
+    await page.keyboard.press('Space');
+    await advanceTicks(2);
+    expect(await page.evaluate(() => window.__GAME__!.summary()!.buildings.player)).toBe(2);
+  });
+});
+
 describe('live building inspection at 3× speed', () => {
+  beforeEach(async () => {
+    await page.keyboard.press('Enter');
+    await page.keyboard.press('Tab');
+    await page.waitForFunction(() => document.querySelector('#inspect h3')?.textContent === 'Sporeling Burrow · yours');
+    await page.locator('[data-speed="3"]').click();
+    await page.keyboard.press('Space');
+  });
+
   it('accepts a mouse click spanning ticks and retains keyboard focus when changing buildings', async () => {
     const merge = page.locator('#merge-btn');
     const tick = await page.evaluate(() => window.__GAME__!.tick);
