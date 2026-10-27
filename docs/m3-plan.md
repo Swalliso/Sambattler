@@ -100,3 +100,32 @@ Each is easy to reverse; say so if you want one changed.
 - **Twin Roots** is the first real multi-lane map. Its median length may land outside the band; I'll iterate on the map layout and record the outcome.
 - **The run targets** (22–38 min, ≥ 30% reach the boss) depend on the draft quality versus a scripted enemy that doesn't grow. If they're out of band, I'll tune M3's own new numbers (rarity weights, relic values) and record the change. Anything touching core rules or the M1/M2 roster goes to you first.
 - **G7's Slayer clause** sits at its 50% limit, and Tender's Ring in `bot:balanced` may tip it. I'll report it either way, without retuning.
+
+## As built (2026-10-26)
+
+What changed from the plan above, and the verification results.
+
+### Changes from the plan
+
+- **`bot:balanced` keeps its M2 weights** (call 8 reverted). With Tender's Ring at weight 1 it broke G4 (Decisions 18%) and the G7 mirror (54.5%), both passing before M3. Tender's Ring was measured separately instead (see `data/CHANGELOG-balance.md`).
+- **§7.8 enemy kit growth is in M3** (your decision after the first run results). In a run, the scripted general fields its opener plus one preferred blueprint per battle index, with (i − 1) random upgrade levels; an elite adds a level and the boss fields 7 buildings and 4 levels. Single battles keep the whole roster.
+- **Mid-draft stat changes** (call 6, refined): a pick recompiles both sides. Standing units *and* buildings keep their HP fraction against the new maximum, and every other stat applies live.
+- **Combat duels (G1/G2)** leave out support spawners, since a healer can't win a duel by design.
+- **`?ticks=`** also fast-forwards the first battle of a run scene (used for testing the report → Continue → spoils path).
+
+### Verification (SPEC §16 Milestone 3)
+
+| # | Check | Result |
+|---|---|---|
+| 1 | `npm run verify`, with new unit tests for route constraints, draft weights/exclusions/determinism, effect compile order, triggers, rewards, save round-trip and mid-battle resume hash equality | PASS (151 unit tests) |
+| 2 | Whole runs, seeds 1–20 | Every run completes ✓. 25% reach the boss on seeds 1–20 and 29% over 80 seeds (target ≥ 30%) ✗. 4–5 battles and 22–38 min hold for runs that reach the boss (24–37 min), not for runs that end early in defeat ✗ |
+| 3 | Twin Roots, seeds 1–20 | Median 7:50, in band ✓. Lanes diverge in 35% of battles (target ≥ 50%; 53% on seeds 21–60) ✗ |
+| 4 | Golden `m3-run-s7` | PASS: 4 battles, every checkpoint hash pinned |
+| 5 | Screenshots `m3-route`, `m3-draft`, `m3-twin`, `m3-summary` | PASS (hash cross-check and DOM asserts); visual checklist below |
+
+Visual checklist:
+
+- **Route rows readable with node icons:** yes.
+- **Draft cards show type, rarity and effect text:** yes.
+- **Both lanes show independent fronts:** partly. At 2:30 each lane has its own units and buildings, and they fight in different places, but neither lane's territory has moved far from home yet.
+- **Summary lists each battle's result:** yes, with map, general, length, Heartcap and a front-line sparkline.
