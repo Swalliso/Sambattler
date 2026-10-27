@@ -130,6 +130,8 @@ export const BalanceTargetsSchema = z.object({
     seeds: z.number().int().positive(), supply: z.number().int().positive(), minSeedsForEdge: z.number().int().positive(), maxSeconds: Pos,
     /** Intended counter edges [winner, loser], reported (not asserted); `unit@tier` duels a merged unit. */
     intendedEdges: z.array(z.tuple([DuelUnit, DuelUnit])),
+    /** Intended edges that must hold (in ≥ minSeedsForEdge seeds) for G2 to pass: the M4 edges. */
+    assertedEdges: z.array(z.tuple([DuelUnit, DuelUnit])).optional(),
   }).strict(),
   G3: z.object({ seeds: z.number().int().positive(), maxMonoWinRate: z.number() }).strict(),
   G4: z.object({ seeds: z.number().int().positive(), medianMinSeconds: Pos, medianMaxSeconds: Pos, maxDecisionShare: z.number(), botWinMin: z.number(), botWinMax: z.number() }).strict(),

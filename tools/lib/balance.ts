@@ -212,9 +212,11 @@ export function evaluateG2(content: Content): { verdict: Verdict; outcomes: Duel
       edges[`${a}>${b}`] = wins;
     }
     const w = edges[`${a}>${b}`]!;
-    details.push(`${w >= t.minSeedsForEdge ? 'held' : 'MISS'} intended edge ${a} > ${b}: ${w}/${t.seeds} seeds (report only)`);
+    const asserted = (t.assertedEdges ?? []).some(([x, y]) => x === a && y === b);
+    if (asserted && w < t.minSeedsForEdge) pass = false;
+    details.push(`${w >= t.minSeedsForEdge ? 'held' : 'MISS'} intended edge ${a} > ${b}: ${w}/${t.seeds} seeds${asserted ? ' (asserted)' : ' (report only)'}`);
   }
-  return { verdict: { id: 'G2', pass, summary: 'supply duels form a healthy counter graph (≥4/5 seeds per edge)', details }, outcomes, edges };
+  return { verdict: { id: 'G2', pass, summary: 'supply duels form a healthy counter graph (≥4/5 seeds per edge) and the asserted intended edges hold', details }, outcomes, edges };
 }
 
 export interface MatchStats {

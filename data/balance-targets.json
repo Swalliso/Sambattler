@@ -5,8 +5,10 @@
     "intendedEdges": [
       ["capguard", "sporeling"], ["gillArcher", "capguard"], ["sporeling", "gillArcher"],
       ["gillArcher", "rootbreaker"], ["capguard", "rootbreaker"], ["rootbreaker", "sporeling"],
-      ["scythecap", "sporeling"], ["veilstalker", "capguard@2"]
-    ]
+      ["scythecap", "sporeling"], ["veilstalker", "capguard@2"],
+      ["hammercap", "amanitaKnight"], ["amanitaKnight", "gillArcher"]
+    ],
+    "assertedEdges": [["hammercap", "amanitaKnight"], ["amanitaKnight", "gillArcher"]]
   },
   "G3": { "seeds": 20, "maxMonoWinRate": 0.55 },
   "G4": { "seeds": 40, "medianMinSeconds": 330, "medianMaxSeconds": 510, "maxDecisionShare": 0.15, "botWinMin": 0.3, "botWinMax": 0.7 },

@@ -183,6 +183,9 @@ export function loadContent(raw: RawContent): Content {
     if (!(g.faction in factions)) problems.push(`general ${g.id}: faction "${g.faction}" does not exist`);
     kitRefs(`general ${g.id}`, g.opener, g.weights, g.limits);
     for (const id of g.preferred ?? []) buildingRef(`general ${g.id} preferred`, id);
+    spriteRef(`general ${g.id}`, g.sprite);
+    const roster = factions[g.faction]?.buildings ?? [];
+    for (const id of [...g.opener, ...(g.preferred ?? [])]) if (!roster.includes(id)) problems.push(`general ${g.id}: ${id} is not in the ${g.faction} roster`);
   }
   for (const b of Object.values(bots)) kitRefs(`bot ${b.id}`, b.opener, b.weights, b.limits);
   const effectRefs = (owner: string, fx: EffectBundle | undefined) => {
@@ -198,6 +201,7 @@ export function loadContent(raw: RawContent): Content {
   }
   for (const r of Object.values(relics)) effectRefs(`relic ${r.id}`, r.effects);
   for (const e of Object.values(elites)) effectRefs(`elite modifier ${e.id}`, e.effects);
+  for (const g of Object.values(generals)) effectRefs(`general ${g.id} passive`, g.passive);
   for (const c of Object.values(commanders)) {
     for (const id of c.core) buildingRef(`commander ${c.id} core`, id);
     if (new Set(c.core).size !== c.core.length) problems.push(`commander ${c.id}: duplicate core building`);
@@ -232,6 +236,7 @@ export function loadContent(raw: RawContent): Content {
         if (!(id in units)) problems.push(`balance-targets.json G2: unit "${id}" does not exist`);
       }
     }
+    if (!(targets.G8.general in generals)) problems.push(`balance-targets.json G8: general "${targets.G8.general}" does not exist`);
     for (const check of [targets.G7.mirror, targets.G7.slayers]) {
       for (const id of [check.mergeBot, check.noMergeBot]) {
         if (!(id in bots)) problems.push(`balance-targets.json G7: bot "${id}" does not exist`);

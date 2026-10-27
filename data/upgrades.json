@@ -70,5 +70,45 @@
       { "text": "Tender healing +25%", "effects": { "modifiers": [{ "stat": "unit.healAmount", "op": "mul", "value": 1.25, "where": { "unit": "tender" } }] } },
       { "text": "Tender heal range +0.75", "effects": { "modifiers": [{ "stat": "unit.range", "op": "add", "value": 0.75, "where": { "unit": "tender" } }] } }
     ]
+  },
+  {
+    "building": "hammercapForge", "rarity": ["common", "uncommon", "uncommon"],
+    "levels": [
+      { "text": "Hammercap HP +15%", "effects": { "modifiers": [{ "stat": "unit.hp", "op": "mul", "value": 1.15, "where": { "unit": "hammercap" } }] } },
+      { "text": "Hammercap damage +15%", "effects": { "modifiers": [{ "stat": "unit.damage", "op": "mul", "value": 1.15, "where": { "unit": "hammercap" } }] } },
+      { "text": "Hammercap attack interval −12%", "effects": { "modifiers": [{ "stat": "unit.attackInterval", "op": "mul", "value": 0.88, "where": { "unit": "hammercap" } }] } }
+    ]
+  },
+  {
+    "building": "amanitaLodge", "rarity": ["uncommon", "uncommon", "rare"],
+    "levels": [
+      { "text": "Amanita Knight HP +15%", "effects": { "modifiers": [{ "stat": "unit.hp", "op": "mul", "value": 1.15, "where": { "unit": "amanitaKnight" } }] } },
+      { "text": "Amanita Knight damage +15%", "effects": { "modifiers": [{ "stat": "unit.damage", "op": "mul", "value": 1.15, "where": { "unit": "amanitaKnight" } }] } },
+      { "text": "Amanita Lodge spawns 15% faster", "effects": { "modifiers": [{ "stat": "building.spawnInterval", "op": "mul", "value": 0.87, "where": { "building": "amanitaLodge" } }] } }
+    ]
+  },
+  {
+    "building": "morelWarren", "rarity": ["common", "common", "uncommon"],
+    "levels": [
+      { "text": "Morel Runner HP +15%", "effects": { "modifiers": [{ "stat": "unit.hp", "op": "mul", "value": 1.15, "where": { "unit": "morelRunner" } }] } },
+      { "text": "Morel Runner damage +15%", "effects": { "modifiers": [{ "stat": "unit.damage", "op": "mul", "value": 1.15, "where": { "unit": "morelRunner" } }] } },
+      { "text": "+1 Morel Runner per spawn", "effects": { "modifiers": [{ "stat": "building.spawnCount", "op": "add", "value": 1, "where": { "building": "morelWarren" } }] } }
+    ]
+  },
+  {
+    "building": "rhizomeVault", "rarity": ["common", "uncommon", "uncommon"],
+    "levels": [
+      { "text": "Rhizome Vault HP +200", "effects": { "modifiers": [{ "stat": "building.hp", "op": "add", "value": 200, "where": { "building": "rhizomeVault" } }] } },
+      { "text": "Supply cap +3", "effects": { "modifiers": [{ "stat": "side.supplyCap", "op": "add", "value": 3 }] } },
+      { "text": "Supply cap +3", "effects": { "modifiers": [{ "stat": "side.supplyCap", "op": "add", "value": 3 }] } }
+    ]
+  },
+  {
+    "building": "sporeExchange", "rarity": ["common", "common", "uncommon"],
+    "levels": [
+      { "text": "+1 gold per income tick", "effects": { "modifiers": [{ "stat": "building.goldPerTick", "op": "add", "value": 1, "where": { "building": "sporeExchange" } }] } },
+      { "text": "Spore Exchange HP +200", "effects": { "modifiers": [{ "stat": "building.hp", "op": "add", "value": 200, "where": { "building": "sporeExchange" } }] } },
+      { "text": "Interest cap +10", "effects": { "modifiers": [{ "stat": "side.interestCap", "op": "add", "value": 10 }] } }
+    ]
   }
 ]

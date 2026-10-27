@@ -10,8 +10,8 @@ describe('data', () => {
 
   it('every file validates and references resolve', () => {
     const c = loadContent(raw);
-    expect(Object.keys(c.buildings)).toHaveLength(9); // the M3 roster
-    expect(Object.keys(c.units)).toHaveLength(7);
+    expect(Object.keys(c.buildings)).toHaveLength(14); // the M4 roster
+    expect(Object.keys(c.units)).toHaveLength(10);
     for (const f of Object.values(c.factions)) expect(f.buildings).toEqual(c.factions['velvet-bloom']!.buildings); // mirror until M7
     expect(c.maps['bogwater-hollow']).toBeDefined();
     for (const b of Object.values(c.buildings)) {
