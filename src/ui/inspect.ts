@@ -89,8 +89,12 @@ export class InspectPanel {
     const pairs: [string, string][] = [
       ['Tier', `${TIER_NAME[u.tier - 1]} ${TIER_PIPS[u.tier - 1]}`.trim()],
       ['HP', `${u.hp} / ${u.maxHp}`],
-      ['Damage', `${Math.round(t.damage * 10) / 10} ${def.damageType} / ${t.attackTicks / state.rules.tickRate}s`],
-      ['Hits hard', `strong vs ${strongVs(state, def.damageType)} · weak vs ${weakVs(state, def.damageType)}`],
+      ...(t.healAmount > 0
+        ? [['Heals', `${t.healAmount} HP / ${t.healTicks / state.rules.tickRate}s · ${t.healTargets} target${t.healTargets > 1 ? 's' : ''} · range ${t.range}`] as [string, string]]
+        : [
+          ['Damage', `${Math.round(t.damage * 10) / 10} ${def.damageType} / ${t.attackTicks / state.rules.tickRate}s`] as [string, string],
+          ['Hits hard', `strong vs ${strongVs(state, def.damageType)} · weak vs ${weakVs(state, def.damageType)}`] as [string, string],
+        ]),
       ['Armor', `${def.armor} (fears ${vulnerableTo(state, def.armor)})`],
     ];
     if (t.slayerMult !== 1) pairs.push(['Slayer', `×${t.slayerMult} vs Bloomed & Elder`]);

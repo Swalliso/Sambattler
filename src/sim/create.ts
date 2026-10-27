@@ -1,6 +1,6 @@
 // Battle construction: from a config (deploy phase) or from a scenario file (live, pre-placed).
 import type { Content } from '../data/registry.ts';
-import { compileRules, compileSide, secToTicks } from './compile.ts';
+import { buildLibrary, compileRules, compileSides, configLoadout, creationStat, secToTicks } from './compile.ts';
 import { seedStream } from './rng.ts';
 import { resolveAiProfile } from './ai/profiles.ts';
 import { placementProblem } from './placement.ts';
@@ -8,13 +8,14 @@ import { MAX_RADIUS } from './targets.ts';
 import { clampToLane, laneOfRow, unitRadius } from './world.ts';
 import { SIDES } from './state.ts';
 import type {
-  BattleConfig, BattleState, BuildingState, Controller, LaneState, Side, SideConfig, SideState, SideStats, Tier, UnitState,
+  BattleConfig, BattleState, BuildingState, Controller, DraftPool, LaneState, Loadout, Side, SideConfig, SideState, SideStats,
+  Tier, UnitState,
 } from './state.ts';
 
 export type Flags = BattleConfig['flags'];
 
 /** The milestone this build implements. Feature flags default to what it ships (SPEC §15.2). */
-export const MILESTONE = 2;
+export const MILESTONE = 3;
 export const DEFAULT_FLAGS: Readonly<Flags> = { merging: true, drafts: false, adaptiveGeneral: false, powers: false };
 
 /** Flag names as written in `--flags` and `?flags=`, and the milestone each one arrives in. */
@@ -50,7 +51,9 @@ export function emptyStats(): SideStats {
     buildingTypes: {},
     damageBySource: {},
     heartcapDamageTaken: 0,
-    goldEarned: { stipend: 0, economy: 0, comeback: 0, interest: 0 },
+    goldEarned: { stipend: 0, economy: 0, comeback: 0, interest: 0, effects: 0, drafts: 0 },
+    healingDone: 0,
+    drafted: [],
     goldByBuilding: {},
     buildingsBuilt: 0,
     buildingsLost: 0,
@@ -111,8 +114,30 @@ export function makeConfig(content: Content, opts: BattleOptions): BattleConfig 
     enemy: side('enemy', asCtl(opts.enemy, 'general:scripted')),
     flags: { ...DEFAULT_FLAGS, ...opts.flags },
   };
+  // a single battle with drafts on gives the player the stand-in commander's pool (SPEC §8.4)
+  if (config.flags.drafts) config.player.draft = draftPool(content, config.player.faction, STAND_IN_COMMANDER, config.flags);
   if (opts.test) config.test = opts.test;
   return config;
+}
+
+/** The commander every run uses until commanders arrive in M5 (the kickoff stand-in: Vesper's pools, no power). */
+export const STAND_IN_COMMANDER = 'vesper';
+
+/**
+ * A commander's draft pool (SPEC §8.4): its core buildings, every other building of the faction
+ * (the shared pool, minus bans) and every relic whose required feature is on.
+ */
+export function draftPool(content: Content, faction: string, commanderId: string, flags: Flags, bans: string[] = []): DraftPool {
+  const cmd = content.commanders[commanderId];
+  if (!cmd) throw new Error(`unknown commander ${commanderId}`);
+  const roster = content.factions[faction]?.buildings ?? [];
+  const core = cmd.core.filter((id) => roster.includes(id));
+  const shared = roster.filter((id) => !core.includes(id) && !bans.includes(id));
+  const relics = content.relicOrder.filter((id) => {
+    const r = content.relics[id]!;
+    return r.requires !== 'powers' || flags.powers;
+  });
+  return { core, shared, relics };
 }
 
 export function createBattle(content: Content, config: BattleConfig): BattleState {
@@ -131,8 +156,17 @@ export function createBattle(content: Content, config: BattleConfig): BattleStat
       capture: { player: { column: map.homeCols, progress: 0 }, enemy: { column: W - map.homeCols - 1, progress: 0 } },
     };
   });
-  const rules = compileRules(content, config);
-  const compiled = { player: compileSide(content, config.player), enemy: compileSide(content, config.enemy) };
+  const rules = compileRules(content.balance, config);
+  const buildingIds = new Set<string>();
+  const relicIds = new Set<string>();
+  for (const s of SIDES) {
+    const sc = config[s];
+    for (const id of [...sc.kit, ...(sc.draft?.core ?? []), ...(sc.draft?.shared ?? [])]) buildingIds.add(id);
+    for (const id of [...(sc.relics ?? []), ...(sc.draft?.relics ?? [])]) relicIds.add(id);
+  }
+  const library = buildLibrary(content, [...buildingIds].sort(), [...relicIds].sort());
+  const loadouts: Record<Side, Loadout> = { player: configLoadout(config.player), enemy: configLoadout(config.enemy) };
+  const compiled = compileSides(library, loadouts, config.modifiers);
   for (const s of SIDES) {
     for (const u of Object.values(compiled[s].units)) {
       for (const t of u.tiers) if (t.radius > MAX_RADIUS) throw new Error(`unit ${u.id}: radius ${t.radius} exceeds MAX_RADIUS ${MAX_RADIUS}`);
@@ -141,17 +175,23 @@ export function createBattle(content: Content, config: BattleConfig): BattleStat
   const sideState = (s: Side): SideState => {
     const sc = config[s];
     const turrets = rules.test.turrets ? content.balance.turret.perLane * lanes.length : 0;
+    // side.heartcapMaxHp (e.g. the Fortified elite) scales both the maximum and the current HP
+    const maxHp = Math.max(1, Math.round(creationStat(library, loadouts, config.modifiers, s, 'side.heartcapMaxHp', sc.heartcapMaxHp)));
+    const hp = maxHp === sc.heartcapMaxHp ? sc.heartcapHp : Math.max(1, Math.round((sc.heartcapHp * maxHp) / sc.heartcapMaxHp));
     const st: SideState = {
-      gold: sc.startingGold,
+      gold: Math.max(0, Math.round(creationStat(library, loadouts, config.modifiers, s, 'side.startingGold', sc.startingGold))),
       supplyUsed: 0,
-      supplyCap: content.balance.supplyCap,
-      heartcapHp: sc.heartcapHp,
-      heartcapMaxHp: sc.heartcapMaxHp,
+      supplyCap: compiled[s].supplyCap,
+      heartcapHp: hp,
+      heartcapMaxHp: maxHp,
       turretCooldowns: new Array<number>(turrets).fill(0),
       powerCooldown: 0,
-      kit: [...sc.kit],
+      kit: [...loadouts[s].kit],
+      upgrades: loadouts[s].upgrades,
+      relics: loadouts[s].relics,
+      draftsOpened: 0,
     };
-    if (sc.controller.kind !== 'human') st.ai = resolveAiProfile(content, sc.controller, sc, rules);
+    if (sc.controller.kind !== 'human') st.ai = resolveAiProfile(content, sc.controller, sc, rules, buildingIds);
     return st;
   };
   const state: BattleState = {
@@ -169,6 +209,7 @@ export function createBattle(content: Content, config: BattleConfig): BattleStat
     nextSeq: { player: 0, enemy: 0 },
     nextHitSeq: 0,
     rules,
+    library,
     map: { id: map.id, name: map.name, width: map.width, height: map.height, homeCols: map.homeCols, tiles: [...map.tiles] },
     sides: { player: sideState('player'), enemy: sideState('enemy') },
     lanes,

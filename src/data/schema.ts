@@ -1,5 +1,6 @@
-// zod schemas for every data file (SPEC §14). Milestone 2 subset: balance, factions, buildings,
-// units, maps, sprites, generals, bots, scenarios and balance targets.
+// zod schemas for every data file (SPEC §14). Milestone 3 subset: balance, factions, buildings,
+// units, maps, sprites, generals, bots, scenarios, balance targets, plus the run content (upgrade
+// tracks, relics, events, elite modifiers, the commander stand-in) and the effects DSL (§14.2).
 import { z } from 'zod';
 
 export const Id = z.string().min(1).regex(/^[a-zA-Z0-9:_-]+$/, 'ids use letters, digits, : _ -');
@@ -7,6 +8,7 @@ export const DamageType = z.enum(['slash', 'pierce', 'crush']);
 export const UnitArmor = z.enum(['light', 'medium', 'heavy']);
 export const ArmorType = z.enum(['light', 'medium', 'heavy', 'structure']);
 export const Tag = z.enum(['siege', 'slayer', 'ranged', 'swarm', 'support']);
+export const Rarity = z.enum(['common', 'uncommon', 'rare']);
 const Seconds = z.number().nonnegative();
 /** A unit id, optionally at a merge tier: `capguard` or `capguard@2`. */
 const DuelUnit = z.string().regex(/^[a-zA-Z0-9_-]+(@[123])?$/, 'duel units are <unitId> or <unitId>@<tier>');
@@ -63,6 +65,25 @@ export const BalanceSchema = z.object({
   draftWaves: z.array(z.number().int().positive()),
   reroll: z.object({ base: z.number().int(), step: z.number().int() }).strict(),
   skipGold: z.number().int(),
+  /** A general's kit across a run (SPEC §7.8): opener + preferred blueprints and random upgrade levels by battle index. */
+  enemyKit: z.object({
+    blueprintsPerBattle: z.number().int().nonnegative(),
+    upgradesPerBattle: z.number().int().nonnegative(),
+    eliteUpgrades: z.number().int().nonnegative(),
+    bossBuildings: z.number().int().positive(),
+    bossUpgrades: z.number().int().nonnegative(),
+  }).strict(),
+  /** Draft offer generation (SPEC §8.3): type weights, rarity weights and their per-battle shift. */
+  draft: z.object({
+    cards: z.number().int().positive(),
+    typeWeights: z.object({ blueprint: z.number().nonnegative(), upgrade: z.number().nonnegative(), relic: z.number().nonnegative() }).strict(),
+    smallKit: z.object({ below: z.number().int().positive(), blueprintShare: z.number().min(0).max(1) }).strict(),
+    rarity: z.tuple([z.number().nonnegative(), z.number().nonnegative(), z.number().nonnegative()]),
+    rarityShiftPerBattle: z.number().nonnegative(),
+    eliteRareBonus: z.number().nonnegative(),
+    rarityBiasStep: z.number().nonnegative(),
+    coreWeight: z.number().positive(),
+  }).strict(),
   matrix: z.object({ slash: MatrixRow, pierce: MatrixRow, crush: MatrixRow }).strict(),
   tagMult: z.object({ siegeVsStructure: Pos, slayerVsElite: Pos }).strict(),
   effectiveness: z.object({ strongAtLeast: Pos, weakAtMost: Pos }).strict(),
@@ -103,6 +124,67 @@ export const BalanceTargetsSchema = z.object({
   G11: z.object({ tickMeanMs: Pos, tickP99Ms: Pos, battleWallMs: Pos, benchTicks: z.number().int().positive(), quickTicks: z.number().int().positive() }).strict(),
 }).strict();
 
+// ---- the effects DSL (SPEC §14.1–14.2): one modifier and trigger language for every source ----
+
+/** Stat keys the compiler understands. The list grows deliberately, one system at a time. */
+export const UNIT_STATS = [
+  'unit.hp', 'unit.damage', 'unit.attackInterval', 'unit.range', 'unit.speed', 'unit.splashRadius',
+  'unit.resist.slash', 'unit.resist.pierce', 'unit.resist.crush', 'unit.siegeMult', 'unit.regenPctPerSec', 'unit.healAmount',
+] as const;
+export const BUILDING_STATS = [
+  'building.hp', 'building.spawnInterval', 'building.spawnCount', 'building.goldPerTick', 'building.firstSpawnFraction',
+  'tower.damage', 'tower.range', 'tower.splashRadius',
+] as const;
+export const SIDE_STATS = [
+  'side.supplyCap', 'side.interestCap', 'side.stipend', 'side.captureSpeed', 'side.startingGold', 'side.sellRefund',
+  'side.supplyLineRate', 'side.knitTicks', 'side.mergeRadius', 'side.rerollCost', 'side.draftCards', 'side.heartcapMaxHp',
+  'side.turretDamage', 'side.comebackEnabled', 'side.loamBonus', 'side.powerCooldown',
+] as const;
+export const BATTLE_STATS = ['battle.sporestormStart'] as const;
+export const StatKey = z.enum([...UNIT_STATS, ...BUILDING_STATS, ...SIDE_STATS, ...BATTLE_STATS]);
+/** Building stats that may use positional selectors; they are evaluated when used, not compiled once. */
+export const POSITIONAL_STATS: readonly string[] = ['building.spawnInterval', 'building.goldPerTick'];
+
+const TierSel = z.union([z.literal(1), z.literal(2), z.literal(3)]);
+export const SelectorSchema = z.object({
+  unit: Id.optional(), building: Id.optional(), tag: Tag.optional(), tier: TierSel.optional(),
+  zone: z.enum(['home', 'contested']).optional(), onLoam: z.boolean().optional(),
+  adjacentOwnBuildingsGte: z.number().int().positive().optional(),
+}).strict();
+
+export const ModifierSchema = z.object({
+  stat: StatKey, op: z.enum(['add', 'mul', 'set']), value: z.number(),
+  /** Whose stats change: the owner of the source (default) or the opponent. */
+  side: z.enum(['self', 'opponent']).optional(),
+  where: SelectorSchema.optional(),
+}).strict().superRefine((m, ctx) => {
+  const w = m.where ?? {};
+  const scope = m.stat.split('.')[0];
+  const positional = w.zone !== undefined || w.onLoam !== undefined || w.adjacentOwnBuildingsGte !== undefined;
+  if ((scope === 'side' || scope === 'battle') && m.where) ctx.addIssue({ code: 'custom', message: `${m.stat} applies to the whole ${scope}; it takes no "where"` });
+  if (positional && !POSITIONAL_STATS.includes(m.stat)) {
+    ctx.addIssue({ code: 'custom', message: `positional selectors (zone, onLoam, adjacentOwnBuildingsGte) only work on ${POSITIONAL_STATS.join(' and ')}` });
+  }
+  if (w.tier !== undefined && scope !== 'unit') ctx.addIssue({ code: 'custom', message: 'a tier selector only applies to unit stats' });
+});
+
+export const EffectActionSchema = z.union([
+  z.object({ gainGold: z.number().int() }).strict(),
+  z.object({ explode: z.object({ damage: Pos, damageType: DamageType, radius: Pos }).strict() }).strict(),
+  z.object({ repairHeartcapPct: z.number().positive().max(1) }).strict(),
+]);
+
+export const TriggerSchema = z.object({
+  on: z.enum(['merge', 'unitDeath', 'buildingDestroyed', 'enemyUnitKilled', 'waveStart', 'battleStart']),
+  if: SelectorSchema.extend({ sporestormGte: z.number().int().nonnegative().optional() }).strict().optional(),
+  do: z.array(EffectActionSchema).min(1),
+}).strict();
+
+export const EffectBundleSchema = z.object({
+  modifiers: z.array(ModifierSchema).optional(),
+  triggers: z.array(TriggerSchema).optional(),
+}).strict();
+
 const StatPatch = z.object({
   hpMult: Pos.optional(), damageMult: Pos.optional(), speedMult: Pos.optional(), attackIntervalMult: Pos.optional(),
   rangeAdd: z.number().optional(), splashRadius: Pos.optional(), radiusAdd: z.number().optional(), slayerMult: Pos.optional(),
@@ -113,15 +195,25 @@ const StatPatch = z.object({
 export const UnitSchema = z.object({
   id: Id, name: z.string().min(1), sprite: Id, milestone: z.number().int().positive(),
   hp: z.number().int().positive(), armor: UnitArmor,
-  damage: z.number().positive(), damageType: DamageType, attackInterval: Pos,
+  /** Damage per hit; 0 only for support units that heal instead of attacking. */
+  damage: z.number().nonnegative(), damageType: DamageType, attackInterval: Pos,
   range: Pos, projectileSpeed: z.number().nonnegative(),
   speed: Pos, supply: z.union([z.literal(1), z.literal(2), z.literal(3)]), aggroRange: Pos, radius: Pos,
   splashRadius: Pos.optional(), tags: z.array(Tag),
+  /** Support healing (Tender, SPEC §11.3): heals the ally missing the most HP within the unit's range. */
+  heal: z.object({ amount: Pos, interval: Pos, targets: z.number().int().positive().optional() }).strict().optional(),
+  /** Actions fired where the unit dies (e.g. M6's Bursting strain). */
+  onDeath: z.array(EffectActionSchema).optional(),
   mergePerks: z.object({ '2': StatPatch, '3': StatPatch }).strict(),
-}).strict();
+}).strict().superRefine((u, ctx) => {
+  if (u.damage === 0 && !u.heal) ctx.addIssue({ code: 'custom', message: `unit ${u.id}: damage 0 is only allowed for healers` });
+  if (u.heal && !u.tags.includes('support')) ctx.addIssue({ code: 'custom', message: `unit ${u.id}: healers need the support tag` });
+});
 
 export const BuildingSchema = z.object({
   id: Id, name: z.string().min(1), sprite: Id, description: z.string(), milestone: z.number().int().positive(),
+  /** Draft rarity of the blueprint card (default common). */
+  rarity: Rarity.optional(),
   kind: z.enum(['spawner', 'tower', 'economy', 'utility']),
   footprint: z.object({ w: z.number().int().positive(), h: z.number().int().positive() }).strict(),
   cost: z.number().int().positive(), hp: z.number().int().positive(),
@@ -189,6 +281,8 @@ const Limit = z.object({ maxOwned: z.number().int().nonnegative().optional(), af
 export const GeneralSchema = z.object({
   id: Id, name: z.string(), sprite: Id, faction: Id, milestone: z.number().int().positive(), description: z.string().optional(),
   opener: z.array(Id), weights: z.record(Id, z.number().nonnegative()), limits: z.record(Id, Limit).optional(),
+  /** Blueprints the general adds to its kit, one per battle index, in order (SPEC §7.8). */
+  preferred: z.array(Id).optional(),
   laneStyle: z.enum(['defensive', 'aggressive']), appearsIn: z.array(z.number().int().positive()),
   /** Default auto: merging off on swarm buildings while the opponent's Slayer share is high (SPEC §7.2). */
   mergePolicy: MergePolicy.optional(),
@@ -226,6 +320,56 @@ export const ScenarioSchema = z.object({
   sides: z.object({ player: ScenarioSide, enemy: ScenarioSide }).strict(),
 }).strict();
 
+// ---- run content (SPEC §8, §11.6–11.7) ----
+
+const TrackLevel = z.object({ text: z.string().min(1), effects: EffectBundleSchema }).strict();
+export const UpgradeTrackSchema = z.object({
+  building: Id,
+  levels: z.tuple([TrackLevel, TrackLevel, TrackLevel]),
+  rarity: z.tuple([Rarity, Rarity, Rarity]),
+}).strict();
+
+export const RelicSchema = z.object({
+  id: Id, name: z.string().min(1), rarity: Rarity, text: z.string().min(1), effects: EffectBundleSchema,
+  /** A feat that unlocks it (M6). Until meta-progression exists every relic counts as unlocked. */
+  unlockedBy: Id.optional(),
+  /** A feature the relic needs; it stays out of the draft pool while that feature is off. */
+  requires: z.enum(['powers']).optional(),
+}).strict();
+
+/** Run-level outcomes of events and Grove choices (SPEC §8.7). */
+export const RunEffectSchema = z.union([
+  z.object({ repairPct: Pos.max(1) }).strict(),
+  z.object({ maxHpPct: z.number().min(-0.9).max(1) }).strict(),
+  z.object({ gainRelic: z.object({ rarity: Rarity.optional(), count: z.number().int().positive().optional() }).strict() }).strict(),
+  z.object({ gainAmber: z.number().int().positive() }).strict(),
+  z.object({ nextBattle: z.object({ startingGold: z.number().int().optional(), sporestormShiftSeconds: z.number().optional() }).strict() }).strict(),
+  z.object({ halveIntel: z.literal(true) }).strict(),
+  z.object({ upgrade: z.object({ count: z.number().int().positive(), pick: z.enum(['choose', 'random']), ownedOnly: z.boolean().optional() }).strict() }).strict(),
+  z.object({ removeBlueprint: z.literal('choose') }).strict(),
+  z.object({ sacrificeRelic: z.object({ gain: z.number().int().positive(), rarityShift: z.number().int().min(-2).max(0) }).strict() }).strict(),
+]);
+
+export const EventSchema = z.object({
+  id: Id, title: z.string().min(1), text: z.string().min(1),
+  choices: z.array(z.object({ label: z.string().min(1), text: z.string(), outcome: z.array(RunEffectSchema) }).strict()).min(2).max(3),
+}).strict();
+
+/** Elite modifiers (SPEC §7.7): an effect bundle on the general's side and/or extra upgrade levels. */
+export const EliteSchema = z.object({
+  id: Id, name: z.string().min(1), text: z.string().min(1),
+  effects: EffectBundleSchema.optional(),
+  upgradeLevels: z.number().int().positive().optional(),
+}).strict();
+
+/** Commanders (SPEC §11.10). Until M5 only the core pool and starter kit exist. */
+export const CommanderSchema = z.object({
+  id: Id, name: z.string().min(1), milestone: z.number().int().positive(), description: z.string().optional(),
+  core: z.array(Id).length(6), starter: z.tuple([Id, Id, Id]),
+}).strict().superRefine((c, ctx) => {
+  for (const id of c.starter) if (!c.core.includes(id)) ctx.addIssue({ code: 'custom', message: `commander ${c.id}: starter ${id} is not in the core pool` });
+});
+
 export type BalanceDef = z.infer<typeof BalanceSchema>;
 export type BalanceTargets = z.infer<typeof BalanceTargetsSchema>;
 export type UnitDef = z.infer<typeof UnitSchema>;
@@ -236,6 +380,19 @@ export type SpriteDef = z.infer<typeof SpriteSchema>;
 export type GeneralDef = z.infer<typeof GeneralSchema>;
 export type BotDef = z.infer<typeof BotSchema>;
 export type ScenarioDef = z.infer<typeof ScenarioSchema>;
+export type UpgradeTrackDef = z.infer<typeof UpgradeTrackSchema>;
+export type RelicDef = z.infer<typeof RelicSchema>;
+export type EventDef = z.infer<typeof EventSchema>;
+export type EliteDef = z.infer<typeof EliteSchema>;
+export type CommanderDef = z.infer<typeof CommanderSchema>;
+export type RunEffect = z.infer<typeof RunEffectSchema>;
+export type ModifierDef = z.infer<typeof ModifierSchema>;
+export type SelectorDef = z.infer<typeof SelectorSchema>;
+export type TriggerDef = z.infer<typeof TriggerSchema>;
+export type EffectAction = z.infer<typeof EffectActionSchema>;
+export type EffectBundle = z.infer<typeof EffectBundleSchema>;
+export type StatKeyT = z.infer<typeof StatKey>;
+export type RarityT = z.infer<typeof Rarity>;
 export type DamageTypeT = z.infer<typeof DamageType>;
 export type ArmorTypeT = z.infer<typeof ArmorType>;
 export type TagT = z.infer<typeof Tag>;

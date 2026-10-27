@@ -8,7 +8,8 @@ export interface InputHooks {
   toggleDebug(): void;
 }
 
-export function bindInput(session: Session, view: BattleView, hooks: InputHooks): void {
+/** Binds mouse and keyboard to one battle; returns a function that removes the window listeners. */
+export function bindInput(session: Session, view: BattleView, hooks: InputHooks): () => void {
   const canvas = view.canvas;
   canvas.addEventListener('mousemove', (ev) => {
     const t = view.tileAt(ev);
@@ -52,10 +53,16 @@ export function bindInput(session: Session, view: BattleView, hooks: InputHooks)
     view.inspect.resetConfirm();
   }
 
-  window.addEventListener('keydown', (ev) => {
+  const onKeyDown = (ev: KeyboardEvent) => {
     if (ev.target instanceof HTMLInputElement) return;
     session.shift = ev.shiftKey;
     const s = session.state;
+    const card = view.draft.cardForKey(s, ev.key);
+    if (view.draft.open) {
+      // the draft is modal: number keys pick a card, everything else waits
+      if (card) session.issue({ type: 'draftPick', cardId: card });
+      return;
+    }
     if (view.helpOpen) {
       // the help overlay is modal: H or Esc closes it, everything else waits
       if (ev.key === 'h' || ev.key === 'H' || ev.key === 'Escape') { ev.preventDefault(); view.toggleHelp(); }
@@ -91,6 +98,12 @@ export function bindInput(session: Session, view: BattleView, hooks: InputHooks)
       case 'h': case 'H': view.toggleHelp(); break;
       case 'F3': ev.preventDefault(); hooks.toggleDebug(); break;
     }
-  });
-  window.addEventListener('keyup', (ev) => { session.shift = ev.shiftKey; });
+  };
+  const onKeyUp = (ev: KeyboardEvent) => { session.shift = ev.shiftKey; };
+  window.addEventListener('keydown', onKeyDown);
+  window.addEventListener('keyup', onKeyUp);
+  return () => {
+    window.removeEventListener('keydown', onKeyDown);
+    window.removeEventListener('keyup', onKeyUp);
+  };
 }

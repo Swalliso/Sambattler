@@ -1,0 +1,74 @@
+[
+  {
+    "building": "sporelingBurrow", "rarity": ["common", "common", "uncommon"],
+    "levels": [
+      { "text": "Sporeling HP +15%", "effects": { "modifiers": [{ "stat": "unit.hp", "op": "mul", "value": 1.15, "where": { "unit": "sporeling" } }] } },
+      { "text": "Sporeling damage +15%", "effects": { "modifiers": [{ "stat": "unit.damage", "op": "mul", "value": 1.15, "where": { "unit": "sporeling" } }] } },
+      { "text": "+1 Sporeling per spawn", "effects": { "modifiers": [{ "stat": "building.spawnCount", "op": "add", "value": 1, "where": { "building": "sporelingBurrow" } }] } }
+    ]
+  },
+  {
+    "building": "capguardHall", "rarity": ["common", "common", "uncommon"],
+    "levels": [
+      { "text": "Capguard HP +15%", "effects": { "modifiers": [{ "stat": "unit.hp", "op": "mul", "value": 1.15, "where": { "unit": "capguard" } }] } },
+      { "text": "Capguards take ×0.8 Pierce damage", "effects": { "modifiers": [{ "stat": "unit.resist.pierce", "op": "mul", "value": 0.8, "where": { "unit": "capguard" } }] } },
+      { "text": "Capguard damage +20%", "effects": { "modifiers": [{ "stat": "unit.damage", "op": "mul", "value": 1.2, "where": { "unit": "capguard" } }] } }
+    ]
+  },
+  {
+    "building": "gillNest", "rarity": ["common", "common", "uncommon"],
+    "levels": [
+      { "text": "Gill Archer range +0.75", "effects": { "modifiers": [{ "stat": "unit.range", "op": "add", "value": 0.75, "where": { "unit": "gillArcher" } }] } },
+      { "text": "Gill Archer damage +15%", "effects": { "modifiers": [{ "stat": "unit.damage", "op": "mul", "value": 1.15, "where": { "unit": "gillArcher" } }] } },
+      { "text": "Gill Archer attack interval −15%", "effects": { "modifiers": [{ "stat": "unit.attackInterval", "op": "mul", "value": 0.85, "where": { "unit": "gillArcher" } }] } }
+    ]
+  },
+  {
+    "building": "rootbreakerDen", "rarity": ["common", "common", "uncommon"],
+    "levels": [
+      { "text": "Rootbreaker HP +20%", "effects": { "modifiers": [{ "stat": "unit.hp", "op": "mul", "value": 1.2, "where": { "unit": "rootbreaker" } }] } },
+      { "text": "Rootbreaker speed +20%", "effects": { "modifiers": [{ "stat": "unit.speed", "op": "mul", "value": 1.2, "where": { "unit": "rootbreaker" } }] } },
+      { "text": "Rootbreakers deal +25% to structures", "effects": { "modifiers": [{ "stat": "unit.siegeMult", "op": "mul", "value": 1.25, "where": { "unit": "rootbreaker" } }] } }
+    ]
+  },
+  {
+    "building": "puffballMortar", "rarity": ["common", "common", "uncommon"],
+    "levels": [
+      { "text": "Mortar splash +0.3", "effects": { "modifiers": [{ "stat": "tower.splashRadius", "op": "add", "value": 0.3, "where": { "building": "puffballMortar" } }] } },
+      { "text": "Mortar damage +20%", "effects": { "modifiers": [{ "stat": "tower.damage", "op": "mul", "value": 1.2, "where": { "building": "puffballMortar" } }] } },
+      { "text": "Mortar range +1", "effects": { "modifiers": [{ "stat": "tower.range", "op": "add", "value": 1, "where": { "building": "puffballMortar" } }] } }
+    ]
+  },
+  {
+    "building": "truffleCellar", "rarity": ["common", "common", "uncommon"],
+    "levels": [
+      { "text": "Truffle Cellar +1 gold per income tick", "effects": { "modifiers": [{ "stat": "building.goldPerTick", "op": "add", "value": 1, "where": { "building": "truffleCellar" } }] } },
+      { "text": "Truffle Cellar HP +200", "effects": { "modifiers": [{ "stat": "building.hp", "op": "add", "value": 200, "where": { "building": "truffleCellar" } }] } },
+      { "text": "Truffle Cellar +1 gold per income tick", "effects": { "modifiers": [{ "stat": "building.goldPerTick", "op": "add", "value": 1, "where": { "building": "truffleCellar" } }] } }
+    ]
+  },
+  {
+    "building": "scythecapGrove", "rarity": ["common", "uncommon", "uncommon"],
+    "levels": [
+      { "text": "Scythecap HP +15%", "effects": { "modifiers": [{ "stat": "unit.hp", "op": "mul", "value": 1.15, "where": { "unit": "scythecap" } }] } },
+      { "text": "Scythecap damage +15%", "effects": { "modifiers": [{ "stat": "unit.damage", "op": "mul", "value": 1.15, "where": { "unit": "scythecap" } }] } },
+      { "text": "Scythecap cleave splash +0.3", "effects": { "modifiers": [{ "stat": "unit.splashRadius", "op": "add", "value": 0.3, "where": { "unit": "scythecap" } }] } }
+    ]
+  },
+  {
+    "building": "veilstalkerHollow", "rarity": ["common", "uncommon", "uncommon"],
+    "levels": [
+      { "text": "Veilstalker HP +20%", "effects": { "modifiers": [{ "stat": "unit.hp", "op": "mul", "value": 1.2, "where": { "unit": "veilstalker" } }] } },
+      { "text": "Veilstalker damage +15%", "effects": { "modifiers": [{ "stat": "unit.damage", "op": "mul", "value": 1.15, "where": { "unit": "veilstalker" } }] } },
+      { "text": "Veilstalker speed +15%", "effects": { "modifiers": [{ "stat": "unit.speed", "op": "mul", "value": 1.15, "where": { "unit": "veilstalker" } }] } }
+    ]
+  },
+  {
+    "building": "tendersRing", "rarity": ["common", "uncommon", "uncommon"],
+    "levels": [
+      { "text": "Tender HP +20%", "effects": { "modifiers": [{ "stat": "unit.hp", "op": "mul", "value": 1.2, "where": { "unit": "tender" } }] } },
+      { "text": "Tender healing +25%", "effects": { "modifiers": [{ "stat": "unit.healAmount", "op": "mul", "value": 1.25, "where": { "unit": "tender" } }] } },
+      { "text": "Tender heal range +0.75", "effects": { "modifiers": [{ "stat": "unit.range", "op": "add", "value": 0.75, "where": { "unit": "tender" } }] } }
+    ]
+  }
+]

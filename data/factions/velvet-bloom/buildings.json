@@ -36,15 +36,21 @@
     "economy": { "goldPerTick": 4 }
   },
   {
-    "id": "scythecapGrove", "name": "Scythecap Grove", "sprite": "b-scythecapGrove", "milestone": 2,
+    "id": "scythecapGrove", "name": "Scythecap Grove", "sprite": "b-scythecapGrove", "milestone": 2, "rarity": "uncommon",
     "description": "Scythecaps swing curved blades that cleave through Light swarms (splash).",
     "kind": "spawner", "footprint": { "w": 2, "h": 2 }, "cost": 170, "hp": 550,
     "spawn": { "unit": "scythecap", "count": 1, "interval": 18 }
   },
   {
-    "id": "veilstalkerHollow", "name": "Veilstalker Hollow", "sprite": "b-veilstalkerHollow", "milestone": 2,
+    "id": "veilstalkerHollow", "name": "Veilstalker Hollow", "sprite": "b-veilstalkerHollow", "milestone": 2, "rarity": "uncommon",
     "description": "Veilstalkers hunt in pairs: fast Slayers that deal ×3 damage to Bloomed and Elder units.",
     "kind": "spawner", "footprint": { "w": 2, "h": 2 }, "cost": 160, "hp": 450,
     "spawn": { "unit": "veilstalker", "count": 2, "interval": 18 }
+  },
+  {
+    "id": "tendersRing", "name": "Tender's Ring", "sprite": "b-tendersRing", "milestone": 3, "rarity": "uncommon",
+    "description": "A fairy ring that sends out Tenders: support units that heal the most-hurt ally nearby instead of fighting.",
+    "kind": "spawner", "footprint": { "w": 2, "h": 2 }, "cost": 180, "hp": 450,
+    "spawn": { "unit": "tender", "count": 1, "interval": 20 }
   }
 ]

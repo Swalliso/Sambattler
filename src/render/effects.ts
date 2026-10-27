@@ -1,16 +1,16 @@
 // Fixed-capacity ring buffer of short-lived visual effects (SPEC §13.6): hit sparks tinted by
-// effectiveness, death puffs, building rubble, spawn puffs, merge pops and damage numbers. Entries
+// effectiveness, death puffs, building rubble, spawn puffs, merge pops, damage numbers and heals. Entries
 // are reused, never allocated after construction.
 import { GLYPH_H, pixelText, textWidth } from './pixelText.ts';
 
 /**
  * kind: 1 strong spark, 2 normal spark, 3 weak spark, 4/5 death puff (player/enemy), 6 rubble,
  * 7 spawn puff, 8 merge pop (flag = tier, value = 0 player / 1 enemy), 9 damage number
- * (flag = 1 strong / 2 normal / 3 weak, value = amount)
+ * (flag = 1 strong / 2 normal / 3 weak, value = amount), 10 heal plus
  */
 interface Fx { kind: number; x: number; y: number; t0: number; flag: number; value: number }
 
-const LIFE = [0, 220, 160, 140, 380, 380, 600, 300, 1100, 650];
+const LIFE = [0, 220, 160, 140, 380, 380, 600, 300, 1100, 650, 450];
 const NUMBER_COLOR = ['', '#f0c85a', '#ffffff', '#a39cab'];
 
 export class Effects {
@@ -73,6 +73,15 @@ export class Effects {
           g.fillStyle = '#e8d9b5';
           const r = 1 + Math.round(k * 4);
           g.fillRect(x - r, y - r, r * 2, r * 2);
+          g.globalAlpha = 1;
+          break;
+        }
+        case 10: { // heal: a small green plus rising over the healed unit
+          g.globalAlpha = 1 - k;
+          g.fillStyle = '#7be0a0';
+          const py = y - 6 - Math.round(k * 6);
+          g.fillRect(x - 1, py - 3, 2, 6);
+          g.fillRect(x - 3, py - 1, 6, 2);
           g.globalAlpha = 1;
           break;
         }

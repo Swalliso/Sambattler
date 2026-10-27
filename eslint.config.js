@@ -9,7 +9,7 @@ const impureGlobals = [
   'setImmediate', 'requestAnimationFrame', 'cancelAnimationFrame', 'queueMicrotask',
   'fetch', 'XMLHttpRequest', 'WebSocket', 'Worker', 'crypto', 'process', 'globalThis',
   'Promise',
-].map((name) => ({ name, message: `${name} is impure; src/sim must stay deterministic (SPEC §13.3).` }));
+].map((name) => ({ name, message: `${name} is impure; src/sim, src/run and src/data must stay deterministic (SPEC §13.3).` }));
 
 /** Math functions that are not guaranteed bit-identical across JS engines (SPEC §13.3 rule 3). */
 const bannedMath = ['random', 'sin', 'cos', 'tan', 'asin', 'acos', 'atan', 'atan2', 'sinh', 'cosh',
@@ -48,6 +48,15 @@ export default tseslint.config(
       ...pureRules,
       'no-restricted-imports': ['error', { patterns: [
         { group: [...forbiddenFromPure, '**/run/**', '**/meta/**'], message: 'src/sim may only import from src/sim and src/data (SPEC §13.2).' },
+      ] }],
+    },
+  },
+  {
+    files: ['src/run/**/*.ts'],
+    rules: {
+      ...pureRules,
+      'no-restricted-imports': ['error', { patterns: [
+        { group: [...forbiddenFromPure, '**/meta/**'], message: 'src/run may only import from src/run, src/sim and src/data (SPEC §13.2).' },
       ] }],
     },
   },

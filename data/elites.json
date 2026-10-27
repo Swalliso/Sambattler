@@ -1,0 +1,7 @@
+[
+  { "id": "fortified", "name": "Fortified", "text": "Heartcap +30% HP.",
+    "effects": { "modifiers": [{ "stat": "side.heartcapMaxHp", "op": "mul", "value": 1.3 }] } },
+  { "id": "veteran", "name": "Veteran", "text": "+1 upgrade level on all its units.", "upgradeLevels": 1 },
+  { "id": "swift", "name": "Swift", "text": "Its buildings' first spawn is instant.",
+    "effects": { "modifiers": [{ "stat": "building.firstSpawnFraction", "op": "set", "value": 0 }] } }
+]

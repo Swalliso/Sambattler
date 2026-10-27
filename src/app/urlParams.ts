@@ -1,4 +1,4 @@
-// URL parameters (SPEC §15.6), Milestone 2 subset. Later scenes and flags are recognised and refused
+// URL parameters (SPEC §15.6), Milestone 3 subset. Later scenes and flags are recognised and refused
 // with a visible message rather than ignored silently.
 import { parseFlags } from '../sim/index.ts';
 import type { Flags } from '../sim/index.ts';
@@ -18,7 +18,12 @@ export interface Params {
   flagProblems: string[];
   debug: boolean;
   test: boolean;
+  /** `run` (play a whole run with bots) or `battles:<n>` (the first n battles), for route and summary screens. */
+  autoplay: { battles: number | 'all' } | null;
 }
+
+/** Battle-only parameters: with any of them and no `scene`, the page opens a single battle (as in M1–M2). */
+const BATTLE_PARAMS = ['player', 'enemy', 'ticks', 'scenario', 'map', 'battleIndex', 'flags', 'paused'];
 
 export function parseParams(search: string): Params {
   const q = new URLSearchParams(search);
@@ -31,12 +36,15 @@ export function parseParams(search: string): Params {
   const ticksRaw = q.get('ticks');
   const flagList = q.get('flags');
   const parsed = flagList === null ? null : parseFlags(flagList);
+  const auto = q.get('autoplay');
+  const am = auto?.match(/^battles:(\d+)$/);
   return {
-    scene: q.get('scene') ?? 'battle',
+    // no scene: a run (resuming a saved one), unless battle parameters ask for a single battle
+    scene: q.get('scene') ?? (BATTLE_PARAMS.some((k) => q.has(k)) ? 'battle' : 'run'),
     map: q.get('map') ?? 'bogwater-hollow',
     seed: num('seed'),
     battleIndex: num('battleIndex') ?? 1,
-    player: q.get('player') ?? 'human',
+    player: q.get('player') ?? (q.get('scene') === 'draft' ? 'bot:balanced' : 'human'),
     enemy: q.get('enemy'),
     scenario: q.get('scenario'),
     ticks: ticksRaw === 'end' ? 'end' : ticksRaw === null ? null : Number(ticksRaw),
@@ -45,5 +53,6 @@ export function parseParams(search: string): Params {
     flagProblems: parsed ? parsed.problems : [],
     debug: q.get('debug') === '1',
     test: q.get('test') === '1',
+    autoplay: auto === 'run' ? { battles: 'all' } : am ? { battles: Number(am[1]) } : null,
   };
 }

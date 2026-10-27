@@ -9,12 +9,15 @@ export const content = nodeContent();
 
 export function liveState(opts: {
   map?: string; test?: BattleConfig['test']; seed?: number; borders?: [number, number]; flags?: Partial<BattleConfig['flags']>;
+  modifiers?: BattleConfig['modifiers'];
 } = {}): BattleState {
-  const s = createBattle(content, makeConfig(content, {
+  const config = makeConfig(content, {
     seed: opts.seed ?? 1, mapId: opts.map ?? 'test-flat', player: 'human', enemy: 'human',
     ...(opts.test ? { test: opts.test } : {}),
     ...(opts.flags ? { flags: opts.flags } : {}),
-  }));
+  });
+  if (opts.modifiers) config.modifiers = opts.modifiers;
+  const s = createBattle(content, config);
   s.phase = 'live';
   if (opts.borders) setBorders(s, opts.borders[0], opts.borders[1]);
   return s;

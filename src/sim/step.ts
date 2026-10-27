@@ -1,6 +1,8 @@
 // step(state): advances exactly one tick in the fixed system order of SPEC §14.6.
-import { executeCommands } from './commands.ts';
+import { executeCommands, executeHeldCommands } from './commands.ts';
 import { aiOpener, aiThink } from './ai/controller.ts';
+import { fireTriggers } from './effects.ts';
+import { healingSystem } from './systems/healing.ts';
 import { attackSystem, deathSystem, resolveHitsSystem } from './systems/combat.ts';
 import { clockSystem, incomeSystem } from './systems/economy.ts';
 import { mergingSystem } from './systems/merging.ts';
@@ -13,15 +15,24 @@ import { statsSystem } from './stats.ts';
 import { SIDES } from './state.ts';
 import type { BattleState } from './state.ts';
 
+const START = { x: 0, y: 0, lane: 0, sourceBuildingId: 0 };
+
 export function step(state: BattleState): void {
-  if (state.phase === 'ended' || state.held) return;
+  if (state.phase === 'ended') return;
   state.events.length = 0;
+
+  if (state.held) {
+    // A draft is open (SPEC §8.3): only draft commands run and the clock stays put.
+    executeHeldCommands(state);
+    return;
+  }
 
   if (state.phase === 'deploy') {
     // The clock is stopped: only commands run. `begin` ends deploy; the AI sides place their
     // openers at that moment (executing on the first live tick, like any AI command).
     if (executeCommands(state, 0)) {
       state.events.push({ t: 'begin' }, { t: 'wave', n: 1 });
+      for (const side of SIDES) fireTriggers(state, side, 'battleStart', START);
       for (const side of SIDES) aiOpener(state, side);
     }
     return;
@@ -50,7 +61,8 @@ export function step(state: BattleState): void {
   attackSystem(state);
   // 10. resolve hits due this tick
   resolveHitsSystem(state);
-  // 11. healing (M3) — no healers yet
+  // 11. healing (Tenders) and out-of-combat regeneration
+  healingSystem(state);
   // 12. deaths and removals
   deathSystem(state);
   // 13. merging (every tick for active knits, every merge.every ticks for new trios)

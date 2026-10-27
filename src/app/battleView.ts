@@ -8,6 +8,7 @@ import { Callouts } from '../ui/callouts.ts';
 import { h, setText, toggleClass } from '../ui/h.ts';
 import { helpOverlay } from '../ui/help.ts';
 import { battleReport } from '../ui/report.ts';
+import { DraftOverlay } from '../ui/draftOverlay.ts';
 import { TopBand } from '../ui/hud/top.ts';
 import { Tray } from '../ui/hud/tray.ts';
 import { CombatLog, InspectPanel } from '../ui/inspect.ts';
@@ -22,6 +23,8 @@ export interface ViewActions {
   begin(): void;
   again(): void;
   rematch(): void;
+  /** In a run, the report offers only Continue (back to the run). */
+  continueRun?: () => void;
 }
 
 export class BattleView {
@@ -31,8 +34,12 @@ export class BattleView {
   readonly callouts = new Callouts();
   readonly log = new CombatLog();
   readonly inspect: InspectPanel;
+  readonly draft: DraftOverlay;
   private top: TopBand;
   private tray: Tray;
+  private trayKit = '';
+  private onResize = () => this.fit();
+  private report: HTMLElement | null = null;
   private fieldWrap: HTMLElement;
   private field: HTMLElement;
   private hpP = h('div', { class: 'hp player', id: 'hud-hp-player' });
@@ -48,12 +55,18 @@ export class BattleView {
   private ended = false;
   scale = 1;
 
-  constructor(private session: Session, content: Content, atlas: Atlas, private actions: ViewActions, debug: boolean) {
+  constructor(private session: Session, content: Content, private atlas: Atlas, private actions: ViewActions, debug: boolean) {
     const state = session.state;
     this.canvas = h('canvas', { id: 'battlefield', 'aria-label': 'Battlefield' });
     this.renderer = new Renderer(this.canvas, content, atlas, state);
     this.top = new TopBand(content, atlas, state);
     this.tray = new Tray(content, atlas, state, (id) => this.pick(id));
+    this.trayKit = state.sides.player.kit.join();
+    this.draft = new DraftOverlay(content, atlas, {
+      pick: (cardId) => session.issue({ type: 'draftPick', cardId }),
+      reroll: () => session.issue({ type: 'draftReroll' }),
+      skip: () => session.issue({ type: 'draftSkip' }),
+    });
     this.inspect = new InspectPanel(content, this.log, (id) => session.issue({ type: 'sell', entityId: id }),
       (id) => session.toggleMerge(id), (_state, id) => session.mergeShown(id));
     this.fieldWrap = h('div', { class: 'fieldwrap' }, this.canvas, this.hpP, this.hpE, this.tip, this.pauseBadge);
@@ -82,8 +95,16 @@ export class BattleView {
       this.callouts.el,
       this.field,
       h('footer', { class: 'bottom' }, controls, this.tray.el, this.inspect.el),
+      this.draft.el,
     );
-    window.addEventListener('resize', () => this.fit());
+    window.addEventListener('resize', this.onResize);
+  }
+
+  /** Removes window listeners and overlays this view added (a run plays several battles). */
+  dispose(): void {
+    window.removeEventListener('resize', this.onResize);
+    this.help?.remove();
+    this.report?.remove();
   }
 
   /** Opens or closes the help overlay; the battle pauses while it is open. */
@@ -170,7 +191,16 @@ export class BattleView {
       timeMs: now,
     });
     this.top.update(state);
+    const kit = state.sides.player.kit.join();
+    if (kit !== this.trayKit) {
+      // a drafted blueprint joins the tray
+      const next = new Tray(s.content, this.atlas, state, (id) => this.pick(id));
+      this.tray.el.replaceWith(next.el);
+      this.tray = next;
+      this.trayKit = kit;
+    }
     this.tray.update(s.available(), s.placing);
+    this.draft.update(state, s.pending().some((c) => c.type === 'draftPick' || c.type === 'draftReroll' || c.type === 'draftSkip'));
     this.inspect.update(state, s.selected);
     this.callouts.update(now);
     setText(this.hpP, `♥ ${state.sides.player.heartcapHp}/${state.sides.player.heartcapMaxHp}`);
@@ -203,7 +233,8 @@ export class BattleView {
       this.ended = true;
       s.placing = null;
       if (this.help) this.toggleHelp();
-      document.body.append(battleReport(s.content, state, { again: this.actions.again, rematch: this.actions.rematch }));
+      this.report = battleReport(s.content, state, { again: this.actions.again, rematch: this.actions.rematch, ...(this.actions.continueRun ? { continueRun: this.actions.continueRun } : {}) });
+      document.body.append(this.report);
     }
   }
 }

@@ -1,0 +1,50 @@
+[
+  { "id": "fallen-oak", "title": "Fallen Oak",
+    "text": "An old oak lies split across the path. Something glints in the heartwood, but prying it loose will cost the colony.",
+    "choices": [
+      { "label": "Pry it loose", "text": "Take a random rare relic. Your Heartcap loses 15% of its max HP.", "outcome": [{ "gainRelic": { "rarity": "rare" } }, { "maxHpPct": -0.15 }] },
+      { "label": "Leave it", "text": "Nothing happens.", "outcome": [] }
+    ] },
+  { "id": "spore-merchant", "title": "Spore Merchant",
+    "text": "A hunched merchant offers to trade growth for a blueprint you no longer need.",
+    "choices": [
+      { "label": "Trade a blueprint", "text": "Give up a non-starter blueprint; gain 2 upgrade levels of your choice.", "outcome": [{ "removeBlueprint": "choose" }, { "upgrade": { "count": 2, "pick": "choose" } }] },
+      { "label": "Leave", "text": "Nothing happens.", "outcome": [] }
+    ] },
+  { "id": "quiet-clearing", "title": "Quiet Clearing",
+    "text": "Soft moss and still air. The colony could rest here, or forage the undergrowth.",
+    "choices": [
+      { "label": "Rest", "text": "Repair your Heartcap by 15% of max HP.", "outcome": [{ "repairPct": 0.15 }] },
+      { "label": "Forage", "text": "+1 level on a random upgrade track.", "outcome": [{ "upgrade": { "count": 1, "pick": "random" } }] }
+    ] },
+  { "id": "mold-bloom", "title": "Mold Bloom",
+    "text": "The air thickens with spores. Feed the bloom and the next battle turns stormy early, but rich.",
+    "choices": [
+      { "label": "Let it bloom", "text": "Next battle: the Sporestorm starts 1:00 earlier (both sides) and you get +150 starting gold.", "outcome": [{ "nextBattle": { "sporestormShiftSeconds": -60, "startingGold": 150 } }] },
+      { "label": "Decline", "text": "Nothing happens.", "outcome": [] }
+    ] },
+  { "id": "burn-the-notes", "title": "Burn the Notes",
+    "text": "A Gray Rot scout's notes on your colony lie by a cold fire. Burning them properly takes time and fuel.",
+    "choices": [
+      { "label": "Burn them", "text": "Halve the Gray Rot's intel on you; next battle starting gold −75. (Intel arrives in Milestone 4.)", "outcome": [{ "halveIntel": true }, { "nextBattle": { "startingGold": -75 } }] },
+      { "label": "Leave them", "text": "Nothing happens.", "outcome": [] }
+    ] },
+  { "id": "hungry-roots", "title": "Hungry Roots",
+    "text": "Pale roots reach for the colony's treasures. Feed them one, and they give back two lesser gifts.",
+    "choices": [
+      { "label": "Feed the roots", "text": "Sacrifice a relic; gain 2 random relics one rarity lower.", "outcome": [{ "sacrificeRelic": { "gain": 2, "rarityShift": -1 } }] },
+      { "label": "Leave", "text": "Nothing happens.", "outcome": [] }
+    ] },
+  { "id": "amber-seep", "title": "Amber Seep",
+    "text": "Golden sap oozes from a wound in the bark. Collecting it slows the colony down.",
+    "choices": [
+      { "label": "Tap the seep", "text": "Gain 1 Amber; next battle starting gold −100.", "outcome": [{ "gainAmber": 1 }, { "nextBattle": { "startingGold": -100 } }] },
+      { "label": "Leave", "text": "Nothing happens.", "outcome": [] }
+    ] },
+  { "id": "twin-spores", "title": "Twin Spores",
+    "text": "Two spores drift down together, mirror images of each other.",
+    "choices": [
+      { "label": "Copy an upgrade", "text": "+1 level on an upgrade track you already have levels in (your choice).", "outcome": [{ "upgrade": { "count": 1, "pick": "choose", "ownedOnly": true } }] },
+      { "label": "Take a relic", "text": "Gain 1 random common relic.", "outcome": [{ "gainRelic": { "rarity": "common" } }] }
+    ] }
+]

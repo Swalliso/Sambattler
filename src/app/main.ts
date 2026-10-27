@@ -1,8 +1,9 @@
-// Entry point: reads URL parameters, loads and validates content, builds the battle and starts the
-// loop. Milestone 2 ships the battle screen (with deploy) and the battle report (`scene=report`
-// plays the battle out headlessly and opens on its report).
+// Entry point: reads URL parameters, loads and validates content, and opens a scene. Milestone 3
+// adds the run (route, drafts, spoils, events, Grove, summary) alongside the single-battle scenes:
+// battle and deploy play one battle, report plays it out headlessly and opens on its report.
 import '../ui/styles.css';
 import { bakeAtlas } from '../render/atlas.ts';
+import { loadRun, MemoryStorage, runForScene } from '../run/index.ts';
 import {
   MILESTONE, createBattle, createFromScenario, makeConfig, parseController, queueCommand, runHeadless,
 } from '../sim/index.ts';
@@ -15,9 +16,11 @@ import { bindInput } from './input.ts';
 import { GameLoop } from './loop.ts';
 import { parseParams } from './urlParams.ts';
 import type { Params } from './urlParams.ts';
+import { BrowserStorage, RunController } from './run.ts';
 import { Session } from './session.ts';
 
-const SCENES = new Set(['battle', 'deploy', 'report']);
+const BATTLE_SCENES = new Set(['battle', 'deploy', 'report']);
+const RUN_SCENES = new Set(['run', 'route', 'draft', 'summary']);
 const errors: string[] = [];
 window.addEventListener('error', (e) => errors.push(String(e.message)));
 window.addEventListener('unhandledrejection', (e) => errors.push(String(e.reason)));
@@ -51,8 +54,8 @@ function buildState(content: Content, p: Params, seed: number): BattleState {
 
 function boot(): void {
   const params = parseParams(location.search);
-  if (!SCENES.has(params.scene)) {
-    fatal(`scene=${params.scene} is not part of Milestone ${MILESTONE} (only ${[...SCENES].join(', ')} exist yet).`);
+  if (!BATTLE_SCENES.has(params.scene) && !RUN_SCENES.has(params.scene)) {
+    fatal(`scene=${params.scene} is not part of Milestone ${MILESTONE} (only ${[...BATTLE_SCENES, ...RUN_SCENES].join(', ')} exist yet).`);
     return;
   }
   for (const problem of params.flagProblems) console.warn(`${problem}; ignored`);
@@ -65,8 +68,26 @@ function boot(): void {
     throw e;
   }
   const atlas = bakeAtlas(content);
+  if (RUN_SCENES.has(params.scene)) startRun(content, atlas, params);
+  else start(content, atlas, params, params.seed ?? randomSeed());
+}
+
+/**
+ * A run. Without a seed (normal play) the saved run resumes, or a new one starts; seeded and test
+ * runs are deterministic and never touch storage, so screenshots match Node.
+ */
+function startRun(content: Content, atlas: ReturnType<typeof bakeAtlas>, params: Params): void {
+  const persist = params.seed === null && !params.test;
+  const storage = persist ? new BrowserStorage() : new MemoryStorage();
   const seed = params.seed ?? randomSeed();
-  start(content, atlas, params, seed);
+  const run = (persist ? loadRun(storage) : null) ?? runForScene(content, { scene: params.scene, seed, player: params.player, autoplay: params.autoplay });
+  const ctl = new RunController({ content, atlas, storage, persist, debug: params.debug, newSeed: randomSeed }, run);
+  if (params.debug || params.test) {
+    const bridge = installBridge({ scene: params.scene, battle: () => ctl.battleState, run: () => ctl.run }, errors);
+    ctl.onFrame = () => { bridge.ready = true; };
+  }
+  ctl.pendingTicks = params.ticks;
+  ctl.show();
 }
 
 function start(content: Content, atlas: ReturnType<typeof bakeAtlas>, params: Params, seed: number): void {
@@ -75,6 +96,8 @@ function start(content: Content, atlas: ReturnType<typeof bakeAtlas>, params: Pa
   const humanPlayer = state.config.player.controller.kind === 'human';
   const restart = (nextSeed: number) => {
     loop.stop();
+    unbind();
+    view.dispose();
     document.querySelectorAll('.overlay').forEach((o) => o.remove());
     const q = new URLSearchParams(location.search);
     q.set('seed', String(nextSeed));
@@ -101,13 +124,13 @@ function start(content: Content, atlas: ReturnType<typeof bakeAtlas>, params: Pa
   session.paused = params.paused;
   view.fit();
   const loop = new GameLoop(session, view);
-  bindInput(session, view, {
+  const unbind = bindInput(session, view, {
     begin: () => { if (state.phase === 'deploy' && !state.queue.some((c) => c.type === 'begin')) session.issue({ type: 'begin' }); },
     toggleDebug: () => { if (params.debug) loop.debugOverlay = !loop.debugOverlay; },
   });
   loop.debugOverlay = params.debug;
   if (params.debug || params.test) {
-    const bridge = installBridge(() => session.state, errors);
+    const bridge = installBridge({ scene: params.scene, battle: () => session.state, run: () => null }, errors);
     loop.onFrame = () => { bridge.ready = true; };
   }
   loop.start();

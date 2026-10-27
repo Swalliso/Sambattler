@@ -3,6 +3,56 @@
 Every change from the SPEC's first-pass numbers, with the guardrail or verification result that
 motivated it. Tools: `npm run balance -- duel`, `npm run balance -- tournament`, `npm run test:slow`.
 
+## Milestone 3 (2026-10-26)
+
+The run loop: drafts, upgrade tracks (SPEC §11.6), 21 relics (§11.7 plus five new ones), events, the
+Grove, Tender's Ring and two maps. **No M1 or M2 number changed.** 90 reference battles (bot:balanced
+vs scripted ×40, the merge mirror ×20, mono Gill Nest ×20, comeback-6 ×10) give identical winners,
+lengths, spawns, merges, gold, damage and front lines before and after M3; the golden updates in this
+milestone are hash-only for single battles.
+
+### New content, first-pass numbers
+- Tender's Ring (180 gold, 450 HP, 1 Tender / 20 s) and the Tender (90 HP, heals 8 HP / 1 s, range
+  2.5; Bloomed +0.5 range, Elder heals 2 targets): the spec's numbers. Mono Tender's Ring wins 3% vs
+  `bot:balanced` (a healer can't fight alone). G1/G2 leave support spawners out of the combat duels.
+- Upgrade tracks follow §11.6; the M2/M3 buildings use the same pattern (survivability → damage →
+  signature). Relics follow §11.7; the five new ones are Hardy Spores, Root Stipend, Mending Moss,
+  Bloom Vigor and Martyr's Bloom. Mycorrhizal Link's "15% faster" is spawn interval ×0.87.
+- Draft constants (`draft` in balance.json) and the general's kit growth (`enemyKit`, §7.8) are the
+  spec's numbers.
+
+### Reference bots: unchanged (Tender's Ring tried and reverted)
+Adding Tender's Ring at weight 1 to `bot:balanced` and its three twins reshuffled the bots' picks and
+broke two guardrails that pass today: G4 Decisions 18% (limit 15%; win rate 53% → 45%, median 7:12 →
+8:08) and the G7 mirror 54.5% over 200 games (floor 55%). The Slayer clause read 48% (limit 50%).
+The reference bots keep their M2 weights, so G4 and G7 measure what they did before M3.
+
+### Re-measure after M3 (G3, G7)
+- `npm run test:slow`: only G3 fails, as before M3 (G1, G2, G4, G5, G6, G7, G11 pass).
+- G3 with drafts on for both sides (greedy picks, Vesper's pool): mono Gill Nest **100%** vs
+  `bot:balanced`; every other mono bot ≤ 38%. Drafts, upgrades and relics don't move archer spam.
+- G3 against `bot:balanced` + Tender's Ring: mono Gill Nest still **100%**.
+- G7 with Tender's Ring in the reference bots: mirror 54.5%, Slayer mirror 48.0% (above).
+
+### Runs (SPEC §16 Milestone 3, verification 2)
+`npm run sim -- --run --seeds 1..20 --player bot:balanced --auto-draft greedy --auto-route random`:
+- With the kickoff stand-in (scripted general, full 8-building roster every battle) 10% of runs
+  reached the boss: the player opens with a 3-building starter kit against 8 buildings and is routed
+  in battle 1 in 12 of 20 runs.
+- With §7.8 kit growth pulled into M3 (user's decision): **25%** of runs reach the boss on seeds 1–20
+  and **29%** over 80 seeds (target ≥ 30%). Every run completes. Runs that reach the boss fight 4–5
+  battles with 24–37 min of battle (inside both bands); runs that end early in defeat fight fewer
+  (median 3 battles, 21.6 min), so "4–5 battles per run" and "22–38 min per run" hold only for runs
+  that reach the boss. Early defeats are mostly battle-1 routs by the general's Sporeling swarm
+  (opener Burrow + Cellar with merging) and elite battles.
+
+### Twin Roots (SPEC §16 Milestone 3, verification 3)
+`--map twin-roots --seeds 1..20 --flags merging`: median 7:50 (in the G4 band), 10% Decisions, but
+lanes diverge (front midpoints ≥ 4 columns apart at some sample) in only **35%** of battles (target
+≥ 50%; 53% on seeds 21–60). Four layouts (more stumps in each side's weak lane, extra loam) moved it
+by at most 10 points: both AIs send new spawners to whichever lane is losing, which keeps the fronts
+level. The original layout is kept; the lever is the AI's lane choice (§7.3), not the map.
+
 ## Milestone 2 (2026-10-25)
 
 Merging (SPEC §5.5–5.6), Scythecap Grove and Veilstalker Hollow. Merging is on by default from M2

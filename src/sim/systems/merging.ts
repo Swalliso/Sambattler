@@ -3,6 +3,7 @@
 // or a merge toggle switched off cancels them; otherwise they complete on time); new trios are
 // detected every `merge.every` ticks, per side, walking eligible units in id order.
 import { addUnit } from '../create.ts';
+import { fireTriggers } from '../effects.ts';
 import { SIDES } from '../state.ts';
 import type { BattleState, Side, Tier, UnitState } from '../state.ts';
 
@@ -92,6 +93,8 @@ function complete(state: BattleState, trio: UnitState[]): number {
   m.lastCombatTick = lastCombat;
   state.stats[side].merges[tier === 2 ? '2' : '3']++;
   state.events.push({ t: 'merged', side, id: m.id, unitId: m.unitId, tier: tier as 2 | 3, x: m.x, y: m.y });
+  const def = state.compiled[side].units[m.unitId]!;
+  fireTriggers(state, side, 'merge', { x: m.x, y: m.y, lane: m.lane, unitId: m.unitId, tier, tags: def.tags, sourceBuildingId: m.sourceBuildingId });
   return tier;
 }
 
@@ -101,7 +104,8 @@ function detectTrios(state: BattleState, side: Side): void {
   if (n < 3) return;
   if (reserved.length < n) reserved = new Uint8Array(n * 2);
   reserved.fill(0, 0, n);
-  const r2 = state.rules.merge.radius * state.rules.merge.radius;
+  const radius = state.compiled[side].mergeRadius;
+  const r2 = radius * radius;
   for (let i = 0; i < n; i++) {
     if (reserved[i]) continue;
     const u = eligible[i]!;
@@ -126,7 +130,7 @@ function detectTrios(state: BattleState, side: Side): void {
 function startKnit(state: BattleState, u: UnitState, v: UnitState, w: UnitState): void {
   const g = Math.min(u.id, v.id, w.id);
   const x = (u.x + v.x + w.x) / 3, y = (u.y + v.y + w.y) / 3;
-  const until = state.tick + state.rules.merge.knitTicks;
+  const until = state.tick + state.compiled[u.side].knitTicks;
   for (const m of [u, v, w]) {
     m.knit = { group: g, untilTick: until, x, y, hurt: false };
     m.targetId = 0;

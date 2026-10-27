@@ -38,8 +38,15 @@ export function rosterIds(content: Content): string[] {
   return [...content.factions[ROSTER]!.buildings];
 }
 
+/**
+ * Spawners whose units fight. Support units (the Tender) heal instead of attacking, so they can't
+ * win a duel by design and are left out of the G1/G2 duel matrices.
+ */
 export function spawnerIds(content: Content): string[] {
-  return rosterIds(content).filter((id) => content.buildings[id]!.kind === 'spawner');
+  return rosterIds(content).filter((id) => {
+    const b = content.buildings[id]!;
+    return b.kind === 'spawner' && !content.units[b.spawn!.unit]!.tags.includes('support');
+  });
 }
 
 /** `capguard@2` → { unit: 'capguard', tier: 2 }. */

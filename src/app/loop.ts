@@ -1,6 +1,8 @@
 // Browser game loop (SPEC §13.5): fixed 50 ms sim steps from an accumulator scaled by speed,
-// rendering in between with interpolation alpha = accumulator / 50 ms.
-import { step } from '../sim/index.ts';
+// rendering in between with interpolation alpha = accumulator / 50 ms. While a draft holds the sim,
+// it steps only to run the player's draft command.
+import { draftCommandDue, step } from '../sim/index.ts';
+import type { BattleState } from '../sim/index.ts';
 import type { BattleView } from './battleView.ts';
 import type { Session } from './session.ts';
 
@@ -12,6 +14,8 @@ export class GameLoop {
   private raf = 0;
   debugOverlay = false;
   onFrame: (() => void) | null = null;
+  /** Called after every sim step (the run controller saves at wave boundaries). */
+  onStep: ((state: BattleState) => void) | null = null;
 
   constructor(private session: Session, private view: BattleView) {}
 
@@ -26,6 +30,12 @@ export class GameLoop {
 
   stop(): void { cancelAnimationFrame(this.raf); }
 
+  private advance(state: BattleState, now: number): void {
+    step(state);
+    this.view.onTick(state, now);
+    this.onStep?.(state);
+  }
+
   private frame(now: number): void {
     const s = this.session;
     const state = s.state;
@@ -33,19 +43,21 @@ export class GameLoop {
     this.last = now;
     if (state.phase === 'deploy') {
       // the clock is stopped; deploy commands (and Begin) run as soon as they are queued
-      if (state.queue.length) { step(state); this.view.onTick(state, now); }
+      if (state.queue.length) this.advance(state, now);
       this.acc = 0;
-    } else if (state.phase === 'live' && !s.paused && !state.held) {
+    } else if (state.phase === 'live' && state.held) {
+      if (draftCommandDue(state)) this.advance(state, now);
+      this.acc = 0;
+    } else if (state.phase === 'live' && !s.paused) {
       this.acc += dt * s.speed;
       let guard = 0;
-      while (this.acc >= STEP_MS && state.phase === 'live' && guard++ < 12) {
-        step(state);
-        this.view.onTick(state, now);
+      while (this.acc >= STEP_MS && state.phase === 'live' && !state.held && guard++ < 12) {
+        this.advance(state, now);
         this.acc -= STEP_MS;
       }
-      if (guard >= 12) this.acc = 0;
+      if (guard >= 12 || state.held) this.acc = 0;
     }
-    const alpha = state.phase === 'live' && !s.paused ? Math.min(1, this.acc / STEP_MS) : 1;
+    const alpha = state.phase === 'live' && !s.paused && !state.held ? Math.min(1, this.acc / STEP_MS) : 1;
     this.view.frame(state, alpha, now, this.debugOverlay);
     this.onFrame?.();
   }

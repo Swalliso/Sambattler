@@ -18,7 +18,8 @@ export class Tray {
       const out = b.spawn && unit ? `${b.spawn.count} × ${unit.name} / ${b.spawn.interval}s`
         : b.attack ? `${b.attack.damageType} ${b.attack.damage} / ${b.attack.interval}s · r${b.attack.range}`
         : b.economy ? `+${b.economy.goldPerTick} gold / ${content.balance.incomeTickSeconds}s` : b.kind;
-      const mx = unit ? `strong vs ${strongVs(state, unit.damageType)} · ${unit.armor}`
+      const mx = unit?.heal ? `heals ${unit.heal.amount} HP / ${unit.heal.interval}s · ${unit.armor}`
+        : unit ? `strong vs ${strongVs(state, unit.damageType)} · ${unit.armor}`
         : b.attack ? `splash ${b.attack.splashRadius ?? 0} · strong vs ${strongVs(state, b.attack.damageType)}`
         : b.economy ? `+${Math.round(content.balance.loamBonus * 100)}% on Rich Loam` : '';
       const sprite = spriteToCanvas(atlas, b.sprite, 'velvet-bloom');

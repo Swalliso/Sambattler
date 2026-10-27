@@ -163,6 +163,7 @@ export class Renderer {
         if (this.damageNumbers === 'all' || (this.damageNumbers === 'big' && e.amount >= BIG_HIT)) this.labels.add(9, e.x, e.y, now, eff, e.amount);
       } else if (e.t === 'merged') this.labels.add(8, e.x, e.y, now, e.tier, e.side === 'player' ? 0 : 1);
       else if (e.t === 'died') this.effects.add(e.side === 'player' ? 4 : 5, e.x, e.y, now, 0);
+      else if (e.t === 'healed') this.effects.add(10, e.x, e.y, now, 0);
       else if (e.t === 'buildingDestroyed') this.effects.add(6, e.col + 1, e.row + 1, now, 0);
       else if (e.t === 'spawned') {
         const u = state.units.find((x) => x.id === e.id);
@@ -338,12 +339,12 @@ export class Renderer {
       g.globalAlpha = 0.3 + 0.18 * Math.sin(t / 80 + u.id);
       g.fillStyle = this.mat(u.side).glow;
       g.beginPath();
-      g.arc(x, y, 7 + 2 * this.knitProgress(state, u.knit.untilTick, alpha), 0, Math.PI * 2);
+      g.arc(x, y, 7 + 2 * this.knitProgress(state, u.side, u.knit.untilTick, alpha), 0, Math.PI * 2);
       g.fill();
     }
     g.globalAlpha = 1;
     if (!state.config.flags.merging) return;
-    const r2 = state.rules.merge.radius * state.rules.merge.radius;
+    const radius = { player: state.compiled.player.mergeRadius, enemy: state.compiled.enemy.mergeRadius };
     const el = this.eligible;
     el.length = 0;
     for (const u of state.units) if (canMerge(state, u)) el.push(u);
@@ -353,7 +354,7 @@ export class Renderer {
     const near = (a: UnitState, b: UnitState) => {
       if (a.side !== b.side || a.unitId !== b.unitId || a.tier !== b.tier || a.lane !== b.lane) return false;
       const dx = a.x - b.x, dy = a.y - b.y;
-      return dx * dx + dy * dy <= r2;
+      return dx * dx + dy * dy <= radius[a.side] * radius[a.side];
     };
     for (let i = 0; i < el.length; i++) for (let j = i + 1; j < el.length; j++) if (near(el[i]!, el[j]!)) { counts[i]!++; counts[j]!++; }
     g.globalAlpha = 0.6;
@@ -381,7 +382,7 @@ export class Renderer {
       trio.length = 0;
       for (const u of state.units) if (u.knit?.group === k.group) trio.push(u);
       const glow = this.mat(lead.side).glow;
-      const prog = this.knitProgress(state, k.untilTick, alpha);
+      const prog = this.knitProgress(state, lead.side, k.untilTick, alpha);
       const head = (u: UnitState): [number, number] => [
         Math.round(this.sx(u.px + (u.x - u.px) * alpha)),
         Math.round((u.py + (u.y - u.py) * alpha) * TILE - 11 * TIER_SCALE[u.tier - 1]!),
@@ -407,8 +408,8 @@ export class Renderer {
   }
 
   /** 0 → 1 over a knit (interpolated between ticks). */
-  private knitProgress(state: BattleState, untilTick: number, alpha: number): number {
-    const knitTicks = Math.max(1, state.rules.merge.knitTicks);
+  private knitProgress(state: BattleState, side: Side, untilTick: number, alpha: number): number {
+    const knitTicks = Math.max(1, state.compiled[side].knitTicks);
     return Math.min(1, Math.max(0, 1 - (untilTick - state.tick - alpha) / knitTicks));
   }
 

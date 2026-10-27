@@ -51,11 +51,14 @@ export function runHeadless(state: BattleState, opts: HeadlessOptions): Headless
     step(state);
     for (const e of state.events) eventCounts[e.t] = (eventCounts[e.t] ?? 0) + 1;
     if (state.tick !== before) {
+      guard = 0;
       if (opts.hashEvery && state.tick % opts.hashEvery === 0) hashes[String(state.tick)] = hashState(state);
       if (record.has(state.tick)) summaries[String(state.tick)] = { ...summarize(state), events: { ...eventCounts } };
       opts.onTick?.(state);
     } else if (state.phase === 'deploy' && ++guard > 1000) {
       throw new Error('runHeadless: deploy phase never ended (no begin command)');
+    } else if (state.held && ++guard > 1000) {
+      throw new Error(`runHeadless: held for a draft at tick ${state.tick} with no draft command to run`);
     }
   }
   const finalHash = hashState(state);
