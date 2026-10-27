@@ -7,7 +7,7 @@ Human playtest notes, newest first. Each entry records what the player said and 
 | # | Feedback | Related | Status |
 |---|---|---|---|
 | F1 | Forward building isn't worth it: the surcharge feels steep and gives little in return | §6.3 `supplyLinePerColumn`, §4 territory | Open, not started. M3 adds optional payoffs as drafts: the Forward Spores relic (surcharge halved) and Martyr's Bloom (destroyed buildings burst); the base rule is unchanged |
-| F2 | Gill Archers (Gill Nest) are still the best unit | G3, `data/CHANGELOG-balance.md` "Open: G3" | Open. Re-measured after M3 (2026-10-26): mono Gill Nest still wins 100%, with drafts, upgrades and relics on and against a reference bot that fields Tender's Ring. Candidate solutions recorded in the [balance backlog](balance-backlog.md) on 2026-10-27; no balance implementation selected yet |
+| F2 | Gill Archers (Gill Nest) are still the best unit | G3, `data/CHANGELOG-balance.md` "Open: G3" | Open. Re-measured after M3 (2026-10-26): mono Gill Nest still wins 100%, with drafts, upgrades and relics on and against a reference bot that fields Tender's Ring. Candidate solutions recorded in the [balance backlog](balance-backlog.md) on 2026-10-27; no balance implementation selected yet. Re-measured after M4 (2026-10-27): mono Gill Nest still wins 100% against `bot:balanced` and against every general, adaptive or not; G1 now fails on it too (7 of 8 production pairings, since the three M4 spawners all lose to massed archers) |
 | F3 | "Did losing forward buildings feel fair and readable?" has no answer yet | M1 playtest gate | Needs a playtest where the player builds forward |
 
 ## 2026-10-26: Milestone 1 playtest gate (§16), answered against the live M2 build

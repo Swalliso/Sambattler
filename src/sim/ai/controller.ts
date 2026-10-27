@@ -169,7 +169,8 @@ export function choosePlacement(
   let candidates = legalPlacements(state, side, buildingId);
   if (ai?.laneStyle === 'aggressive' && def.kind === 'spawner' && state.lanes.length > 1) {
     const lane = weakestOpponentLane(state, side);
-    candidates = candidates.filter((p) => p.lane === lane);
+    const inLane = candidates.filter((p) => p.lane === lane);
+    if (inLane.length) candidates = inLane; // a full lane falls back to the others
   }
   let best: { lane: number; col: number; row: number; price: number } | null = null;
   let bestScore = -Infinity;

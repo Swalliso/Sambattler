@@ -5,8 +5,8 @@ import { describe, expect, it } from 'vitest';
 import { choosePlacement, assessPressure } from '../../src/sim/ai/controller.ts';
 import { counterTick } from '../../src/sim/ai/counter.ts';
 import {
-  analyzeMix, counterSets, createBattle, doctrineMult, hashState, makeConfig, queueCommand, restore, runHeadless, snapshot, step,
-  topKind, zeroProfile,
+  analyzeMix, counterSets, createBattle, doctrineMult, hashState, legalPlacements, makeConfig, placementProblem, queueCommand, restore,
+  runHeadless, snapshot, step, topKind, zeroProfile,
 } from '../../src/sim/index.ts';
 import type { BattleConfig, BattleState, CounterState, IntelProfile, SimEvent } from '../../src/sim/index.ts';
 import { averageProfile, battleProfile, createRun, intelDots, simulateRun, updateIntel } from '../../src/run/index.ts';
@@ -297,6 +297,18 @@ describe('lane choice (SPEC §7.3)', () => {
       if (expectLane !== null) expect(choice!.lane).toBe(expectLane);
       else expect(choice).not.toBeNull();
     }
+  });
+
+  it('a full weak lane falls back to the other lanes', () => {
+    const s = createBattle(content, makeConfig(content, { seed: 1, mapId: 'twin-roots', player: 'human', enemy: 'general:blightwright', flags: ADAPTIVE }));
+    s.phase = 'live';
+    setBorders(s, 12, 28, 0);
+    setBorders(s, 5, 28, 1);
+    for (const p of legalPlacements(s, 'enemy', 'gillNest').filter((q) => q.lane === 1)) {
+      if (placementProblem(s, 'enemy', 'truffleCellar', 1, p.col, p.row) === null) building(s, 'enemy', 'truffleCellar', p.col, p.row).lane = 1;
+    }
+    expect(legalPlacements(s, 'enemy', 'gillNest').filter((q) => q.lane === 1)).toHaveLength(0);
+    expect(choosePlacement(s, 'enemy', 'gillNest', [], assessPressure(s, 'enemy'))!.lane).toBe(0);
   });
 });
 

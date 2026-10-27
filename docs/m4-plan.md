@@ -85,3 +85,71 @@ Each is easy to reverse; say so if you want one changed.
 - **G8 with mono Gill Nest.** It wins ~100% against every general so far. The Anti-Swarm counter (slash and splash) may not bring it down 20 points; if not, it's reported, not fixed by core rules.
 - **G1/G2/G3 with the new units.** Any new failure caused by an M4 unit is tuned on that unit's own numbers.
 - **Run levers.** Named generals change difficulty both ways (Mother Mold's double-Burrow opener is harsher than the scripted one); the numbers are reported either way.
+
+## As built (2026-10-27)
+
+What changed from the plan above, and the verification results.
+
+### Changes from the plan
+
+- **Counter sets hold spawners only** (call 1 reversed). With the Puffball Mortar in Anti-Swarm, the adaptive Lichen Baron answered a Sporeling swarm by stacking Mortars, never gained ground, filled its home columns and sat on unspendable gold (seed 4: 1,149 gold banked at 10:00). §7.4 defines sets by units, and towers have none.
+- **Two M4 units tuned** (Amanita Knight HP 700 → 500, damage 34 → 28; Hammercap damage 22 → 25) and **the Blightwright's opener** (Rootbreaker Den + Truffle Cellar instead of Gill Archer Nest + Cellar). Numbers and reasons in `data/CHANGELOG-balance.md`.
+- **G2 asserts the M4 edges** (`assertedEdges` in `balance-targets.json`); the older intended edges stay report-only.
+- **G8 uses 30 seeds**, like §16 step 3, because single battles are 3.3 points each.
+- **`verify` gains an adaptive-general smoke** (mono Sporeling Burrow vs Old Mother Mold, seeds 4–5, asserting the first counter's kind and ticks). The scripted smoke stays.
+- **UI extras:** the run summary also shows the intel bars and each battle's counters; the building tray scrolls instead of clipping past nine buildings (single battles field all 14); Help explains the counter cycle; the Burn the Notes text no longer says intel is coming.
+- **Screenshot checks** now assert the Intent panel (kind and countdown match Node, no unit or building names in it) and the intel dots against the run state.
+
+### Verification (SPEC §16 Milestone 4)
+
+| # | Check | Result |
+|---|---|---|
+| 1 | `npm run verify`, with new unit tests for analysis scores (all-Sporeling → Swarm, all-Amanita → Armor, Capguard- or Rootbreaker-dominant → Line, merge-heavy → Elite), toggle-on-without-merges → not Elite, warning/activation ticks (regular and boss), the intel update rule, dual-doctrine weights, selling for space and drafting a missing counter | PASS (205 unit tests, 24 of them new in `tests/unit/ai.test.ts`; 5 goldens; both sim smokes; bench) |
+| 2 | Counter kinds: mono Sporeling Burrow vs Old Mother Mold, seed 4; mono Amanita Lodge vs the Lichen Baron, seed 4 | PASS: `counters[0]` is Swarm, warned at 2400, active at 4800; Armor against Amanita |
+| 3 | G8 example: mono Sporeling Burrow vs the Lichen Baron, seeds 1–30, adaptive off then on | ✗ 23% → 37%: the mono bot does *better* against the adaptive Baron (target: a drop of ≥ 20 points). Diagnosis below |
+| 4 | Memory across a run: mono Sporeling Burrow, seeds 1–20, `merging,adaptive` | Every run completes ✓. Boss dual doctrine in 8/8 boss battles ✓. Swarm opening in 10/14 runs where every battle-2+ opening is Swarm (71%) and in 21/27 battle-2+ battles (78%); target ≥ 80% ✗ (near miss: the misses are Elite, read in battles 3+ as the bot's merging grows) |
+| 5 | Screenshots `m4-telegraph`, `m4-intel` | `m4-telegraph` PASS. `m4-intel` with the spec's seed 4 FAILs its route assertions because that autoplayed run loses battle 2 by Rout and ends on the summary (which also shows the intel bars); the same check on seed 8 (`m4-intel-s8`) PASSes. All M1–M3 screenshots and `m4-report` PASS; `npm run test:browser` passes (8 tests) |
+| 6 | `npm run test:slow` | G1 ✗ (Gill Nest 7/8 pairings), G2 ✓ (both M4 edges 5/5), G3 ✗ (mono Gill Nest 100%), G4 ✓, G5 ✓, G6 ✓, G7 ✓, G8 ✗, G11 ✓. Details below |
+
+Visual checklist:
+
+- **The Intent panel shows the general, the SWARM icon and a "2 waves" countdown, and never names units:** yes. At tick 2420 it reads "Old Mother Mold · Watching your army · Preparing to counter your SWARM · 2 waves", with the swarm icon.
+- **The route map shows intel bars:** yes (seed 8: Swarm ●●●○, Line ○○○○, Armor ○○○○, Elite ●○○○). Seed 4 ends before the route, and its summary shows the same bars.
+
+### G8 in detail (`npm run test:slow`, the Lichen Baron, 30 seeds, mono bot as the player)
+
+| Mono bot | Adaptation off | On | Drop | Asserted |
+|---|---|---|---|---|
+| Sporeling Burrow | 23% | 37% | −13 | ✗ |
+| Capguard Hall | 30% | 13% | 17 | ✗ |
+| Gill Archer Nest | 100% | 100% | 0 | ✗ |
+| Rootbreaker Den | 63% | 70% | −7 | ✗ |
+| Veilstalker Hollow | 23% | 27% | −3 | ✗ |
+| Tender's Ring | 33% | 23% | 10 | ✗ |
+| Hammercap Forge | 30% | 20% | 10 | ✗ |
+| Amanita Lodge | 23% | 3% | 20 | ✓ |
+| others (baseline < 20%) | 0–13% | 0–17% | | report only |
+| `bot:balanced` vs adaptive Baron, battle 1 | | 57% | | ✓ (band 40–65%) |
+
+Why it misses, from instrumented battles:
+
+- **Counters arrive at 4:00.** Mono Rootbreaker routs the Baron at 4:00–5:00 in most seeds, before the first counter can change anything.
+- **Anti-Swarm against a merging swarm.** The Sporeling bot merges heavily, but the Elite read stays small (0.13 at 2:00, 0.18–0.36 at 5:00) next to Swarm (~0.9), so the Baron counters Swarm with Capguards, and Bloomed Sporelings beat Capguards. Its splash answer (Mortars) is a tower and takes ×0.6.
+- **Single-battle kits.** A single-battle general owns the whole roster, so "draft a missing counter" never fires, and buildings outside its §11.11 weights stay at weight 0 under any doctrine (the Baron never builds Scythecaps or Veilstalkers).
+- **Mono Gill Nest** wins 100% against every general, adaptive or not (the deferred archer problem).
+
+Possible levers, none tried beyond a ×5 / ×0.3 sweep (which fixed no row): a higher Elite score multiplier or a smaller Swarm discount so merge-heavy swarms read Elite; giving counter-set buildings in the kit a floor weight when a counter activates; an earlier first cycle. Each changes §7.4 behavior, so they wait for your call.
+
+### M3 run levers, re-measured with named generals (`bot:balanced`, greedy drafts, random route)
+
+| Lever | Main (M3) | M4 | Target |
+|---|---|---|---|
+| Runs reaching the boss, seeds 1–20 | 25% | 15% | ≥ 30% |
+| Runs reaching the boss, seeds 1–80 | 29% | 25% | ≥ 30% |
+| Runs fighting 4–5 battles, seeds 1–20 | 6/20 | 3/20 | all |
+| Twin Roots lane divergence vs the scripted general, seeds 1–20 | 35% | 35% (unchanged) | ≥ 50% |
+| Twin Roots divergence vs named generals (adaptive), seeds 1–20 | — | Mold 45%, Baron 60%, Blightwright 35%, Sovereign 25% | ≥ 50% |
+
+Battle 1 is as hard as before (45/80 wins vs 48/80 on main); the remaining gap is battle 2, where the generals now differ. Per general over 80 runs, the player wins 52/74 against the Baron, 29/59 against Mold, 20/33 against the Blightwright and 16/20 against the Pale Sovereign. The Blightwright's aggressive lane choice doesn't raise Twin Roots divergence on its own: it wins most Twin Roots battles quickly (player 15%) from one lane.
+
+Single battles at battle index 1 on Bogwater Hollow, `bot:balanced` vs each adaptive general (40 seeds): Mold 55%, Baron 63%, Blightwright 35%, Pale Sovereign 40%.
