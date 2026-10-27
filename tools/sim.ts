@@ -1,21 +1,26 @@
-// npm run sim -- [options]: headless battle simulator (SPEC §15.2), Milestone 2 subset.
+// npm run sim -- [options]: headless battle and run simulator (SPEC §15.2), Milestone 3 subset.
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, isAbsolute, join } from 'node:path';
 import { nodeContent, ROOT } from './lib/content.ts';
-import { fmtTicks, median, runBattle } from './lib/run.ts';
+import { DIVERGE_COLUMNS, fmtTicks, median, runBattle } from './lib/run.ts';
 import type { BattleResult, RunSpec } from './lib/run.ts';
+import { simulateRun } from '../src/run/index.ts';
+import type { DraftAutoPolicy, RoutePolicy, RunResult } from '../src/run/index.ts';
 import { checkAssert, parseAssert } from './lib/asserts.ts';
 import type { Assertion } from './lib/asserts.ts';
 import { MILESTONE, parseFlags } from '../src/sim/index.ts';
 import type { BattleConfig, Command } from '../src/sim/index.ts';
 
-/** Options for later milestones' features (runs, drafts, commanders, meta-progression). */
-const NOT_YET = ['--auto-draft', '--commander', '--power-policy', '--bot', '--run', '--auto-route', '--meta-progress', '--runs'];
+/** Options for later milestones' features (commanders, powers, meta-progression). */
+const NOT_YET = ['--commander', '--power-policy', '--bot', '--meta-progress', '--runs'];
+const DRAFT_POLICIES = ['first', 'random', 'greedy'];
+const ROUTE_POLICIES = ['first', 'random', 'battles'];
 
 interface Args {
   map?: string; seeds: number[]; player?: string; enemy?: string; scenario?: string; replay?: string;
   until: 'end' | number; battleIndex?: number; flags?: Partial<BattleConfig['flags']>; hashEvery?: number;
   asserts: Assertion[]; out?: string; summary: boolean;
+  run: boolean; autoDraft?: DraftAutoPolicy; autoRoute?: RoutePolicy;
 }
 
 function parseUntil(v: string): 'end' | number {
@@ -34,7 +39,7 @@ function flagsArg(v: string): BattleConfig['flags'] {
 }
 
 function parseArgs(argv: string[]): Args {
-  const a: Args = { seeds: [1], until: 'end', asserts: [], summary: false };
+  const a: Args = { seeds: [1], until: 'end', asserts: [], summary: false, run: false };
   for (let i = 0; i < argv.length; i++) {
     const k = argv[i]!;
     const v = () => {
@@ -64,6 +69,19 @@ function parseArgs(argv: string[]): Args {
       case '--assert': a.asserts.push(parseAssert(v())); break;
       case '--out': a.out = v(); break;
       case '--summary': a.summary = true; break;
+      case '--run': a.run = true; break;
+      case '--auto-draft': {
+        const p = v();
+        if (!DRAFT_POLICIES.includes(p)) throw new Error(`--auto-draft expects ${DRAFT_POLICIES.join(' | ')}`);
+        a.autoDraft = p as DraftAutoPolicy;
+        break;
+      }
+      case '--auto-route': {
+        const p = v();
+        if (!ROUTE_POLICIES.includes(p)) throw new Error(`--auto-route expects ${ROUTE_POLICIES.join(' | ')}`);
+        a.autoRoute = p as RoutePolicy;
+        break;
+      }
       default: throw new Error(`unknown option ${k}`);
     }
   }
@@ -79,6 +97,8 @@ function outPath(p: string): string {
 function main(): number {
   const args = parseArgs(process.argv.slice(2));
   const content = nodeContent();
+  if (args.run) return mainRun(args, content);
+  if (args.autoRoute) throw new Error('--auto-route needs --run');
   const recordAt = [...new Set(args.asserts.filter((x) => x.tick !== undefined).map((x) => x.tick!))];
   if (typeof args.until === 'number') recordAt.push(args.until);
 
@@ -96,6 +116,7 @@ function main(): number {
     if (args.scenario) spec.scenario = args.scenario;
     if (args.battleIndex) spec.battleIndex = args.battleIndex;
     if (args.flags) spec.flags = args.flags;
+    if (args.autoDraft) spec.autoDraft = args.autoDraft;
     if (args.hashEvery) spec.hashEvery = args.hashEvery;
     const { result } = runBattle(content, spec);
     results.push(result);
@@ -153,6 +174,92 @@ export function printSummary(results: BattleResult[]): void {
   const elders = results.filter((r) => r.merges.player['3'] + r.merges.enemy['3'] > 0).length;
   console.log(`battles with merges ${merged} (${pct(merged, n)}) · with an Elder ${elders} (${pct(elders, n)})`);
   console.log(`mean wall ${(results.reduce((a, r) => a + r.wallMs, 0) / n).toFixed(0)} ms · rejected commands ${results.reduce((a, r) => a + r.rejectedCommands, 0)}`);
+  const multi = results.filter((r) => r.laneDivergence);
+  if (multi.length) {
+    const div = multi.filter((r) => r.laneDivergence!.diverged).length;
+    const gaps = multi.map((r) => r.laneDivergence!.maxGap);
+    console.log(`lanes diverged (front midpoints ≥${DIVERGE_COLUMNS} columns apart at some sample) in ${div}/${multi.length} battles (${pct(div, multi.length)}) · ` +
+      `max gap median ${median(gaps).toFixed(1)} · mean gap ${(multi.reduce((a, r) => a + r.laneDivergence!.meanGap, 0) / multi.length).toFixed(1)}`);
+  }
+}
+
+// ---- whole runs (SPEC §15.2 --run) ----
+
+/** The M3 run expectations (SPEC §16 Milestone 3, verification 2). */
+const RUN_MINUTES: [number, number] = [22, 38];
+
+function mainRun(args: Args, content: ReturnType<typeof nodeContent>): number {
+  if (args.scenario || args.replay || args.map || args.enemy) throw new Error('--run picks maps and generals itself; drop --map, --enemy, --scenario and --replay');
+  const policies = { route: args.autoRoute ?? 'random', draft: args.autoDraft ?? 'greedy', player: args.player ?? 'bot:balanced' } as const;
+  const results: (RunResult & { wallMs: number })[] = [];
+  for (const seed of args.seeds) {
+    const t0 = performance.now();
+    const r = simulateRun(content, seed, { ...policies }, args.hashEvery ? { hashEvery: args.hashEvery } : {});
+    results.push({ ...r, wallMs: Math.round(performance.now() - t0) });
+  }
+  const failures: string[] = [];
+  for (const r of results) {
+    for (const as of args.asserts) {
+      const err = checkAssert(r as unknown as Record<string, unknown>, as);
+      if (err) failures.push(`seed ${r.seed}: ${err}`);
+    }
+  }
+  if (args.out) {
+    const p = outPath(args.out);
+    mkdirSync(dirname(p), { recursive: true });
+    const strip = (r: (typeof results)[number]) => { const { run: _run, ...rest } = r; return rest; };
+    writeFileSync(p, JSON.stringify(results.length === 1 ? strip(results[0]!) : results.map(strip), null, 2));
+    console.error(`wrote ${p}`);
+  }
+  if (results.length === 1 && !args.summary) {
+    const { run: _run, battles, ...brief } = results[0]!;
+    console.log(JSON.stringify({ ...brief, battles: battles.map((b) => `${b.index} ${b.kind} ${b.map} ${b.winner} by ${b.by} ${fmtTicks(b.durationTicks)} hp ${b.heartcapAfter}`) }, null, 2));
+  } else {
+    printRunSummary(results);
+  }
+  for (const as of args.asserts) console.log(`${failures.some((f) => f.includes(as.text)) ? 'FAIL' : 'PASS'}  assert ${as.text}`);
+  if (failures.length) {
+    console.error(`\n${failures.length} assertion failure(s):\n- ${failures.join('\n- ')}`);
+    return 1;
+  }
+  return 0;
+}
+
+function printRunSummary(results: (RunResult & { wallMs: number })[]): void {
+  const mark = (b: RunResult['battles'][number]) => `${b.kind === 'boss' ? 'B' : b.kind === 'elite' ? 'E' : 'b'}${b.winner === 'player' ? '+' : '-'}${b.by[0]}`;
+  const rows = results.map((r) => [
+    String(r.seed), r.outcome, String(r.battleCount), fmtTicks(r.totalBattleTicks), r.reachedBoss ? 'yes' : 'no',
+    `${r.heartcap.hp}/${r.heartcap.max}`, r.battles.map(mark).join(' '), String(r.cards.length), String(r.spores), `${r.wallMs}ms`,
+  ]);
+  const head = ['seed', 'outcome', 'battles', 'battle time', 'boss', 'heartcap', 'results', 'cards', 'spores', 'wall'];
+  const widths = head.map((h, i) => Math.max(h.length, ...rows.map((r) => r[i]!.length)));
+  const line = (cells: string[]) => cells.map((c, i) => c.padEnd(widths[i]!)).join('  ');
+  console.log(line(head));
+  for (const r of rows) console.log(line(r));
+  const n = results.length;
+  const mins = results.map((r) => r.totalBattleTicks / 1200);
+  const counts = results.map((r) => r.battleCount);
+  const boss = results.filter((r) => r.reachedBoss).length;
+  const wins = results.filter((r) => r.outcome === 'victory').length;
+  const done = results.filter((r) => r.outcome === 'victory' || r.outcome === 'defeat').length;
+  const inCount = counts.filter((c) => c >= 4 && c <= 5).length;
+  const inTime = mins.filter((m) => m >= RUN_MINUTES[0] && m <= RUN_MINUTES[1]).length;
+  const bossRuns = results.filter((r) => r.reachedBoss);
+  console.log('');
+  console.log(`runs ${n} · victories ${wins} (${pct(wins, n)}) · reached the boss ${boss} (${pct(boss, n)})`);
+  console.log(`battles per run: median ${median(counts)} · min ${Math.min(...counts)} · max ${Math.max(...counts)} · ${inCount}/${n} runs fought 4–5`);
+  console.log(`battle time per run: median ${median(mins).toFixed(1)} min · min ${Math.min(...mins).toFixed(1)} · max ${Math.max(...mins).toFixed(1)} · ${inTime}/${n} runs in ${RUN_MINUTES[0]}–${RUN_MINUTES[1]} min`);
+  if (bossRuns.length) {
+    const bm = bossRuns.map((r) => r.totalBattleTicks / 1200);
+    console.log(`runs that reached the boss: battles ${Math.min(...bossRuns.map((r) => r.battleCount))}–${Math.max(...bossRuns.map((r) => r.battleCount))} · battle time median ${median(bm).toFixed(1)} min (${Math.min(...bm).toFixed(1)}–${Math.max(...bm).toFixed(1)})`);
+  }
+  console.log(`mean wall ${(results.reduce((a, r) => a + r.wallMs, 0) / n).toFixed(0)} ms per run`);
+  console.log('');
+  const expect = (ok: boolean, text: string) => console.log(`${ok ? 'PASS' : 'FAIL'}  expect ${text}`);
+  expect(done === n, `every run completes (${done}/${n})`);
+  expect(inCount === n, `4–5 battles per run (${inCount}/${n})`);
+  expect(inTime === n, `${RUN_MINUTES[0]}–${RUN_MINUTES[1]} min of battle per run (${inTime}/${n})`);
+  expect(boss / n >= 0.3, `≥30% of runs reach the boss (${pct(boss, n)})`);
 }
 
 function pct(a: number, n: number): string {

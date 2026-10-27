@@ -5,7 +5,7 @@ import type { Content } from '../../src/data/registry.ts';
 import {
   createBattle, createFromScenario, makeConfig, runHeadless, summarize,
 } from '../../src/sim/index.ts';
-import type { BattleConfig, BattleState, BattleSummary, Command, Side } from '../../src/sim/index.ts';
+import type { BattleConfig, BattleState, BattleSummary, Command, DraftPolicy, Side } from '../../src/sim/index.ts';
 
 export interface RunSpec {
   seed: number;
@@ -15,6 +15,8 @@ export interface RunSpec {
   scenario?: string;
   battleIndex?: number;
   flags?: Partial<BattleConfig['flags']>;
+  /** Draft policy for a bot player when drafts are on. */
+  autoDraft?: DraftPolicy;
   startingGold?: Partial<Record<Side, number>>;
   test?: BattleConfig['test'];
   /** Use this exact config instead of building one (replays). */
@@ -51,8 +53,35 @@ export interface BattleResult {
   lanes: BattleSummary['lanes'];
   gold: Record<Side, number>;
   supply: BattleSummary['supply'];
+  /** Multi-lane maps: how far apart the lanes' fronts got (null on one-lane maps). */
+  laneDivergence: LaneDivergence | null;
   /** Summaries recorded at specific ticks (for `path@tick` asserts). */
   at: Record<string, Record<string, unknown>>;
+}
+
+/** Lanes count as diverged when their front midpoints were at least this many columns apart. */
+export const DIVERGE_COLUMNS = 4;
+
+export interface LaneDivergence {
+  /** Largest gap between the lanes' front midpoints over the 1 s samples, in columns. */
+  maxGap: number;
+  /** Mean gap over the samples. */
+  meanGap: number;
+  diverged: boolean;
+}
+
+/** Per-lane divergence from the front-line samples ([tick, pBorder, eBorder] per lane, every second). */
+export function laneDivergence(frontLine: [number, number, number][][]): LaneDivergence | null {
+  if (frontLine.length < 2) return null;
+  const n = Math.min(...frontLine.map((l) => l.length));
+  let maxGap = 0, sum = 0;
+  for (let i = 0; i < n; i++) {
+    const mids = frontLine.map((l) => (l[i]![1] + l[i]![2]) / 2);
+    const gap = Math.max(...mids) - Math.min(...mids);
+    sum += gap;
+    if (gap > maxGap) maxGap = gap;
+  }
+  return { maxGap, meanGap: n ? sum / n : 0, diverged: maxGap >= DIVERGE_COLUMNS };
 }
 
 export function buildState(content: Content, spec: RunSpec): BattleState {
@@ -74,7 +103,9 @@ export function buildState(content: Content, spec: RunSpec): BattleState {
   if (spec.flags) opts.flags = spec.flags;
   if (spec.startingGold) opts.startingGold = spec.startingGold;
   if (spec.test) opts.test = spec.test;
-  return createBattle(content, makeConfig(content, opts));
+  const config = makeConfig(content, opts);
+  if (spec.autoDraft && config.player.controller.kind !== 'human') config.player.autoDraft = spec.autoDraft;
+  return createBattle(content, config);
 }
 
 export function runBattle(content: Content, spec: RunSpec): { state: BattleState; result: BattleResult } {
@@ -119,6 +150,7 @@ export function runBattle(content: Content, spec: RunSpec): { state: BattleState
     lanes: sum.lanes,
     gold: sum.gold,
     supply: sum.supply,
+    laneDivergence: laneDivergence(state.frontLine),
     at,
   };
   return { state, result };
