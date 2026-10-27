@@ -174,6 +174,7 @@ function applyDamage(state: BattleState, h: PendingHit, targetId: number, fallof
     if (dealt > b.hp) dealt = b.hp;
     b.hp -= dmg;
     b.lastDamagedTick = state.tick;
+    if (r.suppressBy === 'melee' && !h.ranged) b.lastMeleeDamagedTick = state.tick;
   } else if (heart) {
     const hs = state.sides[heart];
     if (dealt > hs.heartcapHp) dealt = hs.heartcapHp;

@@ -4,7 +4,7 @@ import { noteSpawn } from '../ai/counter.ts';
 import { addUnit } from '../create.ts';
 import { positionalValue } from '../effects.ts';
 import { nextSigned } from '../rng.ts';
-import { buildingDef, isBesieged } from '../world.ts';
+import { buildingDef, isSuppressed } from '../world.ts';
 import type { BattleState } from '../state.ts';
 
 export function spawningSystem(state: BattleState): void {
@@ -17,7 +17,7 @@ export function spawningSystem(state: BattleState): void {
     const sp = def.spawn;
     if (!sp) continue;
     if (b.placedTick !== state.tick && b.timer > 0) {
-      b.timer -= isBesieged(state, b) ? r.besiegedHalfTicks : r.normalHalfTicks;
+      b.timer -= isSuppressed(state, b) ? r.besiegedHalfTicks : r.normalHalfTicks;
     }
     if (b.timer > 0) continue;
     const ss = state.sides[b.side];

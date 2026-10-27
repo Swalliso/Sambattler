@@ -34,6 +34,7 @@ export function compileRules(b: BalanceDef, config: BattleConfig): Rules {
     besiegedHalfTicks: Math.round(2 * b.besiegedRate),
     normalHalfTicks: 2,
     besiegedIncomePct: Math.round(b.besiegedRate * 100),
+    ...(b.besiegedBy && b.besiegedBy !== 'all' ? { suppressBy: b.besiegedBy } : {}),
     timeLimitTicks: secToTicks(test.timeLimitSeconds ?? b.timeLimitSeconds, tr),
     captureStep: 100,
     captureThreshold: Math.round(b.captureSeconds * tr * 100),

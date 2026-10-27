@@ -4,7 +4,7 @@
 // sparks → labels (merge pops, damage numbers) → overlays (placement ghost, ranges, debug).
 import type { Content } from '../data/registry.ts';
 import {
-  canMerge, frontierBlocked, lanePresence, turretPos,
+  canMerge, frontierBlocked, isSuppressed, lanePresence, turretPos,
 } from '../sim/index.ts';
 import type { BattleState, Command, Side, UnitState } from '../sim/index.ts';
 import type { Atlas, Faction } from './atlas.ts';
@@ -184,7 +184,7 @@ export class Renderer {
     for (const b of state.buildings) {
       const def = state.compiled[b.side].buildings[b.buildingId]!;
       const sprite = this.content.buildings[b.buildingId]!.sprite;
-      const besieged = state.tick - b.lastDamagedTick < state.rules.besiegedTicks;
+      const besieged = isSuppressed(state, b);
       const frame = Math.floor(t / 600 + b.id) % 2;
       const x = this.sx(b.col), y = b.row * TILE;
       if (besieged && Math.floor(t / 120) % 2 === 0) g.globalAlpha = 0.72;

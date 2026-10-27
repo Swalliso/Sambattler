@@ -203,6 +203,8 @@ export interface Rules {
   besiegedHalfTicks: number;
   normalHalfTicks: number;
   besiegedIncomePct: number;
+  /** Set only when production suppression differs from "any damage" (balance `besiegedBy`). */
+  suppressBy?: 'melee' | 'none';
   timeLimitTicks: number;
   captureThreshold: number;
   captureStep: number;
@@ -310,6 +312,8 @@ export interface BuildingState {
   targetId: number;
   lastAttackTick: number;
   lastDamagedTick: number;
+  /** Last melee (non-projectile) hit; written only when `rules.suppressBy` is `melee`. */
+  lastMeleeDamagedTick?: number;
   placedTick: number;
   pricePaid: number;
   /** A spawn, gold payout or shot ends the live placement's full-refund grace period. */

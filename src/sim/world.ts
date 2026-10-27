@@ -67,6 +67,14 @@ export function isBesieged(state: BattleState, b: BuildingState): boolean {
   return state.tick - b.lastDamagedTick < state.rules.besiegedTicks;
 }
 
+/** Is the building's production (spawn timer, income) halved by siege? Depends on `rules.suppressBy`. */
+export function isSuppressed(state: BattleState, b: BuildingState): boolean {
+  const by = state.rules.suppressBy;
+  if (!by) return isBesieged(state, b);
+  if (by === 'none') return false;
+  return b.lastMeleeDamagedTick !== undefined && state.tick - b.lastMeleeDamagedTick < state.rules.besiegedTicks;
+}
+
 export const laneTop = (state: BattleState, lane: number): number => (state.lanes[lane] as { rowStart: number }).rowStart;
 export const laneBottom = (state: BattleState, lane: number): number => (state.lanes[lane] as { rowEnd: number }).rowEnd + 1;
 

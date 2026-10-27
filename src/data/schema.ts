@@ -37,6 +37,12 @@ export const BalanceSchema = z.object({
   fullRefundSeconds: Seconds,
   besiegedSeconds: Seconds,
   besiegedRate: z.number().min(0).max(1),
+  /**
+   * Which hits suppress production (half-speed spawns and income) while a building is besieged:
+   * any damage (default), melee and other non-projectile hits only, or none. Selling stays locked
+   * under any damage.
+   */
+  besiegedBy: z.enum(['all', 'melee', 'none']).optional(),
   firstSpawnFraction: z.number().min(0).max(1),
   timeLimitSeconds: Pos,
   heartcapPlayerHp: z.number().int().positive(),
