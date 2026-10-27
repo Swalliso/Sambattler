@@ -109,7 +109,7 @@ What changed from the plan above, and the verification results.
 | 3 | G8 example: mono Sporeling Burrow vs the Lichen Baron, seeds 1–30, adaptive off then on | ✗ 23% → 37%: the mono bot does *better* against the adaptive Baron (target: a drop of ≥ 20 points). Diagnosis below |
 | 4 | Memory across a run: mono Sporeling Burrow, seeds 1–20, `merging,adaptive` | Every run completes ✓. Boss dual doctrine in 8/8 boss battles ✓. Swarm opening in 10/14 runs where every battle-2+ opening is Swarm (71%) and in 21/27 battle-2+ battles (78%); target ≥ 80% ✗ (near miss: the misses are Elite, read in battles 3+ as the bot's merging grows) |
 | 5 | Screenshots `m4-telegraph`, `m4-intel` | `m4-telegraph` PASS. `m4-intel` with the spec's seed 4 FAILs its route assertions because that autoplayed run loses battle 2 by Rout and ends on the summary (which also shows the intel bars); the same check on seed 8 (`m4-intel-s8`) PASSes. All M1–M3 screenshots and `m4-report` PASS; `npm run test:browser` passes (8 tests) |
-| 6 | `npm run test:slow` | G1 ✗ (Gill Nest 7/8 pairings), G2 ✓ (both M4 edges 5/5), G3 ✗ (mono Gill Nest 100%), G4 ✓, G5 ✓, G6 ✓, G7 ✓, G8 ✗, G11 ✓. Details below |
+| 6 | `npm run test:slow` | G1 ✗ (Gill Nest wins 7/8 pairings; limit 80%). G2 ✓ (both M4 edges 5/5, every older intended edge held). G3 ✗ (mono Gill Nest 100%; every other mono bot ≤ 50%). G4 ✓ (median 7:12, 5% Decisions, bot 53%). G5 ✓ (70%). G6 ✓ (53%). G7 ✓ (mirror 58%, Slayer mirror 50%). G8 ✗ (below). G11 ✓ (bench mean 0.18 ms, p99 0.51 ms, full battle 72 ms) |
 
 Visual checklist:
 
