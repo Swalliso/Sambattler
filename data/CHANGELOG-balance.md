@@ -3,6 +3,21 @@
 Every change from the SPEC's first-pass numbers, with the guardrail or verification result that
 motivated it. Tools: `npm run balance -- duel`, `npm run balance -- tournament`, `npm run test:slow`.
 
+## Balance-backlog prototypes (2026-10-27)
+
+**Nothing adopted; no number, rule or default changed.** B1 (Sporeling approach rush), B3 (firing
+congestion), B4 (unit lifespan), A2 (counter floor weight) and A3 (an earlier first counter cycle)
+were each prototyped behind a `balance.json` setting that is absent by default (A3 is the existing
+`ai.counter.cycles`), and measured with the new `npm run experiment -- --proto <spec>`. Goldens and
+hashes are unchanged. Results are in [the backlog](../docs/balance-backlog.md#prototype-results-2026-10-27).
+- **G3:** mono Gill Nest stays at 98–100% under every candidate and combination, including B1 with
+  `besiegedBy: melee`. B3 halves the archers' 60-supply margins, but these battles are decided
+  before either army reaches that size.
+- **B1** raises boss reach from 25% to 39% but fails G4 (25–28% Decisions at ×2–×3 for 1.5 s) and G7
+  at every setting (mirror 52–56%, Slayer mirror up to 53%).
+- **G8:** A2 lets the Baron field Scythecaps and Veilstalkers, and A2 + A3 passes the Capguard row,
+  but the table still fails (at best 1 of 8 asserted rows).
+
 ## Milestone 4 (2026-10-27)
 
 The adaptive general and intel (SPEC §7.4–7.8): five buildings, three units, four named generals and
