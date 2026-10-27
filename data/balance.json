@@ -48,6 +48,16 @@
   "draftWaves": [2, 4, 6, 8],
   "reroll": { "base": 20, "step": 10 },
   "skipGold": 40,
+  "draft": {
+    "cards": 3,
+    "typeWeights": { "blueprint": 35, "upgrade": 45, "relic": 20 },
+    "smallKit": { "below": 5, "blueprintShare": 0.5 },
+    "rarity": [70, 25, 5],
+    "rarityShiftPerBattle": 3,
+    "eliteRareBonus": 10,
+    "rarityBiasStep": 10,
+    "coreWeight": 2
+  },
   "matrix": {
     "slash":  { "light": 1.5,  "medium": 1.0,  "heavy": 0.5,  "structure": 0.5 },
     "pierce": { "light": 1.0,  "medium": 1.5,  "heavy": 0.75, "structure": 0.5 },

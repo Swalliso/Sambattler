@@ -31,7 +31,7 @@ describe('merging (SPEC §5.5–5.6)', () => {
     steps(s, 1); // tick 10: detection
     expect(knitIds(s)).toEqual(parents.map((u) => u.id));
     expect(s.events.some((e) => e.t === 'knitStart')).toBe(true);
-    steps(s, s.rules.merge.knitTicks - 1);
+    steps(s, s.compiled.player.knitTicks - 1);
     expect(ofTier(s, 2)).toHaveLength(0);
     steps(s, 1); // tick 30: complete
     const [m] = ofTier(s, 2);
@@ -79,7 +79,7 @@ describe('merging (SPEC §5.5–5.6)', () => {
 
   it('takes the two nearest within the merge radius (centre distance), ties to the lower id', () => {
     const s = still();
-    const r = s.rules.merge.radius;
+    const r = s.compiled.player.mergeRadius;
     const u = unit(s, 'player', 'sporeling', 10, 1);
     const far = unit(s, 'player', 'sporeling', 10 + r + 0.01, 1); // just outside
     const edge = unit(s, 'player', 'sporeling', 10, 1 + r); // exactly on the radius: in

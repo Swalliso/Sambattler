@@ -16,6 +16,10 @@ export function victorySystem(state: BattleState): void {
   if (!winner) return;
   state.outcome = { winner, by, tick: state.tick };
   state.phase = 'ended';
+  // a draft that opened this tick is moot once the battle is over
+  state.held = false;
+  state.sides.player.draft = undefined;
+  state.sides.enemy.draft = undefined;
   state.events.push({ t: 'ended', winner, by });
 }
 

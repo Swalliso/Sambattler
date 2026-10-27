@@ -117,7 +117,10 @@ function pickTarget(state: BattleState, side: Side, ai: AiState, pressure: Press
   const r = state.rules;
   let total = 0;
   const eff: number[] = [];
+  const kit = state.sides[side].kit;
   for (const w of ai.weights) {
+    // weights cover the draft pool too; only buildings in the kit can be bought (a zero keeps the roll unchanged)
+    if (!kit.includes(w.building)) { eff.push(0); continue; }
     let x = w.weight;
     const kind = state.compiled[side].buildings[w.building]!.kind;
     if (w.maxOwned >= 0 && ownedCount(state, side, w.building) >= w.maxOwned) x = 0;

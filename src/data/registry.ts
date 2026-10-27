@@ -2,12 +2,12 @@
 // cross-references (SPEC §14.1). Pure: the caller supplies the file contents.
 import type { z } from 'zod';
 import {
-  BalanceSchema, BalanceTargetsSchema, BotSchema, BuildingSchema, FactionSchema, GeneralSchema,
-  MapSchema, ScenarioSchema, SpriteSheetSchema, UnitSchema,
+  BalanceSchema, BalanceTargetsSchema, BotSchema, BuildingSchema, CommanderSchema, EliteSchema, EventSchema,
+  FactionSchema, GeneralSchema, MapSchema, RelicSchema, ScenarioSchema, SpriteSheetSchema, UnitSchema, UpgradeTrackSchema,
 } from './schema.ts';
 import type {
-  BalanceDef, BalanceTargets, BotDef, BuildingDef, FactionDef, GeneralDef, MapDef, ScenarioDef,
-  SpriteDef, UnitDef,
+  BalanceDef, BalanceTargets, BotDef, BuildingDef, CommanderDef, EffectBundle, EliteDef, EventDef, FactionDef,
+  GeneralDef, MapDef, RelicDef, ScenarioDef, SpriteDef, UnitDef, UpgradeTrackDef,
 } from './schema.ts';
 
 /** Raw data files keyed by their path relative to `data/`, e.g. `maps/bogwater-hollow.json`. */
@@ -27,6 +27,16 @@ export interface Content {
   generals: Record<string, GeneralDef>;
   bots: Record<string, BotDef>;
   scenarios: Record<string, ScenarioDef>;
+  /** Upgrade tracks keyed by building id (SPEC §11.6). */
+  upgrades: Record<string, UpgradeTrackDef>;
+  relics: Record<string, RelicDef>;
+  /** Relic ids in data-file order. */
+  relicOrder: string[];
+  events: Record<string, EventDef>;
+  eventOrder: string[];
+  elites: Record<string, EliteDef>;
+  eliteOrder: string[];
+  commanders: Record<string, CommanderDef>;
 }
 
 export class ContentError extends Error {
@@ -74,6 +84,14 @@ export function loadContent(raw: RawContent): Content {
   const generals: Record<string, GeneralDef> = {};
   const bots: Record<string, BotDef> = {};
   const scenarios: Record<string, ScenarioDef> = {};
+  const upgrades: Record<string, UpgradeTrackDef> = {};
+  const relics: Record<string, RelicDef> = {};
+  const relicOrder: string[] = [];
+  const events: Record<string, EventDef> = {};
+  const eventOrder: string[] = [];
+  const elites: Record<string, EliteDef> = {};
+  const eliteOrder: string[] = [];
+  const commanders: Record<string, CommanderDef> = {};
 
   function addUnique<T extends { id: string }>(into: Record<string, T>, item: T, path: string, kind: string): boolean {
     if (item.id in into) { problems.push(`${path}: duplicate ${kind} id "${item.id}"`); return false; }
@@ -116,6 +134,19 @@ export function loadContent(raw: RawContent): Content {
       for (const g of parse(GeneralSchema.array(), path) ?? []) addUnique(generals, g, path, 'general');
     } else if (path === 'bots.json') {
       for (const b of parse(BotSchema.array(), path) ?? []) addUnique(bots, b, path, 'bot');
+    } else if (path === 'upgrades.json') {
+      for (const t of parse(UpgradeTrackSchema.array(), path) ?? []) {
+        if (t.building in upgrades) problems.push(`${path}: building "${t.building}" has two upgrade tracks`);
+        else upgrades[t.building] = t;
+      }
+    } else if (path === 'relics.json') {
+      for (const r of parse(RelicSchema.array(), path) ?? []) if (addUnique(relics, r, path, 'relic')) relicOrder.push(r.id);
+    } else if (path === 'events.json') {
+      for (const e of parse(EventSchema.array(), path) ?? []) if (addUnique(events, e, path, 'event')) eventOrder.push(e.id);
+    } else if (path === 'elites.json') {
+      for (const e of parse(EliteSchema.array(), path) ?? []) if (addUnique(elites, e, path, 'elite modifier')) eliteOrder.push(e.id);
+    } else if (path === 'commanders.json') {
+      for (const c of parse(CommanderSchema.array(), path) ?? []) addUnique(commanders, c, path, 'commander');
     } else if (path === 'balance.json' || path === 'balance-targets.json') {
       // parsed above
     } else {
@@ -152,6 +183,23 @@ export function loadContent(raw: RawContent): Content {
     kitRefs(`general ${g.id}`, g.opener, g.weights, g.limits);
   }
   for (const b of Object.values(bots)) kitRefs(`bot ${b.id}`, b.opener, b.weights, b.limits);
+  const effectRefs = (owner: string, fx: EffectBundle | undefined) => {
+    const sels = [...(fx?.modifiers ?? []).map((m) => m.where), ...(fx?.triggers ?? []).map((t) => t.if)];
+    for (const w of sels) {
+      if (w?.unit !== undefined && !(w.unit in units)) problems.push(`${owner}: unit "${w.unit}" does not exist`);
+      if (w?.building !== undefined) buildingRef(owner, w.building);
+    }
+  };
+  for (const t of Object.values(upgrades)) {
+    buildingRef(`upgrade track ${t.building}`, t.building);
+    t.levels.forEach((l, i) => effectRefs(`upgrade track ${t.building} level ${i + 1}`, l.effects));
+  }
+  for (const r of Object.values(relics)) effectRefs(`relic ${r.id}`, r.effects);
+  for (const e of Object.values(elites)) effectRefs(`elite modifier ${e.id}`, e.effects);
+  for (const c of Object.values(commanders)) {
+    for (const id of c.core) buildingRef(`commander ${c.id} core`, id);
+    if (new Set(c.core).size !== c.core.length) problems.push(`commander ${c.id}: duplicate core building`);
+  }
   for (const map of Object.values(maps)) {
     const W = map.width, H = map.height;
     for (let r = 0; r < H; r++) {
@@ -190,5 +238,8 @@ export function loadContent(raw: RawContent): Content {
   }
 
   if (problems.length || !balance || !targets) throw new ContentError(problems.length ? problems : ['balance files failed to parse']);
-  return { balance, targets, factions, buildings, buildingOrder, units, maps, sprites, spriteOrder, generals, bots, scenarios };
+  return {
+    balance, targets, factions, buildings, buildingOrder, units, maps, sprites, spriteOrder, generals, bots, scenarios,
+    upgrades, relics, relicOrder, events, eventOrder, elites, eliteOrder, commanders,
+  };
 }

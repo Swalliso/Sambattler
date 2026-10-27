@@ -1,6 +1,7 @@
 // The command queue and log (SPEC §14.5). Commands are validated when they execute, so an
 // illegal command becomes a deterministic `commandRejected` event on replay too.
 import { addBuilding } from './create.ts';
+import { executeDraftCommand } from './draft.ts';
 import { placementProblem, priceAt } from './placement.ts';
 import { findBuilding, isBesieged } from './world.ts';
 import type { BattleState, Command, CommandBody, Side } from './state.ts';
@@ -41,6 +42,30 @@ export function queueCommand(state: BattleState, cmd: QueuedCommand): Command {
 function reject(state: BattleState, cmd: Command, reason: string): void {
   state.events.push({ t: 'commandRejected', side: cmd.side, seq: cmd.seq, reason });
   state.stats[cmd.side].rejectedCommands++;
+}
+
+const isDraft = (c: Command) => c.type === 'draftPick' || c.type === 'draftReroll' || c.type === 'draftSkip';
+
+/**
+ * While the sim is held for a draft (SPEC §8.3), runs only the draft commands due by the next tick,
+ * in queue order, without advancing the clock. Other commands wait for the hold to end.
+ */
+export function executeHeldCommands(state: BattleState): void {
+  const limit = state.tick + 1;
+  for (let i = 0; i < state.queue.length && state.held;) {
+    const cmd = state.queue[i]!;
+    if (cmd.tick > limit) break;
+    if (!isDraft(cmd)) { i++; continue; }
+    state.queue.splice(i, 1);
+    state.log.push(cmd);
+    execute(state, cmd);
+  }
+}
+
+/** True if a draft command is queued for execution by the next tick (lets a held battle make progress). */
+export function draftCommandDue(state: BattleState): boolean {
+  const limit = state.tick + 1;
+  return state.queue.some((c) => c.tick <= limit && isDraft(c));
 }
 
 /** Executes every queued command due at `tick` (player first, then by seq). Returns true if `begin` ran. */
@@ -96,6 +121,13 @@ function execute(state: BattleState, cmd: Command): boolean {
       if (!b || b.side !== side || !state.compiled[side].buildings[b.buildingId]?.spawn) { reject(state, cmd, 'not your spawner'); return false; }
       b.mergeOn = cmd.on;
       for (const u of state.units) if (u.sourceBuildingId === b.id) u.mergeOn = cmd.on;
+      return false;
+    }
+    case 'draftPick':
+    case 'draftReroll':
+    case 'draftSkip': {
+      const problem = executeDraftCommand(state, side, cmd);
+      if (problem) reject(state, cmd, problem);
       return false;
     }
     default:

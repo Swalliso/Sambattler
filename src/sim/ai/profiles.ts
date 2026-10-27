@@ -3,7 +3,11 @@
 import type { Content } from '../../data/registry.ts';
 import type { AiState, AiWeight, Controller, MergePolicy, Rules, SideConfig } from '../state.ts';
 
-export function resolveAiProfile(content: Content, ctl: Controller, side: SideConfig, rules: Rules): AiState {
+/**
+ * `available` is every building the side could own this battle (its kit plus its draft pool): the
+ * weights keep those, and the AI only buys what is in its kit at the time.
+ */
+export function resolveAiProfile(content: Content, ctl: Controller, side: SideConfig, rules: Rules, available: ReadonlySet<string>): AiState {
   if (ctl.kind === 'human') throw new Error('humans have no AI profile');
   let opener: string[];
   let weights: Record<string, number>;
@@ -33,7 +37,7 @@ export function resolveAiProfile(content: Content, ctl: Controller, side: SideCo
   const list: AiWeight[] = [];
   for (const id of content.buildingOrder) {
     const w = weights[id];
-    if (w === undefined || w <= 0 || !side.kit.includes(id)) continue;
+    if (w === undefined || w <= 0 || !available.has(id)) continue;
     const lim = limits[id] ?? {};
     list.push({
       building: id,
@@ -52,5 +56,6 @@ export function resolveAiProfile(content: Content, ctl: Controller, side: SideCo
     openerDone: false,
     target: null,
     targetSince: 0,
+    draftPolicy: side.autoDraft ?? 'greedy',
   };
 }

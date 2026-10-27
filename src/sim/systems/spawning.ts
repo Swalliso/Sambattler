@@ -1,6 +1,7 @@
 // Building timers and spawns (SPEC §4.4): first spawn at half the interval, holding at the supply
 // cap, and half-speed timers while besieged. Timers count in half-ticks.
 import { addUnit } from '../create.ts';
+import { positionalValue } from '../effects.ts';
 import { nextSigned } from '../rng.ts';
 import { buildingDef, isBesieged } from '../world.ts';
 import type { BattleState } from '../state.ts';
@@ -27,7 +28,10 @@ export function spawningSystem(state: BattleState): void {
       continue;
     }
     b.holding = false;
-    b.timer += sp.intervalHalfTicks;
+    // a positional modifier (e.g. Mycorrhizal Link's adjacency) re-resolves the interval for this building
+    b.timer += sp.positional
+      ? Math.round(positionalValue(state, b, sp.positional, 'building.spawnInterval') * r.tickRate) * 2
+      : sp.intervalHalfTicks;
     const x = b.side === 'player' ? b.col + def.w + r.spawnOffset : b.col - r.spawnOffset;
     const cy = b.row + def.h / 2;
     const stats = state.stats[b.side];

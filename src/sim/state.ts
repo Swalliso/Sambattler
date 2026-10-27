@@ -1,4 +1,7 @@
 // Runtime state: plain, JSON-serializable data only (SPEC §13.3 rule 8, §14.4).
+import type {
+  BalanceDef, BuildingDef, EffectBundle, ModifierDef, RelicDef, TriggerDef, UnitDef, UpgradeTrackDef,
+} from '../data/schema.ts';
 
 export type Side = 'player' | 'enemy';
 export const SIDES: readonly Side[] = ['player', 'enemy'];
@@ -19,6 +22,14 @@ export type Controller =
   | { kind: 'general'; id: string }
   | { kind: 'bot'; id: string };
 
+export type Rarity = 'common' | 'uncommon' | 'rare';
+export type CardType = 'blueprint' | 'upgrade' | 'relic';
+/** How a bot side answers its own drafts: `none` leaves them to the player (UI). */
+export type DraftPolicy = 'first' | 'random' | 'greedy' | 'none';
+
+/** The cards a side can be offered in battle (SPEC §8.4): blueprints split into core and shared pools. */
+export interface DraftPool { core: string[]; shared: string[]; relics: string[] }
+
 export interface SideConfig {
   faction: string;
   controller: Controller;
@@ -26,7 +37,17 @@ export interface SideConfig {
   heartcapHp: number;
   heartcapMaxHp: number;
   startingGold: number;
+  /** Upgrade levels per building (SPEC §11.6); missing means none. */
+  upgrades?: Record<string, number>;
+  relics?: string[];
+  /** Present when this side drafts during the battle (with `flags.drafts`). */
+  draft?: DraftPool;
+  /** Draft policy for an AI-controlled side (default greedy); humans always draft through the UI. */
+  autoDraft?: DraftPolicy;
 }
+
+/** A battle-wide effect source: an event outcome, the elite modifier, later blights (SPEC §14.4). */
+export interface BattleModifier { side: Side | 'both'; source: string; effects: EffectBundle }
 
 export interface BattleConfig {
   seed: number;
@@ -35,6 +56,8 @@ export interface BattleConfig {
   player: SideConfig;
   enemy: SideConfig;
   flags: { merging: boolean; drafts: boolean; adaptiveGeneral: boolean; powers: boolean };
+  /** Event effects and elite modifiers for this battle (none by default). */
+  modifiers?: BattleModifier[];
   scenario?: string;
   /** Test-harness rule switches used by balance duels; never set in play. */
   test?: { noTurrets?: boolean; noTerritory?: boolean; noHeartcapTargets?: boolean; timeLimitSeconds?: number };
@@ -55,9 +78,17 @@ export interface CompiledTier {
   splashRadius: number;
   /** Multiplier against Bloomed and Elder targets (1 for units without the slayer tag). */
   slayerMult: number;
-  /** Damage-taken multipliers from merge perks. */
+  /** Damage-taken multipliers from merge perks and upgrades. */
   resist: Record<DamageType, number>;
   supply: number;
+  /** Multiplier against structures (1 for units without the siege tag). */
+  siegeMult: number;
+  /** Healing per heal (0 for units that don't heal), heal interval and targets per heal. */
+  healAmount: number;
+  healTicks: number;
+  healTargets: number;
+  /** Out-of-combat regeneration as a fraction of max HP per second (Elder's Patience). */
+  regenPct: number;
 }
 
 /** Resolved, tick-based unit definition (SPEC §14.1 "compiled definitions"). */
@@ -69,6 +100,8 @@ export interface CompiledUnit {
   aggroRange: number;
   siege: boolean;
   slayer: boolean;
+  /** Support healers never attack; they hold at their range and heal allies. */
+  support: boolean;
   tags: string[];
   /** Index 0 is the base unit, 1 Bloomed, 2 Elder. */
   tiers: [CompiledTier, CompiledTier, CompiledTier];
@@ -81,13 +114,20 @@ export interface CompiledBuilding {
   h: number;
   cost: number;
   hp: number;
-  spawn?: { unit: string; count: number; intervalHalfTicks: number; firstHalfTicks: number };
+  spawn?: {
+    unit: string; count: number; intervalHalfTicks: number; firstHalfTicks: number;
+    /** Set when a positional modifier applies: the interval is re-resolved per building when its timer resets. */
+    positional?: PositionalStat;
+  };
   attack?: {
     damage: number; damageType: DamageType; intervalTicks: number; range: number;
     minRange: number; splashRadius: number; projectileSpeed: number;
   };
-  economy?: { goldPerTick: number };
+  economy?: { goldPerTick: number; positional?: PositionalStat };
 }
+
+/** A building stat with modifiers that depend on where the building stands (zone, loam, adjacency). */
+export interface PositionalStat { base: number; mods: ModifierDef[] }
 
 export interface CompiledSide {
   units: Record<string, CompiledUnit>;
@@ -100,7 +140,40 @@ export interface CompiledSide {
   supplyLineBp: number;
   loamBonusPct: number;
   comebackEnabled: boolean;
+  mergeRadius: number;
+  knitTicks: number;
+  rerollBase: number;
+  rerollStep: number;
+  skipGold: number;
+  draftCards: number;
   turret: { damage: number; damageType: DamageType; intervalTicks: number; range: number; projectileSpeed: number; perLane: number };
+  /** Triggers from upgrades, relics and battle modifiers, in source order. */
+  triggers: TriggerDef[];
+}
+
+/**
+ * The plain base definitions a battle can need (both kits, the draft pool, their units, upgrade
+ * tracks and relics, and the balance constants), copied into state so `step` can recompile a side
+ * after a draft pick without content lookups (SPEC §14.1).
+ */
+export interface Library {
+  balance: BalanceDef;
+  buildings: Record<string, BuildingDef>;
+  units: Record<string, UnitDef>;
+  upgrades: Record<string, UpgradeTrackDef>;
+  relics: Record<string, RelicDef>;
+}
+
+/** What a side owns in this battle: the inputs to compilation besides battle modifiers. */
+export interface Loadout { kit: string[]; upgrades: Record<string, number>; relics: string[] }
+
+export interface DraftCard { id: string; type: CardType; rarity: Rarity }
+export interface OpenDraft {
+  offer: DraftCard[];
+  /** Rerolls taken in this draft (the next one costs base + step × rerolls). */
+  rerolls: number;
+  /** 1-based draft number within the battle. */
+  index: number;
 }
 
 /** Global rule constants, converted to ticks and integers at battle creation. */
@@ -128,7 +201,9 @@ export interface Rules {
   matrix: Record<DamageType, Record<Armor, number>>;
   siegeMult: number;
   slayerMult: number;
-  merge: { radius: number; cooldownTicks: number; knitTicks: number; every: number };
+  merge: { cooldownTicks: number; every: number };
+  /** Wave numbers whose end opens a draft (SPEC §8.3). */
+  draftWaves: number[];
   strongAt: number;
   weakAt: number;
   spawnOffset: number;
@@ -238,7 +313,8 @@ export interface PendingHit {
   damage: number;
   damageType: DamageType;
   splashRadius: number;
-  siege: boolean;
+  /** Attacker's multiplier against structures (1 if it is not siege). */
+  siegeMult: number;
   /** Attacker's multiplier against Bloomed and Elder targets (1 if it is not a slayer). */
   slayerMult: number;
   sourceBuildingId: number;
@@ -275,6 +351,10 @@ export type SimEvent =
   | { t: 'sporestorm'; stacks: number }
   | { t: 'begin' }
   | { t: 'commandRejected'; side: Side; seq: number; reason: string }
+  | { t: 'draftOpen'; side: Side; index: number }
+  | { t: 'drafted'; side: Side; cardId: string | null; skipped: boolean }
+  | { t: 'effectGold'; side: Side; amount: number }
+  | { t: 'healed'; target: number; src: number; amount: number; x: number; y: number }
   | { t: 'ended'; winner: Side; by: 'rout' | 'decision' };
 
 export interface AiWeight { building: string; weight: number; maxOwned: number; afterTick: number }
@@ -289,6 +369,7 @@ export interface AiState {
   openerDone: boolean;
   target: string | null;
   targetSince: number;
+  draftPolicy: DraftPolicy;
 }
 
 export interface SideState {
@@ -300,6 +381,12 @@ export interface SideState {
   turretCooldowns: number[];
   powerCooldown: number;
   kit: string[];
+  upgrades: Record<string, number>;
+  relics: string[];
+  /** The open draft, while the sim is held for it. */
+  draft?: OpenDraft;
+  /** Drafts opened so far this battle. */
+  draftsOpened: number;
   ai?: AiState;
 }
 
@@ -314,7 +401,10 @@ export interface SideStats {
   /** Attacker kind (unit id, tower building id or 'turret') → damage dealt. */
   damageBySource: Record<string, number>;
   heartcapDamageTaken: number;
-  goldEarned: { stipend: number; economy: number; comeback: number; interest: number };
+  goldEarned: { stipend: number; economy: number; comeback: number; interest: number; effects: number; drafts: number };
+  healingDone: number;
+  /** Card ids picked in this battle's drafts, in order. */
+  drafted: string[];
   goldByBuilding: Record<string, number>;
   buildingsBuilt: number;
   buildingsLost: number;
@@ -338,6 +428,7 @@ export interface BattleState {
   nextSeq: Record<Side, number>;
   nextHitSeq: number;
   rules: Rules;
+  library: Library;
   map: MapState;
   sides: Record<Side, SideState>;
   lanes: LaneState[];
