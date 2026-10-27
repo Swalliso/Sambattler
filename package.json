@@ -22,7 +22,8 @@
     "bench": "tsx --expose-gc tools/bench.ts",
     "golden": "tsx tools/golden.ts",
     "screenshot": "tsx tools/screenshot.ts",
-    "verify": "tsx tools/verify.ts"
+    "verify": "tsx tools/verify.ts",
+    "experiment": "tsx tools/experiment.ts"
   },
   "dependencies": {
     "zod": "4.6.7"

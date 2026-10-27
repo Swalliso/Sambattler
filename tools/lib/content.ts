@@ -2,6 +2,7 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { applyProto } from '../../src/data/proto.ts';
 import { loadContent } from '../../src/data/registry.ts';
 import type { Content, RawContent } from '../../src/data/registry.ts';
 
@@ -35,4 +36,12 @@ let cached: Content | undefined;
 export function nodeContent(): Content {
   cached ??= loadContent(readRawContent());
   return cached;
+}
+
+/** Content with a balance-backlog prototype spec applied (`b1,besiegedBy:melee`; see src/data/proto.ts). */
+export function protoContent(spec: string): Content {
+  if (!spec) return loadContent(readRawContent());
+  const { raw, problems } = applyProto(readRawContent(), spec);
+  if (problems.length) throw new Error(problems.join('\n'));
+  return loadContent(raw);
 }

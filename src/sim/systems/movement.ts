@@ -3,7 +3,7 @@
 // centroid (SPEC §5.6). Overlapping units are pushed apart by half their overlap each, for a fixed
 // number of passes, using the spatial hash.
 import { other } from '../state.ts';
-import type { BattleState } from '../state.ts';
+import type { BattleState, UnitState } from '../state.ts';
 import { buildGrid, nearBuffer, queryNear } from '../spatial.ts';
 import { MAX_RADIUS, edgeDistance, tp } from '../targets.ts';
 import { clampToLane, tierDef, unitRadius } from '../world.ts';
@@ -31,7 +31,7 @@ export function movementSystem(state: BattleState): void {
         if (d > t.range) {
           const dx = tp.x - u.x, dy = tp.y - u.y;
           const dist = Math.sqrt(dx * dx + dy * dy);
-          const step = Math.min(speed, d - t.range);
+          const step = Math.min(r.rush && !tp.preferredBuilding ? rushSpeed(state, u, speed) : speed, d - t.range);
           if (dist > 1e-9) {
             u.x += (dx / dist) * step;
             u.y += (dy / dist) * step;
@@ -48,6 +48,21 @@ export function movementSystem(state: BattleState): void {
     clampToLane(state, u, rad);
   }
   separationSystem(state);
+}
+
+/**
+ * Prototype B1 (balance `approachRush`): a listed unit closing on an enemy unit sprints for a few
+ * ticks, then waits out a cooldown before it can rush again.
+ */
+function rushSpeed(state: BattleState, u: UnitState, speed: number): number {
+  const rush = state.rules.rush!;
+  if (!rush.units.includes(u.unitId)) return speed;
+  const tick = state.tick;
+  if (u.rushUntil !== undefined && tick < u.rushUntil) return speed * rush.speedMult;
+  if (u.rushReady !== undefined && tick < u.rushReady) return speed;
+  u.rushUntil = tick + rush.ticks;
+  u.rushReady = tick + rush.ticks + rush.cooldownTicks;
+  return speed * rush.speedMult;
 }
 
 function separationSystem(state: BattleState): void {

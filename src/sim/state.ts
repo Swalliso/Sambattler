@@ -205,6 +205,12 @@ export interface Rules {
   besiegedIncomePct: number;
   /** Set only when production suppression differs from "any damage" (balance `besiegedBy`). */
   suppressBy?: 'melee' | 'none';
+  /** Prototype B1 (balance `approachRush`); absent by default. */
+  rush?: { units: string[]; speedMult: number; ticks: number; cooldownTicks: number };
+  /** Prototype B3 (balance `firingCongestion`); absent by default. */
+  congestion?: { freeRanks: number; halfWidth: number; mult: number };
+  /** Prototype B4 (balance `unitLifespan`): lifespan ticks of a tier-1 unit and the per-tier multiplier; absent by default. */
+  lifespan?: { ticks: number; tierMult: number };
   timeLimitTicks: number;
   captureThreshold: number;
   captureStep: number;
@@ -234,6 +240,8 @@ export interface Rules {
       cycles: { analyzeTick: number; activeTick: number }[]; bossCycles: { analyzeTick: number; activeTick: number }[];
       scoreNoise: number; swarmEliteDiscount: number; eliteScoreMult: number; counterMult: number; otherMult: number;
       openingMult: number; openingOtherMult: number; dualMult: number; freeSlots: number; maxSells: number;
+      /** Prototype A2 (balance `counterFloorWeight`); absent by default. */
+      floorWeight?: number;
     };
     score: { spawnerDepth: number; spawnerThreat: number; spawnerSurcharge: number; economyLoam: number;
       economyDepth: number; economyThreat: number; towerFront: number; towerThreat: number };
@@ -282,6 +290,11 @@ export interface UnitState {
   sourceBuildingId: number;
   /** Set while the unit knits with two others (SPEC §5.6); undefined otherwise. */
   knit?: KnitState;
+  /** Prototype B1: the current rush ends at this tick, and the next may start at `rushReady`. Absent unless `rules.rush`. */
+  rushUntil?: number;
+  rushReady?: number;
+  /** Prototype B4: the unit withers at this tick. Absent unless `rules.lifespan`. */
+  expiresTick?: number;
 }
 
 export interface KnitState {

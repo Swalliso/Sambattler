@@ -2,7 +2,7 @@
 import { fireTriggers, runAction } from '../effects.ts';
 import { insertHit } from '../hits.ts';
 import { HEARTCAP_ID, SIDES, other } from '../state.ts';
-import type { Armor, BattleState, DamageType, Effectiveness, PendingHit, Side } from '../state.ts';
+import type { Armor, BattleState, DamageType, Effectiveness, PendingHit, Side, UnitState } from '../state.ts';
 import { nearBuffer, queryNear } from '../spatial.ts';
 import { MAX_RADIUS, edgeDistance, tp } from '../targets.ts';
 import { buildingDef, findBuilding, findUnit, heartcapEdgeX, rectDistance, supplyCapOf, tierDef, unitDef, unitRadius } from '../world.ts';
@@ -44,6 +44,32 @@ function fire(
   });
 }
 
+/**
+ * Prototype B3 (balance `firingCongestion`): a ranged shot loses damage when at least `freeRanks`
+ * friendly ranged units stand between the shooter and its target, within the corridor's half-width
+ * of the line of fire.
+ */
+function congestionMult(state: BattleState, u: UnitState, tx: number, ty: number): number {
+  const c = state.rules.congestion!;
+  const lx = tx - u.x, ly = ty - u.y;
+  const len2 = lx * lx + ly * ly;
+  if (len2 < 1e-9) return 1;
+  const len = Math.sqrt(len2);
+  let blockers = 0;
+  const n = queryNear((u.x + tx) / 2, (u.y + ty) / 2, len / 2 + c.halfWidth + MAX_RADIUS);
+  const near = nearBuffer();
+  for (let k = 0; k < n; k++) {
+    const v = state.units[near[k]!]!;
+    if (v === u || v.side !== u.side || v.lane !== u.lane || v.hp <= 0) continue;
+    if (unitDef(state, v).projectileSpeed <= 0) continue;
+    const along = ((v.x - u.x) * lx + (v.y - u.y) * ly) / len;
+    if (along <= 0 || along >= len) continue;
+    const across = Math.abs((v.x - u.x) * ly - (v.y - u.y) * lx) / len;
+    if (across <= c.halfWidth && ++blockers >= c.freeRanks) return c.mult;
+  }
+  return 1;
+}
+
 const turretScratch = { x: 0, y: 0, lane: 0 };
 
 export function attackSystem(state: BattleState): void {
@@ -59,7 +85,8 @@ export function attackSystem(state: BattleState): void {
     if (d < 0 || d > t.range + EPS) continue;
     u.cooldown = t.attackTicks;
     u.lastAttackTick = tick;
-    fire(state, u.side, u.id, u.x, u.y, u.lane, u.targetId, d, t.damage * storm,
+    const crowd = state.rules.congestion && def.projectileSpeed > 0 ? congestionMult(state, u, tp.cx, tp.cy) : 1;
+    fire(state, u.side, u.id, u.x, u.y, u.lane, u.targetId, d, t.damage * storm * crowd,
       def.damageType, def.projectileSpeed, t.splashRadius, t.siegeMult, t.slayerMult, u.sourceBuildingId, u.unitId);
   }
   for (const b of state.buildings) {
@@ -238,10 +265,12 @@ export function resolveHitsSystem(state: BattleState): void {
 /**
  * Removes dead units and buildings after all hits resolve (SPEC §5.3), then fires `unitDeath`,
  * `enemyUnitKilled` and `buildingDestroyed` triggers and units' own `onDeath` actions (explosions
- * from these land next tick, so chains resolve tick by tick).
+ * from these land next tick, so chains resolve tick by tick). With prototype B4, units past their
+ * lifespan wither here too.
  */
 export function deathSystem(state: BattleState): void {
   const units = state.units;
+  if (state.rules.lifespan) for (const u of units) if (u.expiresTick !== undefined && u.expiresTick <= state.tick) u.hp = 0; // prototype B4: withering
   let w = 0;
   for (let i = 0; i < units.length; i++) {
     const u = units[i]!;

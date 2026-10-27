@@ -35,6 +35,16 @@ export function compileRules(b: BalanceDef, config: BattleConfig): Rules {
     normalHalfTicks: 2,
     besiegedIncomePct: Math.round(b.besiegedRate * 100),
     ...(b.besiegedBy && b.besiegedBy !== 'all' ? { suppressBy: b.besiegedBy } : {}),
+    ...(b.approachRush ? {
+      rush: {
+        units: [...b.approachRush.units], speedMult: b.approachRush.speedMult,
+        ticks: secToTicks(b.approachRush.seconds, tr), cooldownTicks: secToTicks(b.approachRush.cooldownSeconds, tr),
+      },
+    } : {}),
+    ...(b.firingCongestion ? {
+      congestion: { freeRanks: b.firingCongestion.freeRanks, halfWidth: b.firingCongestion.corridorHalfWidth, mult: b.firingCongestion.blockedDamageMult },
+    } : {}),
+    ...(b.unitLifespan ? { lifespan: { ticks: secToTicks(b.unitLifespan.seconds, tr), tierMult: b.unitLifespan.tierMult ?? 1 } } : {}),
     timeLimitTicks: secToTicks(test.timeLimitSeconds ?? b.timeLimitSeconds, tr),
     captureStep: 100,
     captureThreshold: Math.round(b.captureSeconds * tr * 100),
@@ -92,6 +102,7 @@ export function compileRules(b: BalanceDef, config: BattleConfig): Rules {
         dualMult: b.ai.counter.dualMult,
         freeSlots: b.ai.counter.freeSlots,
         maxSells: b.ai.counter.maxSells,
+        ...(b.ai.counter.counterFloorWeight ? { floorWeight: b.ai.counter.counterFloorWeight } : {}),
       },
       score: { ...b.ai.score },
     },
