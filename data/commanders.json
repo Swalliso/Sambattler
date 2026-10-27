@@ -1,0 +1,8 @@
+[
+  {
+    "id": "vesper", "name": "Vesper Velvetcap", "milestone": 3,
+    "description": "M3 stand-in: Vesper's core pool and starter kit only. The passive, the Spore Burst power and the other commanders arrive in M5.",
+    "core": ["sporelingBurrow", "capguardHall", "gillNest", "rootbreakerDen", "puffballMortar", "truffleCellar"],
+    "starter": ["sporelingBurrow", "capguardHall", "truffleCellar"]
+  }
+]

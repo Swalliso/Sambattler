@@ -71,6 +71,7 @@ export function loadContent(raw: RawContent): Content {
     return true;
   }
 
+  for (const f of ['upgrades.json', 'relics.json', 'events.json', 'elites.json', 'commanders.json']) need(f);
   const balance = need('balance.json') ? parse(BalanceSchema, 'balance.json') : undefined;
   const targets = need('balance-targets.json') ? parse(BalanceTargetsSchema, 'balance-targets.json') : undefined;
 

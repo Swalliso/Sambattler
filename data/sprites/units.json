@@ -276,6 +276,51 @@
         "...k...k....",
         "..kk...kk..."
       ]
+     ]},
+    {"id": "u-tender", "w": 12, "h": 12, "anchor": [6, 11], "factionSwap": true, "palette": {".": null, "k": "#1a1020", "v": "#8a4fd8", "l": "#c9a2ff", "d": "#5a2f99", "s": "#e8d9b5", "w": "#fbf6ff", "g": "#7be0a0", "h": "#3f9e68"},
+     "frames": [
+      [
+        "....kkkk....",
+        "..kkvvvvkk..",
+        ".kvvlvvlvvk.",
+        ".kvvvvvvvdk.",
+        "..kkkkkkkk..",
+        "...kswswk.g.",
+        "...kssssk.gh",
+        "..kllllllkh.",
+        ".klldlldlkh.",
+        ".kllllllllk.",
+        "...kk..kk...",
+        "..kk....kk.."
+      ],
+      [
+        "....kkkk....",
+        "..kkvvvvkk..",
+        ".kvvlvvlvvk.",
+        ".kvvvvvvvdk.",
+        "..kkkkkkkk..",
+        "...kswswk.g.",
+        "...kssssk.gh",
+        "..kllllllkh.",
+        ".klldlldlkh.",
+        ".kllllllllk.",
+        "...kk..kk...",
+        "...kk..kk..."
+      ],
+      [
+        "....kkkk..g.",
+        "..kkvvvvkkgg",
+        ".kvvlvvlvvkg",
+        ".kvvvvvvvdk.",
+        "..kkkkkkkk..",
+        "...kswswk.w.",
+        "...kssssk.gw",
+        "..kllllllkh.",
+        ".klldlldlkh.",
+        ".kllllllllk.",
+        "...kk..kk...",
+        "..kk....kk.."
+      ]
      ]}
   ]
 }

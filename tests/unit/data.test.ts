@@ -10,8 +10,8 @@ describe('data', () => {
 
   it('every file validates and references resolve', () => {
     const c = loadContent(raw);
-    expect(Object.keys(c.buildings)).toHaveLength(8); // the M2 roster
-    expect(Object.keys(c.units)).toHaveLength(6);
+    expect(Object.keys(c.buildings)).toHaveLength(9); // the M3 roster
+    expect(Object.keys(c.units)).toHaveLength(7);
     for (const f of Object.values(c.factions)) expect(f.buildings).toEqual(c.factions['velvet-bloom']!.buildings); // mirror until M7
     expect(c.maps['bogwater-hollow']).toBeDefined();
     for (const b of Object.values(c.buildings)) {
@@ -29,6 +29,42 @@ describe('data', () => {
     }
     const bog = c.maps['bogwater-hollow']!;
     expect([bog.width, bog.height, bog.homeCols, bog.lanes.length]).toEqual([32, 8, 4, 1]);
+    const stump = c.maps.stumpfield!, twin = c.maps['twin-roots']!;
+    expect([stump.width, stump.height, stump.homeCols, stump.lanes.length]).toEqual([34, 8, 4, 1]);
+    expect([twin.width, twin.height, twin.homeCols, twin.lanes.length]).toEqual([32, 13, 4, 2]);
+    expect(twin.tiles[6]).toBe('#'.repeat(32));
+    // Twin Roots: loam only in each side's far lane (player: lower lane, enemy: upper lane)
+    const loam = (rows: string[], half: 'left' | 'right') => rows.some((r) => (half === 'left' ? r.slice(0, 16) : r.slice(16)).includes('$'));
+    expect(loam(twin.tiles.slice(0, 6), 'left')).toBe(false);
+    expect(loam(twin.tiles.slice(7), 'left')).toBe(true);
+    expect(loam(twin.tiles.slice(0, 6), 'right')).toBe(true);
+  });
+
+  it('run content: tracks, relics, events, elites and the commander stand-in', () => {
+    const c = loadContent(raw);
+    expect(Object.keys(c.upgrades).sort()).toEqual(Object.keys(c.buildings).sort()); // a track for every building
+    expect(c.relicOrder).toHaveLength(21);
+    expect(c.relicOrder.filter((id) => c.relics[id]!.requires === undefined)).toHaveLength(20);
+    expect(c.eventOrder).toHaveLength(8);
+    expect(c.eliteOrder).toEqual(['fortified', 'veteran', 'swift']);
+    const v = c.commanders.vesper!;
+    expect(v.starter).toEqual(['sporelingBurrow', 'capguardHall', 'truffleCellar']);
+    for (const id of v.starter) expect(v.core).toContain(id);
+  });
+
+  it('rejects malformed effects', () => {
+    const bad = structuredClone(raw) as Loose;
+    bad['relics.json'][0].effects.modifiers[0].stat = 'unit.armor';
+    expect(() => loadContent(bad)).toThrow(ContentError);
+    const bad2 = structuredClone(raw) as Loose;
+    bad2['relics.json'][0].effects.modifiers[0] = { stat: 'unit.hp', op: 'mul', value: 2, where: { onLoam: true } };
+    expect(() => loadContent(bad2)).toThrow(/positional selectors/);
+    const bad3 = structuredClone(raw) as Loose;
+    bad3['relics.json'][0].effects.modifiers[0].where = { unit: 'nobody' };
+    expect(() => loadContent(bad3)).toThrow(/unit "nobody" does not exist/);
+    const bad4 = structuredClone(raw) as Loose;
+    bad4['factions/velvet-bloom/units.json'].find((u: Loose) => u.id === 'tender').tags = [];
+    expect(() => loadContent(bad4)).toThrow(/support tag/);
   });
 
   it('rejects an asymmetric map and a sprite row of the wrong width', () => {
