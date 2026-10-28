@@ -2,8 +2,9 @@
 // Measures a balance-backlog prototype (src/data/proto.ts) against the guardrails and the archer
 // checks in docs/balance-backlog.md: G1–G8 and G11, G3 mono Gill Nest per seat, the Sporeling →
 // Gill Archer → Capguard → Sporeling edges at 12, 30 and 60 supply and under sustained production,
-// and boss reach over 80 runs. Without --proto it measures the shipped rules. Writes
-// reports/experiments/<label>.json and prints a summary.
+// and boss reach over 80 runs. Without --proto it measures the shipped rules. Opt-in checks:
+// `engagement` (pacing numbers from docs/engagement-review.md, `--seeds n`) and `runs` (how runs
+// end). Writes reports/experiments/<label>.json and prints a summary.
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { protoContent, ROOT } from './lib/content.ts';
@@ -12,6 +13,7 @@ import {
 } from './lib/balance.ts';
 import type { Verdict } from './lib/balance.ts';
 import { runBench } from './lib/bench.ts';
+import { engagement, engagementLines, runEndings } from './lib/engagement.ts';
 import { fmtTicks, median, runBattle } from './lib/run.ts';
 import { simulateRun } from '../src/run/index.ts';
 
@@ -133,6 +135,24 @@ if (checks.has('boss')) {
   }
   out.boss = { runs: n, reached: boss / n, victories: wins / n };
   lines.push(`runs reaching the boss: ${boss}/${n} (${pct(boss / n)}), victories ${wins}/${n}`);
+}
+
+if (checks.has('engagement')) {
+  // bot:balanced against the scripted general and each battle-1 general, as in docs/engagement-review.md
+  const seeds = Array.from({ length: Number(opt('--seeds') ?? 30) }, (_, i) => i + 1);
+  const rows = [];
+  for (const enemy of ['general:scripted', 'general:mother-mold', 'general:lichen-baron', 'general:blightwright']) {
+    const r = engagement(content, { player: 'bot:balanced', enemy, seeds });
+    rows.push(r);
+    lines.push(...engagementLines(r));
+  }
+  out.engagement = rows;
+}
+if (checks.has('runs')) {
+  const r = runEndings(content, Number(opt('--runs') ?? 80));
+  out.runs = r;
+  const ended = Object.entries(r.endedInBattle).map(([b, n]) => `${n} in battle ${b}`).join(', ');
+  lines.push(`runs: ${r.reachedBoss}/${r.runs} reach the boss, ${r.victories} win (${r.fullHeartcapVictories} at full Heartcap); defeats ended ${ended}`);
 }
 
 const dir = join(ROOT, 'reports', 'experiments');
