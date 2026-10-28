@@ -6,7 +6,7 @@ import { other } from '../state.ts';
 import type { BattleState, UnitState } from '../state.ts';
 import { buildGrid, nearBuffer, queryNear } from '../spatial.ts';
 import { MAX_RADIUS, edgeDistance, tp } from '../targets.ts';
-import { clampToLane, tierDef, unitRadius } from '../world.ts';
+import { clampToLane, tierDef, unitDef, unitRadius } from '../world.ts';
 import { holdsLane, rallyX } from './stance.ts';
 
 export function movementSystem(state: BattleState): void {
@@ -29,6 +29,14 @@ export function movementSystem(state: BattleState): void {
     if (u.targetId !== 0) {
       const d = edgeDistance(state, u.x, u.y, rad, u.targetId, other(u.side), u.lane);
       if (d >= 0) {
+        if (d > t.range && r.fallBack && !tp.preferredBuilding && unitDef(state, u).projectileSpeed === 0 && fallingBack(state, u, tp.cx, tp.cy)) {
+          // prototype T2: outnumbered near the target, fall back toward home (hold once home)
+          const home = state.map.homeCols;
+          const atHome = u.side === 'player' ? u.x < home : u.x > state.map.width - home;
+          if (!atHome) u.x += u.side === 'player' ? -speed : speed;
+          clampToLane(state, u, rad);
+          continue;
+        }
         if (d > t.range) {
           const dx = tp.x - u.x, dy = tp.y - u.y;
           const dist = Math.sqrt(dx * dx + dy * dy);
@@ -70,6 +78,40 @@ function rushSpeed(state: BattleState, u: UnitState, speed: number): number {
   u.rushUntil = tick + rush.ticks;
   u.rushReady = tick + rush.ticks + rush.cooldownTicks;
   return speed * rush.speedMult;
+}
+
+/**
+ * Prototype T2 (balance `fallBack`): is this melee unit outnumbered near its target (own supply
+ * within the radius of it below ratio × enemy supply within the radius of the target)? A unit holds
+ * for at most `maxHoldTicks`, and commits once the odds turn or the time runs out.
+ */
+function fallingBack(state: BattleState, u: UnitState, tx: number, ty: number): boolean {
+  const fb = state.rules.fallBack!;
+  if (u.holdSince !== undefined && state.tick - u.holdSince >= fb.maxHoldTicks) return false;
+  const enemy = other(u.side);
+  let own = 0, foe = 0;
+  let n = queryNear(u.x, u.y, fb.radius + MAX_RADIUS);
+  let near = nearBuffer();
+  for (let k = 0; k < n; k++) {
+    const v = state.units[near[k]!]!;
+    if (v.side !== u.side || v.lane !== u.lane || v.hp <= 0) continue;
+    const dx = v.x - u.x, dy = v.y - u.y;
+    if (dx * dx + dy * dy <= fb.radius * fb.radius) own += v.supply;
+  }
+  n = queryNear(tx, ty, fb.radius + MAX_RADIUS);
+  near = nearBuffer();
+  for (let k = 0; k < n; k++) {
+    const v = state.units[near[k]!]!;
+    if (v.side !== enemy || v.lane !== u.lane || v.hp <= 0) continue;
+    const dx = v.x - tx, dy = v.y - ty;
+    if (dx * dx + dy * dy <= fb.radius * fb.radius) foe += v.supply;
+  }
+  if (own >= fb.ratio * foe) {
+    if (u.holdSince !== undefined) u.holdSince = state.tick - fb.maxHoldTicks; // the odds turned: commit
+    return false;
+  }
+  u.holdSince ??= state.tick;
+  return true;
 }
 
 function separationSystem(state: BattleState): void {

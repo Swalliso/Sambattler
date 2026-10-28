@@ -3,10 +3,10 @@
 // `proto` spec (tools `--proto`, browser `?proto=`) applies presets and overrides to balance.json.
 import { describe, expect, it } from 'vitest';
 import { counterFloor, counterTick } from '../../src/sim/ai/counter.ts';
-import { applyProtoToBalance, PROTO_PRESETS } from '../../src/data/proto.ts';
+import { applyProto, applyProtoToBalance, PROTO_PRESETS } from '../../src/data/proto.ts';
 import { createBattle, hashState, makeConfig, queueCommand, rallyX, runHeadless, step, zeroProfile } from '../../src/sim/index.ts';
 import type { BattleState } from '../../src/sim/index.ts';
-import { protoContent } from '../../tools/lib/content.ts';
+import { protoContent, readRawContent } from '../../tools/lib/content.ts';
 import { building, content, liveState, steps, unit } from '../helpers.ts';
 
 const RUSH = { units: ['sporeling'], speedMult: 3, ticks: 30, cooldownTicks: 160 };
@@ -18,11 +18,16 @@ describe('prototype knobs are off by default', () => {
     expect(b.firingCongestion).toBeUndefined();
     expect(b.unitLifespan).toBeUndefined();
     expect(b.ai.counter.counterFloorWeight).toBeUndefined();
+    expect(b.rangedFirstSpawnFraction).toBeUndefined();
+    expect(b.fallBack).toBeUndefined();
+    expect(b.spawnerDefense).toBeUndefined();
     const s = liveState();
     expect(s.rules.rush).toBeUndefined();
     expect(s.rules.congestion).toBeUndefined();
     expect(s.rules.lifespan).toBeUndefined();
     expect(s.rules.ai.counter.floorWeight).toBeUndefined();
+    expect(s.rules.fallBack).toBeUndefined();
+    expect(s.rules.spawnerDefense).toBeUndefined();
     expect(unit(s, 'player', 'sporeling', 5, 1)).not.toHaveProperty('expiresTick');
   });
 
@@ -267,5 +272,73 @@ describe('E1 lane stance (balance laneStance)', () => {
     runHeadless(s, { until: 1200 });
     expect(s.log.some((x) => x.side === 'player' && x.type === 'stance')).toBe(true);
     expect(s.log.some((x) => x.side === 'enemy' && x.type === 'stance')).toBe(false);
+  });
+});
+
+describe('proto overrides of buildings, units and bots', () => {
+  it('patch an entry by id, add a one-off bot, and leave the rest of the content alone', () => {
+    const { raw, problems } = applyProto(readRawContent(), 'building.gillNest.spawn.interval:19,unit.gillArcher.hp:100,bot.probe:{"opener":["sporelingBurrow"],"weights":{"sporelingBurrow":1},"mergePolicy":"on"},building.nope.cost:1');
+    expect(problems).toEqual([expect.stringContaining('no building "nope"')]);
+    const c = protoContent('building.gillNest.spawn.interval:19,unit.gillArcher.hp:100,bot.probe:{"opener":["sporelingBurrow"],"weights":{"sporelingBurrow":1},"mergePolicy":"on"}');
+    expect(c.buildings.gillNest!.spawn!.interval).toBe(19);
+    expect(c.units.gillArcher!.hp).toBe(100);
+    expect(c.bots.probe!.weights).toEqual({ sporelingBurrow: 1 });
+    expect(c.bots.balanced).toEqual(content.bots.balanced);
+    expect(content.buildings.gillNest!.spawn!.interval).toBe(15); // the shared content is untouched
+    expect(raw['balance.json']).toEqual(readRawContent()['balance.json']);
+  });
+});
+
+describe('T1 ranged warm-up (balance rangedFirstSpawnFraction)', () => {
+  it('ranged spawners wait the given fraction for their first unit; others keep firstSpawnFraction', () => {
+    const c = protoContent('t1');
+    const s = createBattle(c, makeConfig(c, { seed: 1, mapId: 'test-flat', player: 'human', enemy: 'human' }));
+    const base = liveState();
+    expect(s.compiled.player.buildings.gillNest!.spawn!.firstHalfTicks).toBe(600); // 15 s, full interval
+    expect(base.compiled.player.buildings.gillNest!.spawn!.firstHalfTicks).toBe(300);
+    expect(s.compiled.player.buildings.capguardHall!.spawn!.firstHalfTicks).toBe(base.compiled.player.buildings.capguardHall!.spawn!.firstHalfTicks);
+  });
+});
+
+describe('T2 fall back while outnumbered (balance fallBack)', () => {
+  /** A lone Capguard 3 tiles from three archers that can't shoot or move; its x after `n` ticks. */
+  function lone(on: boolean, friends = 0, n = 20): number {
+    const s = liveState({ test: { noTurrets: true, noTerritory: true, noHeartcapTargets: true }, flags: { merging: false } });
+    if (on) s.rules.fallBack = { radius: 5, ratio: 1, maxHoldTicks: 200 };
+    const u = unit(s, 'player', 'capguard', 12, 4);
+    for (let i = 0; i < friends; i++) unit(s, 'player', 'capguard', 11.5, 1 + i);
+    for (const y of [3, 4, 5]) unit(s, 'enemy', 'gillArcher', 16, y).cooldown = 1e9;
+    s.compiled.enemy.units.gillArcher!.tiers[0].speedPerTick = 0;
+    steps(s, n);
+    return u.x;
+  }
+
+  it('a melee unit outnumbered near its target falls back; with enough friends it advances', () => {
+    expect(lone(false)).toBeGreaterThan(12);
+    expect(lone(true)).toBeLessThan(12);
+    expect(lone(true, 3)).toBeGreaterThan(12); // 8 supply against 6
+  });
+
+  it('it holds at most maxHold, then commits', () => {
+    expect(lone(true, 0, 260)).toBeGreaterThan(lone(true, 0, 200));
+  });
+});
+
+describe('T3 spawner defense (balance spawnerDefense)', () => {
+  function shots(homeOnly: boolean, col: number): number {
+    const s = liveState({ test: { noTurrets: true, noTerritory: true, noHeartcapTargets: true } });
+    s.rules.spawnerDefense = { damage: 12, damageType: 'pierce', intervalTicks: 20, range: 6, projectileSpeed: 12, homeOnly };
+    building(s, 'player', 'sporelingBurrow', col, 2);
+    const a = unit(s, 'enemy', 'gillArcher', col + 2 + 5, 3);
+    a.cooldown = 1e9;
+    s.compiled.enemy.units.gillArcher!.tiers[0].speedPerTick = 0;
+    steps(s, 60);
+    return s.stats.player.damageBySource.spawnerDefense ?? 0;
+  }
+
+  it('home spawners shoot enemy units in range; homeOnly leaves forward spawners unarmed', () => {
+    expect(shots(true, 0)).toBe(36); // 3 shots of 12 Pierce vs Light in 3 s
+    expect(shots(true, 10)).toBe(0);
+    expect(shots(false, 10)).toBe(36);
   });
 });

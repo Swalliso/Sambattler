@@ -1,4 +1,4 @@
-// npm run experiment -- --proto <spec> [--label name] [--checks duels,g3,g4,g5,g6,g7,g8,g11,boss]
+// npm run experiment -- --proto <spec> [--label name] [--checks duels,g3,g3gill,g4,g5,g6,g7,g8,g11,boss] [--defender bot:<id>]
 // Measures a balance-backlog prototype (src/data/proto.ts) against the guardrails and the archer
 // checks in docs/balance-backlog.md: G1–G8 and G11, G3 mono Gill Nest per seat, the Sporeling →
 // Gill Archer → Capguard → Sporeling edges at 12, 30 and 60 supply and under sustained production,
@@ -21,11 +21,13 @@ const args = process.argv.slice(2);
 const opt = (k: string): string | undefined => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : undefined; };
 const proto = opt('--proto') ?? '';
 const label = opt('--label') ?? (proto || 'baseline').replace(/[^a-zA-Z0-9.=-]+/g, '_');
+/** G3's opponent: `bot:balanced` (the guardrail), or a one-off diagnostic bot added with `--proto bot.<id>:{…}`. */
+const defender = opt('--defender') ?? 'bot:balanced';
 const ALL = ['duels', 'g3', 'g4', 'g5', 'g6', 'g7', 'g8', 'g11', 'boss'];
 const checks = new Set((opt('--checks') ?? ALL.join(',')).split(','));
 const content = protoContent(proto);
 const out: Record<string, unknown> = { proto, label };
-const lines: string[] = [`experiment ${label} (proto: ${proto || 'none'})`];
+const lines: string[] = [`experiment ${label} (proto: ${proto || 'none'}${defender !== 'bot:balanced' ? `, G3 defender ${defender}` : ''})`];
 const pct = (x: number) => `${Math.round(x * 100)}%`;
 const verdict = (v: Verdict) => {
   lines.push(`${v.pass ? 'PASS' : 'FAIL'} ${v.id}: ${v.summary}`, ...v.details.map((d) => `    ${d}`));
@@ -81,7 +83,7 @@ if (checks.has('g3') || checks.has('g3gill')) {
     for (let seed = 1; seed <= t.seeds; seed++) {
       for (const side of ['player', 'enemy'] as const) {
         const { result } = runBattle(content, {
-          seed, player: side === 'player' ? `bot:mono:${id}` : 'bot:balanced', enemy: side === 'player' ? 'bot:balanced' : `bot:mono:${id}`,
+          seed, player: side === 'player' ? `bot:mono:${id}` : defender, enemy: side === 'player' ? defender : `bot:mono:${id}`,
         });
         if (result.winner === side) seat[side]++;
         if (result.by === 'decision') decisions++;

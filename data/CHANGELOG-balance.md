@@ -18,6 +18,25 @@ checks, `engagement` and `runs`.
   G5, G6 and G11 are as before.
 - **Runs:** boss reach falls from 25% to 11–23%.
 
+## Balance-backlog prototypes, round 2 (2026-10-27)
+
+**Nothing adopted; no number, rule or default changed.** Measured on request: the Gill Nest spawn
+interval (15 → 17–28 s, alone and with B1 or B3) and three new default-off prototypes for the
+archers' opening tempo and the defender's trickle: T1 (`rangedFirstSpawnFraction`), T2 (`fallBack`,
+a conditional variant of mustering) and T3 (`spawnerDefense`). Goldens and hashes are unchanged.
+Results are in [the backlog](../docs/balance-backlog.md#round-2-results-2026-10-27).
+- **Interval alone** never brings mono Gill Nest below 85%; at 28 s it is 90% and mono Sporeling and
+  Amanita cross 55%. M1's "28 s reaches 50%" no longer holds on M4 content. G1 fails at every
+  interval (Capguard Hall wins 7/8 pairings from 17 s on).
+- **Interval 24 s + B1** reaches the G3 limit (55%), but mono Sporeling takes over (57%) and G4 (33%
+  Decisions) and G7 fail.
+- **T1** and **T2** leave mono Gill Nest at 100%; T2 also hands G3 to mono Sporeling (88%).
+  **T3** gets mono Gill Nest to 30% only at 25 damage / range 7, where every reference battle ends
+  by Decision and four other mono bots exceed 55%.
+- **Diagnostic:** one-off defender bots (Sporeling- or Amanita-heavy, a two-Burrow opener, an
+  adaptive `bot:balanced`, mono Sporeling) all lose 95–100% to mono Gill Nest, so G3 isn't a
+  reference-bot artifact. `bot:balanced` is unchanged.
+
 ## Balance-backlog prototypes (2026-10-27)
 
 **Nothing adopted; no number, rule or default changed.** B1 (Sporeling approach rush), B3 (firing

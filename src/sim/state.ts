@@ -216,6 +216,10 @@ export interface Rules {
     rallyBack: number; maxHoldTicks: number; cooldownTicks: number;
     ai?: { musterSupply: number; spentSupply: number; profiles?: string[]; advanceWhenBesieged?: boolean };
   };
+  /** Prototype T2 (balance `fallBack`); absent by default. */
+  fallBack?: { radius: number; ratio: number; maxHoldTicks: number };
+  /** Prototype T3 (balance `spawnerDefense`); absent by default. */
+  spawnerDefense?: { damage: number; damageType: DamageType; intervalTicks: number; range: number; projectileSpeed: number; homeOnly: boolean };
   timeLimitTicks: number;
   captureThreshold: number;
   captureStep: number;
@@ -300,6 +304,8 @@ export interface UnitState {
   rushReady?: number;
   /** Prototype B4: the unit withers at this tick. Absent unless `rules.lifespan`. */
   expiresTick?: number;
+  /** Prototype T2: the tick the unit started falling back (kept while committed). Absent unless `rules.fallBack`. */
+  holdSince?: number;
 }
 
 export interface KnitState {

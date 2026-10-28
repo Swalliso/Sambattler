@@ -23,6 +23,18 @@ The current failure has two reinforcing causes: ranged survivors accumulate whil
 
 No archer-balancing candidate is implemented by the review-fixes PR. The five correctness fixes are separate from these experiments.
 
+## Round 2: Gill Nest rate, opening tempo and the trickle (2026-10-27)
+
+After round 1 showed that the defender never fields an army against mono Gill Nest, the user asked whether tuning the archers' spawn rate helps, and for prototypes aimed at the archers' opening tempo and the defender's trickle. Same rules: every change is default-off, nothing is adopted. Results are [below](#round-2-results-2026-10-27).
+
+| ID | Candidate | Intended effect | Main risk | Status |
+|---|---|---|---|---|
+| I1 | Gill Nest spawn interval 15 s → 17–28 s, alone and with B1 or B3 | Fewer archers: the user's question | M1: breaks G1 (Capguard Hall never loses) and stalls G4 | Measured 2026-10-27 with `building.gillNest.spawn.interval:<s>`, not adopted: alone it never gets below 85%; with B1 it reaches 55% at 24 s, but mono Sporeling takes over (57%) and G4 and G7 fail |
+| T1 | Warm-up: a new ranged spawner's first unit waits a full interval (others keep half) | Blunt the two-Nest opener | Slower ranged openers in general | Prototyped as `rangedFirstSpawnFraction`, not adopted: mono Gill Nest 100% (so is `firstSpawnFraction: 1` for every building) |
+| T2 | Fall back while outnumbered: a melee unit closing on an enemy unit falls back toward home while its side's nearby supply is below the enemy's near the target, at most 10 s per life, then commits | Stop defenders trickling into an archer mass one at a time; a conditional variant of mustering | A §5.2 change ("units always advance") like mustering; needs the user's OK if ever adopted | Prototyped as `fallBack`, not adopted: harmful. Mono Gill Nest 100%, mono Sporeling 88%, Sporeling > Gill Archer lost in duels (0/5) |
+| T3 | Home spawners shoot back: spawners in the home columns fire at the nearest enemy unit in range | Stop archers sieging home spawners from just outside turret reach | Turtling and Decisions | Prototyped as `spawnerDefense`, not adopted: at 12 damage / range 6 mono Gill Nest stays 100% and 73% of reference battles end by Decision; at 25 / range 7 it falls to 30%, but every battle is a Decision and four other mono bots take over |
+| D1 | Diagnostic: defenders that answer archers with Sporeling Burrows or Amanita Lodges | Is G3 partly a `bot:balanced` artifact? | — | Measured with one-off bots (no reference bot changed): no. Every defender loses 95–100% to mono Gill Nest, including mono Sporeling Burrow (98%) |
+
 ## Adaptive general and G8 (M4)
 
 Recorded on 2026-10-27 after M4. G8 fails against the Lichen Baron (details and diagnosis in [the M4 plan](m4-plan.md#g8-in-detail-npm-run-testslow-the-lichen-baron-30-seeds-mono-bot-as-the-player)). Each candidate changes §7.4 behavior, so none is implemented.
@@ -130,3 +142,71 @@ What the Baron builds while a counter is active (counter-set buildings placed ov
 | mono Capguard (Anti-Line) | 46 Gill Nests | 52 Morel Warrens, 28 Gill Nests, 22 Veilstalker Hollows |
 
 A2 does what it says: the Baron fields Scythecaps and Veilstalkers. But the floor spreads its counter spending over every building in the set, including weak ones. The Anti-Swarm set holds every Slash unit, so against a Sporeling swarm the Baron builds Sporeling Burrows; against Line it builds Morel Warrens, which lose to Capguards. The swarm row improves (37% → 27%), but mono Veilstalker, Scythecap and Morel do 10–17 points better against the A2 Baron. A3's earlier cycle helps mono Rootbreaker (−10) and Hammercap (+17 drop), but no battle in these 90 ended before the first counter activated, even at 4:00, so timing isn't the main limit. If G8 is picked up again, the more promising variant is a floor limited to counter-set buildings whose unit beats the player's dominant armor in the matrix (it would drop Sporeling Burrows from Anti-Swarm and Morel Warrens from Anti-Line). That is untested.
+
+## Round 2 results (2026-10-27)
+
+Measured with `npm run experiment` exactly as in round 1. `--proto` now also reaches content entries by id (`building.gillNest.spawn.interval:19`, `unit.gillArcher.hp:100`) and can add one-off bots (`bot.<id>:{…}`, used with `--defender bot:<id>`). The same strings work at `?proto=`.
+
+| Preset | Setting |
+|---|---|
+| `t1` | `rangedFirstSpawnFraction: 1` |
+| `t2` | `fallBack`: radius 5 tiles, ratio 1, at most 10 s of holding per unit |
+| `t3` | `spawnerDefense`: home-column spawners fire 12 Pierce per second at the nearest enemy unit within 6 tiles (projectile speed 12) |
+
+### I1: the Gill Nest spawn interval (the user's question)
+
+G3 is mono Gill Nest against `bot:balanced`, both seats (40 games). "Takeover" lists other mono bots above 55%. B1 is the round-1 preset (×3, 1.5 s); "B1 mild" is ×2 for 1 s, the only B1 setting that passed G4.
+
+| Interval | G3 alone | Takeover | G4 median / Decisions | G3 + B3 | G3 + B1 | Takeover, G4 with B1 | G3 + B1 mild | Takeover, G4 with B1 mild |
+|---|---|---|---|---|---|---|---|---|
+| 15 s (today) | 100% | none | 7:12 / 5% ✓ | 100% | 100% | none; 25% ✗ | 100% | none; 10% ✓ |
+| 17 s | 100% | none | 7:32 / 5% ✓ | 100% | 100% | none; 28% ✗ | — | — |
+| 19 s | 100% | none | 7:58 / 5% ✓ | 100% | 88% | none; 20% ✗ | — | — |
+| 21 s | 98% | none | 8:16 / 15% ✓ | 98% | 80% | none; 30% ✗ | 83% | Sporeling 57% ✗; 15% ✓ |
+| 24 s | 85% | none | 8:38 / 23% ✗ | 93% (Sporeling 57% ✗) | **55%** | Sporeling 57% ✗; 33% ✗ | 68% | Amanita 57% ✗; 25% ✗ |
+| 28 s | 90% | Sporeling, Amanita 57% ✗ | 8:59 / 13% ✓ (median ✗) | 83% (Amanita 65% ✗) | 43% | Sporeling 57% ✗; 50% ✗ | 57% | Amanita 57% ✗; 48% ✗ |
+
+Other checks, for the interval alone: **G1 fails at every interval**, moving from Gill Nest (7/8 pairings) to Capguard Hall (7/8 from 17 s on), as in M1. G2 holds. G5 63–75% ✓. G6 73–88% ✓. G7 passes alone except at 24 s (mirror 54% ✗), and fails at most intervals with B1 or B3. G8 is unchanged (1–2 asserted rows). Boss reach is 19–26% alone, 21–26% with B3 and 28–39% with B1. G11 is unaffected (data only).
+
+**Answer:** tuning the archer rate alone doesn't help on current content. M1's result (28 s reached 50%) no longer holds with the M2–M4 roster: 28 s leaves mono Gill Nest at 90% while mono Sporeling and Amanita cross 55%. The smallest nerf that reaches the G3 limit is **24 s with B1** (55%, exactly at the limit). But mono Sporeling takes over (57%), a third of the reference battles end by Decision, G1 and G7 fail, and the defender's turrets go almost idle (Sporelings do 67% of its damage). No interval, alone or combined with B1 or B3, passes G3 without breaking another guardrail.
+
+### T1–T3
+
+| Check | Baseline | T1 | T2 | T3 | T3 strong (25 dmg, range 7) | T3 + B3 + 21 s |
+|---|---|---|---|---|---|---|
+| G3 mono Gill Nest (player / enemy) | 100% (100 / 100) | 100% (100 / 100) | 100% (100 / 100) | 100% (100 / 100) | **30%** (30 / 30) | 90% (90 / 90) |
+| Takeover (> 55%) | none | none | Sporeling 88%, Capguard 65%, Scythecap 63%, Morel 57% ✗ | none | Capguard, Rootbreaker 63%, Scythecap, Hammercap 60% ✗ | none |
+| Defender damage vs mono Gill Nest: Sporelings / turrets | 24% / 69% | 25% / 68% | 5% / 92% | 26% / 26% | 19% / 3% | 36% / 13% |
+| G1 | ✗ (Gill 7/8) | ✗ (Gill 7/8) | ✗ (Gill 8/8) | ✗ (Gill 8/8, Morel 0/8) | ✗ (Gill 8/8) | ✗ (Gill 7/8, Morel 0/8) |
+| G2 | ✓ | ✓ | ✗ (Sporeling beats nothing; Sporeling > Gill Archer 0/5) | ✓ | ✓ | ✓ |
+| G4 median / Decisions / bot wins | 7:12 / 5% / 53% ✓ | 7:54 / 8% / 40% ✓ | 7:31 / 10% / 57% ✓ | 10:00 / 73% ✗ | 10:00 / 100% ✗ | 10:00 / 93% ✗ |
+| G5 | 70% ✓ | 68% ✓ | 78% ✗ | 53% ✗ | 53% ✗ | 53% ✗ |
+| G6 | 53% ✓ | 73% ✓ | 80% ✓ | 75% ✓ | 65% ✓ | 73% ✓ |
+| G7 mirror / Slayer mirror | 58% / 50% ✓ | 54% / 48% ✗ | 63% / 49% ✓ | 54% / 56% ✗ | 52% / 53% ✗ | 53% / 56% ✗ |
+| G8 asserted rows / `bot:balanced` vs Baron | 1 of 8 / 57% | 0 of 8 / 60% | 0 of 10 / 57% | 3 of 6 / 50% | 2 of 5 / 33% ✗ | 3 of 6 / 43% |
+| G11 tick mean / p99 | 0.18 / 0.52 ms ✓ | 0.18 / 0.50 ms ✓ | 0.18 / 0.68 ms ✓ | 0.18 / 0.51 ms ✓ | 0.18 / 0.51 ms ✓ | — |
+| Runs reaching the boss (80) | 25% | 24% | 15% | 59% | 83% | 65% |
+
+T1 combined with mild B1 at 24 s: mono Gill Nest 60%, no takeover (Sporeling 55%), but G4 30% Decisions and G7 fail. T3's extra G8 rows and its higher boss reach come with stalled battles: homes become hard to break for everyone.
+
+### D1: is G3 a reference-bot artifact?
+
+Mono Gill Nest against each defender, 20 seeds in both seats. One-off bots were added with `--proto bot.<id>:{…}`; `bot:balanced` and the guardrails are unchanged.
+
+| Defender | vs mono Gill Nest | vs mono Sporeling | vs mono Capguard |
+|---|---|---|---|
+| `bot:balanced` (reference) | 100% | 40% | 25% |
+| `bot:balanced` with a two-Burrow opener (no Cellar) | 98% | 43% | 55% |
+| `bot:balanced` running the adaptive counter cycle | 100% | 48% | 15% |
+| Sporeling-heavy (two Burrows, weight 5 Burrow, 1 Capguard, Cellar, Scythecap) | 95% | 35% | 95% |
+| Amanita-heavy (Lodge opener, weight 4 Lodge, 2 Burrow) | 100% | 15% | 35% |
+| mono Sporeling Burrow | 98% | 50% | 98% |
+| mono Amanita Lodge | 100% | 0% | 20% |
+
+(Percentages are the mono attacker's win rate.) No defender holds, even the one that wins the 3-minute production duel 6/6. Battle traces explain it. Mono Sporeling builds 5–6 Burrows but never has more than 2–6 supply on the field, against 10–34 for the archers' 2–4 Nests. Each Sporeling walks into a growing archer mass, about 3 in transit at any time. The first fights happen under the archer side's own turrets, and from then on the archers advance column by column. The supply duels (all units at once) and the production duels (no turrets, no territory, 3 minutes) don't reproduce that stream-against-mass dynamic, so G1 and G2 can't see it.
+
+### Recommendation after round 2
+
+Nothing here is worth adopting, and none of the round-2 settings passes the guardrails. G3 looks structural rather than numeric: in a single lane with Heartcap turrets, a ranged mass that grows behind its own front always beats a melee stream. Approach speed, archer numbers, damage to structures, firing lanes, lifespans, opening delays, conditional fall-back and home defense each either leave it at 85–100% or move it only by making battles stall or another mono bot dominant. What remains untried are rule-level changes to how melee armies arrive: true mustering combined with B1 and a 21–24 s Nest, or a melee wave release. Both change §5.2 and need the user's explicit OK. The other option is to reconsider whether G3's "≤ 55% against `bot:balanced`" is the right target while a single-lane map gives ranged mass this edge.
+
+For a human feel test only, the closest to a playable balance is mild B1 with a 21 s Nest: `?proto=b1,approachRush.speedMult:2,approachRush.seconds:1,building.gillNest.spawn.interval:21` (mono Gill Nest 83%, G4 in band, mono Sporeling 57%, G7 fails). The setting that reaches the G3 limit is `?proto=b1,building.gillNest.spawn.interval:24` (55%), but it costs G4 and G7.
