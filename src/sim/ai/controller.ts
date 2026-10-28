@@ -2,7 +2,7 @@
 // only by queueing ordinary commands for the next tick (placements, merge toggles and, during a
 // doctrine change, sales), and draws randomness only from the `ai` stream. The counter cycle lives in
 // counter.ts; here its doctrine scales the purchase weights.
-import { doctrineMult } from './counter.ts';
+import { counterFloor, doctrineMult } from './counter.ts';
 import { queueCommand } from '../commands.ts';
 import { legalPlacements } from '../placement.ts';
 import { nextFloat, nextSigned } from '../rng.ts';
@@ -124,6 +124,7 @@ function pickTarget(state: BattleState, side: Side, ai: AiState, pressure: Press
     // weights cover the draft pool too; only buildings in the kit can be bought (a zero keeps the roll unchanged)
     if (!kit.includes(w.building)) { eff.push(0); continue; }
     let x = w.weight;
+    if (ai.counterSets && r.ai.counter.floorWeight) x = Math.max(x, counterFloor(state, ai, w.building));
     const kind = state.compiled[side].buildings[w.building]!.kind;
     if (w.maxOwned >= 0 && ownedCount(state, side, w.building) >= w.maxOwned) x = 0;
     if (clock < w.afterTick) x = 0;

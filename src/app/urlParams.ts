@@ -18,6 +18,8 @@ export interface Params {
   flagProblems: string[];
   debug: boolean;
   test: boolean;
+  /** A balance-backlog prototype spec (`?proto=b1,besiegedBy:melee`), or null for the shipped rules. */
+  proto: string | null;
   /** `run` (play a whole run with bots) or `battles:<n>` (the first n battles), for route and summary screens. */
   autoplay: { battles: number | 'all' } | null;
 }
@@ -53,6 +55,7 @@ export function parseParams(search: string): Params {
     flagProblems: parsed ? parsed.problems : [],
     debug: q.get('debug') === '1',
     test: q.get('test') === '1',
+    proto: q.get('proto') || null,
     autoplay: auto === 'run' ? { battles: 'all' } : am ? { battles: Number(am[1]) } : null,
   };
 }

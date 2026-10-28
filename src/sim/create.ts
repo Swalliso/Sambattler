@@ -355,6 +355,8 @@ export function addUnit(
     mergeOn: true, sourceBuildingId,
     knit: undefined, // declared up front so every unit keeps one object shape
   };
+  const life = state.rules.lifespan;
+  if (life) u.expiresTick = state.tick + Math.round(life.ticks * (tier === 1 ? 1 : tier === 2 ? life.tierMult : life.tierMult * life.tierMult));
   clampToLane(state, u, unitRadius(state, u));
   u.px = u.x; u.py = u.y; u.spawnY = u.y;
   state.units.push(u);

@@ -43,6 +43,27 @@ export const BalanceSchema = z.object({
    * under any damage.
    */
   besiegedBy: z.enum(['all', 'melee', 'none']).optional(),
+  /**
+   * Prototype B1 (balance backlog), absent by default: listed units sprint at `speedMult` for up to
+   * `seconds` when they close on a target they acquired out of range, then wait `cooldownSeconds`
+   * before the next rush. Targeting is unchanged.
+   */
+  approachRush: z.object({
+    units: z.array(z.string()).min(1), speedMult: Pos, seconds: Pos, cooldownSeconds: Seconds,
+  }).strict().optional(),
+  /**
+   * Prototype B3, absent by default: a ranged unit's shot deals `blockedDamageMult` × damage when at
+   * least `freeRanks` friendly ranged units stand between it and its target, within
+   * `corridorHalfWidth` tiles of the line of fire.
+   */
+  firingCongestion: z.object({
+    freeRanks: z.number().int().positive(), corridorHalfWidth: Pos, blockedDamageMult: z.number().min(0).max(1),
+  }).strict().optional(),
+  /**
+   * Prototype B4, absent by default: every unit withers `seconds` after it spawns (a merged unit
+   * starts a fresh lifespan, × `tierMult` per tier above 1).
+   */
+  unitLifespan: z.object({ seconds: Pos, tierMult: Pos.optional() }).strict().optional(),
   firstSpawnFraction: z.number().min(0).max(1),
   timeLimitSeconds: Pos,
   heartcapPlayerHp: z.number().int().positive(),
@@ -121,6 +142,12 @@ export const BalanceSchema = z.object({
       maxSells: z.number().int().nonnegative(),
       /** Intel: weight of the previous file in `intel = keep × intel + (1 − keep) × profile`. */
       intelKeep: z.number().min(0).max(1),
+      /**
+       * Prototype A2, absent by default: while a counter is active, every counter-set building in
+       * the kit has at least this base purchase weight (before the ×counterMult), even one outside
+       * the general's weights.
+       */
+      counterFloorWeight: Pos.optional(),
     }).strict(),
     score: z.object({
       spawnerDepth: z.number(), spawnerThreat: z.number(), spawnerSurcharge: z.number(),

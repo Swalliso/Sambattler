@@ -172,6 +172,16 @@ export function doctrineMult(state: BattleState, ai: AiState, buildingId: string
   return m;
 }
 
+/**
+ * Prototype A2 (balance `counterFloorWeight`): the least base weight a building gets while it is in
+ * the active counter's set (0 when the knob is off or the building is outside the set).
+ */
+export function counterFloor(state: BattleState, ai: AiState, buildingId: string): number {
+  const floor = state.rules.ai.counter.floorWeight;
+  const rec = floor ? activeCounter(ai) : undefined;
+  return rec && ai.counterSets![rec.kind].includes(buildingId) ? floor! : 0;
+}
+
 // ---- tracking the observed side's spawns and merges (for the Elite share) ----
 
 /** The adaptive AI watching `observed`, if any. */
@@ -266,6 +276,14 @@ function activate(state: BattleState, side: Side, ai: AiState, index: number): v
   c.current = index;
   ai.target = null; // re-pick under the new weights
   state.events.push({ t: 'counterActive', side, kind: rec.kind });
+  if (state.rules.ai.counter.floorWeight) {
+    // prototype A2: counter-set buildings outside the general's weights get an entry the floor lifts
+    for (const id of ai.counterSets![rec.kind]) {
+      if (state.sides[side].kit.includes(id) && !ai.weights.some((w) => w.building === id)) {
+        ai.weights.push({ building: id, weight: 0, maxOwned: -1, afterTick: 0 });
+      }
+    }
+  }
   sellForSpace(state, side, ai, rec);
 }
 

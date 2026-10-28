@@ -62,10 +62,14 @@ function boot(): void {
   if (params.scene === 'report') params.ticks = 'end';
   let content: Content;
   try {
-    content = browserContent();
+    content = browserContent(params.proto);
   } catch (e) {
     fatal(`Content failed validation:\n${(e as Error).message}`);
     throw e;
+  }
+  if (params.proto) {
+    console.info(`prototype rules: ${params.proto} (runs are not saved)`);
+    document.title = `[proto ${params.proto}] ${document.title}`;
   }
   const atlas = bakeAtlas(content);
   if (RUN_SCENES.has(params.scene)) startRun(content, atlas, params);
@@ -73,11 +77,11 @@ function boot(): void {
 }
 
 /**
- * A run. Without a seed (normal play) the saved run resumes, or a new one starts; seeded and test
- * runs are deterministic and never touch storage, so screenshots match Node.
+ * A run. Without a seed (normal play) the saved run resumes, or a new one starts; seeded, test and
+ * prototype runs never touch storage (seeded and test runs are deterministic, so screenshots match Node).
  */
 function startRun(content: Content, atlas: ReturnType<typeof bakeAtlas>, params: Params): void {
-  const persist = params.seed === null && !params.test;
+  const persist = params.seed === null && !params.test && !params.proto; // a prototype run never overwrites the real save
   const storage = persist ? new BrowserStorage() : new MemoryStorage();
   const seed = params.seed ?? randomSeed();
   const run = (persist ? loadRun(storage) : null) ?? runForScene(content, { scene: params.scene, seed, player: params.player, autoplay: params.autoplay });
