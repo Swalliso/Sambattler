@@ -65,6 +65,24 @@ export const BalanceSchema = z.object({
    */
   unitLifespan: z.object({ seconds: Pos, tierMult: Pos.optional() }).strict().optional(),
   /**
+   * Prototype E1 (engagement review), absent by default: a per-lane Hold / Advance command. While a
+   * side holds a lane, its idle units gather at a rally line `rallyBack` tiles behind the front edge
+   * of its border column; units that dealt or took damage in the last 2 s fight as usual. A held lane
+   * advances on its own after `maxHoldSeconds`, and can't be held again for `cooldownSeconds` after
+   * it advances. `ai` gives every AI side (or those whose profile id starts with one of `profiles`)
+   * a muster policy: hold a lane until `musterSupply` stands in it, then advance; hold again once it
+   * drops below `spentSupply`. With `advanceWhenBesieged`, it never holds while one of its buildings
+   * in the lane is besieged.
+   */
+  laneStance: z.object({
+    rallyBack: Seconds,
+    maxHoldSeconds: Pos,
+    cooldownSeconds: Seconds,
+    ai: z.object({
+      musterSupply: Pos, spentSupply: Seconds, profiles: z.array(z.string()).optional(), advanceWhenBesieged: z.boolean().optional(),
+    }).strict().optional(),
+  }).strict().optional(),
+  /**
    * Prototype T1, absent by default: the first-spawn fraction (of the interval) for spawners whose
    * unit fires projectiles, in place of `firstSpawnFraction`. 1 makes a new Gill Nest wait a full
    * interval before its first archer.

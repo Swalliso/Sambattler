@@ -4,6 +4,7 @@ import { noteBuilt } from './ai/counter.ts';
 import { addBuilding } from './create.ts';
 import { executeDraftCommand } from './draft.ts';
 import { placementProblem, priceAt } from './placement.ts';
+import { setStance } from './systems/stance.ts';
 import { buildingDef, findBuilding, isBesieged, supplyCapOf } from './world.ts';
 import type { BattleState, Command, CommandBody, Side } from './state.ts';
 
@@ -124,6 +125,15 @@ function execute(state: BattleState, cmd: Command): boolean {
       if (!b || b.side !== side || !state.compiled[side].buildings[b.buildingId]?.spawn) { reject(state, cmd, 'not your spawner'); return false; }
       b.mergeOn = cmd.on;
       for (const u of state.units) if (u.sourceBuildingId === b.id) u.mergeOn = cmd.on;
+      return false;
+    }
+    case 'stance': {
+      const st = ss.stance?.[cmd.lane];
+      if (!state.rules.stance) { reject(state, cmd, 'stance is not available in this milestone'); return false; }
+      if (!st) { reject(state, cmd, 'no such lane'); return false; }
+      if (st.hold === cmd.hold) { reject(state, cmd, cmd.hold ? 'already holding' : 'already advancing'); return false; }
+      if (cmd.hold && state.tick < st.readyAt) { reject(state, cmd, 'hold is on cooldown'); return false; }
+      setStance(state, side, cmd.lane, cmd.hold, false);
       return false;
     }
     case 'draftPick':

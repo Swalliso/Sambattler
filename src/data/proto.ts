@@ -18,6 +18,15 @@ export const PROTO_PRESETS: Record<string, Json> = {
   b3: { firingCongestion: { freeRanks: 2, corridorHalfWidth: 0.6, blockedDamageMult: 0.5 } },
   /** B4: units wither 90 s after spawning (merged units start a fresh lifespan). */
   b4: { unitLifespan: { seconds: 90 } },
+  /**
+   * E1 (engagement review): per-lane Hold / Advance. Held units rally in the middle of the column
+   * behind the border column, so their spacing never spills into the frontier; holds last up to
+   * 30 s, then a 10 s cooldown. Every AI side musters: it holds until 12 supply stands in the lane,
+   * then advances, and holds again below 4.
+   */
+  hold: {
+    laneStance: { rallyBack: 1.5, maxHoldSeconds: 30, cooldownSeconds: 10, ai: { musterSupply: 12, spentSupply: 4 } },
+  },
   /** T1: a new ranged spawner waits a full interval for its first unit (others keep half). */
   t1: { rangedFirstSpawnFraction: 1 },
   /** T2: melee units outnumbered near their target fall back toward home for up to 10 s. */

@@ -9,6 +9,7 @@ import { clockSystem, incomeSystem } from './systems/economy.ts';
 import { mergingSystem } from './systems/merging.ts';
 import { movementSystem } from './systems/movement.ts';
 import { spawningSystem } from './systems/spawning.ts';
+import { stanceSystem } from './systems/stance.ts';
 import { targetingSystem } from './systems/targeting.ts';
 import { territorySystem } from './systems/territory.ts';
 import { victorySystem } from './systems/victory.ts';
@@ -42,8 +43,9 @@ export function step(state: BattleState): void {
   // 1. clear events (above); snapshot previous positions for render interpolation
   state.tick++;
   for (const u of state.units) { u.px = u.x; u.py = u.y; }
-  // 2. commands
+  // 2. commands (and, with prototype E1, holds that have run out)
   executeCommands(state, state.tick);
+  if (state.rules.stance) stanceSystem(state);
   // 3. clock, waves, Sporestorm
   clockSystem(state);
   // 4. income and interest

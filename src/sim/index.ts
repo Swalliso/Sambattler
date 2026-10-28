@@ -30,4 +30,5 @@ export { incomePerMinute } from './systems/economy.ts';
 export { lanePresence, frontierBlocked, frontier } from './systems/territory.ts';
 export { isBesieged, isSuppressed } from './world.ts';
 export { turretPos } from './systems/combat.ts';
+export { holdsLane, rallyX } from './systems/stance.ts';
 export * from './state.ts';

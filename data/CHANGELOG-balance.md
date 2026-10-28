@@ -3,6 +3,21 @@
 Every change from the SPEC's first-pass numbers, with the guardrail or verification result that
 motivated it. Tools: `npm run balance -- duel`, `npm run balance -- tournament`, `npm run test:slow`.
 
+## Engagement prototype E1: Hold / Advance (2026-10-28)
+
+**Nothing adopted; no number, rule or default changed.** A per-lane Hold / Advance command (`laneStance`,
+preset `hold`) with an AI muster policy, from recommendation 1 of the
+[engagement review](../docs/engagement-review.md#prototype-e1-hold--advance-per-lane-2026-10-28). It is
+absent from `balance.json`, so goldens and hashes are unchanged. `npm run experiment` gains two opt-in
+checks, `engagement` and `runs`.
+- **Opening:** the first column flip moves from 2:16–4:14 to 0:34–1:29, and battles with no flip
+  before 3:00 drop from 30–83% to 0–3%.
+- **G3:** mono Gill Nest stays at 93–100% under every variant. Mono Sporeling rises from 40% to
+  55–78%, which is a new failure. Merging off doesn't change that.
+- **Other guardrails:** G7's Slayer mirror fails at 56%, and G8 fails at 0 of 8 rows. G1, G2, G4,
+  G5, G6 and G11 are as before.
+- **Runs:** boss reach falls from 25% to 11–23%.
+
 ## Balance-backlog prototypes, round 2 (2026-10-27)
 
 **Nothing adopted; no number, rule or default changed.** Measured on request: the Gill Nest spawn

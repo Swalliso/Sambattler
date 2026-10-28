@@ -211,6 +211,11 @@ export interface Rules {
   congestion?: { freeRanks: number; halfWidth: number; mult: number };
   /** Prototype B4 (balance `unitLifespan`): lifespan ticks of a tier-1 unit and the per-tier multiplier; absent by default. */
   lifespan?: { ticks: number; tierMult: number };
+  /** Prototype E1 (balance `laneStance`): the per-lane Hold / Advance command; absent by default. */
+  stance?: {
+    rallyBack: number; maxHoldTicks: number; cooldownTicks: number;
+    ai?: { musterSupply: number; spentSupply: number; profiles?: string[]; advanceWhenBesieged?: boolean };
+  };
   /** Prototype T2 (balance `fallBack`); absent by default. */
   fallBack?: { radius: number; ratio: number; maxHoldTicks: number };
   /** Prototype T3 (balance `spawnerDefense`); absent by default. */
@@ -372,6 +377,7 @@ export type CommandBody =
   | { type: 'place'; buildingId: string; lane: number; col: number; row: number }
   | { type: 'sell'; entityId: number }
   | { type: 'toggleMerge'; entityId: number; on: boolean }
+  | { type: 'stance'; lane: number; hold: boolean }
   | { type: 'power'; x?: number; y?: number; lane?: number }
   | { type: 'draftPick'; cardId: string }
   | { type: 'draftReroll' }
@@ -401,6 +407,8 @@ export type SimEvent =
   | { t: 'healed'; target: number; src: number; amount: number; x: number; y: number }
   | { t: 'counterWarned'; side: Side; kind: CounterKind; activatesAtTick: number }
   | { t: 'counterActive'; side: Side; kind: CounterKind }
+  /** Prototype E1: a lane switched between Hold and Advance (`auto` when the hold timer ran out). */
+  | { t: 'stance'; side: Side; lane: number; hold: boolean; auto: boolean }
   | { t: 'ended'; winner: Side; by: 'rout' | 'decision' };
 
 export interface AiWeight { building: string; weight: number; maxOwned: number; afterTick: number }
@@ -486,8 +494,13 @@ export interface SideState {
   draft?: OpenDraft;
   /** Drafts opened so far this battle. */
   draftsOpened: number;
+  /** Prototype E1: each lane's Hold / Advance stance. Absent unless `rules.stance`. */
+  stance?: LaneStance[];
   ai?: AiState;
 }
+
+/** A lane's stance (prototype E1): held since `since`, or advancing; it can hold again from `readyAt`. */
+export interface LaneStance { hold: boolean; since: number; readyAt: number }
 
 export interface SideStats {
   spawned: Record<string, number>;

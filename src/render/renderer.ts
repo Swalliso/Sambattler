@@ -4,7 +4,7 @@
 // sparks → labels (merge pops, damage numbers) → overlays (placement ghost, ranges, debug).
 import type { Content } from '../data/registry.ts';
 import {
-  canMerge, frontierBlocked, isSuppressed, lanePresence, turretPos,
+  canMerge, frontierBlocked, holdsLane, isSuppressed, lanePresence, rallyX, turretPos,
 } from '../sim/index.ts';
 import type { BattleState, Command, Side, UnitState } from '../sim/index.ts';
 import type { Atlas, Faction } from './atlas.ts';
@@ -179,6 +179,7 @@ export class Renderer {
     this.bakeTerritory(state);
     g.drawImage(this.territory, 0, 0);
     this.drawCapture(state);
+    if (state.rules.stance) this.drawRally(state, t);
 
     // buildings
     for (const b of state.buildings) {
@@ -323,6 +324,31 @@ export class Renderer {
         if (frontierBlocked(state, li, side) && F >= state.map.homeCols && F < state.map.width - state.map.homeCols) {
           this.shield(this.sx(F) + 5, top + 3, m.glow);
         }
+      }
+    }
+  }
+
+  /** Prototype E1: a marching dashed rally line, topped by a pennant, in every lane a side holds. */
+  private drawRally(state: BattleState, t: number): void {
+    const g = this.ctx;
+    for (const side of ['player', 'enemy'] as Side[]) {
+      for (let li = 0; li < state.lanes.length; li++) {
+        if (!holdsLane(state, side, li)) continue;
+        const L = state.lanes[li]!;
+        const top = L.rowStart * TILE, bottom = (L.rowEnd + 1) * TILE;
+        const x = Math.round(this.sx(rallyX(state, side, li)));
+        const glow = this.mat(side).glow;
+        const shift = Math.floor(t / 120) % 6;
+        g.globalAlpha = 0.55;
+        g.fillStyle = '#120a16'; // a dark backing stripe keeps the line readable on the side's own mat
+        g.fillRect(x - 1, top, 3, bottom - top);
+        g.globalAlpha = 0.95;
+        g.fillStyle = glow;
+        for (let y = top + 6 + shift; y < bottom; y += 6) g.fillRect(x, y, 1, 3);
+        g.fillRect(x, top, 1, 6);
+        const dir = side === 'player' ? -1 : 1; // the pennant flies back toward home
+        for (let i = 0; i < 4; i++) g.fillRect(dir < 0 ? x - 1 - i : x + 1, top + i / 2, i + 1, 4 - i);
+        g.globalAlpha = 1;
       }
     }
   }

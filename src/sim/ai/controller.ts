@@ -8,7 +8,7 @@ import { legalPlacements } from '../placement.ts';
 import { nextFloat, nextSigned } from '../rng.ts';
 import { other } from '../state.ts';
 import type { AiState, BattleState, Side } from '../state.ts';
-import { buildingDef } from '../world.ts';
+import { buildingDef, isBesieged } from '../world.ts';
 
 interface Plan { col: number; row: number; w: number; h: number }
 interface Pressure { pressured: boolean[]; anyPressured: boolean; mostLane: number }
@@ -35,6 +35,7 @@ export function aiThink(state: BattleState, side: Side): void {
   const ai = ss.ai;
   if (!ai) return;
   applyMergePolicy(state, side, ai);
+  applyStancePolicy(state, side, ai);
   const pressure = assessPressure(state, side);
   if (ai.target && state.tick - ai.targetSince >= state.rules.ai.stickyTicks) ai.target = null;
   if (!ai.target) {
@@ -82,6 +83,28 @@ function applyMergePolicy(state: BattleState, side: Side, ai: AiState): void {
     if (b.mergeOn === want) continue;
     if (state.queue.some((c) => c.side === side && c.type === 'toggleMerge' && c.entityId === b.id)) continue;
     queueCommand(state, { tick: state.tick + 1, side, type: 'toggleMerge', entityId: b.id, on: want });
+  }
+}
+
+/**
+ * Prototype E1's muster policy (balance `laneStance.ai`), through ordinary stance commands: hold a
+ * lane until `musterSupply` of the side's units stand in it, advance, and hold again once fewer than
+ * `spentSupply` remain (the wave is spent) and the cooldown allows. With `advanceWhenBesieged` it
+ * never holds a lane while one of its buildings there is besieged.
+ */
+function applyStancePolicy(state: BattleState, side: Side, ai: AiState): void {
+  const policy = state.rules.stance?.ai;
+  const lanes = state.sides[side].stance;
+  if (!policy || !lanes) return;
+  if (policy.profiles && !policy.profiles.some((p) => ai.profileId.startsWith(p))) return;
+  for (let li = 0; li < lanes.length; li++) {
+    const st = lanes[li]!;
+    if (state.queue.some((c) => c.side === side && c.type === 'stance' && c.lane === li)) continue;
+    let supply = 0;
+    for (const u of state.units) if (u.side === side && u.lane === li) supply += u.supply;
+    const besieged = !!policy.advanceWhenBesieged && state.buildings.some((b) => b.side === side && b.lane === li && isBesieged(state, b));
+    const hold = !besieged && (st.hold ? supply < policy.musterSupply : supply < policy.spentSupply && state.tick >= st.readyAt);
+    if (hold !== st.hold) queueCommand(state, { tick: state.tick + 1, side, type: 'stance', lane: li, hold });
   }
 }
 
