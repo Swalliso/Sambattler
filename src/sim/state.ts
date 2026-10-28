@@ -211,6 +211,10 @@ export interface Rules {
   congestion?: { freeRanks: number; halfWidth: number; mult: number };
   /** Prototype B4 (balance `unitLifespan`): lifespan ticks of a tier-1 unit and the per-tier multiplier; absent by default. */
   lifespan?: { ticks: number; tierMult: number };
+  /** Prototype T2 (balance `fallBack`); absent by default. */
+  fallBack?: { radius: number; ratio: number; maxHoldTicks: number };
+  /** Prototype T3 (balance `spawnerDefense`); absent by default. */
+  spawnerDefense?: { damage: number; damageType: DamageType; intervalTicks: number; range: number; projectileSpeed: number; homeOnly: boolean };
   timeLimitTicks: number;
   captureThreshold: number;
   captureStep: number;
@@ -295,6 +299,8 @@ export interface UnitState {
   rushReady?: number;
   /** Prototype B4: the unit withers at this tick. Absent unless `rules.lifespan`. */
   expiresTick?: number;
+  /** Prototype T2: the tick the unit started falling back (kept while committed). Absent unless `rules.fallBack`. */
+  holdSince?: number;
 }
 
 export interface KnitState {

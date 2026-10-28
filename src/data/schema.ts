@@ -64,6 +64,26 @@ export const BalanceSchema = z.object({
    * starts a fresh lifespan, × `tierMult` per tier above 1).
    */
   unitLifespan: z.object({ seconds: Pos, tierMult: Pos.optional() }).strict().optional(),
+  /**
+   * Prototype T1, absent by default: the first-spawn fraction (of the interval) for spawners whose
+   * unit fires projectiles, in place of `firstSpawnFraction`. 1 makes a new Gill Nest wait a full
+   * interval before its first archer.
+   */
+  rangedFirstSpawnFraction: z.number().min(0).max(2).optional(),
+  /**
+   * Prototype T2, absent by default: a melee unit closing on an enemy unit falls back toward its own
+   * Heartcap while its side's supply within `radius` of it is below `ratio` × the enemy supply
+   * within `radius` of its target, for at most `maxHoldSeconds` from its first hold; then it commits
+   * for the rest of its life. A change to SPEC §5.2 ("units always advance") if adopted.
+   */
+  fallBack: z.object({ radius: Pos, ratio: Pos, maxHoldSeconds: Pos }).strict().optional(),
+  /**
+   * Prototype T3, absent by default: spawners (optionally only those in their side's home columns)
+   * shoot the nearest enemy unit within `range` tiles of their edge.
+   */
+  spawnerDefense: z.object({
+    damage: Pos, damageType: DamageType, interval: Pos, range: Pos, projectileSpeed: Pos, homeOnly: z.boolean(),
+  }).strict().optional(),
   firstSpawnFraction: z.number().min(0).max(1),
   timeLimitSeconds: Pos,
   heartcapPlayerHp: z.number().int().positive(),

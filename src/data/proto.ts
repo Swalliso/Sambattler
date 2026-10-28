@@ -18,6 +18,12 @@ export const PROTO_PRESETS: Record<string, Json> = {
   b3: { firingCongestion: { freeRanks: 2, corridorHalfWidth: 0.6, blockedDamageMult: 0.5 } },
   /** B4: units wither 90 s after spawning (merged units start a fresh lifespan). */
   b4: { unitLifespan: { seconds: 90 } },
+  /** T1: a new ranged spawner waits a full interval for its first unit (others keep half). */
+  t1: { rangedFirstSpawnFraction: 1 },
+  /** T2: melee units outnumbered near their target fall back toward home for up to 10 s. */
+  t2: { fallBack: { radius: 5, ratio: 1, maxHoldSeconds: 10 } },
+  /** T3: home-column spawners shoot the nearest enemy unit within 6 tiles (12 Pierce per second). */
+  t3: { spawnerDefense: { damage: 12, damageType: 'pierce', interval: 1, range: 6, projectileSpeed: 12, homeOnly: true } },
 };
 
 function setPath(obj: Json, path: string, value: unknown): void {
@@ -70,8 +76,49 @@ export function applyProtoToBalance(balance: unknown, spec: string): { balance: 
   return { balance: out, problems };
 }
 
-/** The raw content with a prototype spec applied to balance.json (validation happens in loadContent). */
+/** Content collections an override can reach by id: `building.<id>.…`, `unit.<id>.…`, `bot.<id>`. */
+const ENTRY_FILES: Record<string, (path: string) => boolean> = {
+  building: (f) => f.endsWith('buildings.json'),
+  unit: (f) => f.endsWith('units.json'),
+  bot: (f) => f === 'bots.json',
+};
+
+/**
+ * The raw content with a prototype spec applied (validation happens in loadContent). Balance
+ * presets and paths go to balance.json; `building.gillNest.spawn.interval:19` and
+ * `unit.gillArcher.hp:100` patch an entry of a buildings or units file by id; `bot.<id>:{…}` adds
+ * or replaces a bot (for one-off diagnostics; the reference bots are untouched unless named).
+ */
 export function applyProto(raw: RawContent, spec: string): { raw: RawContent; problems: string[] } {
-  const { balance, problems } = applyProtoToBalance(raw['balance.json'], spec);
-  return { raw: { ...raw, 'balance.json': balance }, problems };
+  const out: RawContent = { ...raw };
+  const balanceParts: string[] = [];
+  const problems: string[] = [];
+  for (const part of splitSpec(spec)) {
+    const colon = part.indexOf(':');
+    const key = colon < 0 ? part : part.slice(0, colon);
+    const [kind, id, ...rest] = key.split('.');
+    const match = colon >= 0 && kind && id ? ENTRY_FILES[kind] : undefined;
+    if (!match) { balanceParts.push(part); continue; }
+    const value = parseValue(part.slice(colon + 1));
+    const files = Object.keys(out).filter((f) => match(f) && Array.isArray(out[f]));
+    let done = false;
+    for (const f of files) {
+      const list = structuredClone(out[f]) as Json[];
+      const i = list.findIndex((e) => e.id === id);
+      if (i < 0) continue;
+      if (rest.length) setPath(list[i]!, rest.join('.'), value);
+      else list[i] = { ...(value as Json), id };
+      out[f] = list;
+      done = true;
+      break;
+    }
+    if (!done && kind === 'bot' && !rest.length && files[0]) {
+      out[files[0]] = [...(out[files[0]] as Json[]), { ...(value as Json), id }];
+      done = true;
+    }
+    if (!done) problems.push(`proto: no ${kind} "${id}" for "${part}"`);
+  }
+  const { balance, problems: bp } = applyProtoToBalance(raw['balance.json'], balanceParts.join(','));
+  out['balance.json'] = balance;
+  return { raw: out, problems: [...problems, ...bp] };
 }
