@@ -4,7 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import { counterFloor, counterTick } from '../../src/sim/ai/counter.ts';
 import { applyProtoToBalance, PROTO_PRESETS } from '../../src/data/proto.ts';
-import { createBattle, makeConfig, runHeadless, step, zeroProfile } from '../../src/sim/index.ts';
+import { createBattle, hashState, makeConfig, queueCommand, rallyX, runHeadless, step, zeroProfile } from '../../src/sim/index.ts';
 import type { BattleState } from '../../src/sim/index.ts';
 import { protoContent } from '../../tools/lib/content.ts';
 import { building, content, liveState, steps, unit } from '../helpers.ts';
@@ -160,5 +160,112 @@ describe('A3 earlier first cycle (balance ai.counter.cycles)', () => {
     runHeadless(s, { until: 4300 });
     const h = s.sides.enemy.ai!.counter!.history[0]!;
     expect([h.warnedAt, h.activeAt, h.active]).toEqual([1800, 4200, true]);
+  });
+});
+
+describe('E1 lane stance (balance laneStance)', () => {
+  const STANCE = { rallyBack: 1.5, maxHoldTicks: 600, cooldownTicks: 200 };
+
+  /** A live flat-map battle with the stance rules switched on by hand (both sides advancing). */
+  function stanceState(rules: typeof STANCE = STANCE): BattleState {
+    const s = liveState({ test: { noTurrets: true, noTerritory: true, noHeartcapTargets: true }, borders: [5, 26] });
+    s.rules.stance = { ...rules };
+    for (const side of ['player', 'enemy'] as const) s.sides[side].stance = [{ hold: false, since: 0, readyAt: 0 }];
+    return s;
+  }
+  const order = (s: BattleState, hold: boolean, side: 'player' | 'enemy' = 'player') =>
+    queueCommand(s, { tick: s.tick + 1, side, type: 'stance', lane: 0, hold });
+
+  it('is off by default: no rules, no lane state, and the command is refused', () => {
+    expect(content.balance.laneStance).toBeUndefined();
+    const s = liveState();
+    expect(s.rules.stance).toBeUndefined();
+    expect(s.sides.player).not.toHaveProperty('stance');
+    order(s, true);
+    step(s);
+    expect(s.events).toContainEqual(expect.objectContaining({ t: 'commandRejected', reason: 'stance is not available in this milestone' }));
+  });
+
+  it('the hold preset compiles to ticks and gives every side a stance per lane', () => {
+    const c = protoContent('hold');
+    const s = createBattle(c, makeConfig(c, { seed: 1, mapId: 'twin-roots', player: 'human', enemy: 'human' }));
+    expect(s.rules.stance).toEqual({ ...STANCE, ai: { musterSupply: 12, spentSupply: 4 } });
+    expect(s.sides.player.stance).toEqual([{ hold: false, since: 0, readyAt: 0 }, { hold: false, since: 0, readyAt: 0 }]);
+  });
+
+  it('held idle units gather at the rally line behind the border column; Advance releases them', () => {
+    const s = stanceState();
+    const u = unit(s, 'player', 'capguard', 10, 3);
+    order(s, true);
+    steps(s, 200);
+    expect(s.sides.player.stance![0]!.hold).toBe(true);
+    expect(rallyX(s, 'player', 0)).toBe(4.5); // border column 5: its front edge is x = 6
+    expect(u.x).toBeCloseTo(4.5, 6);
+    const e = unit(s, 'enemy', 'capguard', 20, 3);
+    order(s, true, 'enemy');
+    steps(s, 200);
+    expect(rallyX(s, 'enemy', 0)).toBe(27.5);
+    expect(e.x).toBeCloseTo(27.5, 6);
+    order(s, false);
+    steps(s, 20);
+    expect(u.x).toBeGreaterThan(4.5 + 0.5);
+    expect(s.sides.player.stance![0]).toMatchObject({ hold: false, readyAt: s.tick - 19 + 200 });
+  });
+
+  it('a held unit that fought in the last 2 s keeps advancing instead of walking back', () => {
+    const s = stanceState();
+    const u = unit(s, 'player', 'capguard', 10, 3);
+    order(s, true);
+    step(s);
+    u.lastCombatTick = s.tick;
+    const x0 = u.x;
+    step(s);
+    expect(u.x).toBeGreaterThan(x0);
+    steps(s, s.rules.merge.cooldownTicks + 5);
+    const x1 = u.x;
+    step(s);
+    expect(u.x).toBeLessThan(x1);
+  });
+
+  it('a hold runs out on its own, and the lane can hold again only after the cooldown', () => {
+    const s = stanceState({ rallyBack: 1.5, maxHoldTicks: 40, cooldownTicks: 20 });
+    order(s, true);
+    steps(s, 40);
+    expect(s.sides.player.stance![0]!.hold).toBe(true);
+    step(s);
+    expect(s.events).toContainEqual({ t: 'stance', side: 'player', lane: 0, hold: false, auto: true });
+    order(s, true);
+    step(s);
+    expect(s.events).toContainEqual(expect.objectContaining({ t: 'commandRejected', reason: 'hold is on cooldown' }));
+    order(s, false);
+    step(s);
+    expect(s.events).toContainEqual(expect.objectContaining({ t: 'commandRejected', reason: 'already advancing' }));
+    steps(s, 17);
+    order(s, true);
+    step(s);
+    expect(s.sides.player.stance![0]!.hold).toBe(true);
+  });
+
+  it('AI sides muster through ordinary stance commands, deterministically', () => {
+    const c = protoContent('hold');
+    const run = () => {
+      const s = createBattle(c, makeConfig(c, { seed: 3, player: 'bot:balanced', enemy: 'general:mother-mold' }));
+      runHeadless(s, { until: 3600 });
+      return s;
+    };
+    const a = run(), b = run();
+    expect(hashState(a)).toBe(hashState(b));
+    for (const side of ['player', 'enemy'] as const) {
+      const cmds = a.log.filter((x) => x.side === side && x.type === 'stance');
+      expect(cmds.length).toBeGreaterThanOrEqual(2);
+      expect(cmds[0]).toMatchObject({ hold: true });
+      expect(a.stats[side].rejectedCommands).toBe(0);
+    }
+    // a profile filter limits the policy to matching AI sides
+    const only = protoContent('hold,laneStance.ai.profiles:["bot:balanced"]');
+    const s = createBattle(only, makeConfig(only, { seed: 3, player: 'bot:balanced', enemy: 'general:mother-mold' }));
+    runHeadless(s, { until: 1200 });
+    expect(s.log.some((x) => x.side === 'player' && x.type === 'stance')).toBe(true);
+    expect(s.log.some((x) => x.side === 'enemy' && x.type === 'stance')).toBe(false);
   });
 });

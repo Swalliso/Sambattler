@@ -49,6 +49,7 @@ export class BattleView {
   private pauseBadge = h('div', { class: 'pausebadge', hidden: true }, '❚❚ PAUSED');
   private beginBox: HTMLElement;
   private speedBtns: HTMLButtonElement[] = [];
+  private stanceBtns: HTMLButtonElement[] = [];
   private pauseBtn: HTMLButtonElement;
   private numbersBtn: HTMLButtonElement;
   private help: HTMLElement | null = null;
@@ -85,9 +86,18 @@ export class BattleView {
       class: 'btn', id: 'numbers-btn', title: 'Damage numbers: off, big hits only, or all',
       onclick: () => this.cycleNumbers(),
     }, '');
+    // prototype E1: one Hold / Advance button per lane
+    const stance = state.rules.stance ? h('div', { class: 'stance', id: 'stance' },
+      ...state.lanes.map((_, i) => {
+        const b = h('button', { class: 'btn', 'data-lane': i, onclick: () => session.toggleStance(i) }, '');
+        this.stanceBtns.push(b);
+        return b;
+      }),
+    ) : null;
     const controls = h('div', { class: 'controls' },
       h('div', { class: 'speed' }, ...this.speedBtns, this.pauseBtn),
-      h('div', { class: 'hint' }, 'Space pause · [ ] speed'),
+      h('div', { class: 'hint' }, state.rules.stance ? 'Space pause · [ ] speed · F hold' : 'Space pause · [ ] speed'),
+      stance,
       h('div', { class: 'row' }, h('button', { class: 'btn', id: 'help-btn', onclick: () => this.toggleHelp() }, 'Help [H]'), this.numbersBtn),
       debug ? h('div', { class: 'hint' }, 'F3 debug overlay') : null,
     );
@@ -180,6 +190,9 @@ export class BattleView {
         this.callouts.push('counter', warningText(generalName(this.session.content, state), e.kind, waves), 'bad', now);
       } else if (e.t === 'counterActive' && e.side === 'enemy') {
         this.callouts.push('counter', activeText(generalName(this.session.content, state), e.kind), 'bad', now);
+      } else if (e.t === 'stance' && (e.side === 'enemy' || e.auto) && !e.hold) {
+        const lane = state.lanes.length > 1 ? ` in lane ${e.lane + 1}` : '';
+        this.callouts.push('info', e.side === 'player' ? `Hold time is up: advancing${lane}` : `The Gray Rot advances${lane}`, e.side === 'player' ? '' : 'bad', now);
       } else if (e.t === 'merged' && (e.side === 'player' || e.tier === 3)) {
         const name = this.session.content.units[e.unitId]?.name ?? e.unitId;
         const tier = e.tier === 3 ? 'Elder' : 'Bloomed';
@@ -214,6 +227,17 @@ export class BattleView {
     setText(this.hpP, `♥ ${state.sides.player.heartcapHp}/${state.sides.player.heartcapMaxHp}`);
     setText(this.hpE, `♥ ${state.sides.enemy.heartcapHp}/${state.sides.enemy.heartcapMaxHp}`);
     this.speedBtns.forEach((b, i) => toggleClass(b, 'on', s.speed === i + 1));
+    this.stanceBtns.forEach((b, i) => {
+      const st = state.sides.player.stance![i]!;
+      const held = s.stanceShown(i);
+      const lane = state.lanes.length > 1 ? `Lane ${i + 1}: ` : '';
+      const secs = (ticks: number) => `${Math.max(0, Math.ceil(ticks / state.rules.tickRate))} s`;
+      const text = held
+        ? `${lane}■ Holding${st.hold ? ` · ${secs(state.rules.stance!.maxHoldTicks - (state.tick - st.since))}` : ''}`
+        : `${lane}▶ Advancing${s.canHold(i) ? '' : ` · hold in ${secs(st.readyAt - state.tick)}`}`;
+      setText(b, text);
+      toggleClass(b, 'on', held);
+    });
     setText(this.numbersBtn, `Numbers: ${NUMBERS_LABEL[this.renderer.damageNumbers]}`);
     toggleClass(this.pauseBtn, 'on', s.paused);
     this.pauseBadge.hidden = !(s.paused && state.phase === 'live');

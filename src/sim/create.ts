@@ -206,6 +206,7 @@ export function createBattle(content: Content, config: BattleConfig): BattleStat
       relics: loadouts[s].relics,
       draftsOpened: 0,
     };
+    if (rules.stance) st.stance = lanes.map(() => ({ hold: false, since: 0, readyAt: 0 }));
     if (sc.controller.kind !== 'human') st.ai = resolveAiProfile(content, sc.controller, sc, rules, buildingIds, config.flags, library);
     return st;
   };

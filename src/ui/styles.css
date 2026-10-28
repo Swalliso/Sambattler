@@ -78,6 +78,8 @@ button { font: inherit; color: inherit; }
 .controls .row { display: flex; gap: 4px; flex-wrap: wrap; }
 .controls .row .btn { font-size: 12px; padding: 4px 7px; }
 .speed { display: flex; gap: 4px; }
+.stance { display: flex; flex-direction: column; gap: 4px; }
+.stance .btn { font-size: 12px; padding: 4px 7px; text-align: left; }
 .btn { padding: 5px 9px; border: 1px solid var(--line); background: var(--panel-2); border-radius: 3px; cursor: pointer; font-size: 13px; }
 .btn:hover { border-color: var(--lilac); }
 .btn.on { background: #3d2a57; border-color: var(--violet); }

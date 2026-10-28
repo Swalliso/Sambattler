@@ -7,6 +7,7 @@ import type { BattleState, UnitState } from '../state.ts';
 import { buildGrid, nearBuffer, queryNear } from '../spatial.ts';
 import { MAX_RADIUS, edgeDistance, tp } from '../targets.ts';
 import { clampToLane, tierDef, unitRadius } from '../world.ts';
+import { holdsLane, rallyX } from './stance.ts';
 
 export function movementSystem(state: BattleState): void {
   const r = state.rules;
@@ -41,7 +42,13 @@ export function movementSystem(state: BattleState): void {
         continue;
       }
     }
-    u.x += u.side === 'player' ? speed : -speed;
+    if (r.stance && holdsLane(state, u.side, u.lane) && state.tick - u.lastCombatTick > r.merge.cooldownTicks) {
+      // a held lane (prototype E1): idle units walk to the rally line and wait there
+      const dx = rallyX(state, u.side, u.lane) - u.x;
+      u.x += dx > speed ? speed : dx < -speed ? -speed : dx;
+    } else {
+      u.x += u.side === 'player' ? speed : -speed;
+    }
     const dy = u.spawnY - u.y;
     if (dy > 0) u.y += dy < r.driftPerTick ? dy : r.driftPerTick;
     else if (dy < 0) u.y -= -dy < r.driftPerTick ? -dy : r.driftPerTick;

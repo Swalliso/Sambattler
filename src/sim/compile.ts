@@ -45,6 +45,20 @@ export function compileRules(b: BalanceDef, config: BattleConfig): Rules {
       congestion: { freeRanks: b.firingCongestion.freeRanks, halfWidth: b.firingCongestion.corridorHalfWidth, mult: b.firingCongestion.blockedDamageMult },
     } : {}),
     ...(b.unitLifespan ? { lifespan: { ticks: secToTicks(b.unitLifespan.seconds, tr), tierMult: b.unitLifespan.tierMult ?? 1 } } : {}),
+    ...(b.laneStance ? {
+      stance: {
+        rallyBack: b.laneStance.rallyBack,
+        maxHoldTicks: secToTicks(b.laneStance.maxHoldSeconds, tr),
+        cooldownTicks: secToTicks(b.laneStance.cooldownSeconds, tr),
+        ...(b.laneStance.ai ? {
+          ai: {
+            musterSupply: b.laneStance.ai.musterSupply, spentSupply: b.laneStance.ai.spentSupply,
+            ...(b.laneStance.ai.profiles ? { profiles: [...b.laneStance.ai.profiles] } : {}),
+            ...(b.laneStance.ai.advanceWhenBesieged ? { advanceWhenBesieged: true } : {}),
+          },
+        } : {}),
+      },
+    } : {}),
     timeLimitTicks: secToTicks(test.timeLimitSeconds ?? b.timeLimitSeconds, tr),
     captureStep: 100,
     captureThreshold: Math.round(b.captureSeconds * tr * 100),
