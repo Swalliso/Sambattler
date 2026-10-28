@@ -70,6 +70,40 @@ function congestionMult(state: BattleState, u: UnitState, tx: number, ty: number
   return 1;
 }
 
+/**
+ * Prototype T3 (balance `spawnerDefense`): spawners (only those wholly in their side's home columns
+ * with `homeOnly`) shoot the nearest enemy unit within range of their footprint. They use the
+ * building's tower cooldown, which spawners otherwise leave at 0.
+ */
+function spawnerDefense(state: BattleState, storm: number): void {
+  const sd = state.rules.spawnerDefense!;
+  const W = state.map.width, home = state.map.homeCols;
+  for (const b of state.buildings) {
+    const def = buildingDef(state, b);
+    if (!def.spawn || def.attack) continue;
+    if (sd.homeOnly && (b.side === 'player' ? b.col + def.w > home : b.col < W - home)) continue;
+    if (b.cooldown > 0) b.cooldown--;
+    if (b.cooldown > 0) continue;
+    const enemy = other(b.side);
+    const cx = b.col + def.w / 2, cy = b.row + def.h / 2;
+    let best = 0, bestD = Infinity;
+    const n = queryNear(cx, cy, sd.range + def.w + def.h + MAX_RADIUS);
+    const near = nearBuffer();
+    for (let k = 0; k < n; k++) {
+      const v = state.units[near[k]!]!;
+      if (v.side !== enemy || v.lane !== b.lane || v.hp <= 0) continue;
+      let d = rectDistance(v.x, v.y, b.col, b.row, def.w, def.h) - unitRadius(state, v);
+      if (d < 0) d = 0;
+      if (d <= sd.range && (d < bestD || (d === bestD && v.id < best))) { best = v.id; bestD = d; }
+    }
+    if (best === 0) continue;
+    const dist = edgeDistance(state, cx, cy, 0, best, enemy, b.lane);
+    b.cooldown = sd.intervalTicks;
+    b.lastAttackTick = state.tick;
+    fire(state, b.side, b.id, cx, cy, b.lane, best, dist, sd.damage * storm, sd.damageType, sd.projectileSpeed, 0, 1, 1, b.id, 'spawnerDefense');
+  }
+}
+
 const turretScratch = { x: 0, y: 0, lane: 0 };
 
 export function attackSystem(state: BattleState): void {
@@ -104,6 +138,7 @@ export function attackSystem(state: BattleState): void {
     fire(state, b.side, b.id, cx, cy, b.lane, b.targetId, d, a.damage * storm, a.damageType, a.projectileSpeed,
       a.splashRadius, 1, 1, b.id, b.buildingId);
   }
+  if (state.rules.spawnerDefense) spawnerDefense(state, storm);
   if (!state.rules.test.turrets) return;
   for (const side of SIDES) {
     const ss = state.sides[side];

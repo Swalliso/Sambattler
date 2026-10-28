@@ -45,6 +45,13 @@ export function compileRules(b: BalanceDef, config: BattleConfig): Rules {
       congestion: { freeRanks: b.firingCongestion.freeRanks, halfWidth: b.firingCongestion.corridorHalfWidth, mult: b.firingCongestion.blockedDamageMult },
     } : {}),
     ...(b.unitLifespan ? { lifespan: { ticks: secToTicks(b.unitLifespan.seconds, tr), tierMult: b.unitLifespan.tierMult ?? 1 } } : {}),
+    ...(b.fallBack ? { fallBack: { radius: b.fallBack.radius, ratio: b.fallBack.ratio, maxHoldTicks: secToTicks(b.fallBack.maxHoldSeconds, tr) } } : {}),
+    ...(b.spawnerDefense ? {
+      spawnerDefense: {
+        damage: b.spawnerDefense.damage, damageType: b.spawnerDefense.damageType, intervalTicks: Math.max(1, secToTicks(b.spawnerDefense.interval, tr)),
+        range: b.spawnerDefense.range, projectileSpeed: b.spawnerDefense.projectileSpeed, homeOnly: b.spawnerDefense.homeOnly,
+      },
+    } : {}),
     timeLimitTicks: secToTicks(test.timeLimitSeconds ?? b.timeLimitSeconds, tr),
     captureStep: 100,
     captureThreshold: Math.round(b.captureSeconds * tr * 100),
@@ -215,7 +222,9 @@ export function compileBuilding(lib: Library, id: string, mods: readonly Modifie
   if (b.spawn) {
     const interval = stat('building.spawnInterval', b.spawn.interval);
     const intervalTicks = secToTicks(interval.value, tr);
-    const first = stat('building.firstSpawnFraction', bal.firstSpawnFraction).value;
+    // prototype T1: ranged spawners may use their own first-spawn fraction
+    const ranged = bal.rangedFirstSpawnFraction !== undefined && (lib.units[b.spawn.unit]?.projectileSpeed ?? 0) > 0;
+    const first = stat('building.firstSpawnFraction', ranged ? bal.rangedFirstSpawnFraction! : bal.firstSpawnFraction).value;
     out.spawn = {
       unit: b.spawn.unit,
       count: Math.max(1, Math.round(stat('building.spawnCount', b.spawn.count).value)),
