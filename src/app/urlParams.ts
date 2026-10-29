@@ -43,8 +43,8 @@ export function parseParams(search: string): Params {
   const auto = q.get('autoplay');
   const am = auto?.match(/^battles:(\d+)$/);
   return {
-    // no scene: a run (resuming a saved one), unless battle parameters ask for a single battle
-    scene: q.get('scene') ?? (BATTLE_PARAMS.some((k) => q.has(k)) ? 'battle' : 'run'),
+    // no scene: the title screen, unless battle parameters ask for a single battle
+    scene: q.get('scene') ?? (BATTLE_PARAMS.some((k) => q.has(k)) ? 'battle' : 'title'),
     map: q.get('map') ?? 'bogwater-hollow',
     seed: num('seed'),
     battleIndex: num('battleIndex') ?? 1,

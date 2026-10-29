@@ -52,8 +52,8 @@ async function openSavedRun(run: string, battle: string): Promise<void> {
     localStorage.setItem(runKey, runText);
     localStorage.setItem(battleKey, battleText);
   }, { runKey: RUN_KEY, battleKey: BATTLE_KEY, runText: run, battleText: battle });
-  // No seed or test flag: use the same persistent resume path as normal play.
-  await page.goto(`${base}/?debug=1`);
+  // No seed or test flag: use the same persistent resume path as normal play (scene=run skips the title).
+  await page.goto(`${base}/?scene=run&debug=1`);
   await page.waitForFunction(() => window.__GAME__?.ready === true);
   await page.evaluate(() => document.fonts.ready.then(() => true)); // layout settles once the fonts swap in
 }

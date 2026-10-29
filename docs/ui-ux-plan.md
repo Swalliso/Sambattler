@@ -114,13 +114,37 @@ Each phase is one feature branch from `develop`, playtested on the dev site. No 
 
 ### Phase 2: Run screens (L)
 
-- **Title screen and wordmark (A4).** "Spore & Sprawl" in the display face, with Continue, New run, How to play and Settings over a Heartcap silhouette and drifting spores. It later becomes the door to the Underroot (M6). `scene=run` keeps its behavior for tests.
-- **Route as a mycelium map (C1).** Nodes become spore-pod tokens on soil, joined by hyphae drawn as SVG threads (every node links to every node in the next row). The path you've taken glows, future threads stay dim, and hovering a node lights its threads. Add a node legend.
-- **Draft and spoils cards (C3).** Each rarity gets a frame: common is bark, uncommon is teal-lit, rare is amber-lit with a spore sparkle. A type icon sits in the header, blueprints show stat chips (cost, output, role) instead of prose, cards deal in staggered with a hover lift, and keys 1–3 show as keycaps.
-- **Event and Grove (C2).** A vignette layout: a framed 4× scene, text on a stalk-cream panel, and choices as cards with outcome chips (+gold, −Heartcap, intel) in signal colors.
-- **Report and summary (C4).** An outcome banner (on a win the Heartcap blooms in lilac spores; on a loss the cap wilts to ash), a staged reveal (banner, then front line, then bars) and an MVP-building callout. Every table stays.
-- **Run bar (C5).** Icons for Heartcap, Spores and Amber, relics as pixel badges with tooltips, and the seed moved to the footer.
-- **Help (C6).** Four tabs (Matrix · Merging · The general · Keys) that fit at 720.
+Built 2026-10-29 (branch `feature/run-screens`). The sprite preview sheet and rough title, route and draft screenshots were approved on 2026-10-29. New art is text sprites in `data/sprites/run.json`: pods `p-pod` (28×28) and `p-pod-boss` (34×34), each in three frames (unlit, lit, taken); `i-blueprint`; rarity corners `fr-common`, `fr-uncommon` and `fr-rare` (12×12), and `fr-sparkle`; relic badges `r-common`, `r-uncommon` and `r-rare`; nine 48×36 vignettes (`v-<event id>` and `v-grove`); the title silhouette `t-heartcap` (112×84); and the wilted cap `hc-wilt`. `i-elite` and `i-boss` were redrawn so they no longer read alike.
+
+- **Title screen and wordmark (A4). Built.** With no `scene` the page opens on the title (`src/ui/screens/title.ts`): "Spore & Sprawl" in Jersey 10 at 96 px beside the Heartcap's silhouette at the largest integer scale that fits, over a lilac light pool, with spores drifting across the screen.
+  - Continue shows only with a saved run and names its row and Heartcap. New run asks first if a run is saved. How to play opens Help. Settings opens the settings popover (`settingsControl` with a label, opening sideways) with the sound sliders (`soundPanel`) above the damage numbers.
+  - `scene=run` keeps today's behaviour (resume or start, no title), so the tests and tools are unaffected; battle parameters without a scene still open a single battle. The route and the summary have a Title button back.
+  - The spores reuse the battle's drift: `src/render/spores.ts` (`SporeDrift`, `sporeLayer`) now holds the pool that `FieldFrame` used, unchanged, and `FieldFrame` draws through it.
+- **Route as a mycelium map (C1). Built.** Rows run left to right in a grid; each node is a spore pod at 2× with its 16 px icon at 2×, on a soil light pool. SVG hyphae (`hyphae()` in `src/ui/screens/run.ts`) are drawn after layout from the pods' centres and redrawn on resize: from the colony's start to the first row, and from every node to every node in the next.
+  - The path you walked is violet with a glow, the threads into the open row are lilac, past threads fade to `panel-2`, and future ones stay `mat-violet`. Hovering or focusing a pod lights its own threads.
+  - Open pods glow and are the only ones you can click; past rows drop to 50%. The legend in the footer names the five kinds and the two lit thread styles. The boss pod has ash thorns, not gold (gold means money).
+- **Draft and spoils cards (C3). Built** (`src/ui/cards.ts`, shared by the battle's draft and spoils).
+  - Each card has a 2 px edge in its rarity's line colour, with mirrored corner sprites: bark for common (a new `--bark` token, 4.1:1), teal-lit for uncommon, and amber-lit with two twinkling sparkles for rare. Rare and uncommon glow amber and teal (`--glow-amber`, `--glow-teal`), not money gold. The rarity keeps its word.
+  - The header holds the type's icon and word. Art is 64 px: the building at 2×, or for a relic its rarity badge at 4×. A blueprint shows its description, then chips for its price, output and role; an upgrade shows "Level N of 3".
+  - `1`–`3` are keycaps, and spoils take the keys too. Cards deal in 80 ms apart, growing from 0.96, and lift 4 px on hover.
+- **Event and Grove (C2). Built.** A vignette layout: the scene at 4× in a framed, lit box; the story on stalk cream; the choices as cards with keycaps. Outcome chips are read from each choice's outcome data (`outcomeChips`): gains in sprout, costs in danger-soft with a real minus, gold in gold, notes (the Sporestorm shift) in warn, each with a word and, mostly, an icon. A choice you can't take is unlit, with the reason. Prompts use the same panel.
+- **Report and summary (C4). Built.** An outcome banner: on a win the Heartcap at 2× blooms with lilac spores rising; on a loss the cap wilts to ash, with ash drifting down (both `sporeLayer`). The MVP building callout sits beside it: the top damage dealer (turrets aside), with its count and share.
+  - The staged reveal: the banner, then the front line (+320 ms), then the bars (+640 ms), each growing in. Every table stays.
+  - To fit 720, the front line's bands are shorter (104 px for one lane), and the summary lays out damage, cards and earnings in three columns. Play again and Continue are primary buttons. The battle report takes the atlas as a new fourth argument, a one-line change in `BattleView`.
+- **Run bar (C5). Built.** The Heartcap's HP in the display face with a striped bar, Spores and Amber with their icons and display numerals, battles won, the kit at 2× with upgrade levels, and relics as 32 px badges with a tooltip on hover or keyboard focus. The seed moved to the footer of every run screen.
+- **Help (C6). Built.** Four tabs (Matrix · Merging · The general · Keys) in a fixed 470 px body, so the dialog fits 1280×720 on every tab. Arrow keys move between tabs, and the last tab opened is remembered. The matrix cells say "strong" and "weak" as words; the general's tab lists the four kinds; keys are keycaps, with alternatives as separate caps ("`Right-click` / `Esc`").
+- **Spores on every run screen.** A faint drift sits behind each run screen, as on the title (rule 4).
+- **Link preview.** Not in the original plan; the user asked for it on 2026-10-29. `index.html` has Open Graph and Twitter card tags. `vite.config.ts` fills in the absolute address per build: the game, or `/dev/` with "(dev)" in the title. `public/og-image.png` (1200×630) is rendered from the title by `npm run og-image`.
+- **Motion.** Under `prefers-reduced-motion` there is no stagger, lift, sparkle or drift, and fades take 120 ms. `?test=1` adds `html.still`, which holds every deal-in, reveal and twinkle.
+- *Done when:* met. `tests/browser/runScreens.test.ts` covers:
+  - the title with and without a save, and Continue;
+  - the route's thread count and its hover;
+  - spoils keys;
+  - event chips with a real minus;
+  - the Grove's unlit Graft;
+  - Help's tabs fitting at 720;
+  - no clipping at 1280×720 or 1366×650.
+  `npm run screenshot` checks the title. Screenshots at 1280×720, 1366×650 and 1920×1080 are in `artifacts/screenshots/phase2/` (gitignored).
 
 ### Phase 3: Feel (M)
 
@@ -142,7 +166,7 @@ Each phase is one feature branch from `develop`, playtested on the dev site. No 
 3. **Sound:** done, ahead of Phase 1. Sounds are synthesized with WebAudio from parameters in `data/sounds.json`, the way sprites are text-defined, with no audio files (SPEC §13.9; audition them at `?scene=sounds`). Specific sounds can switch to CC0 samples later if the synthesized set feels thin.
 4. **Order:** the battle screen before the run screens. The run screens still get Phase 0's fonts, icons and borders for free.
 
-Build order: Phase 0, then sound, then Phase 1 (split into the field frame and the HUD/tray/deploy work), then a playtest on the dev site. Phase 2 comes after that. Each step is a PR into `develop`. Phase 0 (PR #12), sound (PR #13) and Phase 1a, the field frame (PR #14), are merged; Phase 1b, the HUD, deploy, tray and controls, is built (2026-10-29). The frame's preview sheet was approved on 2026-10-29, crowns included, and so was the `i-settings` cog, Phase 1b's one new sprite.
+Build order: Phase 0, then sound, then Phase 1 (split into the field frame and the HUD/tray/deploy work), then a playtest on the dev site. Phase 2 comes after that. Each step is a PR into `develop`. Phase 0 (PR #12), sound (PR #13), Phase 1a, the field frame (PR #14), and Phase 1b, the HUD, deploy, tray and controls (PR #15), are merged. The frame's preview sheet was approved on 2026-10-29, crowns included, and so was the `i-settings` cog, Phase 1b's one new sprite. Phase 2, the run screens, was built on 2026-10-29, after its sprite sheet and rough screens were approved the same day.
 
 ## Research notes
 
