@@ -156,7 +156,7 @@ function openTitle(content: Content, atlas: ReturnType<typeof bakeAtlas>, params
     document.body.append(help);
     help.querySelector<HTMLElement>('button')?.focus();
   };
-  const openSettingsScreen = () => openSettings(atlas, settingsStore, soundPrefs, { onClose: () => {} });
+  const openSettingsScreen = () => openSettings(content, atlas, settingsStore, soundPrefs, { onClose: () => {} });
   /** Back from a run, the title arrives behind a spore wipe (the page's first screen appears at once). */
   function show(): void { sporeWipe(render); }
   function render(): void {

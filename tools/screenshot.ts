@@ -297,6 +297,7 @@ async function main(): Promise<number> {
       return {
         settings: [...card.querySelectorAll<HTMLElement>('[data-setting]')].map((e) => e.dataset.setting ?? ''),
         sliders: card.querySelectorAll('input[data-level]').length,
+        preview: !!card.querySelector('#assist-preview canvas'),
         overflow: card.scrollHeight - card.clientHeight,
         inside: r.top >= 0 && r.left >= 0 && r.bottom <= window.innerHeight && r.right <= window.innerWidth,
       };
@@ -306,6 +307,7 @@ async function main(): Promise<number> {
       const want = ['damageNumbers', 'defaultSpeed', 'screenShake', 'uiScale', 'reducedMotion', 'colorAssist'];
       for (const k of want) if (!settingsDom.settings.includes(k)) failures.push(`the settings screen has no ${k} row`);
       if (settingsDom.sliders !== 3) failures.push(`the settings screen shows ${settingsDom.sliders} volume sliders (expected 3)`);
+      if (!settingsDom.preview) failures.push('the settings screen has no color-blind assist preview');
       if (settingsDom.overflow > 0 || !settingsDom.inside) failures.push(`the settings screen doesn't fit the window (scrolls ${settingsDom.overflow} px)`);
     }
 

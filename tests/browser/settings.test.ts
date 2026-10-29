@@ -182,14 +182,21 @@ describe('what each setting does', () => {
     expect(await isReduced(q)).toBe(true);
   });
 
-  it('color-blind assist: marks the page and the tug bar’s pattern', async () => {
+  it('color-blind assist: redraws its preview, then marks the field and the tug bar’s pattern', async () => {
     const q = '/?scene=battle&test=1&seed=4&player=bot:balanced&ticks=3600&paused=1';
     const p = await open(q);
     const tug = () => p.evaluate(() => getComputedStyle(document.querySelector('.tugbar .e')!).backgroundImage);
     const plain = await tug();
     const field = await p.evaluate(() => document.querySelector<HTMLCanvasElement>('#battlefield')!.toDataURL());
     await p.locator('#settings-btn').click();
+    // the screen's preview redraws with the marks the moment the assist turns on
+    const preview = () => p.evaluate(() => document.querySelector<HTMLCanvasElement>('#assist-preview canvas')!.toDataURL());
+    const plainPreview = await preview();
+    expect(await p.locator('#assist-preview').getAttribute('data-assist')).toBe('false');
     await p.locator('[data-setting="colorAssist"] [data-value="true"]').click();
+    expect(await p.locator('#assist-preview').getAttribute('data-assist')).toBe('true');
+    expect(await preview()).not.toBe(plainPreview);
+    expect(await p.locator('#assist-preview').getAttribute('aria-label')).toContain('light rings');
     await p.keyboard.press('Escape');
     expect(await p.evaluate(() => document.documentElement.classList.contains('assist'))).toBe(true);
     expect(await tug()).not.toBe(plain);

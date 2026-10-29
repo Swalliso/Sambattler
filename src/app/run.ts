@@ -134,7 +134,7 @@ export class RunController {
     }
     if (el) {
       el.querySelector('.runbar')?.append(h('div', { class: 'rb-tools' }, soundToggle(atlas, 'down'),
-        settingsButton(atlas, () => openSettings(atlas, settingsStore, soundPrefs, { onClose: () => {} }))));
+        settingsButton(atlas, () => openSettings(content, atlas, settingsStore, soundPrefs, { onClose: () => {} }))));
       // spores drift behind every run screen, as on the title
       const sky = h('div', { class: 'run-sky', 'aria-hidden': 'true' });
       el.prepend(sky);

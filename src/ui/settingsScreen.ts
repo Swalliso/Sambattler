@@ -1,9 +1,13 @@
 // The settings screen (SPEC §10.5): an overlay opened from the title's Settings button, the battle's cog
 // (the battle pauses while it is open) and the run bar's cog. It holds sound (master, effects and
 // ambience volume, and mute), damage numbers, default speed, screen shake, UI scale, reduced motion and
-// color-blind assist. Every change saves at once, into the one settings record (src/app/settings.ts).
+// color-blind assist, with a live preview of the assist drawn the way the field draws it. Every change
+// saves at once, into the one settings record (src/app/settings.ts).
 // Esc closes it; while it is open, keys reach nothing behind it (S still mutes).
+import type { Content } from '../data/registry.ts';
 import type { Atlas } from '../render/atlas.ts';
+import { PREVIEW_COLS, PREVIEW_ROWS, drawAssistPreview } from '../render/assistPreview.ts';
+import { TILE } from '../render/renderer.ts';
 import type { DamageNumbers } from '../render/renderer.ts';
 import { h, toggleClass } from './h.ts';
 import { uiIcon } from './icons.ts';
@@ -42,6 +46,8 @@ export interface SettingsScreenOptions {
 
 type Option<K extends keyof ScreenSettings> = [ScreenSettings[K], string];
 const pct = (v: number) => `${Math.round(v * 100)}%`;
+/** The assist preview's scale: three screen px per native px. */
+const PREVIEW_SCALE = 3;
 
 let openScreen: { close(): void } | null = null;
 
@@ -51,7 +57,7 @@ export function closeSettings(): void { openScreen?.close(); }
 export function settingsOpen(): boolean { return openScreen !== null; }
 
 /** Opens the screen over whatever is showing; returns its overlay (already on the page). */
-export function openSettings(atlas: Atlas, store: SettingsStore, sound: SoundPrefs, opts: SettingsScreenOptions): HTMLElement {
+export function openSettings(content: Content, atlas: Atlas, store: SettingsStore, sound: SoundPrefs, opts: SettingsScreenOptions): HTMLElement {
   openScreen?.close();
   const current = store.get();
   const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -62,12 +68,13 @@ export function openSettings(atlas: Atlas, store: SettingsStore, sound: SoundPre
     const hintEl = h('span', { class: 'set-hint' });
     const buttons = options.map(([value, text]) => {
       const b = h('button', {
-        class: 'btn', 'data-value': String(value), 'aria-pressed': 'false',
+        class: 'btn', 'data-value': String(value), 'aria-pressed': 'false', 'data-sfx': 'ui-toggle',
         ...(key === 'damageNumbers' ? { 'data-numbers': String(value) } : {}),
         onclick: () => {
           current[key] = value;
           store.set({ [key]: value } as Partial<ScreenSettings>);
-          sync();
+          // every row and the preview: a new scale changes the scale hint, the assist redraws the preview
+          for (const f of syncs) f();
         },
       }, text);
       return [value, b] as const;
@@ -89,12 +96,30 @@ export function openSettings(atlas: Atlas, store: SettingsStore, sound: SoundPre
   const scaleHint = () => {
     const fit = fitScale();
     const now = pct(uiScale());
-    if (current.uiScale === 'auto') return fit < 1 ? `Now ${now}: shrunk to fit this window.` : `Now ${now}. Fits windows smaller than 1280×720.`;
-    return current.uiScale > fit ? `Now ${now}: this window fits up to ${pct(fit)}.` : `Now ${now}, for big screens.`;
+    if (current.uiScale === 'auto') return fit < 1 ? `Now ${now}, shrunk to fit this window.` : `Now ${now}. Auto shrinks the game to fit windows smaller than 1280×720.`;
+    return current.uiScale > fit ? `Now ${now}: this window fits up to ${pct(fit)}.` : `Now ${now}: everything larger, for big screens.`;
   };
   const motionHint = () => current.reducedMotion === 'system'
     ? `Follows your device, which ${systemReducedMotion() ? 'asks' : 'doesn’t ask'} for less motion.`
     : current.reducedMotion === 'on' ? 'No screen wipes, drift, tilt or shake; fades stay short.' : 'Full motion, whatever your device asks.';
+
+  // the assist's preview: a strip of field drawn as the field draws it, with the assist on or off
+  const previewArt = h('canvas', {
+    class: 'preview-art', 'aria-hidden': 'true', width: PREVIEW_COLS * TILE, height: PREVIEW_ROWS * TILE,
+    style: `width:${PREVIEW_COLS * TILE * PREVIEW_SCALE}px;height:${PREVIEW_ROWS * TILE * PREVIEW_SCALE}px`,
+  });
+  const previewTug = h('div', { class: 'tugbar', style: `--cols:${PREVIEW_COLS}` }, h('div', { class: 'p', style: 'width:50%' }), h('div', { class: 'e', style: 'width:50%' }));
+  const preview = h('figure', { class: 'set-preview', id: 'assist-preview', role: 'img' },
+    previewArt, previewTug,
+    h('figcaption', null, h('span', { class: 'p' }, 'Your units'), h('span', { class: 'e' }, 'Gray Rot units')));
+  syncs.push(() => {
+    drawAssistPreview(previewArt, content, atlas, current.colorAssist);
+    preview.dataset.assist = String(current.colorAssist);
+    preview.setAttribute('aria-label', current.colorAssist
+      ? 'Preview: your units stand on light rings, the Gray Rot’s on dark dashed bars'
+      : 'Preview: your units and the Gray Rot’s, told apart by cap color and mat');
+  });
+  syncs[syncs.length - 1]!();
 
   const close = () => {
     if (openScreen !== handle) return;
@@ -135,8 +160,9 @@ export function openSettings(atlas: Atlas, store: SettingsStore, sound: SoundPre
           choice('reducedMotion', 'Reduced motion', [['system', 'System'], ['on', 'On'], ['off', 'Off']], motionHint),
           choice('colorAssist', 'Color-blind assist', [[false, 'Off'], [true, 'On']],
             () => (current.colorAssist
-              ? 'On: a light ring under your units, a dark dashed bar under theirs, and bolder textures on the mats and the tug bar.'
-              : 'Adds a shape under every unit and bolder faction textures, so the sides never rely on color.'))),
+              ? 'A light ring under your units, a dark dashed bar under theirs, and bolder textures on the mats and the territory bar.'
+              : 'Adds a shape under every unit and bolder faction textures, so the sides never rely on color.')),
+          preview),
         h('p', { class: 'set-note' }, 'Changes save as you make them, for the game and every battle. Save export and a profile reset arrive with the profile (Milestone 6).'))),
   );
   const overlay = h('div', { class: 'overlay settings-overlay' }, card);

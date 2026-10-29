@@ -32,10 +32,76 @@ export interface View {
   timeMs: number;
 }
 
-const factionOf = (side: Side): Faction => (side === 'player' ? 'velvet-bloom' : 'gray-rot');
+export const factionOf = (side: Side): Faction => (side === 'player' ? 'velvet-bloom' : 'gray-rot');
+/** A faction's mycelial mat colors (data/factions/<id>/faction.json). */
+export interface FactionMat { base: string; strand: string; glow: string }
 const INK_DEEP = '#120a16';
 /** Color-blind assist: where the Gray Rot's ash tufts sit in a mat tile (each is a dark stroke with a pale tip). */
 const TUFTS: readonly [number, number][] = [[2, 2], [9, 1], [13, 6], [5, 8], [11, 12], [1, 12], [7, 14]];
+
+/**
+ * A 16×16 tile of hyphae strands in the faction's strand colour over a translucent base. Under the
+ * color-blind assist the Bloom's strands are lighter and the Rot's are dark ash tufts.
+ */
+export function matTile(m: FactionMat, side: Side, assist: boolean): HTMLCanvasElement {
+  const c = document.createElement('canvas');
+  c.width = TILE; c.height = TILE;
+  const g = c.getContext('2d')!;
+  g.globalAlpha = assist ? 0.5 : 0.42;
+  g.fillStyle = m.base;
+  g.fillRect(0, 0, TILE, TILE);
+  g.globalAlpha = 1;
+  if (assist && side === 'enemy') {
+    // ash tufts: short dark strokes with pale tips, nothing like the Bloom's light wandering strands
+    for (const [x, y] of TUFTS) {
+      g.fillStyle = INK_DEEP;
+      g.fillRect(x, y, 1, 3);
+      g.fillRect(x + 1, y + 1, 1, 2);
+      g.fillStyle = m.glow;
+      g.fillRect(x, y, 1, 1);
+    }
+    return c;
+  }
+  // a few wandering strands, deterministic per side; under the assist the Bloom's are lighter
+  g.fillStyle = assist ? m.glow : m.strand;
+  g.globalAlpha = assist ? 0.5 : 1;
+  let seed = side === 'player' ? 7 : 13;
+  const rnd = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
+  for (let s = 0; s < 3; s++) {
+    let x = Math.floor(rnd() * TILE), y = Math.floor(rnd() * TILE);
+    for (let i = 0; i < 14; i++) {
+      g.fillRect(x, y, 1, 1);
+      x = (x + (rnd() < 0.6 ? 1 : 0) + TILE) % TILE;
+      y = (y + (rnd() < 0.5 ? 1 : -1) + TILE) % TILE;
+    }
+  }
+  g.globalAlpha = 1;
+  g.fillStyle = m.glow;
+  g.fillRect(Math.floor(rnd() * TILE), Math.floor(rnd() * TILE), 1, 1);
+  return c;
+}
+
+/**
+ * Color-blind assist: a mark under a unit's feet that peeks out either side of the sprite. The Velvet
+ * Bloom's is a light lilac ring; the Gray Rot's is a dark bar with pale dashes along its foot.
+ */
+export function teamMark(g: CanvasRenderingContext2D, cx: number, footY: number, w: number, side: Side): void {
+  const half = Math.max(5, Math.round(w / 2) + 1);
+  const x0 = cx - half, x1 = cx + half - 1;
+  if (side === 'player') {
+    g.fillStyle = INK_DEEP;
+    g.fillRect(x0, footY + 2, x1 - x0 + 1, 1);
+    g.fillStyle = '#c9a2ff';
+    g.fillRect(x0, footY - 1, 1, 2);
+    g.fillRect(x1, footY - 1, 1, 2);
+    g.fillRect(x0 + 1, footY + 1, x1 - x0 - 1, 1);
+  } else {
+    g.fillStyle = INK_DEEP;
+    g.fillRect(x0, footY, x1 - x0 + 1, 3);
+    g.fillStyle = '#b8c4a8';
+    for (let x = x0 + 1; x < x1; x += 3) g.fillRect(x, footY + 2, 1, 1);
+  }
+}
 
 export class Renderer {
   readonly canvas: HTMLCanvasElement;
@@ -93,44 +159,8 @@ export class Renderer {
     return this.content.factions[factionOf(side)]!.mat;
   }
 
-  /** A 16×16 tile of hyphae strands in the faction's strand colour over a translucent base. */
   private makeMatTile(side: Side): HTMLCanvasElement {
-    const c = document.createElement('canvas');
-    c.width = TILE; c.height = TILE;
-    const g = c.getContext('2d')!;
-    const m = this.mat(side);
-    g.globalAlpha = this.assist ? 0.5 : 0.42;
-    g.fillStyle = m.base;
-    g.fillRect(0, 0, TILE, TILE);
-    g.globalAlpha = 1;
-    if (this.assist && side === 'enemy') {
-      // ash tufts: short dark strokes with pale tips, nothing like the Bloom's light wandering strands
-      for (const [x, y] of TUFTS) {
-        g.fillStyle = INK_DEEP;
-        g.fillRect(x, y, 1, 3);
-        g.fillRect(x + 1, y + 1, 1, 2);
-        g.fillStyle = m.glow;
-        g.fillRect(x, y, 1, 1);
-      }
-      return c;
-    }
-    // a few wandering strands, deterministic per side; under the assist the Bloom's are lighter
-    g.fillStyle = this.assist ? m.glow : m.strand;
-    g.globalAlpha = this.assist ? 0.5 : 1;
-    let seed = side === 'player' ? 7 : 13;
-    const rnd = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
-    for (let s = 0; s < 3; s++) {
-      let x = Math.floor(rnd() * TILE), y = Math.floor(rnd() * TILE);
-      for (let i = 0; i < 14; i++) {
-        g.fillRect(x, y, 1, 1);
-        x = (x + (rnd() < 0.6 ? 1 : 0) + TILE) % TILE;
-        y = (y + (rnd() < 0.5 ? 1 : -1) + TILE) % TILE;
-      }
-    }
-    g.globalAlpha = 1;
-    g.fillStyle = m.glow;
-    g.fillRect(Math.floor(rnd() * TILE), Math.floor(rnd() * TILE), 1, 1);
-    return c;
+    return matTile(this.mat(side), side, this.assist);
   }
 
   private drawSprite(g: CanvasRenderingContext2D, id: string, faction: Faction, frame: number, x: number, y: number, flip = false): void {
@@ -295,7 +325,7 @@ export class Renderer {
       const w = Math.round(r.w * scale), hgt = Math.round(r.h * scale);
       const dx = Math.round(this.sx(x) - r.ax * scale), dy = Math.round(y * TILE - r.ay * scale);
       if (u.tier === 3) this.elderAura(this.sx(x), y * TILE, w, this.mat(u.side).glow, t + u.id * 37);
-      if (this.assist) this.teamMark(Math.round(this.sx(x)), Math.round(y * TILE), w, u.side);
+      if (this.assist) teamMark(g, Math.round(this.sx(x)), Math.round(y * TILE), w, u.side);
       g.drawImage(this.atlas.canvas as CanvasImageSource, r.x, r.y, r.w, r.h, dx, dy, w, hgt);
       if (u.id === view.selected) {
         g.strokeStyle = '#ffe9a8';
@@ -530,29 +560,6 @@ export class Renderer {
     g.ellipse(cx, footY - 1, w * 0.55, 3.5, 0, 0, Math.PI * 2);
     g.fill();
     g.globalAlpha = 1;
-  }
-
-  /**
-   * Color-blind assist: a mark under a unit's feet that peeks out either side of the sprite. The Velvet
-   * Bloom's is a light lilac ring; the Gray Rot's is a dark bar with pale dashes along its foot.
-   */
-  private teamMark(cx: number, footY: number, w: number, side: Side): void {
-    const g = this.ctx;
-    const half = Math.max(5, Math.round(w / 2) + 1);
-    const x0 = cx - half, x1 = cx + half - 1;
-    if (side === 'player') {
-      g.fillStyle = INK_DEEP;
-      g.fillRect(x0, footY + 2, x1 - x0 + 1, 1);
-      g.fillStyle = '#c9a2ff';
-      g.fillRect(x0, footY - 1, 1, 2);
-      g.fillRect(x1, footY - 1, 1, 2);
-      g.fillRect(x0 + 1, footY + 1, x1 - x0 - 1, 1);
-    } else {
-      g.fillStyle = INK_DEEP;
-      g.fillRect(x0, footY, x1 - x0 + 1, 3);
-      g.fillStyle = '#b8c4a8';
-      for (let x = x0 + 1; x < x1; x += 3) g.fillRect(x, footY + 2, 1, 1);
-    }
   }
 
   /** "Merge off" status glyph: a knot struck through. */

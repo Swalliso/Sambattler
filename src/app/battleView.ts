@@ -194,7 +194,7 @@ export class BattleView {
     this.session.paused = true;
     this.settingsShown = true;
     this.settingsBtn.setAttribute('aria-expanded', 'true');
-    openSettings(this.atlas, settingsStore, soundPrefs, {
+    openSettings(this.session.content, this.atlas, settingsStore, soundPrefs, {
       paused: this.session.state.phase === 'live',
       onClose: () => {
         this.settingsShown = false;

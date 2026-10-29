@@ -699,8 +699,17 @@ kbd { font-family: var(--font-mono); font-size: 12px; line-height: 16px; padding
 .set-section .sound-ctl.inline { gap: var(--space-3); }
 .set-section .sound-ctl.inline .sound-mute { box-shadow: var(--shadow-bevel); }
 .set-section .sound-row { grid-template-columns: 76px 1fr 30px; font-size: 13px; }
+/* the assist's preview: a strip of field at 3×, a territory bar under it, and a word for each side */
+.set-preview { align-self: flex-start; display: flex; flex-direction: column; gap: var(--space-2); margin: 0; padding: var(--space-3); background: var(--well); border: 1px solid var(--line); border-radius: var(--radius-md); }
+.set-preview .preview-art { display: block; image-rendering: pixelated; image-rendering: crisp-edges; border-radius: var(--radius-xs); }
+.set-preview .tugbar { height: 8px; }
+.set-preview figcaption { display: flex; justify-content: space-between; font: 700 12px/16px var(--font-text); letter-spacing: .06em; text-transform: uppercase; }
+.set-preview figcaption .p { color: var(--lilac); }
+.set-preview figcaption .e { color: var(--rot-light); }
 .set-note { margin: auto 0 0; font-size: 12px; line-height: 16px; color: var(--muted); }
 .settingscard .btn:hover:not(:disabled) { border-color: var(--lilac); }
+.settings-head > .btn:hover, .set-section .sound-mute:hover { box-shadow: var(--shadow-bevel), var(--shadow-glow); }
+.settings-head > .btn, .set-section .sound-mute { transition: box-shadow 120ms ease-out, border-color 120ms ease-out; }
 
 /* ---- screen changes (src/ui/motion.ts): a veil of the void rises on a band of spores, then lifts off the new screen ---- */
 .spore-wipe { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 25; image-rendering: pixelated; image-rendering: crisp-edges; cursor: progress; }

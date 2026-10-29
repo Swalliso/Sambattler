@@ -1057,7 +1057,7 @@ Milestone 1 needs only Battle (with deploy) and a simple end screen.
 **Settings screen as built (docs/ui-ux-plan.md, Phase 3).** An overlay sheet that opens from the title's Settings button, the battle's cog (the battle pauses while it is open, and the sheet says so) and the run bar's cog. Esc, Close or a press on the scrim closes it; while it is open, keys reach nothing behind it (except `S`, which still mutes) and Tab stays inside. The speakers keep their quick mute. Two columns:
 - **Sound:** mute, and master, effects and ambience volume (§13.9).
 - **Battle:** damage numbers (off, big hits, all), default speed (1×, 2×, 3×: each battle runs at it once it begins) and screen shake (off or on).
-- **Display and motion:** UI scale (auto, or 125%, 150%, 175% or 200% for big screens; a step never lays the page out below 1280×720, so a window too small for it gets the largest scale that fits), reduced motion (system, on, off) and color-blind assist (off, on).
+- **Display and motion:** UI scale (auto, or 125%, 150%, 175% or 200% for big screens; a step never lays the page out below 1280×720, so a window too small for it gets the largest scale that fits), reduced motion (system, on, off) and color-blind assist (off, on), with a live preview under it: a strip of field at 3× with two units a side and a territory bar, drawn the way the field draws them, so turning the assist on shows its marks at once.
 
 Every change saves at once into the one settings record, `spore-sprawl/settings/v1` (through `storageKey()`, so the dev site keeps its own); a record saved before a field existed loads with that field's default, and a value the game doesn't know falls back to the default.
 
