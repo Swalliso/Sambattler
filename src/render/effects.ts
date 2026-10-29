@@ -1,16 +1,17 @@
 // Fixed-capacity ring buffer of short-lived visual effects (SPEC §13.6): hit sparks tinted by
-// effectiveness, death puffs, building rubble, spawn puffs, merge pops, damage numbers and heals. Entries
-// are reused, never allocated after construction.
+// effectiveness, death puffs, building rubble, spawn puffs, merge pops, damage numbers, heals and coin
+// pops. Entries are reused, never allocated after construction.
 import { GLYPH_H, pixelText, textWidth } from './pixelText.ts';
 
 /**
  * kind: 1 strong spark, 2 normal spark, 3 weak spark, 4/5 death puff (player/enemy), 6 rubble,
  * 7 spawn puff, 8 merge pop (flag = tier, value = 0 player / 1 enemy), 9 damage number
- * (flag = 1 strong / 2 normal / 3 weak, value = amount), 10 heal plus
+ * (flag = 1 strong / 2 normal / 3 weak, value = amount), 10 heal plus, 11 coin pop (flag = 0 player /
+ * 1 enemy, value = gold)
  */
 interface Fx { kind: number; x: number; y: number; t0: number; flag: number; value: number }
 
-const LIFE = [0, 220, 160, 140, 380, 380, 600, 300, 1100, 650, 450];
+const LIFE = [0, 220, 160, 140, 380, 380, 600, 300, 1100, 650, 450, 1000];
 const NUMBER_COLOR = ['', '#f0c85a', '#ffffff', '#a39cab'];
 
 export class Effects {
@@ -100,6 +101,22 @@ export class Effects {
           }
           g.globalAlpha = k < 0.75 ? 1 : (1 - k) / 0.25;
           pixelText(g, text, x - textWidth(text) / 2, y - 18 - Math.round(k * 8), color);
+          g.globalAlpha = 1;
+          break;
+        }
+        case 11: { // coin pop: a pixel coin and "+N" rising off an economy building; the enemy's dimmed
+          const text = `+${e.value}`;
+          const left = x - Math.round((8 + textWidth(text)) / 2), top = y - 4 - Math.round(k * 10);
+          g.globalAlpha = (k < 0.7 ? 1 : (1 - k) / 0.3) * (e.flag ? 0.5 : 1);
+          g.fillStyle = '#120a16';
+          g.fillRect(left + 1, top, 5, 7); g.fillRect(left, top + 1, 7, 5);
+          g.fillStyle = '#b07d1c';
+          g.fillRect(left + 2, top + 1, 3, 5); g.fillRect(left + 1, top + 2, 5, 3);
+          g.fillStyle = '#f0c85a';
+          g.fillRect(left + 2, top + 2, 3, 3);
+          g.fillStyle = '#fff3b0';
+          g.fillRect(left + 2, top + 2, 1, 1);
+          pixelText(g, text, left + 8, top + 1, '#f0c85a');
           g.globalAlpha = 1;
           break;
         }

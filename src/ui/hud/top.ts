@@ -14,6 +14,7 @@ import type { Intent } from '../doctrine.ts';
 export class TopBand {
   readonly el: HTMLElement;
   private gold = h('b', { id: 'hud-gold' });
+  private goldStat: HTMLElement;
   private income = h('span', { class: 'sub', id: 'hud-income' });
   private supply = h('b', { id: 'hud-supply' });
   private wave = h('b', { id: 'hud-wave' });
@@ -33,10 +34,11 @@ export class TopBand {
     const general = ctl.kind === 'general' ? content.generals[ctl.id] : undefined;
     const portrait = spriteToCanvas(atlas, general?.sprite ?? 'g-scripted', 'gray-rot');
     const enemyName = general ? general.name : ctl.kind === 'bot' ? `Bot: ${ctl.id}` : 'Gray Rot (idle)';
+    this.goldStat = h('span', { class: 'stat', title: 'Gold (and projected income per minute)' }, h('span', { class: 'icon' }, '◆'), this.gold, this.income);
     this.el = h('header', { class: 'top' },
       h('div', { class: 'stats' },
         h('div', { class: 'statrow' },
-          h('span', { class: 'stat', title: 'Gold (and projected income per minute)' }, h('span', { class: 'icon' }, '◆'), this.gold, this.income),
+          this.goldStat,
           h('span', { class: 'stat', title: 'Supply used / cap' }, h('span', { class: 'icon' }, '⬢'), this.supply),
           h('span', { class: 'stat', title: 'Wave and battle clock' }, h('span', { class: 'icon' }, '⧗'), h('span', null, 'Wave '), this.wave, this.clock),
           h('span', { class: 'stat', title: 'Sporestorm stacks: units +10% damage, turrets −10%, Heartcaps take +10% each' }, h('span', { class: 'icon' }, '☁'), h('span', null, 'Storm '), this.storm),
@@ -80,6 +82,13 @@ export class TopBand {
         h('span', { class: 'countdown', id: 'hud-countdown' }, wavesText(i.pending.waves)));
       this.warning.dataset.kind = i.pending.kind;
     }
+  }
+
+  /** Pulses the gold counter as income lands, matching the coin pops on the field. */
+  bump(): void {
+    this.goldStat.classList.remove('bump');
+    void this.goldStat.offsetWidth; // restart the animation
+    this.goldStat.classList.add('bump');
   }
 
   update(state: BattleState): void {

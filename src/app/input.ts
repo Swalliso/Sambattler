@@ -1,5 +1,6 @@
 // Mouse and keyboard (SPEC §10.3). Everything becomes a Session change or a queued command.
 import { unitRadius } from '../sim/world.ts';
+import { trayOrder } from '../ui/buildingInfo.ts';
 import type { BattleView } from './battleView.ts';
 import type { Session } from './session.ts';
 
@@ -69,7 +70,7 @@ export function bindInput(session: Session, view: BattleView, hooks: InputHooks)
       return;
     }
     if (/^[1-9]$/.test(ev.key)) {
-      const id = s.sides.player.kit[Number(ev.key) - 1];
+      const id = trayOrder(session.content, s.sides.player.kit)[Number(ev.key) - 1];
       if (id) view.pick(id);
       return;
     }

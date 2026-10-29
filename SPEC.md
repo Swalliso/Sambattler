@@ -940,8 +940,8 @@ Each feat is a data record: `id`, `name`, `description`, `scope` (`battle` or `r
 │                        BATTLEFIELD  (canvas, pixel-scaled)                      │
 │                                                                                 │
 ├──────────────┬─────────────────────────────────────────────────┬───────────────┤
-│ (Q) POWER    │ [1] Burrow 110  [2] Capguard 150  [3] Gill 150  │ INSPECT       │
-│  ◔ ready 0:34│ [4] Rootbreaker 200 [5] Mortar 160 [6] Cellar   │ Capguard Hall │
+│ (Q) POWER    │ [1] Cellar 150  [2] Burrow 110  [3] Capguard 150│ INSPECT       │
+│  ◔ ready 0:34│ [4] Gill 150 [5] Rootbreaker 200 [6] Mortar 160 │ Capguard Hall │
 │ 1× 2× 3×  ❚❚ │                                                 │ merge ON [M]  │
 │              │                                                 │ sell 90 [X]   │
 └──────────────┴─────────────────────────────────────────────────┴───────────────┘
@@ -951,11 +951,13 @@ Each feat is a data record: `id`, `name`, `description`, `scope` (`battle` or `r
   - gold with its per-minute rate, supply used/cap, wave number and clock, Sporestorm stacks
   - a territory tug bar with column counts
   - the **General's Intent** panel at the top right
-- **Callout lane:** transient banners centered above the battlefield. At most 3 show at once, each for 2.5 s, in priority order: counter warnings > building lost > Heartcap under attack > column flipped > merges.
+- **Callout lane:** transient banners centered above the battlefield. At most 3 show at once, each for 2.5 s (tips 6 s), in priority order: counter warnings > building lost > Heartcap under attack > tips > column flipped > merges.
+  - **Battle-1 economy tip** (playtest 2026-10-28): in battle 1 only, if the player has no economy building built, queued or being placed 30 s after Begin, a tip names the first economy card and its hotkey, and the economy cards pulse for 12 s or until one is placed. It fires at most once.
 - **Heartcap HP** is pinned at each end of the battlefield.
 - **Bottom band:**
   - commander power and speed/pause controls (left)
-  - the building tray (center): each card shows its hotkey, sprite, base price, spawn summary and a matrix hint, and greys out when unaffordable
+  - the building tray (center): cards are grouped by role, economy first, then army, defense and utility, each group in kit order; the `1`–`9` hotkeys follow this order. Each card shows its hotkey, sprite, base price, a colored role tag (Economy, Army, Defense, Utility) and a one-line summary, and greys out when unaffordable. Hovering a card, or focusing it from the keyboard, shows a tooltip with the description, output, unit stats, matchups (strong vs, weak vs, armor), merge perks and, for economy, the payback time. Stats come from the compiled side, so upgrades and relics show.
+  - the gold counter pulses whenever income lands
   - the inspect panel (right)
 - **Deploy phase:** the same layout, with a large **Begin** button and the starting gold. The general's opener appears when you press Begin, so both sides place blind.
 - **Draft overlay:** the battlefield dims, and three large cards show type, rarity, effect text and an "owned: X" context line. Reroll shows its cost; Skip shows "+40 gold".
@@ -1424,6 +1426,7 @@ Commands from input are queued with `tick = state.tick + 1`. Headless tools call
   5. projectiles and sparks
   6. overlays: placement ghost, ranges, debug
 - **Animation:** 2-frame walk cycles at 4 fps, an attack frame on attack events, 2-frame idle for buildings, a spawn puff.
+- **Coin pops:** on each income tick, every economy building that paid out shows a pixel coin and "+N" rising off it (the enemy's at half opacity). The amount is the change in the building's `goldByBuilding` total, so the renderer never recomputes income and the sim's events and hashes are unchanged.
 - **Effects** use a fixed-capacity ring buffer (512).
 - **No camera:** the whole map is always visible.
 
