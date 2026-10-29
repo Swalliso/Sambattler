@@ -282,7 +282,7 @@ button { font: inherit; color: inherit; }
 
 /* ---- the tray: one row of full cards, or two rows of compact ones (Tray.fit) ---- */
 .tray { display: grid; grid-template-columns: repeat(var(--n), minmax(88px, 108px)); grid-template-rows: 100%; gap: 6px; justify-content: start; min-width: 0; padding-top: 2px; }
-.tray.compact { grid-template-columns: repeat(var(--cols), minmax(0, 150px)); grid-template-rows: repeat(2, minmax(0, 1fr)); }
+.tray.compact { grid-template-columns: repeat(var(--cols), minmax(0, 150px)); grid-template-rows: repeat(2, minmax(0, 1fr)); column-gap: 4px; }
 .card.economy, .role.economy { --role: var(--role-economy); }
 .card.spawner, .role.spawner { --role: var(--role-army); }
 .card.tower, .role.tower { --role: var(--role-defense); }
@@ -303,7 +303,7 @@ button { font: inherit; color: inherit; }
 .card .price { height: 21px; line-height: 18px; padding: 0 6px 0 3px; background: var(--well); border: 1px solid var(--gold-deep); border-radius: var(--radius-pill); }
 .card .price canvas { width: 16px; height: 16px; }
 .card .art { flex: none; width: 64px; height: 64px; image-rendering: pixelated; image-rendering: crisp-edges; }
-.card .name { min-height: 30px; display: flex; align-items: center; justify-content: center; font: 700 13px/15px var(--font-text); }
+.card .name { min-height: 30px; align-self: stretch; margin: 0 -3px; display: flex; align-items: center; justify-content: center; font: 700 13px/15px var(--font-text); }
 /* the summary's slot is two lines tall on every card, so names, tags and summaries line up along the tray */
 .card .out { min-height: 28px; font-size: 12px; line-height: 14px; color: var(--muted); max-width: 100%; }
 /* unlit: you can't afford it. The sprite desaturates, the price turns red and a bar fills toward it */
@@ -317,11 +317,12 @@ button { font: inherit; color: inherit; }
 .card.poor .price { color: var(--danger); border-color: var(--danger-line); }
 .card.poor::before { filter: saturate(.35) brightness(.8); }
 /* compact: two rows; the sprite at 1× beside the key and price, then the name, the role and the output (or what you need) */
-.tray.compact .card { display: grid; grid-template-columns: 32px minmax(0, 1fr); grid-template-rows: auto 32px 14px 14px 12px; column-gap: 5px; row-gap: 2px; align-items: center; align-content: start; padding: 0 5px 3px; text-align: left; }
-.tray.compact .card::before { grid-column: 1 / -1; height: 5px; margin-bottom: 0; }
+/* side padding is 3 px so the longest names (about 103 px at 1280) keep a few pixels to spare on every platform */
+.tray.compact .card { display: grid; grid-template-columns: 32px minmax(0, 1fr); grid-template-rows: auto 32px 14px 14px 12px; column-gap: 5px; row-gap: 2px; align-items: center; align-content: start; padding: 0 3px 3px; text-align: left; }
+.tray.compact .card::before { grid-column: 1 / -1; height: 5px; margin: 0 -3px; }
 .tray.compact .art { grid-row: 2; width: 32px; height: 32px; }
 .tray.compact .head { grid-row: 2; grid-column: 2; height: 22px; }
-.tray.compact .name { grid-column: 1 / -1; display: block; min-height: 0; font-size: 12px; line-height: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tray.compact .name { grid-column: 1 / -1; display: block; min-height: 0; margin: 0; font-size: 12px; line-height: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tray.compact .role { grid-column: 1 / -1; justify-self: start; }
 .tray.compact .out, .tray.compact .need { grid-column: 1 / -1; min-height: 0; font-size: 12px; line-height: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tray.compact .need { flex-direction: row; justify-content: flex-start; }

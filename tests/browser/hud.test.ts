@@ -70,9 +70,14 @@ describe('the tray', () => {
         return {
           compact: tray.classList.contains('compact'), scroll: tray.scrollWidth - tray.clientWidth, tray: r(tray),
           band: r(document.querySelector('footer.bottom')!),
-          cards: [...tray.querySelectorAll('.card')].map((c) => ({
+          cards: [...tray.querySelectorAll<HTMLElement>('.card')].map((c) => ({
             box: r(c),
-            clipped: c.scrollHeight > c.clientHeight + 0.5 || [...c.querySelectorAll('.name, .role, .out, .price')].some((e) => e.scrollWidth > e.clientWidth + 0.5),
+            // what overflows, by name, so a failure says where
+            clipped: [
+              ...(c.scrollHeight > c.clientHeight + 0.5 ? [`${c.dataset.building} card ${c.scrollHeight}/${c.clientHeight}`] : []),
+              ...[...c.querySelectorAll('.name, .role, .out, .price')].filter((e) => e.scrollWidth > e.clientWidth + 0.5)
+                .map((e) => `${c.dataset.building} .${e.className} ${e.scrollWidth}/${e.clientWidth}`),
+            ],
           })),
         };
       });
@@ -82,7 +87,7 @@ describe('the tray', () => {
       for (const c of m.cards) {
         expect(inside(c.box, m.tray)).toBe(true);
         expect(inside(c.box, m.band)).toBe(true);
-        expect(c.clipped).toBe(false);
+        expect(c.clipped).toEqual([]);
       }
     });
   }
