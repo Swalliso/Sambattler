@@ -1,14 +1,15 @@
 // Entry point: reads URL parameters, loads and validates content, and opens a scene. Milestone 3
 // adds the run (route, drafts, spoils, events, Grove, summary) alongside the single-battle scenes:
 // battle and deploy play one battle, report plays it out headlessly and opens on its report.
-// With no scene (and no battle parameters) the page opens on the title, the front door to the run.
+// With no scene (and no battle parameters) the page opens on the title, the front door to the run;
+// New run goes through the Underroot (`scene=underroot`), where the commander and bans are chosen.
 // `scene=sounds` is the sound board, a tool for auditioning data/sounds.json.
 import '../ui/styles.css';
 import { bakeAtlas } from '../render/atlas.ts';
 import { createRun, currentRow, loadRun, MemoryStorage, runForScene } from '../run/index.ts';
 import type { RunState } from '../run/index.ts';
 import {
-  MILESTONE, createBattle, createFromScenario, makeConfig, parseController, queueCommand, runHeadless,
+  DEFAULT_COMMANDER, MILESTONE, autoPowerTarget, createBattle, createFromScenario, makeConfig, parseController, queueCommand, runHeadless,
 } from '../sim/index.ts';
 import type { BattleState, Content } from '../sim/index.ts';
 import { h } from '../ui/h.ts';
@@ -16,6 +17,9 @@ import { helpOverlay } from '../ui/help.ts';
 import { applyMotion, sporeWipe } from '../ui/motion.ts';
 import { installUiScale, setUiScale } from '../ui/scale.ts';
 import { titleScreen } from '../ui/screens/title.ts';
+import { underrootScreen } from '../ui/screens/underroot.ts';
+import type { UnderrootTab } from '../ui/screens/underroot.ts';
+import { sporeLayer } from '../render/spores.ts';
 import { closeSettings, openSettings, settingsButton, settingsOpen } from '../ui/settingsScreen.ts';
 import { BattleView } from './battleView.ts';
 import { BUILD_SHA, DEV_SITE } from './channel.ts';
@@ -27,15 +31,18 @@ import { parseParams } from './urlParams.ts';
 import type { Params } from './urlParams.ts';
 import { BrowserStorage, RunController } from './run.ts';
 import { Session } from './session.ts';
-import { loadSettings, onSettings, settingsStore } from './settings.ts';
+import { loadSettings, markTipShown, onSettings, settingsStore, tipsShown } from './settings.ts';
 import { installSound, soundEnabled, soundPrefs } from './sound.ts';
 import { soundBoard } from './soundBoard.ts';
 
 const BATTLE_SCENES = new Set(['battle', 'deploy', 'report']);
 const RUN_SCENES = new Set(['run', 'route', 'draft', 'summary']);
+const UNDERROOT = 'underroot';
 /** Tools that aren't part of the game: `sounds` is the sound board for auditioning the sound set. */
 const TOOL_SCENES = new Set(['sounds']);
 const TITLE = 'title';
+/** The Underroot's first-time tip, remembered with the battle tips (spore-sprawl/tips/v1). */
+const UNDERROOT_TIP = 'underroot';
 const errors: string[] = [];
 window.addEventListener('error', (e) => errors.push(String(e.message)));
 window.addEventListener('unhandledrejection', (e) => errors.push(String(e.reason)));
@@ -83,8 +90,9 @@ function installDisplaySettings(): void {
 function boot(): void {
   installDisplaySettings();
   const params = parseParams(location.search);
-  if (params.scene !== TITLE && !BATTLE_SCENES.has(params.scene) && !RUN_SCENES.has(params.scene) && !TOOL_SCENES.has(params.scene)) {
-    fatal(`scene=${params.scene} is not part of Milestone ${MILESTONE} (only ${[TITLE, ...BATTLE_SCENES, ...RUN_SCENES, ...TOOL_SCENES].join(', ')} exist yet).`);
+  const known = params.scene === TITLE || params.scene === UNDERROOT || BATTLE_SCENES.has(params.scene) || RUN_SCENES.has(params.scene) || TOOL_SCENES.has(params.scene);
+  if (!known) {
+    fatal(`scene=${params.scene} is not part of Milestone ${MILESTONE} (only ${[TITLE, UNDERROOT, ...BATTLE_SCENES, ...RUN_SCENES, ...TOOL_SCENES].join(', ')} exist yet).`);
     return;
   }
   for (const problem of params.flagProblems) console.warn(`${problem}; ignored`);
@@ -109,7 +117,7 @@ function boot(): void {
   const atlas = bakeAtlas(content);
   const engine = installSound(content, soundEnabled({ test: params.test, force: params.sound }));
   if (params.scene === 'sounds') soundBoard(content, atlas, engine);
-  else if (params.scene === TITLE) openTitle(content, atlas, params);
+  else if (params.scene === TITLE || params.scene === UNDERROOT) openTitle(content, atlas, params);
   else if (RUN_SCENES.has(params.scene)) startRun(content, atlas, params);
   else start(content, atlas, params, params.seed ?? randomSeed());
 }
@@ -135,19 +143,46 @@ function rulesState(content: Content): BattleState {
 function openTitle(content: Content, atlas: ReturnType<typeof bakeAtlas>, params: Params): void {
   const { persist, storage } = runStorage(params);
   let ctl: RunController | null = null;
+  let where = params.scene === UNDERROOT ? UNDERROOT : TITLE;
   const bridge = params.debug || params.test
-    ? installBridge({ get scene() { return ctl ? 'run' : TITLE; }, battle: () => ctl?.battleState ?? null, run: () => ctl?.run ?? null }, errors)
+    ? installBridge({ get scene() { return ctl ? 'run' : where; }, battle: () => ctl?.battleState ?? null, run: () => ctl?.run ?? null }, errors)
     : null;
   const ready = () => { if (bridge) bridge.ready = true; };
-  /** Opens a run: the saved one, or (with `freshSeed`) a new one, saved at once. */
-  const play = (run: RunState, freshSeed?: number) => {
+  /** Opens a run: the saved one, or (`fresh`) a new one from the Underroot, saved at once. */
+  const play = (run: RunState, fresh = false) => {
     closeHelp();
-    ctl = new RunController({ content, atlas, storage, persist, debug: params.debug, still: params.test, newSeed: randomSeed, toTitle: show }, run);
+    ctl?.stop();
+    ctl = new RunController({ content, atlas, storage, persist, debug: params.debug, still: params.test, newSeed: randomSeed, toTitle: show, setup: () => openSetup() }, run);
     ctl.onFrame = ready;
     ctl.pendingTicks = params.ticks;
-    if (freshSeed !== undefined) ctl.newRun(freshSeed);
+    if (fresh) ctl.start(run);
     else ctl.show();
   };
+  /** The Underroot (SPEC §8.1): choose a commander and bans, then Begin run; Back returns to the title. */
+  const openSetup = (tab: UnderrootTab = 'commanders') => sporeWipe(() => {
+    ctl?.stop();
+    ctl = null;
+    where = UNDERROOT;
+    closeHelp();
+    closeSettings();
+    document.querySelectorAll('.overlay').forEach((o) => o.remove());
+    const settings = loadSettings();
+    const tip = settings.tips && !tipsShown().has(UNDERROOT_TIP);
+    if (tip) markTipShown(UNDERROOT_TIP);
+    const screen = underrootScreen(content, atlas, {
+      tab, tip, choice: { commander: DEFAULT_COMMANDER, bans: [] },
+      begin: (choice) => {
+        const seed = params.seed ?? randomSeed();
+        play(createRun(content, { seed, commander: choice.commander, bans: choice.bans }), true);
+      },
+      back: show,
+    });
+    screen.prepend(h('div', { class: 'run-sky', 'aria-hidden': 'true' }));
+    document.getElementById('app')!.replaceChildren(screen);
+    requestAnimationFrame(() => sporeLayer(screen.querySelector<HTMLElement>('.run-sky')!, { scale: 3, density: 1.2, still: params.test }));
+    screen.querySelector<HTMLElement>('.commander-card.on')?.focus({ preventScroll: true });
+    requestAnimationFrame(ready);
+  });
   let help: HTMLElement | null = null;
   const closeHelp = () => { help?.remove(); help = null; };
   const openHelp = () => {
@@ -160,7 +195,9 @@ function openTitle(content: Content, atlas: ReturnType<typeof bakeAtlas>, params
   /** Back from a run, the title arrives behind a spore wipe (the page's first screen appears at once). */
   function show(): void { sporeWipe(render); }
   function render(): void {
+    ctl?.stop();
     ctl = null;
+    where = TITLE;
     closeSettings();
     document.querySelectorAll('.overlay').forEach((o) => o.remove());
     const saved = persist ? loadRun(storage) : null;
@@ -171,8 +208,7 @@ function openTitle(content: Content, atlas: ReturnType<typeof bakeAtlas>, params
       } : {}),
       newRun: () => {
         if (saved && !saved.outcome && !window.confirm('Start a new run? Your saved run will be lost.')) return;
-        const seed = params.seed ?? randomSeed();
-        play(createRun(content, { seed }), seed);
+        openSetup();
       },
       help: openHelp,
       settings: settingsButton(atlas, openSettingsScreen, 'Settings'),
@@ -185,7 +221,8 @@ function openTitle(content: Content, atlas: ReturnType<typeof bakeAtlas>, params
     if (ctl || settingsOpen()) return;
     if (help && (e.key === 'Escape' || e.key === 'h' || e.key === 'H')) { e.preventDefault(); closeHelp(); }
   });
-  show();
+  if (params.scene === UNDERROOT) openSetup(params.tab);
+  else show();
 }
 
 /**
@@ -238,6 +275,11 @@ function start(content: Content, atlas: ReturnType<typeof bakeAtlas>, params: Pa
     runHeadless(state, { until: params.ticks, onTick: (s) => view.log.onTick(s) });
   }
   session.paused = params.paused;
+  if (params.targeting && session.toggleTargeting()) {
+    // `targeting=1` (screenshots): aim where the auto policy would, or at the middle of the field
+    const p = state.config.player.power ? autoPowerTarget(state, 'player') : null;
+    session.aim = p?.x !== undefined ? { x: p.x, y: p.y! } : { x: state.map.width / 2, y: state.map.height / 2 };
+  }
   view.fit();
   const loop = new GameLoop(session, view);
   const unbind = bindInput(session, view, {

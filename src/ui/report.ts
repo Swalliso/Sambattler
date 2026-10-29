@@ -9,7 +9,7 @@ import type { Atlas } from '../render/atlas.ts';
 import { spriteToCanvas } from '../render/atlas.ts';
 import { sporeLayer } from '../render/spores.ts';
 import type { BattleState, Side } from '../sim/index.ts';
-import { formatClock } from '../sim/index.ts';
+import { POWER_SOURCE_ID, formatClock } from '../sim/index.ts';
 import { columnsOwned } from '../sim/world.ts';
 import { h } from './h.ts';
 import { uiIcon } from './icons.ts';
@@ -126,12 +126,32 @@ function rewardsRow(atlas: Atlas | undefined, gold: number, rewards: ReportRewar
       h('small', null, `${Math.round(rewards.amberChance * 100)}% chance of +1 Amber`)) : null);
 }
 
-/** Damage per building type (turrets as their own row), largest first. */
+/** What dealt damage under a damage-by-building key: a building type, the Heartcap turrets or the commander power. */
+function sourceType(st: BattleState['stats']['player'], id: string): string {
+  return id === '0' ? 'turret' : id === String(POWER_SOURCE_ID) ? 'power' : st.buildingTypes[id] ?? '?';
+}
+
+/** The side's commander power by name, for its damage row. */
+function powerName(state: BattleState, side: Side): string {
+  const id = state.config[side].power;
+  return `${(id && state.library.powers?.[id]?.name) ?? 'Commander power'} (power)`;
+}
+
+/** What the player's power did this battle: uses, and its damage, columns or trios. */
+function powerLine(state: BattleState): string {
+  const st = state.stats.player;
+  const def = state.library.powers?.[state.config.player.power ?? ''];
+  const uses = st.powerUses ?? 0;
+  const what = def?.kind === 'surge' ? `${st.powerCaptures ?? 0} columns` : def?.kind === 'bloom' ? `${st.powerMerges ?? 0} trios` : `${st.powerDamage ?? 0} damage`;
+  return `${uses}× · ${what}`;
+}
+
+/** Damage per building type (turrets and the commander power as their own rows), largest first. */
 export function damageByType(content: Content, state: BattleState, side: Side): { label: string; value: number }[] {
   const st = state.stats[side];
   const byType = new Map<string, { value: number; count: number }>();
   for (const [id, dmg] of Object.entries(st.damageByBuilding)) {
-    const type = id === '0' ? 'turret' : st.buildingTypes[id] ?? '?';
+    const type = sourceType(st, id);
     const cur = byType.get(type) ?? { value: 0, count: 0 };
     cur.value += dmg;
     byType.set(type, cur);
@@ -142,7 +162,8 @@ export function damageByType(content: Content, state: BattleState, side: Side): 
   }
   return [...byType.entries()]
     .map(([type, { value, count }]) => ({
-      label: type === 'turret' ? 'Heartcap turrets' : `${content.buildings[type]?.name ?? type}${count > 1 ? ` ×${count}` : ''}`,
+      label: type === 'turret' ? 'Heartcap turrets' : type === 'power' ? powerName(state, side)
+        : `${content.buildings[type]?.name ?? type}${count > 1 ? ` ×${count}` : ''}`,
       value,
     }))
     .sort((a, b) => b.value - a.value || (a.label < b.label ? -1 : 1));
@@ -163,12 +184,12 @@ export function counterSection(content: Content, state: BattleState): HTMLElemen
   return h('section', { id: 'report-counters' }, h('h3', null, `${name} countered…`), h('ul', { class: 'counterlist' }, ...lines));
 }
 
-/** The building type that dealt the most damage (Heartcap turrets aside), its count and its share of the side's damage. */
+/** The building type that dealt the most damage (Heartcap turrets and the power aside), its count and its share of the side's damage. */
 export interface Mvp { type: string; value: number; count: number; share: number }
 
 export function mvpOf(damage: Record<string, number>, counts: Record<string, number> = {}): Mvp | null {
   const total = Object.values(damage).reduce((a, b) => a + b, 0);
-  const best = Object.entries(damage).filter(([id]) => id !== 'turret').sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1))[0];
+  const best = Object.entries(damage).filter(([id]) => id !== 'turret' && id !== 'power').sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1))[0];
   if (!best || best[1] <= 0) return null;
   return { type: best[0], value: best[1], count: counts[best[0]] ?? 1, share: best[1] / Math.max(1, total) };
 }
@@ -178,7 +199,7 @@ export function damageTotals(state: BattleState, side: Side): { damage: Record<s
   const st = state.stats[side];
   const damage: Record<string, number> = {};
   for (const [id, dmg] of Object.entries(st.damageByBuilding)) {
-    const type = id === '0' ? 'turret' : st.buildingTypes[id] ?? '?';
+    const type = sourceType(st, id);
     damage[type] = (damage[type] ?? 0) + dmg;
   }
   const counts: Record<string, number> = {};
@@ -265,6 +286,7 @@ export function battleReport(content: Content, state: BattleState, actions: { ag
           row('Lost', (s) => st[s].unitsLost),
           row('Buildings built / lost', (s) => `${st[s].buildingsBuilt} / ${st[s].buildingsLost}`),
           row('Heartcap HP', (s) => `${state.sides[s].heartcapHp} / ${state.sides[s].heartcapMaxHp}`),
+          st.player.powerUses !== undefined ? row(powerName(state, 'player').replace(' (power)', ' used'), (s) => (s === 'player' ? powerLine(state) : '—')) : null,
         ),
       ),
     ),

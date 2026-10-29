@@ -16,9 +16,10 @@ export function bindInput(session: Session, view: BattleView, hooks: InputHooks)
   canvas.addEventListener('mousemove', (ev) => {
     const t = view.tileAt(ev);
     session.hover = { col: t.col, row: t.row };
+    session.aim = { x: t.x, y: t.y };
     session.shift = ev.shiftKey;
   });
-  canvas.addEventListener('mouseleave', () => { session.hover = null; });
+  canvas.addEventListener('mouseleave', () => { session.hover = null; session.aim = null; });
   canvas.addEventListener('contextmenu', (ev) => {
     ev.preventDefault();
     cancel();
@@ -27,6 +28,11 @@ export function bindInput(session: Session, view: BattleView, hooks: InputHooks)
     session.shift = ev.shiftKey;
     const t = view.tileAt(ev);
     session.hover = { col: t.col, row: t.row };
+    if (session.targeting) {
+      session.aim = { x: t.x, y: t.y };
+      if (!session.firePower()) sfx('illegal');
+      return;
+    }
     if (session.placing) {
       if (!session.placeAtGhost()) sfx('illegal');
       return;
@@ -35,7 +41,8 @@ export function bindInput(session: Session, view: BattleView, hooks: InputHooks)
   });
 
   function cancel(): void {
-    if (session.placing) session.placing = null;
+    if (session.targeting) session.targeting = false;
+    else if (session.placing) session.placing = null;
     else session.selected = null;
     view.inspect.resetConfirm();
   }
@@ -111,6 +118,7 @@ export function bindInput(session: Session, view: BattleView, hooks: InputHooks)
         if (session.selected !== null) session.toggleMerge(session.selected);
         break;
       case 'f': case 'F': session.toggleAllStances(); break;
+      case 'q': case 'Q': view.togglePower(); break;
       case 'h': case 'H': view.toggleHelp(); break;
       case 'r': case 'R': view.top.kit.toggle(); break;
       case 'i': case 'I': view.top.focusChips(); break;

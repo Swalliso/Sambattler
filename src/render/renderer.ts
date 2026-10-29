@@ -25,6 +25,9 @@ export const BIG_HIT = 30;
 export type DamageNumbers = 'off' | 'big' | 'all';
 
 export interface Ghost { buildingId: string; col: number; row: number; legal: boolean }
+/** The commander power's aim while targeting: a point and radius, or the lanes a global power would take. */
+export interface Reticle { x: number; y: number; radius: number; valid: boolean }
+export interface PowerAim { reticle: Reticle | null; lanes: number[] | null; pending: { x: number; y: number; radius: number }[] }
 export interface View {
   ghost: Ghost | null;
   /** While placing: 1 per map tile (row-major) where the building could go, drawn as a soft lilac grid. */
@@ -33,6 +36,8 @@ export interface View {
   pending: Command[];
   debug: boolean;
   timeMs: number;
+  /** The power's reticle or lane highlights while targeting, and power uses queued but not yet run. */
+  power?: PowerAim | null;
 }
 
 export const factionOf = (side: Side): Faction => (side === 'player' ? 'velvet-bloom' : 'gray-rot');
@@ -238,6 +243,10 @@ export class Renderer {
       else if (e.t === 'healed') this.effects.add(10, e.x, e.y, now, 0);
       else if (e.t === 'buildingDestroyed') this.effects.add(6, e.col + 1, e.row + 1, now, 0);
       else if (e.t === 'income') this.coinPops(state, e.side, now);
+      else if (e.t === 'power' && e.x !== undefined && e.y !== undefined) {
+        const def = state.library.powers?.[e.power];
+        this.effects.add(12, e.x, e.y, now, e.side === 'player' ? 0 : 1, def && def.target === 'point' ? def.radius : 2);
+      }
       else if (e.t === 'spawned') {
         const u = state.units.find((x) => x.id === e.id);
         if (u) this.effects.add(7, u.x, u.y, now, 0);
@@ -380,6 +389,7 @@ export class Renderer {
     }
 
     if (view.ghost) this.drawGhost(view.ghost, state);
+    if (view.power) this.drawPowerAim(view.power, state, t);
     if (view.debug) this.drawDebug(state, view);
   }
 
@@ -660,6 +670,65 @@ export class Renderer {
     g.strokeRect(x + 0.5, y + 0.5, def.w * TILE - 1, def.h * TILE - 1);
     const a = def.attack;
     if (a) this.ring(gh.col + def.w / 2, gh.row + def.h / 2, a.range, '#c9a2ff');
+  }
+
+  /**
+   * The commander power while aiming (SPEC §10.3): a reticle (crosshair and the radius ring, pulsing
+   * lilac, red where it can't fire) at the cursor, or for a global power a wash over each frontier column
+   * it would take; and a dashed ring on each use queued while paused.
+   */
+  private drawPowerAim(aim: PowerAim, state: BattleState, t: number): void {
+    const g = this.ctx;
+    if (aim.lanes) {
+      g.fillStyle = '#c9a2ff';
+      for (const li of aim.lanes) {
+        const L = state.lanes[li]!;
+        const top = L.rowStart * TILE, h = (L.rowEnd + 1 - L.rowStart) * TILE;
+        const x = this.sx(L.pBorder + 1);
+        g.globalAlpha = 0.18 + 0.1 * Math.sin(t / 160);
+        g.fillRect(x, top, TILE, h);
+        g.globalAlpha = 0.9;
+        g.fillRect(x, top, 1, h);
+        g.fillRect(x + TILE - 1, top, 1, h);
+      }
+      g.globalAlpha = 1;
+    }
+    const r = aim.reticle;
+    if (r) {
+      const color = r.valid ? '#c9a2ff' : '#e0645a';
+      const cx = Math.round(this.sx(r.x)), cy = Math.round(r.y * TILE), rad = r.radius * TILE;
+      // a soft wash that breathes, inside a steady 2 px ring with a dark edge so it reads on any ground
+      g.fillStyle = color;
+      g.globalAlpha = 0.1 + 0.05 * Math.sin(t / 140);
+      g.beginPath();
+      g.arc(cx, cy, rad, 0, Math.PI * 2);
+      g.fill();
+      g.globalAlpha = 0.7;
+      g.strokeStyle = '#120a16';
+      g.lineWidth = 4;
+      g.beginPath();
+      g.arc(cx, cy, rad, 0, Math.PI * 2);
+      g.stroke();
+      g.globalAlpha = 1;
+      g.strokeStyle = color;
+      g.lineWidth = 2;
+      g.stroke();
+      g.lineWidth = 1;
+      // the crosshair: four ticks around a centre dot
+      g.fillRect(cx, cy, 1, 1);
+      g.fillRect(cx - 6, cy, 4, 1);
+      g.fillRect(cx + 3, cy, 4, 1);
+      g.fillRect(cx, cy - 6, 1, 4);
+      g.fillRect(cx, cy + 3, 1, 4);
+    }
+    g.strokeStyle = '#c9a2ff';
+    g.setLineDash([3, 3]);
+    for (const p of aim.pending) {
+      g.beginPath();
+      g.arc(Math.round(this.sx(p.x)) + 0.5, Math.round(p.y * TILE) + 0.5, p.radius * TILE, 0, Math.PI * 2);
+      g.stroke();
+    }
+    g.setLineDash([]);
   }
 
   ring(cx: number, cy: number, r: number, color: string): void {

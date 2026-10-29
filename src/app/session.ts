@@ -2,8 +2,10 @@
 // placement). Player input becomes ordinary tick-stamped commands (SPEC §13.5).
 import type { Content } from '../data/registry.ts';
 import {
-  footprintOnLoam, legalPlacements, nextCommandTick, placementProblem, priceAt, depthOf, queueCommand,
+  bloomTrios, burstPreview, footprintOnLoam, legalPlacements, nextCommandTick, placementProblem, powerOf, powerProblem, priceAt, depthOf,
+  queueCommand, surgeLanes,
 } from '../sim/index.ts';
+import type { PowerDef } from '../data/schema.ts';
 import type { BattleState, Command, CommandBody } from '../sim/index.ts';
 import { laneOfRow } from '../sim/world.ts';
 import { loadSettings } from './settings.ts';
@@ -28,6 +30,10 @@ export class Session {
   hover: { col: number; row: number } | null = null;
   selected: number | null = null;
   shift = false;
+  /** Aiming the commander power (`Q` or the HUD button, then a click; SPEC §6.6). */
+  targeting = false;
+  /** The cursor in world tiles (fractional), for the power's reticle. */
+  aim: { x: number; y: number } | null = null;
   private legalKey = '';
   private legalMask: Uint8Array | null = null;
 
@@ -95,6 +101,62 @@ export class Session {
     const lanes = this.state.lanes.map((_, i) => i);
     const allHeld = lanes.every((i) => this.stanceShown(i));
     for (const i of lanes) if (this.stanceShown(i) === allHeld) this.toggleStance(i);
+  }
+
+  /** The player's commander power in this battle, if any. */
+  power(): PowerDef | undefined {
+    return powerOf(this.state, 'player');
+  }
+
+  /** A power use queued but not yet run (paused, or before the next tick). */
+  powerPending(): boolean {
+    return this.pending().some((c) => c.type === 'power');
+  }
+
+  /** True if the power can be aimed now: live, ready and not already queued. */
+  powerReady(): boolean {
+    const s = this.state;
+    return !!this.power() && s.phase === 'live' && s.sides.player.powerCooldown === 0 && !this.powerPending();
+  }
+
+  /** Starts (or stops) aiming the power; returns false if it can't be aimed now. Placing stops. */
+  toggleTargeting(): boolean {
+    if (this.targeting) { this.targeting = false; return true; }
+    if (!this.powerReady()) return false;
+    this.targeting = true;
+    this.placing = null;
+    return true;
+  }
+
+  /**
+   * What the power would do at the aim right now: for a point power, the targets (Spore Burst) or trios
+   * (Puppet Bloom) inside the reticle and whether it may fire there; for a global one, the lanes it takes.
+   */
+  powerPreview(): { valid: boolean; count: number; lanes: number[] | null; reason: string | null } {
+    const def = this.power();
+    if (!def) return { valid: false, count: 0, lanes: null, reason: 'no power' };
+    const s = this.state;
+    if (def.target === 'global') {
+      const lanes = surgeLanes(s, 'player');
+      return { valid: lanes.length > 0, count: lanes.length, lanes, reason: lanes.length ? null : 'every frontier column has an enemy building on it' };
+    }
+    const at = this.aim;
+    if (!at) return { valid: false, count: 0, lanes: null, reason: 'aim at the field' };
+    const reason = powerProblem(s, 'player', at);
+    const count = def.kind === 'burst' ? burstPreview(s, 'player', def, at.x, at.y).targets : bloomTrios(s, 'player', at.x, at.y, def.radius).trios.length;
+    return { valid: !reason, count, lanes: null, reason };
+  }
+
+  /** Uses the power at the aim (or globally); the command runs on the next tick. */
+  firePower(): boolean {
+    const def = this.power();
+    if (!def || !this.targeting) return false;
+    const p = this.powerPreview();
+    if (!p.valid) return false;
+    if (def.target === 'point') this.issue({ type: 'power', x: this.aim!.x, y: this.aim!.y });
+    else this.issue({ type: 'power' });
+    this.targeting = false;
+    return true;
   }
 
   /** Gold left after pending placements execute. */

@@ -44,7 +44,19 @@ export function relicBadge(content: Content, atlas: Atlas, id: string): HTMLElem
 /** The strip at the top of every run screen: Heartcap, Spores, Amber, battles won, the kit and the relics. */
 export function runBar(content: Content, atlas: Atlas, run: RunState): HTMLElement {
   const pct = run.heartcap.hp / run.heartcap.max;
+  const cmd = content.commanders[run.commander];
+  const portrait = cmd ? spriteToCanvas(atlas, cmd.sprite, 'velvet-bloom') : null;
+  if (portrait) portrait.className = 'portrait';
+  // the commander, with its passive, power and bans in a tooltip (hover or focus)
+  const commander = cmd ? h('div', { class: 'rb-commander relic', tabindex: 0, id: 'run-commander', 'aria-label': `${cmd.name}: ${cmd.passive.text} ${cmd.power.name}: ${cmd.power.text}` },
+    portrait, h('span', null, h('b', null, cmd.name.split(' ')[0]!), h('small', null, cmd.power.name)),
+    h('span', { class: 'relic-tip', role: 'tooltip' },
+      h('span', { class: 'tip-head' }, h('b', null, cmd.name)),
+      h('span', null, h('b', null, 'Passive: '), cmd.passive.text),
+      h('span', null, h('b', null, `${cmd.power.name} (Q): `), cmd.power.text),
+      h('span', { class: 'muted' }, run.bans.length ? `Banned: ${run.bans.map((b) => content.buildings[b]?.name ?? b).join(', ')}` : 'No bans'))) : null;
   return h('header', { class: 'runbar', id: 'runbar' },
+    commander,
     h('div', { class: `rb-heart${pct < 1 / 3 ? ' low' : ''}`, title: 'Your Heartcap: it carries its damage from battle to battle' },
       uiIcon(atlas, 'i-heart'),
       h('div', { class: 'rb-hp' },

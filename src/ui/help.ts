@@ -66,6 +66,8 @@ export function helpOverlay(content: Content, state: BattleState, onClose: () =>
     [caps(['S']), 'sound on or off'],
   ];
   if (r.stance) keys.push([caps(['F']), `hold every lane, or advance them all (a hold lasts up to ${r.stance.maxHoldTicks / r.tickRate} s)`]);
+  const power = state.config.player.power ? state.library.powers?.[state.config.player.power] : undefined;
+  if (power) keys.push([caps(['Q']), `aim ${power.name}, then click the field (works while paused; Esc cancels)`]);
   keys.push([caps(['R']), 'your relics and upgrades'], [caps(['I']), 'read the top band: Tab moves along gold, supply, wave and storm']);
   // the economy and the Sporestorm in plain words (playtest round 3: "what is interest?")
   const cs = state.compiled.player;
