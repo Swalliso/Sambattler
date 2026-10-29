@@ -588,6 +588,27 @@
         "................",
         "................"
       ]
+     ]},
+    {"id": "i-settings", "w": 16, "h": 16, "anchor": [0, 0], "palette": {".": null, "k": "#1a1020", "v": "#8a4fd8", "l": "#c9a2ff", "d": "#5a2f99", "s": "#e8d9b5", "t": "#b9a77f", "w": "#fbf6ff", "e": "#120a16", "r": "#d9534f", "o": "#f0b44c", "y": "#f0c85a", "b": "#b8862f", "g": "#7be0a0", "h": "#3f9e68", "a": "#9fd3ff", "m": "#5d6b7a", "n": "#cfd3dc"},
+     "frames": [
+      [
+        ".......kk.......",
+        "......kwsk......",
+        "...kk.kssk.kk...",
+        "..kwwksssskssk..",
+        "..kwwssssssssk..",
+        "...kssssssssk...",
+        ".kkssskkkksttkk.",
+        "kwssssk..ktttttk",
+        "ksssssk..ktttttk",
+        ".kkssskkkktttkk.",
+        "...kssstttttk...",
+        "..kssstttttttk..",
+        "..ksskttttkttk..",
+        "...kk.kttk.kk...",
+        "......kttk......",
+        ".......kk......."
+      ]
      ]}
   ]
 }

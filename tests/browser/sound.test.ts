@@ -85,7 +85,7 @@ describe('sound', () => {
     await expect.poll(() => page!.locator('.sound-mute').getAttribute('aria-pressed')).toBe('true');
     const saved = JSON.parse((await page.evaluate(() => localStorage.getItem('spore-sprawl/settings/v1')))!);
     expect(saved).toEqual({ damageNumbers: 'big', masterVolume: 0.6, sfxVolume: 0.8, ambientVolume: 0.5, muted: true });
-    expect(await page.locator('#numbers-btn').textContent()).toBe('Numbers: big hits');
+    expect(await page.locator('#numbers [data-numbers="big"]').getAttribute('aria-pressed')).toBe('true');
 
     // S unmutes, and that persists too
     await page.keyboard.press('s');

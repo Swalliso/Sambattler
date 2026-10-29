@@ -1,6 +1,7 @@
 // window.__GAME__ (SPEC §15.6), installed only with ?debug=1 or ?test=1: { ready, scene, tick, hash,
-// summary(), errors[] }. Lets Playwright compare the browser's state hash with Node's: the battle's
-// hash while a battle is on screen, otherwise the run state's.
+// summary(), run(), battle(), errors[] }. Lets Playwright compare the browser's state hash with Node's:
+// the battle's hash while a battle is on screen, otherwise the run state's. battle() hands browser tests
+// the live state to stage a HUD case (a smaller kit, less gold); a test that changes it gives up the hash.
 import { hashRun } from '../run/index.ts';
 import type { RunState } from '../run/index.ts';
 import { hashState, summarize } from '../sim/index.ts';
@@ -21,6 +22,8 @@ export interface GameBridge {
   readonly hash: string;
   summary(): BattleSummary | null;
   run(): RunBrief | null;
+  /** The live battle state, for screenshot staging only (changing it breaks the hash check). */
+  battle(): BattleState | null;
   errors: string[];
 }
 
@@ -46,6 +49,7 @@ export function installBridge(src: BridgeSources, errors: string[]): GameBridge 
       return r ? hashRun(r) : '';
     },
     summary: () => { const b = src.battle(); return b ? summarize(b) : null; },
+    battle: () => src.battle(),
     run: () => {
       const r = src.run();
       if (!r) return null;

@@ -49,11 +49,13 @@ for (const [width, height] of [[1366, 650], [1024, 600]] as const) {
       const box = (await page.locator('#battlefield').boundingBox())!;
       const at = (col: number, row: number) => ({ x: box.x + ((col + 2.5) * box.width) / 36, y: box.y + ((row + 0.5) * box.height) / 8 });
 
-      // hovering: the ghost tip sits just right of the hovered 2×2 footprint
+      // hovering: the ghost tip sits just right of the hovered 2×2 footprint (columns 20–21), inside the field
       await page.locator('[data-building="sporelingBurrow"]').click();
       await page.mouse.move(at(20, 5).x, at(20, 5).y);
       const tip = (await page.locator('#ghost-tip').boundingBox())!;
-      expect(Math.abs(tip.x - (box.x + ((20 + 3) * box.width) / 36 + 14 * ui))).toBeLessThan(1.5);
+      expect(Math.abs(tip.x - (box.x + ((20 + 2 + 2) * box.width) / 36 + 14 * ui))).toBeLessThan(1.5);
+      expect(tip.y).toBeGreaterThanOrEqual(box.y);
+      expect(tip.y + tip.height).toBeLessThanOrEqual(box.y + box.height + 0.5);
 
       // placing and inspecting: the building lands under the mouse and a click on it selects it
       await page.mouse.click(at(1, 5).x, at(1, 5).y);

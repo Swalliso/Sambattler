@@ -933,41 +933,47 @@ Each feat is a data record: `id`, `name`, `description`, `scope` (`battle` or `r
 ### 10.2 Battle screen layout
 
 ```
-┌──────────────────────────────────────────────────────────────┬──────────────────┐
-│ ◆ 245 (+212/min)   ⬢ 38/60   ⧗ Wave 4 · 3:42   ☁ Storm 0    │ GENERAL'S INTENT │
-│ territory ▓▓▓▓▓▓▓▓▓▓▓▓▓░░░░░░▒▒▒▒▒▒▒▒▒▒▒▒   13 : 11 columns  │ ☻ Lichen Baron   │
-│                                                              │ ⚠ SWARM · 1 wave │
-├──────────────────────────────────────────────────────────────┴──────────────────┤
-│                   [ callout lane: "Column 13 claimed" ]                         │
-│ ♥ 2710/3000                                                      ♥ 1650/2000    │
-│                                                                                 │
-│                        BATTLEFIELD  (canvas, pixel-scaled)                      │
-│                                                                                 │
-├──────────────┬─────────────────────────────────────────────────┬───────────────┤
-│ (Q) POWER    │ [1] Cellar 150  [2] Burrow 110  [3] Capguard 150│ INSPECT       │
-│  ◔ ready 0:34│ [4] Gill 150 [5] Rootbreaker 200 [6] Mortar 160 │ Capguard Hall │
-│ 1× 2× 3×  ❚❚ │                                                 │ merge ON [M]  │
-│              │                                                 │ sell 90 [X]   │
-└──────────────┴─────────────────────────────────────────────────┴───────────────┘
+┌─────────────────┬─────────────────────────────────────────┬───────────────────┬────────────────────┐
+│ ♥ YOUR HEARTCAP │ (◆ 245 +212/min)  (⬢ 38/60 supply)      │ GRAY ROT HEART ♥  │ GENERAL'S INTENT   │
+│   2710/3000     │ (⧗ Wave 4 3:42)  (☁ Storm 0)            │       1650/2000   │ ☻ Lichen Baron     │
+│ ▓▓▓▓▓▓▓▓▓▓▓░░░  │ ▓▓▓▓▓▓▓▓▓▓▓▓|·:·:·:·:▒▒▒▒▒▒▒▒▒▒▒▒▒▒     │ ░░▒▒▒▒▒▒▒▒▒▒▒▒▒   │ Watching your army │
+│                 │ 13 columns     territory    11 columns  │                   │ ⚠ SWARM ●● 2 waves │
+├─────────────────┴─────────────────────────────────────────┴───────────────────┴────────────────────┤
+│        [ callout lane: "Column 13 claimed" · pinned: deploy hint, "Paused" ]                       │
+│                                                                                                    │
+│                  BATTLEFIELD  (canvas, pixel-scaled, in its frame)                                 │
+│                                                                                                    │
+├────────────────┬──────────────────────────────────────────────────────────────┬────────────────────┤
+│ (Q) POWER      │ ╭──────╮╭──────╮╭──────╮╭──────╮                             │ INSPECT            │
+│ [Begin Enter]  │ │1  150││2  110││3  150││4  150│  …                          │ Capguard Hall      │
+│ (1× 2× 3× ❚❚)  │ │ art  ││ art  ││ art  ││ art  │                             │ merge ON [M]       │
+│ (▣|») Advancing│ │Cellar││Burrow││Capgd ││ Gill │                             │ sell 90 [X]        │
+│ spk cog Help H │ ╰──────╯╰──────╯╰──────╯╰──────╯                             │                    │
+└────────────────┴──────────────────────────────────────────────────────────────┴────────────────────┘
 ```
 
-- **Top band:**
-  - gold with its per-minute rate, supply used/cap, wave number and clock, Sporestorm stacks
-  - a territory tug bar with column counts
-  - the **General's Intent** panel at the top right
+- **Top band** (docs/ui-ux-plan.md, Phase 1b): the win condition frames it.
+  - **Your Heartcap** at the left end and **the Gray Rot's** at the right: the Heartcap's cap, its HP in the display face and a striped HP bar that drains toward the field's centre. Below a third of its HP, the number turns danger red.
+  - Between them, **stat chips** (a pixel icon, a tabular display-face number and a small word): gold with its per-minute rate, supply used/cap, wave number and clock, and Sporestorm stacks (lit lilac once the storm is on). The gold chip pulses whenever income lands.
+  - Under the chips, the **territory tug**: one bar per lane, a tick per column, your columns striped violet from the left, theirs striped ash from the right, unclaimed columns between, and a glowing lilac line at your frontier. Column counts sit under its ends.
+  - The **General's Intent** panel at the top right: the general's portrait at 3× (48 px), name and doctrine. When a counter is coming, a warning row names the kind and counts down in waves, with one lit pip per wave that pulses (still under `prefers-reduced-motion`).
 - **Callout lane:** transient banners centered above the battlefield. At most 3 show at once, each for 2.5 s (tips 6 s), in priority order: counter warnings > building lost > Heartcap under attack > tips > column flipped > merges.
   - **Battle-1 economy tip** (playtest 2026-10-28): in battle 1 only, if the player has no economy building built, queued or being placed 30 s after Begin, a tip names the first economy card and its hotkey, and the economy cards pulse for 12 s or until one is placed. It fires at most once.
-- **Heartcap HP** is pinned at each end of the battlefield.
+  - **Pinned callouts** come before the timed ones and stay until they no longer apply: the deploy hint, "Paused" while a live battle is paused, and a notice when a saved battle couldn't be restored. Nothing else sits on the field.
 - **Field frame** (docs/ui-ux-plan.md, Phase 1a): the void between the bands, above, below and beside the battlefield, is drawn as the earth the field sits in.
   - What it shows: a roots ceiling, a soil bed with each side's buried threads (lilac under your half, ash under theirs), roots down each side, and each Heartcap's crown rising into the ceiling.
   - How it's drawn: text sprites from `data/sprites/frame.json`, baked onto a canvas behind the field and the bands at the field's own pixel scale, with its pixels lined up with the field's. It stays darker than the field and takes no input.
   - **Ambient spores** drift across it, thicker with each Sporestorm stack. They move at the game's speed, stop while the battle is paused, held or over, and hold still under `prefers-reduced-motion` and `?test=1`.
 - **Bottom band:**
-  - commander power and speed/pause controls (left)
-  - the building tray (center): cards are grouped by role, economy first, then army, defense and utility, each group in kit order; the `1`–`9` hotkeys follow this order. Each card shows its hotkey, sprite, base price, a colored role tag (Economy, Army, Defense, Utility) and a one-line summary, and greys out when unaffordable. Hovering a card, or focusing it from the keyboard, shows a tooltip with the description, output, unit stats, matchups (strong vs, weak vs, armor), merge perks and, for economy, the payback time. Stats come from the compiled side, so upgrades and relics show.
-  - the gold counter pulses whenever income lands
-  - the inspect panel (right)
-- **Deploy phase:** the same layout, with a large **Begin** button and the starting gold. The general's opener appears when you press Begin, so both sides place blind.
+  - **Controls** (left): the commander power; **Begin** in deploy, then one segmented control for 1×, 2×, 3× and pause; a **Hold / Advance** switch per lane (the `i-hold` and `i-advance` icons, the lit one is the lane's stance) with its state and timer beside it ("Advancing", "Hold · 25 s", "Hold in 12 s"; a hold on cooldown is unlit); then the speaker (§13.9), the **settings** cog and Help. The settings popover holds the damage-numbers choice (§10.4) until the settings screen arrives (§10.5).
+  - **The building tray** (centre): cards are grouped by role, economy first, then army, defense and utility, each group in kit order; the `1`–`9` hotkeys follow this order.
+    - Each card has a cap-shaped band across its top in its role's colour, its hotkey, its base price as a gold chip, the building at 2× (64 px), its name, a role tag (Economy, Army, Defense, Utility) and a one-line summary (at most two lines).
+    - A card you can't afford is **unlit**: the sprite desaturates, the price turns danger red, and the summary becomes a bar filling toward the price and "need N". The name stays readable; nothing fades.
+    - Cards keep a card's width (88–108 px) however few there are. When they don't fit one row (14 cards at 1280 px), the tray turns **compact**: two rows of smaller cards with the sprite at 1× beside the hotkey and price, then the name, the role and the summary. The tray never clips a card or scrolls sideways.
+    - Hovering a card, or focusing it from the keyboard, shows a tooltip with the description, output, unit stats, matchups (strong vs, weak vs, armor), merge perks and, for economy, the payback time. Stats come from the compiled side, so upgrades and relics show.
+  - **The inspect panel** (right). Empty, it shows a short tip; the hotkeys live in Help.
+- **Deploy phase:** the same layout. **Begin** is the bottom band's one primary button, and the deploy hint with the starting gold is pinned in the callout lane, so the field stays clear for placing. The general's opener appears when you press Begin, so both sides place blind.
+- **Placing:** while a building is chosen, every tile of your mat where it could go gets a soft lilac grid (gold isn't considered; a hover you can't afford still says so). The ghost's tip sits beside its footprint inside the field, flipping to the left near the right edge, so it never covers the ghost, a band or the callout lane.
 - **Draft overlay:** the battlefield dims, and three large cards show type, rarity, effect text and an "owned: X" context line. Reroll shows its cost; Skip shows "+40 gold".
 
 ### 10.3 Controls
@@ -975,7 +981,7 @@ Each feat is a data record: `id`, `name`, `description`, `scope` (`battle` or `r
 | Input | Action |
 |---|---|
 | `1`–`9` or click a tray card | Choose a building to place |
-| Mouse move (placing) | The ghost snaps to the grid and shows legality (with a reason when illegal), the final price including surcharge, depth and the loam bonus |
+| Mouse move (placing) | Your legal tiles show a lilac grid. The ghost snaps to the grid and shows legality (with a reason when illegal), the final price including surcharge, depth and the loam bonus |
 | Left click (placing) | Place. Hold `Shift` to keep placing the same building. |
 | Right click / `Esc` | Cancel placement, or deselect |
 | Left click a building or unit | Inspect it |
@@ -985,14 +991,14 @@ Each feat is a data record: `id`, `name`, `description`, `scope` (`battle` or `r
 | `Space` | Pause or resume (every command still works while paused) |
 | `]` / `[` | Speed up or down (1× / 2× / 3×) |
 | `Tab` | Cycle through your buildings |
-| `F`, or a lane's Hold / Advance button | Hold every lane, or advance them all; the buttons toggle one lane (§5.2) |
+| `F`, or a lane's Hold / Advance switch | Hold every lane, or advance them all; the switch sets one lane (§5.2) |
 | `H` | Help overlay: matrix chart, tags, hotkeys |
 | `S`, or the speaker button | Sound on or off, anywhere in the game. Hovering or focusing the speaker opens the volume sliders (§13.9) |
 | `F3` | Debug overlay (only with `?debug=1`): column presence numbers, capture progress, aggro radii, ids |
 
 ### 10.4 Feedback rules (clean field, rich inspection)
 
-- **Damage numbers:** none by default. The setting offers *off*, *big hits only* and *all*.
+- **Damage numbers:** none by default. The setting offers *off*, *big hits only* and *all*; until the settings screen exists it lives in the battle's settings popover (the cog in the bottom band) and is saved with the other settings.
 - **HP bars:** shown only on damaged units and buildings; always shown on Heartcaps.
 - **Hit sparks** come in three tints by effectiveness class (§5.3):
   - *strong:* a large, bright gold spark
@@ -1881,7 +1887,7 @@ Script options: `--name <file>`, `--params "<query>"`, `--url <base>`, `--browse
 | `tab`, `profile` | Underroot tab; `profile=fixture:<name>` loads a test profile from `tests/fixtures/` |
 | `targeting`, `measure` | `targeting=1` opens power targeting; `measure=frames` records frame times into the bridge |
 
-**Bridge** (`window.__GAME__`, only with `debug=1` or `test=1`): `{ ready, tick, hash, summary(), errors[] }`.
+**Bridge** (`window.__GAME__`, only with `debug=1` or `test=1`): `{ ready, scene, tick, hash, summary(), run(), battle(), errors[] }`. `battle()` is the live state, for browser tests that stage a HUD case (a smaller kit, less gold); changing it gives up the hash check.
 
 **Assertions** the script makes before saving:
 

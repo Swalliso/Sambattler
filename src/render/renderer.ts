@@ -21,6 +21,8 @@ export type DamageNumbers = 'off' | 'big' | 'all';
 export interface Ghost { buildingId: string; col: number; row: number; legal: boolean }
 export interface View {
   ghost: Ghost | null;
+  /** While placing: 1 per map tile (row-major) where the building could go, drawn as a soft lilac grid. */
+  placeable?: Uint8Array | null;
   selected: number | null;
   pending: Command[];
   debug: boolean;
@@ -201,6 +203,7 @@ export class Renderer {
     this.bakeTerritory(state);
     g.drawImage(this.territory, 0, 0);
     this.drawCapture(state);
+    if (view.placeable) this.drawPlaceable(view.placeable, state.map.width);
     if (state.rules.stance) this.drawRally(state, t);
 
     // buildings
@@ -535,6 +538,29 @@ export class Renderer {
     g.fillText(text, x + 1, y + 1);
     g.fillStyle = color;
     g.fillText(text, x, y);
+  }
+
+  /** Your legal tiles while placing: a faint lilac wash with a grid line on every tile edge. */
+  private drawPlaceable(mask: Uint8Array, W: number): void {
+    const g = this.ctx;
+    const H = mask.length / W;
+    const on = (c: number, r: number) => c >= 0 && c < W && r >= 0 && r < H && mask[r * W + c] === 1;
+    g.fillStyle = '#c9a2ff';
+    g.globalAlpha = 0.08;
+    for (let r = 0; r < H; r++) for (let c = 0; c < W; c++) if (on(c, r)) g.fillRect(this.sx(c), r * TILE, TILE, TILE);
+    // each edge once: every legal tile draws its left and top edges, and its right and bottom ones at the border
+    g.globalAlpha = 0.34;
+    for (let r = 0; r < H; r++) {
+      for (let c = 0; c < W; c++) {
+        if (!on(c, r)) continue;
+        const x = this.sx(c), y = r * TILE;
+        g.fillRect(x, y, 1, TILE);
+        g.fillRect(x + 1, y, TILE - 1, 1);
+        if (!on(c + 1, r)) g.fillRect(x + TILE - 1, y + 1, 1, TILE - 1);
+        if (!on(c, r + 1)) g.fillRect(x + 1, y + TILE - 1, TILE - 2, 1);
+      }
+    }
+    g.globalAlpha = 1;
   }
 
   private drawGhost(gh: Ghost, state: BattleState): void {
