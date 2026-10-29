@@ -1,7 +1,7 @@
-// Callout lane (SPEC §10.2): at most 3 banners at once, each for 2.5 s (tips 6 s), in priority order:
-// counter warnings > building lost > Heartcap under attack > tips > column flipped > merges. Pinned
-// callouts (the deploy hint, "Paused", a save-recovery notice) stay until unpinned and come first, so the
-// field itself stays clear.
+// Callout lane (SPEC §10.2): at most 3 banners at once, each for 2.5 s (tips 6 s or as long as they ask),
+// in priority order: counter warnings > building lost > Heartcap under attack > tips > column flipped >
+// merges. Pinned callouts (the deploy hint, "Paused", a save-recovery notice) stay until unpinned and come
+// first, so the field itself stays clear. A callout's text may hold keycaps.
 import { h } from './h.ts';
 
 export type CalloutKind = 'counter' | 'buildingLost' | 'heartcap' | 'tip' | 'column' | 'merge' | 'info';
@@ -18,17 +18,25 @@ export class Callouts {
   private pinned = new Map<string, HTMLElement>();
   private lastHeartcap = -1e9;
 
-  push(kind: CalloutKind, text: string, tone: 'good' | 'bad' | '', now: number): void {
+  /** `content` is plain text, or text and keycaps; `life` overrides the kind's time on screen. */
+  push(kind: CalloutKind, content: string | (string | Node)[], tone: 'good' | 'bad' | '', now: number, life?: number): void {
     if (kind === 'heartcap') {
       if (now - this.lastHeartcap < 8000) return;
       this.lastHeartcap = now;
     }
+    const parts = typeof content === 'string' ? [content] : content;
+    const text = parts.map((p) => (typeof p === 'string' ? p : p.textContent ?? '')).join('');
     // replace an identical live callout instead of stacking duplicates
     const dup = this.items.find((i) => i.text === text);
     if (dup) { dup.t0 = now; return; }
-    const el = h('div', { class: `callout ${tone} ${kind}` }, text);
-    this.items.push({ kind, text, tone, t0: now, life: kind === 'tip' ? TIP_MS : LIFE_MS, el });
+    const el = h('div', { class: `callout ${tone} ${kind}` }, ...parts);
+    this.items.push({ kind, text, tone, t0: now, life: life ?? (kind === 'tip' ? TIP_MS : LIFE_MS), el });
     this.render();
+  }
+
+  /** Is a callout of this kind on screen (or waiting for room in the lane)? */
+  live(kind: CalloutKind): boolean {
+    return this.items.some((i) => i.kind === kind);
   }
 
   /** Shows `el` (a `.callout`) until unpin(key); pinning the same key again is a no-op. */

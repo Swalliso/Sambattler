@@ -1,7 +1,8 @@
 // The settings screen (SPEC §10.5): an overlay opened from the title's Settings button, the battle's cog
 // (the battle pauses while it is open) and the run bar's cog. It holds sound (master, effects and
-// ambience volume, and mute), damage numbers, default speed, screen shake, UI scale, reduced motion and
-// color-blind assist, with a live preview of the assist drawn the way the field draws it. Every change
+// ambience volume, and mute), damage numbers, default speed, spawn timers, screen shake, first-time tips
+// (with "Show tips again"), UI scale, reduced motion and color-blind assist, with a live preview of the
+// assist drawn the way the field draws it. Every change
 // saves at once, into the one settings record (src/app/settings.ts).
 // Esc closes it; while it is open, keys reach nothing behind it (S still mutes).
 import type { Content } from '../data/registry.ts';
@@ -31,11 +32,17 @@ export interface ScreenSettings {
   uiScale: UiScalePref;
   reducedMotion: MotionPref;
   colorAssist: boolean;
+  /** First-time tips in battles 1 and 2 (playtest round 3). */
+  tips: boolean;
+  /** A ring on each of your spawners showing time to its next spawn. */
+  spawnTimers: boolean;
 }
 
 export interface SettingsStore {
   get(): ScreenSettings;
   set(patch: Partial<ScreenSettings>): void;
+  /** "Show tips again": forgets which first-time tips were shown. */
+  resetTips?(): void;
 }
 
 export interface SettingsScreenOptions {
@@ -93,6 +100,22 @@ export function openSettings(content: Content, atlas: Atlas, store: SettingsStor
       h('div', { class: 'seg', role: 'group', 'aria-label': label, ...extra }, ...buttons.map(([, b]) => b)));
   }
 
+  // first-time tips, with a way to see them all again
+  let tipsReset = false;
+  const tipsRow = choice('tips', 'Tips', [[false, 'Off'], [true, 'On']],
+    () => (tipsReset ? 'Every tip will show again in your next battles.' : current.tips ? 'One-time tips in your first two battles of a run.' : 'No tips in battle.'));
+  if (store.resetTips) {
+    const seg = tipsRow.querySelector('.seg')!;
+    const again = h('button', { class: 'btn', id: 'tips-reset', 'data-sfx': 'ui-toggle', onclick: () => {
+      store.resetTips?.();
+      tipsReset = true;
+      for (const f of syncs) f();
+    } }, 'Show tips again');
+    const ctl = h('div', { class: 'set-ctl' });
+    seg.replaceWith(ctl);
+    ctl.append(seg, again);
+  }
+
   const scaleHint = () => {
     const fit = fitScale();
     const now = pct(uiScale());
@@ -137,6 +160,7 @@ export function openSettings(content: Content, atlas: Atlas, store: SettingsStor
     h('div', { class: 'settings-head' },
       h('h2', { id: 'settings-title' }, 'Settings'),
       opts.paused ? h('span', { class: 'set-paused', id: 'settings-paused' }, uiIcon(atlas, 'i-pause'), 'The battle is paused') : null,
+      h('p', { class: 'set-note' }, 'Changes save as you make them. Save export and a profile reset arrive with the profile (Milestone 6).'),
       closeBtn),
     h('div', { class: 'settings-grid' },
       h('div', { class: 'settings-col' },
@@ -151,6 +175,8 @@ export function openSettings(content: Content, atlas: Atlas, store: SettingsStor
             { id: 'numbers' }),
           choice('defaultSpeed', 'Default speed', [[1, '1×'], [2, '2×'], [3, '3×']],
             () => 'Each battle runs at this speed once it begins.'),
+          choice('spawnTimers', 'Spawn timers', [[false, 'Off'], [true, 'On']],
+            () => (current.spawnTimers ? 'A thin bar under each of your spawners fills toward its next spawn.' : 'No timers on the field; the inspect panel still shows them.')),
           choice('screenShake', 'Screen shake', [[false, 'Off'], [true, 'On']],
             () => (current.screenShake ? 'The field jolts a little when a Heartcap is hit.' : 'Off by default. Never shakes under reduced motion.')))),
       h('div', { class: 'settings-col' },
@@ -163,7 +189,9 @@ export function openSettings(content: Content, atlas: Atlas, store: SettingsStor
               ? 'A light ring under your units, a dark dashed bar under theirs, and bolder textures on the mats and the territory bar.'
               : 'Adds a shape under every unit and bolder faction textures, so the sides never rely on color.')),
           preview),
-        h('p', { class: 'set-note' }, 'Changes save as you make them, for the game and every battle. Save export and a profile reset arrive with the profile (Milestone 6).'))),
+        h('section', { class: 'set-section', 'aria-labelledby': 'set-learn' },
+          h('h3', { id: 'set-learn' }, uiIcon(atlas, 'i-event'), 'Learning'),
+          tipsRow))),
   );
   const overlay = h('div', { class: 'overlay settings-overlay' }, card);
   // a press on the scrim closes it, as Esc does

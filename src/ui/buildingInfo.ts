@@ -9,6 +9,7 @@ import { h } from './h.ts';
 import { priceEl } from './icons.ts';
 import { strongVs, vulnerableTo, weakVs } from './matrixHints.ts';
 import { perkText } from './mergeHints.ts';
+import { buildingDescription } from './words.ts';
 
 export const ROLE_LABEL: Record<BuildingKind, string> = { economy: 'Economy', spawner: 'Army', tower: 'Defense', utility: 'Utility' };
 const ROLE_ORDER: Record<BuildingKind, number> = { economy: 0, spawner: 1, tower: 2, utility: 3 };
@@ -84,7 +85,7 @@ export function buildingTip(content: Content, atlas: Atlas, state: BattleState, 
   rows.push(['Building HP', String(cb.hp)]);
   return [
     h('div', { class: 'tip-head' }, h('b', null, b.name), h('span', { class: `role ${cb.kind}` }, ROLE_LABEL[cb.kind]), priceEl(atlas, b.cost)),
-    h('div', { class: 'tip-desc' }, b.description),
+    h('div', { class: 'tip-desc' }, buildingDescription(content, id)),
     ...rows.map(([k, v]) => h('div', { class: 'row' }, h('span', { class: 'muted' }, k), h('span', null, v))),
     h('div', { class: 'tip-foot' }, `${hotkey ? `Press ${hotkey} or click` : 'Click'}, then click the field. Building farther from home costs more.`),
   ];

@@ -73,6 +73,8 @@ export function bindInput(session: Session, view: BattleView, hooks: InputHooks)
       if (ev.key === 'h' || ev.key === 'H' || ev.key === 'Escape') { ev.preventDefault(); view.toggleHelp(); }
       return;
     }
+    // inside the top band's chips or the relics popover, Tab moves focus as usual (it cycles buildings elsewhere)
+    if (ev.key === 'Tab' && ev.target instanceof Element && ev.target.closest('[data-native-tab]')) return;
     if (/^[1-9]$/.test(ev.key)) {
       const id = trayOrder(session.content, s.sides.player.kit)[Number(ev.key) - 1];
       if (id) view.pick(id);
@@ -80,7 +82,12 @@ export function bindInput(session: Session, view: BattleView, hooks: InputHooks)
     }
     switch (ev.key) {
       case 'Escape': cancel(); break;
-      case ' ': ev.preventDefault(); session.paused = !session.paused; break;
+      case ' ':
+        // in deploy, Space begins the battle as Enter does (playtest round 3); once it is live, it pauses
+        ev.preventDefault();
+        if (s.phase === 'deploy') hooks.begin();
+        else session.paused = !session.paused;
+        break;
       case ']': session.speed = Math.min(3, session.speed + 1); break;
       case '[': session.speed = Math.max(1, session.speed - 1); break;
       case 'Enter':
@@ -105,6 +112,8 @@ export function bindInput(session: Session, view: BattleView, hooks: InputHooks)
         break;
       case 'f': case 'F': session.toggleAllStances(); break;
       case 'h': case 'H': view.toggleHelp(); break;
+      case 'r': case 'R': view.top.kit.toggle(); break;
+      case 'i': case 'I': view.top.focusChips(); break;
       case 'F3': ev.preventDefault(); hooks.toggleDebug(); break;
     }
   };

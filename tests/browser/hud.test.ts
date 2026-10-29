@@ -226,8 +226,15 @@ describe('controls', () => {
 
 describe('battle 1', () => {
   it('still tips the economy at 0:30 when none is built, and pulses the economy cards', async () => {
-    page = await open('/?map=test-flat&enemy=human&seed=1&test=1&battleIndex=1&ticks=590');
-    await expect.poll(() => page!.locator('#callouts').textContent(), { timeout: 10_000 }).toContain('Tip: a Truffle Cellar [1]');
+    // the first-time frontier tip has been seen, so the economy tip has the lane to itself
+    page = await browser!.newPage({ viewport: { width: 1280, height: 720 } });
+    await page.addInitScript(() => localStorage.setItem('spore-sprawl/tips/v1', JSON.stringify({ shown: ['frontier', 'hold'] })));
+    await page.goto(`${base}/?map=test-flat&enemy=human&seed=1&test=1&battleIndex=1&ticks=590`);
+    await page.waitForFunction(() => window.__GAME__?.ready === true);
+    const tip = page.locator('#callouts .callout.tip');
+    await expect.poll(() => tip.textContent(), { timeout: 10_000 }).toContain('A Truffle Cellar 1 earns gold');
+    // the hotkey is a keycap, as the design system's tips show it
+    expect(await tip.locator('kbd').textContent()).toBe('1');
     expect(await page.locator('[data-building="truffleCellar"]').evaluate((c) => c.classList.contains('nudge'))).toBe(true);
     expect(await page.locator('[data-building="capguardHall"]').evaluate((c) => c.classList.contains('nudge'))).toBe(false);
   });

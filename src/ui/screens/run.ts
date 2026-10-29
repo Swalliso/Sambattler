@@ -4,7 +4,7 @@ import type { Content } from '../../data/registry.ts';
 import type { Atlas } from '../../render/atlas.ts';
 import { spriteToCanvas } from '../../render/atlas.ts';
 import { formatClock } from '../../sim/index.ts';
-import { battlesWon, cardLabel, currentRow, intelDots, outcomeAvailable, upgradeable } from '../../run/index.ts';
+import { battleRewards, battlesWon, cardLabel, currentRow, intelDots, outcomeAvailable, upgradeable } from '../../run/index.ts';
 import { COUNTER_KINDS } from '../../sim/index.ts';
 import { KIND_HINT, KIND_ICON, KIND_NAME, counterLine } from '../doctrine.ts';
 import type { BattleRecord, RouteNode, RunState } from '../../run/index.ts';
@@ -15,6 +15,7 @@ import { h } from '../h.ts';
 import { uiIcon } from '../icons.ts';
 import { rollUp } from '../motion.ts';
 import { uiScale } from '../scale.ts';
+import { buildingDescription, relicDiagram, relicText, upgradeText } from '../words.ts';
 
 const NODE_ICON: Record<RouteNode['kind'], string> = { battle: 'i-battle', elite: 'i-elite', event: 'i-event', grove: 'i-grove', boss: 'i-boss' };
 const NODE_NAME: Record<RouteNode['kind'], string> = { battle: 'Battle', elite: 'Elite battle', event: 'Event', grove: 'Grove', boss: 'Boss' };
@@ -29,13 +30,15 @@ const icon = (atlas: Atlas, id: string, cls = 'icon') => {
 /** A relic as a pixel badge (its shape and rim name the rarity) with a tooltip naming it, on hover or focus. */
 export function relicBadge(content: Content, atlas: Atlas, id: string): HTMLElement {
   const r = content.relics[id]!;
+  const text = relicText(content, id);
   const art = icon(atlas, `r-${r.rarity}`, 'badge');
   art.setAttribute('aria-hidden', 'true');
-  return h('span', { class: `relic ${r.rarity}`, tabindex: 0, 'data-relic': id, 'aria-label': `${r.name} (${RARITY_NAME[r.rarity]} relic): ${r.text}` },
+  return h('span', { class: `relic ${r.rarity}`, tabindex: 0, 'data-relic': id, 'aria-label': `${r.name} (${RARITY_NAME[r.rarity]} relic): ${text}` },
     art,
     h('span', { class: 'relic-tip', role: 'tooltip' },
       h('span', { class: 'tip-head' }, h('b', null, r.name), h('span', { class: `rarity ${r.rarity}` }, RARITY_NAME[r.rarity])),
-      h('span', null, r.text)));
+      h('span', null, text),
+      relicDiagram(id)));
 }
 
 /** The strip at the top of every run screen: Heartcap, Spores, Amber, battles won, the kit and the relics. */
@@ -73,6 +76,23 @@ export function runFoot(run: RunState, left: Node | null, ...buttons: (HTMLEleme
 type NodeState = 'chosen' | 'open' | 'past' | 'future';
 const POD_FRAME: Record<NodeState, number> = { future: 0, past: 0, open: 1, chosen: 2 };
 
+/**
+ * What an elite win adds to a battle's rewards (SPEC §8.6, playtest round 3: "elites don't seem worth it"),
+ * read from the rewards table: a relic-only pick, more Spores and a chance of Amber.
+ */
+function eliteReward(content: Content, atlas: Atlas): HTMLElement {
+  const b = content.balance;
+  const rules = { routRepair: b.routRepair, decisionLossDamage: b.decisionLossDamage, rarityBiasStep: b.draft.rarityBiasStep, eliteRareBonus: b.draft.eliteRareBonus };
+  const elite = battleRewards('elite', 'player', 'rout', rules), plain = battleRewards('battle', 'player', 'rout', rules);
+  const picks = elite.spoils.filter((s) => s.relicsOnly).length;
+  return h('span', { class: 'node-reward', 'aria-label': 'Extra reward for winning' },
+    h('span', { class: 'eyebrow' }, 'Extra reward'),
+    h('span', { class: 'node-reward-chips' },
+      picks ? h('span', null, uiIcon(atlas, 'i-relic'), 'Relic pick') : null,
+      elite.spores > plain.spores ? h('span', null, uiIcon(atlas, 'i-spores'), `+${elite.spores - plain.spores} Spores`) : null,
+      elite.amberChance ? h('span', null, uiIcon(atlas, 'i-amber'), `${Math.round(elite.amberChance * 100)}% Amber`) : null));
+}
+
 function nodeView(content: Content, atlas: Atlas, node: RouteNode, state: NodeState, r: number, i: number, onPick: () => void): HTMLElement {
   const details: (HTMLElement | null)[] = [];
   if (node.map) {
@@ -86,6 +106,7 @@ function nodeView(content: Content, atlas: Atlas, node: RouteNode, state: NodeSt
   if (node.elite) {
     const e = content.elites[node.elite]!;
     details.push(h('span', { class: 'node-elite' }, h('b', null, e.name), ` ${e.text}`));
+    details.push(eliteReward(content, atlas));
   }
   if (node.kind === 'event') details.push(h('span', { class: 'node-sub' }, 'A choice with tradeoffs'));
   if (node.kind === 'grove') details.push(h('span', { class: 'node-sub' }, 'Repair 30% or graft an upgrade'));
@@ -225,6 +246,10 @@ export function spoilsScreen(content: Content, atlas: Atlas, run: RunState, acti
       h('div', { class: 'draft-top' },
         h('h1', { class: 'runtitle' }, p.label === 'Spoils' ? `Spoils of battle ${p.battleIndex}` : 'Elite spoils: a relic'),
         h('div', { class: 'hint' }, `Choose 1 of ${p.offer.length}. Press `, h('kbd', null, '1'), '–', h('kbd', null, String(p.offer.length)), ' or click a card.')),
+      // spoils and battle drafts deal the same kinds of cards (playtest round 3 expected them to differ)
+      h('p', { class: 'spoils-what', id: 'spoils-what' }, p.relicsOnly
+        ? 'An extra pick for beating an elite: relics only. Relics last the whole run.'
+        : 'A bonus draft for winning, with the same kinds of cards as the drafts in battle: blueprints, upgrades and relics. Each lasts the whole run.'),
       h('div', { class: 'draft-cards', id: 'spoils-cards' }, ...p.offer.map((c, i) => cardView(content, atlas, c, run.upgrades, () => actions.pick(c.id), String(i + 1), i))),
       h('div', { class: 'actions' },
         p.freeRerolls > 0 ? h('button', { class: 'btn', id: 'spoils-reroll', onclick: actions.reroll }, `Reroll (free, ${p.freeRerolls} left)`) : null,
@@ -326,6 +351,120 @@ export function eventScreen(content: Content, atlas: Atlas, run: RunState, actio
     'Choose one. Its effects last for the rest of the run unless it names the next battle.');
 }
 
+/** The parts of a run an event can change, kept before a choice so the UI can say what it gave. */
+export interface RunSnapshot {
+  kit: string[];
+  upgrades: Record<string, number>;
+  relics: string[];
+  heartcap: { hp: number; max: number };
+  amber: number;
+  next: { startingGold: number; sporestormShiftSeconds: number };
+}
+
+export function runSnapshot(run: RunState): RunSnapshot {
+  return { kit: [...run.kit], upgrades: { ...run.upgrades }, relics: [...run.relics], heartcap: { ...run.heartcap }, amber: run.amber, next: { ...run.next } };
+}
+
+/** One thing an event changed: a relic or blueprint gained or lost, an upgrade level, or a chip (Heartcap, Amber, next battle). */
+export type RunChange =
+  | { kind: 'relic'; id: string; lost: boolean }
+  | { kind: 'blueprint'; id: string; lost: boolean }
+  | { kind: 'upgrade'; id: string; level: number }
+  | { kind: 'chip'; chip: Chip };
+
+/** What changed between two snapshots, losses first (playtest round 3: the random outcomes never said). */
+export function runChanges(content: Content, before: RunSnapshot, after: RunSnapshot): RunChange[] {
+  const out: RunChange[] = [];
+  for (const id of before.relics) if (!after.relics.includes(id)) out.push({ kind: 'relic', id, lost: true });
+  for (const id of before.kit) if (!after.kit.includes(id)) out.push({ kind: 'blueprint', id, lost: true });
+  for (const id of after.relics) if (!before.relics.includes(id)) out.push({ kind: 'relic', id, lost: false });
+  for (const id of after.kit) if (!before.kit.includes(id)) out.push({ kind: 'blueprint', id, lost: false });
+  for (const [id, lvl] of Object.entries(after.upgrades)) {
+    for (let l = (before.upgrades[id] ?? 0) + 1; l <= lvl; l++) out.push({ kind: 'upgrade', id, level: l });
+  }
+  const maxHp = after.heartcap.max - before.heartcap.max;
+  if (maxHp) out.push({ kind: 'chip', chip: { kind: maxHp < 0 ? 'cost' : 'gain', icon: 'i-heart', text: `${signed(maxHp)} max Heartcap (now ${after.heartcap.max})` } });
+  const hp = after.heartcap.hp - before.heartcap.hp;
+  if (hp > 0) out.push({ kind: 'chip', chip: { kind: 'gain', icon: 'i-heart', text: `+${hp} Heartcap (now ${after.heartcap.hp}/${after.heartcap.max})` } });
+  if (after.amber !== before.amber) out.push({ kind: 'chip', chip: { kind: 'gain', icon: 'i-amber', text: `${signed(after.amber - before.amber)} Amber` } });
+  const gold = after.next.startingGold - before.next.startingGold;
+  if (gold) out.push({ kind: 'chip', chip: { kind: gold < 0 ? 'cost' : 'gold', icon: 'i-gold', text: `${signed(gold)} gold next battle` } });
+  const storm = after.next.sporestormShiftSeconds - before.next.sporestormShiftSeconds;
+  if (storm) out.push({ kind: 'chip', chip: { kind: 'note', icon: 'i-storm', text: `Sporestorm ${formatClock(Math.abs(storm) * content.balance.tickRate)} ${storm < 0 ? 'earlier' : 'later'} next battle` } });
+  return out;
+}
+
+/** One change as a card: the relic's badge, name and text, or the building with its new level and what it does. */
+function changeCard(content: Content, atlas: Atlas, c: RunChange, run: RunState): HTMLElement {
+  if (c.kind === 'chip') return h('div', { class: 'result-chip' }, chipEl(atlas, c.chip));
+  if (c.kind === 'relic') {
+    const r = content.relics[c.id]!;
+    const art = icon(atlas, `r-${r.rarity}`, 'result-art');
+    art.setAttribute('aria-hidden', 'true');
+    return h('div', { class: `result-card relic${c.lost ? ' lost' : ''}`, 'data-result': `relic:${c.id}` }, art,
+      h('div', { class: 'result-main' },
+        h('div', { class: 'result-head' }, h('span', { class: 'eyebrow' }, c.lost ? 'Relic given up' : 'New relic'), h('span', { class: `rarity ${r.rarity}` }, RARITY_NAME[r.rarity])),
+        h('b', null, r.name),
+        c.lost ? null : h('span', { class: 'result-text' }, relicText(content, c.id)),
+        c.lost ? null : relicDiagram(c.id)));
+  }
+  const b = content.buildings[c.id]!;
+  const art = spriteToCanvas(atlas, b.sprite, 'velvet-bloom');
+  art.className = 'result-art';
+  art.setAttribute('aria-hidden', 'true');
+  if (c.kind === 'blueprint') {
+    return h('div', { class: `result-card blueprint${c.lost ? ' lost' : ''}`, 'data-result': `bp:${c.id}` }, art,
+      h('div', { class: 'result-main' },
+        h('span', { class: 'eyebrow' }, c.lost ? 'Blueprint given up' : 'New blueprint'),
+        h('b', null, b.name),
+        c.lost ? null : h('span', { class: 'result-text' }, buildingDescription(content, c.id))));
+  }
+  const levels = content.upgrades[c.id]?.levels.length ?? 3;
+  return h('div', { class: 'result-card upgrade', 'data-result': `up:${c.id}` }, art,
+    h('div', { class: 'result-main' },
+      h('div', { class: 'result-head' }, h('span', { class: 'eyebrow' }, 'Upgrade'), h('span', { class: 'lvl' }, `Level ${c.level} of ${levels}${(run.upgrades[c.id] ?? 0) >= levels ? ' (max)' : ''}`)),
+      h('b', null, b.name),
+      h('span', { class: 'result-text' }, upgradeText(content, c.id, c.level))));
+}
+
+/**
+ * After an event whose outcome was random (a random relic, a random upgrade track, relics for a sacrifice),
+ * the vignette again with what you got in place of the choices, and Continue (Enter, Space or 1) to the route.
+ */
+export function eventResultScreen(content: Content, atlas: Atlas, run: RunState, result: { event: string | null; title: string; choice: string | null; changes: RunChange[] }, onContinue: () => void): HTMLElement {
+  const art = result.event && content.sprites[`v-${result.event}`] ? `v-${result.event}` : 'v-quiet-clearing';
+  const scene = spriteToCanvas(atlas, art, 'velvet-bloom');
+  scene.className = 'scene';
+  scene.setAttribute('aria-hidden', 'true');
+  const go = h('button', { class: 'btn primary', id: 'result-continue', onclick: () => done() }, 'Continue', h('kbd', null, 'Enter'));
+  const el = h('div', { class: 'runscreen', id: 'event-result' },
+    runBar(content, atlas, run),
+    h('div', { class: 'runpanel vignette-layout' },
+      h('div', { class: 'vignette' }, scene),
+      h('div', { class: 'story' },
+        h('div', { class: 'parchment' }, h('div', { class: 'eyebrow' }, 'Event'), h('h1', { class: 'runtitle' }, result.title),
+          h('p', { class: 'eventtext' }, result.choice ? `You chose ${result.choice}. Here is what you got.` : 'Here is what you got.')),
+        h('div', { class: 'results', id: 'event-results', role: 'status' },
+          ...(result.changes.length ? result.changes.map((c) => changeCard(content, atlas, c, run)) : [h('p', { class: 'muted' }, 'Nothing changed.')])),
+        h('div', { class: 'result-go' }, go))),
+    runFoot(run, h('span', { class: 'hint' }, 'Your relics and upgrades also show in the run bar, and in battle under the relics chip (R).')),
+  );
+  const onKey = (e: KeyboardEvent) => {
+    if (!el.isConnected) { window.removeEventListener('keydown', onKey); return; }
+    if ((e.key === 'Enter' || e.key === ' ' || e.key === '1') && !e.repeat) { e.preventDefault(); done(); }
+  };
+  let left = false;
+  const done = () => {
+    if (left) return;
+    left = true;
+    window.removeEventListener('keydown', onKey);
+    onContinue();
+  };
+  window.addEventListener('keydown', onKey);
+  requestAnimationFrame(() => { if (el.isConnected) go.focus({ preventScroll: true }); });
+  return el;
+}
+
 export function groveScreen(content: Content, atlas: Atlas, run: RunState, actions: { choose(c: 'repair' | 'graft'): void }): HTMLElement {
   const repair = Math.round(run.heartcap.max * content.balance.groveRepair);
   const after = Math.min(run.heartcap.max, run.heartcap.hp + repair);
@@ -344,11 +483,11 @@ export function promptScreen(content: Content, atlas: Atlas, run: RunState, acti
   const option = (id: string) => {
     if (p.optionKind === 'relic') {
       const r = content.relics[id]!;
-      return h('button', { class: 'choice', 'data-option': id, onclick: () => actions.answer(id) }, h('b', null, r.name), h('span', null, r.text));
+      return h('button', { class: 'choice', 'data-option': id, onclick: () => actions.answer(id) }, h('b', null, r.name), h('span', null, relicText(content, id)));
     }
     const b = content.buildings[id]!;
     const lvl = run.upgrades[id] ?? 0;
-    const text = p.optionKind === 'upgrade' ? `Level ${lvl + 1}: ${content.upgrades[id]!.levels[lvl]!.text}` : b.description;
+    const text = p.optionKind === 'upgrade' ? `Level ${lvl + 1}: ${upgradeText(content, id, lvl + 1)}` : buildingDescription(content, id);
     return h('button', { class: 'choice withart', 'data-option': id, onclick: () => actions.answer(id) },
       spriteToCanvas(atlas, b.sprite, 'velvet-bloom'), h('b', null, b.name), h('span', null, text));
   };

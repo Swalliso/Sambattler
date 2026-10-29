@@ -133,9 +133,9 @@ export class InspectPanel {
     ];
     if (t.slayerMult !== 1) pairs.push(['Slayer', `×${t.slayerMult} vs Bloomed & Elder`]);
     if (u.tier > 1) pairs.push(['Perk', perkText(this.content, u.unitId, u.tier)]);
-    if (u.knit) pairs.push(['Status', `knitting · ${TIER_NAME[u.tier === 1 ? 1 : 2]} in ${(Math.max(0, u.knit.untilTick - state.tick) / state.rules.tickRate).toFixed(1)}s`]);
+    if (u.knit) pairs.push(['Status', `merging · ${TIER_NAME[u.tier === 1 ? 1 : 2]} in ${(Math.max(0, u.knit.untilTick - state.tick) / state.rules.tickRate).toFixed(1)}s`]);
     else if (state.config.flags.merging && u.tier < 3) pairs.push(['Merge', u.mergeOn ? 'on' : 'off (its building)']);
-    pairs.push(['DPS (5 s)', this.log.dps(state, u.id).toFixed(1)], ['Kills', String(this.log.kills.get(u.id) ?? 0)]);
+    pairs.push(['Damage / s', this.log.dps(state, u.id).toFixed(1)], ['Kills', String(this.log.kills.get(u.id) ?? 0)]);
     this.buttons.hidden = true;
     setText(this.title, `${def.name} · ${u.side === 'player' ? 'Velvet Bloom' : 'Gray Rot'}`);
     this.details.replaceChildren(...this.rows(pairs));
@@ -157,7 +157,7 @@ export class InspectPanel {
     if (cb.attack) pairs.push(['Attack', `${cb.attack.damageType} ${cb.attack.damage} · range ${cb.attack.minRange}–${cb.attack.range}`]);
     pairs.push(['Damage dealt', String(state.stats[b.side].damageByBuilding[String(b.id)] ?? 0)]);
     if (cb.economy) pairs.push(['Gold produced', String(state.stats[b.side].goldByBuilding[String(b.id)] ?? 0)]);
-    if (besieged) pairs.push(['Status', slowed ? 'besieged: ½ speed, cannot sell' : 'under attack: cannot sell']);
+    if (besieged) pairs.push(['Status', slowed ? 'under attack: half speed, can\'t be sold' : 'under attack: can\'t be sold']);
     const merging = state.config.flags.merging && !!cb.spawn;
     if (merging && b.side !== 'player') pairs.push(['Merging', b.mergeOn ? 'on' : 'off']);
     setText(this.title, `${def.name} · ${b.side === 'player' ? 'yours' : 'Gray Rot'}`);

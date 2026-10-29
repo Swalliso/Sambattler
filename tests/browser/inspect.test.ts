@@ -69,7 +69,7 @@ describe('deploy-phase inspection', () => {
 
     await page.keyboard.press('Enter');
     await page.waitForFunction(() => window.__GAME__?.summary()?.phase === 'live');
-    await page.keyboard.press('Space');
+    // Begin clears the deploy pause (?paused=1), so the battle runs at once
     await advanceTicks(2);
     expect(await page.evaluate(() => window.__GAME__!.summary()!.buildings.player)).toBe(2);
   });
@@ -81,7 +81,6 @@ describe('live building inspection at 3× speed', () => {
     await page.keyboard.press('Tab');
     await page.waitForFunction(() => document.querySelector('#inspect h3')?.textContent === 'Sporeling Burrow · yours');
     await page.locator('[data-speed="3"]').click();
-    await page.keyboard.press('Space');
   });
 
   it('accepts a mouse click spanning ticks and retains keyboard focus when changing buildings', async () => {

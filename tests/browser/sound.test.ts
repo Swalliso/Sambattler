@@ -59,7 +59,7 @@ describe('sound', () => {
     await page.locator('[data-building="sporelingBurrow"]').click();
     const box = (await page.locator('#battlefield').boundingBox())!;
     await page.mouse.click(box.x + box.width * 0.1, box.y + box.height * 0.6);
-    await page.keyboard.press('Space');
+    await page.keyboard.press(']');
     await page.locator('.sound-mute').click();
     await page.keyboard.press('s');
     await page.locator('#begin-btn').click();

@@ -1,8 +1,9 @@
 // Player settings (src/app/settings.ts): one key, spore-sprawl/settings/v1, that older saves keep
 // loading from as fields are added (sound arrived with SPEC §13.9, the settings screen's fields with
-// docs/ui-ux-plan.md Phase 3).
+// docs/ui-ux-plan.md Phase 3, tips and spawn timers with the clarity pass). The first-time tips already
+// shown live apart, under spore-sprawl/tips/v1.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { DEFAULT_SETTINGS, loadSettings, onSettings, saveSettings } from '../../src/app/settings.ts';
+import { DEFAULT_SETTINGS, loadSettings, markTipShown, onSettings, resetTips, saveSettings, tipsShown } from '../../src/app/settings.ts';
 
 const KEY = 'spore-sprawl/settings/v1';
 let store: Map<string, string>;
@@ -42,7 +43,29 @@ describe('settings', () => {
   it('loads a record from before the settings screen with its new fields at their defaults', () => {
     const old = { damageNumbers: 'all', masterVolume: 0.3, sfxVolume: 0.8, ambientVolume: 0.5, muted: true };
     store.set(KEY, JSON.stringify(old));
-    expect(loadSettings()).toEqual({ ...old, reducedMotion: 'system', uiScale: 'auto', colorAssist: false, defaultSpeed: 1, screenShake: false });
+    expect(loadSettings()).toEqual({ ...old, reducedMotion: 'system', uiScale: 'auto', colorAssist: false, defaultSpeed: 1, screenShake: false, tips: true, spawnTimers: true });
+  });
+
+  it('loads tips and spawn timers, on by default, and drops values of the wrong type', () => {
+    store.set(KEY, JSON.stringify({ tips: false, spawnTimers: false }));
+    expect(loadSettings()).toMatchObject({ tips: false, spawnTimers: false });
+    store.set(KEY, JSON.stringify({ tips: 'no', spawnTimers: 0 }));
+    expect(loadSettings()).toMatchObject({ tips: true, spawnTimers: true });
+  });
+
+  it('remembers shown tips under their own key, and forgets them all on "Show tips again"', () => {
+    store.set(KEY, JSON.stringify({ tips: true }));
+    markTipShown('frontier');
+    markTipShown('storm');
+    markTipShown('frontier');
+    expect([...tipsShown()]).toEqual(['frontier', 'storm']);
+    expect(JSON.parse(store.get('spore-sprawl/tips/v1')!)).toEqual({ shown: ['frontier', 'storm'] });
+    resetTips();
+    expect(tipsShown().size).toBe(0);
+    // the settings record is untouched
+    expect(JSON.parse(store.get(KEY)!)).toEqual({ tips: true });
+    store.set('spore-sprawl/tips/v1', '{"shown": [1, "hold"]}');
+    expect([...tipsShown()]).toEqual(['hold']);
   });
 
   it('keeps known choices and drops unknown ones', () => {
