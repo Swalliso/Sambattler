@@ -13,15 +13,19 @@ import type { BattleState, Content } from '../sim/index.ts';
 import { eventScreen, groveScreen, promptScreen, routeScreen, spoilsScreen, summaryScreen } from '../ui/screens/run.ts';
 import { h } from '../ui/h.ts';
 import { BattleView } from './battleView.ts';
+import { storageKey } from './channel.ts';
 import { bindInput } from './input.ts';
 import { GameLoop } from './loop.ts';
 import { Session } from './session.ts';
 
-/** localStorage behind the run layer's Storage interface (failures, e.g. private mode, are ignored). */
+/**
+ * localStorage behind the run layer's Storage interface (failures, e.g. private mode, are ignored),
+ * under this site's keys so the dev site and the main site keep separate saves.
+ */
 export class BrowserStorage implements Storage {
-  get(key: string): string | null { try { return localStorage.getItem(key); } catch { return null; } }
-  set(key: string, value: string): void { try { localStorage.setItem(key, value); } catch { /* storage full or blocked */ } }
-  remove(key: string): void { try { localStorage.removeItem(key); } catch { /* blocked */ } }
+  get(key: string): string | null { try { return localStorage.getItem(storageKey(key)); } catch { return null; } }
+  set(key: string, value: string): void { try { localStorage.setItem(storageKey(key), value); } catch { /* storage full or blocked */ } }
+  remove(key: string): void { try { localStorage.removeItem(storageKey(key)); } catch { /* blocked */ } }
 }
 
 export interface RunEnv {

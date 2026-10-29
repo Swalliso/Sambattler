@@ -2,8 +2,9 @@
 // arrives in M6). Reads and writes never throw: a private window or blocked storage falls back to
 // the defaults.
 import type { DamageNumbers } from '../render/renderer.ts';
+import { storageKey } from './channel.ts';
 
-const KEY = 'spore-sprawl/settings/v1';
+const KEY = storageKey('spore-sprawl/settings/v1');
 
 export interface Settings { damageNumbers: DamageNumbers }
 

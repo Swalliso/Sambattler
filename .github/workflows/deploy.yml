@@ -1,17 +1,21 @@
 name: Verify and deploy to GitHub Pages
 
+# Two sites from one Pages deployment (SPEC §13.8): main at the root and develop at /dev/.
+# The github-pages environment only accepts deploys from main, so a push to develop is verified on
+# develop and then asks main's workflow to redeploy; every deploy builds both branches.
 on:
   push:
-    branches: [main]
+    branches: [main, develop]
   pull_request:
   workflow_dispatch:
 
 permissions:
   contents: read
 
-# One run per ref: a newer push to main (or to a PR) cancels the older run.
+# One run per ref and trigger: a newer push cancels the older run on that ref. A redeploy requested
+# by develop runs in its own group, so it never cancels a push to main mid-verify.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: true
 
 jobs:
@@ -29,9 +33,21 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: npm run test:browser
 
+  request-deploy:
+    needs: verify
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      # a workflow_dispatch from GITHUB_TOKEN is one of the few events that starts a new run
+      - run: gh workflow run deploy.yml --repo "$GITHUB_REPOSITORY" --ref main
+        env:
+          GH_TOKEN: ${{ github.token }}
+
   build:
     needs: verify
-    if: github.event_name != 'pull_request'
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -41,6 +57,25 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
+      - name: Check out develop
+        id: develop
+        continue-on-error: true # no develop branch yet: deploy the main site alone
+        uses: actions/checkout@v4
+        with:
+          ref: develop
+          path: develop
+      - name: Build develop into /dev/
+        id: devbuild
+        if: steps.develop.outcome == 'success'
+        continue-on-error: true # a broken develop must not block main's deploy
+        working-directory: develop
+        run: |
+          npm ci
+          VITE_CHANNEL=dev VITE_BUILD="$(git rev-parse --short HEAD)" npm run build
+          cp -R dist ../dist/dev
+      - name: Note a missing dev site
+        if: steps.devbuild.outcome != 'success'
+        run: echo "::warning::develop was not deployed to /dev/ (no develop branch, or its build failed)"
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
@@ -51,6 +86,10 @@ jobs:
     permissions:
       pages: write
       id-token: write
+    # deploys queue rather than overlap (a main push and a develop redeploy can finish together)
+    concurrency:
+      group: pages-deploy
+      cancel-in-progress: false
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

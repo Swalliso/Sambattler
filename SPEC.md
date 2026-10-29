@@ -1453,7 +1453,10 @@ Commands from input are queued with `tick = state.tick + 1`. Headless tools call
 - **Storage:** a `Storage` interface with a localStorage implementation in the browser and an in-memory one in tests. Profile format in §9.7, run resume in §8.9.
 - **Deployment:**
   - `npm run build` emits a static `dist/`.
-  - `.github/workflows/deploy.yml` builds on every push to `main` and deploys with `actions/upload-pages-artifact` and `actions/deploy-pages`.
+  - **Two sites, one Pages deployment:** `main` serves the game at https://swalliso.github.io/Sambattler/, and `develop` serves the dev site at https://swalliso.github.io/Sambattler/dev/. New features and rule changes land on `develop` first, get playtested on the dev site, then reach players by merging `develop` into `main`.
+  - `.github/workflows/deploy.yml` verifies every push and pull request. Every deploy builds both branches: `main` into `dist/`, and `develop` into `dist/dev/` with `VITE_CHANNEL=dev` and `VITE_BUILD=<short sha>`. It then deploys with `actions/upload-pages-artifact` and `actions/deploy-pages`.
+  - The `github-pages` environment only accepts deploys from `main`. So a push to `develop` is verified on `develop`, then triggers a `workflow_dispatch` of the workflow on `main`, which runs verify and the two-branch deploy. A missing or broken `develop` never blocks `main`: the run deploys `main` alone with a warning.
+  - **The dev site:** it shows a `DEV · <sha>` badge and a `[dev]` title. It keeps its own localStorage keys (prefix `dev/`, `src/app/channel.ts`), because both sites share an origin. A dev run never resumes or overwrites a main-site save.
   - The user creates the GitHub repository and sets Pages' source to "GitHub Actions". Claude can't push without the user's remote and credentials. Locally, `npm run preview` serves the production build, and the screenshot check runs against it.
 
 ---
