@@ -208,13 +208,13 @@ describe('first-time tips', () => {
     await p.waitForFunction((t) => window.__GAME__!.tick > t + 30, t1);
     expect(await p.locator('#callouts .callout.tip').count()).toBe(0);
 
-    // Tips on again: the frontier tip is back
+    // Tips on again: the forgotten frontier tip comes back as soon as the battle runs on (no reload: the tip
+    // may show before one, and a shown tip is remembered)
     await p.locator('#settings-btn').click();
     await p.locator('#settings [data-setting="tips"] [data-value="true"]').click();
     await p.keyboard.press('Escape');
-    await p.reload();
-    await p.waitForFunction(() => window.__GAME__?.ready === true);
     await expect.poll(() => p.locator('#callouts .callout.tip').textContent(), { timeout: 8000 }).toContain('glowing frontier line');
+    await expect.poll(() => p.evaluate((k) => localStorage.getItem(k), TIPS_KEY)).toContain('frontier');
   });
 
   it('never show after battle 2', async () => {
