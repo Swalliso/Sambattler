@@ -17,7 +17,7 @@ import { ROLE_LABEL, buildingTip, cardLine, trayOrder } from '../buildingInfo.ts
 const CARD_MIN = 86;
 const GAP = 6;
 
-interface Card { id: string; name: string; el: HTMLElement; cost: number; economy: boolean; fill: HTMLElement; need: HTMLElement; poor: boolean | null; short: number }
+interface Card { id: string; name: string; el: HTMLElement; nameEl: HTMLElement; cost: number; economy: boolean; fill: HTMLElement; need: HTMLElement; poor: boolean | null; short: number }
 
 export class Tray {
   readonly el = h('div', { class: 'tray', id: 'tray' });
@@ -33,6 +33,7 @@ export class Tray {
       sprite.setAttribute('aria-hidden', 'true');
       const fill = h('i');
       const need = h('span', { class: 'need-label' });
+      const nameEl = h('div', { class: 'name' }, b.name);
       const el: HTMLElement = h('button', {
         class: `card ${b.kind}`, 'data-building': id, 'aria-describedby': 'card-tip', onclick: () => onPick(id),
         onmouseenter: () => this.show(id, key, el), onmouseleave: () => this.hide(),
@@ -41,12 +42,12 @@ export class Tray {
       },
         h('div', { class: 'head' }, h('span', { class: 'key' }, i < 9 ? String(i + 1) : ''), priceEl(atlas, b.cost)),
         sprite,
-        h('div', { class: 'name' }, b.name),
+        nameEl,
         h('div', { class: `role ${b.kind}` }, ROLE_LABEL[b.kind]),
         h('div', { class: 'out' }, cardLine(content, state, id)),
         h('div', { class: 'need' }, h('span', { class: 'needbar', 'aria-hidden': 'true' }, fill), need),
       );
-      this.cards.push({ id, name: b.name, el, cost: b.cost, economy: b.kind === 'economy', fill, need, poor: null, short: -1 });
+      this.cards.push({ id, name: b.name, el, nameEl, cost: b.cost, economy: b.kind === 'economy', fill, need, poor: null, short: -1 });
       this.el.append(el);
     });
     this.el.style.setProperty('--n', String(this.cards.length));
@@ -54,10 +55,18 @@ export class Tray {
     this.el.append(this.tip);
   }
 
-  /** Full-size cards in one row if they fit the tray's width, else the compact two-row tray. */
+  /**
+   * Full-size cards in one row if they fit the tray's width, else the compact two-row tray. A compact
+   * name that still overflows (text sets wider on some platforms) is squeezed a little rather than cut.
+   */
   fit(): void {
     const n = this.cards.length;
-    toggleClass(this.el, 'compact', n * CARD_MIN + (n - 1) * GAP > this.el.clientWidth);
+    const compact = n * CARD_MIN + (n - 1) * GAP > this.el.clientWidth;
+    toggleClass(this.el, 'compact', compact);
+    for (const c of this.cards) {
+      c.nameEl.classList.remove('squeeze');
+      if (compact && c.nameEl.scrollWidth > c.nameEl.clientWidth) c.nameEl.classList.add('squeeze');
+    }
   }
 
   /** Shows the tooltip above a card, kept inside the window. */

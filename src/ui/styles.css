@@ -304,6 +304,9 @@ button { font: inherit; color: inherit; }
 .card .price canvas { width: 16px; height: 16px; }
 .card .art { flex: none; width: 64px; height: 64px; image-rendering: pixelated; image-rendering: crisp-edges; }
 .card .name { min-height: 30px; align-self: stretch; margin: 0 -3px; display: flex; align-items: center; justify-content: center; font: 700 13px/15px var(--font-text); }
+/* text sets up to ~9% wider on Linux than on macOS: narrow cards drop the name to 12 px so its longest word keeps room */
+.card { container-type: inline-size; }
+@container (max-width: 96px) { .card .name { font-size: 12px; line-height: 14px; } }
 /* the summary's slot is two lines tall on every card, so names, tags and summaries line up along the tray */
 .card .out { min-height: 28px; font-size: 12px; line-height: 14px; color: var(--muted); max-width: 100%; }
 /* unlit: you can't afford it. The sprite desaturates, the price turns red and a bar fills toward it */
@@ -317,12 +320,13 @@ button { font: inherit; color: inherit; }
 .card.poor .price { color: var(--danger); border-color: var(--danger-line); }
 .card.poor::before { filter: saturate(.35) brightness(.8); }
 /* compact: two rows; the sprite at 1× beside the key and price, then the name, the role and the output (or what you need) */
-/* side padding is 3 px so the longest names (about 103 px at 1280) keep a few pixels to spare on every platform */
+/* a compact name is one line in the regular weight, so the longest (about 93 px on macOS, ~9% more on Linux) fits 111 px at 1280 */
 .tray.compact .card { display: grid; grid-template-columns: 32px minmax(0, 1fr); grid-template-rows: auto 32px 14px 14px 12px; column-gap: 5px; row-gap: 2px; align-items: center; align-content: start; padding: 0 3px 3px; text-align: left; }
 .tray.compact .card::before { grid-column: 1 / -1; height: 5px; margin: 0 -3px; }
 .tray.compact .art { grid-row: 2; width: 32px; height: 32px; }
 .tray.compact .head { grid-row: 2; grid-column: 2; height: 22px; }
-.tray.compact .name { grid-column: 1 / -1; display: block; min-height: 0; margin: 0; font-size: 12px; line-height: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tray.compact .name { grid-column: 1 / -1; display: block; min-height: 0; margin: 0; font-weight: 400; font-size: 12px; line-height: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tray.compact .name.squeeze { letter-spacing: -0.04em; }
 .tray.compact .role { grid-column: 1 / -1; justify-self: start; }
 .tray.compact .out, .tray.compact .need { grid-column: 1 / -1; min-height: 0; font-size: 12px; line-height: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tray.compact .need { flex-direction: row; justify-content: flex-start; }

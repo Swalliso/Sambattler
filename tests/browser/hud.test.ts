@@ -61,9 +61,15 @@ describe('the top band', () => {
 });
 
 describe('the tray', () => {
-  for (const [width, height, compact] of [[1280, 720, true], [1366, 650, true], [1920, 1080, false]] as const) {
-    it(`fits 14 cards in a ${width}×${height} window with nothing clipped`, async () => {
+  // the longest names and summaries; nine full-size cards at 1280 are the narrowest they get
+  const NINE = ['truffleCellar', 'sporeExchange', 'sporelingBurrow', 'gillNest', 'rootbreakerDen', 'hammercapForge', 'veilstalkerHollow', 'puffballMortar', 'rhizomeVault'];
+  for (const [width, height, cards, compact] of [[1280, 720, 14, true], [1366, 650, 14, true], [1920, 1080, 14, false], [1280, 720, 9, false]] as const) {
+    it(`fits ${cards} cards in a ${width}×${height} window with nothing clipped`, async () => {
       page = await open(`${DEPLOY}&paused=1`, width, height);
+      if (cards === 9) {
+        await page.evaluate((kit) => { window.__GAME__!.battle()!.sides.player.kit.splice(0, Infinity, ...kit); }, NINE);
+        await expect.poll(() => page!.locator('#tray .card').count()).toBe(9);
+      }
       const m = await page.evaluate(() => {
         const tray = document.getElementById('tray')!;
         const r = (e: Element) => { const b = e.getBoundingClientRect(); return { x: b.x, y: b.y, width: b.width, height: b.height }; };
@@ -81,7 +87,7 @@ describe('the tray', () => {
           })),
         };
       });
-      expect(m.cards).toHaveLength(14);
+      expect(m.cards).toHaveLength(cards);
       expect(m.compact).toBe(compact);
       expect(m.scroll).toBeLessThanOrEqual(0);
       for (const c of m.cards) {
