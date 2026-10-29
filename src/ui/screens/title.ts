@@ -1,6 +1,6 @@
 // The title screen (SPEC §10.5, docs/ui-ux-plan.md A4): the wordmark over the Heartcap's silhouette, lit
 // from below, with spores drifting through the dark. Continue (only with a saved run), New run, How to
-// play (Help) and Settings (sound and damage numbers, until the settings screen arrives).
+// play (Help) and Settings (the settings screen, src/ui/settingsScreen.ts).
 import type { Atlas } from '../../render/atlas.ts';
 import { spriteToCanvas } from '../../render/atlas.ts';
 import { sporeLayer } from '../../render/spores.ts';
@@ -16,7 +16,7 @@ export interface TitleActions {
   saved?: string;
   newRun(): void;
   help(): void;
-  /** The settings control (src/ui/settingsControl.ts) with its Settings label. */
+  /** The button that opens the settings screen (src/ui/settingsScreen.ts), labelled Settings. */
   settings: HTMLElement;
 }
 

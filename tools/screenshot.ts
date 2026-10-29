@@ -1,12 +1,14 @@
 // npm run screenshot -- --name <file> --params "<query>" [--url <base>] [--browser chromium|firefox]
-//                       [--filter deuteranopia|protanopia]
+//                       [--filter deuteranopia|protanopia] [--size WxH] [--click <selector>]... [--settings '<json>']
 // Builds if dist/ is stale, serves it with `vite preview` (or reuses --url), opens the page in
-// Playwright at 1280×720 (DPR 1), runs the §15.6 assertions and writes
-// artifacts/screenshots/<name>.png + <name>.json. Exit 1 on any failed assertion.
+// Playwright at 1280×720 (or --size; DPR 1), runs the §15.6 assertions and writes
+// artifacts/screenshots/<name>.png + <name>.json. Exit 1 on any failed assertion. --click presses
+// buttons before the capture (e.g. `#settings-btn` opens the settings screen, `#help-tab-keys` a Help
+// tab), and --settings writes the settings record before the game boots (e.g. '{"colorAssist":true}').
 import { spawn, spawnSync } from 'node:child_process';
 import type { ChildProcess } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, statSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { chromium, firefox } from 'playwright';
 import { nodeContent, ROOT } from './lib/content.ts';
 import { RUN_SCENES, runForParams, sceneOf, stateForParams } from './lib/params.ts';
@@ -15,10 +17,13 @@ import { COUNTER_KINDS } from '../src/sim/index.ts';
 import { hashState, summarize } from '../src/sim/index.ts';
 import type { BattleState } from '../src/sim/index.ts';
 
-interface Args { name: string; params: string; url?: string; browser: 'chromium' | 'firefox'; filter?: 'deuteranopia' | 'protanopia' }
+interface Args {
+  name: string; params: string; url?: string; browser: 'chromium' | 'firefox'; filter?: 'deuteranopia' | 'protanopia';
+  width: number; height: number; clicks: string[]; settings?: string;
+}
 
 function parseArgs(argv: string[]): Args {
-  const a: Args = { name: 'shot', params: '', browser: 'chromium' };
+  const a: Args = { name: 'shot', params: '', browser: 'chromium', width: 1280, height: 720, clicks: [] };
   for (let i = 0; i < argv.length; i++) {
     const k = argv[i]!, v = argv[i + 1];
     if (k === '--name') { a.name = v!; i++; }
@@ -26,6 +31,12 @@ function parseArgs(argv: string[]): Args {
     else if (k === '--url') { a.url = v!; i++; }
     else if (k === '--browser') { a.browser = v as Args['browser']; i++; }
     else if (k === '--filter') { a.filter = v as Args['filter']; i++; }
+    else if (k === '--size') {
+      const m = /^(\d+)x(\d+)$/.exec(v ?? '');
+      if (!m) throw new Error(`--size wants WxH, got ${v}`);
+      a.width = Number(m[1]); a.height = Number(m[2]); i++;
+    } else if (k === '--click') { a.clicks.push(v!); i++; }
+    else if (k === '--settings') { JSON.parse(v!); a.settings = v; i++; }
     else throw new Error(`unknown option ${k}`);
   }
   return a;
@@ -88,7 +99,8 @@ async function main(): Promise<number> {
   const consoleErrors: string[] = [];
   const browser = await (args.browser === 'firefox' ? firefox : chromium).launch();
   try {
-    const page = await browser.newPage({ viewport: { width: 1280, height: 720 }, deviceScaleFactor: 1 });
+    const page = await browser.newPage({ viewport: { width: args.width, height: args.height }, deviceScaleFactor: 1 });
+    if (args.settings) await page.addInitScript((v) => localStorage.setItem('spore-sprawl/settings/v1', v), args.settings);
     page.on('console', (m) => { if (m.type() === 'error') consoleErrors.push(m.text()); });
     page.on('pageerror', (e) => consoleErrors.push(String(e)));
     const url = `${base.replace(/\/$/, '')}/?${q.toString()}`;
@@ -96,6 +108,10 @@ async function main(): Promise<number> {
     await page.waitForFunction(() => window.__GAME__?.ready === true, null, { timeout: 60000 });
     await page.evaluate(() => document.fonts.ready.then(() => true)); // the self-hosted fonts have swapped in
     await page.waitForTimeout(300); // a few frames so effects and layout settle
+    for (const sel of args.clicks) {
+      await page.click(sel);
+      await page.waitForTimeout(150);
+    }
     if (args.filter) {
       await page.evaluate((matrix) => {
         const ns = 'http://www.w3.org/2000/svg';
@@ -211,7 +227,7 @@ async function main(): Promise<number> {
       dom = await page.evaluate(() => ({
         wordmark: document.querySelector('#title .wordmark')?.textContent ?? '',
         primary: document.querySelector('#title .title-menu .primary')?.id ?? null,
-        menu: [...document.querySelectorAll('#title .title-menu > .btn, #title .title-menu .settings-ctl > .btn')].map((b) => b.textContent ?? ''),
+        menu: [...document.querySelectorAll('#title .title-menu > .btn')].map((b) => b.textContent ?? ''),
       }));
       const d = dom as { wordmark: string; primary: string | null; menu: string[] };
       if (d.wordmark !== 'Spore & Sprawl') failures.push(`the title's wordmark reads "${d.wordmark}"`);
@@ -273,12 +289,34 @@ async function main(): Promise<number> {
       }
     }
 
+    // 4d. the settings screen, when a --click opened it: every setting, the three volumes, and it fits the window
+    const settingsDom = await page.evaluate(() => {
+      const card = document.getElementById('settings');
+      if (!card) return null;
+      const r = card.getBoundingClientRect();
+      return {
+        settings: [...card.querySelectorAll<HTMLElement>('[data-setting]')].map((e) => e.dataset.setting ?? ''),
+        sliders: card.querySelectorAll('input[data-level]').length,
+        preview: !!card.querySelector('#assist-preview canvas'),
+        overflow: card.scrollHeight - card.clientHeight,
+        inside: r.top >= 0 && r.left >= 0 && r.bottom <= window.innerHeight && r.right <= window.innerWidth,
+      };
+    });
+    if (settingsDom) {
+      dom = { ...(dom ?? {}), settings: settingsDom };
+      const want = ['damageNumbers', 'defaultSpeed', 'screenShake', 'uiScale', 'reducedMotion', 'colorAssist'];
+      for (const k of want) if (!settingsDom.settings.includes(k)) failures.push(`the settings screen has no ${k} row`);
+      if (settingsDom.sliders !== 3) failures.push(`the settings screen shows ${settingsDom.sliders} volume sliders (expected 3)`);
+      if (!settingsDom.preview) failures.push('the settings screen has no color-blind assist preview');
+      if (settingsDom.overflow > 0 || !settingsDom.inside) failures.push(`the settings screen doesn't fit the window (scrolls ${settingsDom.overflow} px)`);
+    }
+
     // 5. artifacts
     const dir = join(ROOT, 'artifacts', 'screenshots');
-    mkdirSync(dir, { recursive: true });
+    mkdirSync(dirname(join(dir, args.name)), { recursive: true }); // a name may hold folders (phase4/1280x720/title)
     await page.screenshot({ path: join(dir, `${args.name}.png`) });
     const report = {
-      name: args.name, url, browser: args.browser, filter: args.filter ?? null,
+      name: args.name, url, browser: args.browser, filter: args.filter ?? null, size: `${args.width}x${args.height}`, clicks: args.clicks,
       scene, tick: browserTick, browserHash, nodeHash, canvas: canvasCheck, hud, dom, run: runBrief,
       summary: node ? { ...summarize(node), stats: undefined } : null,
       failures,

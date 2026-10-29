@@ -27,7 +27,8 @@ afterAll(async () => {
 });
 
 beforeEach(async () => {
-  page = await browser!.newPage({ viewport: { width: 1280, height: 720 } });
+  // persisted runs need debug=1, not test=1; reduced motion makes screen changes instant (no spore wipe)
+  page = await browser!.newPage({ viewport: { width: 1280, height: 720 }, reducedMotion: 'reduce' });
 });
 
 afterEach(async () => {

@@ -1,7 +1,8 @@
 // The battle screen (SPEC §10.2): the top band (both Heartcaps, the territory tug, stat chips and the
 // General's Intent), the callout lane, the pixel-scaled battlefield inside its frame of roots and soil,
 // and the bottom band (Begin in deploy, then speed and pause; Hold / Advance; sound, settings and help;
-// the building tray; the inspect panel).
+// the building tray; the inspect panel). The cog opens the settings screen and pauses the battle while
+// it is open; settings that touch the field (damage numbers, color-blind assist, screen shake) apply live.
 import type { Content } from '../data/registry.ts';
 import { Renderer, TILE } from '../render/renderer.ts';
 import type { Atlas } from '../render/atlas.ts';
@@ -10,10 +11,11 @@ import { Callouts } from '../ui/callouts.ts';
 import { h, setText, toggleClass } from '../ui/h.ts';
 import { helpOverlay } from '../ui/help.ts';
 import { uiIcon } from '../ui/icons.ts';
+import { calm, sporeWipe } from '../ui/motion.ts';
 import { uiScale } from '../ui/scale.ts';
-import { settingsControl } from '../ui/settingsControl.ts';
-import type { SettingsControl } from '../ui/settingsControl.ts';
+import { closeSettings, openSettings, settingsButton, settingsOpen } from '../ui/settingsScreen.ts';
 import { battleReport } from '../ui/report.ts';
+import type { ReportRewards } from '../ui/report.ts';
 import { activeText, generalName, intentOf, rememberText, warningText } from '../ui/doctrine.ts';
 import { DraftOverlay } from '../ui/draftOverlay.ts';
 import { TopBand } from '../ui/hud/top.ts';
@@ -23,8 +25,8 @@ import { CombatLog, InspectPanel } from '../ui/inspect.ts';
 import type { BattleState } from '../sim/index.ts';
 import { BattleSound } from './battleSound.ts';
 import type { Session } from './session.ts';
-import { loadSettings, saveSettings } from './settings.ts';
-import { sfx, soundDim, soundSpeed, soundToggle } from './sound.ts';
+import { loadSettings, onSettings, settingsStore } from './settings.ts';
+import { sfx, soundDim, soundPrefs, soundSpeed, soundToggle } from './sound.ts';
 
 /** The ghost tip's gap from the footprint, and its margin inside the field (layout px). */
 const TIP_GAP = 14;
@@ -32,6 +34,10 @@ const TIP_MARGIN = 4;
 /** Battle 1's economy tip (playtest 2026-10-28): when it fires, and how long the economy cards pulse. */
 const NUDGE_AT_SECONDS = 30;
 const NUDGE_PULSE_MS = 12000;
+/** Screen shake on a Heartcap hit: how long, how far (screen px, by damage) and how often per Heartcap. */
+const SHAKE_MS = 180;
+const SHAKE_MAX_PX = 3;
+const SHAKE_EVERY_MS = 1500;
 
 export interface ViewActions {
   begin(): void;
@@ -39,6 +45,8 @@ export interface ViewActions {
   rematch(): void;
   /** In a run, the report offers only Continue (back to the run). */
   continueRun?: () => void;
+  /** In a run, what the battle earns beyond gold (Spores, Amber), shown on the report. */
+  rewards?: (state: BattleState) => ReportRewards;
 }
 
 export class BattleView {
@@ -70,9 +78,16 @@ export class BattleView {
   private speedBtns: HTMLButtonElement[] = [];
   private stanceRows: { hold: HTMLButtonElement; advance: HTMLButtonElement; status: HTMLElement }[] = [];
   private pauseBtn: HTMLButtonElement;
-  private settings: SettingsControl;
+  private settingsBtn: HTMLButtonElement;
+  private settingsShown = false;
+  private pausedBeforeSettings = false;
+  private unsubscribe: () => void;
+  private screenShake: boolean;
+  private shake = { start: -1e9, px: 0 };
+  private shakenAt = new Map<number, number>();
   private help: HTMLElement | null = null;
   private pausedBeforeHelp = false;
+  private disposed = false;
   private ended = false;
   private nudged = false;
   private nudgeUntil = 0;
@@ -112,11 +127,16 @@ export class BattleView {
       class: 'btn has-ico', id: 'pause-btn', title: 'Pause (Space)', 'aria-label': 'Pause', 'aria-pressed': 'false', onclick: () => { session.paused = !session.paused; },
     }, uiIcon(atlas, 'i-pause'));
     this.speedSeg = h('div', { class: 'seg speed', role: 'group', 'aria-label': 'Speed and pause' }, ...this.speedBtns, this.pauseBtn);
-    this.renderer.damageNumbers = loadSettings().damageNumbers;
-    this.settings = settingsControl(atlas, (v) => {
-      this.renderer.damageNumbers = v;
-      saveSettings({ damageNumbers: v });
+    const settings = loadSettings();
+    this.renderer.damageNumbers = settings.damageNumbers;
+    this.renderer.colorAssist = settings.colorAssist;
+    this.screenShake = settings.screenShake;
+    this.unsubscribe = onSettings((next) => {
+      this.renderer.damageNumbers = next.damageNumbers;
+      this.renderer.colorAssist = next.colorAssist;
+      this.screenShake = next.screenShake;
     });
+    this.settingsBtn = settingsButton(atlas, () => this.toggleSettings());
     // E1: a Hold / Advance switch per lane, with what the lane is doing (and any timer) beside it
     const lanes = state.lanes.length;
     const stance = state.rules.stance ? h('div', { class: 'stance', id: 'stance' },
@@ -137,7 +157,7 @@ export class BattleView {
       stance,
       h('div', { class: 'row' },
         soundToggle(atlas, 'up'),
-        this.settings.el,
+        this.settingsBtn,
         h('button', { class: 'btn', id: 'help-btn', title: 'Help: the matrix, merging, the general and every hotkey', onclick: () => this.toggleHelp() }, 'Help', h('kbd', null, 'H')),
       ),
       debug ? h('div', { class: 'hint' }, 'F3 debug overlay') : null,
@@ -156,12 +176,35 @@ export class BattleView {
 
   /** Removes window listeners and overlays this view added (a run plays several battles). */
   dispose(): void {
+    this.disposed = true;
     window.removeEventListener('resize', this.onResize);
+    this.unsubscribe();
+    if (this.settingsShown) closeSettings();
     soundSpeed(1);
     soundDim(false);
     this.help?.remove();
     this.report?.remove();
   }
+
+  /** Opens or closes the settings screen; the battle pauses while it is open. */
+  toggleSettings(): void {
+    if (this.settingsShown) { closeSettings(); return; }
+    if (settingsOpen() || this.ended) return;
+    this.pausedBeforeSettings = this.session.paused;
+    this.session.paused = true;
+    this.settingsShown = true;
+    this.settingsBtn.setAttribute('aria-expanded', 'true');
+    openSettings(this.session.content, this.atlas, settingsStore, soundPrefs, {
+      paused: this.session.state.phase === 'live',
+      onClose: () => {
+        this.settingsShown = false;
+        this.settingsBtn.setAttribute('aria-expanded', 'false');
+        this.session.paused = this.pausedBeforeSettings;
+      },
+    });
+  }
+
+  get settingsOpen(): boolean { return this.settingsShown; }
 
   /** Opens or closes the help overlay; the battle pauses while it is open. */
   toggleHelp(): void {
@@ -234,8 +277,9 @@ export class BattleView {
       } else if (e.t === 'buildingDestroyed') {
         const name = this.session.content.buildings[e.buildingId]?.name ?? e.buildingId;
         this.callouts.push('buildingLost', e.side === 'player' ? `${name} lost` : `Enemy ${name} destroyed`, e.side === 'player' ? 'bad' : 'good', now);
-      } else if (e.t === 'hit' && e.target === -1) {
-        this.callouts.push('heartcap', 'Your Heartcap is under attack!', 'bad', now);
+      } else if (e.t === 'hit' && e.target < 0) {
+        if (e.target === -1) this.callouts.push('heartcap', 'Your Heartcap is under attack!', 'bad', now);
+        this.shakeOn(e.target, e.amount, now);
       } else if (e.t === 'sporestorm') {
         this.callouts.push('info', `The Sporestorm thickens (${e.stacks})`, '', now);
       } else if (e.t === 'begin') {
@@ -256,6 +300,29 @@ export class BattleView {
         this.callouts.push('merge', e.side === 'player' ? `${tier} ${name}!` : `Enemy ${tier} ${name}`, e.side === 'player' ? 'good' : 'bad', now);
       }
     }
+  }
+
+  /**
+   * A restrained shake when a Heartcap is hit (off by default, SPEC §10.4): up to 3 screen px by damage,
+   * 180 ms, at most once every 1.5 s per Heartcap, and never under reduced motion or `?test=1`.
+   */
+  private shakeOn(target: number, amount: number, now: number): void {
+    if (!this.screenShake || calm()) return;
+    if (now - (this.shakenAt.get(target) ?? -1e9) < SHAKE_EVERY_MS) return;
+    this.shakenAt.set(target, now);
+    this.shake = { start: now, px: Math.min(SHAKE_MAX_PX, 1 + amount / 60) };
+  }
+
+  /** The field's offset this frame: a jolt that dies away in a beat and a half. */
+  private shakeFrame(now: number): void {
+    const k = (now - this.shake.start) / SHAKE_MS;
+    if (k >= 1 || k < 0) {
+      if (this.fieldWrap.style.transform) this.fieldWrap.style.transform = '';
+      return;
+    }
+    const a = this.shake.px * (1 - k) * (1 - k) / uiScale();
+    const x = Math.round(a * Math.cos(k * Math.PI * 3)), y = Math.round(a * 0.5 * Math.sin(k * Math.PI * 3));
+    this.fieldWrap.style.transform = `translate(${x}px, ${y}px)`;
   }
 
   /** Does the player have, or are they placing, an economy building? */
@@ -295,6 +362,7 @@ export class BattleView {
     // spores drift at the game's speed, and stop while it is paused, held for a draft or over
     const running = state.phase === 'deploy' || (state.phase === 'live' && !s.paused && !state.held);
     this.frameArt.frame(state.sporestorm, now, running ? (state.phase === 'live' ? s.speed : 1) : 0);
+    this.shakeFrame(now);
     this.top.update(state);
     const kit = state.sides.player.kit.join();
     if (kit !== this.trayKit) {
@@ -324,7 +392,6 @@ export class BattleView {
       row.hold.disabled = !held && !s.canHold(i);
       setText(row.status, text);
     });
-    this.settings.sync(this.renderer.damageNumbers);
     this.lit(this.pauseBtn, s.paused);
     soundSpeed(s.speed);
     soundDim(s.paused && state.phase === 'live');
@@ -353,8 +420,14 @@ export class BattleView {
       this.ended = true;
       s.placing = null;
       if (this.help) this.toggleHelp();
-      this.report = battleReport(s.content, state, { again: this.actions.again, rematch: this.actions.rematch, ...(this.actions.continueRun ? { continueRun: this.actions.continueRun } : {}) }, this.atlas);
-      document.body.append(this.report);
+      if (this.settingsShown) closeSettings();
+      const a = this.actions;
+      const report = battleReport(s.content, state, {
+        again: a.again, rematch: a.rematch, ...(a.continueRun ? { continueRun: a.continueRun } : {}),
+      }, this.atlas, a.rewards?.(state));
+      this.report = report;
+      // the report is a new screen: it arrives behind a spore wipe
+      sporeWipe(() => { if (!this.disposed) document.body.append(report); });
     }
   }
 

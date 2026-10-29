@@ -998,7 +998,7 @@ Each feat is a data record: `id`, `name`, `description`, `scope` (`battle` or `r
 
 ### 10.4 Feedback rules (clean field, rich inspection)
 
-- **Damage numbers:** none by default. The setting offers *off*, *big hits only* and *all*; until the settings screen exists it lives in the battle's settings popover (the cog in the bottom band) and is saved with the other settings.
+- **Damage numbers:** none by default. The setting offers *off*, *big hits only* (30 or more) and *all*. It lives on the settings screen (§10.5), which the cog in the battle's bottom band opens, and is saved with the other settings.
 - **HP bars:** shown only on damaged units and buildings; always shown on Heartcaps.
 - **Hit sparks** come in three tints by effectiveness class (§5.3):
   - *strong:* a large, bright gold spark
@@ -1022,11 +1022,14 @@ Each feat is a data record: `id`, `name`, `description`, `scope` (`battle` or `r
   - units spawned and merged
   - gold by source
   - the general's counters with timestamps and the buildings used
+- **Puffs:** a unit's spawn and death are puffs of spores, the one particle: a few spore-white motes, 1–2 px, that drift up and fade (spawn 320 ms, death 420 ms). The Sporestorm's specks on the field are spore-white too.
 - **Accessibility:**
   - Anything shown by color is also shown by an icon or shape.
   - Pause is always available.
   - Text is at least 12 CSS px.
-  - Screen shake is off by default.
+  - Screen shake is off by default. Turned on, it is a restrained jolt of the field when a Heartcap is hit: up to 3 screen px by damage, 180 ms, at most once every 1.5 s per Heartcap, and never under reduced motion.
+  - **Reduced motion** follows the device's setting unless the player turns it on or off. It drops the screen wipe, drift, tilt, lift, roll-ups and shake, and keeps fades at 120 ms or less.
+  - **Color-blind assist** (off by default): a team mark under every unit, a light lilac ring for the Velvet Bloom and a dark bar with pale dashes for the Gray Rot, so the sides differ in shape and lightness as well as hue; brighter wandering strands on the Bloom's mat and dark ash tufts on the Rot's; and a leaning hatch on the Rot's half of the territory bar.
 
 ### 10.5 Screens
 
@@ -1037,19 +1040,26 @@ Each feat is a data record: `id`, `name`, `description`, `scope` (`battle` or `r
 - Battle, with the draft overlay
 - Battle report
 - Run summary
-- Settings: damage numbers, screen shake, default speed, save export/import, reset profile
+- Settings: sound, damage numbers, default speed, screen shake, UI scale, reduced motion, color-blind assist (save export/import and a profile reset arrive with the profile in M6)
 
 Milestone 1 needs only Battle (with deploy) and a simple end screen.
 
 **Run screens as built (docs/ui-ux-plan.md, Phase 2).** Every run screen is DOM (so Playwright can query it), with spores drifting behind it, the run bar on top and a footer with the seed.
-- **Title** (the page with no `scene`): "Spore & Sprawl" in the display face beside the Heartcap's silhouette, lit from below. Continue (only with a saved run, and naming its row and Heartcap), New run (after a confirm if a run is saved), How to play (Help) and Settings (sound and damage numbers, until the settings screen arrives). The run's route and summary have a Title button back. It becomes the door to the Underroot in M6.
-- **Run bar:** the Heartcap's HP and bar, Spores and Amber with their icons, battles won, the kit and the relics. Each relic is a pixel badge whose shape and rim name its rarity (round, diamond, star), with a tooltip on hover or focus.
+- **Title** (the page with no `scene`): "Spore & Sprawl" in the display face beside the Heartcap's silhouette, lit from below. Continue (only with a saved run, and naming its row and Heartcap), New run (after a confirm if a run is saved), How to play (Help) and Settings (the settings screen). The run's route and summary have a Title button back. It becomes the door to the Underroot in M6.
+- **Run bar:** the Heartcap's HP and bar, Spores and Amber with their icons, battles won, the kit and the relics, then the speaker and the settings cog. Each relic is a pixel badge whose shape and rim name its rarity (round, diamond, star), with a tooltip on hover or focus.
 - **Route map:** spore pods on soil, one icon per node kind, joined by hyphae from every node to every node in the next row (and from the colony's start to the first row). The path you walked glows violet, the threads you can take now glow lilac, the rest stay dim, and hovering or focusing a pod lights its threads. A legend names the node kinds.
-- **Draft and spoils cards:** a frame per rarity (common bark, uncommon teal-lit, rare amber-lit with a spore sparkle), each keeping its word; the type's icon in the header; a blueprint's price, output and role as chips; `1`–`3` as keycaps (the keys pick on spoils too). Cards deal in left to right and lift on hover.
+- **Draft and spoils cards:** a frame per rarity (common bark, uncommon teal-lit, rare amber-lit with a spore sparkle), each keeping its word; the type's icon in the header; a blueprint's price, output and role as chips; `1`–`3` as keycaps (the keys pick on spoils too). Cards deal in left to right, and on hover lift and lean a little toward the pointer (at most 3° and 4°). The in-battle draft opens with a burst of spores rising behind the cards.
 - **Event and Grove:** a framed scene at 4× per event (`v-<event id>`) and for the Grove, the story on stalk cream, and the choices as cards with outcome chips (gains, costs with a real minus, gold, notes), each with a word and usually an icon. Number keys pick a choice.
-- **Battle report and run summary:** an outcome banner (on a win the Heartcap blooms in lilac spores, on a loss the cap wilts to ash) with the MVP building beside it, then a staged reveal: the banner, the front line, then the bars. Every table stays.
+- **Battle report and run summary:** an outcome banner (on a win the Heartcap blooms in lilac spores, on a loss the cap wilts to ash) with the MVP building beside it, then a staged reveal: the banner, the front line, then the bars. Every table stays. The report's banner names what the battle earned: gold, and in a run its Spores and any Amber (an elite's Amber is shown as a chance, since it is rolled on Continue). Rewards roll up from 0 (600 ms, ease-out, then one bump): the report's gold and gold bars, and the summary's Spores, Amber and Commander XP.
 - **Help:** four tabs (Matrix · Merging · The general · Keys), each fitting 1280×720; keys are drawn as keycaps.
-- **Motion:** things grow in (from 0.96, ease-out) and nothing bounces more than once. Under `prefers-reduced-motion` there's no stagger, lift, sparkle or drift, and fades take 120 ms or less. `?test=1` holds every run screen still.
+- **Motion:** things grow in (from 0.96, ease-out) and nothing bounces more than once. Every screen change (title, route, spoils, event, Grove, battle, report, summary) is a spore-burst wipe of 360 ms: a veil of the void rises over the old screen on a band of spore-white motes (150 ms, ease-in), the screen swaps, and the veil lifts off the new one from the bottom up (210 ms, ease-out). Clicks and keys wait while it runs; the page's first screen appears at once. Under reduced motion (§10.4) there's no wipe, stagger, lift, tilt, sparkle, roll-up or drift, and fades take 120 ms or less. `?test=1` holds every screen still and makes every change instant.
+
+**Settings screen as built (docs/ui-ux-plan.md, Phase 3).** An overlay sheet that opens from the title's Settings button, the battle's cog (the battle pauses while it is open, and the sheet says so) and the run bar's cog. Esc, Close or a press on the scrim closes it; while it is open, keys reach nothing behind it (except `S`, which still mutes) and Tab stays inside. The speakers keep their quick mute. Two columns:
+- **Sound:** mute, and master, effects and ambience volume (§13.9).
+- **Battle:** damage numbers (off, big hits, all), default speed (1×, 2×, 3×: each battle runs at it once it begins) and screen shake (off or on).
+- **Display and motion:** UI scale (auto, or 125%, 150%, 175% or 200% for big screens; a step never lays the page out below 1280×720, so a window too small for it gets the largest scale that fits), reduced motion (system, on, off) and color-blind assist (off, on), with a live preview under it: a strip of field at 3× with two units a side and a territory bar, drawn the way the field draws them, so turning the assist on shows its marks at once.
+
+Every change saves at once into the one settings record, `spore-sprawl/settings/v1` (through `storageKey()`, so the dev site keeps its own); a record saved before a field existed loads with that field's default, and a value the game doesn't know falls back to the default.
 
 ---
 
@@ -1510,7 +1520,7 @@ Every sound is synthesized with WebAudio from parameters in `data/sounds.json`, 
 - **UI sounds.** A very soft tick when the pointer moves onto a button, and a click when one is pressed, delegated from the document so every screen has them. Route nodes, event and Grove choices, and draft and spoils cards have their own sounds; a button's `data-sfx` overrides the choice.
 - **Ambient bed.** Low-passed brown noise whose cutoff drifts slowly, plus a random water drip every 2.5–9 s, on the ambient bus. It keeps going while a battle is paused, at half level.
 - **Browser rules.** The AudioContext is made on the first `pointerdown` or `keydown` (autoplay rules) and is suspended while the tab is hidden or sound is muted. Without WebAudio, under `?test=1`, in automated browsers (`navigator.webdriver`, unless `?sound=1`) and in Node, the engine does nothing and never throws, so screenshots and tests are unaffected.
-- **Settings.** `masterVolume` (default 0.6), `sfxVolume` (0.8; it also sets the UI bus), `ambientVolume` (0.5) and `muted` live in `spore-sprawl/settings/v1`, and saves from before sound load with these defaults. Gains follow the square of the slider, which sounds closer to even steps. The speaker button sits in the battle's speed row and in the run bar: a click mutes, and hovering or focusing it opens the volume sliders. `S` mutes or unmutes anywhere.
+- **Settings.** `masterVolume` (default 0.6), `sfxVolume` (0.8; it also sets the UI bus), `ambientVolume` (0.5) and `muted` live in `spore-sprawl/settings/v1`, and saves from before sound load with these defaults. Gains follow the square of the slider, which sounds closer to even steps. The speaker button sits in the battle's speed row and in the run bar: a click mutes, and hovering or focusing it opens the volume sliders. The settings screen (§10.5) holds the same mute and sliders. `S` mutes or unmutes anywhere.
 - **Sound board.** `?scene=sounds` lists every sound with Play and ×8 (eight plays 70 ms apart, to hear cooldowns and the voice cap), plays the ambient bed, and can audition 2× and 3× speed, the enemy's quieter side and the paused level.
 
 ---
@@ -1879,7 +1889,7 @@ The multi-seed summary shows win rate per side, median, min and max duration, th
 3. Launch Playwright Chromium at 1280×720 with device scale factor 1.
 4. Open `/?<params>`. The first run needs `npx playwright install chromium` once, which downloads the browser.
 
-Script options: `--name <file>`, `--params "<query>"`, `--url <base>`, `--browser chromium|firefox`, and `--filter deuteranopia|protanopia` (applies a color-vision filter before capture).
+Script options: `--name <file>` (it may hold folders: `phase4/1280x720/title`), `--params "<query>"`, `--url <base>`, `--browser chromium|firefox`, `--filter deuteranopia|protanopia` (applies a color-vision filter before capture), `--size WxH` (the window; 1280×720 by default), `--click <selector>` (repeatable: presses a button before the capture, such as `#settings-btn` or `#help-tab-keys`) and `--settings '<json>'` (writes the settings record before the game boots, such as `'{"colorAssist":true}'`). When a click opened the settings screen, the script also checks that it shows every setting and the three volumes and fits the window.
 
 **URL parameters** (supported in dev and production builds):
 
@@ -1928,6 +1938,7 @@ Claude then **opens the PNG with the Read tool** and checks the milestone's visu
 | Run (M3) | Route constraints; draft weights and exclusions; effect compilation order; rewards; save round-trip |
 | Meta (M6) | Feat conditions; strain patching; trait capacity; mastery thresholds; migrations |
 | Sound | The sound bank's schema and references; cooldowns per key; the voice cap and priority stealing; speed thinning; the engine as a no-op in Node; which battle events make sounds, at whose gain; settings migration |
+| Settings and contrast | Older settings records load with new fields at their defaults; unknown values fall back; listeners hear each change. Every text pair the UI uses is 4.5:1 or better and every control edge 3:1 or better, read from the tokens in `styles.css` |
 | Purity | No forbidden imports or globals in `src/sim`, `src/run` or `src/meta` |
 
 ---
@@ -2294,8 +2305,8 @@ The verification blocks below are written so Claude can run them unattended. Scr
 **Scope:**
 
 - A render performance pass.
-- The settings screen.
-- Light juice: spawn and death puffs, optional screen shake.
+- The settings screen. (Built early with the UI/UX plan's Phase 3: §10.5.)
+- Light juice: spawn and death puffs, optional screen shake. (Built early with Phase 3: puffs are spores, and the shake is a setting, §10.4.)
 - A Firefox determinism check.
 - The final balance tournament and tuning.
 - A README with how to play.

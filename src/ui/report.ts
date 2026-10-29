@@ -3,6 +3,7 @@
 // spawned and merged. Shown when a battle ends and for `scene=report`. The outcome is a banner (on a
 // win the Heartcap blooms in lilac spores, on a loss the cap wilts to ash) with the MVP building beside
 // it, and the report reveals in stages: the banner, then the front line, then the bars (docs/ui-ux-plan.md C4).
+// The banner's rewards (gold earned, and in a run the Spores and Amber) and the gold bars roll up (A6).
 import type { Content } from '../data/registry.ts';
 import type { Atlas } from '../render/atlas.ts';
 import { spriteToCanvas } from '../render/atlas.ts';
@@ -11,7 +12,9 @@ import type { BattleState, Side } from '../sim/index.ts';
 import { formatClock } from '../sim/index.ts';
 import { columnsOwned } from '../sim/world.ts';
 import { h } from './h.ts';
+import { uiIcon } from './icons.ts';
 import { KIND_LABEL, counterLine, generalName } from './doctrine.ts';
+import { rollUp } from './motion.ts';
 
 const SVG = 'http://www.w3.org/2000/svg';
 const COLOR: Record<Side, string> = { player: '#8a4fd8', enemy: '#7d8a7a' };
@@ -50,7 +53,7 @@ export function frontLineGraph(state: BattleState, width = 900): SVGElement {
   const home = state.map.homeCols;
   const end = Math.max(state.tick, 1);
   const pad = { l: 34, r: 8, t: 6, b: 18 };
-  const band = state.lanes.length === 1 ? 104 : state.lanes.length === 2 ? 68 : 50;
+  const band = state.lanes.length === 1 ? 96 : state.lanes.length === 2 ? 64 : 48;
   const gap = 8;
   const plotW = width - pad.l - pad.r;
   const height = pad.t + state.lanes.length * band + (state.lanes.length - 1) * gap + pad.b;
@@ -96,15 +99,31 @@ export function frontLineGraph(state: BattleState, width = 900): SVGElement {
 
 interface Bar { label: string; value: number; side: Side }
 
-function bars(id: string, rows: Bar[], unit = ''): HTMLElement {
+/** `roll`: the values roll up after this many ms (the gold bars, once their stage has revealed). */
+function bars(id: string, rows: Bar[], roll?: number): HTMLElement {
   const max = Math.max(1, ...rows.map((r) => r.value));
   return h('div', { class: 'bars', id },
     ...rows.map((r) => h('div', { class: `bar ${r.side}` },
       h('span', { class: 'label' }, r.label),
       h('span', { class: 'track' }, h('span', { class: 'fill', style: `width:${((100 * r.value) / max).toFixed(1)}%` })),
-      h('span', { class: 'value' }, `${r.value.toLocaleString('en-US')}${unit}`),
+      roll === undefined ? h('span', { class: 'value' }, r.value.toLocaleString('en-US')) : rollUp(h('span', { class: 'value' }), r.value, { delay: roll }),
     )),
   );
+}
+
+/** What a battle in a run earns beyond gold (SPEC §8.6); an elite's Amber is a chance, rolled on Continue. */
+export interface ReportRewards { spores: number; amber: number; amberChance: number }
+
+/** The banner's rewards: an icon, a number that rolls up, and its word. */
+function rewardsRow(atlas: Atlas | undefined, gold: number, rewards: ReportRewards | undefined): HTMLElement {
+  const item = (icon: string, cls: string, value: number, word: string, delay: number) => h('span', { class: `reward ${cls}`, 'data-reward': cls },
+    atlas ? uiIcon(atlas, icon) : null, rollUp(h('b'), value, { delay }), h('small', null, word));
+  return h('div', { class: 'rewards', id: 'report-rewards' },
+    item('i-gold', 'gold', gold, 'gold earned', 300),
+    rewards ? item('i-spores', 'spores', rewards.spores, 'Spores', 450) : null,
+    rewards?.amber ? item('i-amber', 'amber', rewards.amber, 'Amber', 600) : null,
+    rewards?.amberChance ? h('span', { class: 'reward chance' }, atlas ? uiIcon(atlas, 'i-amber') : null,
+      h('small', null, `${Math.round(rewards.amberChance * 100)}% chance of +1 Amber`)) : null);
 }
 
 /** Damage per building type (turrets as their own row), largest first. */
@@ -198,7 +217,7 @@ export function outcomeArt(atlas: Atlas | undefined, won: boolean): HTMLElement 
   return box;
 }
 
-export function battleReport(content: Content, state: BattleState, actions: { again: () => void; rematch: () => void; continueRun?: () => void }, atlas?: Atlas): HTMLElement {
+export function battleReport(content: Content, state: BattleState, actions: { again: () => void; rematch: () => void; continueRun?: () => void }, atlas?: Atlas, rewards?: ReportRewards): HTMLElement {
   const o = state.outcome!;
   const won = o.winner === 'player';
   const st = state.stats;
@@ -220,7 +239,9 @@ export function battleReport(content: Content, state: BattleState, actions: { ag
       h('div', { class: 'banner-text' },
         h('h1', { class: won ? 'win' : 'loss', id: 'end-title' }, won ? 'Victory' : 'Defeat'),
         h('div', { class: 'how', id: 'end-how' }, outcomeText(state)),
-        h('div', { class: 'hint' }, `Battle length ${formatClock(o.tick, state.rules.tickRate)} · Sporestorm ${state.sporestorm} stack${state.sporestorm === 1 ? '' : 's'}`)),
+        h('div', { class: 'banner-meta' },
+          rewardsRow(atlas, sum(st.player.goldEarned), rewards),
+          h('span', { class: 'hint' }, `Battle length ${formatClock(o.tick, state.rules.tickRate)} · Sporestorm ${state.sporestorm} stack${state.sporestorm === 1 ? '' : 's'}`))),
       mvpCallout(content, atlas, mvpOf(totals.damage, totals.counts), 'this battle'),
     ),
     h('div', { class: 'reveal', style: '--d:1' },
@@ -234,7 +255,7 @@ export function battleReport(content: Content, state: BattleState, actions: { ag
       ),
       h('section', null,
         h('h3', null, 'Gold by source'),
-        bars('report-gold', gold),
+        bars('report-gold', gold, 700),
         h('h3', null, 'Units'),
         h('table', { id: 'report-units' },
           h('tr', null, h('th', null, ''), h('th', null, NAME.player), h('th', null, NAME.enemy)),
