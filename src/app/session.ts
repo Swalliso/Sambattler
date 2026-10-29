@@ -53,20 +53,20 @@ export class Session {
     return true;
   }
 
-  /** Prototype E1: whether a lane will be held once pending stance commands run. */
+  /** E1 Hold / Advance: whether a lane will be held once pending stance commands run. */
   stanceShown(lane: number): boolean {
     let hold = this.state.sides.player.stance?.[lane]?.hold ?? false;
     for (const c of this.pending()) if (c.type === 'stance' && c.lane === lane) hold = c.hold;
     return hold;
   }
 
-  /** Prototype E1: true if the lane could hold right now (not on cooldown). */
+  /** E1 Hold / Advance: true if the lane could hold right now (not on cooldown). */
   canHold(lane: number): boolean {
     const st = this.state.sides.player.stance?.[lane];
     return !!st && this.state.tick >= st.readyAt;
   }
 
-  /** Prototype E1: flips one lane between Hold and Advance (a hold on cooldown is refused here, not in the log). */
+  /** E1 Hold / Advance: flips one lane between Hold and Advance (a hold on cooldown is refused here, not in the log). */
   toggleStance(lane: number): boolean {
     if (!this.state.rules.stance || this.state.phase === 'ended') return false;
     const hold = !this.stanceShown(lane);
@@ -75,7 +75,7 @@ export class Session {
     return true;
   }
 
-  /** Prototype E1: holds every lane that can hold, or, if every lane already holds, advances them all. */
+  /** E1 Hold / Advance: holds every lane that can hold, or, if every lane already holds, advances them all. */
   toggleAllStances(): void {
     const lanes = this.state.lanes.map((_, i) => i);
     const allHeld = lanes.every((i) => this.stanceShown(i));

@@ -36,7 +36,7 @@ export function helpOverlay(content: Content, state: BattleState, onClose: () =>
     ['M', 'merge toggle on the selected spawner'], ['X / Delete', 'sell (press twice)'], ['H', 'this help'],
   ];
   if (r.stance) {
-    keys.push(['F', `hold every lane, or advance them all (prototype): held units gather at a rally line inside your border and merge; a hold lasts up to ${r.stance.maxHoldTicks / r.tickRate} s, then ${r.stance.cooldownTicks / r.tickRate} s before the next`]);
+    keys.push(['F', `hold every lane, or advance them all: held units gather at a rally line inside your border and merge; a hold lasts up to ${r.stance.maxHoldTicks / r.tickRate} s, then ${r.stance.cooldownTicks / r.tickRate} s before the next`]);
   }
   const card = h('div', { class: 'helpcard', id: 'help', role: 'dialog', 'aria-label': 'Help' },
     h('div', { class: 'helphead' }, h('h2', null, 'How battles work'), h('button', { class: 'btn', onclick: onClose }, 'Close [H]')),

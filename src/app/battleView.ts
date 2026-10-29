@@ -92,17 +92,19 @@ export class BattleView {
       class: 'btn', id: 'numbers-btn', title: 'Damage numbers: off, big hits only, or all',
       onclick: () => this.cycleNumbers(),
     }, '');
-    // prototype E1: one Hold / Advance button per lane
+    // E1: one Hold / Advance button per lane
     const stance = state.rules.stance ? h('div', { class: 'stance', id: 'stance' },
       ...state.lanes.map((_, i) => {
-        const b = h('button', { class: 'btn', 'data-lane': i, onclick: () => session.toggleStance(i) }, '');
+        const title = `Hold or advance ${state.lanes.length > 1 ? `lane ${i + 1}` : 'the lane'} (F: every lane)`;
+        const b = h('button', { class: 'btn', 'data-lane': i, title, onclick: () => session.toggleStance(i) }, '');
         this.stanceBtns.push(b);
         return b;
       }),
     ) : null;
     const controls = h('div', { class: 'controls' },
       h('div', { class: 'speed' }, ...this.speedBtns, this.pauseBtn),
-      h('div', { class: 'hint' }, state.rules.stance ? 'Space pause · [ ] speed · F hold' : 'Space pause · [ ] speed'),
+      // one line: F is on the Hold buttons' tooltips and in Help, so two lanes still fit the band
+      h('div', { class: 'hint' }, 'Space pause · [ ] speed'),
       stance,
       h('div', { class: 'row' }, h('button', { class: 'btn', id: 'help-btn', onclick: () => this.toggleHelp() }, 'Help [H]'), this.numbersBtn),
       debug ? h('div', { class: 'hint' }, 'F3 debug overlay') : null,

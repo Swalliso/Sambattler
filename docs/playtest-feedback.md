@@ -11,7 +11,7 @@ Human playtest notes, newest first. Each entry records what the player said and 
 | F3 | "Did losing forward buildings feel fair and readable?" has no answer yet | M1 playtest gate | Needs a playtest where the player builds forward |
 | F4 | A player never noticed the economy buildings and lost battle 1 | §10.2 tray, §6.2 income | UI change made 2026-10-28: economy cards come first with a gold role tag, plus a one-time battle-1 tip at 0:30. No balance change. Ask next round whether players spot the Cellar |
 | F5 | Tray cards aren't laid out intuitively and need tooltips | §10.2 tray | UI change made 2026-10-28: role tags, a plain one-line summary, and a hover/keyboard tooltip with full stats and matchups. Ask next round whether the cards read better |
-| F6 | Units capture columns awkwardly | §4.3 territory, E1 Hold/Advance (`?proto=hold`) | Open, no change. Gather more feedback, including on the `?proto=hold` build, and ask what "awkward" means (see the 2026-10-28 entry) |
+| F6 | Units capture columns awkwardly | §4.3 territory, §5.2 Hold / Advance | Open. Hold / Advance is in the game since 2026-10-28 (the only prototype adopted). Ask next round whether capture still feels awkward with it, and what "awkward" means (see the 2026-10-28 entry) |
 | F7 | Buildings need more feedback, e.g. a coin popping off economy buildings when they pay | §13.6 effects | Coin pops and a gold-counter pulse added 2026-10-28. Spawn-timer rings and sound are candidates, not started |
 
 ## 2026-10-28: playtester notes (relayed by the user)
@@ -26,7 +26,7 @@ Human playtest notes, newest first. Each entry records what the player said and 
 - Done (UI only): the card face shows hotkey, price, sprite, name, role tag and one plain line ("2 Sporelings / 16 s", "+4 gold / 5 s", "crush splash · range 6"). Hovering, or keyboard focus, opens a tooltip with the description, what it makes, unit HP and attack, strong vs / weak vs, armor, siege or slayer, merge perks, building HP and, for economy, the payback time. Stats come from the compiled side, so upgrades show.
 
 **Column capture feels awkward (F6).** Discussed by the playtesters; the user wants more feedback before changing anything and hopes Hold/Advance helps.
-- Hold is still a prototype, off by default. Playtesters only get it from `?proto=hold` (https://swalliso.github.io/Sambattler/?proto=hold).
+- Hold / Advance is now in the game (adopted the same day; `F` or the per-lane buttons), so the next round tests capture with it on.
 - Questions for the next round, to pin down "awkward": does a single unit flip a column too easily? Do columns flip back and forth? Is it unclear why a column didn't flip (only the frontier column can be captured, and buildings block it)? Do units walk past columns without stopping?
 
 **More building feedback (F7).** The user wants buildings to show what they're doing, e.g. a gold coin popping off economy buildings when they pay.

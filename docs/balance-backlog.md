@@ -64,7 +64,7 @@ Melee-only is safe for the guardrails and slightly less snowbally by G5, but arc
 
 ## Prototype results (2026-10-27)
 
-Every candidate is behind a `balance.json` setting that is absent by default, so the shipped rules, goldens and hashes are unchanged. Measure a setting with `npm run experiment -- --proto <spec>`, or playtest it with `?proto=<spec>` in the browser (for example `?proto=b1,besiegedBy:melee`; prototype runs are never saved). Presets and the `path:value` override syntax are in `src/data/proto.ts`. Nothing below is adopted.
+Every candidate is behind a `balance.json` setting that is absent by default, so the shipped rules, goldens and hashes are unchanged. Measure a setting with `npm run experiment -- --proto <spec>`, or playtest it with `?proto=<spec>` in the browser (for example `?proto=b1,besiegedBy:melee`; prototype runs are never saved). Presets and the `path:value` override syntax are in `src/data/proto.ts`. Of these, only `hold` (E1) was adopted, on 2026-10-28; `nohold` measures the rules without it. B1–B4, A2, A3 and T1–T3 stay off until they show a benefit.
 
 | Preset | Setting |
 |---|---|

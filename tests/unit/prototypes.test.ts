@@ -181,21 +181,24 @@ describe('E1 lane stance (balance laneStance)', () => {
   const order = (s: BattleState, hold: boolean, side: 'player' | 'enemy' = 'player') =>
     queueCommand(s, { tick: s.tick + 1, side, type: 'stance', lane: 0, hold });
 
-  it('is off by default: no rules, no lane state, and the command is refused', () => {
-    expect(content.balance.laneStance).toBeUndefined();
-    const s = liveState();
+  it('is on by default (adopted 2026-10-28): balance.json matches the hold preset, every side has a stance per lane', () => {
+    expect(content.balance.laneStance).toEqual(PROTO_PRESETS.hold!.laneStance);
+    const s = createBattle(content, makeConfig(content, { seed: 1, mapId: 'twin-roots', player: 'human', enemy: 'human' }));
+    expect(s.rules.stance).toEqual({ ...STANCE, ai: { musterSupply: 12, spentSupply: 4 } });
+    expect(s.sides.player.stance).toEqual([{ hold: false, since: 0, readyAt: 0 }, { hold: false, since: 0, readyAt: 0 }]);
+  });
+
+  it('the nohold preset removes it: no rules, no lane state, and the command is refused', () => {
+    const c = protoContent('nohold');
+    expect(c.balance.laneStance).toBeUndefined();
+    const s = createBattle(c, makeConfig(c, { seed: 1, mapId: 'test-flat', player: 'human', enemy: 'human' }));
     expect(s.rules.stance).toBeUndefined();
     expect(s.sides.player).not.toHaveProperty('stance');
+    queueCommand(s, { tick: 0, side: 'player', type: 'begin' });
+    step(s);
     order(s, true);
     step(s);
     expect(s.events).toContainEqual(expect.objectContaining({ t: 'commandRejected', reason: 'stance is not available in this milestone' }));
-  });
-
-  it('the hold preset compiles to ticks and gives every side a stance per lane', () => {
-    const c = protoContent('hold');
-    const s = createBattle(c, makeConfig(c, { seed: 1, mapId: 'twin-roots', player: 'human', enemy: 'human' }));
-    expect(s.rules.stance).toEqual({ ...STANCE, ai: { musterSupply: 12, spentSupply: 4 } });
-    expect(s.sides.player.stance).toEqual([{ hold: false, since: 0, readyAt: 0 }, { hold: false, since: 0, readyAt: 0 }]);
   });
 
   it('held idle units gather at the rally line behind the border column; Advance releases them', () => {

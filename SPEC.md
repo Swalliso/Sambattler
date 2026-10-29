@@ -80,7 +80,7 @@ Conventions:
 | Difficulty | Honest AI (same rules, no cheats) at one tuned baseline; a small set of blights after the first win; the full ladder later |
 | Power curve | Rare broken runs are allowed but can't be forced every run |
 | Battle info | Clean field, rich inspection: hit sparks tinted by effectiveness, callouts, a post-battle report with a front-line graph |
-| Unit control | None: units always advance. The commander's one active power is the timing tool. |
+| Unit control | Per-lane **Hold / Advance** (adopted 2026-10-28, §5.2): units advance by default, and a held lane gathers at a rally line behind its border. The commander's one active power is the other timing tool. |
 | Milestone 1 | Territory core only, one battle, scripted general |
 | Art | Text-defined pixel sprites in data files, baked to a canvas atlas at startup |
 
@@ -309,6 +309,10 @@ With homeCols = 4, the turrets cover the home zone plus about 3 contested column
 - **Moving:**
   - With a target out of range: step toward it at `speed`.
   - With no target: advance along the lane (+x for the player, −x for the enemy) while drifting back toward the unit's spawn y at 0.3 tiles/s.
+  - **Hold / Advance** (`laneStance`, adopted 2026-10-28 from the engagement review's E1):
+    - **Holding:** a side can hold each lane. Idle units in a held lane gather at a rally line 1.5 tiles behind the front edge of the side's border column, and merge there. Units that dealt or took damage in the last 2 s fight as usual.
+    - **Limits:** a hold lasts at most 30 s, then the lane advances on its own and can't hold again for 10 s.
+    - **The AI musters:** every AI side holds a lane until 12 supply stands in it, then advances, and holds again once it drops below 4.
   - Units stop at the enemy Heartcap edge.
 - **Separation:**
   - After moving, overlapping units (from either side) are pushed apart by half their overlap each, for at most 2 passes, using the spatial hash.
@@ -977,6 +981,7 @@ Each feat is a data record: `id`, `name`, `description`, `scope` (`battle` or `r
 | `Space` | Pause or resume (every command still works while paused) |
 | `]` / `[` | Speed up or down (1× / 2× / 3×) |
 | `Tab` | Cycle through your buildings |
+| `F`, or a lane's Hold / Advance button | Hold every lane, or advance them all; the buttons toggle one lane (§5.2) |
 | `H` | Help overlay: matrix chart, tags, hotkeys |
 | `F3` | Debug overlay (only with `?debug=1`): column presence numbers, capture progress, aggro radii, ids |
 
@@ -2279,7 +2284,7 @@ These are explicitly **not** built in v1 (Milestones 1–8). Anything here needs
 **Gameplay**
 
 5. A second playable faction or faction selection. The Gray Rot is enemy-only.
-6. Direct unit control: rally points, hold/advance stances, formations, unit-activated abilities.
+6. Direct unit control: rally points, formations, unit-activated abilities. (Per-lane Hold / Advance was adopted on 2026-10-28, §5.2.)
 7. Flying units, anti-air, burrowing, and any terrain that changes movement except root walls.
 8. Pathfinding, and unit collision with buildings.
 9. Fog of war, and any hidden information beyond the general's vague telegraph.

@@ -114,8 +114,10 @@ describe('spawn-mix analysis (SPEC §7.4)', () => {
 });
 
 describe('the counter cycle (SPEC §7.4)', () => {
+  // Heartcaps can't be targeted, so the battle lasts past the cycles under test (with Hold the
+  // general routs the mono bot before 7:00).
   const ticksOf = (general: string, until: number) => {
-    const s = createBattle(content, makeConfig(content, { seed: 4, player: 'bot:mono:sporelingBurrow', enemy: `general:${general}`, flags: ADAPTIVE }));
+    const s = createBattle(content, makeConfig(content, { seed: 4, player: 'bot:mono:sporelingBurrow', enemy: `general:${general}`, flags: ADAPTIVE, test: { noHeartcapTargets: true } }));
     const warned: [number, number][] = [], active: number[] = [];
     runHeadless(s, {
       until, onTick: (st) => {

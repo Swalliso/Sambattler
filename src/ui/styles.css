@@ -78,7 +78,7 @@ button { font: inherit; color: inherit; }
 
 /* ---- bottom band ---- */
 .bottom { display: grid; grid-template-columns: 170px 1fr 260px; gap: 10px; padding: 8px 12px 10px; background: var(--panel); border-top: 1px solid var(--line); height: 168px; }
-.controls { display: flex; flex-direction: column; gap: 8px; }
+.controls { display: flex; flex-direction: column; gap: 5px; }
 .controls .row { display: flex; gap: 4px; flex-wrap: wrap; }
 .controls .row .btn { font-size: 12px; padding: 4px 7px; }
 .speed { display: flex; gap: 4px; }

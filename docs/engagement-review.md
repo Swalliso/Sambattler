@@ -117,7 +117,7 @@ The order of M6 and M7 is a judgment call: a distinct enemy adds more to a singl
 
 ## Prototype E1: Hold / Advance per lane (2026-10-28)
 
-Recommendation 1, built behind `?proto=hold` (browser) and `--proto hold` (tools). **Nothing adopted:** `laneStance` is absent from `balance.json`, so the shipped rules, goldens and hashes are unchanged.
+Recommendation 1, built behind `?proto=hold` (browser) and `--proto hold` (tools). **Adopted on 2026-10-28:** `laneStance` is now in `balance.json` with these settings. The other prototypes stay off. The results below were measured before adoption; `--proto nohold` measures the old rules.
 
 **Rules.**
 - `stance { lane, hold }` is an ordinary command, so you can give it while paused, and it replays like any other.
