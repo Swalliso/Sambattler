@@ -8,6 +8,7 @@ import { columnsOwned } from '../../sim/world.ts';
 import type { Atlas } from '../../render/atlas.ts';
 import { spriteToCanvas } from '../../render/atlas.ts';
 import { h, setText, toggleClass } from '../h.ts';
+import { uiIcon } from '../icons.ts';
 import { KIND_HINT, KIND_ICON, KIND_LABEL, intentOf, wavesText } from '../doctrine.ts';
 import type { Intent } from '../doctrine.ts';
 
@@ -34,14 +35,14 @@ export class TopBand {
     const general = ctl.kind === 'general' ? content.generals[ctl.id] : undefined;
     const portrait = spriteToCanvas(atlas, general?.sprite ?? 'g-scripted', 'gray-rot');
     const enemyName = general ? general.name : ctl.kind === 'bot' ? `Bot: ${ctl.id}` : 'Gray Rot (idle)';
-    this.goldStat = h('span', { class: 'stat', title: 'Gold (and projected income per minute)' }, h('span', { class: 'icon' }, '◆'), this.gold, this.income);
+    this.goldStat = h('span', { class: 'stat', title: 'Gold (and projected income per minute)' }, uiIcon(atlas, 'i-gold'), this.gold, this.income);
     this.el = h('header', { class: 'top' },
       h('div', { class: 'stats' },
         h('div', { class: 'statrow' },
           this.goldStat,
-          h('span', { class: 'stat', title: 'Supply used / cap' }, h('span', { class: 'icon' }, '⬢'), this.supply),
-          h('span', { class: 'stat', title: 'Wave and battle clock' }, h('span', { class: 'icon' }, '⧗'), h('span', null, 'Wave '), this.wave, this.clock),
-          h('span', { class: 'stat', title: 'Sporestorm stacks: units +10% damage, turrets −10%, Heartcaps take +10% each' }, h('span', { class: 'icon' }, '☁'), h('span', null, 'Storm '), this.storm),
+          h('span', { class: 'stat', title: 'Supply used / cap' }, uiIcon(atlas, 'i-supply'), this.supply),
+          h('span', { class: 'stat', title: 'Wave and battle clock' }, uiIcon(atlas, 'i-wave'), h('span', null, 'Wave '), this.wave, this.clock),
+          h('span', { class: 'stat', title: 'Sporestorm stacks: units +10% damage, turrets −10%, Heartcaps take +10% each' }, uiIcon(atlas, 'i-storm'), h('span', null, 'Storm '), this.storm),
         ),
         h('div', { class: 'tug', title: 'Territory: columns owned' }, h('span', { class: 'hint' }, 'territory'), h('div', { class: 'tugbar', id: 'hud-tug' }, this.tugP, this.tugN, this.tugE), this.columns),
       ),

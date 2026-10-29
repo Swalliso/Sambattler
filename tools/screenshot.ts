@@ -94,6 +94,7 @@ async function main(): Promise<number> {
     const url = `${base.replace(/\/$/, '')}/?${q.toString()}`;
     await page.goto(url);
     await page.waitForFunction(() => window.__GAME__?.ready === true, null, { timeout: 60000 });
+    await page.evaluate(() => document.fonts.ready.then(() => true)); // the self-hosted fonts have swapped in
     await page.waitForTimeout(300); // a few frames so effects and layout settle
     if (args.filter) {
       await page.evaluate((matrix) => {

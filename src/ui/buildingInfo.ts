@@ -2,9 +2,11 @@
 // 2026-10-28: a player never noticed the economy buildings, and the cards read as jargon). Stats come
 // from the compiled side, so upgrades and relics show.
 import type { Content } from '../data/registry.ts';
+import type { Atlas } from '../render/atlas.ts';
 import { formatClock } from '../sim/index.ts';
 import type { BattleState, BuildingKind } from '../sim/index.ts';
 import { h } from './h.ts';
+import { priceEl } from './icons.ts';
 import { strongVs, vulnerableTo, weakVs } from './matrixHints.ts';
 import { perkText } from './mergeHints.ts';
 
@@ -36,7 +38,7 @@ export function cardLine(content: Content, state: BattleState, id: string): stri
 }
 
 /** The tooltip body for a tray card: role, description, what it makes or does, and the unit's matchups. */
-export function buildingTip(content: Content, state: BattleState, id: string, hotkey: string): HTMLElement[] {
+export function buildingTip(content: Content, atlas: Atlas, state: BattleState, id: string, hotkey: string): HTMLElement[] {
   const b = content.buildings[id]!;
   const cb = state.compiled.player.buildings[id]!;
   const cs = state.compiled.player;
@@ -76,7 +78,7 @@ export function buildingTip(content: Content, state: BattleState, id: string, ho
   if (cb.utility) rows.push(['Supply cap', `+${cb.utility.supplyCapAdd} (at most ${cb.utility.maxCount} count)`]);
   rows.push(['Building HP', String(cb.hp)]);
   return [
-    h('div', { class: 'tip-head' }, h('b', null, b.name), h('span', { class: `role ${cb.kind}` }, ROLE_LABEL[cb.kind]), h('span', { class: 'price' }, `◆ ${b.cost}`)),
+    h('div', { class: 'tip-head' }, h('b', null, b.name), h('span', { class: `role ${cb.kind}` }, ROLE_LABEL[cb.kind]), priceEl(atlas, b.cost)),
     h('div', { class: 'tip-desc' }, b.description),
     ...rows.map(([k, v]) => h('div', { class: 'row' }, h('span', { class: 'muted' }, k), h('span', null, v))),
     h('div', { class: 'tip-foot' }, `${hotkey ? `Press ${hotkey} or click` : 'Click'}, then click the field. Building farther from home costs more.`),

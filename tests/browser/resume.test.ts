@@ -55,6 +55,7 @@ async function openSavedRun(run: string, battle: string): Promise<void> {
   // No seed or test flag: use the same persistent resume path as normal play.
   await page.goto(`${base}/?debug=1`);
   await page.waitForFunction(() => window.__GAME__?.ready === true);
+  await page.evaluate(() => document.fonts.ready.then(() => true)); // layout settles once the fonts swap in
 }
 
 describe('saved run recovery', () => {

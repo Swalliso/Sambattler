@@ -9,6 +9,7 @@ import {
 } from '../sim/index.ts';
 import type { BattleState, Content } from '../sim/index.ts';
 import { h } from '../ui/h.ts';
+import { installUiScale } from '../ui/scale.ts';
 import { BattleView } from './battleView.ts';
 import { BUILD_SHA, DEV_SITE } from './channel.ts';
 import { browserContent } from './content.ts';
@@ -54,6 +55,7 @@ function buildState(content: Content, p: Params, seed: number): BattleState {
 }
 
 function boot(): void {
+  installUiScale();
   const params = parseParams(location.search);
   if (!BATTLE_SCENES.has(params.scene) && !RUN_SCENES.has(params.scene)) {
     fatal(`scene=${params.scene} is not part of Milestone ${MILESTONE} (only ${[...BATTLE_SCENES, ...RUN_SCENES].join(', ')} exist yet).`);

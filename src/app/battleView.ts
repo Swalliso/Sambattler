@@ -7,6 +7,8 @@ import type { Atlas } from '../render/atlas.ts';
 import { Callouts } from '../ui/callouts.ts';
 import { h, setText, toggleClass } from '../ui/h.ts';
 import { helpOverlay } from '../ui/help.ts';
+import { uiIcon } from '../ui/icons.ts';
+import { uiScale } from '../ui/scale.ts';
 import { battleReport } from '../ui/report.ts';
 import { activeText, generalName, intentOf, rememberText, warningText } from '../ui/doctrine.ts';
 import { DraftOverlay } from '../ui/draftOverlay.ts';
@@ -47,13 +49,15 @@ export class BattleView {
   private report: HTMLElement | null = null;
   private fieldWrap: HTMLElement;
   private field: HTMLElement;
-  private hpP = h('div', { class: 'hp player', id: 'hud-hp-player' });
-  private hpE = h('div', { class: 'hp enemy', id: 'hud-hp-enemy' });
+  private hpP = h('span');
+  private hpE = h('span');
   private tip = h('div', { class: 'ghost-tip', id: 'ghost-tip', hidden: true });
-  private pauseBadge = h('div', { class: 'pausebadge', hidden: true }, '❚❚ PAUSED');
+  private pauseBadge: HTMLElement;
+  /** One gold icon, moved into each frame's ghost tip. */
+  private tipGold: HTMLCanvasElement;
   private beginBox: HTMLElement;
   private speedBtns: HTMLButtonElement[] = [];
-  private stanceBtns: HTMLButtonElement[] = [];
+  private stanceBtns: { btn: HTMLButtonElement; hold: HTMLCanvasElement; advance: HTMLCanvasElement; text: HTMLElement }[] = [];
   private pauseBtn: HTMLButtonElement;
   private numbersBtn: HTMLButtonElement;
   private help: HTMLElement | null = null;
@@ -77,7 +81,12 @@ export class BattleView {
     });
     this.inspect = new InspectPanel(content, this.log, (id) => session.issue({ type: 'sell', entityId: id }),
       (id) => session.toggleMerge(id), (_state, id) => session.mergeShown(id));
-    this.fieldWrap = h('div', { class: 'fieldwrap' }, this.canvas, this.hpP, this.hpE, this.tip, this.pauseBadge);
+    this.pauseBadge = h('div', { class: 'pausebadge', hidden: true }, uiIcon(atlas, 'i-pause'), 'PAUSED');
+    this.tipGold = uiIcon(atlas, 'i-gold');
+    this.fieldWrap = h('div', { class: 'fieldwrap' }, this.canvas,
+      h('div', { class: 'hp player', id: 'hud-hp-player', title: 'Your Heartcap' }, uiIcon(atlas, 'i-heart'), this.hpP),
+      h('div', { class: 'hp enemy', id: 'hud-hp-enemy', title: "The Gray Rot's Heartcap" }, uiIcon(atlas, 'i-heart', 'gray-rot'), this.hpE),
+      this.tip, this.pauseBadge);
     this.beginBox = h('div', { class: 'begin', id: 'begin-box' },
       h('button', { class: 'btn', id: 'begin-btn', onclick: () => actions.begin() }, 'Begin'),
       h('div', { class: 'hint' }, `Deploy phase: place your opener with ${state.sides.player.gold} gold, then press Begin (Enter).`),
@@ -86,7 +95,9 @@ export class BattleView {
     for (const s of [1, 2, 3]) {
       this.speedBtns.push(h('button', { class: 'btn', 'data-speed': s, onclick: () => { session.speed = s; } }, `${s}×`));
     }
-    this.pauseBtn = h('button', { class: 'btn', id: 'pause-btn', onclick: () => { session.paused = !session.paused; } }, '❚❚');
+    this.pauseBtn = h('button', {
+      class: 'btn has-ico', id: 'pause-btn', title: 'Pause (Space)', 'aria-label': 'Pause', onclick: () => { session.paused = !session.paused; },
+    }, uiIcon(atlas, 'i-pause'));
     this.renderer.damageNumbers = loadSettings().damageNumbers;
     this.numbersBtn = h('button', {
       class: 'btn', id: 'numbers-btn', title: 'Damage numbers: off, big hits only, or all',
@@ -96,8 +107,10 @@ export class BattleView {
     const stance = state.rules.stance ? h('div', { class: 'stance', id: 'stance' },
       ...state.lanes.map((_, i) => {
         const title = `Hold or advance ${state.lanes.length > 1 ? `lane ${i + 1}` : 'the lane'} (F: every lane)`;
-        const b = h('button', { class: 'btn', 'data-lane': i, title, onclick: () => session.toggleStance(i) }, '');
-        this.stanceBtns.push(b);
+        const hold = uiIcon(atlas, 'i-hold'), advance = uiIcon(atlas, 'i-advance'), text = h('span');
+        hold.hidden = true; // every lane starts advancing; frame() swaps the icons
+        const b = h('button', { class: 'btn has-ico', 'data-lane': i, title, onclick: () => session.toggleStance(i) }, hold, advance, text);
+        this.stanceBtns.push({ btn: b, hold, advance, text });
         return b;
       }),
     ) : null;
@@ -117,6 +130,8 @@ export class BattleView {
       this.draft.el,
     );
     window.addEventListener('resize', this.onResize);
+    // the self-hosted fonts change the bands' heights when they swap in
+    void document.fonts.ready.then(this.onResize);
   }
 
   /** Removes window listeners and overlays this view added (a run plays several battles). */
@@ -154,16 +169,19 @@ export class BattleView {
     this.session.selected = null;
   }
 
-  /** Integer scaling when it wastes ≤30% of the area, else fractional (SPEC §10.1). */
+  /**
+   * Integer scaling when it wastes ≤30% of the area, else fractional (SPEC §10.1). The scale is in
+   * screen pixels, so under UI scale (src/ui/scale.ts) the field still lands on whole screen pixels.
+   */
   fit(): void {
-    const r = this.field.getBoundingClientRect();
-    const availW = Math.max(100, r.width - 16), availH = Math.max(100, r.height - 40);
+    const r = this.field.getBoundingClientRect(), ui = uiScale();
+    const availW = Math.max(100, r.width - 16 * ui), availH = Math.max(100, r.height - 40 * ui);
     const nw = this.renderer.width, nh = this.renderer.height;
     const frac = Math.min(availW / nw, availH / nh);
     const int = Math.floor(frac);
     this.scale = int >= 1 && (int * int) / (frac * frac) >= 0.7 ? int : frac;
-    this.canvas.style.width = `${Math.round(nw * this.scale)}px`;
-    this.canvas.style.height = `${Math.round(nh * this.scale)}px`;
+    this.canvas.style.width = `${Math.round(nw * this.scale) / ui}px`;
+    this.canvas.style.height = `${Math.round(nh * this.scale) / ui}px`;
   }
 
   /** Converts a mouse event to world tile coordinates. */
@@ -259,8 +277,8 @@ export class BattleView {
     this.draft.update(state, s.pending().some((c) => c.type === 'draftPick' || c.type === 'draftReroll' || c.type === 'draftSkip'));
     this.inspect.update(state, s.selected);
     this.callouts.update(now);
-    setText(this.hpP, `♥ ${state.sides.player.heartcapHp}/${state.sides.player.heartcapMaxHp}`);
-    setText(this.hpE, `♥ ${state.sides.enemy.heartcapHp}/${state.sides.enemy.heartcapMaxHp}`);
+    setText(this.hpP, `${state.sides.player.heartcapHp}/${state.sides.player.heartcapMaxHp}`);
+    setText(this.hpE, `${state.sides.enemy.heartcapHp}/${state.sides.enemy.heartcapMaxHp}`);
     this.speedBtns.forEach((b, i) => toggleClass(b, 'on', s.speed === i + 1));
     this.stanceBtns.forEach((b, i) => {
       const st = state.sides.player.stance![i]!;
@@ -268,10 +286,11 @@ export class BattleView {
       const lane = state.lanes.length > 1 ? `Lane ${i + 1}: ` : '';
       const secs = (ticks: number) => `${Math.max(0, Math.ceil(ticks / state.rules.tickRate))} s`;
       const text = held
-        ? `${lane}■ Holding${st.hold ? ` · ${secs(state.rules.stance!.maxHoldTicks - (state.tick - st.since))}` : ''}`
-        : `${lane}▶ Advancing${s.canHold(i) ? '' : ` · hold in ${secs(st.readyAt - state.tick)}`}`;
-      setText(b, text);
-      toggleClass(b, 'on', held);
+        ? `${lane}Holding${st.hold ? ` · ${secs(state.rules.stance!.maxHoldTicks - (state.tick - st.since))}` : ''}`
+        : `${lane}Advancing${s.canHold(i) ? '' : ` · hold in ${secs(st.readyAt - state.tick)}`}`;
+      if (b.hold.hidden === held) { b.hold.hidden = !held; b.advance.hidden = held; }
+      setText(b.text, text);
+      toggleClass(b.btn, 'on', held);
     });
     setText(this.numbersBtn, `Numbers: ${NUMBERS_LABEL[this.renderer.damageNumbers]}`);
     toggleClass(this.pauseBtn, 'on', s.paused);
@@ -284,15 +303,17 @@ export class BattleView {
       const def = s.content.buildings[ghost.buildingId]!;
       const loam = def.economy && ghost.loam ? ` · Rich Loam +${Math.round(s.content.balance.loamBonus * 100)}%` : '';
       this.tip.replaceChildren(
-        h('div', null, `${name} · `, h('b', null, `◆ ${ghost.price}`), h('span', { class: 'muted' }, surcharge + loam)),
+        h('div', null, `${name} · `, h('b', { class: 'gold' }, this.tipGold, String(ghost.price)), h('span', { class: 'muted' }, surcharge + loam)),
         ghost.legal ? h('div', { class: 'good' }, 'Click to place' + (s.shift ? ' (Shift: keep placing)' : '')) : h('div', { class: 'bad' }, ghost.reason ?? 'illegal'),
       );
       const rect = this.canvas.getBoundingClientRect();
       const wrap = this.fieldWrap.getBoundingClientRect();
       const cx = ((ghost.col + 2 + 1) * TILE * rect.width) / this.renderer.width;
       const cy = (ghost.row * TILE * rect.height) / this.renderer.height;
-      this.tip.style.left = `${rect.left - wrap.left + cx}px`;
-      this.tip.style.top = `${rect.top - wrap.top + cy}px`;
+      // screen pixels back to layout pixels under UI scale
+      const ui = uiScale();
+      this.tip.style.left = `${(rect.left - wrap.left + cx) / ui}px`;
+      this.tip.style.top = `${(rect.top - wrap.top + cy) / ui}px`;
     } else {
       this.tip.hidden = true;
     }
