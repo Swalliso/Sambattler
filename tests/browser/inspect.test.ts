@@ -27,6 +27,7 @@ beforeEach(async () => {
   page = await browser!.newPage({ viewport: { width: 1280, height: 720 } });
   await page.goto(`${base}/?scene=deploy&map=test-flat&enemy=human&seed=1&test=1&paused=1`);
   await page.waitForFunction(() => window.__GAME__?.ready === true);
+  await page.evaluate(() => document.fonts.ready.then(() => true)); // layout settles once the fonts swap in
 
   // Two different home buildings let us check that persistent controls follow the selection.
   const canvas = page.locator('#battlefield');

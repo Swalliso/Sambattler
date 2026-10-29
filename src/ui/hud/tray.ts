@@ -6,6 +6,8 @@ import type { BattleState } from '../../sim/index.ts';
 import type { Atlas } from '../../render/atlas.ts';
 import { spriteToCanvas } from '../../render/atlas.ts';
 import { h, toggleClass } from '../h.ts';
+import { priceEl } from '../icons.ts';
+import { uiScale } from '../scale.ts';
 import { ROLE_LABEL, buildingTip, cardLine, trayOrder } from '../buildingInfo.ts';
 
 export class Tray {
@@ -13,7 +15,7 @@ export class Tray {
   private tip = h('div', { class: 'card-tip', id: 'card-tip', role: 'tooltip', hidden: true });
   private cards: { id: string; el: HTMLElement; cost: number; economy: boolean }[] = [];
 
-  constructor(private content: Content, atlas: Atlas, private state: BattleState, onPick: (id: string) => void) {
+  constructor(private content: Content, private atlas: Atlas, private state: BattleState, onPick: (id: string) => void) {
     trayOrder(content, state.sides.player.kit).forEach((id, i) => {
       const b = content.buildings[id]!;
       const key = i < 9 ? `[${i + 1}]` : '';
@@ -24,7 +26,7 @@ export class Tray {
         // keyboard focus only: a mouse click also focuses the card, and the tip shouldn't linger while placing
         onfocus: () => { if (el.matches(':focus-visible')) this.show(id, key, el); }, onblur: () => this.hide(),
       },
-        h('div', { class: 'head' }, h('span', { class: 'key' }, key), h('span', { class: 'price' }, `◆ ${b.cost}`)),
+        h('div', { class: 'head' }, h('span', { class: 'key' }, key), priceEl(atlas, b.cost)),
         sprite,
         h('div', { class: 'name' }, b.name),
         h('div', { class: `role ${b.kind}` }, ROLE_LABEL[b.kind]),
@@ -38,11 +40,12 @@ export class Tray {
 
   /** Shows the tooltip above a card, kept inside the window. */
   private show(id: string, key: string, card: HTMLElement): void {
-    this.tip.replaceChildren(...buildingTip(this.content, this.state, id, key));
+    this.tip.replaceChildren(...buildingTip(this.content, this.atlas, this.state, id, key));
     this.tip.hidden = false;
-    const r = card.getBoundingClientRect();
-    this.tip.style.left = `${Math.max(8, Math.min(r.left, window.innerWidth - this.tip.offsetWidth - 8))}px`;
-    this.tip.style.bottom = `${window.innerHeight - r.top + 6}px`;
+    // the tip is fixed inside the scaled body, so it is placed in layout pixels (src/ui/scale.ts)
+    const r = card.getBoundingClientRect(), s = uiScale();
+    this.tip.style.left = `${Math.max(8, Math.min(r.left / s, window.innerWidth / s - this.tip.offsetWidth - 8))}px`;
+    this.tip.style.bottom = `${(window.innerHeight - r.top) / s + 6}px`;
   }
 
   private hide(): void { this.tip.hidden = true; }

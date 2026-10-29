@@ -10,6 +10,7 @@ import { KIND_HINT, KIND_ICON, KIND_NAME, counterLine } from '../doctrine.ts';
 import type { BattleRecord, RouteNode, RunState } from '../../run/index.ts';
 import { cardView } from '../cards.ts';
 import { h } from '../h.ts';
+import { uiIcon } from '../icons.ts';
 
 const NODE_ICON: Record<RouteNode['kind'], string> = { battle: 'i-battle', elite: 'i-elite', event: 'i-event', grove: 'i-grove', boss: 'i-boss' };
 const NODE_NAME: Record<RouteNode['kind'], string> = { battle: 'Battle', elite: 'Elite battle', event: 'Event', grove: 'Grove', boss: 'Boss' };
@@ -24,10 +25,10 @@ const icon = (atlas: Atlas, id: string, cls = 'icon') => {
 export function runBar(content: Content, atlas: Atlas, run: RunState): HTMLElement {
   const hpPct = Math.round((100 * run.heartcap.hp) / run.heartcap.max);
   return h('header', { class: 'runbar', id: 'runbar' },
-    h('div', { class: 'stat' }, h('span', { class: 'icon' }, '♥'), h('b', { id: 'run-heartcap' }, `${run.heartcap.hp}/${run.heartcap.max}`), h('span', { class: 'sub' }, `${hpPct}%`)),
-    h('div', { class: 'stat' }, h('span', { class: 'icon' }, 'Spores'), h('b', { id: 'run-spores' }, String(run.spores))),
-    h('div', { class: 'stat' }, h('span', { class: 'icon' }, 'Amber'), h('b', null, String(run.amber))),
-    h('div', { class: 'stat' }, h('span', { class: 'icon' }, 'Battles'), h('b', null, `${battlesWon(run)}/${run.battles.length} won`)),
+    h('div', { class: 'stat', title: 'Your Heartcap' }, uiIcon(atlas, 'i-heart'), h('b', { id: 'run-heartcap' }, `${run.heartcap.hp}/${run.heartcap.max}`), h('span', { class: 'sub' }, `${hpPct}%`)),
+    h('div', { class: 'stat' }, uiIcon(atlas, 'i-spores'), h('span', { class: 'label' }, 'Spores'), h('b', { id: 'run-spores' }, String(run.spores))),
+    h('div', { class: 'stat' }, uiIcon(atlas, 'i-amber'), h('span', { class: 'label' }, 'Amber'), h('b', null, String(run.amber))),
+    h('div', { class: 'stat' }, h('span', { class: 'label' }, 'Battles'), h('b', null, `${battlesWon(run)}/${run.battles.length} won`)),
     h('div', { class: 'kit', id: 'run-kit', title: 'Your kit' },
       ...run.kit.map((id) => {
         const b = content.buildings[id]!;
@@ -77,7 +78,8 @@ export function intelBars(atlas: Atlas, run: RunState): HTMLElement {
       const c = spriteToCanvas(atlas, KIND_ICON[k], 'velvet-bloom');
       c.className = 'kind-icon';
       return h('span', { class: 'intel-kind', 'data-kind': k, 'data-dots': dots[k], title: `${KIND_HINT[k]} · ${(intel![k] * 100).toFixed(0)}%` },
-        c, h('span', null, KIND_NAME[k]), h('span', { class: 'dots' }, '●'.repeat(dots[k]) + '○'.repeat(4 - dots[k])));
+        c, h('span', null, KIND_NAME[k]),
+        h('span', { class: 'dots', role: 'img', 'aria-label': `${dots[k]} of 4` }, ...[0, 1, 2, 3].map((d) => h('i', { class: d < dots[k] ? 'on' : '' }))));
     }) : [h('span', { class: 'muted' }, 'None yet: the first general knows nothing about you.')]),
   );
 }
@@ -93,7 +95,7 @@ export function routeScreen(content: Content, atlas: Atlas, run: RunState, actio
     );
   });
   const joined: HTMLElement[] = [];
-  rows.forEach((r, i) => { if (i) joined.push(h('div', { class: 'route-link' }, '›')); joined.push(r); });
+  rows.forEach((r, i) => { if (i) joined.push(h('div', { class: 'route-link', 'aria-hidden': 'true' })); joined.push(r); });
   return h('div', { class: 'runscreen', id: 'route' },
     runBar(content, atlas, run),
     h('h1', { class: 'runtitle' }, 'The Route', h('span', { class: 'hint' }, ' Pick one node in the highlighted row; every node leads to every node in the next row.')),

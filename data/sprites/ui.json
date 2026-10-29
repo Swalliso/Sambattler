@@ -336,6 +336,258 @@
         "................",
         "................"
       ]
+     ]},
+    {"id": "i-gold", "w": 16, "h": 16, "anchor": [0, 0], "palette": {".": null, "k": "#1a1020", "v": "#8a4fd8", "l": "#c9a2ff", "d": "#5a2f99", "s": "#e8d9b5", "t": "#b9a77f", "w": "#fbf6ff", "e": "#120a16", "r": "#d9534f", "o": "#f0b44c", "y": "#f0c85a", "b": "#b8862f", "g": "#7be0a0", "h": "#3f9e68", "a": "#9fd3ff", "m": "#5d6b7a", "n": "#cfd3dc"},
+     "frames": [
+      [
+        "................",
+        ".....kkkkkk.....",
+        "...kkyyyyyykk...",
+        "..kywwyyyyyyok..",
+        "..kwyyyyyyyyok..",
+        ".kwyyybbbbyyook.",
+        ".kyyybyyyywyook.",
+        ".kyyybyyyywyook.",
+        ".kyyybyyyywyook.",
+        ".kyyybyyyywyobk.",
+        ".kyyyywwwwyoobk.",
+        "..kyyyyyyyoobk..",
+        "..koyyyyoobbbk..",
+        "...kkbbbbbbkk...",
+        ".....kkkkkk.....",
+        "................"
+      ]
+     ]},
+    {"id": "i-supply", "w": 16, "h": 16, "anchor": [0, 0], "palette": {".": null, "k": "#1a1020", "v": "#8a4fd8", "l": "#c9a2ff", "d": "#5a2f99", "s": "#e8d9b5", "t": "#b9a77f", "w": "#fbf6ff", "e": "#120a16", "r": "#d9534f", "o": "#f0b44c", "y": "#f0c85a", "b": "#b8862f", "g": "#7be0a0", "h": "#3f9e68", "a": "#9fd3ff", "m": "#5d6b7a", "n": "#cfd3dc"},
+     "frames": [
+      [
+        "................",
+        "......kkkk......",
+        "....kkllvvkk....",
+        "...klwllllvvk...",
+        "..klllllvvvvvk..",
+        "..klllllvvvvvvk.",
+        "..kddddddddddk..",
+        "...kkssssstkk...",
+        "....ksessetk....",
+        "....kssssstk....",
+        "....kssssttk....",
+        "....kttttttk....",
+        "....kttkkttk....",
+        ".....kk..kk.....",
+        "................",
+        "................"
+      ]
+     ]},
+    {"id": "i-wave", "w": 16, "h": 16, "anchor": [0, 0], "palette": {".": null, "k": "#1a1020", "v": "#8a4fd8", "l": "#c9a2ff", "d": "#5a2f99", "s": "#e8d9b5", "t": "#b9a77f", "w": "#fbf6ff", "e": "#120a16", "r": "#d9534f", "o": "#f0b44c", "y": "#f0c85a", "b": "#b8862f", "g": "#7be0a0", "h": "#3f9e68", "a": "#9fd3ff", "m": "#5d6b7a", "n": "#cfd3dc"},
+     "frames": [
+      [
+        "................",
+        "..kkkkkkkkkkkk..",
+        "..kwsssssssstk..",
+        "..kkkkkkkkkkkk..",
+        "...kawaaaaaak...",
+        "...kyyyyyyyok...",
+        "....kyyyyyok....",
+        ".....kkyokk.....",
+        ".....kkyakk.....",
+        "....kaayaaak....",
+        "...kaayyyyaak...",
+        "...kyyyyyyyok...",
+        "..kkkkkkkkkkkk..",
+        "..kwsssssssstk..",
+        "..kkkkkkkkkkkk..",
+        "................"
+      ]
+     ]},
+    {"id": "i-storm", "w": 16, "h": 16, "anchor": [0, 0], "palette": {".": null, "k": "#1a1020", "v": "#8a4fd8", "l": "#c9a2ff", "d": "#5a2f99", "s": "#e8d9b5", "t": "#b9a77f", "w": "#fbf6ff", "e": "#120a16", "r": "#d9534f", "o": "#f0b44c", "y": "#f0c85a", "b": "#b8862f", "g": "#7be0a0", "h": "#3f9e68", "a": "#9fd3ff", "m": "#5d6b7a", "n": "#cfd3dc"},
+     "frames": [
+      [
+        "................",
+        "......kkkk......",
+        "...kkknnnnk.....",
+        "..knnwnnnnnkkk..",
+        ".knwnnnnnnnnnnk.",
+        "knnnnnnnnnnnnmmk",
+        "knnnnnnnnnnnmmmk",
+        "kmmmmmmmmmmmmmmk",
+        ".kkkkkkkkkkkkkk.",
+        "..klk.k..kwk.k..",
+        "..kk.kwk..k.klk.",
+        ".kwk..kk.klkkk..",
+        "..k.k.klk.kkwk..",
+        "...klk.k....k...",
+        "....k...........",
+        "................"
+      ]
+     ]},
+    {"id": "i-heart", "w": 16, "h": 16, "anchor": [0, 0], "factionSwap": true, "palette": {".": null, "k": "#1a1020", "v": "#8a4fd8", "l": "#c9a2ff", "d": "#5a2f99", "s": "#e8d9b5", "t": "#b9a77f", "w": "#fbf6ff", "e": "#120a16", "r": "#d9534f", "o": "#f0b44c", "y": "#f0c85a", "b": "#b8862f", "g": "#7be0a0", "h": "#3f9e68", "a": "#9fd3ff", "m": "#5d6b7a", "n": "#cfd3dc"},
+     "frames": [
+      [
+        "................",
+        "................",
+        "..kkkk....kkkk..",
+        ".kllllk..kllllk.",
+        "klwllllkkllllvvk",
+        "kllllllllllllvvk",
+        "klllllllllllvvvk",
+        "kvllllllllvvvvdk",
+        ".kvvvvvvvvvvvdk.",
+        "..kvvvvvvvvddk..",
+        "...kvvvvvvddk...",
+        "....kvvvvddk....",
+        ".....kvdddk.....",
+        "......kddk......",
+        ".......kk.......",
+        "................"
+      ]
+     ]},
+    {"id": "i-spores", "w": 16, "h": 16, "anchor": [0, 0], "palette": {".": null, "k": "#1a1020", "v": "#8a4fd8", "l": "#c9a2ff", "d": "#5a2f99", "s": "#e8d9b5", "t": "#b9a77f", "w": "#fbf6ff", "e": "#120a16", "r": "#d9534f", "o": "#f0b44c", "y": "#f0c85a", "b": "#b8862f", "g": "#7be0a0", "h": "#3f9e68", "a": "#9fd3ff", "m": "#5d6b7a", "n": "#cfd3dc"},
+     "frames": [
+      [
+        "................",
+        "................",
+        "..........kk....",
+        ".........kwlk...",
+        "........kwllvk..",
+        "........klvvdk..",
+        ".........kvdk...",
+        "...kkk....kk....",
+        "..kwllk.........",
+        ".kwlllvk...kk...",
+        ".kllvvvk..kwlk..",
+        ".klvvvdk..klvk..",
+        "..kvddk....kk...",
+        "...kkk..........",
+        "................",
+        "................"
+      ]
+     ]},
+    {"id": "i-amber", "w": 16, "h": 16, "anchor": [0, 0], "palette": {".": null, "k": "#1a1020", "v": "#8a4fd8", "l": "#c9a2ff", "d": "#5a2f99", "s": "#e8d9b5", "t": "#b9a77f", "w": "#fbf6ff", "e": "#120a16", "r": "#d9534f", "o": "#f0b44c", "y": "#f0c85a", "b": "#b8862f", "g": "#7be0a0", "h": "#3f9e68", "a": "#9fd3ff", "m": "#5d6b7a", "n": "#cfd3dc"},
+     "frames": [
+      [
+        "................",
+        ".......kk.......",
+        "......kyok......",
+        ".....kyyook.....",
+        "....kywyoobk....",
+        "...kywyoooobk...",
+        "..kyyoooooobbk..",
+        "..kywooooooobk..",
+        "..kyoooooooobk..",
+        "..koooooooobbk..",
+        "..kooooooobbbk..",
+        "...koooobbbbk...",
+        "....kbbbbbbk....",
+        ".....kkkkkk.....",
+        "................",
+        "................"
+      ]
+     ]},
+    {"id": "i-hold", "w": 16, "h": 16, "anchor": [0, 0], "factionSwap": true, "palette": {".": null, "k": "#1a1020", "v": "#8a4fd8", "l": "#c9a2ff", "d": "#5a2f99", "s": "#e8d9b5", "t": "#b9a77f", "w": "#fbf6ff", "e": "#120a16", "r": "#d9534f", "o": "#f0b44c", "y": "#f0c85a", "b": "#b8862f", "g": "#7be0a0", "h": "#3f9e68", "a": "#9fd3ff", "m": "#5d6b7a", "n": "#cfd3dc"},
+     "frames": [
+      [
+        "................",
+        "...kkkkkkkkkk...",
+        "..klllllvvvvvk..",
+        "..klwlllvvvvdk..",
+        "..klllllvvvvdk..",
+        "..klllssssvvdk..",
+        "..klllssssvvdk..",
+        "..kvllllvvvvdk..",
+        "..kvvlllvvvddk..",
+        "...kvvllvvddk...",
+        "....kvvvvddk....",
+        ".....kvvddk.....",
+        "......kddk......",
+        ".......kk.......",
+        "................",
+        "................"
+      ]
+     ]},
+    {"id": "i-advance", "w": 16, "h": 16, "anchor": [0, 0], "factionSwap": true, "palette": {".": null, "k": "#1a1020", "v": "#8a4fd8", "l": "#c9a2ff", "d": "#5a2f99", "s": "#e8d9b5", "t": "#b9a77f", "w": "#fbf6ff", "e": "#120a16", "r": "#d9534f", "o": "#f0b44c", "y": "#f0c85a", "b": "#b8862f", "g": "#7be0a0", "h": "#3f9e68", "a": "#9fd3ff", "m": "#5d6b7a", "n": "#cfd3dc"},
+     "frames": [
+      [
+        "................",
+        "................",
+        "..kk....kk......",
+        ".kvvk..kllk.....",
+        ".kvvvk.klllk....",
+        "..kvvvk.klllk...",
+        "...kvvvk.klllk..",
+        "....kvvvk.klllk.",
+        "....kdddk.kvvvk.",
+        "...kdddk.kvvvk..",
+        "..kdddk.kvvvk...",
+        ".kdddk.kvvvk....",
+        ".kddk..kvvk.....",
+        "..kk....kk......",
+        "................",
+        "................"
+      ]
+     ]},
+    {"id": "i-pause", "w": 16, "h": 16, "anchor": [0, 0], "palette": {".": null, "k": "#1a1020", "v": "#8a4fd8", "l": "#c9a2ff", "d": "#5a2f99", "s": "#e8d9b5", "t": "#b9a77f", "w": "#fbf6ff", "e": "#120a16", "r": "#d9534f", "o": "#f0b44c", "y": "#f0c85a", "b": "#b8862f", "g": "#7be0a0", "h": "#3f9e68", "a": "#9fd3ff", "m": "#5d6b7a", "n": "#cfd3dc"},
+     "frames": [
+      [
+        "................",
+        "................",
+        "...kkkk..kkkk...",
+        "..kwsstkkwsstk..",
+        "..kssstkkssstk..",
+        "..kssstkkssstk..",
+        "..kssstkkssstk..",
+        "..kssstkkssstk..",
+        "..kssstkkssstk..",
+        "..kssstkkssstk..",
+        "..kssstkkssstk..",
+        "..kssttkkssttk..",
+        "..kttttkkttttk..",
+        "...kkkk..kkkk...",
+        "................",
+        "................"
+      ]
+     ]},
+    {"id": "i-sound", "w": 16, "h": 16, "anchor": [0, 0], "palette": {".": null, "k": "#1a1020", "v": "#8a4fd8", "l": "#c9a2ff", "d": "#5a2f99", "s": "#e8d9b5", "t": "#b9a77f", "w": "#fbf6ff", "e": "#120a16", "r": "#d9534f", "o": "#f0b44c", "y": "#f0c85a", "b": "#b8862f", "g": "#7be0a0", "h": "#3f9e68", "a": "#9fd3ff", "m": "#5d6b7a", "n": "#cfd3dc"},
+     "frames": [
+      [
+        "................",
+        "................",
+        ".......k........",
+        "......ksk....k..",
+        ".....kwsk.k.klk.",
+        "..kkkwsskklk.klk",
+        ".kwssssstkklkklk",
+        ".ksssssttkklkklk",
+        ".ksssssttkklkklk",
+        ".kttttttskklkklk",
+        "..kkkttskklk.klk",
+        ".....ktsk.k.klk.",
+        "......ktk....k..",
+        ".......k........",
+        "................",
+        "................"
+      ]
+     ]},
+    {"id": "i-mute", "w": 16, "h": 16, "anchor": [0, 0], "palette": {".": null, "k": "#1a1020", "v": "#8a4fd8", "l": "#c9a2ff", "d": "#5a2f99", "s": "#e8d9b5", "t": "#b9a77f", "w": "#fbf6ff", "e": "#120a16", "r": "#d9534f", "o": "#f0b44c", "y": "#f0c85a", "b": "#b8862f", "g": "#7be0a0", "h": "#3f9e68", "a": "#9fd3ff", "m": "#5d6b7a", "n": "#cfd3dc"},
+     "frames": [
+      [
+        "................",
+        "................",
+        ".......k........",
+        "......ksk.......",
+        ".....kwsk.......",
+        "..kkkwssk.k...k.",
+        ".kwssssstkrk.krk",
+        ".ksssssttkkrkrk.",
+        ".ksssssttk.krk..",
+        ".kttttttskkrkrk.",
+        "..kkkttskkrk.krk",
+        ".....ktsk.k...k.",
+        "......ktk.......",
+        ".......k........",
+        "................",
+        "................"
+      ]
      ]}
   ]
 }

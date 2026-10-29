@@ -6,7 +6,8 @@ import type { Atlas } from '../render/atlas.ts';
 import { rerollCost } from '../sim/index.ts';
 import type { BattleState } from '../sim/index.ts';
 import { cardView } from './cards.ts';
-import { h } from './h.ts';
+import { h, setText } from './h.ts';
+import { uiIcon } from './icons.ts';
 
 export interface DraftActions {
   pick(cardId: string): void;
@@ -19,11 +20,12 @@ export class DraftOverlay {
   private shown = '';
   private cards = h('div', { class: 'draft-cards', id: 'draft-cards' });
   private rerollBtn: HTMLButtonElement;
+  private rerollCost = h('span');
   private skipBtn: HTMLButtonElement;
   private title = h('h2', { id: 'draft-title' }, '');
 
   constructor(private content: Content, private atlas: Atlas, private actions: DraftActions) {
-    this.rerollBtn = h('button', { class: 'btn', id: 'draft-reroll', onclick: () => this.actions.reroll() }, 'Reroll');
+    this.rerollBtn = h('button', { class: 'btn has-ico', id: 'draft-reroll', onclick: () => this.actions.reroll() }, 'Reroll', uiIcon(atlas, 'i-gold'), this.rerollCost);
     this.skipBtn = h('button', { class: 'btn', id: 'draft-skip', onclick: () => this.actions.skip() }, 'Skip');
     const card = h('div', { class: 'draftcard', id: 'draft', role: 'dialog', 'aria-label': 'Draft' },
       h('div', { class: 'draft-top' }, this.title, h('div', { class: 'hint' }, 'The battle is held while you choose. Keys 1–3 pick a card.')),
@@ -43,7 +45,7 @@ export class DraftOverlay {
     this.el.hidden = false;
     const key = `${d.index}:${d.offer.map((c) => c.id).join(',')}`;
     const cost = rerollCost(state, 'player');
-    this.rerollBtn.textContent = `Reroll (◆ ${cost})`;
+    setText(this.rerollCost, String(cost));
     this.rerollBtn.disabled = pending || state.sides.player.gold < cost;
     this.skipBtn.textContent = `Skip (+${state.compiled.player.skipGold} gold)`;
     this.skipBtn.disabled = pending;

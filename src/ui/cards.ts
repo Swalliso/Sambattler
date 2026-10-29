@@ -28,7 +28,7 @@ export function cardText(content: Content, card: string, upgrades: Record<string
     return { name: r.name, text: r.text };
   }
   const b = content.buildings[c.id]!;
-  if (c.type === 'blueprint') return { name: b.name, text: `${b.description} (${buildingOutput(content, c.id)}, ◆ ${b.cost})` };
+  if (c.type === 'blueprint') return { name: b.name, text: `${b.description} (${buildingOutput(content, c.id)}, ${b.cost} gold)` };
   const level = (upgrades[c.id] ?? 0) + 1;
   const t = content.upgrades[c.id]!;
   return { name: `${b.name} ${'I'.repeat(level)}`, text: t.levels[level - 1]?.text ?? '', level };
