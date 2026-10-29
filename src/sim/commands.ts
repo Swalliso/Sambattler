@@ -4,6 +4,7 @@ import { noteBuilt } from './ai/counter.ts';
 import { addBuilding } from './create.ts';
 import { executeDraftCommand } from './draft.ts';
 import { placementProblem, priceAt } from './placement.ts';
+import { powerProblem, usePower } from './powers.ts';
 import { setStance } from './systems/stance.ts';
 import { buildingDef, findBuilding, isBesieged, supplyCapOf } from './world.ts';
 import type { BattleState, Command, CommandBody, Side } from './state.ts';
@@ -136,6 +137,12 @@ function execute(state: BattleState, cmd: Command): boolean {
       setStance(state, side, cmd.lane, cmd.hold, false);
       return false;
     }
+    case 'power': {
+      const problem = powerProblem(state, side, cmd);
+      if (problem) { reject(state, cmd, problem); return false; }
+      usePower(state, side, cmd);
+      return false;
+    }
     case 'draftPick':
     case 'draftReroll':
     case 'draftSkip': {
@@ -144,7 +151,8 @@ function execute(state: BattleState, cmd: Command): boolean {
       return false;
     }
     default:
-      reject(state, cmd, `${cmd.type} is not available in this milestone`);
+      // every command type is handled above; a malformed replay is rejected, not crashed on
+      reject(state, cmd as Command, `${(cmd as Command).type} is not a command`);
       return false;
   }
 }

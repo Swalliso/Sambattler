@@ -1,0 +1,114 @@
+{
+  "name": "m5-vesper-power-s3",
+  "description": "bot:balanced as vesper with the auto power policy vs the scripted general, seed 3 (SPEC §16 M5)",
+  "config": {
+    "seed": 3,
+    "battleIndex": 1,
+    "mapId": "bogwater-hollow",
+    "player": {
+      "faction": "velvet-bloom",
+      "controller": {
+        "kind": "bot",
+        "id": "balanced"
+      },
+      "kit": [
+        "sporelingBurrow",
+        "capguardHall",
+        "gillNest",
+        "rootbreakerDen",
+        "puffballMortar",
+        "truffleCellar",
+        "scythecapGrove",
+        "veilstalkerHollow",
+        "tendersRing",
+        "hammercapForge",
+        "amanitaLodge",
+        "morelWarren",
+        "rhizomeVault",
+        "sporeExchange"
+      ],
+      "heartcapHp": 3000,
+      "heartcapMaxHp": 3000,
+      "startingGold": 300,
+      "commander": "vesper",
+      "power": "sporeBurst",
+      "powerPolicy": "auto"
+    },
+    "enemy": {
+      "faction": "gray-rot",
+      "controller": {
+        "kind": "general",
+        "id": "scripted"
+      },
+      "kit": [
+        "sporelingBurrow",
+        "capguardHall",
+        "gillNest",
+        "rootbreakerDen",
+        "puffballMortar",
+        "truffleCellar",
+        "scythecapGrove",
+        "veilstalkerHollow",
+        "tendersRing",
+        "hammercapForge",
+        "amanitaLodge",
+        "morelWarren",
+        "rhizomeVault",
+        "sporeExchange"
+      ],
+      "heartcapHp": 2000,
+      "heartcapMaxHp": 2000,
+      "startingGold": 300
+    },
+    "flags": {
+      "merging": true,
+      "drafts": false,
+      "adaptiveGeneral": true,
+      "powers": true
+    },
+    "modifiers": [
+      {
+        "side": "player",
+        "source": "commander:vesper",
+        "effects": {
+          "modifiers": [
+            {
+              "stat": "building.spawnInterval",
+              "op": "mul",
+              "value": 0.91,
+              "where": {
+                "zone": "home"
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "commands": [
+    {
+      "tick": 0,
+      "side": "player",
+      "seq": 0,
+      "type": "begin"
+    }
+  ],
+  "expected": {
+    "600": "27a819480390e05f",
+    "1200": "67af811999e98184",
+    "1800": "023a64e96a2a38e1",
+    "2400": "a89638076ea45701",
+    "3000": "686d3634bd668b69",
+    "3600": "c6179ba4143bd312",
+    "4200": "cf0737cb26df0b12",
+    "4800": "aa7a0c3a4e866205",
+    "5400": "6dc723296d87531c",
+    "6000": "1084b32f4ec65fa6",
+    "6600": "6dff349d22057e7a",
+    "7200": "8d6a9c6ce160b3a8",
+    "7800": "5cf7d95483d3869e",
+    "8400": "0bc609af741e0d1d",
+    "9000": "2430708a36a1a0dd",
+    "final": "0b0a5097d6d2025c"
+  }
+}

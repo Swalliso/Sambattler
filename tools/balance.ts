@@ -1,11 +1,12 @@
-// npm run balance -- duel [--seeds n] [--supply n] | tournament [--seeds n] | guardrails
+// npm run balance -- duel [--seeds n] [--supply n] | tournament [--seeds n] [--commanders all|a,b] | guardrails
 // Writes reports/balance/<timestamp>.{md,json} and prints the guardrail verdicts (SPEC §12.2, §15.3).
 // `--supply 60` re-runs the supply duels at army scale (G2 itself stays at its data value).
+// `tournament --commanders all` plays whole runs per commander instead of the bot tournament (SPEC §16 M5).
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { nodeContent, ROOT } from './lib/content.ts';
 import {
-  evaluateG1, evaluateG2, evaluateG3, evaluateG4, evaluateG5, evaluateG6, evaluateG7, matchup, spawnerIds, supplyDuel,
+  commanderTournament, evaluateG1, evaluateG2, evaluateG3, evaluateG4, evaluateG5, evaluateG6, evaluateG7, matchup, spawnerIds, supplyDuel,
 } from './lib/balance.ts';
 import type { DuelOutcome, Verdict } from './lib/balance.ts';
 import { fmtTicks, median } from './lib/run.ts';
@@ -19,6 +20,10 @@ if (seedsArg >= 0) {
   if (mode === 'duel') { content.targets.G1.seeds = n; content.targets.G2.seeds = n; }
   else { content.targets.G3.seeds = n; content.targets.G4.seeds = n; content.targets.G5.seeds = n; content.targets.G7.seeds = n; }
 }
+const commandersArg = args.indexOf('--commanders');
+const commanderList = commandersArg < 0 ? null
+  : args[commandersArg + 1] === 'all' ? Object.keys(content.commanders) : (args[commandersArg + 1] ?? '').split(',').filter(Boolean);
+for (const id of commanderList ?? []) if (!content.commanders[id]) throw new Error(`--commanders: unknown commander "${id}"`);
 const supplyArg = args.indexOf('--supply');
 const armySupply = supplyArg >= 0 ? Number(args[supplyArg + 1]) : 0;
 
@@ -71,6 +76,17 @@ if (mode === 'duel') {
     md.push('');
     json.army = army;
   }
+} else if (mode === 'tournament' && commanderList) {
+  const seeds = seedsArg >= 0 ? Number(args[seedsArg + 1]) : 30;
+  const t = commanderTournament(content, commanderList, seeds);
+  md.push(`## Commanders: whole runs (${seeds} seeds each, bot:balanced, greedy drafts, random route, power policy auto)`, '',
+    '| commander | runs won | boss reached | battles won | power uses | power damage | columns | trios |', '|---|---|---|---|---|---|---|---|');
+  for (const r of t.rows) {
+    md.push(`| ${r.commander} | ${((100 * r.victories) / r.runs).toFixed(0)}% (${r.victories}/${r.runs}) | ${r.reachedBoss}/${r.runs} | ${r.battlesWon}/${r.battles} | ${r.powerUses} | ${r.powerDamage} | ${r.powerCaptures} | ${r.powerMerges} |`);
+  }
+  md.push('');
+  json.commanders = t.rows;
+  verdicts.push(t.verdict);
 } else if (mode === 'tournament') {
   const seeds = content.targets.G4.seeds;
   const bots = ['bot:balanced', 'bot:rush', 'bot:turtle', 'bot:greedy'];
@@ -87,7 +103,7 @@ if (mode === 'duel') {
 } else if (mode === 'guardrails') {
   verdicts.push(evaluateG1(content).verdict, evaluateG2(content).verdict, evaluateG3(content), evaluateG4(content), evaluateG5(content), evaluateG6(content), evaluateG7(content));
 } else {
-  console.error('usage: npm run balance -- duel [--supply n] | tournament | guardrails [--seeds n]');
+  console.error('usage: npm run balance -- duel [--supply n] | tournament [--commanders all|a,b] | guardrails [--seeds n]');
   process.exit(2);
 }
 

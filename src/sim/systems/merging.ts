@@ -56,13 +56,32 @@ function resolveKnits(state: BattleState): void {
     for (let i = 0; i < units.length; i++) if (!removed.includes(units[i]!.id)) units[w++] = units[i]!;
     units.length = w;
   }
-  if (elders) {
-    for (const side of SIDES) {
-      let n = 0;
-      for (const u of state.units) if (u.side === side && u.tier === 3) n++;
-      const st = state.stats[side];
-      if (n > st.maxEldersAlive) st.maxEldersAlive = n;
-    }
+  if (elders) noteElders(state);
+}
+
+/**
+ * Merges the given trios at once (Puppet Bloom, SPEC §11.10): each trio, in id order, becomes one unit
+ * of the next tier at its centroid, as if its knit had just finished.
+ */
+export function mergeTriosNow(state: BattleState, trios: UnitState[][]): void {
+  if (!trios.length) return;
+  removed.length = 0;
+  let elders = false;
+  for (const trio of trios) if (complete(state, trio) === 3) elders = true;
+  const units = state.units;
+  let w = 0;
+  for (let i = 0; i < units.length; i++) if (!removed.includes(units[i]!.id)) units[w++] = units[i]!;
+  units.length = w;
+  if (elders) noteElders(state);
+}
+
+/** Records the most Elders each side has had alive at once. */
+function noteElders(state: BattleState): void {
+  for (const side of SIDES) {
+    let n = 0;
+    for (const u of state.units) if (u.side === side && u.tier === 3) n++;
+    const st = state.stats[side];
+    if (n > st.maxEldersAlive) st.maxEldersAlive = n;
   }
 }
 

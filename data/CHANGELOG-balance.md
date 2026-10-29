@@ -3,6 +3,41 @@
 Every change from the SPEC's first-pass numbers, with the guardrail or verification result that
 motivated it. Tools: `npm run balance -- duel`, `npm run balance -- tournament`, `npm run test:slow`.
 
+## Milestone 5: commanders and powers (2026-10-29)
+
+**New content at the SPEC's first-pass numbers; no existing number or rule changed.** Vesper, Armilla
+and Cordis ship with the passives, powers, cooldowns and first-ready times of SPEC §11.10, unchanged:
+no tuning in this entry moved the commander tournament inside its target, so none was kept (the
+measurements are below and in [docs/m5-plan.md](../docs/m5-plan.md)).
+
+Two harness changes affect what bots do, both only where they used to crash or never applied:
+
+- **A bot's opener skips buildings missing from its kit.** Armilla's starter kit has no Sporeling
+  Burrow, and `bot:balanced` opens with one; that used to throw. Generals keep the strict check.
+  Single battles always field the whole roster, so no guardrail battle changes.
+- **A bot player in a run gets weight 1 on its commander's core buildings that its profile never
+  buys** (`botCoreWeights`, the same rule the run already uses for a general's run-only kit
+  entries). `bot:balanced` never drafted or built Armilla's Hammercap Forge and Rhizome Vault or
+  Cordis's Tender's Ring. Runs only; Vesper's core is all inside `bot:balanced`, so it is unchanged.
+
+Run-golden change: `m3-run-s7` now plays with Vesper's passive and the powers flag on (the bot's power
+policy stays `none` in that replay). The M1–M4 single-battle replays are hash-identical; three M5
+replays pin each power under the auto policy.
+
+Commander tournament (`npm run balance -- tournament --commanders all --seeds 30`, `bot:balanced`,
+greedy drafts, random route, power policy auto):
+
+| Commander | Runs won | Boss reached | Battles won | Power uses |
+|---|---|---|---|---|
+| Vesper | 10/30 (33%) | 12/30 | 62/82 | 355 (162,216 damage) |
+| Armilla | 0/30 (0%) | 2/30 | 11/43 | 100 (129 columns) |
+| Cordis | 10/30 (33%) | 11/30 | 59/80 | 273 (306 trios) |
+
+Target: no commander more than 15 points above another. **Fails by 33 points** (Armilla). Within the
+allowed levers (power and passive numbers), Armilla's best was 3/30 with her power and passive both
+effectively off: in this sim, taking ground faster or instantly costs the bot battles. The fix needs a
+content or rule decision; see [docs/m5-plan.md](../docs/m5-plan.md#the-commander-tournament).
+
 ## Adopted: E1 Hold / Advance (2026-10-28)
 
 **Rule change, approved by the user.** The user asked for the prototypes that helped to go into the game,

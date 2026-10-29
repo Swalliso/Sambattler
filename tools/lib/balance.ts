@@ -1,11 +1,12 @@
-// Balance harness (SPEC §12): production and supply duels, bot tournaments and the guardrail
-// evaluations G1–G7. Shared by `npm run balance` and the slow test suite. Duels measure the base
+// Balance harness (SPEC §12): production and supply duels, bot tournaments, the guardrail
+// evaluations G1–G8 and the commander tournament (SPEC §16 M5). Shared by `npm run balance` and the slow test suite. Duels measure the base
 // counter matrix, so they run with merging off; battles use the milestone's default flags.
 import type { Content } from '../../src/data/registry.ts';
 import { addBuilding, addUnit } from '../../src/sim/create.ts';
 import { createBattle, makeConfig, runHeadless, summarize } from '../../src/sim/index.ts';
 import type { BattleConfig, BattleState, Side, Tier } from '../../src/sim/index.ts';
 import { buildingDef } from '../../src/sim/world.ts';
+import { simulateRun } from '../../src/run/index.ts';
 import { median, runBattle } from './run.ts';
 
 const DUEL_TEST = { noTurrets: true, noTerritory: true, noHeartcapTargets: true };
@@ -408,3 +409,65 @@ function fmt(sec: number): string {
 }
 
 export { summarize };
+
+// ---- the commander tournament (SPEC §16 Milestone 5, verification 3) ----
+
+/** No commander's run win rate may be more than this many points above another's. */
+export const COMMANDER_SPREAD = 15;
+
+export interface CommanderRow {
+  commander: string;
+  runs: number;
+  victories: number;
+  reachedBoss: number;
+  battlesWon: number;
+  battles: number;
+  powerUses: number;
+  powerDamage: number;
+  powerCaptures: number;
+  powerMerges: number;
+}
+
+/**
+ * Whole runs per commander: `bot:balanced` with greedy drafts, a random route and the auto power policy,
+ * on seeds 1..n with the run's default flags (powers on). Each commander plays the same seeds.
+ */
+export function commanderTournament(content: Content, commanders: string[], seeds: number): { rows: CommanderRow[]; verdict: Verdict } {
+  const rows: CommanderRow[] = [];
+  for (const commander of commanders) {
+    const row: CommanderRow = {
+      commander, runs: 0, victories: 0, reachedBoss: 0, battlesWon: 0, battles: 0, powerUses: 0, powerDamage: 0, powerCaptures: 0, powerMerges: 0,
+    };
+    for (let seed = 1; seed <= seeds; seed++) {
+      const r = simulateRun(content, seed, { route: 'random', draft: 'greedy', player: 'bot:balanced', power: 'auto' }, {
+        commander,
+        onBattle: ({ state }) => {
+          const st = state.stats.player;
+          row.powerUses += st.powerUses ?? 0;
+          row.powerDamage += st.powerDamage ?? 0;
+          row.powerCaptures += st.powerCaptures ?? 0;
+          row.powerMerges += st.powerMerges ?? 0;
+        },
+      });
+      row.runs++;
+      if (r.outcome === 'victory') row.victories++;
+      if (r.reachedBoss) row.reachedBoss++;
+      row.battles += r.battleCount;
+      row.battlesWon += r.battles.filter((b) => b.winner === 'player').length;
+    }
+    rows.push(row);
+  }
+  const rate = (r: CommanderRow) => (100 * r.victories) / Math.max(1, r.runs);
+  const rates = rows.map(rate);
+  const spread = Math.max(...rates) - Math.min(...rates);
+  const pass = spread <= COMMANDER_SPREAD;
+  return {
+    rows,
+    verdict: {
+      id: 'M5', pass,
+      summary: `commander run win rates within ${COMMANDER_SPREAD} points (${seeds} seeds each): spread ${spread.toFixed(0)} points`,
+      details: rows.map((r) => `${r.commander}: ${rate(r).toFixed(0)}% runs won (${r.victories}/${r.runs}) · boss reached ${r.reachedBoss}/${r.runs} · ` +
+        `battles won ${r.battlesWon}/${r.battles} · power used ${r.powerUses}× (damage ${r.powerDamage}, columns ${r.powerCaptures}, trios ${r.powerMerges})`),
+    },
+  };
+}

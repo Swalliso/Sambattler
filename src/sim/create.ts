@@ -8,15 +8,15 @@ import { MAX_RADIUS } from './targets.ts';
 import { clampToLane, laneOfRow, supplyCapOf, unitRadius } from './world.ts';
 import { SIDES } from './state.ts';
 import type {
-  BattleConfig, BattleModifier, BattleState, BuildingState, Controller, DraftPool, LaneState, Loadout, Side, SideConfig, SideState, SideStats,
-  Tier, UnitState,
+  BattleConfig, BattleModifier, BattleState, BuildingState, Controller, DraftPool, LaneState, Loadout, PowerPolicy, Side, SideConfig, SideState,
+  SideStats, Tier, UnitState,
 } from './state.ts';
 
 export type Flags = BattleConfig['flags'];
 
 /** The milestone this build implements. Feature flags default to what it ships (SPEC §15.2). */
-export const MILESTONE = 4;
-export const DEFAULT_FLAGS: Readonly<Flags> = { merging: true, drafts: false, adaptiveGeneral: true, powers: false };
+export const MILESTONE = 5;
+export const DEFAULT_FLAGS: Readonly<Flags> = { merging: true, drafts: false, adaptiveGeneral: true, powers: true };
 
 /** Flag names as written in `--flags` and `?flags=`, and the milestone each one arrives in. */
 const FLAG_NAMES: Record<string, { key: keyof Flags; milestone: number }> = {
@@ -88,6 +88,10 @@ export interface BattleOptions {
   flags?: Partial<BattleConfig['flags']>;
   startingGold?: Partial<Record<Side, number>>;
   test?: BattleConfig['test'];
+  /** The player's commander (SPEC §11.10): its passive, its power (with `flags.powers`) and its draft pool. */
+  commander?: string;
+  /** How a bot player uses the power (default none). */
+  powerPolicy?: PowerPolicy;
 }
 
 /** Builds a battle config with the rules' defaults and the milestone's feature flags. */
@@ -114,12 +118,37 @@ export function makeConfig(content: Content, opts: BattleOptions): BattleConfig 
     enemy: side('enemy', asCtl(opts.enemy, 'general:scripted')),
     flags: { ...DEFAULT_FLAGS, ...opts.flags },
   };
-  // a single battle with drafts on gives the player the stand-in commander's pool (SPEC §8.4)
-  if (config.flags.drafts) config.player.draft = draftPool(content, config.player.faction, STAND_IN_COMMANDER, config.flags);
+  if (opts.commander) setCommander(content, config.player, opts.commander);
+  if (opts.powerPolicy && opts.powerPolicy !== 'none' && config.player.controller.kind !== 'human') config.player.powerPolicy = opts.powerPolicy;
+  // a single battle with drafts on gives the player its commander's pool (Vesper's without one, SPEC §8.4)
+  if (config.flags.drafts) config.player.draft = draftPool(content, config.player.faction, opts.commander ?? DEFAULT_COMMANDER, config.flags);
   if (opts.test) config.test = opts.test;
-  const passives = generalPassives(content, config);
+  const passives = sideModifiers(content, config);
   if (passives.length) config.modifiers = passives;
   return config;
+}
+
+/** Puts a commander on a side: its id and its power's (the passive joins the battle's modifiers). */
+export function setCommander(content: Content, sc: SideConfig, commanderId: string): void {
+  const cmd = content.commanders[commanderId];
+  if (!cmd) throw new Error(`unknown commander ${commanderId} (expected ${Object.keys(content.commanders).join(', ')})`);
+  sc.commander = cmd.id;
+  sc.power = cmd.power.id;
+}
+
+/** Both sides' standing battle modifiers: the generals' passives (SPEC §7.7), then the commanders' (§11.10). */
+export function sideModifiers(content: Content, config: Pick<BattleConfig, 'player' | 'enemy'>): BattleModifier[] {
+  return [...generalPassives(content, config), ...commanderPassives(content, config)];
+}
+
+/** Each commander's passive as a battle modifier on its own side. */
+export function commanderPassives(content: Content, config: Pick<BattleConfig, 'player' | 'enemy'>): BattleModifier[] {
+  const out: BattleModifier[] = [];
+  for (const s of SIDES) {
+    const c = config[s].commander ? content.commanders[config[s].commander!] : undefined;
+    if (c) out.push({ side: s, source: `commander:${c.id}`, effects: c.passive.effects });
+  }
+  return out;
 }
 
 /** Each general's personality passive (SPEC §7.7) as a battle modifier on its own side. */
@@ -133,12 +162,15 @@ export function generalPassives(content: Content, config: Pick<BattleConfig, 'pl
   return out;
 }
 
-/** The commander every run uses until commanders arrive in M5 (the kickoff stand-in: Vesper's pools, no power). */
-export const STAND_IN_COMMANDER = 'vesper';
+/** The commander a run starts with unless one is chosen, and whose pool a commander-less single battle drafts from. */
+export const DEFAULT_COMMANDER = 'vesper';
+/** At most this many shared-pool buildings can be banned before a run (SPEC §8.1). */
+export const MAX_BANS = 3;
 
 /**
  * A commander's draft pool (SPEC §8.4): its core buildings, every other building of the faction
- * (the shared pool, minus bans) and every relic whose required feature is on.
+ * (the shared pool, minus bans; core buildings can't be banned) and every relic whose required
+ * feature is on.
  */
 export function draftPool(content: Content, faction: string, commanderId: string, flags: Flags, bans: string[] = []): DraftPool {
   const cmd = content.commanders[commanderId];
@@ -159,6 +191,8 @@ export function createBattle(content: Content, config: BattleConfig): BattleStat
   for (const s of SIDES) {
     for (const id of config[s].kit) if (!content.buildings[id]) throw new Error(`${s} kit: unknown building ${id}`);
   }
+  const powers = Object.values(content.commanders).map((c) => c.power).filter((p) => SIDES.some((s) => config[s].power === p.id));
+  for (const s of SIDES) if (config[s].power && !powers.some((p) => p.id === config[s].power)) throw new Error(`${s}: unknown power ${config[s].power}`);
   const W = map.width;
   const lanes: LaneState[] = map.lanes.map((l) => {
     const owner: number[] = [];
@@ -180,6 +214,8 @@ export function createBattle(content: Content, config: BattleConfig): BattleStat
     if (isAdaptive(content, sc.controller, config.flags)) for (const id of adaptiveRoster(content, sc)) buildingIds.add(id);
   }
   const library = buildLibrary(content, [...buildingIds].sort(), [...relicIds].sort());
+  // only a battle with powers on carries their definitions, so other battles hash as before
+  if (config.flags.powers && powers.length) library.powers = Object.fromEntries(powers.map((p) => [p.id, p]));
   const loadouts: Record<Side, Loadout> = { player: configLoadout(config.player), enemy: configLoadout(config.enemy) };
   const compiled = compileSides(library, loadouts, config.modifiers);
   for (const s of SIDES) {
@@ -207,6 +243,8 @@ export function createBattle(content: Content, config: BattleConfig): BattleStat
       draftsOpened: 0,
     };
     if (rules.stance) st.stance = lanes.map(() => ({ hold: false, since: 0, readyAt: 0 }));
+    const power = sc.power ? library.powers?.[sc.power] : undefined;
+    if (power) st.powerCooldown = secToTicks(power.firstReady, rules.tickRate);
     if (sc.controller.kind !== 'human') st.ai = resolveAiProfile(content, sc.controller, sc, rules, buildingIds, config.flags, library);
     return st;
   };
@@ -240,6 +278,10 @@ export function createBattle(content: Content, config: BattleConfig): BattleStat
     stats: { player: emptyStats(), enemy: emptyStats() },
     frontLine: lanes.map((l) => [[0, l.pBorder, l.eBorder]]),
   };
+  for (const s of SIDES) {
+    if (!state.library.powers?.[config[s].power ?? '']) continue;
+    Object.assign(state.stats[s], { powerUses: 0, powerDamage: 0, powerCaptures: 0, powerMerges: 0 });
+  }
   return state;
 }
 
@@ -248,6 +290,8 @@ export interface ScenarioOverrides {
   player?: string;
   enemy?: string;
   flags?: Partial<BattleConfig['flags']>;
+  /** How a bot player uses its commander's power (the scenario names the commander). */
+  powerPolicy?: PowerPolicy;
 }
 
 /** Builds a live battle from `data/scenarios/<id>.json` (pre-placed buildings, units, gold, clock). */
@@ -268,11 +312,17 @@ export function createFromScenario(content: Content, scenarioId: string, over: S
     if (def.kit) config[s].kit = [...def.kit];
     if (def.heartcapHp !== undefined) config[s].heartcapHp = def.heartcapHp;
     if (def.gold !== undefined) config[s].startingGold = def.gold;
+    if (def.commander) setCommander(content, config[s], def.commander);
   }
+  if (over.powerPolicy && over.powerPolicy !== 'none' && config.player.controller.kind !== 'human') config.player.powerPolicy = over.powerPolicy;
+  const passives = sideModifiers(content, config);
+  if (passives.length) config.modifiers = passives;
   const state = createBattle(content, config);
   state.phase = 'live';
   state.tick = secToTicks(sc.clockSeconds ?? 0, content.balance.tickRate);
   state.sporestorm = stormStacksAt(state, state.tick);
+  // the scenario's clock counts as live play toward the power's first use
+  for (const s of SIDES) state.sides[s].powerCooldown = Math.max(0, state.sides[s].powerCooldown - state.tick);
   const W = state.map.width;
   (sc.lanes ?? []).forEach((l, i) => {
     const lane = state.lanes[i];

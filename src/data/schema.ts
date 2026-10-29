@@ -1,7 +1,7 @@
 // zod schemas for every data file (SPEC §14). Milestone 4 subset: balance, factions, buildings,
 // units, maps, sprites, generals (with passives and the counter cycle), bots, scenarios, balance
-// targets, plus the run content (upgrade tracks, relics, events, elite modifiers, the commander
-// stand-in), the effects DSL (§14.2) and the sound bank (§13.9).
+// targets, plus the run content (upgrade tracks, relics, events, elite modifiers, commanders with
+// their passives and powers), the effects DSL (§14.2) and the sound bank (§13.9).
 import { z } from 'zod';
 
 export const Id = z.string().min(1).regex(/^[a-zA-Z0-9:_-]+$/, 'ids use letters, digits, : _ -');
@@ -496,6 +496,8 @@ const ScenarioSide = z.object({
   gold: z.number().int().nonnegative().optional(),
   heartcapHp: z.number().int().positive().optional(),
   kit: z.array(Id).optional(),
+  /** The side's commander: its passive, and its power when the powers flag is on (SPEC §11.10). */
+  commander: Id.optional(),
   buildings: z.array(z.object({ building: Id, col: z.number().int(), row: z.number().int() }).strict()).optional(),
   units: z.array(ScenarioUnits).optional(),
 }).strict();
@@ -554,10 +556,29 @@ export const EliteSchema = z.object({
   upgradeLevels: z.number().int().positive().optional(),
 }).strict();
 
-/** Commanders (SPEC §11.10). Until M5 only the core pool and starter kit exist. */
+/**
+ * A commander's active power (SPEC §6.6, §11.10). `burst` deals damage to every enemy unit and building
+ * within `radius` of a point; `surge` captures the side's frontier column in every lane where no enemy
+ * building stands; `bloom` merges every same-type trio within `radius` of a point at once.
+ */
+const PowerBase = { id: Id, name: z.string().min(1), text: z.string().min(1), cooldown: Pos, firstReady: Seconds };
+export const PowerSchema = z.discriminatedUnion('kind', [
+  z.object({ ...PowerBase, kind: z.literal('burst'), target: z.literal('point'), radius: Pos, damage: Pos, damageType: DamageType }).strict(),
+  z.object({ ...PowerBase, kind: z.literal('surge'), target: z.literal('global') }).strict(),
+  z.object({ ...PowerBase, kind: z.literal('bloom'), target: z.literal('point'), radius: Pos }).strict(),
+]);
+
+/** Commanders (SPEC §11.10): a core pool, a starter kit, a passive and an active power. */
 export const CommanderSchema = z.object({
-  id: Id, name: z.string().min(1), milestone: z.number().int().positive(), description: z.string().optional(),
+  id: Id, name: z.string().min(1), milestone: z.number().int().positive(),
+  /** A short epithet for the select screen ("The starter"). */
+  title: z.string().min(1),
+  /** The portrait on the select screen (a 16×16 sprite). */
+  sprite: Id,
+  description: z.string().min(1),
   core: z.array(Id).length(6), starter: z.tuple([Id, Id, Id]),
+  passive: z.object({ text: z.string().min(1), effects: EffectBundleSchema }).strict(),
+  power: PowerSchema,
 }).strict().superRefine((c, ctx) => {
   for (const id of c.starter) if (!c.core.includes(id)) ctx.addIssue({ code: 'custom', message: `commander ${c.id}: starter ${id} is not in the core pool` });
 });
@@ -581,6 +602,7 @@ export type RelicDef = z.infer<typeof RelicSchema>;
 export type EventDef = z.infer<typeof EventSchema>;
 export type EliteDef = z.infer<typeof EliteSchema>;
 export type CommanderDef = z.infer<typeof CommanderSchema>;
+export type PowerDef = z.infer<typeof PowerSchema>;
 export type RunEffect = z.infer<typeof RunEffectSchema>;
 export type ModifierDef = z.infer<typeof ModifierSchema>;
 export type SelectorDef = z.infer<typeof SelectorSchema>;

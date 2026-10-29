@@ -1,7 +1,7 @@
 // Attacks, projectiles, damage and deaths (SPEC §5.3, §4.5 turrets).
 import { fireTriggers, runAction } from '../effects.ts';
 import { insertHit } from '../hits.ts';
-import { HEARTCAP_ID, SIDES, other } from '../state.ts';
+import { HEARTCAP_ID, POWER_SOURCE_ID, SIDES, other } from '../state.ts';
 import type { Armor, BattleState, DamageType, Effectiveness, PendingHit, Side, UnitState } from '../state.ts';
 import { nearBuffer, queryNear } from '../spatial.ts';
 import { MAX_RADIUS, edgeDistance, tp } from '../targets.ts';
@@ -295,6 +295,35 @@ export function resolveHitsSystem(state: BattleState): void {
     }
   }
   hits.splice(0, n);
+}
+
+/**
+ * A burst at a point that strikes at once (Spore Burst, SPEC §11.10): full damage, through the matrix,
+ * to every enemy unit whose body is within `radius` and every enemy building whose footprint is, in
+ * any lane. Never the Heartcap. Returns the number of targets struck.
+ */
+export function burstAt(state: BattleState, side: Side, x: number, y: number, radius: number, damage: number, damageType: DamageType, sourceType: string): number {
+  const enemy = other(side);
+  const h: PendingHit = {
+    tick: state.tick, sourceId: 0, seq: 0, side, targetId: 0, x, y, fromX: x, fromY: y, fireTick: state.tick, lane: -1,
+    damage, damageType, splashRadius: 0, siegeMult: 1, slayerMult: 1, sourceBuildingId: POWER_SOURCE_ID, sourceType, ranged: false,
+  };
+  let n = 0;
+  for (const u of state.units) {
+    if (u.side !== enemy || u.hp <= 0) continue;
+    const dx = u.x - x, dy = u.y - y;
+    if (Math.sqrt(dx * dx + dy * dy) - unitRadius(state, u) > radius) continue;
+    applyDamage(state, h, u.id, 1, u.x, u.y);
+    n++;
+  }
+  for (const b of state.buildings) {
+    if (b.side !== enemy || b.hp <= 0) continue;
+    const bd = buildingDef(state, b);
+    if (rectDistance(x, y, b.col, b.row, bd.w, bd.h) > radius) continue;
+    applyDamage(state, h, b.id, 1, b.col + bd.w / 2, b.row + bd.h / 2);
+    n++;
+  }
+  return n;
 }
 
 /**

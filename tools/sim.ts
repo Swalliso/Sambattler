@@ -1,4 +1,4 @@
-// npm run sim -- [options]: headless battle and run simulator (SPEC §15.2), Milestone 4 subset.
+// npm run sim -- [options]: headless battle and run simulator (SPEC §15.2), Milestone 5 subset.
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, isAbsolute, join } from 'node:path';
 import { nodeContent, ROOT } from './lib/content.ts';
@@ -9,10 +9,11 @@ import type { DraftAutoPolicy, RoutePolicy, RunResult } from '../src/run/index.t
 import { checkAssert, parseAssert } from './lib/asserts.ts';
 import type { Assertion } from './lib/asserts.ts';
 import { MILESTONE, parseFlags } from '../src/sim/index.ts';
-import type { BattleConfig, Command } from '../src/sim/index.ts';
+import type { BattleConfig, Command, PowerPolicy } from '../src/sim/index.ts';
 
-/** Options for later milestones' features (commanders, powers, meta-progression). */
-const NOT_YET = ['--commander', '--power-policy', '--bot', '--meta-progress', '--runs'];
+/** Options for later milestones' features (meta-progression). */
+const NOT_YET = ['--bot', '--meta-progress', '--runs'];
+const POWER_POLICIES = ['none', 'auto'];
 const DRAFT_POLICIES = ['first', 'random', 'greedy'];
 const ROUTE_POLICIES = ['first', 'random', 'battles'];
 
@@ -21,6 +22,7 @@ interface Args {
   until: 'end' | number; battleIndex?: number; flags?: Partial<BattleConfig['flags']>; hashEvery?: number;
   asserts: Assertion[]; out?: string; summary: boolean;
   run: boolean; autoDraft?: DraftAutoPolicy; autoRoute?: RoutePolicy;
+  commander?: string; powerPolicy?: PowerPolicy;
 }
 
 function parseUntil(v: string): 'end' | number {
@@ -76,6 +78,13 @@ function parseArgs(argv: string[]): Args {
         a.autoDraft = p as DraftAutoPolicy;
         break;
       }
+      case '--commander': a.commander = v(); break;
+      case '--power-policy': {
+        const p = v();
+        if (!POWER_POLICIES.includes(p)) throw new Error(`--power-policy expects ${POWER_POLICIES.join(' | ')}`);
+        a.powerPolicy = p as PowerPolicy;
+        break;
+      }
       case '--auto-route': {
         const p = v();
         if (!ROUTE_POLICIES.includes(p)) throw new Error(`--auto-route expects ${ROUTE_POLICIES.join(' | ')}`);
@@ -97,7 +106,9 @@ function outPath(p: string): string {
 function main(): number {
   const args = parseArgs(process.argv.slice(2));
   const content = nodeContent();
+  if (args.commander && !content.commanders[args.commander]) throw new Error(`--commander: unknown commander "${args.commander}" (expected ${Object.keys(content.commanders).join(', ')})`);
   if (args.run) return mainRun(args, content);
+  if (args.commander && args.scenario) throw new Error('--commander does not apply to a scenario (it names its own commander)');
   if (args.autoRoute) throw new Error('--auto-route needs --run');
   const recordAt = [...new Set(args.asserts.filter((x) => x.tick !== undefined).map((x) => x.tick!))];
   if (typeof args.until === 'number') recordAt.push(args.until);
@@ -117,6 +128,8 @@ function main(): number {
     if (args.battleIndex) spec.battleIndex = args.battleIndex;
     if (args.flags) spec.flags = args.flags;
     if (args.autoDraft) spec.autoDraft = args.autoDraft;
+    if (args.commander) spec.commander = args.commander;
+    if (args.powerPolicy) spec.powerPolicy = args.powerPolicy;
     if (args.hashEvery) spec.hashEvery = args.hashEvery;
     const { result } = runBattle(content, spec);
     results.push(result);
@@ -136,7 +149,10 @@ function main(): number {
   if (results.length === 1 && !args.summary) {
     const r = results[0]!;
     const { at: _at, frontLine: _fl, stats: _st, ...brief } = r;
-    console.log(JSON.stringify({ ...brief, frontLineSamples: r.frontLine.map((l) => l.length) }, null, 2));
+    const p = r.stats.player;
+    const power = p.powerUses === undefined ? null
+      : { uses: p.powerUses, damage: p.powerDamage, captures: p.powerCaptures, merges: p.powerMerges };
+    console.log(JSON.stringify({ ...brief, power, frontLineSamples: r.frontLine.map((l) => l.length) }, null, 2));
   } else {
     printSummary(results);
   }
@@ -190,11 +206,15 @@ const RUN_MINUTES: [number, number] = [22, 38];
 
 function mainRun(args: Args, content: ReturnType<typeof nodeContent>): number {
   if (args.scenario || args.replay || args.map || args.enemy) throw new Error('--run picks maps and generals itself; drop --map, --enemy, --scenario and --replay');
-  const policies = { route: args.autoRoute ?? 'random', draft: args.autoDraft ?? 'greedy', player: args.player ?? 'bot:balanced' } as const;
+  const policies = {
+    route: args.autoRoute ?? 'random', draft: args.autoDraft ?? 'greedy', player: args.player ?? 'bot:balanced', power: args.powerPolicy ?? 'none',
+  } as const;
   const results: (RunResult & { wallMs: number })[] = [];
   for (const seed of args.seeds) {
     const t0 = performance.now();
-    const r = simulateRun(content, seed, { ...policies }, { ...(args.hashEvery ? { hashEvery: args.hashEvery } : {}), ...(args.flags ? { flags: args.flags } : {}) });
+    const r = simulateRun(content, seed, { ...policies }, {
+      ...(args.hashEvery ? { hashEvery: args.hashEvery } : {}), ...(args.flags ? { flags: args.flags } : {}), ...(args.commander ? { commander: args.commander } : {}),
+    });
     results.push({ ...r, wallMs: Math.round(performance.now() - t0) });
   }
   const failures: string[] = [];

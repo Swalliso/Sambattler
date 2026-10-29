@@ -1,0 +1,35 @@
+{
+  "id": "power-demo",
+  "description": "Vesper Velvetcap at 1:00 (Spore Burst ready since 0:45): a knot of enemy Sporelings and two Capguards meets the player's Capguards mid-field, with the front between them. Used by the m5-power-targeting screenshot (targeting=1&paused=1) to show the reticle on the field.",
+  "map": "bogwater-hollow",
+  "clockSeconds": 60,
+  "flags": { "merging": true, "powers": true },
+  "lanes": [{ "pBorder": 11, "eBorder": 20 }],
+  "sides": {
+    "player": {
+      "commander": "vesper",
+      "gold": 120,
+      "kit": ["sporelingBurrow", "capguardHall", "truffleCellar"],
+      "buildings": [
+        { "building": "capguardHall", "col": 1, "row": 1 },
+        { "building": "sporelingBurrow", "col": 1, "row": 5 },
+        { "building": "truffleCellar", "col": 5, "row": 3 }
+      ],
+      "units": [
+        { "unit": "capguard", "x": 13.0, "y": 2.4, "count": 4, "rows": 2, "dx": 0.7, "dy": 2.6 },
+        { "unit": "sporeling", "x": 12.2, "y": 3.4, "count": 4, "rows": 2, "dx": 0.6, "dy": 0.7 }
+      ]
+    },
+    "enemy": {
+      "gold": 120,
+      "buildings": [
+        { "building": "sporelingBurrow", "col": 29, "row": 1 },
+        { "building": "capguardHall", "col": 29, "row": 5 }
+      ],
+      "units": [
+        { "unit": "sporeling", "x": 17.2, "y": 2.6, "count": 8, "rows": 3, "dx": 0.6, "dy": 0.7 },
+        { "unit": "capguard", "x": 19.0, "y": 2.8, "count": 2, "rows": 2, "dx": 0.7, "dy": 1.2 }
+      ]
+    }
+  }
+}

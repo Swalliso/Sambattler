@@ -3,12 +3,15 @@ export { loadContent, ContentError } from '../data/registry.ts';
 export type { Content, RawContent } from '../data/registry.ts';
 export {
   createBattle, createFromScenario, makeConfig, parseController, controllerLabel, parseFlags, DEFAULT_FLAGS, MILESTONE,
-  draftPool, STAND_IN_COMMANDER, generalPassives,
+  draftPool, DEFAULT_COMMANDER, MAX_BANS, generalPassives, commanderPassives, sideModifiers, setCommander,
 } from './create.ts';
 export type { BattleOptions, Flags } from './create.ts';
 export { canMerge } from './systems/merging.ts';
 export { queueCommand, nextCommandTick, sellValue, draftCommandDue } from './commands.ts';
 export { step } from './step.ts';
+export {
+  autoPowerTarget, bloomTrios, burstPreview, powerCooldownTicks, powerFirstReadyTicks, powerOf, powerProblem, surgeLanes,
+} from './powers.ts';
 export { runHeadless } from './headless.ts';
 export type { HeadlessOptions, HeadlessResult } from './headless.ts';
 export { hashState, snapshot, restore } from './snapshot.ts';

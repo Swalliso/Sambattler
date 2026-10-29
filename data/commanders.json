@@ -1,8 +1,47 @@
 [
   {
-    "id": "vesper", "name": "Vesper Velvetcap", "milestone": 3,
-    "description": "M3 stand-in: Vesper's core pool and starter kit only. The passive, the Spore Burst power and the other commanders arrive in M5.",
+    "id": "vesper", "sprite": "c-vesper", "name": "Vesper Velvetcap", "milestone": 5, "title": "The starter",
+    "description": "A steady hand for a first run: a fast home colony, and a burst of spores to break a push.",
     "core": ["sporelingBurrow", "capguardHall", "gillNest", "rootbreakerDen", "puffballMortar", "truffleCellar"],
-    "starter": ["sporelingBurrow", "capguardHall", "truffleCellar"]
+    "starter": ["sporelingBurrow", "capguardHall", "truffleCellar"],
+    "passive": {
+      "text": "Buildings in your home columns spawn 10% faster.",
+      "effects": { "modifiers": [{ "stat": "building.spawnInterval", "op": "mul", "value": 0.91, "where": { "zone": "home" } }] }
+    },
+    "power": {
+      "id": "sporeBurst", "name": "Spore Burst", "kind": "burst", "target": "point", "radius": 2, "damage": 90, "damageType": "crush",
+      "cooldown": 75, "firstReady": 45,
+      "text": "90 crush damage to every enemy unit and building within 2 tiles of a point."
+    }
+  },
+  {
+    "id": "armilla", "sprite": "c-armilla", "name": "Armilla the Vast", "milestone": 5, "title": "The landholder",
+    "description": "Slow, heavy and greedy for ground: she takes columns faster and can seize the whole front at once.",
+    "core": ["capguardHall", "rootbreakerDen", "puffballMortar", "truffleCellar", "hammercapForge", "rhizomeVault"],
+    "starter": ["capguardHall", "truffleCellar", "puffballMortar"],
+    "passive": {
+      "text": "Your units capture columns 25% faster.",
+      "effects": { "modifiers": [{ "stat": "side.captureSpeed", "op": "mul", "value": 1.25 }] }
+    },
+    "power": {
+      "id": "rhizomeSurge", "name": "Rhizome Surge", "kind": "surge", "target": "global",
+      "cooldown": 100, "firstReady": 90,
+      "text": "Instantly capture your frontier column in every lane where no enemy building stands on it."
+    }
+  },
+  {
+    "id": "cordis", "sprite": "c-cordis", "name": "Cordis the Puppeteer", "milestone": 5, "title": "The merger",
+    "description": "Knits small units into big ones: merges finish in half the time, and a bloom merges a crowd mid-fight.",
+    "core": ["sporelingBurrow", "gillNest", "scythecapGrove", "veilstalkerHollow", "tendersRing", "truffleCellar"],
+    "starter": ["sporelingBurrow", "gillNest", "truffleCellar"],
+    "passive": {
+      "text": "Merges knit in half the time, and units merge from 2 tiles apart.",
+      "effects": { "modifiers": [{ "stat": "side.knitTicks", "op": "mul", "value": 0.5 }, { "stat": "side.mergeRadius", "op": "set", "value": 2.0 }] }
+    },
+    "power": {
+      "id": "puppetBloom", "name": "Puppet Bloom", "kind": "bloom", "target": "point", "radius": 3,
+      "cooldown": 80, "firstReady": 60,
+      "text": "Every trio of the same unit within 3 tiles of a point merges at once, even in combat."
+    }
   }
 ]

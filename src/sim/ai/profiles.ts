@@ -65,6 +65,9 @@ export function resolveAiProfile(
       afterTick: Math.round((lim.afterSeconds ?? 0) * rules.tickRate),
     });
   }
+  // a bot playing a run's kit (a commander's starter, SPEC §11.10) skips opener buildings it doesn't own;
+  // a general's opener must fit its kit
+  if (ctl.kind === 'bot') opener = opener.filter((id) => side.kit.includes(id));
   for (const id of opener) if (!side.kit.includes(id)) throw new Error(`${ctl.kind}:${ctl.id} opener uses ${id}, which is not in its kit`);
   const ai: AiState = {
     profileId: `${ctl.kind}:${ctl.id}`,

@@ -40,7 +40,7 @@ describe('data', () => {
     expect(loam(twin.tiles.slice(0, 6), 'right')).toBe(true);
   });
 
-  it('run content: tracks, relics, events, elites and the commander stand-in', () => {
+  it('run content: tracks, relics, events, elites and the commanders', () => {
     const c = loadContent(raw);
     expect(Object.keys(c.upgrades).sort()).toEqual(Object.keys(c.buildings).sort()); // a track for every building
     expect(c.relicOrder).toHaveLength(21);

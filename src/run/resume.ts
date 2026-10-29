@@ -21,7 +21,9 @@ export function loadRun(storage: Storage): RunState | null {
   if (!text) return null;
   try {
     const run = JSON.parse(text) as RunState;
-    return run.v === RUN_VERSION ? run : null;
+    if (run.v !== RUN_VERSION) return null;
+    run.bans ??= []; // saved before M5's bans
+    return run;
   } catch {
     return null;
   }

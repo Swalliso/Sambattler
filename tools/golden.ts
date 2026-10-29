@@ -6,7 +6,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 
 import { join } from 'node:path';
 import { nodeContent, ROOT } from './lib/content.ts';
 import { createBattle, makeConfig, runHeadless } from '../src/sim/index.ts';
-import type { BattleConfig, Command, Flags } from '../src/sim/index.ts';
+import type { BattleConfig, Command, Flags, PowerPolicy } from '../src/sim/index.ts';
 import { hashRun, simulateRun } from '../src/run/index.ts';
 import type { AutoPolicies } from '../src/run/index.ts';
 
@@ -27,11 +27,18 @@ const M1_KIT = ['sporelingBurrow', 'capguardHall', 'gillNest', 'rootbreakerDen',
  * The replays each milestone ships (SPEC §16 verification). Each pins its milestone's flags (and
  * M1's roster), so a refresh after a balance change keeps M1 replays free of later features.
  */
-const REPLAYS: { name: string; description: string; seed: number; player: string; enemy: string; flags: Partial<Flags>; kit?: string[] }[] = [
-  { name: 'm1-balanced-vs-scripted-s1', description: 'bot:balanced vs the scripted general, seed 1', seed: 1, player: 'bot:balanced', enemy: 'general:scripted', flags: { merging: false, adaptiveGeneral: false }, kit: M1_KIT },
-  { name: 'm1-turtle-vs-scripted-s2', description: 'bot:turtle vs the scripted general, seed 2', seed: 2, player: 'bot:turtle', enemy: 'general:scripted', flags: { merging: false, adaptiveGeneral: false }, kit: M1_KIT },
-  { name: 'm2-merge-mirror-s3', description: 'merge-on vs merge-off mirror (bot:balanced vs bot:balanced-nomerge, the G7 setup), seed 3', seed: 3, player: 'bot:balanced', enemy: 'bot:balanced-nomerge', flags: { merging: true, adaptiveGeneral: false } },
-  { name: 'm4-adaptive-mold-s4', description: 'mono Sporeling Burrow vs adaptive Old Mother Mold (two Swarm counters), seed 4', seed: 4, player: 'bot:mono:sporelingBurrow', enemy: 'general:mother-mold', flags: { merging: true, adaptiveGeneral: true } },
+const REPLAYS: {
+  name: string; description: string; seed: number; player: string; enemy: string; flags: Partial<Flags>; kit?: string[];
+  commander?: string; powerPolicy?: PowerPolicy;
+}[] = [
+  { name: 'm1-balanced-vs-scripted-s1', description: 'bot:balanced vs the scripted general, seed 1', seed: 1, player: 'bot:balanced', enemy: 'general:scripted', flags: { merging: false, adaptiveGeneral: false, powers: false }, kit: M1_KIT },
+  { name: 'm1-turtle-vs-scripted-s2', description: 'bot:turtle vs the scripted general, seed 2', seed: 2, player: 'bot:turtle', enemy: 'general:scripted', flags: { merging: false, adaptiveGeneral: false, powers: false }, kit: M1_KIT },
+  { name: 'm2-merge-mirror-s3', description: 'merge-on vs merge-off mirror (bot:balanced vs bot:balanced-nomerge, the G7 setup), seed 3', seed: 3, player: 'bot:balanced', enemy: 'bot:balanced-nomerge', flags: { merging: true, adaptiveGeneral: false, powers: false } },
+  { name: 'm4-adaptive-mold-s4', description: 'mono Sporeling Burrow vs adaptive Old Mother Mold (two Swarm counters), seed 4', seed: 4, player: 'bot:mono:sporelingBurrow', enemy: 'general:mother-mold', flags: { merging: true, adaptiveGeneral: true, powers: false } },
+  ...(['vesper', 'armilla', 'cordis'] as const).map((c) => ({
+    name: `m5-${c}-power-s3`, description: `bot:balanced as ${c} with the auto power policy vs the scripted general, seed 3 (SPEC §16 M5)`,
+    seed: 3, player: 'bot:balanced', enemy: 'general:scripted', flags: { merging: true, adaptiveGeneral: true, powers: true }, commander: c, powerPolicy: 'auto' as const,
+  })),
 ];
 
 interface RunReplay {
@@ -72,7 +79,10 @@ function verifyRun(rep: RunReplay): boolean {
 }
 
 function replayConfig(r: (typeof REPLAYS)[number]): BattleConfig {
-  const config = makeConfig(nodeContent(), { seed: r.seed, player: r.player, enemy: r.enemy, flags: r.flags });
+  const config = makeConfig(nodeContent(), {
+    seed: r.seed, player: r.player, enemy: r.enemy, flags: r.flags,
+    ...(r.commander ? { commander: r.commander } : {}), ...(r.powerPolicy ? { powerPolicy: r.powerPolicy } : {}),
+  });
   if (r.kit) { config.player.kit = [...r.kit]; config.enemy.kit = [...r.kit]; }
   return config;
 }

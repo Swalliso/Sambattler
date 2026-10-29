@@ -609,6 +609,90 @@
         "......kttk......",
         ".......kk......."
       ]
+     ]},
+    {"id": "c-vesper", "w": 16, "h": 16, "anchor": [0, 0], "factionSwap": true, "palette": {".": null, "d": "#5a2f99", "e": "#120a16", "k": "#1a1020", "l": "#c9a2ff", "s": "#e8d9b5", "t": "#b9a77f", "v": "#8a4fd8", "w": "#fbf6ff"},
+     "frames": [
+      [
+        "................",
+        "....kkkkkkkk....",
+        "..kkvvlllvvvkk..",
+        ".kvvllwllllvvvk.",
+        "kvvlllllllllvvvk",
+        "kkkkkkkkkkkkkkkk",
+        "....kssssssk....",
+        "....ksekseks....",
+        "....ksssssks....",
+        ".....kssssk.....",
+        "......kttk......",
+        "....kkvvvvkk....",
+        "...kvvlvvlvvk...",
+        "...kvvvvvvvvk...",
+        "...kddvvvvddk...",
+        "....kkkkkkkk...."
+      ]
+     ]},
+    {"id": "c-armilla", "w": 16, "h": 16, "anchor": [0, 0], "factionSwap": true, "palette": {".": null, "d": "#5a2f99", "e": "#120a16", "h": "#3f9e68", "k": "#1a1020", "s": "#e8d9b5", "t": "#b9a77f", "v": "#8a4fd8"},
+     "frames": [
+      [
+        "................",
+        "...kkkkkkkkkk...",
+        "..kvvvvvvvvvvk..",
+        ".kvvdvvvvvvdvvk.",
+        "kvvvvvvvvvvvvvvk",
+        "kddddddddddddddk",
+        "kkkkkkkkkkkkkkkk",
+        "...kssssssssk...",
+        "...ksseksseksk..",
+        "...ksssssssssk..",
+        "...ktsssssstk...",
+        "..kkkttttttkkk..",
+        ".kvvvvvvvvvvvvk.",
+        "kvvdvvvvvvvvdvvk",
+        "kvvvvvhhhhvvvvvk",
+        "kkkkkkkkkkkkkkkk"
+      ]
+     ]},
+    {"id": "c-cordis", "w": 16, "h": 16, "anchor": [0, 0], "factionSwap": true, "palette": {".": null, "d": "#5a2f99", "e": "#120a16", "k": "#1a1020", "l": "#c9a2ff", "s": "#e8d9b5", "t": "#b9a77f", "v": "#8a4fd8", "w": "#fbf6ff"},
+     "frames": [
+      [
+        ".l...........l..",
+        ".l..kkkkkkk..l..",
+        ".l.kllvvvvvk.l..",
+        ".lkllwlvvvvvkl..",
+        ".kkkkkkkkkkkkk..",
+        ".l...kssssk..l..",
+        ".l...ksesek..l..",
+        ".l...kssssk..l..",
+        ".l....kttk...l..",
+        ".k..kkvvvvkk.k..",
+        ".kvkvvlvvlvvkvk.",
+        "..kkvvvvvvvvkk..",
+        "....kvvvvvvk....",
+        "...kd.k..k.dk...",
+        "...k..k..k..k...",
+        "................"
+      ]
+     ]},
+    {"id": "i-power", "w": 16, "h": 16, "anchor": [0, 0], "factionSwap": true, "palette": {".": null, "k": "#1a1020", "l": "#c9a2ff", "w": "#fbf6ff", "y": "#f0c85a"},
+     "frames": [
+      [
+        "................",
+        ".......kk.......",
+        "......kllk......",
+        "..kk..kllk..kk..",
+        "..klk.kwlk.klk..",
+        "...klkkllkklk...",
+        "....kllwwllk....",
+        ".kkkllwyywllkkk.",
+        ".klllwyyyywlllk.",
+        ".kkkllwyywllkkk.",
+        "....kllwwllk....",
+        "...klkkllkklk...",
+        "..klk.kllk.klk..",
+        "..kk..kllk..kk..",
+        "......kllk......",
+        ".......kk......."
+      ]
      ]}
   ]
 }
