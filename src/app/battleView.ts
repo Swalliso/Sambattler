@@ -26,6 +26,7 @@ import type { BattleState } from '../sim/index.ts';
 import { BattleSound } from './battleSound.ts';
 import type { Session } from './session.ts';
 import { loadSettings, onSettings, settingsStore } from './settings.ts';
+import { TipCoach, tipWord } from './tips.ts';
 import { sfx, soundDim, soundPrefs, soundSpeed, soundToggle } from './sound.ts';
 
 /** The ghost tip's gap from the footprint, and its margin inside the field (layout px). */
@@ -56,11 +57,13 @@ export class BattleView {
   /** The roots ceiling, soil bed and ambient spores around the field. */
   readonly frameArt: FieldFrame;
   readonly callouts = new Callouts();
+  /** First-time tips in battles 1 and 2, through the callout lane. */
+  private coach = new TipCoach(this.callouts);
   readonly log = new CombatLog();
   readonly inspect: InspectPanel;
   readonly draft: DraftOverlay;
   private sound: BattleSound;
-  private top: TopBand;
+  readonly top: TopBand;
   private tray: Tray;
   private trayKit = '';
   private onResize = () => this.fit();
@@ -114,11 +117,11 @@ export class BattleView {
     this.fieldWrap = h('div', { class: 'fieldwrap' }, this.canvas, this.tip);
     this.field = h('main', { class: 'field' }, this.frameArt.el, this.fieldWrap);
     this.deployCallout = h('div', { class: 'callout deploy', id: 'deploy-hint' },
-      `Deploy phase: place your opener with ${state.sides.player.gold} gold, then press Begin`, h('kbd', null, 'Enter'));
+      `Deploy phase: place your opener with ${state.sides.player.gold} gold, then press Begin`, h('kbd', null, 'Space'));
     this.pausedCallout = h('div', { class: 'callout paused', id: 'paused-callout' }, uiIcon(atlas, 'i-pause'), 'Paused', h('kbd', null, 'Space'));
     // deploy: Begin is the one primary button; once the battle is live, speed and pause take its place
     this.beginBox = h('div', { class: 'begin', id: 'begin-box' },
-      h('button', { class: 'btn primary', id: 'begin-btn', title: 'Start the battle (Enter)', onclick: () => actions.begin() }, 'Begin', h('kbd', null, 'Enter')),
+      h('button', { class: 'btn primary', id: 'begin-btn', title: 'Start the battle (Space or Enter)', onclick: () => actions.begin() }, 'Begin', h('kbd', null, 'Space')),
     );
     for (const s of [1, 2, 3]) {
       this.speedBtns.push(h('button', { class: 'btn', 'data-speed': s, title: `Speed ${s}× ([ and ] change it)`, 'aria-pressed': 'false', onclick: () => { session.speed = s; } }, `${s}×`));
@@ -130,10 +133,12 @@ export class BattleView {
     const settings = loadSettings();
     this.renderer.damageNumbers = settings.damageNumbers;
     this.renderer.colorAssist = settings.colorAssist;
+    this.renderer.spawnTimers = settings.spawnTimers;
     this.screenShake = settings.screenShake;
     this.unsubscribe = onSettings((next) => {
       this.renderer.damageNumbers = next.damageNumbers;
       this.renderer.colorAssist = next.colorAssist;
+      this.renderer.spawnTimers = next.spawnTimers;
       this.screenShake = next.screenShake;
     });
     this.settingsBtn = settingsButton(atlas, () => this.toggleSettings());
@@ -179,6 +184,8 @@ export class BattleView {
     this.disposed = true;
     window.removeEventListener('resize', this.onResize);
     this.unsubscribe();
+    this.top.dispose();
+    this.coach.dispose();
     if (this.settingsShown) closeSettings();
     soundSpeed(1);
     soundDim(false);
@@ -268,7 +275,8 @@ export class BattleView {
     this.renderer.onTick(state, now);
     this.sound.onTick(state);
     this.log.onTick(state);
-    this.economyNudge(state, now);
+    this.economyNudge(state);
+    this.coach.onTick(state);
     for (const e of state.events) {
       if (e.t === 'income' && e.side === 'player') {
         this.top.bump();
@@ -334,7 +342,7 @@ export class BattleView {
   }
 
   /** Battle 1 only, once: a tip and a pulse on the economy cards if none is built 30 s in. */
-  private economyNudge(state: BattleState, now: number): void {
+  private economyNudge(state: BattleState): void {
     if (this.nudged || state.phase !== 'live' || state.tick < NUDGE_AT_SECONDS * state.rules.tickRate) return;
     this.nudged = true;
     if (state.config.battleIndex !== 1 || this.hasEconomy(state)) return;
@@ -343,9 +351,9 @@ export class BattleView {
     const i = order.findIndex((id) => content.buildings[id]!.kind === 'economy');
     if (i < 0) return;
     const b = content.buildings[order[i]!]!;
-    const key = i < 9 ? ` [${i + 1}]` : '';
-    this.callouts.push('tip', `Tip: a ${b.name}${key} earns gold every ${content.balance.incomeTickSeconds} s all battle. Build one early!`, '', now);
-    this.nudgeUntil = now + NUDGE_PULSE_MS;
+    // the cards pulse while the tip is up (it waits its turn behind any first-time tip)
+    this.coach.offer(state, 'economy', [tipWord(), `A ${b.name} `, ...(i < 9 ? [h('kbd', null, String(i + 1)), ' '] : []), `earns gold every ${content.balance.incomeTickSeconds} s all battle. Build one early!`],
+      { remember: false, onShow: (now) => { this.nudgeUntil = now + NUDGE_PULSE_MS; } });
   }
 
   frame(state: BattleState, alpha: number, now: number, debugOverlay: boolean): void {
@@ -377,6 +385,7 @@ export class BattleView {
     this.tray.update(state, s.available(), s.placing, this.nudgeUntil > now);
     this.draft.update(state, s.pending().some((c) => c.type === 'draftPick' || c.type === 'draftReroll' || c.type === 'draftSkip'));
     this.inspect.update(state, s.selected);
+    this.coach.frame(now);
     this.callouts.update(now);
     this.speedBtns.forEach((b, i) => this.lit(b, s.speed === i + 1));
     this.stanceRows.forEach((row, i) => {
@@ -405,7 +414,8 @@ export class BattleView {
     if (ghost && s.hover) {
       this.tip.hidden = false;
       const name = s.content.buildings[ghost.buildingId]!.name;
-      const surcharge = ghost.depth > 0 ? ` (+${Math.round(ghost.depth * s.content.balance.supplyLinePerColumn * 100)}% depth ${ghost.depth})` : ' (home)';
+      // the forward price in plain words: how far from home, and what that adds
+      const surcharge = ghost.depth > 0 ? ` (+${Math.round(ghost.depth * s.content.balance.supplyLinePerColumn * 100)}%: ${ghost.depth} column${ghost.depth === 1 ? '' : 's'} from home)` : ' (home ground)';
       const def = s.content.buildings[ghost.buildingId]!;
       const loam = def.economy && ghost.loam ? ` · Rich Loam +${Math.round(s.content.balance.loamBonus * 100)}%` : '';
       this.tip.replaceChildren(

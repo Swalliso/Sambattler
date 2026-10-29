@@ -8,9 +8,13 @@ import {
   recoverPendingChoice, resumeBattle, saveBattle, saveRun, spoilsPick, spoilsReroll,
 } from '../run/index.ts';
 import type { RunState, Storage } from '../run/index.ts';
+import type { RunEffect } from '../data/schema.ts';
 import { createBattle, queueCommand, runHeadless } from '../sim/index.ts';
 import type { BattleState, Content } from '../sim/index.ts';
-import { eventScreen, groveScreen, promptScreen, routeScreen, spoilsScreen, summaryScreen } from '../ui/screens/run.ts';
+import {
+  eventResultScreen, eventScreen, groveScreen, promptScreen, routeScreen, runChanges, runSnapshot, spoilsScreen, summaryScreen,
+} from '../ui/screens/run.ts';
+import type { RunChange, RunSnapshot } from '../ui/screens/run.ts';
 import { h } from '../ui/h.ts';
 import { sporeWipe } from '../ui/motion.ts';
 import { closeSettings, openSettings, settingsButton } from '../ui/settingsScreen.ts';
@@ -50,9 +54,18 @@ export interface RunEnv {
 
 interface LiveBattle { state: BattleState; view: BattleView; loop: GameLoop; unbind: () => void }
 
+/** An outcome the run rolls for you: a random relic, a random upgrade track, or relics for a sacrifice. */
+const isRandom = (e: RunEffect): boolean => 'gainRelic' in e || 'sacrificeRelic' in e || ('upgrade' in e && e.upgrade.pick === 'random');
+
+/** An event in progress, from its choice through any prompts: the run before it, and whether chance had a say. */
+interface EventTrail { before: RunSnapshot; event: string | null; title: string; choice: string | null; random: boolean }
+
 export class RunController {
   private battle: LiveBattle | null = null;
   private rewardRecoveryNotice: string | null = null;
+  private trail: EventTrail | null = null;
+  /** What a random event outcome gave, shown before the route (UI only: the run is already saved at the route). */
+  private result: { event: string | null; title: string; choice: string | null; changes: RunChange[] } | null = null;
   /** `?ticks=` fast-forwards the first battle this page starts (screenshots, testing), then is spent. */
   pendingTicks: number | 'end' | null = null;
   private onHidden = () => { if (document.hidden && this.battle) this.saveBattle(this.battle.state); };
@@ -78,6 +91,24 @@ export class RunController {
     this.show();
   }
 
+  /**
+   * An event choice or prompt answer. The run is compared before and after (UI only, src/run is untouched);
+   * once the event settles and chance had a say, the result screen says what you got (playtest round 3).
+   */
+  private actEvent(f: () => void, trail: EventTrail): void {
+    const run = this.run;
+    this.act(() => {
+      // a prompt's answer may be the random part (a sacrifice), or lead to one still pending
+      trail.random ||= run.pending.some(isRandom);
+      f();
+      trail.random ||= run.pending.some(isRandom);
+      this.trail = trail;
+      if (run.screen.kind === 'event' || run.screen.kind === 'prompt') return;
+      this.trail = null;
+      if (trail.random) this.result = { event: trail.event, title: trail.title, choice: trail.choice, changes: runChanges(this.env.content, trail.before, runSnapshot(run)) };
+    });
+  }
+
   private stopBattle(): void {
     if (!this.battle) return;
     this.battle.loop.stop();
@@ -100,7 +131,10 @@ export class RunController {
     const app = document.getElementById('app')!;
     const s = run.screen;
     let el: HTMLElement | null = null;
-    switch (s.kind) {
+    switch (this.result && s.kind === 'route' ? 'result' : s.kind) {
+      case 'result':
+        el = eventResultScreen(content, atlas, run, this.result!, () => { this.result = null; this.show(); });
+        break;
       case 'route':
         el = routeScreen(content, atlas, run, {
           choose: (i) => this.act(() => chooseNode(content, run, i)), abandon: () => this.abandon(),
@@ -119,14 +153,27 @@ export class RunController {
           reroll: () => this.act(() => spoilsReroll(content, run)),
         });
         break;
-      case 'event':
-        el = eventScreen(content, atlas, run, { choose: (i) => this.act(() => eventChoose(content, run, i)) });
+      case 'event': {
+        const ev = content.events[(s as Extract<typeof s, { kind: 'event' }>).event]!;
+        el = eventScreen(content, atlas, run, {
+          // a choice that rolls for you (Forage, Pry it loose) is random from the start
+          choose: (i) => this.actEvent(() => eventChoose(content, run, i),
+            { before: runSnapshot(run), event: ev.id, title: ev.title, choice: ev.choices[i]?.label ?? null, random: !!ev.choices[i]?.outcome.some(isRandom) }),
+        });
         break;
+      }
       case 'grove':
         el = groveScreen(content, atlas, run, { choose: (c) => this.act(() => groveChoose(content, run, c)) });
         break;
       case 'prompt':
-        el = promptScreen(content, atlas, run, { answer: (o) => this.act(() => promptAnswer(content, run, o)) });
+        el = promptScreen(content, atlas, run, {
+          // a prompt continues the event that opened it (or starts a trail after a reload mid-event)
+          answer: (o) => this.actEvent(() => promptAnswer(content, run, o),
+            this.trail ?? (() => {
+              const title = (s as Extract<typeof s, { kind: 'prompt' }>).prompt.title;
+              return { before: runSnapshot(run), event: content.eventOrder.find((id) => content.events[id]!.title === title) ?? null, title, choice: null, random: false };
+            })()),
+        });
         break;
       case 'summary':
         el = summaryScreen(content, atlas, run, { newRun: () => this.newRun(), ...(this.env.toTitle ? { toTitle: this.env.toTitle } : {}) });
@@ -162,7 +209,7 @@ export class RunController {
     }
     const state = resumed ?? createBattle(content, config);
     const session = new Session(state, content);
-    const begin = () => { if (state.phase === 'deploy' && !state.queue.some((c) => c.type === 'begin')) session.issue({ type: 'begin' }); };
+    const begin = () => { session.begin(); };
     const view = new BattleView(session, content, atlas, {
       begin, again: () => {}, rematch: () => {}, continueRun: () => this.finish(), rewards: (st) => this.rewardsOf(st),
     }, this.env.debug, this.env.still);

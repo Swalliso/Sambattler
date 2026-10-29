@@ -12,6 +12,7 @@ import { ROLE_LABEL } from './buildingInfo.ts';
 import { h } from './h.ts';
 import { priceEl, uiIcon } from './icons.ts';
 import { hoverTilt } from './motion.ts';
+import { buildingDescription, relicDiagram, relicText, upgradeText } from './words.ts';
 
 const TYPE_LABEL = { blueprint: 'Blueprint', upgrade: 'Upgrade', relic: 'Relic' } as const;
 const TYPE_ICON = { blueprint: 'i-blueprint', upgrade: 'i-upgrade', relic: 'i-relic' } as const;
@@ -35,13 +36,12 @@ export function cardText(content: Content, card: string, upgrades: Record<string
   const c = parseCard(card)!;
   if (c.type === 'relic') {
     const r = content.relics[c.id]!;
-    return { name: r.name, text: r.text };
+    return { name: r.name, text: relicText(content, c.id) };
   }
   const b = content.buildings[c.id]!;
-  if (c.type === 'blueprint') return { name: b.name, text: b.description };
+  if (c.type === 'blueprint') return { name: b.name, text: buildingDescription(content, c.id) };
   const level = (upgrades[c.id] ?? 0) + 1;
-  const t = content.upgrades[c.id]!;
-  return { name: `${b.name} ${'I'.repeat(level)}`, text: t.levels[level - 1]?.text ?? '', level };
+  return { name: `${b.name} ${'I'.repeat(level)}`, text: upgradeText(content, c.id, level), level };
 }
 
 /** The four corners of a rarity frame, mirrored from one sprite, and a rare card's sparkles. */
@@ -92,6 +92,7 @@ export function cardView(content: Content, atlas: Atlas, card: DraftCard, upgrad
     h('div', { class: 'draft-art' }, art, badge),
     h('div', { class: 'draft-name' }, name),
     h('div', { class: 'draft-text' }, text),
+    c.type === 'relic' ? relicDiagram(c.id) : null,
     chips,
     key ? h('kbd', { class: 'draft-key', 'aria-label': `Key ${key}` }, key) : null,
   );

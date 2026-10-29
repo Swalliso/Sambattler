@@ -13,6 +13,9 @@ import { h, setText, toggleClass } from '../h.ts';
 import { uiIcon } from '../icons.ts';
 import { KIND_HINT, KIND_ICON, KIND_LABEL, intentOf, wavesText } from '../doctrine.ts';
 import type { Intent } from '../doctrine.ts';
+import { AnchoredTip } from '../tooltip.ts';
+import { goldTip, stormTip, supplyTip, territoryTip, waveTip } from './explain.ts';
+import { KitView } from './kit.ts';
 
 /** A Heartcap's block: its cap, HP and a bar that drains toward the field's centre. */
 class HeartBar {
@@ -92,6 +95,10 @@ export class TopBand {
   private warning = h('div', { class: 'warning', id: 'hud-warning', hidden: true });
   private intentKey = '';
   private fallback: string;
+  /** The chips' and the tug's tooltips (src/ui/hud/explain.ts): one tip, under whichever is hovered or focused. */
+  readonly tip = new AnchoredTip('hud-tip', 'below');
+  /** Your relics and upgrades: a chip and its popover. */
+  readonly kit: KitView;
 
   constructor(content: Content, private atlas: Atlas, state: BattleState) {
     const ctl = state.config.enemy.controller;
@@ -105,21 +112,23 @@ export class TopBand {
       new HeartBar(atlas, 'enemy', 'Gray Rot Heartcap', "The Gray Rot's Heartcap: bring it down to win"),
     ];
     this.lanes = state.lanes.map((_, i) => new LaneTug(i, state.map.width));
-    this.goldStat = h('span', { class: 'chip gold', title: 'Gold, and projected income per minute' }, uiIcon(atlas, 'i-gold'), this.gold, this.income);
-    const st = content.balance.sporestorm, pct = (x: number) => `${x < 0 ? '−' : '+'}${Math.round(Math.abs(x) * 100)}%`;
-    this.stormStat = h('span', { class: 'chip storm', title: `Sporestorm stacks: units ${pct(st.unitDamagePerStack)} damage, turrets ${pct(st.turretDamagePerStack)}, Heartcaps take ${pct(st.heartcapTakenPerStack)} each` },
-      uiIcon(atlas, 'i-storm'), h('small', null, 'Storm'), this.storm);
+    this.goldStat = h('span', { class: 'chip gold', id: 'chip-gold' }, uiIcon(atlas, 'i-gold'), this.gold, this.income);
+    this.stormStat = h('span', { class: 'chip storm', id: 'chip-storm' }, uiIcon(atlas, 'i-storm'), h('small', null, 'Storm'), this.storm);
+    const supplyStat = h('span', { class: 'chip', id: 'chip-supply' }, uiIcon(atlas, 'i-supply'), this.supply, h('small', null, 'supply'));
+    const waveStat = h('span', { class: 'chip', id: 'chip-wave' }, uiIcon(atlas, 'i-wave'), h('small', null, 'Wave'), this.wave, this.clock);
+    this.kit = new KitView(content, atlas, state);
     const lanes = state.lanes.length;
+    const tug = h('div', { class: `tug lanes-${lanes}`, id: 'hud-tug', role: 'img', 'aria-label': 'Territory: columns owned' }, ...this.lanes.map((l) => l.el));
+    this.tip.attach(this.goldStat, goldTip(content, atlas, state));
+    this.tip.attach(supplyStat, supplyTip(content, atlas, state));
+    this.tip.attach(waveStat, waveTip(content, atlas, state));
+    this.tip.attach(this.stormStat, stormTip(content, atlas, state));
+    this.tip.attach(tug, territoryTip(content, atlas, state));
     this.el = h('header', { class: 'top' },
       this.hearts[0]!.el,
       h('div', { class: 'mid' },
-        h('div', { class: 'chips' },
-          this.goldStat,
-          h('span', { class: 'chip', title: 'Supply used / cap' }, uiIcon(atlas, 'i-supply'), this.supply, h('small', null, 'supply')),
-          h('span', { class: 'chip', title: 'Wave and battle clock' }, uiIcon(atlas, 'i-wave'), h('small', null, 'Wave'), this.wave, this.clock),
-          this.stormStat,
-        ),
-        h('div', { class: `tug lanes-${lanes}`, id: 'hud-tug', title: `Territory: columns owned${lanes > 1 ? ', one bar per lane' : ''}` }, ...this.lanes.map((l) => l.el)),
+        h('div', { class: 'chips', 'data-native-tab': '' }, this.goldStat, supplyStat, waveStat, this.stormStat, this.kit.chip),
+        tug,
         h('div', { class: 'tug-label', id: 'hud-columns' }, this.colsP, h('span', { class: 'muted' }, 'territory'), this.colsE),
       ),
       this.hearts[1]!.el,
@@ -130,6 +139,8 @@ export class TopBand {
         this.doctrine,
         this.warning,
       ),
+      this.tip.el,
+      this.kit.el,
     );
     this.fallback = !general ? 'No doctrine' : general.adaptive ? 'Adaptation off' : 'Scripted: never adapts';
     this.renderIntent(intentOf(state));
@@ -187,5 +198,15 @@ export class TopBand {
     setText(this.colsP, `${pc} column${pc === 1 ? '' : 's'}`);
     setText(this.colsE, `${ec} column${ec === 1 ? '' : 's'}`);
     this.renderIntent(intentOf(state));
+    this.tip.refresh();
+    this.kit.update(state);
+  }
+
+  /** Puts keyboard focus on the gold chip (its tip opens); Tab then moves along the band's chips. */
+  focusChips(): void { this.goldStat.focus(); }
+
+  dispose(): void {
+    this.tip.dispose();
+    this.kit.dispose();
   }
 }

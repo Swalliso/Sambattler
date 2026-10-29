@@ -188,6 +188,22 @@ Done 2026-10-29, after Phase 3. `npm run screenshot` gained `--size`, `--click` 
   - At 1920×1080 the run screens keep their 960–1180 px columns, so the sides stay empty, as in Phase 2.
 - **Playtest questions** (for the dev site): Does it feel like a fungal world? Can you tell what you can afford at a glance? Did you know where you could place? Did the route feel like a journey? And now: does the wipe feel quick, and does anything in the settings need explaining?
 
+### Clarity pass (playtest round 3)
+
+Built 2026-10-29 (branch `feature/clarity-pass`), after two playtesters said there's too much to learn and the game doesn't explain itself ([round 3](playtest-feedback.md)). UI only: nothing under `src/sim`, no `src/run` logic, goldens unchanged. Rough tooltips, the relics view and a tip were approved from screenshots the same day. No new sprites: the adjacency diagram and spawn timers are drawn in code.
+
+- **Space in deploy.** Space begins the battle as Enter does, and Begin always clears a pause (`Session.begin()`), so none carries into the live battle. The Begin keycap shows Space.
+- **Chip tooltips** (`src/ui/tooltip.ts`, `src/ui/hud/explain.ts`). One anchored tip serves the gold, supply, wave and storm chips and the territory tug, on hover or keyboard focus, closed by leaving or Esc; `I` steps into the band and Tab moves along it. Gold breaks income down by source per minute and explains interest and the Spore Exchange; the rest explain the storm, supply, a wave boundary and territory. Computed from render-side state, mirroring the sim's rules.
+- **Relics and upgrades in battle** (`src/ui/hud/kit.ts`). A chip counts them; a click or `R` opens a popover with the run bar's relic badges and each upgraded building's levels.
+- **Help** has Economy and Sporestorm tabs (six in all, each fitting 1280×720).
+- **First-time tips** (`src/app/tips.ts`). One-time tips in a run's first two battles, one at a time in the callout lane: frontier, Hold / Advance, first draft, Sporestorm, first interest. Remembered under `spore-sprawl/tips/v1`; Settings has Tips and "Show tips again". Tips are cream with a lilac "Tip" word; gold stays for money.
+- **Spawn timers.** A 1-native-pixel bar along the foot of each of your spawners fills toward its next spawn; a setting, on by default.
+- **Event results.** After a random event outcome, a result screen shows the relic or the upgraded building and its new level. The UI compares the run before and after; `src/run` is unchanged.
+- **Plain words** (`src/ui/words.ts`). Relic, upgrade and building text is reworded in the UI, because data text is copied into battle state and rewording it moves the goldens. A unit test keeps the numbers in step with the data. Mycorrhizal Link gets an adjacency diagram.
+- **Labels.** The spoils screen says spoils are a bonus draft with the same kinds of cards; elite nodes show their extra reward.
+- *Done when:* met. `tests/browser/clarity.test.ts` covers Space in deploy, the chip tooltips (hover, focus, Esc, the breakdown adding up), event results, a tip shown once and not again (with Tips off and "Show tips again"), the relics view, spawn timers and the labels. Screenshots at 1280×720 and 1920×1080 are in `artifacts/screenshots/clarity/` (gitignored).
+- *Left for later:* move the plain wording into `data/*.json` at the next golden refresh.
+
 ## Decisions (2026-10-28)
 
 1. **Fonts:** self-host Jersey 10 and Atkinson Hyperlegible. Import them from `styles.css` so Vite bundles them with hashed, relative paths (`base: './'`), which works the same on the game and the dev site. No runtime requests to Google; OFL license files ship beside them.

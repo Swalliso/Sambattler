@@ -488,13 +488,13 @@ The price shows on the placement ghost before you click.
 
 ### 6.4 The Sporestorm (stalemate breaker)
 
-At clock 5:00, 6:00, 7:00, 8:00 and 9:00 the storm gains one stack, up to a maximum of 5. Each stack:
+At clock 4:00, 5:00, 6:00, 7:00 and 8:00 the storm gains one stack, up to a maximum of 5 (`sporestorm.startSeconds` 240, `everySeconds` 60). Each stack:
 
 - all units and towers deal **+10%** damage,
 - Heartcap turrets deal **−10%** damage,
-- Heartcaps take **+10%** damage.
+- Heartcaps take **+20%** damage.
 
-The HUD shows the stack count, and the renderer adds a spore haze that thickens per stack.
+The HUD shows the stack count (its tooltip explains the storm, §10.2), and the renderer adds a spore haze that thickens per stack. Events can move the start for one battle (Mold Bloom: 1:00 earlier). *This paragraph said 5:00 and +10% for Heartcaps until 2026-10-29; the numbers above are the data's, unchanged.*
 
 ### 6.5 How a battle ends
 
@@ -955,10 +955,18 @@ Each feat is a data record: `id`, `name`, `description`, `scope` (`battle` or `r
 - **Top band** (docs/ui-ux-plan.md, Phase 1b): the win condition frames it.
   - **Your Heartcap** at the left end and **the Gray Rot's** at the right: the Heartcap's cap, its HP in the display face and a striped HP bar that drains toward the field's centre. Below a third of its HP, the number turns danger red.
   - Between them, **stat chips** (a pixel icon, a tabular display-face number and a small word): gold with its per-minute rate, supply used/cap, wave number and clock, and Sporestorm stacks (lit lilac once the storm is on). The gold chip pulses whenever income lands.
+  - **Chip tooltips** (playtest round 3): each chip, and the territory tug, has a real tooltip in the card-tooltip style, on hover or keyboard focus, closed by leaving or Esc; `I` puts focus on the gold chip and Tab moves along the band. They are computed from render-side state and content; nothing joins the sim state.
+    - *Gold:* income per minute by source (Heartcap stipend, each economy building, the Rich Loam bonus, the cut while under attack, comeback), totalling the chip's figure; interest in plain words ("1 gold for every 20 you're holding, up to 10"), what the next wave pays and in how long, and how much to hold for the full cap; what the Spore Exchange adds (with its hotkey) or that yours raises the cap.
+    - *Supply:* what uses it (each kit unit's supply), what happens at the cap, how many spawners are waiting, how merging saves supply, and what raises the cap.
+    - *Wave:* a new wave every 1:00 and when the next comes; what a wave boundary brings: interest, a draft after waves 2, 4, 6 and 8 (in a run), the Sporestorm's stacks, the general's reads of your army; and the Decision at 10:00.
+    - *Storm:* what the Sporestorm is, when it starts and thickens (and whether an event moved it), its effect per stack and now, and when the next stack comes.
+    - *Territory:* the frontier, how a column is claimed, where you can build and the forward price, comeback gold, and the Decision at 10:00.
+  - **Relics and upgrades:** the last chip counts your relics and upgrade levels. A click or `R` opens a popover under it with the run bar's relic badges (each with its tooltip on hover or focus) and every upgraded building with its levels, the ones you have lit; Tab moves inside it, and Esc, `R` or a press outside closes it. Drafted cards join it live.
   - Under the chips, the **territory tug**: one bar per lane, a tick per column, your columns striped violet from the left, theirs striped ash from the right, unclaimed columns between, and a glowing lilac line at your frontier. Column counts sit under its ends.
   - The **General's Intent** panel at the top right: the general's portrait at 3× (48 px), name and doctrine. When a counter is coming, a warning row names the kind and counts down in waves, with one lit pip per wave that pulses (still under `prefers-reduced-motion`).
 - **Callout lane:** transient banners centered above the battlefield. At most 3 show at once, each for 2.5 s (tips 6 s), in priority order: counter warnings > building lost > Heartcap under attack > tips > column flipped > merges.
   - **Battle-1 economy tip** (playtest 2026-10-28): in battle 1 only, if the player has no economy building built, queued or being placed 30 s after Begin, a tip names the first economy card and its hotkey, and the economy cards pulse for 12 s or until one is placed. It fires at most once.
+  - **First-time tips** (playtest round 3): in a run's first two battles (and single battles numbered 1 or 2), one-time tips go through the lane, one at a time, each up for 8 s: the frontier and territory (6 s after Begin), Hold / Advance (0:50), the first draft (as it opens; the lane shows above the draft's scrim), the Sporestorm (as it starts) and interest (the first time it pays). Each is shown once, ever, and remembered under `spore-sprawl/tips/v1` (through `storageKey()`); the settings screen turns tips off or shows them all again. The economy tip waits in the same queue but isn't remembered. A tip is cream on its panel with a lilac "Tip" word and names its key with a keycap; tips never use gold, which means money.
   - **Pinned callouts** come before the timed ones and stay until they no longer apply: the deploy hint, "Paused" while a live battle is paused, and a notice when a saved battle couldn't be restored. Nothing else sits on the field.
 - **Field frame** (docs/ui-ux-plan.md, Phase 1a): the void between the bands, above, below and beside the battlefield, is drawn as the earth the field sits in.
   - What it shows: a roots ceiling, a soil bed with each side's buried threads (lilac under your half, ash under theirs), roots down each side, and each Heartcap's crown rising into the ceiling.
@@ -972,7 +980,8 @@ Each feat is a data record: `id`, `name`, `description`, `scope` (`battle` or `r
     - Cards keep a card's width (88–108 px) however few there are. When they don't fit one row (14 cards at 1280 px), the tray turns **compact**: two rows of smaller cards with the sprite at 1× beside the hotkey and price, then the name, the role and the summary. The tray never clips a card or scrolls sideways.
     - Hovering a card, or focusing it from the keyboard, shows a tooltip with the description, output, unit stats, matchups (strong vs, weak vs, armor), merge perks and, for economy, the payback time. Stats come from the compiled side, so upgrades and relics show.
   - **The inspect panel** (right). Empty, it shows a short tip; the hotkeys live in Help.
-- **Deploy phase:** the same layout. **Begin** is the bottom band's one primary button, and the deploy hint with the starting gold is pinned in the callout lane, so the field stays clear for placing. The general's opener appears when you press Begin, so both sides place blind.
+- **Deploy phase:** the same layout. **Begin** is the bottom band's one primary button (its keycap shows `Space`; Enter works too), and the deploy hint with the starting gold is pinned in the callout lane, so the field stays clear for placing. The general's opener appears when you press Begin, so both sides place blind. Begin always starts the battle running: a pause from deploy never carries into it.
+- **Spawn timers** (playtest round 3, a setting, on by default): a 1-native-pixel bar along the foot of each of your spawners fills lilac toward its next spawn (the sim's own countdown, render only) and rests full and dim while the spawner waits for supply.
 - **Placing:** while a building is chosen, every tile of your mat where it could go gets a soft lilac grid (gold isn't considered; a hover you can't afford still says so). The ghost's tip sits beside its footprint inside the field, flipping to the left near the right edge, so it never covers the ghost, a band or the callout lane.
 - **Draft overlay:** the battlefield dims, and three large cards show type, rarity, effect text and an "owned: X" context line. Reroll shows its cost; Skip shows "+40 gold".
 
@@ -988,16 +997,20 @@ Each feat is a data record: `id`, `name`, `description`, `scope` (`battle` or `r
 | `M` | Toggle merging on the selected building |
 | `X` / `Delete` | Sell the selected building (the first press shows the refund; the second confirms) |
 | `Q`, then click | Use the commander power (Milestone 5+) |
-| `Space` | Pause or resume (every command still works while paused) |
+| `Space` | In deploy: Begin, as `Enter` does. Once live: pause or resume (every command still works while paused) |
+| `Enter` | Begin (in deploy) |
+| `R`, or the relics chip | Your relics and upgrades (§10.2) |
+| `I` | Focus the top band's chips (Tab moves along them; each shows its tooltip; Esc leaves) |
 | `]` / `[` | Speed up or down (1× / 2× / 3×) |
 | `Tab` | Cycle through your buildings |
 | `F`, or a lane's Hold / Advance switch | Hold every lane, or advance them all; the switch sets one lane (§5.2) |
-| `H` | Help overlay: matrix chart, tags, hotkeys |
+| `H` | Help overlay: the matrix and tags, merging, the general, the economy, the Sporestorm, and every key |
 | `S`, or the speaker button | Sound on or off, anywhere in the game. Hovering or focusing the speaker opens the volume sliders (§13.9) |
 | `F3` | Debug overlay (only with `?debug=1`): column presence numbers, capture progress, aggro radii, ids |
 
 ### 10.4 Feedback rules (clean field, rich inspection)
 
+- **Plain words** (playtest round 3): player-facing text avoids jargon ("touching on a side, not just a corner", "every 5 s", "half as much extra", "while it is hit"). Data text is copied into every battle's state, so rewording it moves the golden hashes; until the next golden refresh the plain wording lives in `src/ui/words.ts`, and a unit test keeps its numbers in step with the data. A layout rule gets a small picture (Mycorrhizal Link's adjacency diagram).
 - **Damage numbers:** none by default. The setting offers *off*, *big hits only* (30 or more) and *all*. It lives on the settings screen (§10.5), which the cog in the battle's bottom band opens, and is saved with the other settings.
 - **HP bars:** shown only on damaged units and buildings; always shown on Heartcaps.
 - **Hit sparks** come in three tints by effectiveness class (§5.3):
@@ -1040,7 +1053,7 @@ Each feat is a data record: `id`, `name`, `description`, `scope` (`battle` or `r
 - Battle, with the draft overlay
 - Battle report
 - Run summary
-- Settings: sound, damage numbers, default speed, screen shake, UI scale, reduced motion, color-blind assist (save export/import and a profile reset arrive with the profile in M6)
+- Settings: sound, damage numbers, default speed, spawn timers, screen shake, UI scale, reduced motion, color-blind assist, tips (save export/import and a profile reset arrive with the profile in M6)
 
 Milestone 1 needs only Battle (with deploy) and a simple end screen.
 
@@ -1050,13 +1063,16 @@ Milestone 1 needs only Battle (with deploy) and a simple end screen.
 - **Route map:** spore pods on soil, one icon per node kind, joined by hyphae from every node to every node in the next row (and from the colony's start to the first row). The path you walked glows violet, the threads you can take now glow lilac, the rest stay dim, and hovering or focusing a pod lights its threads. A legend names the node kinds.
 - **Draft and spoils cards:** a frame per rarity (common bark, uncommon teal-lit, rare amber-lit with a spore sparkle), each keeping its word; the type's icon in the header; a blueprint's price, output and role as chips; `1`–`3` as keycaps (the keys pick on spoils too). Cards deal in left to right, and on hover lift and lean a little toward the pointer (at most 3° and 4°). The in-battle draft opens with a burst of spores rising behind the cards.
 - **Event and Grove:** a framed scene at 4× per event (`v-<event id>`) and for the Grove, the story on stalk cream, and the choices as cards with outcome chips (gains, costs with a real minus, gold, notes), each with a word and usually an icon. Number keys pick a choice.
+- **Event result** (playtest round 3): after an event whose outcome is random (a random relic, a random upgrade track, relics for a sacrifice), the same vignette shows what you got in place of the choices: the building with its new level and that level's effect, or the relic's badge, name, rarity and text, then anything lost and any chip (Heartcap, Amber, next battle). Continue (Enter, Space or 1) goes on to the route. The UI works it out by comparing the run before and after the choice; the run is already saved at the route.
+- **Spoils and elites:** the spoils screen says spoils are a bonus draft for winning, with the same kinds of cards as the drafts in battle (an elite's extra pick: relics only). Elite route nodes show the extra reward from §8.6: a relic pick, +15 Spores and a 25% chance of Amber.
 - **Battle report and run summary:** an outcome banner (on a win the Heartcap blooms in lilac spores, on a loss the cap wilts to ash) with the MVP building beside it, then a staged reveal: the banner, the front line, then the bars. Every table stays. The report's banner names what the battle earned: gold, and in a run its Spores and any Amber (an elite's Amber is shown as a chance, since it is rolled on Continue). Rewards roll up from 0 (600 ms, ease-out, then one bump): the report's gold and gold bars, and the summary's Spores, Amber and Commander XP.
-- **Help:** four tabs (Matrix · Merging · The general · Keys), each fitting 1280×720; keys are drawn as keycaps.
+- **Help:** six tabs (Matrix · Merging · The general · Economy · Sporestorm · Keys), each fitting 1280×720; keys are drawn as keycaps. Economy covers income by source, interest in plain words with an example, the Spore Exchange, other gold and the forward price with a worked example; Sporestorm covers what it is and when, with a stack-by-stack table.
 - **Motion:** things grow in (from 0.96, ease-out) and nothing bounces more than once. Every screen change (title, route, spoils, event, Grove, battle, report, summary) is a spore-burst wipe of 360 ms: a veil of the void rises over the old screen on a band of spore-white motes (150 ms, ease-in), the screen swaps, and the veil lifts off the new one from the bottom up (210 ms, ease-out). Clicks and keys wait while it runs; the page's first screen appears at once. Under reduced motion (§10.4) there's no wipe, stagger, lift, tilt, sparkle, roll-up or drift, and fades take 120 ms or less. `?test=1` holds every screen still and makes every change instant.
 
 **Settings screen as built (docs/ui-ux-plan.md, Phase 3).** An overlay sheet that opens from the title's Settings button, the battle's cog (the battle pauses while it is open, and the sheet says so) and the run bar's cog. Esc, Close or a press on the scrim closes it; while it is open, keys reach nothing behind it (except `S`, which still mutes) and Tab stays inside. The speakers keep their quick mute. Two columns:
 - **Sound:** mute, and master, effects and ambience volume (§13.9).
-- **Battle:** damage numbers (off, big hits, all), default speed (1×, 2×, 3×: each battle runs at it once it begins) and screen shake (off or on).
+- **Battle:** damage numbers (off, big hits, all), default speed (1×, 2×, 3×: each battle runs at it once it begins), spawn timers (off or on, on by default) and screen shake (off or on).
+- **Learning** (under Display and motion): tips (off or on, on by default) and "Show tips again", which forgets which first-time tips were shown.
 - **Display and motion:** UI scale (auto, or 125%, 150%, 175% or 200% for big screens; a step never lays the page out below 1280×720, so a window too small for it gets the largest scale that fits), reduced motion (system, on, off) and color-blind assist (off, on), with a live preview under it: a strip of field at 3× with two units a side and a territory bar, drawn the way the field draws them, so turning the assist on shows its marks at once.
 
 Every change saves at once into the one settings record, `spore-sprawl/settings/v1` (through `storageKey()`, so the dev site keeps its own); a record saved before a field existed loads with that field's default, and a value the game doesn't know falls back to the default.
