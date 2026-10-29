@@ -958,6 +958,10 @@ Each feat is a data record: `id`, `name`, `description`, `scope` (`battle` or `r
 - **Callout lane:** transient banners centered above the battlefield. At most 3 show at once, each for 2.5 s (tips 6 s), in priority order: counter warnings > building lost > Heartcap under attack > tips > column flipped > merges.
   - **Battle-1 economy tip** (playtest 2026-10-28): in battle 1 only, if the player has no economy building built, queued or being placed 30 s after Begin, a tip names the first economy card and its hotkey, and the economy cards pulse for 12 s or until one is placed. It fires at most once.
 - **Heartcap HP** is pinned at each end of the battlefield.
+- **Field frame** (docs/ui-ux-plan.md, Phase 1a): the void between the bands, above, below and beside the battlefield, is drawn as the earth the field sits in.
+  - What it shows: a roots ceiling, a soil bed with each side's buried threads (lilac under your half, ash under theirs), roots down each side, and each Heartcap's crown rising into the ceiling.
+  - How it's drawn: text sprites from `data/sprites/frame.json`, baked onto a canvas behind the field and the bands at the field's own pixel scale, with its pixels lined up with the field's. It stays darker than the field and takes no input.
+  - **Ambient spores** drift across it, thicker with each Sporestorm stack. They move at the game's speed, stop while the battle is paused, held or over, and hold still under `prefers-reduced-motion` and `?test=1`.
 - **Bottom band:**
   - commander power and speed/pause controls (left)
   - the building tray (center): cards are grouped by role, economy first, then army, defense and utility, each group in kit order; the `1`–`9` hotkeys follow this order. Each card shows its hotkey, sprite, base price, a colored role tag (Economy, Army, Defense, Utility) and a one-line summary, and greys out when unaffordable. Hovering a card, or focusing it from the keyboard, shows a tooltip with the description, output, unit stats, matchups (strong vs, weak vs, armor), merge perks and, for economy, the payback time. Stats come from the compiled side, so upgrades and relics show.

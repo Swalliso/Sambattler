@@ -53,6 +53,7 @@ export class ContentError extends Error {
 export const REQUIRED_SPRITES = [
   't-soil', 't-soil2', 't-loam', 't-stump', 't-wall',
   'heartcap-cap', 'heartcap-stalk', 'heartcap-base', 'turret',
+  'f-ceiling', 'f-bed', 'f-hyphae', 'f-hyphae-rot', 'f-earth', 'f-side', 'f-crown',
 ];
 
 /** Sounds the game plays by id (src/app/sound.ts, src/app/battleSound.ts), besides the ambient drips. */
