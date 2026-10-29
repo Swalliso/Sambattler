@@ -1,0 +1,285 @@
+{
+  "enemyGain": 0.5,
+  "maxVoices": 12,
+  "buses": { "sfx": 1, "ui": 0.7, "ambient": 0.55 },
+  "speedThinning": { "cooldown": [1, 2, 3.5], "gain": [1, 0.7, 0.5] },
+  "reverb": { "seconds": 1.8, "decay": 3, "sends": { "sfx": 0.14, "ui": 0, "ambient": 0.45 } },
+  "ambient": {
+    "drone": {
+      "wave": "brown", "filter": { "type": "lowpass", "freq": 170, "q": 0.8 }, "gain": 0.55,
+      "wobble": { "rate": 0.06, "depth": 50 }
+    },
+    "drips": { "sounds": ["drip", "drip-deep", "drip-double"], "minGapMs": 2500, "maxGapMs": 9000 },
+    "pausedLevel": 0.5
+  },
+  "sounds": [
+    {
+      "id": "place", "name": "Place", "note": "A building lands: a squelch thump.",
+      "bus": "sfx", "gain": 0.7, "priority": 6, "cooldownMs": 60, "jitter": { "pitch": 0.06, "gain": 0.1 },
+      "layers": [
+        { "wave": "sine", "freq": 150, "sweep": { "to": 55, "time": 0.14 }, "env": { "attack": 0.004, "decay": 0.16, "sustain": 0, "hold": 0, "release": 0.05 }, "gain": 0.9 },
+        { "wave": "pink", "filter": { "type": "bandpass", "freq": 1400, "q": 3, "sweep": { "to": 350, "time": 0.12 } }, "env": { "attack": 0.002, "decay": 0.09, "sustain": 0, "hold": 0, "release": 0.04 }, "gain": 0.5 },
+        { "wave": "triangle", "freq": 420, "sweep": { "to": 180, "time": 0.08 }, "filter": { "type": "lowpass", "freq": 1200 }, "env": { "attack": 0.002, "decay": 0.07, "sustain": 0, "hold": 0, "release": 0.03 }, "gain": 0.2, "delay": 0.01 }
+      ]
+    },
+    {
+      "id": "sell", "name": "Sell", "note": "A building is sold: a soft pop.",
+      "bus": "sfx", "gain": 0.5, "priority": 5, "cooldownMs": 80, "jitter": { "pitch": 0.05 },
+      "layers": [
+        { "wave": "sine", "freq": 520, "sweep": { "to": 1100, "time": 0.05 }, "env": { "attack": 0.002, "decay": 0.07, "sustain": 0, "hold": 0, "release": 0.03 }, "gain": 0.6 },
+        { "wave": "white", "filter": { "type": "bandpass", "freq": 2500, "q": 1 }, "env": { "attack": 0.001, "decay": 0.02, "sustain": 0, "hold": 0, "release": 0.01 }, "gain": 0.15 }
+      ]
+    },
+    {
+      "id": "illegal", "name": "Can't place", "note": "A click where nothing can go, or a refused command: a dull tick.",
+      "bus": "ui", "gain": 0.5, "priority": 4, "cooldownMs": 120,
+      "layers": [
+        { "wave": "triangle", "freq": 180, "sweep": { "to": 140, "time": 0.05 }, "filter": { "type": "lowpass", "freq": 600 }, "env": { "attack": 0.002, "decay": 0.06, "sustain": 0, "hold": 0, "release": 0.02 }, "gain": 0.8 },
+        { "wave": "brown", "filter": { "type": "lowpass", "freq": 800 }, "env": { "attack": 0.001, "decay": 0.03, "sustain": 0, "hold": 0, "release": 0.01 }, "gain": 0.3 }
+      ]
+    },
+    {
+      "id": "income", "name": "Income", "note": "Your gold lands, once per income tick: a coin tink.",
+      "bus": "sfx", "gain": 0.3, "priority": 3, "cooldownMs": 400, "jitter": { "pitch": 0.02 },
+      "layers": [
+        { "wave": "sine", "freq": 1568, "env": { "attack": 0.001, "decay": 0.18, "sustain": 0, "hold": 0, "release": 0.1 }, "gain": 0.4 },
+        { "wave": "sine", "freq": 2349, "env": { "attack": 0.001, "decay": 0.14, "sustain": 0, "hold": 0, "release": 0.08 }, "gain": 0.22, "delay": 0.035 },
+        { "wave": "sine", "freq": 4327, "env": { "attack": 0.001, "decay": 0.04, "sustain": 0, "hold": 0, "release": 0.02 }, "gain": 0.06 }
+      ]
+    },
+    {
+      "id": "spawn", "name": "Spawn", "note": "A unit buds from a spawner: a very quiet spore puff, heavily throttled.",
+      "bus": "sfx", "gain": 0.28, "priority": 1, "cooldownMs": 220, "frequent": true, "jitter": { "pitch": 0.12, "gain": 0.3, "pan": 0.4 },
+      "layers": [
+        { "wave": "pink", "filter": { "type": "bandpass", "freq": 900, "q": 1.2, "sweep": { "to": 2200, "time": 0.1 } }, "env": { "attack": 0.01, "decay": 0.12, "sustain": 0, "hold": 0, "release": 0.06 }, "gain": 0.6 },
+        { "wave": "sine", "freq": 300, "sweep": { "to": 420, "time": 0.05 }, "env": { "attack": 0.005, "decay": 0.06, "sustain": 0, "hold": 0, "release": 0.03 }, "gain": 0.12 }
+      ]
+    },
+    {
+      "id": "column-gained", "name": "Column claimed", "note": "A column flips to you: a rising chime.",
+      "bus": "sfx", "gain": 0.36, "priority": 5, "cooldownMs": 350,
+      "layers": [
+        { "wave": "sine", "freq": 659, "env": { "attack": 0.003, "decay": 0.25, "sustain": 0, "hold": 0, "release": 0.2 }, "gain": 0.45 },
+        { "wave": "sine", "freq": 988, "env": { "attack": 0.003, "decay": 0.35, "sustain": 0, "hold": 0, "release": 0.25 }, "gain": 0.45, "delay": 0.09 },
+        { "wave": "triangle", "freq": 1976, "filter": { "type": "lowpass", "freq": 3000 }, "env": { "attack": 0.002, "decay": 0.12, "sustain": 0, "hold": 0, "release": 0.08 }, "gain": 0.1, "delay": 0.09 }
+      ]
+    },
+    {
+      "id": "column-lost", "name": "Column lost", "note": "A column flips to the Gray Rot: a falling two-note.",
+      "bus": "sfx", "gain": 0.38, "priority": 6, "cooldownMs": 350,
+      "layers": [
+        { "wave": "triangle", "freq": 523, "filter": { "type": "lowpass", "freq": 1800 }, "env": { "attack": 0.004, "decay": 0.22, "sustain": 0, "hold": 0, "release": 0.15 }, "gain": 0.5 },
+        { "wave": "triangle", "freq": 392, "filter": { "type": "lowpass", "freq": 1400 }, "env": { "attack": 0.004, "decay": 0.35, "sustain": 0, "hold": 0, "release": 0.25 }, "gain": 0.5, "delay": 0.14 },
+        { "wave": "sine", "freq": 196, "env": { "attack": 0.01, "decay": 0.4, "sustain": 0, "hold": 0, "release": 0.25 }, "gain": 0.25, "delay": 0.14 }
+      ]
+    },
+    {
+      "id": "building-lost", "name": "Building lost", "note": "One of your buildings falls: a crunch thud.",
+      "bus": "sfx", "gain": 0.72, "priority": 8, "cooldownMs": 150, "jitter": { "pitch": 0.05 },
+      "layers": [
+        { "wave": "brown", "filter": { "type": "lowpass", "freq": 900, "sweep": { "to": 150, "time": 0.3 } }, "env": { "attack": 0.003, "decay": 0.3, "sustain": 0, "hold": 0, "release": 0.15 }, "gain": 0.9 },
+        { "wave": "white", "filter": { "type": "bandpass", "freq": 1800, "q": 0.8 }, "env": { "attack": 0.001, "decay": 0.08, "sustain": 0, "hold": 0, "release": 0.04 }, "gain": 0.3 },
+        { "wave": "sine", "freq": 90, "sweep": { "to": 40, "time": 0.3 }, "env": { "attack": 0.005, "decay": 0.35, "sustain": 0, "hold": 0, "release": 0.15 }, "gain": 0.8 }
+      ]
+    },
+    {
+      "id": "building-razed", "name": "Building razed", "note": "One of theirs falls: a satisfying crunch.",
+      "bus": "sfx", "gain": 0.6, "priority": 7, "cooldownMs": 150, "jitter": { "pitch": 0.05 },
+      "layers": [
+        { "wave": "white", "filter": { "type": "bandpass", "freq": 2400, "q": 1, "sweep": { "to": 800, "time": 0.12 } }, "env": { "attack": 0.001, "decay": 0.12, "sustain": 0, "hold": 0, "release": 0.05 }, "gain": 0.5 },
+        { "wave": "brown", "filter": { "type": "lowpass", "freq": 1200, "sweep": { "to": 300, "time": 0.2 } }, "env": { "attack": 0.002, "decay": 0.22, "sustain": 0, "hold": 0, "release": 0.1 }, "gain": 0.6 },
+        { "wave": "sine", "freq": 130, "sweep": { "to": 60, "time": 0.2 }, "env": { "attack": 0.004, "decay": 0.2, "sustain": 0, "hold": 0, "release": 0.1 }, "gain": 0.5 },
+        { "wave": "triangle", "freq": 784, "sweep": { "to": 1175, "time": 0.06 }, "filter": { "type": "lowpass", "freq": 2500 }, "env": { "attack": 0.003, "decay": 0.2, "sustain": 0, "hold": 0, "release": 0.15 }, "gain": 0.15, "delay": 0.1 }
+      ]
+    },
+    {
+      "id": "knit", "name": "Knit", "note": "Three units start knitting: a faint shimmer.",
+      "bus": "sfx", "gain": 0.16, "priority": 2, "cooldownMs": 500, "frequent": true, "jitter": { "pitch": 0.04, "pan": 0.3 },
+      "layers": [
+        { "wave": "sine", "freq": 1320, "vibrato": { "rate": 9, "depth": 30 }, "env": { "attack": 0.15, "decay": 0.2, "sustain": 0.5, "hold": 0.3, "release": 0.4 }, "gain": 0.3 },
+        { "wave": "sine", "freq": 1980, "vibrato": { "rate": 7, "depth": 25 }, "env": { "attack": 0.18, "decay": 0.2, "sustain": 0.5, "hold": 0.25, "release": 0.4 }, "gain": 0.18 },
+        { "wave": "pink", "filter": { "type": "highpass", "freq": 5000 }, "env": { "attack": 0.2, "decay": 0.1, "sustain": 0.5, "hold": 0.3, "release": 0.3 }, "gain": 0.05 }
+      ]
+    },
+    {
+      "id": "merge", "name": "Merge", "note": "A Bloomed unit forms: a rising bloom.",
+      "bus": "sfx", "gain": 0.42, "priority": 5, "cooldownMs": 200, "jitter": { "pitch": 0.03 },
+      "layers": [
+        { "wave": "triangle", "freq": 330, "sweep": { "to": 660, "time": 0.35 }, "filter": { "type": "lowpass", "freq": 900, "sweep": { "to": 3000, "time": 0.35 } }, "env": { "attack": 0.02, "decay": 0.3, "sustain": 0.3, "hold": 0.1, "release": 0.35 }, "gain": 0.45 },
+        { "wave": "sine", "freq": 495, "sweep": { "to": 990, "time": 0.35 }, "env": { "attack": 0.02, "decay": 0.3, "sustain": 0.3, "hold": 0.1, "release": 0.35 }, "gain": 0.3 },
+        { "wave": "sine", "freq": 1320, "env": { "attack": 0.005, "decay": 0.4, "sustain": 0, "hold": 0, "release": 0.3 }, "gain": 0.15, "delay": 0.3 }
+      ]
+    },
+    {
+      "id": "merge-elder", "name": "Merge (Elder)", "note": "An Elder forms: a fuller, longer bloom.",
+      "bus": "sfx", "gain": 0.5, "priority": 7, "cooldownMs": 300, "jitter": { "pitch": 0.02 },
+      "layers": [
+        { "wave": "saw", "freq": 165, "sweep": { "to": 330, "time": 0.5 }, "filter": { "type": "lowpass", "freq": 600, "q": 2, "sweep": { "to": 2400, "time": 0.5 } }, "env": { "attack": 0.03, "decay": 0.4, "sustain": 0.4, "hold": 0.2, "release": 0.5 }, "gain": 0.28 },
+        { "wave": "triangle", "freq": 330, "sweep": { "to": 660, "time": 0.5 }, "env": { "attack": 0.03, "decay": 0.4, "sustain": 0.4, "hold": 0.2, "release": 0.5 }, "gain": 0.4 },
+        { "wave": "sine", "freq": 495, "sweep": { "to": 990, "time": 0.5 }, "env": { "attack": 0.03, "decay": 0.4, "sustain": 0.4, "hold": 0.2, "release": 0.5 }, "gain": 0.3 },
+        { "wave": "sine", "freq": 1320, "env": { "attack": 0.005, "decay": 0.6, "sustain": 0, "hold": 0, "release": 0.4 }, "gain": 0.2, "delay": 0.45 },
+        { "wave": "sine", "freq": 1980, "env": { "attack": 0.005, "decay": 0.5, "sustain": 0, "hold": 0, "release": 0.4 }, "gain": 0.1, "delay": 0.52 }
+      ]
+    },
+    {
+      "id": "heartcap-hit", "name": "Heartcap hit", "note": "A Heartcap takes a hit: a thud, at most once every 1.5 s per Heartcap.",
+      "bus": "sfx", "gain": 0.55, "priority": 7, "cooldownMs": 1500, "jitter": { "pitch": 0.05 },
+      "layers": [
+        { "wave": "sine", "freq": 110, "sweep": { "to": 48, "time": 0.18 }, "env": { "attack": 0.003, "decay": 0.25, "sustain": 0, "hold": 0, "release": 0.1 }, "gain": 0.9 },
+        { "wave": "brown", "filter": { "type": "lowpass", "freq": 500 }, "env": { "attack": 0.002, "decay": 0.12, "sustain": 0, "hold": 0, "release": 0.05 }, "gain": 0.5 },
+        { "wave": "triangle", "freq": 220, "sweep": { "to": 160, "time": 0.1 }, "filter": { "type": "lowpass", "freq": 700 }, "env": { "attack": 0.002, "decay": 0.1, "sustain": 0, "hold": 0, "release": 0.05 }, "gain": 0.2 }
+      ]
+    },
+    {
+      "id": "counter-warn", "name": "Counter warning", "note": "The general warns of a counter: an ominous low swell.",
+      "bus": "sfx", "gain": 0.55, "priority": 9, "cooldownMs": 3000,
+      "layers": [
+        { "wave": "saw", "freq": 55, "vibrato": { "rate": 0.5, "depth": 8 }, "filter": { "type": "lowpass", "freq": 120, "q": 4, "sweep": { "to": 500, "time": 1.2 } }, "env": { "attack": 0.9, "decay": 0.3, "sustain": 0.6, "hold": 0.2, "release": 0.9 }, "gain": 0.5 },
+        { "wave": "sine", "freq": 58, "env": { "attack": 0.9, "decay": 0.3, "sustain": 0.6, "hold": 0.2, "release": 0.9 }, "gain": 0.35 },
+        { "wave": "brown", "filter": { "type": "lowpass", "freq": 300 }, "env": { "attack": 1, "decay": 0.1, "sustain": 0.8, "hold": 0.3, "release": 0.8 }, "gain": 0.2 }
+      ]
+    },
+    {
+      "id": "counter-active", "name": "Counter active", "note": "The counter lands: a deep, dark boom.",
+      "bus": "sfx", "gain": 0.52, "priority": 9, "cooldownMs": 3000,
+      "layers": [
+        { "wave": "sine", "freq": 73, "sweep": { "to": 41, "time": 0.8 }, "env": { "attack": 0.01, "decay": 0.9, "sustain": 0, "hold": 0, "release": 0.5 }, "gain": 0.8 },
+        { "wave": "saw", "freq": 110, "filter": { "type": "lowpass", "freq": 400, "q": 3, "sweep": { "to": 150, "time": 0.8 } }, "env": { "attack": 0.01, "decay": 0.6, "sustain": 0.2, "hold": 0.2, "release": 0.6 }, "gain": 0.3 },
+        { "wave": "brown", "filter": { "type": "lowpass", "freq": 700, "sweep": { "to": 200, "time": 0.5 } }, "env": { "attack": 0.005, "decay": 0.5, "sustain": 0, "hold": 0, "release": 0.3 }, "gain": 0.4 }
+      ]
+    },
+    {
+      "id": "sporestorm", "name": "Sporestorm", "note": "The Sporestorm thickens: wind and a low rumble.",
+      "bus": "sfx", "gain": 0.5, "priority": 8, "cooldownMs": 4000,
+      "layers": [
+        { "wave": "pink", "filter": { "type": "bandpass", "freq": 500, "q": 1.5, "sweep": { "to": 1400, "time": 1.5 } }, "env": { "attack": 0.8, "decay": 0.5, "sustain": 0.6, "hold": 0.6, "release": 1.2 }, "gain": 0.5 },
+        { "wave": "white", "filter": { "type": "bandpass", "freq": 2000, "q": 4, "sweep": { "to": 900, "time": 2 } }, "env": { "attack": 1, "decay": 0.2, "sustain": 0.7, "hold": 0.5, "release": 1.2 }, "gain": 0.12 },
+        { "wave": "brown", "filter": { "type": "lowpass", "freq": 120 }, "env": { "attack": 0.6, "decay": 0.2, "sustain": 0.8, "hold": 1, "release": 1.2 }, "gain": 0.6 },
+        { "wave": "sine", "freq": 45, "env": { "attack": 0.8, "decay": 0.2, "sustain": 0.8, "hold": 0.8, "release": 1 }, "gain": 0.3 }
+      ]
+    },
+    {
+      "id": "wave", "name": "New wave", "note": "Each wave after the first: a soft low pulse.",
+      "bus": "sfx", "gain": 0.22, "priority": 3, "cooldownMs": 2000,
+      "layers": [
+        { "wave": "sine", "freq": 98, "env": { "attack": 0.05, "decay": 0.5, "sustain": 0, "hold": 0, "release": 0.3 }, "gain": 0.6 },
+        { "wave": "triangle", "freq": 196, "filter": { "type": "lowpass", "freq": 600 }, "env": { "attack": 0.05, "decay": 0.4, "sustain": 0, "hold": 0, "release": 0.25 }, "gain": 0.2 }
+      ]
+    },
+    {
+      "id": "begin", "name": "Begin", "note": "The battle begins: a deep thrum.",
+      "bus": "sfx", "gain": 0.55, "priority": 9, "cooldownMs": 1000,
+      "layers": [
+        { "wave": "sine", "freq": 55, "env": { "attack": 0.08, "decay": 1.2, "sustain": 0.3, "hold": 0.3, "release": 1 }, "gain": 0.8 },
+        { "wave": "saw", "freq": 55, "filter": { "type": "lowpass", "freq": 200, "q": 2, "sweep": { "to": 90, "time": 1.2 } }, "env": { "attack": 0.05, "decay": 1.4, "sustain": 0, "hold": 0, "release": 0.8 }, "gain": 0.3 },
+        { "wave": "sine", "freq": 110, "env": { "attack": 0.05, "decay": 0.8, "sustain": 0, "hold": 0, "release": 0.4 }, "gain": 0.25 },
+        { "wave": "pink", "filter": { "type": "lowpass", "freq": 400 }, "env": { "attack": 0.02, "decay": 0.4, "sustain": 0, "hold": 0, "release": 0.2 }, "gain": 0.15 }
+      ]
+    },
+    {
+      "id": "draft-open", "name": "Draft opens", "note": "The draft is revealed: spores rise, then three notes.",
+      "bus": "sfx", "gain": 0.45, "priority": 8, "cooldownMs": 1000,
+      "layers": [
+        { "wave": "pink", "filter": { "type": "bandpass", "freq": 600, "q": 2, "sweep": { "to": 3000, "time": 0.45 } }, "env": { "attack": 0.3, "decay": 0.2, "sustain": 0, "hold": 0, "release": 0.2 }, "gain": 0.35 },
+        { "wave": "sine", "freq": 523, "env": { "attack": 0.004, "decay": 0.4, "sustain": 0, "hold": 0, "release": 0.3 }, "gain": 0.28, "delay": 0.3 },
+        { "wave": "sine", "freq": 784, "env": { "attack": 0.004, "decay": 0.5, "sustain": 0, "hold": 0, "release": 0.3 }, "gain": 0.22, "delay": 0.38 },
+        { "wave": "sine", "freq": 1047, "env": { "attack": 0.004, "decay": 0.6, "sustain": 0, "hold": 0, "release": 0.4 }, "gain": 0.16, "delay": 0.46 }
+      ]
+    },
+    {
+      "id": "draft-pick", "name": "Card picked", "note": "You take a draft or spoils card.",
+      "bus": "ui", "gain": 0.55, "priority": 7, "cooldownMs": 250,
+      "layers": [
+        { "wave": "triangle", "freq": 392, "sweep": { "to": 784, "time": 0.08 }, "filter": { "type": "lowpass", "freq": 2500 }, "env": { "attack": 0.002, "decay": 0.15, "sustain": 0, "hold": 0, "release": 0.08 }, "gain": 0.5 },
+        { "wave": "sine", "freq": 1175, "env": { "attack": 0.003, "decay": 0.25, "sustain": 0, "hold": 0, "release": 0.15 }, "gain": 0.2, "delay": 0.06 },
+        { "wave": "pink", "filter": { "type": "bandpass", "freq": 1500, "q": 1 }, "env": { "attack": 0.001, "decay": 0.06, "sustain": 0, "hold": 0, "release": 0.03 }, "gain": 0.15 }
+      ]
+    },
+    {
+      "id": "win", "name": "Victory", "note": "You win the battle: a bright bloom arpeggio.",
+      "bus": "sfx", "gain": 0.55, "priority": 10, "cooldownMs": 2000,
+      "layers": [
+        { "wave": "triangle", "freq": 523, "filter": { "type": "lowpass", "freq": 3000 }, "env": { "attack": 0.005, "decay": 0.3, "sustain": 0.3, "hold": 0.4, "release": 0.8 }, "gain": 0.35 },
+        { "wave": "triangle", "freq": 659, "filter": { "type": "lowpass", "freq": 3000 }, "env": { "attack": 0.005, "decay": 0.3, "sustain": 0.3, "hold": 0.3, "release": 0.8 }, "gain": 0.35, "delay": 0.12 },
+        { "wave": "triangle", "freq": 784, "filter": { "type": "lowpass", "freq": 3000 }, "env": { "attack": 0.005, "decay": 0.3, "sustain": 0.3, "hold": 0.2, "release": 0.8 }, "gain": 0.35, "delay": 0.24 },
+        { "wave": "sine", "freq": 1047, "env": { "attack": 0.005, "decay": 0.4, "sustain": 0.3, "hold": 0.5, "release": 1 }, "gain": 0.3, "delay": 0.36 },
+        { "wave": "sine", "freq": 1568, "env": { "attack": 0.005, "decay": 0.5, "sustain": 0, "hold": 0, "release": 0.6 }, "gain": 0.12, "delay": 0.5 },
+        { "wave": "saw", "freq": 131, "filter": { "type": "lowpass", "freq": 500 }, "env": { "attack": 0.3, "decay": 0.2, "sustain": 0.8, "hold": 0.8, "release": 1.2 }, "gain": 0.18 }
+      ]
+    },
+    {
+      "id": "loss", "name": "Defeat", "note": "You lose the battle: a wilting descent.",
+      "bus": "sfx", "gain": 0.5, "priority": 10, "cooldownMs": 2000,
+      "layers": [
+        { "wave": "triangle", "freq": 392, "sweep": { "to": 370, "time": 0.5 }, "filter": { "type": "lowpass", "freq": 1600 }, "env": { "attack": 0.01, "decay": 0.5, "sustain": 0.2, "hold": 0.2, "release": 0.5 }, "gain": 0.4 },
+        { "wave": "triangle", "freq": 311, "sweep": { "to": 293, "time": 0.5 }, "filter": { "type": "lowpass", "freq": 1400 }, "env": { "attack": 0.01, "decay": 0.5, "sustain": 0.2, "hold": 0.2, "release": 0.5 }, "gain": 0.4, "delay": 0.35 },
+        { "wave": "triangle", "freq": 262, "sweep": { "to": 233, "time": 1 }, "filter": { "type": "lowpass", "freq": 1200 }, "env": { "attack": 0.01, "decay": 0.8, "sustain": 0.2, "hold": 0.3, "release": 0.9 }, "gain": 0.4, "delay": 0.7 },
+        { "wave": "sine", "freq": 131, "sweep": { "to": 98, "time": 1.2 }, "env": { "attack": 0.1, "decay": 1.4, "sustain": 0, "hold": 0, "release": 1 }, "gain": 0.35, "delay": 0.7 },
+        { "wave": "brown", "filter": { "type": "lowpass", "freq": 300 }, "env": { "attack": 0.4, "decay": 0.2, "sustain": 0.6, "hold": 0.3, "release": 1 }, "gain": 0.15, "delay": 0.7 }
+      ]
+    },
+    {
+      "id": "ui-hover", "name": "Hover", "note": "The pointer moves onto a card or button: a very soft tick.",
+      "bus": "ui", "gain": 0.1, "priority": 0, "cooldownMs": 40, "jitter": { "pitch": 0.03 },
+      "layers": [
+        { "wave": "sine", "freq": 1800, "sweep": { "to": 1500, "time": 0.02 }, "env": { "attack": 0.001, "decay": 0.025, "sustain": 0, "hold": 0, "release": 0.01 }, "gain": 0.5 }
+      ]
+    },
+    {
+      "id": "ui-click", "name": "Click", "note": "A button is pressed.",
+      "bus": "ui", "gain": 0.32, "priority": 4, "cooldownMs": 50, "jitter": { "pitch": 0.03 },
+      "layers": [
+        { "wave": "triangle", "freq": 900, "sweep": { "to": 500, "time": 0.04 }, "filter": { "type": "lowpass", "freq": 2400 }, "env": { "attack": 0.001, "decay": 0.05, "sustain": 0, "hold": 0, "release": 0.02 }, "gain": 0.6 },
+        { "wave": "white", "filter": { "type": "bandpass", "freq": 3000, "q": 2 }, "env": { "attack": 0.001, "decay": 0.012, "sustain": 0, "hold": 0, "release": 0.006 }, "gain": 0.12 }
+      ]
+    },
+    {
+      "id": "ui-node", "name": "Route pick", "note": "You choose the next node on the route: a step on moss.",
+      "bus": "ui", "gain": 0.45, "priority": 5, "cooldownMs": 200,
+      "layers": [
+        { "wave": "sine", "freq": 392, "sweep": { "to": 523, "time": 0.1 }, "env": { "attack": 0.003, "decay": 0.25, "sustain": 0, "hold": 0, "release": 0.15 }, "gain": 0.45 },
+        { "wave": "triangle", "freq": 784, "filter": { "type": "lowpass", "freq": 2400 }, "env": { "attack": 0.003, "decay": 0.3, "sustain": 0, "hold": 0, "release": 0.2 }, "gain": 0.2, "delay": 0.07 },
+        { "wave": "pink", "filter": { "type": "lowpass", "freq": 800 }, "env": { "attack": 0.002, "decay": 0.1, "sustain": 0, "hold": 0, "release": 0.05 }, "gain": 0.25 }
+      ]
+    },
+    {
+      "id": "ui-choice", "name": "Event choice", "note": "You make a choice at an event or the Grove.",
+      "bus": "ui", "gain": 0.42, "priority": 5, "cooldownMs": 200,
+      "layers": [
+        { "wave": "triangle", "freq": 440, "sweep": { "to": 587, "time": 0.06 }, "filter": { "type": "lowpass", "freq": 2000 }, "env": { "attack": 0.002, "decay": 0.2, "sustain": 0, "hold": 0, "release": 0.12 }, "gain": 0.45 },
+        { "wave": "sine", "freq": 880, "env": { "attack": 0.003, "decay": 0.25, "sustain": 0, "hold": 0, "release": 0.15 }, "gain": 0.2, "delay": 0.05 }
+      ]
+    },
+    {
+      "id": "ui-toggle", "name": "Toggle", "note": "Sound comes back on, or a setting flips.",
+      "bus": "ui", "gain": 0.32, "priority": 4, "cooldownMs": 60,
+      "layers": [
+        { "wave": "sine", "freq": 660, "sweep": { "to": 880, "time": 0.03 }, "env": { "attack": 0.002, "decay": 0.06, "sustain": 0, "hold": 0, "release": 0.03 }, "gain": 0.5 }
+      ]
+    },
+    {
+      "id": "drip", "name": "Drip", "note": "Cave ambience: a water drip, a sine plink with a pitch drop.",
+      "bus": "ambient", "gain": 0.22, "priority": 1, "cooldownMs": 0, "jitter": { "pitch": 0.2, "gain": 0.3, "pan": 0.7 },
+      "layers": [
+        { "wave": "sine", "freq": 1400, "sweep": { "to": 700, "time": 0.06 }, "env": { "attack": 0.001, "decay": 0.12, "sustain": 0, "hold": 0, "release": 0.05 }, "gain": 0.6 },
+        { "wave": "sine", "freq": 1100, "sweep": { "to": 800, "time": 0.05 }, "env": { "attack": 0.001, "decay": 0.08, "sustain": 0, "hold": 0, "release": 0.04 }, "gain": 0.15, "delay": 0.09 }
+      ]
+    },
+    {
+      "id": "drip-deep", "name": "Deep drip", "note": "Cave ambience: a lower drip into a pool, with an echo.",
+      "bus": "ambient", "gain": 0.22, "priority": 1, "cooldownMs": 0, "jitter": { "pitch": 0.15, "gain": 0.3, "pan": 0.7 },
+      "layers": [
+        { "wave": "sine", "freq": 900, "sweep": { "to": 420, "time": 0.08 }, "env": { "attack": 0.001, "decay": 0.16, "sustain": 0, "hold": 0, "release": 0.06 }, "gain": 0.6 },
+        { "wave": "sine", "freq": 900, "sweep": { "to": 420, "time": 0.08 }, "env": { "attack": 0.001, "decay": 0.14, "sustain": 0, "hold": 0, "release": 0.06 }, "gain": 0.12, "delay": 0.26 }
+      ]
+    },
+    {
+      "id": "drip-double", "name": "Double drip", "note": "Cave ambience: two drops in quick succession.",
+      "bus": "ambient", "gain": 0.18, "priority": 1, "cooldownMs": 0, "jitter": { "pitch": 0.2, "gain": 0.3, "pan": 0.7 },
+      "layers": [
+        { "wave": "sine", "freq": 1600, "sweep": { "to": 820, "time": 0.05 }, "env": { "attack": 0.001, "decay": 0.1, "sustain": 0, "hold": 0, "release": 0.04 }, "gain": 0.55 },
+        { "wave": "sine", "freq": 1250, "sweep": { "to": 640, "time": 0.05 }, "env": { "attack": 0.001, "decay": 0.1, "sustain": 0, "hold": 0, "release": 0.04 }, "gain": 0.4, "delay": 0.17 }
+      ]
+    }
+  ]
+}

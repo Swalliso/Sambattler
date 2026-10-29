@@ -1,6 +1,7 @@
 // Entry point: reads URL parameters, loads and validates content, and opens a scene. Milestone 3
 // adds the run (route, drafts, spoils, events, Grove, summary) alongside the single-battle scenes:
 // battle and deploy play one battle, report plays it out headlessly and opens on its report.
+// `scene=sounds` is the sound board, a tool for auditioning data/sounds.json.
 import '../ui/styles.css';
 import { bakeAtlas } from '../render/atlas.ts';
 import { loadRun, MemoryStorage, runForScene } from '../run/index.ts';
@@ -20,9 +21,13 @@ import { parseParams } from './urlParams.ts';
 import type { Params } from './urlParams.ts';
 import { BrowserStorage, RunController } from './run.ts';
 import { Session } from './session.ts';
+import { installSound, soundEnabled } from './sound.ts';
+import { soundBoard } from './soundBoard.ts';
 
 const BATTLE_SCENES = new Set(['battle', 'deploy', 'report']);
 const RUN_SCENES = new Set(['run', 'route', 'draft', 'summary']);
+/** Tools that aren't part of the game: `sounds` is the sound board for auditioning the sound set. */
+const TOOL_SCENES = new Set(['sounds']);
 const errors: string[] = [];
 window.addEventListener('error', (e) => errors.push(String(e.message)));
 window.addEventListener('unhandledrejection', (e) => errors.push(String(e.reason)));
@@ -57,8 +62,8 @@ function buildState(content: Content, p: Params, seed: number): BattleState {
 function boot(): void {
   installUiScale();
   const params = parseParams(location.search);
-  if (!BATTLE_SCENES.has(params.scene) && !RUN_SCENES.has(params.scene)) {
-    fatal(`scene=${params.scene} is not part of Milestone ${MILESTONE} (only ${[...BATTLE_SCENES, ...RUN_SCENES].join(', ')} exist yet).`);
+  if (!BATTLE_SCENES.has(params.scene) && !RUN_SCENES.has(params.scene) && !TOOL_SCENES.has(params.scene)) {
+    fatal(`scene=${params.scene} is not part of Milestone ${MILESTONE} (only ${[...BATTLE_SCENES, ...RUN_SCENES, ...TOOL_SCENES].join(', ')} exist yet).`);
     return;
   }
   for (const problem of params.flagProblems) console.warn(`${problem}; ignored`);
@@ -79,7 +84,9 @@ function boot(): void {
     document.body.append(h('div', { class: 'dev-badge', title: 'Dev site: the develop branch, ahead of the game' }, `DEV BUILD${BUILD_SHA ? ` · ${BUILD_SHA}` : ''}`));
   }
   const atlas = bakeAtlas(content);
-  if (RUN_SCENES.has(params.scene)) startRun(content, atlas, params);
+  const engine = installSound(content, soundEnabled({ test: params.test, force: params.sound }));
+  if (params.scene === 'sounds') soundBoard(content, atlas, engine);
+  else if (RUN_SCENES.has(params.scene)) startRun(content, atlas, params);
   else start(content, atlas, params, params.seed ?? randomSeed());
 }
 

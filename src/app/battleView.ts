@@ -17,8 +17,10 @@ import { Tray } from '../ui/hud/tray.ts';
 import { trayOrder } from '../ui/buildingInfo.ts';
 import { CombatLog, InspectPanel } from '../ui/inspect.ts';
 import type { BattleState } from '../sim/index.ts';
+import { BattleSound } from './battleSound.ts';
 import type { Session } from './session.ts';
 import { loadSettings, saveSettings } from './settings.ts';
+import { sfx, soundDim, soundSpeed, soundToggle } from './sound.ts';
 
 const NUMBERS_LABEL: Record<DamageNumbers, string> = { off: 'off', big: 'big hits', all: 'all' };
 const NUMBERS_NEXT: Record<DamageNumbers, DamageNumbers> = { off: 'big', big: 'all', all: 'off' };
@@ -42,6 +44,7 @@ export class BattleView {
   readonly log = new CombatLog();
   readonly inspect: InspectPanel;
   readonly draft: DraftOverlay;
+  private sound: BattleSound;
   private top: TopBand;
   private tray: Tray;
   private trayKit = '';
@@ -71,6 +74,7 @@ export class BattleView {
     const state = session.state;
     this.canvas = h('canvas', { id: 'battlefield', 'aria-label': 'Battlefield' });
     this.renderer = new Renderer(this.canvas, content, atlas, state);
+    this.sound = new BattleSound(state, content.audio.enemyGain, sfx);
     this.top = new TopBand(content, atlas, state);
     this.tray = new Tray(content, atlas, state, (id) => this.pick(id));
     this.trayKit = state.sides.player.kit.join();
@@ -115,8 +119,8 @@ export class BattleView {
       }),
     ) : null;
     const controls = h('div', { class: 'controls' },
-      h('div', { class: 'speed' }, ...this.speedBtns, this.pauseBtn),
-      // one line: F is on the Hold buttons' tooltips and in Help, so two lanes still fit the band
+      h('div', { class: 'speed' }, ...this.speedBtns, this.pauseBtn, soundToggle(atlas, 'up')),
+      // one line: F and S are on their buttons' tooltips and in Help, so two lanes still fit the band
       h('div', { class: 'hint' }, 'Space pause · [ ] speed'),
       stance,
       h('div', { class: 'row' }, h('button', { class: 'btn', id: 'help-btn', onclick: () => this.toggleHelp() }, 'Help [H]'), this.numbersBtn),
@@ -137,6 +141,8 @@ export class BattleView {
   /** Removes window listeners and overlays this view added (a run plays several battles). */
   dispose(): void {
     window.removeEventListener('resize', this.onResize);
+    soundSpeed(1);
+    soundDim(false);
     this.help?.remove();
     this.report?.remove();
   }
@@ -193,9 +199,10 @@ export class BattleView {
     return { x, y, col: Math.floor(x), row: Math.floor(y) };
   }
 
-  /** Per-tick feed: effects, callouts, combat log. */
+  /** Per-tick feed: effects, sounds, callouts, combat log. */
   onTick(state: BattleState, now: number): void {
     this.renderer.onTick(state, now);
+    this.sound.onTick(state);
     this.log.onTick(state);
     this.economyNudge(state, now);
     for (const e of state.events) {
@@ -294,6 +301,8 @@ export class BattleView {
     });
     setText(this.numbersBtn, `Numbers: ${NUMBERS_LABEL[this.renderer.damageNumbers]}`);
     toggleClass(this.pauseBtn, 'on', s.paused);
+    soundSpeed(s.speed);
+    soundDim(s.paused && state.phase === 'live');
     this.pauseBadge.hidden = !(s.paused && state.phase === 'live');
     this.beginBox.hidden = state.phase !== 'deploy';
     if (ghost && s.hover) {

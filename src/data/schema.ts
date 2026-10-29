@@ -1,7 +1,7 @@
 // zod schemas for every data file (SPEC §14). Milestone 4 subset: balance, factions, buildings,
 // units, maps, sprites, generals (with passives and the counter cycle), bots, scenarios, balance
 // targets, plus the run content (upgrade tracks, relics, events, elite modifiers, the commander
-// stand-in) and the effects DSL (§14.2).
+// stand-in), the effects DSL (§14.2) and the sound bank (§13.9).
 import { z } from 'zod';
 
 export const Id = z.string().min(1).regex(/^[a-zA-Z0-9:_-]+$/, 'ids use letters, digits, : _ -');
@@ -376,6 +376,90 @@ export const SpriteSchema = z.object({
 });
 export const SpriteSheetSchema = z.object({ sheet: Id, sprites: z.array(SpriteSchema) }).strict();
 
+// ---- sounds (SPEC §13.9): synthesized WebAudio, defined as parameters the way sprites are text ----
+
+const OSC_WAVES = ['sine', 'triangle', 'square', 'saw'] as const;
+const NOISE_WAVES = ['white', 'pink', 'brown'] as const;
+export const SoundWave = z.enum([...OSC_WAVES, ...NOISE_WAVES]);
+export const NoiseWave = z.enum(NOISE_WAVES);
+export const SoundBus = z.enum(['sfx', 'ui', 'ambient']);
+const Hz = z.number().min(10).max(20000);
+/** A ramp from the starting value to `to` over `time` seconds (exponential, so pitches glide evenly). */
+const Sweep = z.object({ to: Hz, time: Pos }).strict();
+const SoundFilter = z.object({
+  type: z.enum(['lowpass', 'highpass', 'bandpass', 'notch', 'peaking']),
+  freq: Hz, q: z.number().min(0.0001).max(40).optional(), sweep: Sweep.optional(),
+}).strict();
+/** Attack and decay to the sustain level (a fraction of the layer's gain), hold it, then release; all in seconds. */
+const Envelope = z.object({ attack: Seconds, decay: Seconds, sustain: z.number().min(0).max(1), hold: Seconds, release: Seconds }).strict();
+
+/** One oscillator or noise source through an optional filter and an envelope. */
+export const SoundLayerSchema = z.object({
+  wave: SoundWave,
+  /** Oscillators only: the starting pitch in Hz, with an optional glide. */
+  freq: Hz.optional(),
+  sweep: Sweep.optional(),
+  /** Oscillators only: pitch wobble, `depth` in cents. */
+  vibrato: z.object({ rate: Pos, depth: Pos }).strict().optional(),
+  filter: SoundFilter.optional(),
+  env: Envelope,
+  gain: z.number().min(0).max(1),
+  /** Seconds after the sound starts (arpeggios, a thud after a crack). */
+  delay: Seconds.optional(),
+}).strict().superRefine((l, ctx) => {
+  const noise = (NOISE_WAVES as readonly string[]).includes(l.wave);
+  if (noise && (l.freq !== undefined || l.sweep || l.vibrato)) ctx.addIssue({ code: 'custom', message: `${l.wave} noise has no pitch: shape it with a filter instead of freq, sweep or vibrato` });
+  if (!noise && l.freq === undefined) ctx.addIssue({ code: 'custom', message: `a ${l.wave} oscillator needs a freq` });
+});
+
+export const SoundSchema = z.object({
+  id: Id, name: z.string().min(1),
+  /** What it is for, shown on the sound board. */
+  note: z.string().optional(),
+  bus: SoundBus,
+  gain: z.number().min(0).max(1),
+  /** When every voice is busy, a sound takes over the oldest voice of lower priority, or is dropped. */
+  priority: z.number().int().min(0).max(10),
+  /** The same sound (per key) is dropped if it played less than this long ago. */
+  cooldownMs: z.number().int().nonnegative(),
+  /** Frequent sounds thin out and play quieter at 2× and 3× speed. */
+  frequent: z.boolean().optional(),
+  /** Random variation per play: pitch and gain as fractions (±), pan as the widest offset from centre. */
+  jitter: z.object({
+    pitch: z.number().min(0).max(0.5).optional(), gain: z.number().min(0).max(0.9).optional(), pan: z.number().min(0).max(1).optional(),
+  }).strict().optional(),
+  layers: z.array(SoundLayerSchema).min(1).max(6),
+}).strict();
+
+const PerSpeed = z.tuple([Pos, Pos, Pos]);
+export const SoundBankSchema = z.object({
+  /** The enemy's sounds play at this fraction of the player's. */
+  enemyGain: z.number().min(0).max(1),
+  maxVoices: z.number().int().min(1).max(32),
+  /** Bus levels under the player's volume settings (ui follows the effects volume). */
+  buses: z.object({ sfx: z.number().min(0).max(1), ui: z.number().min(0).max(1), ambient: z.number().min(0).max(1) }).strict(),
+  /** For frequent sounds at 1×, 2× and 3× speed: cooldown multipliers and gain multipliers. */
+  speedThinning: z.object({ cooldown: PerSpeed, gain: z.tuple([z.number().min(0).max(1), z.number().min(0).max(1), z.number().min(0).max(1)]) }).strict(),
+  /** A cave: a generated impulse response `seconds` long that fades as (1 − t)^decay, fed from each bus. */
+  reverb: z.object({
+    seconds: z.number().min(0.1).max(4), decay: Pos,
+    sends: z.object({ sfx: z.number().min(0).max(1), ui: z.number().min(0).max(1), ambient: z.number().min(0).max(1) }).strict(),
+  }).strict(),
+  ambient: z.object({
+    /** A looping noise bed through a filter whose cutoff drifts by `wobble.depth` Hz at `wobble.rate` Hz. */
+    drone: z.object({
+      wave: NoiseWave, filter: SoundFilter, gain: z.number().min(0).max(1),
+      wobble: z.object({ rate: Pos, depth: Pos }).strict().optional(),
+    }).strict(),
+    /** One of `sounds` (ambient-bus sounds) every `minGapMs`–`maxGapMs`. */
+    drips: z.object({ sounds: z.array(Id).min(1), minGapMs: z.number().int().positive(), maxGapMs: z.number().int().positive() }).strict()
+      .refine((d) => d.maxGapMs >= d.minGapMs, 'maxGapMs must be at least minGapMs'),
+    /** The bed's level while a battle is paused. */
+    pausedLevel: z.number().min(0).max(1),
+  }).strict(),
+  sounds: z.array(SoundSchema).min(1),
+}).strict();
+
 const Limit = z.object({ maxOwned: z.number().int().nonnegative().optional(), afterSeconds: Seconds.optional() }).strict();
 
 export const GeneralSchema = z.object({
@@ -485,6 +569,10 @@ export type BuildingDef = z.infer<typeof BuildingSchema>;
 export type FactionDef = z.infer<typeof FactionSchema>;
 export type MapDef = z.infer<typeof MapSchema>;
 export type SpriteDef = z.infer<typeof SpriteSchema>;
+export type SoundLayerDef = z.infer<typeof SoundLayerSchema>;
+export type SoundDef = z.infer<typeof SoundSchema>;
+export type SoundBankDef = z.infer<typeof SoundBankSchema>;
+export type SoundBusT = z.infer<typeof SoundBus>;
 export type GeneralDef = z.infer<typeof GeneralSchema>;
 export type BotDef = z.infer<typeof BotSchema>;
 export type ScenarioDef = z.infer<typeof ScenarioSchema>;

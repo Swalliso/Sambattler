@@ -108,7 +108,7 @@ Each phase is one feature branch from `develop`, playtested on the dev site. No 
 
 ### Phase 3: Feel (M)
 
-- **Sound (A5).** A small WebAudio set: place (squelch), spawn (puff), income (coin tink), column flip (chime), merge (knit), Heartcap hit (thud), and UI hover and click. Add one ambient bed (a dripping cave), master/music/SFX volume and mute, saved through `storageKey()`.
+- **Sound (A5).** Done ahead of Phase 1 (decision 3, SPEC §13.9): battle and UI sounds, a dripping-cave ambient bed, master/effects/ambience volume and mute, saved through `storageKey()`. The Phase 3 settings screen still gets the volume sliders.
 - **Motion (A6).** A spore-burst wipe between screens (≤400 ms), roll-up counters for rewards and a restrained hover tilt on draft cards. The duration and easing tokens are in the design system README.
 - **Settings screen (SPEC §10.5).** Volume, reduced motion, screen shake, damage numbers, UI scale and color-blind assist.
 - Align M8's spawn and death puffs with the spore particle.
@@ -123,7 +123,7 @@ Each phase is one feature branch from `develop`, playtested on the dev site. No 
 
 1. **Fonts:** self-host Jersey 10 and Atkinson Hyperlegible. Import them from `styles.css` so Vite bundles them with hashed, relative paths (`base: './'`), which works the same on the game and the dev site. No runtime requests to Google; OFL license files ship beside them.
 2. **New art:** text sprites, like the existing ones. Big pieces (roots ceiling, soil bed) are small tiling strips. Preview sheets get reviewed before they're wired in.
-3. **Sound:** now, ahead of Phase 1. Proposed approach (not yet confirmed): sounds synthesized with WebAudio from parameters in a data file, the way sprites are text-defined, with no audio files. Specific sounds can switch to CC0 samples later if the synthesized set feels thin.
+3. **Sound:** done, ahead of Phase 1. Sounds are synthesized with WebAudio from parameters in `data/sounds.json`, the way sprites are text-defined, with no audio files (SPEC §13.9; audition them at `?scene=sounds`). Specific sounds can switch to CC0 samples later if the synthesized set feels thin.
 4. **Order:** the battle screen before the run screens. The run screens still get Phase 0's fonts, icons and borders for free.
 
 Build order: Phase 0, then sound, then Phase 1 (split into the field frame and the HUD/tray/deploy work), then a playtest on the dev site. Phase 2 comes after that. Each step is a PR into `develop`.
