@@ -34,6 +34,7 @@ export function helpOverlay(content: Content, state: BattleState, onClose: () =>
     ['1–8', 'choose a building (Shift-click keeps placing)'], ['Right-click / Esc', 'cancel or deselect'],
     ['Space', 'pause (every command still works)'], ['[ ]', 'speed 1× / 2× / 3×'], ['Tab', 'cycle your buildings'],
     ['M', 'merge toggle on the selected spawner'], ['X / Delete', 'sell (press twice)'], ['H', 'this help'],
+    ['S', 'sound on or off (hover the speaker for volume)'],
   ];
   if (r.stance) {
     keys.push(['F', `hold every lane, or advance them all: held units gather at a rally line inside your border and merge; a hold lasts up to ${r.stance.maxHoldTicks / r.tickRate} s, then ${r.stance.cooldownTicks / r.tickRate} s before the next`]);

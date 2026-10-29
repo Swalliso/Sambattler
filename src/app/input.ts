@@ -3,6 +3,7 @@ import { unitRadius } from '../sim/world.ts';
 import { trayOrder } from '../ui/buildingInfo.ts';
 import type { BattleView } from './battleView.ts';
 import type { Session } from './session.ts';
+import { sfx } from './sound.ts';
 
 export interface InputHooks {
   begin(): void;
@@ -26,7 +27,10 @@ export function bindInput(session: Session, view: BattleView, hooks: InputHooks)
     session.shift = ev.shiftKey;
     const t = view.tileAt(ev);
     session.hover = { col: t.col, row: t.row };
-    if (session.placing) { session.placeAtGhost(); return; }
+    if (session.placing) {
+      if (!session.placeAtGhost()) sfx('illegal');
+      return;
+    }
     select(t.x, t.y);
   });
 

@@ -17,6 +17,7 @@ import { storageKey } from './channel.ts';
 import { bindInput } from './input.ts';
 import { GameLoop } from './loop.ts';
 import { Session } from './session.ts';
+import { soundToggle } from './sound.ts';
 
 /**
  * localStorage behind the run layer's Storage interface (failures, e.g. private mode, are ignored),
@@ -114,6 +115,7 @@ export class RunController {
         break;
     }
     if (el) {
+      el.querySelector('.runbar')?.append(soundToggle(atlas, 'down'));
       if (this.rewardRecoveryNotice) el.prepend(h('div', { class: 'hint', id: 'reward-recovery', role: 'status' }, this.rewardRecoveryNotice));
       app.replaceChildren(el);
       // run screens have no game loop: report readiness on the next frame

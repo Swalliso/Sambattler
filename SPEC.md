@@ -983,6 +983,7 @@ Each feat is a data record: `id`, `name`, `description`, `scope` (`battle` or `r
 | `Tab` | Cycle through your buildings |
 | `F`, or a lane's Hold / Advance button | Hold every lane, or advance them all; the buttons toggle one lane (§5.2) |
 | `H` | Help overlay: matrix chart, tags, hotkeys |
+| `S`, or the speaker button | Sound on or off, anywhere in the game. Hovering or focusing the speaker opens the volume sliders (§13.9) |
 | `F3` | Debug overlay (only with `?debug=1`): column presence numbers, capture progress, aggro radii, ids |
 
 ### 10.4 Feedback rules (clean field, rich inspection)
@@ -1390,6 +1391,7 @@ tools (Node CLIs) ──► run, meta, sim, data
 │  ├─ blights.json  feats.json  events.json  mastery.json
 │  ├─ bots.json                       # strategy bot definitions (§7.1)
 │  ├─ scenarios/<scenario-id>.json    # fixed setups for tests/screenshots
+│  ├─ sounds.json                     # synthesized sounds as parameters (§13.9)
 │  └─ sprites/<sheet>.json            # text-defined pixel sprites
 ├─ src/
 │  ├─ data/        schema.ts (zod)  registry.ts (load + index + cross-ref check)  patch.ts (strain/upgrade patching)  effects.ts (modifier DSL)
@@ -1401,8 +1403,9 @@ tools (Node CLIs) ──► run, meta, sim, data
 │  ├─ run/         route.ts  draft.ts  rewards.ts  events.ts  runState.ts  resume.ts
 │  ├─ meta/        profile.ts  feats.ts  traits.ts  strains.ts  mastery.ts  blights.ts  migrations.ts  storage.ts
 │  ├─ render/      atlas.ts (bake text sprites)  renderer.ts  layers/*.ts  effects.ts  interpolate.ts
+│  ├─ audio/       engine.ts (WebAudio graph, ambient bed)  synth.ts (layers to nodes)  limits.ts (voice cap, cooldowns)
 │  ├─ ui/          h.ts  hud/*.ts  screens/*.ts  callouts.ts  inspect.ts  draftOverlay.ts  report.ts
-│  └─ app/         main.ts  loop.ts  input.ts  urlParams.ts  debugBridge.ts (window.__GAME__)
+│  └─ app/         main.ts  loop.ts  input.ts  urlParams.ts  debugBridge.ts (window.__GAME__)  sound.ts  battleSound.ts  soundBoard.ts
 ├─ tools/          sim.ts  balance.ts  bench.ts  screenshot.ts  validate-data.ts  golden.ts
 ├─ tests/
 │  ├─ unit/**      # fast suite (npm test)
@@ -1473,6 +1476,21 @@ Commands from input are queued with `tick = state.tick + 1`. Headless tools call
     - it is titled "Spore & Sprawl (dev)", carries `noindex`, and shows a `DEV BUILD · <sha>` tag
     - it keeps its own localStorage keys (prefix `dev/`, `src/app/channel.ts`), because both sites share an origin, so a dev run never resumes or overwrites a saved run on the game
   - The user creates the GitHub repository and sets Pages' source to "GitHub Actions". Claude can't push without the user's remote and credentials. Locally, `npm run preview` serves the production build, and the screenshot check runs against it.
+
+### 13.9 Audio
+
+Every sound is synthesized with WebAudio from parameters in `data/sounds.json`, the way sprites are text-defined, so the game ships no audio files. A sound can switch to a CC0 sample later if the synthesized one feels thin.
+
+- **Engine (`src/audio/`).** A sound layers up to six sources. Each is an oscillator (sine, triangle, square, saw) or looping noise (white, pink, brown), through an optional biquad filter (lowpass, highpass, bandpass, notch or peaking), shaped by an envelope (attack, decay, sustain level, hold, release). Oscillators can glide in pitch and wobble (vibrato); filters can sweep; a layer can start late, for arpeggios. Each play can jitter pitch, gain and pan by a small random amount. `src/audio` uses `Math.random` and WebAudio, so it sits outside the pure layers and imports nothing but data types.
+- **Routing.** Voices go to an `sfx`, `ui` or `ambient` bus, then a master gain, then a limiter (a DynamicsCompressor), then the speakers. Each bus also sends to a short generated cave reverb.
+- **Data format.** `data/sounds.json` holds the bus levels, `enemyGain`, `maxVoices`, the speed thinning, the reverb, the ambient bed, and the sounds. Each sound has an id, name, note, bus, gain, priority (0–10), `cooldownMs`, an optional `frequent` flag, optional jitter and its layers, for example `{ "wave": "sine", "freq": 150, "sweep": { "to": 55, "time": 0.14 }, "env": { "attack": 0.004, "decay": 0.16, "sustain": 0, "hold": 0, "release": 0.05 }, "gain": 0.9 }`. `SoundBankSchema` in `src/data/schema.ts` validates it, and the registry checks that every sound the game plays exists (`REQUIRED_SOUNDS`) and that the drips are ambient sounds, so `npm run validate:data` catches mistakes. It loads into `Content.audio` and `Content.sounds` like the sprite sheets. The sim never reads it, so sound changes never move a golden hash.
+- **Throttling.** Each sound has a cooldown (per key: the two Heartcaps throttle separately). At most 12 voices play at once: a new sound takes over the oldest voice of lower priority, or is dropped. At 2× and 3× speed, `frequent` sounds (spawn puffs, knits) stretch their cooldown 2× and 3.5× and play at 70% and 50% gain.
+- **Battle sounds** (`src/app/battleSound.ts`) come from each tick's sim events, render-side only, the way callouts are: place, sell, a refused placement, the player's income (once per income tick), spawn, column claimed or lost, a building lost or razed, knit, merge (fuller for an Elder), a Heartcap hit (at most once every 1.5 s per Heartcap; ordinary hits make no sound), the counter warning and activation, the Sporestorm, each new wave, Begin, the draft opening and a pick, and the win or loss. The enemy's sounds play at `enemyGain` (50%), and sounds with a place on the field pan with it.
+- **UI sounds.** A very soft tick when the pointer moves onto a button, and a click when one is pressed, delegated from the document so every screen has them. Route nodes, event and Grove choices, and draft and spoils cards have their own sounds; a button's `data-sfx` overrides the choice.
+- **Ambient bed.** Low-passed brown noise whose cutoff drifts slowly, plus a random water drip every 2.5–9 s, on the ambient bus. It keeps going while a battle is paused, at half level.
+- **Browser rules.** The AudioContext is made on the first `pointerdown` or `keydown` (autoplay rules) and is suspended while the tab is hidden or sound is muted. Without WebAudio, under `?test=1`, in automated browsers (`navigator.webdriver`, unless `?sound=1`) and in Node, the engine does nothing and never throws, so screenshots and tests are unaffected.
+- **Settings.** `masterVolume` (default 0.6), `sfxVolume` (0.8; it also sets the UI bus), `ambientVolume` (0.5) and `muted` live in `spore-sprawl/settings/v1`, and saves from before sound load with these defaults. Gains follow the square of the slider, which sounds closer to even steps. The speaker button sits in the battle's speed row and in the run bar: a click mutes, and hovering or focusing it opens the volume sliders. `S` mutes or unmutes anywhere.
+- **Sound board.** `?scene=sounds` lists every sound with Play and ×8 (eight plays 70 ms apart, to hear cooldowns and the voice cap), plays the ambient bed, and can audition 2× and 3× speed, the enemy's quieter side and the paused level.
 
 ---
 
@@ -1845,7 +1863,7 @@ Script options: `--name <file>`, `--params "<query>"`, `--url <base>`, `--browse
 
 | Param | Meaning |
 |---|---|
-| `scene` | `battle` (default in M1), `deploy`, `draft`, `report`, `route`, `summary`, `underroot`, `title` |
+| `scene` | `battle` (default in M1), `deploy`, `draft`, `report`, `route`, `summary`, `underroot`, `title`, and the tool `sounds` (the sound board, §13.9) |
 | `map`, `seed`, `battleIndex` | Battle setup |
 | `player`, `enemy` | Controllers: `human`, `bot:<id>`, `general:<id>` |
 | `scenario` | Start from a scenario file |
@@ -1853,7 +1871,8 @@ Script options: `--name <file>`, `--params "<query>"`, `--url <base>`, `--browse
 | `paused` | `1` = start paused (stable screenshots) |
 | `flags` | Feature flags, as in the CLI |
 | `debug` | `1` = debug overlay and the `window.__GAME__` bridge |
-| `test` | `1` = the bridge without the overlay |
+| `test` | `1` = the bridge without the overlay; sound is off |
+| `sound` | `1` = sound on in an automated browser, where it is off by default (`test=1` still wins) |
 | `autoplay` | Let bots play through `run` (a whole run) or `battles:<n>` (the first n battles), for route and summary screens |
 | `tab`, `profile` | Underroot tab; `profile=fixture:<name>` loads a test profile from `tests/fixtures/` |
 | `targeting`, `measure` | `targeting=1` opens power targeting; `measure=frames` records frame times into the bridge |
@@ -1886,6 +1905,7 @@ Claude then **opens the PNG with the Read tool** and checks the milestone's visu
 | AI (M4) | Analysis scores for synthetic mixes; warning and activation ticks; doctrine weights; selling for space; intel decay |
 | Run (M3) | Route constraints; draft weights and exclusions; effect compilation order; rewards; save round-trip |
 | Meta (M6) | Feat conditions; strain patching; trait capacity; mastery thresholds; migrations |
+| Sound | The sound bank's schema and references; cooldowns per key; the voice cap and priority stealing; speed thinning; the engine as a no-op in Node; which battle events make sounds, at whose gain; settings migration |
 | Purity | No forbidden imports or globals in `src/sim`, `src/run` or `src/meta` |
 
 ---
