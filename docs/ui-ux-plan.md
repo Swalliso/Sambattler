@@ -88,8 +88,11 @@ Each phase is one feature branch from `develop`, playtested on the dev site. No 
 
 ### Phase 1: Battle screen (L)
 
-- **Frame the field (B1).** Add a roots ceiling above it (hanging roots and tree-root silhouettes) and a soil bed below it (strata, pebbles, buried hyphae). Both are tiling text sprites on two extra canvases at the field's integer scale. The Heartcap caps can rise into the ceiling.
-- **Ambient spores** drift in the void, and their density follows Sporestorm stacks, so the storm shows off-field too.
+- **Frame the field (B1). Built in Phase 1a (2026-10-29).** A roots ceiling sits above the field (tree roots diving out of the earth, hanging rootlets) and a soil bed below it (strata, pebbles, buried hyphae: lilac under your half, ash tufts under theirs). Roots run down each side, and each Heartcap's crown rises into the ceiling (render-only; the in-field Heartcap is unchanged).
+  - It's tiling text sprites in `data/sprites/frame.json`: `f-ceiling` 288×64, `f-bed` 192×48, `f-hyphae` and `f-hyphae-rot` 192×48, `f-earth` and `f-side` 32×32, and `f-crown` 64×36.
+  - `src/render/frame.ts` bakes them once per layout onto one canvas behind the field and the bands, from the top band down to the bottom band. It draws at the field's own pixel scale (fractional too) with its pixels lined up with the field's, and a near-black earth tile fills whatever the strips don't reach, so no gap shows at any window. Soft light pools glow at the buried knots and above each Heartcap.
+  - The art stays darker than the field's soil, and the frame takes no input (`pointer-events: none`).
+- **Ambient spores.** Built in Phase 1a. Spore-white motes, 1–2 native pixels, drift slowly upward on a second canvas behind the field, so they show only in the void. Their density follows `state.sporestorm` (about 24 at 1280×720, plus about 21 per stack). They move at the game's speed and stop while the battle is paused, held for a draft or over. They hold still under `prefers-reduced-motion` and `?test=1`. One seeded pool, no allocations per frame, and no redraw when nothing moved. Test: `tests/browser/frame.test.ts`.
 - **Regroup the HUD (B5).** The top band becomes [your Heartcap bar] [territory tug bar with column ticks and a frontier marker] [their Heartcap bar]. Gold, supply, wave and storm become icon chips. The intent panel gets a larger portrait and a pulsing countdown when a counter is coming.
 - **Deploy (B4).** Begin moves into the bottom band as the primary button, and the deploy hint becomes a callout. While placing, your mat's legal tiles get a soft lilac grid; an illegal hover keeps its reason.
 - **Tray (B2, B3).** A cap-shaped role band across the card top replaces the left stripe, sprites draw at 2× (64px), and price becomes a chip. Unaffordable means unlit (sprite desaturated, price in danger red, a "need 40" fill), not 45% opacity. Fourteen cards fit at 1280 in a compact mode, with hotkeys unchanged.
@@ -126,7 +129,7 @@ Each phase is one feature branch from `develop`, playtested on the dev site. No 
 3. **Sound:** done, ahead of Phase 1. Sounds are synthesized with WebAudio from parameters in `data/sounds.json`, the way sprites are text-defined, with no audio files (SPEC §13.9; audition them at `?scene=sounds`). Specific sounds can switch to CC0 samples later if the synthesized set feels thin.
 4. **Order:** the battle screen before the run screens. The run screens still get Phase 0's fonts, icons and borders for free.
 
-Build order: Phase 0, then sound, then Phase 1 (split into the field frame and the HUD/tray/deploy work), then a playtest on the dev site. Phase 2 comes after that. Each step is a PR into `develop`.
+Build order: Phase 0, then sound, then Phase 1 (split into the field frame and the HUD/tray/deploy work), then a playtest on the dev site. Phase 2 comes after that. Each step is a PR into `develop`. Phase 0 (PR #12), sound (PR #13) and Phase 1a, the field frame, are built. The frame's preview sheet was approved on 2026-10-29, crowns included.
 
 ## Research notes
 

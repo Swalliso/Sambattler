@@ -36,6 +36,8 @@ export interface RunEnv {
   /** False for seeded and test runs: nothing is written to storage. */
   persist: boolean;
   debug: boolean;
+  /** Ambient motion holds still (`?test=1`), so screenshots and browser tests are stable. */
+  still: boolean;
   newSeed: () => number;
 }
 
@@ -140,7 +142,7 @@ export class RunController {
     const state = resumed ?? createBattle(content, config);
     const session = new Session(state, content);
     const begin = () => { if (state.phase === 'deploy' && !state.queue.some((c) => c.type === 'begin')) session.issue({ type: 'begin' }); };
-    const view = new BattleView(session, content, atlas, { begin, again: () => {}, rematch: () => {}, continueRun: () => this.finish() }, this.env.debug);
+    const view = new BattleView(session, content, atlas, { begin, again: () => {}, rematch: () => {}, continueRun: () => this.finish() }, this.env.debug, this.env.still);
     if (recoveryNotice) {
       view.root.querySelector('#begin-box')!.prepend(h('div', { class: 'hint', id: 'save-recovery', role: 'status' },
         'The saved battle could not be restored. This battle restarted from deployment; your run progress is preserved.'));

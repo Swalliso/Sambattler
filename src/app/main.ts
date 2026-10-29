@@ -99,7 +99,7 @@ function startRun(content: Content, atlas: ReturnType<typeof bakeAtlas>, params:
   const storage = persist ? new BrowserStorage() : new MemoryStorage();
   const seed = params.seed ?? randomSeed();
   const run = (persist ? loadRun(storage) : null) ?? runForScene(content, { scene: params.scene, seed, player: params.player, autoplay: params.autoplay });
-  const ctl = new RunController({ content, atlas, storage, persist, debug: params.debug, newSeed: randomSeed }, run);
+  const ctl = new RunController({ content, atlas, storage, persist, debug: params.debug, still: params.test, newSeed: randomSeed }, run);
   if (params.debug || params.test) {
     const bridge = installBridge({ scene: params.scene, battle: () => ctl.battleState, run: () => ctl.run }, errors);
     ctl.onFrame = () => { bridge.ready = true; };
@@ -128,7 +128,7 @@ function start(content: Content, atlas: ReturnType<typeof bakeAtlas>, params: Pa
     begin: () => { if (state.phase === 'deploy' && !state.queue.some((c) => c.type === 'begin')) session.issue({ type: 'begin' }); },
     again: () => restart(randomSeed()),
     rematch: () => restart(seed),
-  }, params.debug);
+  }, params.debug, params.test);
   const app = document.getElementById('app')!;
   app.replaceChildren(view.root);
 

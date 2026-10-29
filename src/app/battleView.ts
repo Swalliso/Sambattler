@@ -1,9 +1,11 @@
 // The battle screen (SPEC §10.2): top band, callout lane, the pixel-scaled battlefield with Heartcap
-// HP pinned at each end, and the bottom band (speed/pause, building tray, inspect panel).
+// HP pinned at each end inside its frame of roots and soil, and the bottom band (speed/pause, building
+// tray, inspect panel).
 import type { Content } from '../data/registry.ts';
 import { Renderer, TILE } from '../render/renderer.ts';
 import type { DamageNumbers } from '../render/renderer.ts';
 import type { Atlas } from '../render/atlas.ts';
+import { FieldFrame } from '../render/frame.ts';
 import { Callouts } from '../ui/callouts.ts';
 import { h, setText, toggleClass } from '../ui/h.ts';
 import { helpOverlay } from '../ui/help.ts';
@@ -40,6 +42,8 @@ export class BattleView {
   readonly root: HTMLElement;
   readonly renderer: Renderer;
   readonly canvas: HTMLCanvasElement;
+  /** The roots ceiling, soil bed and ambient spores around the field. */
+  readonly frameArt: FieldFrame;
   readonly callouts = new Callouts();
   readonly log = new CombatLog();
   readonly inspect: InspectPanel;
@@ -70,10 +74,12 @@ export class BattleView {
   private nudgeUntil = 0;
   scale = 1;
 
-  constructor(private session: Session, content: Content, private atlas: Atlas, private actions: ViewActions, debug: boolean) {
+  /** @param still ambient motion holds still (`?test=1`), so screenshots and browser tests are stable */
+  constructor(private session: Session, content: Content, private atlas: Atlas, private actions: ViewActions, debug: boolean, still = false) {
     const state = session.state;
     this.canvas = h('canvas', { id: 'battlefield', 'aria-label': 'Battlefield' });
     this.renderer = new Renderer(this.canvas, content, atlas, state);
+    this.frameArt = new FieldFrame(content, atlas, this.renderer.width, this.renderer.height, still);
     this.sound = new BattleSound(state, content.audio.enemyGain, sfx);
     this.top = new TopBand(content, atlas, state);
     this.tray = new Tray(content, atlas, state, (id) => this.pick(id));
@@ -95,7 +101,7 @@ export class BattleView {
       h('button', { class: 'btn', id: 'begin-btn', onclick: () => actions.begin() }, 'Begin'),
       h('div', { class: 'hint' }, `Deploy phase: place your opener with ${state.sides.player.gold} gold, then press Begin (Enter).`),
     );
-    this.field = h('main', { class: 'field' }, this.fieldWrap, this.beginBox);
+    this.field = h('main', { class: 'field' }, this.frameArt.el, this.fieldWrap, this.beginBox);
     for (const s of [1, 2, 3]) {
       this.speedBtns.push(h('button', { class: 'btn', 'data-speed': s, onclick: () => { session.speed = s; } }, `${s}×`));
     }
@@ -188,6 +194,9 @@ export class BattleView {
     this.scale = int >= 1 && (int * int) / (frac * frac) >= 0.7 ? int : frac;
     this.canvas.style.width = `${Math.round(nw * this.scale) / ui}px`;
     this.canvas.style.height = `${Math.round(nh * this.scale) / ui}px`;
+    // the frame fills everything between the bands: from the top band down, past the callout lane
+    this.frameArt.el.style.top = `${(this.top.el.getBoundingClientRect().bottom - r.top) / ui}px`;
+    this.frameArt.layout(this.canvas.getBoundingClientRect(), this.frameArt.el.getBoundingClientRect(), ui);
   }
 
   /** Converts a mouse event to world tile coordinates. */
@@ -270,6 +279,9 @@ export class BattleView {
       debug: debugOverlay,
       timeMs: now,
     });
+    // spores drift at the game's speed, and stop while it is paused, held for a draft or over
+    const running = state.phase === 'deploy' || (state.phase === 'live' && !s.paused && !state.held);
+    this.frameArt.frame(state.sporestorm, now, running ? (state.phase === 'live' ? s.speed : 1) : 0);
     this.top.update(state);
     const kit = state.sides.player.kit.join();
     if (kit !== this.trayKit) {
