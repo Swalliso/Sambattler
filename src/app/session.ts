@@ -6,6 +6,7 @@ import {
 } from '../sim/index.ts';
 import type { BattleState, Command, CommandBody } from '../sim/index.ts';
 import { laneOfRow } from '../sim/world.ts';
+import { loadSettings } from './settings.ts';
 
 export interface GhostInfo {
   buildingId: string;
@@ -20,7 +21,8 @@ export interface GhostInfo {
 }
 
 export class Session {
-  speed = 1;
+  /** Starts at the player's default speed (the settings screen). */
+  speed: number = loadSettings().defaultSpeed;
   paused = false;
   placing: string | null = null;
   hover: { col: number; row: number } | null = null;

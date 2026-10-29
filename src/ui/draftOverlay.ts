@@ -8,6 +8,7 @@ import type { BattleState } from '../sim/index.ts';
 import { cardView } from './cards.ts';
 import { h, setText } from './h.ts';
 import { uiIcon } from './icons.ts';
+import { sporeBurst } from './motion.ts';
 
 export interface DraftActions {
   pick(cardId: string): void;
@@ -42,6 +43,8 @@ export class DraftOverlay {
     const d = state.sides.player.draft;
     const human = state.config.player.controller.kind === 'human' || state.config.player.autoDraft === 'none';
     if (!d || !state.held || !human) { this.el.hidden = true; this.shown = ''; return; }
+    // opening over the held battle: spores burst up behind the cards
+    if (this.el.hidden) sporeBurst(this.el);
     this.el.hidden = false;
     const key = `${d.index}:${d.offer.map((c) => c.id).join(',')}`;
     const cost = rerollCost(state, 'player');

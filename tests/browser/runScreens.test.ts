@@ -83,7 +83,7 @@ describe('the title', () => {
     await p.waitForSelector('#title-continue');
   });
 
-  it('opens Help in four tabs and settings with sound and damage numbers', async () => {
+  it('opens Help in four tabs, and the settings screen with sound and damage numbers', async () => {
     const p = await open('/?test=1');
     await p.locator('#title-help').click();
     expect(await p.locator('#help [role="tab"]').allTextContents()).toEqual(['Matrix', 'Merging', 'The general', 'Keys']);
@@ -94,8 +94,10 @@ describe('the title', () => {
     await p.keyboard.press('Escape');
     expect(await p.locator('#help').count()).toBe(0);
     await p.locator('#settings-btn').click();
-    expect(await p.locator('#settings-pop input[data-level]').count()).toBe(3);
-    expect(await p.locator('#settings-pop [data-numbers]').count()).toBe(3);
+    expect(await p.locator('#settings input[data-level]').count()).toBe(3);
+    expect(await p.locator('#settings [data-numbers]').count()).toBe(3);
+    expect(await p.locator('#settings-paused').count()).toBe(0);
+    expect(await clipped(p)).toEqual([]);
   });
 });
 

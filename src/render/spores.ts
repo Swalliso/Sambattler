@@ -1,18 +1,21 @@
 // Spores, the one particle (docs/ui-ux-plan.md, "lit from below"): motes 1–2 native pixels across that drift
 // slowly upward with a little sway, on a canvas of their own. The battle's frame draws them behind the
 // field (src/render/frame.ts); the title and the battle report reuse the same drift. One seeded pool, no
-// allocations per frame, and no redraw when nothing moved. They hold still under reduced motion and
-// `?test=1`. A negative rate makes them fall (ash on a lost battle).
+// allocations per frame, and no redraw when nothing moved. They hold still under reduced motion (the
+// player's setting or the device's, as `html.reduce-motion`) and `?test=1`. A negative rate makes them
+// fall (ash on a lost battle). The same motes make the screen wipe (SporeVeil, src/ui/motion.ts).
 
 export const SPORE_WHITE = '#fbf6ff';
 const SPORE_POOL = 320;
 /** Three brightness steps, so a frame sets the fill alpha three times, not once per spore. */
 const SPORE_ALPHA = [0.3, 0.5, 0.75] as const;
 
+/** The player's reduced-motion setting, or the device's (src/ui/motion.ts keeps the class). */
+const reducedMotion = () => document.documentElement.classList.contains('reduce-motion');
+
 export class SporeDrift {
   readonly canvas: HTMLCanvasElement;
   private g: CanvasRenderingContext2D;
-  private reduced: MediaQueryList;
   private w = 0;
   private h = 0;
   // the pool, seeded once: home position (0..1 of the canvas), rise speed (native px/s), sway
@@ -37,7 +40,6 @@ export class SporeDrift {
   constructor(private still = false, private color = SPORE_WHITE, seed = 0x5eed) {
     this.canvas = document.createElement('canvas');
     this.g = this.canvas.getContext('2d')!;
-    this.reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
     const rnd = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
     for (let i = 0; i < SPORE_POOL; i++) {
       this.sx[i] = rnd();
@@ -66,7 +68,7 @@ export class SporeDrift {
   frame(density: number, now: number, rate: number): void {
     const dt = this.last ? Math.min(now - this.last, 250) : 0;
     this.last = now;
-    if (!this.still && !this.reduced.matches) this.clock += (dt / 1000) * rate;
+    if (!this.still && !reducedMotion()) this.clock += (dt / 1000) * rate;
     if (!this.w) return;
     const n = Math.min(SPORE_POOL, Math.round((this.w * this.h * density) / 10000));
     if (this.clock === this.drawnClock && n === this.drawnCount) return;
@@ -110,4 +112,103 @@ export function sporeLayer(host: HTMLElement, opts: { scale: number; density: nu
   const stop = () => { cancelAnimationFrame(raf); ro.disconnect(); };
   raf = requestAnimationFrame(tick);
   return { stop };
+}
+
+/** Motes along the veil's edge, per native px of width. */
+const VEIL_MOTES = 0.7;
+const VEIL_POOL = 1600;
+/** How far motes spread from the edge (native px), and how ragged the edge is. */
+const VEIL_SPREAD = 26;
+const VEIL_RAG = 5;
+
+/**
+ * The screen wipe's art (docs/ui-ux-plan.md A6): a veil of the void with a ragged edge and a band of
+ * spores riding it. `cover` raises the veil from the bottom over the old screen, with spores bursting up
+ * ahead of it; `reveal` lifts it off the new screen from the bottom up, the spores trailing below and
+ * thinning out; `burst` is the spores alone, rising (an overlay opening over a screen that stays).
+ * Drawn at a few screen px per native px, like the drift, from one seeded pool.
+ */
+export class SporeVeil {
+  readonly canvas: HTMLCanvasElement;
+  private g: CanvasRenderingContext2D;
+  private w = 0;
+  private h = 0;
+  private mx = new Float32Array(VEIL_POOL);
+  private off = new Float32Array(VEIL_POOL);
+  private lift = new Float32Array(VEIL_POOL);
+  private size = new Uint8Array(VEIL_POOL);
+  private step = new Uint8Array(VEIL_POOL);
+  private rag = new Float32Array(3);
+
+  constructor(private veil: string, seed = 0x5b0e) {
+    this.canvas = document.createElement('canvas');
+    this.g = this.canvas.getContext('2d')!;
+    const rnd = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
+    for (let i = 0; i < VEIL_POOL; i++) {
+      this.mx[i] = rnd();
+      // most motes hug the edge; a few fly well ahead of it
+      const r = rnd();
+      this.off[i] = r * r;
+      this.lift[i] = 0.4 + rnd() * 0.9;
+      this.size[i] = rnd() < 0.3 ? 2 : 1;
+      this.step[i] = Math.floor(rnd() * SPORE_ALPHA.length);
+    }
+    for (let i = 0; i < 3; i++) this.rag[i] = rnd() * Math.PI * 2;
+  }
+
+  resize(w: number, h: number): void {
+    if (w === this.w && h === this.h) return;
+    this.w = this.canvas.width = w;
+    this.h = this.canvas.height = h;
+  }
+
+  /** The edge's height at column x, for an edge at y. */
+  private edge(x: number, y: number): number {
+    const r = this.rag;
+    return y + VEIL_RAG * (0.55 * Math.sin(x * 0.11 + r[0]!) + 0.3 * Math.sin(x * 0.037 + r[1]!) + 0.15 * Math.sin(x * 0.29 + r[2]!));
+  }
+
+  /** `p` runs from 0 to 1 through the phase. */
+  draw(phase: 'cover' | 'reveal' | 'burst', p: number): void {
+    const g = this.g, W = this.w, H = this.h;
+    if (!W) return;
+    g.clearRect(0, 0, W, H);
+    const span = H + VEIL_SPREAD * 2;
+    // the edge rises from below the screen to above it
+    const y = H + VEIL_SPREAD - span * p;
+    if (phase !== 'burst') {
+      g.fillStyle = this.veil;
+      for (let x = 0; x < W; x++) {
+        const e = Math.round(this.edge(x, y));
+        if (phase === 'cover') { if (e < H) g.fillRect(x, Math.max(0, e), 1, H - Math.max(0, e)); }
+        else if (e > 0) g.fillRect(x, 0, 1, Math.min(H, e));
+      }
+    }
+    const n = Math.min(VEIL_POOL, Math.round(W * VEIL_MOTES * (phase === 'burst' ? 0.6 : 1)));
+    g.fillStyle = SPORE_WHITE;
+    for (let b = 0; b < SPORE_ALPHA.length; b++) {
+      for (let i = 0; i < n; i++) {
+        if (this.step[i] !== b) continue;
+        const x = this.mx[i]! * W;
+        const d = this.off[i]! * VEIL_SPREAD;
+        let my: number, fade: number;
+        if (phase === 'cover') {
+          // ahead of the veil, bursting up out of it
+          my = this.edge(x, y) - d * (1 + this.lift[i]! * p);
+          fade = 1 - this.off[i]! * 0.6;
+        } else if (phase === 'reveal') {
+          // behind the lifting veil, over the new screen, thinning out as they fall behind
+          my = this.edge(x, y) + d * (0.6 + this.lift[i]! * (1 - p));
+          fade = (1 - this.off[i]!) * (1 - p * 0.5);
+        } else {
+          my = H - (H + VEIL_SPREAD) * p * this.lift[i]! - d;
+          fade = 1 - p;
+        }
+        if (my < -2 || my > H + 2 || fade <= 0) continue;
+        g.globalAlpha = SPORE_ALPHA[b]! * Math.min(1, fade + 0.25);
+        g.fillRect(Math.floor(x), Math.floor(my), this.size[i]!, this.size[i]!);
+      }
+    }
+    g.globalAlpha = 1;
+  }
 }

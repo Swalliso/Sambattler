@@ -1,7 +1,7 @@
 // The battle HUD (docs/ui-ux-plan.md, Phase 1b): both Heartcaps frame the top band, Begin and its hint
 // stay off the field, the tray never clips or scrolls sideways (two compact rows when 14 cards don't fit
 // one row), unaffordable cards are unlit rather than faded, legal tiles light up while placing, the
-// ghost tip stays beside its footprint inside the field, damage numbers save from the settings popover,
+// ghost tip stays beside its footprint inside the field, the cog opens the settings screen (and pauses),
 // and battle 1's economy tip still fires.
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { chromium } from 'playwright';
@@ -186,28 +186,34 @@ describe('deploy', () => {
 });
 
 describe('controls', () => {
-  it('saves damage numbers from the settings popover', async () => {
-    page = await open(`${DEPLOY}&paused=1`);
+  it('opens the settings screen from the cog, which pauses the battle until Esc', async () => {
+    page = await open(`${DEPLOY.replace('scene=deploy', 'scene=battle')}&ticks=200`);
     await page.evaluate(() => localStorage.removeItem('spore-sprawl/settings/v1'));
-    expect(await page.locator('#settings-pop').isVisible()).toBe(false);
+    expect(await page.locator('#settings').count()).toBe(0);
     await page.locator('#settings-btn').click();
-    expect(await page.locator('#settings-pop').isVisible()).toBe(true);
+    expect(await page.locator('#settings').isVisible()).toBe(true);
     expect(await page.locator('#settings-btn').getAttribute('aria-expanded')).toBe('true');
+    expect(await page.locator('#settings-paused').textContent()).toBe('The battle is paused');
+    const tick = await page.evaluate(() => window.__GAME__!.tick);
+    await page.waitForTimeout(300);
+    expect(await page.evaluate(() => window.__GAME__!.tick)).toBe(tick);
+    // keys reach nothing behind it: 1 doesn't pick a building, Space doesn't unpause
+    await page.keyboard.press('1');
+    await page.keyboard.press('Space');
+    expect(await page.locator('#tray .card.sel').count()).toBe(0);
     await page.locator('#numbers [data-numbers="all"]').click();
     await expect.poll(() => page!.locator('#numbers [data-numbers="all"]').getAttribute('aria-pressed')).toBe('true');
     expect(JSON.parse((await page.evaluate(() => localStorage.getItem('spore-sprawl/settings/v1')))!).damageNumbers).toBe('all');
-    // Escape closes the popover and leaves focus on the cog
+    // Escape closes it, unpauses and leaves focus on the cog
     await page.keyboard.press('Escape');
-    expect(await page.locator('#settings-pop').isVisible()).toBe(false);
+    expect(await page.locator('#settings').count()).toBe(0);
     expect(await page.evaluate(() => document.activeElement?.id)).toBe('settings-btn');
-    // the popover sits above the band, inside the window
+    expect(await page.locator('#settings-btn').getAttribute('aria-expanded')).toBe('false');
+    await expect.poll(() => page!.evaluate(() => window.__GAME__!.tick)).toBeGreaterThan(tick);
+    // a press on the scrim closes it too
     await page.locator('#settings-btn').click();
-    const pop = (await page.locator('#settings-pop').boundingBox())!;
-    expect(pop.x).toBeGreaterThanOrEqual(0);
-    expect(pop.y + pop.height).toBeLessThanOrEqual((await page.locator('#settings-btn').boundingBox())!.y);
-    // a press outside closes it
-    await page.mouse.click(640, 40);
-    expect(await page.locator('#settings-pop').isVisible()).toBe(false);
+    await page.mouse.click(20, 360);
+    expect(await page.locator('#settings').count()).toBe(0);
   });
 
   it('shows the empty inspect panel as a short tip', async () => {

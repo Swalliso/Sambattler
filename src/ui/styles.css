@@ -182,6 +182,9 @@ button { font: inherit; color: inherit; }
 .tugbar .n { background: var(--tug-neutral); }
 .tugbar .e { background: repeating-linear-gradient(90deg, var(--rot) 0 6px, var(--rot-stripe) 6px 8px); }
 .tugbar::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(90deg, transparent 0 calc(100% / var(--cols) - 1px), rgba(13, 10, 16, 0.6) calc(100% / var(--cols) - 1px) calc(100% / var(--cols))); }
+/* color-blind assist: the Gray Rot's stripes lean, so the two sides differ in pattern as well as hue */
+html.assist .tugbar .e { background: repeating-linear-gradient(135deg, var(--rot) 0 3px, var(--rot-deep) 3px 5px); }
+html.assist .tugbar .p { background: repeating-linear-gradient(90deg, var(--lilac) 0 2px, var(--violet) 2px 8px); }
 .tugbar .front { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; z-index: 1; background: var(--lilac); box-shadow: 0 0 6px var(--lilac); }
 .tug-label { display: flex; justify-content: space-between; font: 12px/14px var(--font-text); font-variant-numeric: tabular-nums; }
 .tug-label .p { color: var(--lilac); }
@@ -237,7 +240,7 @@ button { font: inherit; color: inherit; }
 .btn { padding: 5px 9px; border: 1px solid var(--line-strong); background: var(--panel-2); border-radius: var(--radius-sm); cursor: pointer; font-size: 13px; }
 .btn.has-ico { display: inline-flex; align-items: center; gap: 4px; }
 .btn:hover { border-color: var(--lilac); }
-.btn.on { background: var(--panel-selected); border-color: var(--violet); }
+.btn.on { background: var(--panel-selected); border-color: var(--lilac); }
 .btn:disabled { opacity: .45; cursor: default; }
 .btn.danger { color: var(--danger-soft); }
 .btn.danger:hover { border-color: var(--danger-soft); }
@@ -278,11 +281,7 @@ button { font: inherit; color: inherit; }
 .sound-row { display: grid; grid-template-columns: 62px 1fr 26px; align-items: center; gap: 6px; }
 .sound-row b { text-align: right; font-variant-numeric: tabular-nums; font-weight: 400; color: var(--muted); }
 .sound-row input { width: 100%; margin: 0; accent-color: var(--lilac); }
-/* ---- the settings popover (src/ui/settingsControl.ts): opens up from the cog beside the speaker ---- */
-.settings-ctl { position: relative; display: inline-flex; }
-.settings-ctl.open #settings-btn { border-color: var(--lilac); }
-.settings-pop { position: absolute; left: 0; bottom: calc(100% + 6px); z-index: 30; width: 236px; padding: 8px 10px 10px; display: flex; flex-direction: column; gap: 6px; background: var(--tooltip-bg); border: 1px solid var(--line-strong); border-radius: var(--radius-md); box-shadow: var(--shadow-tooltip); font-size: 12px; }
-.pop-label { font: 700 12px/16px var(--font-text); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+#settings-btn[aria-expanded="true"] { border-color: var(--lilac); }
 
 /* ---- the tray: one row of full cards, or two rows of compact ones (Tray.fit) ---- */
 .tray { display: grid; grid-template-columns: repeat(var(--n), minmax(88px, 108px)); grid-template-rows: 100%; gap: 6px; justify-content: start; min-width: 0; padding-top: 2px; }
@@ -322,6 +321,8 @@ button { font: inherit; color: inherit; }
 .card.poor .need { display: flex; }
 .card.poor .art { filter: grayscale(1) brightness(.7); }
 .card.poor .price { color: var(--danger); border-color: var(--danger-line); }
+/* placing a card you can't afford: danger is 3.7:1 on panel-selected, so its price turns danger-soft (7.4:1) */
+.card.sel.poor .price { color: var(--danger-soft); }
 .card.poor::before { filter: saturate(.35) brightness(.8); }
 /* compact: two rows; the sprite at 1× beside the key and price, then the name, the role and the output (or what you need) */
 /* a compact name is one line in the regular weight, so the longest (about 93 px on macOS, ~9% more on Linux) fits 111 px at 1280 */
@@ -365,6 +366,17 @@ button { font: inherit; color: inherit; }
 .banner h1.loss { color: var(--rot-light); }
 .banner-text { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
 .banner .how { color: var(--text); font-size: 15px; }
+/* what the battle earned: gold (money), and in a run Spores and Amber, each rolling up (src/ui/motion.ts) */
+.banner-meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-6); }
+.rewards { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-5); }
+.reward { display: inline-flex; align-items: center; gap: var(--space-2); white-space: nowrap; }
+.reward b { min-width: 2ch; font: 400 20px/18px var(--font-display); font-synthesis: none; font-variant-numeric: tabular-nums; }
+.reward small { font: 12px/16px var(--font-text); color: var(--muted); }
+.reward.gold b { color: var(--gold); }
+.reward.amber b { color: var(--amber); }
+.reward.chance small { color: var(--text); }
+.rolls { display: inline-block; font-variant-numeric: tabular-nums; }
+.rolls.bump { animation: bump .45s ease-out; }
 .outcome-art { position: relative; width: 96px; height: 96px; display: flex; align-items: flex-end; justify-content: center; overflow: hidden; }
 .outcome-art .bloom { position: relative; display: flex; flex-direction: column; align-items: center; animation: bloom 600ms ease-out backwards; }
 .outcome-art .cap { width: 64px; height: 64px; image-rendering: pixelated; filter: drop-shadow(0 0 8px var(--glow-lilac)); }
@@ -395,7 +407,7 @@ button { font: inherit; color: inherit; }
 .bar .fill { display: block; height: 100%; }
 .bar .value { text-align: right; font-variant-numeric: tabular-nums; }
 .reportcard table { border-collapse: collapse; width: 100%; font-size: 12px; }
-.reportcard td, .reportcard th { padding: 3px 6px; border-bottom: 1px solid var(--line); text-align: right; font-variant-numeric: tabular-nums; }
+.reportcard td, .reportcard th { padding: 2px 6px; border-bottom: 1px solid var(--line); text-align: right; font-variant-numeric: tabular-nums; }
 .reportcard td:first-child, .reportcard th:first-child { text-align: left; color: var(--muted); font-weight: 400; }
 .reportcard .actions { display: flex; gap: 8px; justify-content: flex-end; }
 .reportcard .actions .btn.primary, .runfoot .btn.primary { width: auto; padding: 4px 18px 5px; font-size: 24px; line-height: 24px; }
@@ -442,7 +454,7 @@ kbd { font-family: var(--font-mono); font-size: 12px; line-height: 16px; padding
 .draft-card { --edge: var(--bark); position: relative; display: flex; flex-direction: column; gap: var(--space-3); min-height: 284px; padding: 18px 18px 16px; background: var(--panel-2); border: 2px solid var(--edge); border-radius: var(--radius-md); box-shadow: var(--shadow-bevel); color: var(--text); font: inherit; text-align: left; cursor: pointer; animation: deal 260ms ease-out backwards; animation-delay: calc(var(--i, 0) * 80ms); transition: transform 120ms ease-out, box-shadow 120ms ease-out, border-color 120ms ease-out; }
 .draft-card.uncommon { --edge: var(--rarity-uncommon-line); box-shadow: var(--shadow-bevel), 0 0 12px var(--glow-teal); }
 .draft-card.rare { --edge: var(--rarity-rare-line); box-shadow: var(--shadow-bevel), 0 0 14px var(--glow-amber); }
-.draft-card:hover { transform: translateY(-4px); border-color: var(--lilac); box-shadow: var(--shadow-bevel), var(--shadow-glow); }
+.draft-card:hover { transform: perspective(800px) translateY(-4px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)); border-color: var(--lilac); box-shadow: var(--shadow-bevel), var(--shadow-glow); }
 .draft-card:focus-visible { box-shadow: var(--shadow-focus); }
 @keyframes fadein { from { opacity: 0; } }
 @keyframes deal { from { opacity: 0; transform: translateY(10px) scale(.96); } to { opacity: 1; transform: none; } }
@@ -502,6 +514,10 @@ kbd { font-family: var(--font-mono); font-size: 12px; line-height: 16px; padding
 .sparkline { display: block; height: 28px; background: var(--well); border: 1px solid var(--line); }
 .cardlist { margin: 0; padding-left: 18px; font-size: 12px; line-height: 17px; columns: 2; column-gap: 24px; }
 #summary-earned td { padding: 2px 8px; border-bottom: 1px solid var(--line); }
+#summary-earned .earned td { font-variant-numeric: tabular-nums; }
+#summary-earned .earned td:first-child { display: flex; align-items: center; gap: var(--space-2); }
+#summary-earned .earned b { font: 400 20px/20px var(--font-display); font-synthesis: none; color: var(--text); }
+#summary-earned .amber b { color: var(--amber); }
 
 /* ---- run screens (Phase 2): the run bar, the footer and the route ---- */
 .runbar { display: flex; align-items: center; gap: var(--space-6); min-height: 52px; padding: var(--space-3) var(--space-6); background: var(--panel); border-bottom: 1px solid var(--line); font-size: 14px; }
@@ -517,6 +533,7 @@ kbd { font-family: var(--font-mono); font-size: 12px; line-height: 16px; padding
 .rb-stat { display: flex; align-items: center; gap: var(--space-3); white-space: nowrap; }
 .rb-group { display: flex; align-items: center; gap: var(--space-4); min-width: 0; }
 .relics-group { flex: 1; }
+.rb-tools { display: flex; gap: var(--space-2); }
 .runbar .kit { display: flex; gap: 2px; }
 .runbar .kitpiece { position: relative; }
 .runbar .kitpiece canvas { width: 32px; height: 32px; image-rendering: pixelated; display: block; }
@@ -541,7 +558,7 @@ kbd { font-family: var(--font-mono); font-size: 12px; line-height: 16px; padding
 .runfoot .seed { font: 12px/16px var(--font-mono); color: var(--muted); margin-right: var(--space-4); }
 .runscreen .btn { box-shadow: var(--shadow-bevel); transition: box-shadow 120ms ease-out, border-color 120ms ease-out; }
 .runscreen .btn:hover:not(:disabled) { border-color: var(--lilac); box-shadow: var(--shadow-bevel), var(--shadow-glow); }
-.runscreen .btn.danger { border-color: var(--danger-line); }
+.runscreen .btn.danger { border-color: var(--danger); } /* a control's resting edge: 5:1 on panel (danger-line is 2:1) */
 .runscreen .btn.danger:hover:not(:disabled) { border-color: var(--danger-soft); box-shadow: var(--shadow-bevel); }
 .runscreen .btn:disabled { opacity: 1; background: var(--panel); border-color: var(--line); color: var(--muted); box-shadow: none; }
 /* the route: spore pods on soil, joined by hyphae (src/ui/screens/run.ts, hyphae()) */
@@ -630,14 +647,12 @@ kbd { font-family: var(--font-mono); font-size: 12px; line-height: 16px; padding
 .wordmark .amp { color: var(--lilac); }
 .title-blurb { margin: 0 0 var(--space-5); max-width: 440px; font-size: 16px; line-height: 1.45; color: var(--muted); }
 .title-menu { display: flex; flex-direction: column; align-items: stretch; gap: var(--space-4); width: 300px; }
-.title-menu > .btn, .title-menu .settings-ctl > .btn { width: 100%; height: 44px; justify-content: center; font: 400 24px/24px var(--font-display); font-synthesis: none; box-shadow: var(--shadow-bevel); transition: box-shadow 120ms ease-out, border-color 120ms ease-out; }
-.title-menu > .btn:hover, .title-menu .settings-ctl > .btn:hover { border-color: var(--lilac); box-shadow: var(--shadow-bevel), var(--shadow-glow); }
+.title-menu > .btn { width: 100%; height: 44px; justify-content: center; font: 400 24px/24px var(--font-display); font-synthesis: none; box-shadow: var(--shadow-bevel); transition: box-shadow 120ms ease-out, border-color 120ms ease-out; }
+.title-menu > .btn:hover { border-color: var(--lilac); box-shadow: var(--shadow-bevel), var(--shadow-glow); }
 .title-menu > .btn:active { box-shadow: none; }
 .title-menu > .btn.primary { height: 60px; flex-direction: column; gap: 0; font-size: 30px; line-height: 30px; }
 .title-menu > .btn.primary small { font: 12px/16px var(--font-text); color: var(--lilac); }
-.title-menu .settings-ctl { display: flex; }
-.title-menu .settings-ctl .ico { width: 16px; height: 16px; }
-.settings-pop.side { left: calc(100% + 8px); bottom: auto; top: -4px; width: 260px; }
+.title-menu #settings-btn { gap: var(--space-3); }
 .sound-ctl.inline { display: flex; flex-direction: column; gap: 6px; }
 .sound-ctl.inline .sound-mute { align-self: flex-start; }
 .sound-ctl.inline .sound-mute .when-on, .sound-ctl.inline .sound-mute .when-off { width: auto; height: auto; }
@@ -665,19 +680,55 @@ kbd { font-family: var(--font-mono); font-size: 12px; line-height: 16px; padding
 .sb-id { font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
 .sb-row.playing td { background: var(--panel-selected); }
 
-/* ?test=1 holds the run screens still: no deal-in, reveal or twinkle */
-html.still .draft-card, html.still .draft-card .sparkle, html.still .reveal, html.still .outcome-art .bloom, html.still .outcome-art .wilt { animation: none; }
+/* ---- the settings screen (src/ui/settingsScreen.ts): an overlay sheet in two columns ---- */
+.settingscard { width: 900px; max-height: calc(var(--app-h, 100vh) - 24px); overflow: auto; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: var(--space-6) 22px 18px; display: flex; flex-direction: column; gap: var(--space-5); animation: growin 180ms ease-out; }
+.settings-head { display: flex; align-items: center; gap: var(--space-6); }
+.settings-head h2 { margin: 0; font: 400 30px/32px var(--font-display); font-synthesis: none; }
+.settings-head > .btn { margin-left: auto; display: inline-flex; align-items: center; gap: var(--space-3); box-shadow: var(--shadow-bevel); }
+.set-paused { display: inline-flex; align-items: center; gap: var(--space-3); height: 26px; padding: 0 10px 0 6px; border: 1px solid var(--line-strong); border-radius: var(--radius-pill); background: var(--panel-2); font-size: 13px; color: var(--text); }
+.settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
+.settings-col { display: flex; flex-direction: column; gap: var(--space-6); min-width: 0; }
+.set-section { display: flex; flex-direction: column; gap: var(--space-5); }
+.set-section h3 { display: flex; align-items: center; gap: var(--space-3); margin: 0; padding-bottom: var(--space-3); border-bottom: 1px solid var(--line); font: 700 13px/16px var(--font-text); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.set-row { display: flex; flex-direction: column; gap: var(--space-3); }
+.set-label { display: flex; flex-direction: column; gap: 1px; }
+.set-label b { font: 700 14px/18px var(--font-text); }
+.set-hint { font-size: 12px; line-height: 16px; color: var(--muted); }
+.set-row .seg { align-self: flex-start; }
+.set-row .seg .btn { flex: none; min-width: 60px; padding: 4px 12px; font-size: 13px; }
+.set-section .sound-ctl.inline { gap: var(--space-3); }
+.set-section .sound-ctl.inline .sound-mute { box-shadow: var(--shadow-bevel); }
+.set-section .sound-row { grid-template-columns: 76px 1fr 30px; font-size: 13px; }
+/* the assist's preview: a strip of field at 3×, a territory bar under it, and a word for each side */
+.set-preview { align-self: flex-start; display: flex; flex-direction: column; gap: var(--space-2); margin: 0; padding: var(--space-3); background: var(--well); border: 1px solid var(--line); border-radius: var(--radius-md); }
+.set-preview .preview-art { display: block; image-rendering: pixelated; image-rendering: crisp-edges; border-radius: var(--radius-xs); }
+.set-preview .tugbar { height: 8px; }
+.set-preview figcaption { display: flex; justify-content: space-between; font: 700 12px/16px var(--font-text); letter-spacing: .06em; text-transform: uppercase; }
+.set-preview figcaption .p { color: var(--lilac); }
+.set-preview figcaption .e { color: var(--rot-light); }
+.set-note { margin: auto 0 0; font-size: 12px; line-height: 16px; color: var(--muted); }
+.settingscard .btn:hover:not(:disabled) { border-color: var(--lilac); }
+.settings-head > .btn:hover, .set-section .sound-mute:hover { box-shadow: var(--shadow-bevel), var(--shadow-glow); }
+.settings-head > .btn, .set-section .sound-mute { transition: box-shadow 120ms ease-out, border-color 120ms ease-out; }
 
-/* Reduced motion: no bump, pop, pulse or nudge, and no lift; the nudge keeps its gold glow, still. */
-@media (prefers-reduced-motion: reduce) {
-  .draft-card { animation: fadein 120ms ease-out; transition: none; }
-  .draft-card:hover { transform: none; }
-  .draft-card .sparkle { animation: none; }
-  .reveal { animation: fadein 120ms ease-out; }
-  .outcome-art .bloom, .outcome-art .wilt { animation: none; }
-  .route-node .pod, .thread { transition: none; }
-  .chip.bump, .callout, .pips i, .intent .warning .countdown { animation: none; }
-  .card.nudge { animation: none; box-shadow: var(--shadow-glow-gold); }
-  .card, .bottom .btn, .hpbar i { transition: none; }
-  .card.sel { transform: none; }
-}
+/* ---- screen changes (src/ui/motion.ts): a veil of the void rises on a band of spores, then lifts off the new screen ---- */
+.spore-wipe { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 25; image-rendering: pixelated; image-rendering: crisp-edges; cursor: progress; }
+.spore-burst { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; image-rendering: pixelated; image-rendering: crisp-edges; }
+#app.fade-in { animation: fadein 120ms ease-out; }
+
+/* ?test=1 holds the run screens still: no deal-in, reveal or twinkle */
+html.still .draft-card, html.still .draft-card .sparkle, html.still .reveal, html.still .outcome-art .bloom, html.still .outcome-art .wilt, html.still .settingscard, html.still .rolls.bump { animation: none; }
+
+/* Reduced motion (the player's setting, or the device's when it follows the system: html.reduce-motion, src/ui/motion.ts):
+   no bump, pop, pulse or nudge, no lift or tilt, and fades of 120 ms or less; the nudge keeps its gold glow, still. */
+html.reduce-motion .draft-card { animation: fadein 120ms ease-out; transition: none; }
+html.reduce-motion .draft-card:hover { transform: none; }
+html.reduce-motion .draft-card .sparkle { animation: none; }
+html.reduce-motion .reveal { animation: fadein 120ms ease-out; }
+html.reduce-motion .outcome-art .bloom, html.reduce-motion .outcome-art .wilt { animation: none; }
+html.reduce-motion .route-node .pod, html.reduce-motion .thread { transition: none; }
+html.reduce-motion .chip.bump, html.reduce-motion .callout, html.reduce-motion .pips i, html.reduce-motion .intent .warning .countdown, html.reduce-motion .rolls.bump { animation: none; }
+html.reduce-motion .card.nudge { animation: none; box-shadow: var(--shadow-glow-gold); }
+html.reduce-motion .card, html.reduce-motion .bottom .btn, html.reduce-motion .hpbar i { transition: none; }
+html.reduce-motion .card.sel { transform: none; }
+html.reduce-motion .settingscard { animation: fadein 120ms ease-out; }

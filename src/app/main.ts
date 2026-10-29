@@ -13,10 +13,10 @@ import {
 import type { BattleState, Content } from '../sim/index.ts';
 import { h } from '../ui/h.ts';
 import { helpOverlay } from '../ui/help.ts';
-import { installUiScale } from '../ui/scale.ts';
+import { applyMotion, sporeWipe } from '../ui/motion.ts';
+import { installUiScale, setUiScale } from '../ui/scale.ts';
 import { titleScreen } from '../ui/screens/title.ts';
-import { settingsControl } from '../ui/settingsControl.ts';
-import { soundPanel } from '../ui/soundControls.ts';
+import { closeSettings, openSettings, settingsButton, settingsOpen } from '../ui/settingsScreen.ts';
 import { BattleView } from './battleView.ts';
 import { BUILD_SHA, DEV_SITE } from './channel.ts';
 import { browserContent } from './content.ts';
@@ -27,8 +27,8 @@ import { parseParams } from './urlParams.ts';
 import type { Params } from './urlParams.ts';
 import { BrowserStorage, RunController } from './run.ts';
 import { Session } from './session.ts';
-import { loadSettings, saveSettings } from './settings.ts';
-import { installSound, sfx, soundEnabled, soundPrefs } from './sound.ts';
+import { loadSettings, onSettings, settingsStore } from './settings.ts';
+import { installSound, soundEnabled, soundPrefs } from './sound.ts';
 import { soundBoard } from './soundBoard.ts';
 
 const BATTLE_SCENES = new Set(['battle', 'deploy', 'report']);
@@ -67,8 +67,21 @@ function buildState(content: Content, p: Params, seed: number): BattleState {
   }));
 }
 
+/** The settings that shape the whole page (UI scale, reduced motion, color-blind assist), now and as they change. */
+function installDisplaySettings(): void {
+  const s = loadSettings();
+  installUiScale(s.uiScale);
+  applyMotion(s.reducedMotion);
+  document.documentElement.classList.toggle('assist', s.colorAssist);
+  onSettings((next, patch) => {
+    if ('uiScale' in patch) setUiScale(next.uiScale);
+    if ('reducedMotion' in patch) applyMotion(next.reducedMotion);
+    if ('colorAssist' in patch) document.documentElement.classList.toggle('assist', next.colorAssist);
+  });
+}
+
 function boot(): void {
-  installUiScale();
+  installDisplaySettings();
   const params = parseParams(location.search);
   if (params.scene !== TITLE && !BATTLE_SCENES.has(params.scene) && !RUN_SCENES.has(params.scene) && !TOOL_SCENES.has(params.scene)) {
     fatal(`scene=${params.scene} is not part of Milestone ${MILESTONE} (only ${[TITLE, ...BATTLE_SCENES, ...RUN_SCENES, ...TOOL_SCENES].join(', ')} exist yet).`);
@@ -116,8 +129,8 @@ function rulesState(content: Content): BattleState {
 
 /**
  * The title (SPEC §10.5): Continue resumes the saved run, New run starts one (after a confirm if a run is
- * saved), How to play opens Help, Settings opens sound and damage numbers. The run's screens offer a way
- * back here.
+ * saved), How to play opens Help, Settings opens the settings screen. The run's screens offer a way back
+ * here, behind a spore wipe.
  */
 function openTitle(content: Content, atlas: ReturnType<typeof bakeAtlas>, params: Params): void {
   const { persist, storage } = runStorage(params);
@@ -143,13 +156,14 @@ function openTitle(content: Content, atlas: ReturnType<typeof bakeAtlas>, params
     document.body.append(help);
     help.querySelector<HTMLElement>('button')?.focus();
   };
-  function show(): void {
+  const openSettingsScreen = () => openSettings(content, atlas, settingsStore, soundPrefs, { onClose: () => {} });
+  /** Back from a run, the title arrives behind a spore wipe (the page's first screen appears at once). */
+  function show(): void { sporeWipe(render); }
+  function render(): void {
     ctl = null;
+    closeSettings();
     document.querySelectorAll('.overlay').forEach((o) => o.remove());
     const saved = persist ? loadRun(storage) : null;
-    const settings = settingsControl(atlas, (v) => { saveSettings({ damageNumbers: v }); settings.sync(v); sfx('ui-toggle'); },
-      { label: 'Settings', opens: 'side', before: soundPanel(atlas, soundPrefs) });
-    settings.sync(loadSettings().damageNumbers);
     const screen = titleScreen(atlas, {
       ...(saved && !saved.outcome ? {
         continueRun: () => play(saved),
@@ -161,14 +175,14 @@ function openTitle(content: Content, atlas: ReturnType<typeof bakeAtlas>, params
         play(createRun(content, { seed }), seed);
       },
       help: openHelp,
-      settings: settings.el,
+      settings: settingsButton(atlas, openSettingsScreen, 'Settings'),
     }, params.test, `Milestone ${MILESTONE}${DEV_SITE ? ` · dev build${BUILD_SHA ? ` ${BUILD_SHA}` : ''}` : ''}`);
     document.getElementById('app')!.replaceChildren(screen);
     screen.querySelector<HTMLElement>('.title-menu .primary')?.focus({ preventScroll: true });
     requestAnimationFrame(ready);
   }
   window.addEventListener('keydown', (e) => {
-    if (ctl) return;
+    if (ctl || settingsOpen()) return;
     if (help && (e.key === 'Escape' || e.key === 'h' || e.key === 'H')) { e.preventDefault(); closeHelp(); }
   });
   show();
@@ -196,7 +210,7 @@ function start(content: Content, atlas: ReturnType<typeof bakeAtlas>, params: Pa
   const state = buildState(content, params, seed);
   const session = new Session(state, content);
   const humanPlayer = state.config.player.controller.kind === 'human';
-  const restart = (nextSeed: number) => {
+  const restart = (nextSeed: number) => sporeWipe(() => {
     loop.stop();
     unbind();
     view.dispose();
@@ -207,7 +221,7 @@ function start(content: Content, atlas: ReturnType<typeof bakeAtlas>, params: Pa
     q.delete('paused');
     history.replaceState(null, '', `?${q.toString()}`);
     start(content, atlas, { ...params, seed: nextSeed, ticks: null, paused: false }, nextSeed);
-  };
+  });
   const view = new BattleView(session, content, atlas, {
     begin: () => { if (state.phase === 'deploy' && !state.queue.some((c) => c.type === 'begin')) session.issue({ type: 'begin' }); },
     again: () => restart(randomSeed()),

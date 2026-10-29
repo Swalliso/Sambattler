@@ -4,21 +4,25 @@
 // their command log (SPEC §8.9).
 import type { Atlas } from '../render/atlas.ts';
 import {
-  chooseNode, clearBattle, clearRun, createRun, eventChoose, finishBattle, groveChoose, loadBattle, promptAnswer, recoverPendingChoice, resumeBattle,
-  saveBattle, saveRun, spoilsPick, spoilsReroll,
+  battleRewards, chooseNode, clearBattle, clearRun, createRun, currentRow, eventChoose, finishBattle, groveChoose, loadBattle, promptAnswer,
+  recoverPendingChoice, resumeBattle, saveBattle, saveRun, spoilsPick, spoilsReroll,
 } from '../run/index.ts';
 import type { RunState, Storage } from '../run/index.ts';
 import { createBattle, queueCommand, runHeadless } from '../sim/index.ts';
 import type { BattleState, Content } from '../sim/index.ts';
 import { eventScreen, groveScreen, promptScreen, routeScreen, spoilsScreen, summaryScreen } from '../ui/screens/run.ts';
 import { h } from '../ui/h.ts';
+import { sporeWipe } from '../ui/motion.ts';
+import { closeSettings, openSettings, settingsButton } from '../ui/settingsScreen.ts';
 import { sporeLayer } from '../render/spores.ts';
+import type { ReportRewards } from '../ui/report.ts';
 import { BattleView } from './battleView.ts';
 import { storageKey } from './channel.ts';
 import { bindInput } from './input.ts';
 import { GameLoop } from './loop.ts';
 import { Session } from './session.ts';
-import { soundToggle } from './sound.ts';
+import { settingsStore } from './settings.ts';
+import { soundPrefs, soundToggle } from './sound.ts';
 
 /**
  * localStorage behind the run layer's Storage interface (failures, e.g. private mode, are ignored),
@@ -82,8 +86,14 @@ export class RunController {
     this.battle = null;
   }
 
+  /** Shows the run's current screen behind a spore wipe (src/ui/motion.ts). */
   show(): void {
+    sporeWipe(() => this.render());
+  }
+
+  private render(): void {
     this.stopBattle();
+    closeSettings();
     document.querySelectorAll('.overlay').forEach((o) => o.remove());
     const { content, atlas } = this.env;
     const run = this.run;
@@ -123,7 +133,8 @@ export class RunController {
         break;
     }
     if (el) {
-      el.querySelector('.runbar')?.append(soundToggle(atlas, 'down'));
+      el.querySelector('.runbar')?.append(h('div', { class: 'rb-tools' }, soundToggle(atlas, 'down'),
+        settingsButton(atlas, () => openSettings(content, atlas, settingsStore, soundPrefs, { onClose: () => {} }))));
       // spores drift behind every run screen, as on the title
       const sky = h('div', { class: 'run-sky', 'aria-hidden': 'true' });
       el.prepend(sky);
@@ -152,7 +163,9 @@ export class RunController {
     const state = resumed ?? createBattle(content, config);
     const session = new Session(state, content);
     const begin = () => { if (state.phase === 'deploy' && !state.queue.some((c) => c.type === 'begin')) session.issue({ type: 'begin' }); };
-    const view = new BattleView(session, content, atlas, { begin, again: () => {}, rematch: () => {}, continueRun: () => this.finish() }, this.env.debug, this.env.still);
+    const view = new BattleView(session, content, atlas, {
+      begin, again: () => {}, rematch: () => {}, continueRun: () => this.finish(), rewards: (st) => this.rewardsOf(st),
+    }, this.env.debug, this.env.still);
     if (recoveryNotice) {
       view.notice('save-recovery', 'The saved battle could not be restored. This battle restarted from deployment; your run progress is preserved.');
     }
@@ -169,6 +182,19 @@ export class RunController {
     const unbind = bindInput(session, view, { begin, toggleDebug: () => { if (this.env.debug) loop.debugOverlay = !loop.debugOverlay; } });
     this.battle = { state, view, loop, unbind };
     loop.start();
+  }
+
+  /** What the battle on screen earns the run beyond gold, for its report (the rewards table, SPEC §8.6). */
+  private rewardsOf(state: BattleState): ReportRewards {
+    const run = this.run;
+    const row = currentRow(run) - 1;
+    const node = run.route[row]?.[run.path[row]!];
+    if (!node || !state.outcome) return { spores: 0, amber: 0, amberChance: 0 };
+    const b = this.env.content.balance;
+    const r = battleRewards(node.kind, state.outcome.winner, state.outcome.by, {
+      routRepair: b.routRepair, decisionLossDamage: b.decisionLossDamage, rarityBiasStep: b.draft.rarityBiasStep, eliteRareBonus: b.draft.eliteRareBonus,
+    });
+    return { spores: r.spores, amber: r.amber, amberChance: r.amberChance };
   }
 
   /** The report's Continue: applies the battle to the run. */
