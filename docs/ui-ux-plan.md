@@ -93,11 +93,24 @@ Each phase is one feature branch from `develop`, playtested on the dev site. No 
   - `src/render/frame.ts` bakes them once per layout onto one canvas behind the field and the bands, from the top band down to the bottom band. It draws at the field's own pixel scale (fractional too) with its pixels lined up with the field's, and a near-black earth tile fills whatever the strips don't reach, so no gap shows at any window. Soft light pools glow at the buried knots and above each Heartcap.
   - The art stays darker than the field's soil, and the frame takes no input (`pointer-events: none`).
 - **Ambient spores.** Built in Phase 1a. Spore-white motes, 1–2 native pixels, drift slowly upward on a second canvas behind the field, so they show only in the void. Their density follows `state.sporestorm` (about 24 at 1280×720, plus about 21 per stack). They move at the game's speed and stop while the battle is paused, held for a draft or over. They hold still under `prefers-reduced-motion` and `?test=1`. One seeded pool, no allocations per frame, and no redraw when nothing moved. Test: `tests/browser/frame.test.ts`.
-- **Regroup the HUD (B5).** The top band becomes [your Heartcap bar] [territory tug bar with column ticks and a frontier marker] [their Heartcap bar]. Gold, supply, wave and storm become icon chips. The intent panel gets a larger portrait and a pulsing countdown when a counter is coming.
-- **Deploy (B4).** Begin moves into the bottom band as the primary button, and the deploy hint becomes a callout. While placing, your mat's legal tiles get a soft lilac grid; an illegal hover keeps its reason.
-- **Tray (B2, B3).** A cap-shaped role band across the card top replaces the left stripe, sprites draw at 2× (64px), and price becomes a chip. Unaffordable means unlit (sprite desaturated, price in danger red, a "need 40" fill), not 45% opacity. Fourteen cards fit at 1280 in a compact mode, with hotkeys unchanged.
-- **Controls (B8).** Speed and pause become one segmented control, and Hold/Advance becomes an icon toggle. "Numbers" moves to settings. The empty inspect panel shows a short tip instead of a hotkey list.
-- *Done when:* screenshots at 1280×720 and 1920×1080 have no clipped cards with 14 buildings, the battle-1 economy tip still fires, and the browser tests pass.
+- **Regroup the HUD (B5). Built in Phase 1b (2026-10-29).** The top band is [your Heartcap] [stat chips over the territory tug] [their Heartcap] [the General's Intent].
+  - Each Heartcap shows its cap sprite (`heartcap-cap`, 1×), HP in the display face at 30 px and a striped bar that drains toward the field's centre; under a third, the number turns danger red. The in-field HP pills are gone, so the crowns stand alone in the ceiling.
+  - Gold, supply, wave and storm are icon chips with tabular Jersey 10 numerals and a small word. The storm chip lights lilac once the storm is on.
+  - The tug has one bar per lane (`--cols` draws a tick per column), stripes for each side and a glowing lilac line at your frontier, with column counts under its ends.
+  - The intent panel's portrait is 48 px (3×). A counter warning shows the kind, one pip per wave left and the countdown; the pips and the count pulse, and hold still under reduced motion.
+- **Deploy (B4). Built in Phase 1b.** Begin is the primary button at the top of the bottom band's controls (Jersey 10 at 30 px, lilac glow, an `Enter` keycap). Once the battle is live, the speed control takes its place.
+  - The deploy hint, "Paused" and the save-recovery notice are pinned callouts in the callout lane, so nothing sits on the field. A callout pops in once; reordering the lane no longer replays the animation.
+  - While placing, your legal tiles get a lilac wash and grid (`Session.legalTiles()` from the sim's `legalPlacements`, minus pending placements, cached on the board). An illegal hover keeps its reason.
+  - The ghost tip sits beside the footprint inside the field (right, or left near the right edge, centred and clamped vertically), so it never covers the ghost, a band or the lane.
+- **Tray (B2, B3). Built in Phase 1b.** A cap-shaped band in the role's colour (its lower edge curved like a cap's rim) replaces the left stripe; sprites draw at 2× (64 px); the price is a gold chip; the summary takes at most two lines in a fixed slot, so names, tags and summaries line up along the tray.
+  - Unaffordable is unlit: the sprite desaturates, the price turns danger red, and the summary becomes a gold-deep bar filling toward the price with "need N". The name stays readable, and nothing fades.
+  - Cards are 88–108 px wide however few there are, so three cards don't stretch. When the cards don't fit one row, `Tray.fit()` switches to **compact**: two rows with the sprite at 1× beside the key and price, then the name, the role and the summary on one line each. At 1280×720 that happens from 10 cards; at 1920×1080, 14 cards fit one row. Hotkeys are unchanged.
+  - The Spore Exchange's summary is now "interest cap +10" (its +1 gold is in the tooltip), and summaries keep a number with its unit (non-breaking spaces).
+- **Controls (B8). Built in Phase 1b.** Speed and pause are one segmented control. Hold/Advance is a two-icon switch per lane (`i-hold`, `i-advance`), the lit one being the stance, with the state and timer beside it; a hold on cooldown is unlit.
+  - "Numbers" moved to a settings popover beside the speaker: a new `i-settings` cog (preview sheet approved 2026-10-29) opens Off / Big hits / All, saved under the same settings key. A press outside or Escape closes it.
+  - The empty inspect panel shows a two-line tip.
+  - Bands: top 100 px, bottom 204 px. The field keeps 8 px of margin instead of 20 px now that nothing is pinned to its edges, so height-limited maps lose little (Twin Roots at 1280×720 draws at 1.78×, was 1.91×; Bogwater Hollow is unchanged at 2×).
+- *Done when:* screenshots at 1280×720 and 1920×1080 have no clipped cards with 14 buildings, the battle-1 economy tip still fires, and the browser tests pass. Met: `tests/browser/hud.test.ts` checks the tray at 1280×720, 1366×650 and 1920×1080, unlit cards, Begin and the pinned callouts, the legal grid, the ghost tip, the settings popover and the economy tip.
 
 ### Phase 2: Run screens (L)
 
@@ -129,7 +142,7 @@ Each phase is one feature branch from `develop`, playtested on the dev site. No 
 3. **Sound:** done, ahead of Phase 1. Sounds are synthesized with WebAudio from parameters in `data/sounds.json`, the way sprites are text-defined, with no audio files (SPEC §13.9; audition them at `?scene=sounds`). Specific sounds can switch to CC0 samples later if the synthesized set feels thin.
 4. **Order:** the battle screen before the run screens. The run screens still get Phase 0's fonts, icons and borders for free.
 
-Build order: Phase 0, then sound, then Phase 1 (split into the field frame and the HUD/tray/deploy work), then a playtest on the dev site. Phase 2 comes after that. Each step is a PR into `develop`. Phase 0 (PR #12), sound (PR #13) and Phase 1a, the field frame, are built. The frame's preview sheet was approved on 2026-10-29, crowns included.
+Build order: Phase 0, then sound, then Phase 1 (split into the field frame and the HUD/tray/deploy work), then a playtest on the dev site. Phase 2 comes after that. Each step is a PR into `develop`. Phase 0 (PR #12), sound (PR #13) and Phase 1a, the field frame (PR #14), are merged; Phase 1b, the HUD, deploy, tray and controls, is built (2026-10-29). The frame's preview sheet was approved on 2026-10-29, crowns included, and so was the `i-settings` cog, Phase 1b's one new sprite.
 
 ## Research notes
 

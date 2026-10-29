@@ -1,9 +1,11 @@
-// Top band (SPEC §10.2): gold and income, supply, wave and clock, Sporestorm, territory tug bar,
-// and the General's Intent panel (SPEC §7.5): portrait, the active doctrine's icon and any pending
-// warning with its countdown in waves. It names counter kinds, never units.
+// Top band (SPEC §10.2): your Heartcap at the left end and theirs at the right, so the win condition
+// frames the band, with the territory tug between them (one bar per lane, a tick per column, a glowing
+// frontier) under icon chips for gold and income, supply, wave and clock, and Sporestorm. The General's
+// Intent panel (SPEC §7.5) closes the band: portrait, the active doctrine's icon and any pending warning
+// with a pulsing countdown in waves. It names counter kinds, never units.
 import type { Content } from '../../data/registry.ts';
 import { formatClock, incomePerMinute } from '../../sim/index.ts';
-import type { BattleState } from '../../sim/index.ts';
+import type { BattleState, Side } from '../../sim/index.ts';
 import { columnsOwned } from '../../sim/world.ts';
 import type { Atlas } from '../../render/atlas.ts';
 import { spriteToCanvas } from '../../render/atlas.ts';
@@ -12,19 +14,80 @@ import { uiIcon } from '../icons.ts';
 import { KIND_HINT, KIND_ICON, KIND_LABEL, intentOf, wavesText } from '../doctrine.ts';
 import type { Intent } from '../doctrine.ts';
 
+/** A Heartcap's block: its cap, HP and a bar that drains toward the field's centre. */
+class HeartBar {
+  readonly el: HTMLElement;
+  private hp = h('b');
+  private max = h('small');
+  private fill = h('i');
+  private pct = -1;
+
+  constructor(atlas: Atlas, private side: Side, label: string, title: string) {
+    const cap = spriteToCanvas(atlas, 'heartcap-cap', side === 'player' ? 'velvet-bloom' : 'gray-rot');
+    cap.className = 'heart-cap';
+    cap.setAttribute('aria-hidden', 'true');
+    this.el = h('div', { class: `heart ${side}`, id: `hud-hp-${side}`, title },
+      cap,
+      h('div', { class: 'heart-label' }, label),
+      h('div', { class: 'heart-hp' }, this.hp, this.max),
+      h('div', { class: 'hpbar', role: 'meter', 'aria-label': label, 'aria-valuemin': 0, 'aria-valuemax': 100 }, this.fill),
+    );
+  }
+
+  update(state: BattleState): void {
+    const s = state.sides[this.side];
+    setText(this.hp, String(s.heartcapHp));
+    setText(this.max, `/${s.heartcapMaxHp}`);
+    const pct = Math.max(0, Math.round((1000 * s.heartcapHp) / s.heartcapMaxHp) / 10);
+    if (pct === this.pct) return;
+    this.pct = pct;
+    this.fill.style.width = `${pct}%`;
+    this.fill.parentElement!.setAttribute('aria-valuenow', String(pct));
+    // under a third, the number says it in danger red as well as the bar's length
+    toggleClass(this.el, 'low', pct < 34);
+  }
+}
+
+/** One lane's territory: your striped columns, the unclaimed ones, theirs, and the frontier between. */
+class LaneTug {
+  readonly el: HTMLElement;
+  private p = h('div', { class: 'p' });
+  private n = h('div', { class: 'n' });
+  private e = h('div', { class: 'e' });
+  private front = h('div', { class: 'front' });
+  private key = '';
+
+  constructor(private lane: number, columns: number) {
+    this.el = h('div', { class: 'tugbar', style: `--cols:${columns}` }, this.p, this.n, this.e, this.front);
+  }
+
+  update(state: BattleState): void {
+    const L = state.lanes[this.lane]!, W = state.map.width;
+    const key = `${L.pBorder}|${L.eBorder}`;
+    if (key === this.key) return;
+    this.key = key;
+    const pc = L.pBorder + 1, ec = W - L.eBorder;
+    this.p.style.width = `${(100 * pc) / W}%`;
+    this.n.style.width = `${(100 * (W - pc - ec)) / W}%`;
+    this.e.style.width = `${(100 * ec) / W}%`;
+    this.front.style.left = `${(100 * pc) / W}%`;
+  }
+}
+
 export class TopBand {
   readonly el: HTMLElement;
   private gold = h('b', { id: 'hud-gold' });
   private goldStat: HTMLElement;
-  private income = h('span', { class: 'sub', id: 'hud-income' });
+  private income = h('small', { id: 'hud-income' });
   private supply = h('b', { id: 'hud-supply' });
   private wave = h('b', { id: 'hud-wave' });
-  private clock = h('span', { class: 'sub', id: 'hud-clock' });
+  private clock = h('small', { id: 'hud-clock' });
   private storm = h('b', { id: 'hud-storm' });
-  private columns = h('span', { id: 'hud-columns' });
-  private tugP = h('div', { class: 'p' });
-  private tugN = h('div', { class: 'n' });
-  private tugE = h('div', { class: 'e' });
+  private stormStat: HTMLElement;
+  private colsP = h('span', { class: 'p' });
+  private colsE = h('span', { class: 'e' });
+  private hearts: HeartBar[];
+  private lanes: LaneTug[];
   private doctrine = h('div', { class: 'doctrine', id: 'hud-doctrine' });
   private warning = h('div', { class: 'warning', id: 'hud-warning', hidden: true });
   private intentKey = '';
@@ -34,21 +97,35 @@ export class TopBand {
     const ctl = state.config.enemy.controller;
     const general = ctl.kind === 'general' ? content.generals[ctl.id] : undefined;
     const portrait = spriteToCanvas(atlas, general?.sprite ?? 'g-scripted', 'gray-rot');
+    portrait.className = 'portrait';
+    portrait.setAttribute('aria-hidden', 'true');
     const enemyName = general ? general.name : ctl.kind === 'bot' ? `Bot: ${ctl.id}` : 'Gray Rot (idle)';
-    this.goldStat = h('span', { class: 'stat', title: 'Gold (and projected income per minute)' }, uiIcon(atlas, 'i-gold'), this.gold, this.income);
+    this.hearts = [
+      new HeartBar(atlas, 'player', 'Your Heartcap', 'Your Heartcap: if it falls, the battle is lost'),
+      new HeartBar(atlas, 'enemy', 'Gray Rot Heartcap', "The Gray Rot's Heartcap: bring it down to win"),
+    ];
+    this.lanes = state.lanes.map((_, i) => new LaneTug(i, state.map.width));
+    this.goldStat = h('span', { class: 'chip gold', title: 'Gold, and projected income per minute' }, uiIcon(atlas, 'i-gold'), this.gold, this.income);
+    const st = content.balance.sporestorm, pct = (x: number) => `${x < 0 ? '−' : '+'}${Math.round(Math.abs(x) * 100)}%`;
+    this.stormStat = h('span', { class: 'chip storm', title: `Sporestorm stacks: units ${pct(st.unitDamagePerStack)} damage, turrets ${pct(st.turretDamagePerStack)}, Heartcaps take ${pct(st.heartcapTakenPerStack)} each` },
+      uiIcon(atlas, 'i-storm'), h('small', null, 'Storm'), this.storm);
+    const lanes = state.lanes.length;
     this.el = h('header', { class: 'top' },
-      h('div', { class: 'stats' },
-        h('div', { class: 'statrow' },
+      this.hearts[0]!.el,
+      h('div', { class: 'mid' },
+        h('div', { class: 'chips' },
           this.goldStat,
-          h('span', { class: 'stat', title: 'Supply used / cap' }, uiIcon(atlas, 'i-supply'), this.supply),
-          h('span', { class: 'stat', title: 'Wave and battle clock' }, uiIcon(atlas, 'i-wave'), h('span', null, 'Wave '), this.wave, this.clock),
-          h('span', { class: 'stat', title: 'Sporestorm stacks: units +10% damage, turrets −10%, Heartcaps take +10% each' }, uiIcon(atlas, 'i-storm'), h('span', null, 'Storm '), this.storm),
+          h('span', { class: 'chip', title: 'Supply used / cap' }, uiIcon(atlas, 'i-supply'), this.supply, h('small', null, 'supply')),
+          h('span', { class: 'chip', title: 'Wave and battle clock' }, uiIcon(atlas, 'i-wave'), h('small', null, 'Wave'), this.wave, this.clock),
+          this.stormStat,
         ),
-        h('div', { class: 'tug', title: 'Territory: columns owned' }, h('span', { class: 'hint' }, 'territory'), h('div', { class: 'tugbar', id: 'hud-tug' }, this.tugP, this.tugN, this.tugE), this.columns),
+        h('div', { class: `tug lanes-${lanes}`, id: 'hud-tug', title: `Territory: columns owned${lanes > 1 ? ', one bar per lane' : ''}` }, ...this.lanes.map((l) => l.el)),
+        h('div', { class: 'tug-label', id: 'hud-columns' }, this.colsP, h('span', { class: 'muted' }, 'territory'), this.colsE),
       ),
+      this.hearts[1]!.el,
       h('aside', { class: 'intent', id: 'hud-intent' },
         portrait,
-        h('div', { class: 'title' }, "GENERAL'S INTENT"),
+        h('div', { class: 'title' }, "General's intent"),
         h('div', { class: 'name', id: 'hud-general' }, enemyName),
         this.doctrine,
         this.warning,
@@ -79,8 +156,10 @@ export class TopBand {
     this.doctrine.replaceChildren(...kinds);
     this.warning.hidden = !i.pending;
     if (i.pending) {
-      this.warning.replaceChildren(icon(i.pending.kind), h('span', null, 'Preparing to counter your ', h('b', null, KIND_LABEL[i.pending.kind])),
-        h('span', { class: 'countdown', id: 'hud-countdown' }, wavesText(i.pending.waves)));
+      // one lit pip per wave left; the pips and the count pulse, and hold still under reduced motion
+      const pips = h('span', { class: 'pips', 'aria-hidden': 'true' }, ...Array.from({ length: Math.min(i.pending.waves, 4) }, () => h('i')));
+      this.warning.replaceChildren(icon(i.pending.kind), h('span', { class: 'what' }, 'Preparing to counter your ', h('b', null, KIND_LABEL[i.pending.kind])),
+        h('span', { class: 'when' }, pips, h('span', { class: 'countdown', id: 'hud-countdown' }, wavesText(i.pending.waves))));
       this.warning.dataset.kind = i.pending.kind;
     }
   }
@@ -95,19 +174,18 @@ export class TopBand {
   update(state: BattleState): void {
     const p = state.sides.player;
     setText(this.gold, String(p.gold));
-    setText(this.income, `(+${incomePerMinute(state, 'player')}/min)`);
+    setText(this.income, `+${incomePerMinute(state, 'player')}/min`);
     setText(this.supply, `${p.supplyUsed}/${p.supplyCap}`);
     const wave = Math.floor(state.tick / state.rules.waveTicks) + 1;
     setText(this.wave, String(state.phase === 'deploy' ? 0 : wave));
-    setText(this.clock, `· ${formatClock(state.tick, state.rules.tickRate)}`);
+    setText(this.clock, formatClock(state.tick, state.rules.tickRate));
     setText(this.storm, String(state.sporestorm));
-    toggleClass(this.storm, 'storm-on', state.sporestorm > 0);
+    toggleClass(this.stormStat, 'on', state.sporestorm > 0);
+    for (const b of this.hearts) b.update(state);
+    for (const l of this.lanes) l.update(state);
     const pc = columnsOwned(state, 'player'), ec = columnsOwned(state, 'enemy');
-    const total = state.map.width * state.lanes.length;
-    this.tugP.style.width = `${(100 * pc) / total}%`;
-    this.tugN.style.width = `${(100 * (total - pc - ec)) / total}%`;
-    this.tugE.style.width = `${(100 * ec) / total}%`;
-    setText(this.columns, `${pc} : ${ec} columns`);
+    setText(this.colsP, `${pc} column${pc === 1 ? '' : 's'}`);
+    setText(this.colsE, `${ec} column${ec === 1 ? '' : 's'}`);
     this.renderIntent(intentOf(state));
   }
 }

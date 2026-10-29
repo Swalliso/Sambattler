@@ -41,6 +41,14 @@ export class CombatLog {
   }
 }
 
+/** The empty panel: a short tip, not a hotkey list (those live in Help). */
+function emptyTip(): HTMLElement[] {
+  return [
+    h('div', null, 'Click a building or unit to see its stats here.'),
+    h('div', { class: 'muted' }, 'Your buildings can be sold or set to merge from this panel.'),
+  ];
+}
+
 export class InspectPanel {
   readonly el = h('section', { class: 'inspect', id: 'inspect' });
   private key = '';
@@ -69,7 +77,7 @@ export class InspectPanel {
       onclick: () => { if (this.state && this.selected !== null) this.requestSell(this.state, this.selected); },
     });
     this.buttons = h('div', { class: 'buttons', hidden: true }, this.mergeBtn, this.sellBtn);
-    this.details.append(h('div', { class: 'muted' }, 'Click a building or unit. Hotkeys: 1–8 build, Space pause, [ ] speed, Tab cycle, M merge, X sell, H help.'));
+    this.details.append(...emptyTip());
     this.el.append(this.title, this.details, this.buttons);
   }
 
@@ -99,7 +107,7 @@ export class InspectPanel {
       this.confirmSellFor = null;
       this.buttons.hidden = true;
       setText(this.title, 'INSPECT');
-      this.details.replaceChildren(h('div', { class: 'muted' }, 'Click a building or unit to inspect it. 1–8 build · Space pause · [ ] speed · Tab cycle · M merge · X sell · H help.'));
+      this.details.replaceChildren(...emptyTip());
     }
   }
 

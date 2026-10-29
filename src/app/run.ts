@@ -144,8 +144,7 @@ export class RunController {
     const begin = () => { if (state.phase === 'deploy' && !state.queue.some((c) => c.type === 'begin')) session.issue({ type: 'begin' }); };
     const view = new BattleView(session, content, atlas, { begin, again: () => {}, rematch: () => {}, continueRun: () => this.finish() }, this.env.debug, this.env.still);
     if (recoveryNotice) {
-      view.root.querySelector('#begin-box')!.prepend(h('div', { class: 'hint', id: 'save-recovery', role: 'status' },
-        'The saved battle could not be restored. This battle restarted from deployment; your run progress is preserved.'));
+      view.notice('save-recovery', 'The saved battle could not be restored. This battle restarted from deployment; your run progress is preserved.');
     }
     document.getElementById('app')!.replaceChildren(view.root);
     if (state.phase === 'deploy' && (config.player.controller.kind !== 'human' || ticks !== null)) {

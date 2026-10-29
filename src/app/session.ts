@@ -2,7 +2,7 @@
 // placement). Player input becomes ordinary tick-stamped commands (SPEC §13.5).
 import type { Content } from '../data/registry.ts';
 import {
-  footprintOnLoam, nextCommandTick, placementProblem, priceAt, depthOf, queueCommand,
+  footprintOnLoam, legalPlacements, nextCommandTick, placementProblem, priceAt, depthOf, queueCommand,
 } from '../sim/index.ts';
 import type { BattleState, Command, CommandBody } from '../sim/index.ts';
 import { laneOfRow } from '../sim/world.ts';
@@ -26,6 +26,8 @@ export class Session {
   hover: { col: number; row: number } | null = null;
   selected: number | null = null;
   shift = false;
+  private legalKey = '';
+  private legalMask: Uint8Array | null = null;
 
   constructor(public state: BattleState, public content: Content) {}
 
@@ -87,6 +89,33 @@ export class Session {
     let g = this.state.sides.player.gold;
     for (const c of this.pending()) if (c.type === 'place') g -= priceAt(this.state, 'player', c.buildingId, c.col);
     return g;
+  }
+
+  /**
+   * While placing: one byte per map tile (row-major), 1 where some legal spot for the building covers
+   * it, ignoring gold (an illegal hover still says why). Recomputed only when the board changes.
+   */
+  legalTiles(): Uint8Array | null {
+    const s = this.state;
+    if (!this.placing || s.phase === 'ended') return null;
+    const def = s.compiled.player.buildings[this.placing];
+    if (!def) return null;
+    const pending = this.pending().filter((c): c is Extract<Command, { type: 'place' }> => c.type === 'place');
+    const key = `${this.placing}|${s.lanes.map((l) => `${l.pBorder},${l.eBorder}`).join(';')}|${pending.map((c) => `${c.col},${c.row}`).join(';')}|${s.buildings.map((b) => b.id).join(',')}`;
+    if (key === this.legalKey) return this.legalMask;
+    this.legalKey = key;
+    const W = s.map.width;
+    const mask = new Uint8Array(W * s.map.height);
+    for (const p of legalPlacements(s, 'player', this.placing)) {
+      const blocked = pending.some((c) => {
+        const pd = s.compiled.player.buildings[c.buildingId]!;
+        return c.col < p.col + def.w && p.col < c.col + pd.w && c.row < p.row + def.h && p.row < c.row + pd.h;
+      });
+      if (blocked) continue;
+      for (let r = p.row; r < p.row + def.h; r++) for (let c = p.col; c < p.col + def.w; c++) mask[r * W + c] = 1;
+    }
+    this.legalMask = mask;
+    return mask;
   }
 
   ghost(): GhostInfo | null {
