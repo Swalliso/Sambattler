@@ -23,6 +23,7 @@
     "bench": "tsx --expose-gc tools/bench.ts",
     "golden": "tsx tools/golden.ts",
     "screenshot": "tsx tools/screenshot.ts",
+    "og-image": "tsx tools/og-image.ts",
     "verify": "tsx tools/verify.ts",
     "experiment": "tsx tools/experiment.ts"
   },

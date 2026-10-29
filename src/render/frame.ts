@@ -2,13 +2,13 @@
 // field becomes the earth it sits in: a roots ceiling, a soil bed with each side's buried threads, roots
 // at the sides and each Heartcap's crown rising into the ceiling. All of it is text sprites
 // (data/sprites/frame.json), baked once per layout on a canvas at the field's own pixel scale and lined up
-// with the field's pixels. Ambient spores drift over it on a second canvas, thicker with each Sporestorm
-// stack. Both canvases sit behind the field and the bands and take no input.
+// with the field's pixels. Ambient spores (src/render/spores.ts) drift over it on a second canvas, thicker
+// with each Sporestorm stack. Both canvases sit behind the field and the bands and take no input.
 import type { Content } from '../data/registry.ts';
 import type { Atlas, Faction } from './atlas.ts';
+import { SporeDrift } from './spores.ts';
 
 const BG = '#141018';
-const SPORE_WHITE = '#fbf6ff';
 const LILAC = '201, 162, 255';
 const ASH = '184, 196, 168';
 /** A Heartcap strip is two 16 px tiles; its crown is centred on it. */
@@ -16,9 +16,6 @@ const HEART_CX = 16;
 /** Spores per 10 000 native px² of frame, at rest and per Sporestorm stack. */
 const SPORE_BASE = 1.6;
 const SPORE_PER_STACK = 1.4;
-const SPORE_POOL = 320;
-/** Three brightness steps, so a frame sets the fill alpha three times, not once per spore. */
-const SPORE_ALPHA = [0.3, 0.5, 0.75] as const;
 
 /** Where each glowing knot (`l`) sits in a hyphae tile, for its light pool. */
 function knots(content: Content, id: string): [number, number][] {
@@ -33,60 +30,30 @@ export class FieldFrame {
   readonly el: HTMLElement;
   private back: HTMLCanvasElement;
   private bg: CanvasRenderingContext2D;
-  private spores: HTMLCanvasElement;
-  private sg: CanvasRenderingContext2D;
+  private drift: SporeDrift;
   private knotsBloom: [number, number][];
   private knotsRot: [number, number][];
-  private reduced: MediaQueryList;
   /** Frame size in native px, and the field's top-left corner inside it. */
   private w = 0;
   private h = 0;
   private ox = 0;
   private oy = 0;
   private layoutKey = '';
-  // the spore pool, seeded once: home position (0..1 of the frame), rise speed (native px/s), sway
-  private sx = new Float32Array(SPORE_POOL);
-  private sy = new Float32Array(SPORE_POOL);
-  private rise = new Float32Array(SPORE_POOL);
-  private sway = new Float32Array(SPORE_POOL);
-  private swayHz = new Float32Array(SPORE_POOL);
-  private phase = new Float32Array(SPORE_POOL);
-  private size = new Uint8Array(SPORE_POOL);
-  private step = new Uint8Array(SPORE_POOL);
-  /** Seconds of drift so far; it runs at the game's speed and stops while the battle does. */
-  private clock = 0;
-  private last = 0;
-  private drawnClock = -1;
-  private drawnCount = -1;
 
   /**
    * @param fieldW, fieldH the field canvas's native size
    * @param still spores hold still (`?test=1`), so screenshots and browser tests are stable
    */
-  constructor(content: Content, private atlas: Atlas, private fieldW: number, private fieldH: number, private still = false) {
+  constructor(content: Content, private atlas: Atlas, private fieldW: number, private fieldH: number, still = false) {
     this.back = document.createElement('canvas');
     this.bg = this.back.getContext('2d', { alpha: false })!;
-    this.spores = document.createElement('canvas');
-    this.sg = this.spores.getContext('2d')!;
+    this.drift = new SporeDrift(still);
     this.el = document.createElement('div');
     this.el.className = 'fieldframe';
     this.el.setAttribute('aria-hidden', 'true');
-    this.el.append(this.back, this.spores);
+    this.el.append(this.back, this.drift.canvas);
     this.knotsBloom = knots(content, 'f-hyphae');
     this.knotsRot = knots(content, 'f-hyphae-rot');
-    this.reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
-    let seed = 0x5eed;
-    const rnd = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
-    for (let i = 0; i < SPORE_POOL; i++) {
-      this.sx[i] = rnd();
-      this.sy[i] = rnd();
-      this.rise[i] = 1.5 + rnd() * 3.5;
-      this.sway[i] = 0.5 + rnd() * 2.5;
-      this.swayHz[i] = 0.3 + rnd() * 0.9;
-      this.phase[i] = rnd() * Math.PI * 2;
-      this.size[i] = rnd() < 0.25 ? 2 : 1;
-      this.step[i] = Math.floor(rnd() * SPORE_ALPHA.length);
-    }
   }
 
   /**
@@ -99,7 +66,7 @@ export class FieldFrame {
     const ox = Math.ceil((field.left - box.left) / s), oy = Math.ceil((field.top - box.top) / s);
     const left = field.left - ox * s, top = field.top - oy * s;
     const w = Math.ceil((box.right - left) / s), h = Math.ceil((box.bottom - top) / s);
-    for (const c of [this.back, this.spores]) {
+    for (const c of [this.back, this.drift.canvas]) {
       c.style.left = `${(left - box.left) / ui}px`;
       c.style.top = `${(top - box.top) / ui}px`;
       c.style.width = `${(w * s) / ui}px`;
@@ -109,10 +76,10 @@ export class FieldFrame {
     if (key === this.layoutKey) return;
     this.layoutKey = key;
     this.w = w; this.h = h; this.ox = ox; this.oy = oy;
-    this.back.width = this.spores.width = w;
-    this.back.height = this.spores.height = h;
+    this.back.width = w;
+    this.back.height = h;
+    this.drift.resize(w, h);
     this.bake();
-    this.drawnCount = -1;
   }
 
   /** Copies of a sprite side by side across [x0, x1), on the field's tile grid. */
@@ -196,26 +163,6 @@ export class FieldFrame {
    * still under reduced motion and in test mode. Nothing is drawn when nothing moved.
    */
   frame(stacks: number, now: number, rate: number): void {
-    const dt = this.last ? Math.min(now - this.last, 250) : 0;
-    this.last = now;
-    if (!this.still && !this.reduced.matches) this.clock += (dt / 1000) * rate;
-    if (!this.w) return;
-    const n = Math.min(SPORE_POOL, Math.round((this.w * this.h * (SPORE_BASE + SPORE_PER_STACK * stacks)) / 10000));
-    if (this.clock === this.drawnClock && n === this.drawnCount) return;
-    this.drawnClock = this.clock;
-    this.drawnCount = n;
-    const g = this.sg, W = this.w, H = this.h, t = this.clock;
-    g.clearRect(0, 0, W, H);
-    g.fillStyle = SPORE_WHITE;
-    for (let b = 0; b < SPORE_ALPHA.length; b++) {
-      g.globalAlpha = SPORE_ALPHA[b]!;
-      for (let i = 0; i < n; i++) {
-        if (this.step[i] !== b) continue;
-        const x = (((this.sx[i]! * W + this.sway[i]! * Math.sin(this.swayHz[i]! * t + this.phase[i]!)) % W) + W) % W;
-        const y = (((this.sy[i]! * H - this.rise[i]! * t) % H) + H) % H;
-        g.fillRect(Math.floor(x), Math.floor(y), this.size[i]!, this.size[i]!);
-      }
-    }
-    g.globalAlpha = 1;
+    this.drift.frame(SPORE_BASE + SPORE_PER_STACK * stacks, now, rate);
   }
 }

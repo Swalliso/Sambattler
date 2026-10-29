@@ -1041,6 +1041,16 @@ Each feat is a data record: `id`, `name`, `description`, `scope` (`battle` or `r
 
 Milestone 1 needs only Battle (with deploy) and a simple end screen.
 
+**Run screens as built (docs/ui-ux-plan.md, Phase 2).** Every run screen is DOM (so Playwright can query it), with spores drifting behind it, the run bar on top and a footer with the seed.
+- **Title** (the page with no `scene`): "Spore & Sprawl" in the display face beside the Heartcap's silhouette, lit from below. Continue (only with a saved run, and naming its row and Heartcap), New run (after a confirm if a run is saved), How to play (Help) and Settings (sound and damage numbers, until the settings screen arrives). The run's route and summary have a Title button back. It becomes the door to the Underroot in M6.
+- **Run bar:** the Heartcap's HP and bar, Spores and Amber with their icons, battles won, the kit and the relics. Each relic is a pixel badge whose shape and rim name its rarity (round, diamond, star), with a tooltip on hover or focus.
+- **Route map:** spore pods on soil, one icon per node kind, joined by hyphae from every node to every node in the next row (and from the colony's start to the first row). The path you walked glows violet, the threads you can take now glow lilac, the rest stay dim, and hovering or focusing a pod lights its threads. A legend names the node kinds.
+- **Draft and spoils cards:** a frame per rarity (common bark, uncommon teal-lit, rare amber-lit with a spore sparkle), each keeping its word; the type's icon in the header; a blueprint's price, output and role as chips; `1`–`3` as keycaps (the keys pick on spoils too). Cards deal in left to right and lift on hover.
+- **Event and Grove:** a framed scene at 4× per event (`v-<event id>`) and for the Grove, the story on stalk cream, and the choices as cards with outcome chips (gains, costs with a real minus, gold, notes), each with a word and usually an icon. Number keys pick a choice.
+- **Battle report and run summary:** an outcome banner (on a win the Heartcap blooms in lilac spores, on a loss the cap wilts to ash) with the MVP building beside it, then a staged reveal: the banner, the front line, then the bars. Every table stays.
+- **Help:** four tabs (Matrix · Merging · The general · Keys), each fitting 1280×720; keys are drawn as keycaps.
+- **Motion:** things grow in (from 0.96, ease-out) and nothing bounces more than once. Under `prefers-reduced-motion` there's no stagger, lift, sparkle or drift, and fades take 120 ms or less. `?test=1` holds every run screen still.
+
 ---
 
 ## 11. Content and first-pass numbers
@@ -1485,6 +1495,7 @@ Commands from input are queued with `tick = state.tick + 1`. Headless tools call
   - **The dev site:**
     - it is titled "Spore & Sprawl (dev)", carries `noindex`, and shows a `DEV BUILD · <sha>` tag
     - it keeps its own localStorage keys (prefix `dev/`, `src/app/channel.ts`), because both sites share an origin, so a dev run never resumes or overwrites a saved run on the game
+  - **Link previews:** `index.html` carries Open Graph and Twitter card tags, so a link shared in Slack, Discord or elsewhere shows the title, a line of description and a 1200×630 image. Previews need absolute addresses, so `vite.config.ts` fills them in per build: the game's tags point at `https://swalliso.github.io/Sambattler/og-image.png`, and the dev site's at `/Sambattler/dev/og-image.png` with "(dev)" in the title. The image lives in `public/` (Vite copies it to the site root); `npm run og-image` renders it again from the title screen after the title's art changes.
   - The user creates the GitHub repository and sets Pages' source to "GitHub Actions". Claude can't push without the user's remote and credentials. Locally, `npm run preview` serves the production build, and the screenshot check runs against it.
 
 ### 13.9 Audio
@@ -1793,6 +1804,7 @@ Everything here is runnable by Claude, headlessly, from the project root.
 | `bench` | Performance benchmark (§15.4) |
 | `golden` | Verify or update golden replays (§15.5) |
 | `screenshot` | Playwright browser check (§15.6) |
+| `og-image` | Render the link-preview image `public/og-image.png` (1200×630) from the title screen (§13.8) |
 | `verify` | `typecheck` → `lint` → `validate:data` → `test` → `golden verify` → a sim smoke test (3 seeds) → `bench --quick`. One command, non-zero exit on any failure. |
 
 ### 15.2 Headless simulator: `npm run sim -- [options]`
@@ -1873,7 +1885,7 @@ Script options: `--name <file>`, `--params "<query>"`, `--url <base>`, `--browse
 
 | Param | Meaning |
 |---|---|
-| `scene` | `battle` (default in M1), `deploy`, `draft`, `report`, `route`, `summary`, `underroot`, `title`, and the tool `sounds` (the sound board, §13.9) |
+| `scene` | `title` (the default: with no `scene` and no battle parameters the page opens on the title), `run` (resume the saved run or start one, skipping the title), `battle` (the default when battle parameters are given), `deploy`, `draft`, `report`, `route`, `summary`, `underroot`, and the tool `sounds` (the sound board, §13.9) |
 | `map`, `seed`, `battleIndex` | Battle setup |
 | `player`, `enemy` | Controllers: `human`, `bot:<id>`, `general:<id>` |
 | `scenario` | Start from a scenario file |
@@ -1894,7 +1906,7 @@ Script options: `--name <file>`, `--params "<query>"`, `--url <base>`, `--browse
 1. No console errors and no page errors.
 2. `__GAME__.hash` equals the hash from headless `npm run sim` with the same parameters at the same tick. This cross-checks Node against the browser.
 3. The canvas isn't blank: at least 12 distinct colors in a sampled grid, and both team tints present in their home columns.
-4. The HUD agrees with the state. For example, `#hud-gold` equals `summary().gold.player` and `#hud-supply` equals `summary().supply.player`.
+4. The HUD agrees with the state. For example, `#hud-gold` equals `summary().gold.player` and `#hud-supply` equals `summary().supply.player`. On run screens the DOM agrees with the run: the route's six rows and node icons, the draft's cards, the summary's battles, the intel bars, and on the title the wordmark, a primary button, How to play and Settings. The title holds no run or battle yet, so its hash check compares empty hashes.
 5. It writes `artifacts/screenshots/<name>.png` and a matching `<name>.json` summary.
 
 Claude then **opens the PNG with the Read tool** and checks the milestone's visual checklist. For interactive spot checks it can also open `npm run dev` in its built-in browser pane.

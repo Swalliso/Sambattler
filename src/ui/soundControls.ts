@@ -40,25 +40,32 @@ function setOpen(ctl: HTMLElement, open: boolean): void {
   ctl.querySelector<HTMLElement>('.sound-pop')!.hidden = !open;
 }
 
-/** `opens` is where the popover goes: up from the battle's bottom band, down from the run bar. */
-export function soundControl(atlas: Atlas, prefs: SoundPrefs, opens: 'up' | 'down'): HTMLElement {
-  bindGlobal();
-  const on = uiIcon(atlas, 'i-sound'), off = uiIcon(atlas, 'i-mute');
-  on.classList.add('when-on');
-  off.classList.add('when-off');
-  const mute = h('button', {
-    class: 'btn has-ico sound-mute', 'data-sfx': 'none', 'aria-label': 'Mute', 'aria-pressed': 'false',
-    onclick: () => prefs.toggleMute(),
-  }, on, off);
-  const rows = SLIDERS.map(([key, label]) => {
+function sliderRows(prefs: SoundPrefs): HTMLElement[] {
+  return SLIDERS.map(([key, label]) => {
     const input = h('input', { type: 'range', min: 0, max: 100, step: 1, 'data-level': key, 'aria-label': `${label} volume` });
     const value = (): Partial<SoundLevels> => ({ [key]: Number(input.value) / 100 });
     input.addEventListener('input', () => prefs.set(value(), false));
     input.addEventListener('change', () => prefs.set(value(), true));
     return h('label', { class: 'sound-row' }, h('span', null, label), input, h('b', { 'data-level-text': key }));
   });
+}
+
+function muteButton(atlas: Atlas, prefs: SoundPrefs, ...label: (HTMLElement | string)[]): HTMLButtonElement {
+  const on = uiIcon(atlas, 'i-sound'), off = uiIcon(atlas, 'i-mute');
+  on.classList.add('when-on');
+  off.classList.add('when-off');
+  return h('button', {
+    class: 'btn has-ico sound-mute', 'data-sfx': 'none', 'aria-label': 'Mute', 'aria-pressed': 'false',
+    onclick: () => prefs.toggleMute(),
+  }, on, off, ...label);
+}
+
+/** `opens` is where the popover goes: up from the battle's bottom band, down from the run bar. */
+export function soundControl(atlas: Atlas, prefs: SoundPrefs, opens: 'up' | 'down'): HTMLElement {
+  bindGlobal();
+  const mute = muteButton(atlas, prefs);
   const pop = h('div', { class: `sound-pop ${opens}`, role: 'group', 'aria-label': 'Volume', hidden: true },
-    ...rows, h('div', { class: 'hint' }, 'Click the speaker or press S to mute'));
+    ...sliderRows(prefs), h('div', { class: 'hint' }, 'Click the speaker or press S to mute'));
   const ctl = h('div', { class: `sound-ctl ${opens}` }, mute, pop);
   let timer: ReturnType<typeof setTimeout> | undefined;
   const later = (open: boolean, ms: number) => {
@@ -71,6 +78,15 @@ export function soundControl(atlas: Atlas, prefs: SoundPrefs, opens: 'up' | 'dow
   // keyboard: focusing the speaker opens the sliders, so Tab reaches them
   ctl.addEventListener('focusin', (e) => { if ((e.target as Element).matches(':focus-visible')) later(true, 0); });
   ctl.addEventListener('focusout', (e) => { if (!ctl.contains(e.relatedTarget as Node | null)) later(false, 0); });
+  syncControl(ctl, prefs.get());
+  return ctl;
+}
+
+/** The same mute and sliders laid open, for a settings panel (the title's settings popover). */
+export function soundPanel(atlas: Atlas, prefs: SoundPrefs): HTMLElement {
+  const ctl = h('div', { class: 'sound-ctl inline', role: 'group', 'aria-label': 'Sound' },
+    muteButton(atlas, prefs, h('span', { class: 'when-on' }, 'Sound on'), h('span', { class: 'when-off' }, 'Sound off')),
+    ...sliderRows(prefs));
   syncControl(ctl, prefs.get());
   return ctl;
 }

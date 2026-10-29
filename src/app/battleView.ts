@@ -353,7 +353,7 @@ export class BattleView {
       this.ended = true;
       s.placing = null;
       if (this.help) this.toggleHelp();
-      this.report = battleReport(s.content, state, { again: this.actions.again, rematch: this.actions.rematch, ...(this.actions.continueRun ? { continueRun: this.actions.continueRun } : {}) });
+      this.report = battleReport(s.content, state, { again: this.actions.again, rematch: this.actions.rematch, ...(this.actions.continueRun ? { continueRun: this.actions.continueRun } : {}) }, this.atlas);
       document.body.append(this.report);
     }
   }

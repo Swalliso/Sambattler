@@ -1,6 +1,7 @@
-// The battle's settings popover, beside the sound control: a cog button that opens a small panel above
-// it. It holds the damage-numbers choice (off, big hits, all) until the settings screen arrives; the
-// choice is saved with the other settings (src/app/settings.ts). A press outside, or Escape, closes it.
+// The settings popover: in battle, a cog beside the sound control that opens a small panel above it; on
+// the title, a Settings button whose panel also holds the sound sliders. It holds the damage-numbers choice
+// (off, big hits, all) until the settings screen arrives; the choice is saved with the other settings
+// (src/app/settings.ts). A press outside, or Escape, closes it.
 import type { DamageNumbers } from '../render/renderer.ts';
 import type { Atlas } from '../render/atlas.ts';
 import { h, toggleClass } from './h.ts';
@@ -31,7 +32,16 @@ export interface SettingsControl {
   sync(numbers: DamageNumbers): void;
 }
 
-export function settingsControl(atlas: Atlas, setNumbers: (v: DamageNumbers) => void): SettingsControl {
+export interface SettingsOptions {
+  /** A text button (the title's menu) in place of the cog. */
+  label?: string;
+  /** Where the panel opens: up from the battle's bottom band (the default), or beside the button. */
+  opens?: 'up' | 'side';
+  /** Shown above the damage numbers (the title's sound sliders). */
+  before?: HTMLElement;
+}
+
+export function settingsControl(atlas: Atlas, setNumbers: (v: DamageNumbers) => void, opts: SettingsOptions = {}): SettingsControl {
   bindGlobal();
   const pick = new Map<DamageNumbers, HTMLButtonElement>();
   const seg = h('div', { class: 'seg', id: 'numbers', role: 'group', 'aria-label': 'Damage numbers' },
@@ -40,13 +50,15 @@ export function settingsControl(atlas: Atlas, setNumbers: (v: DamageNumbers) => 
       pick.set(v, b);
       return b;
     }));
-  const pop = h('div', { class: 'settings-pop', id: 'settings-pop', role: 'group', 'aria-label': 'Settings', hidden: true },
+  const pop = h('div', { class: `settings-pop ${opts.opens ?? 'up'}`, id: 'settings-pop', role: 'group', 'aria-label': 'Settings', hidden: true },
+    opts.before ? h('div', { class: 'pop-label' }, 'Sound') : null, opts.before ?? null,
     h('div', { class: 'pop-label' }, 'Damage numbers'), seg,
     h('div', { class: 'hint' }, 'Numbers rise off hits on the field. Saved for every battle.'));
   const btn = h('button', {
-    class: 'btn has-ico', id: 'settings-btn', title: 'Settings', 'aria-label': 'Settings', 'aria-expanded': 'false', 'aria-controls': 'settings-pop',
+    class: 'btn has-ico', id: 'settings-btn', title: opts.label ? null : 'Settings', 'aria-label': opts.label ? null : 'Settings',
+    'aria-expanded': 'false', 'aria-controls': 'settings-pop',
     onclick: () => setOpen(el, !el.classList.contains('open')),
-  }, uiIcon(atlas, 'i-settings'));
+  }, uiIcon(atlas, 'i-settings'), opts.label ?? null);
   const el = h('div', { class: 'settings-ctl' }, btn, pop);
   // Escape closes it without also cancelling a placement (src/app/input.ts listens on the window)
   el.addEventListener('keydown', (e) => {
