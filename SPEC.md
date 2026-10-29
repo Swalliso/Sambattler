@@ -1375,7 +1375,7 @@ tools (Node CLIs) ──► run, meta, sim, data
 ├─ index.html
 ├─ package.json            # scripts in §15.1
 ├─ tsconfig.json  vite.config.ts  vitest.config.ts  eslint.config.js
-├─ .github/workflows/deploy.yml
+├─ .github/workflows/deploy.yml, ci.yml
 ├─ data/                   # ALL tunable content (JSON), validated by zod
 │  ├─ balance.json  balance-targets.json  CHANGELOG-balance.md
 │  ├─ factions/velvet-bloom/{buildings,units,upgrades,strains}.json
@@ -1452,11 +1452,21 @@ Commands from input are queued with `tick = state.tick + 1`. Headless tools call
 
 - **Storage:** a `Storage` interface with a localStorage implementation in the browser and an in-memory one in tests. Profile format in §9.7, run resume in §8.9.
 - **Deployment:**
-  - `npm run build` emits a static `dist/`.
-  - **Two sites, one Pages deployment:** `main` serves the game at https://swalliso.github.io/Sambattler/, and `develop` serves the dev site at https://swalliso.github.io/Sambattler/dev/. New features and rule changes land on `develop` first, get playtested on the dev site, then reach players by merging `develop` into `main`.
-  - `.github/workflows/deploy.yml` verifies every push and pull request. Every deploy builds both branches: `main` into `dist/`, and `develop` into `dist/dev/` with `VITE_CHANNEL=dev` and `VITE_BUILD=<short sha>`. It then deploys with `actions/upload-pages-artifact` and `actions/deploy-pages`.
-  - The `github-pages` environment only accepts deploys from `main`. So a push to `develop` is verified on `develop`, then triggers a `workflow_dispatch` of the workflow on `main`, which runs verify and the two-branch deploy. A missing or broken `develop` never blocks `main`: the run deploys `main` alone with a warning.
-  - **The dev site:** it shows a `DEV · <sha>` badge and a `[dev]` title. It keeps its own localStorage keys (prefix `dev/`, `src/app/channel.ts`), because both sites share an origin. A dev run never resumes or overwrites a main-site save.
+  - `npm run build` emits a static `dist/`. `npm run build:dev` emits the dev-site build (`--mode develop`).
+  - **Branches** (the same strategy as Swalliso/dig-deep):
+    - `main` is the game, at https://swalliso.github.io/Sambattler/. It changes only through a release PR from `develop`, or a `hotfix/…` branch.
+    - `develop` is the integration branch, at https://swalliso.github.io/Sambattler/dev/. Finished `feature/…` branches (made from `develop`) are merged into it by PR and playtested there.
+    - A hotfix is made from `main`, merged into `main`, then `main` is merged back into `develop`.
+  - **`.github/workflows/deploy.yml`** runs on every push to `main` or `develop`. A Pages deploy replaces the whole site, so each run builds both branches:
+    - `main` is verified and built into the site root
+    - `develop` is verified and built into `/dev/` with `VITE_COMMIT`
+    - `actions/deploy-pages` then publishes the result
+    - A broken `develop` never blocks `main`: on a push to `main` it is left out with a warning; on a push to `develop` the run fails.
+    - The `github-pages` environment allows deployments from both `main` and `develop`.
+  - **`.github/workflows/ci.yml`** (job `test-and-build`) runs `npm run verify`, the browser tests and both builds on every pull request, and on pushes to `feature/**` and `hotfix/**`.
+  - **The dev site:**
+    - it is titled "Spore & Sprawl (dev)", carries `noindex`, and shows a `DEV BUILD · <sha>` tag
+    - it keeps its own localStorage keys (prefix `dev/`, `src/app/channel.ts`), because both sites share an origin, so a dev run never resumes or overwrites a saved run on the game
   - The user creates the GitHub repository and sets Pages' source to "GitHub Actions". Claude can't push without the user's remote and credentials. Locally, `npm run preview` serves the production build, and the screenshot check runs against it.
 
 ---

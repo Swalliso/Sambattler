@@ -1,10 +1,12 @@
-// Which site this build serves (SPEC §13.8): the main site, or the dev site at /dev/ that the
-// develop branch deploys to. CI sets VITE_CHANNEL=dev and VITE_BUILD=<short sha> for the dev build.
-// Both sites share an origin, so the dev site keeps its own storage keys: a dev run never resumes
-// or overwrites a main-site save.
+// Which build this is (SPEC §13.8): the game (main, `npm run build`) or the dev site (develop,
+// `npm run build:dev`, served from /Sambattler/dev/). Both sites are on the swalliso.github.io
+// origin, so they share localStorage: every storage key goes through storageKey() so a dev build
+// can never resume or overwrite a saved run on the game.
 
-export const DEV_SITE = import.meta.env.VITE_CHANNEL === 'dev';
-export const BUILD: string = import.meta.env.VITE_BUILD ?? '';
+export const DEV_SITE = import.meta.env.MODE === 'develop';
 
-/** A localStorage key for this site. */
+/** Short commit hash for CI builds (CI sets VITE_COMMIT), or '' for local builds. */
+export const BUILD_SHA = String(import.meta.env.VITE_COMMIT ?? '').slice(0, 7);
+
+/** A localStorage key for this build. The game's keys must never change, or players lose their saves. */
 export const storageKey = (key: string): string => (DEV_SITE ? `dev/${key}` : key);

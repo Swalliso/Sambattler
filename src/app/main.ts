@@ -10,7 +10,7 @@ import {
 import type { BattleState, Content } from '../sim/index.ts';
 import { h } from '../ui/h.ts';
 import { BattleView } from './battleView.ts';
-import { BUILD, DEV_SITE } from './channel.ts';
+import { BUILD_SHA, DEV_SITE } from './channel.ts';
 import { browserContent } from './content.ts';
 import { installBridge } from './debugBridge.ts';
 import { bindInput } from './input.ts';
@@ -74,8 +74,7 @@ function boot(): void {
   }
   if (DEV_SITE) {
     // the dev site says so, with its commit, so playtest notes can name the build
-    document.title = `[dev] ${document.title}`;
-    document.body.append(h('div', { class: 'dev-badge', title: 'Dev site: the develop branch, ahead of the main game' }, `DEV${BUILD ? ` · ${BUILD}` : ''}`));
+    document.body.append(h('div', { class: 'dev-badge', title: 'Dev site: the develop branch, ahead of the game' }, `DEV BUILD${BUILD_SHA ? ` · ${BUILD_SHA}` : ''}`));
   }
   const atlas = bakeAtlas(content);
   if (RUN_SCENES.has(params.scene)) startRun(content, atlas, params);
