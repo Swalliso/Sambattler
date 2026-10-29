@@ -67,6 +67,7 @@
   "tagMult": { "siegeVsStructure": 2.0, "slayerVsElite": 3.0 },
   "effectiveness": { "strongAtLeast": 1.5, "weakAtMost": 0.75 },
   "movement": { "spawnOffset": 0.3, "spawnJitter": 0.4, "driftSpeed": 0.3, "separationPasses": 2 },
+  "laneStance": { "rallyBack": 1.5, "maxHoldSeconds": 30, "cooldownSeconds": 10, "ai": { "musterSupply": 12, "spentSupply": 4 } },
   "ai": {
     "thinkEverySeconds": 1,
     "targetStickySeconds": 10,

@@ -80,7 +80,7 @@ Conventions:
 | Difficulty | Honest AI (same rules, no cheats) at one tuned baseline; a small set of blights after the first win; the full ladder later |
 | Power curve | Rare broken runs are allowed but can't be forced every run |
 | Battle info | Clean field, rich inspection: hit sparks tinted by effectiveness, callouts, a post-battle report with a front-line graph |
-| Unit control | None: units always advance. The commander's one active power is the timing tool. |
+| Unit control | Per-lane **Hold / Advance** (adopted 2026-10-28, §5.2): units advance by default, and a held lane gathers at a rally line behind its border. The commander's one active power is the other timing tool. |
 | Milestone 1 | Territory core only, one battle, scripted general |
 | Art | Text-defined pixel sprites in data files, baked to a canvas atlas at startup |
 
@@ -309,6 +309,10 @@ With homeCols = 4, the turrets cover the home zone plus about 3 contested column
 - **Moving:**
   - With a target out of range: step toward it at `speed`.
   - With no target: advance along the lane (+x for the player, −x for the enemy) while drifting back toward the unit's spawn y at 0.3 tiles/s.
+  - **Hold / Advance** (`laneStance`, adopted 2026-10-28 from the engagement review's E1):
+    - **Holding:** a side can hold each lane. Idle units in a held lane gather at a rally line 1.5 tiles behind the front edge of the side's border column, and merge there. Units that dealt or took damage in the last 2 s fight as usual.
+    - **Limits:** a hold lasts at most 30 s, then the lane advances on its own and can't hold again for 10 s.
+    - **The AI musters:** every AI side holds a lane until 12 supply stands in it, then advances, and holds again once it drops below 4.
   - Units stop at the enemy Heartcap edge.
 - **Separation:**
   - After moving, overlapping units (from either side) are pushed apart by half their overlap each, for at most 2 passes, using the spatial hash.
@@ -940,8 +944,8 @@ Each feat is a data record: `id`, `name`, `description`, `scope` (`battle` or `r
 │                        BATTLEFIELD  (canvas, pixel-scaled)                      │
 │                                                                                 │
 ├──────────────┬─────────────────────────────────────────────────┬───────────────┤
-│ (Q) POWER    │ [1] Burrow 110  [2] Capguard 150  [3] Gill 150  │ INSPECT       │
-│  ◔ ready 0:34│ [4] Rootbreaker 200 [5] Mortar 160 [6] Cellar   │ Capguard Hall │
+│ (Q) POWER    │ [1] Cellar 150  [2] Burrow 110  [3] Capguard 150│ INSPECT       │
+│  ◔ ready 0:34│ [4] Gill 150 [5] Rootbreaker 200 [6] Mortar 160 │ Capguard Hall │
 │ 1× 2× 3×  ❚❚ │                                                 │ merge ON [M]  │
 │              │                                                 │ sell 90 [X]   │
 └──────────────┴─────────────────────────────────────────────────┴───────────────┘
@@ -951,11 +955,13 @@ Each feat is a data record: `id`, `name`, `description`, `scope` (`battle` or `r
   - gold with its per-minute rate, supply used/cap, wave number and clock, Sporestorm stacks
   - a territory tug bar with column counts
   - the **General's Intent** panel at the top right
-- **Callout lane:** transient banners centered above the battlefield. At most 3 show at once, each for 2.5 s, in priority order: counter warnings > building lost > Heartcap under attack > column flipped > merges.
+- **Callout lane:** transient banners centered above the battlefield. At most 3 show at once, each for 2.5 s (tips 6 s), in priority order: counter warnings > building lost > Heartcap under attack > tips > column flipped > merges.
+  - **Battle-1 economy tip** (playtest 2026-10-28): in battle 1 only, if the player has no economy building built, queued or being placed 30 s after Begin, a tip names the first economy card and its hotkey, and the economy cards pulse for 12 s or until one is placed. It fires at most once.
 - **Heartcap HP** is pinned at each end of the battlefield.
 - **Bottom band:**
   - commander power and speed/pause controls (left)
-  - the building tray (center): each card shows its hotkey, sprite, base price, spawn summary and a matrix hint, and greys out when unaffordable
+  - the building tray (center): cards are grouped by role, economy first, then army, defense and utility, each group in kit order; the `1`–`9` hotkeys follow this order. Each card shows its hotkey, sprite, base price, a colored role tag (Economy, Army, Defense, Utility) and a one-line summary, and greys out when unaffordable. Hovering a card, or focusing it from the keyboard, shows a tooltip with the description, output, unit stats, matchups (strong vs, weak vs, armor), merge perks and, for economy, the payback time. Stats come from the compiled side, so upgrades and relics show.
+  - the gold counter pulses whenever income lands
   - the inspect panel (right)
 - **Deploy phase:** the same layout, with a large **Begin** button and the starting gold. The general's opener appears when you press Begin, so both sides place blind.
 - **Draft overlay:** the battlefield dims, and three large cards show type, rarity, effect text and an "owned: X" context line. Reroll shows its cost; Skip shows "+40 gold".
@@ -975,6 +981,7 @@ Each feat is a data record: `id`, `name`, `description`, `scope` (`battle` or `r
 | `Space` | Pause or resume (every command still works while paused) |
 | `]` / `[` | Speed up or down (1× / 2× / 3×) |
 | `Tab` | Cycle through your buildings |
+| `F`, or a lane's Hold / Advance button | Hold every lane, or advance them all; the buttons toggle one lane (§5.2) |
 | `H` | Help overlay: matrix chart, tags, hotkeys |
 | `F3` | Debug overlay (only with `?debug=1`): column presence numbers, capture progress, aggro radii, ids |
 
@@ -1373,7 +1380,7 @@ tools (Node CLIs) ──► run, meta, sim, data
 ├─ index.html
 ├─ package.json            # scripts in §15.1
 ├─ tsconfig.json  vite.config.ts  vitest.config.ts  eslint.config.js
-├─ .github/workflows/deploy.yml
+├─ .github/workflows/deploy.yml, ci.yml
 ├─ data/                   # ALL tunable content (JSON), validated by zod
 │  ├─ balance.json  balance-targets.json  CHANGELOG-balance.md
 │  ├─ factions/velvet-bloom/{buildings,units,upgrades,strains}.json
@@ -1424,6 +1431,7 @@ Commands from input are queued with `tick = state.tick + 1`. Headless tools call
   5. projectiles and sparks
   6. overlays: placement ghost, ranges, debug
 - **Animation:** 2-frame walk cycles at 4 fps, an attack frame on attack events, 2-frame idle for buildings, a spawn puff.
+- **Coin pops:** on each income tick, every economy building that paid out shows a pixel coin and "+N" rising off it (the enemy's at half opacity). The amount is the change in the building's `goldByBuilding` total, so the renderer never recomputes income and the sim's events and hashes are unchanged.
 - **Effects** use a fixed-capacity ring buffer (512).
 - **No camera:** the whole map is always visible.
 
@@ -1449,8 +1457,21 @@ Commands from input are queued with `tick = state.tick + 1`. Headless tools call
 
 - **Storage:** a `Storage` interface with a localStorage implementation in the browser and an in-memory one in tests. Profile format in §9.7, run resume in §8.9.
 - **Deployment:**
-  - `npm run build` emits a static `dist/`.
-  - `.github/workflows/deploy.yml` builds on every push to `main` and deploys with `actions/upload-pages-artifact` and `actions/deploy-pages`.
+  - `npm run build` emits a static `dist/`. `npm run build:dev` emits the dev-site build (`--mode develop`).
+  - **Branches** (the same strategy as Swalliso/dig-deep):
+    - `main` is the game, at https://swalliso.github.io/Sambattler/. It changes only through a release PR from `develop`, or a `hotfix/…` branch.
+    - `develop` is the integration branch, at https://swalliso.github.io/Sambattler/dev/. Finished `feature/…` branches (made from `develop`) are merged into it by PR and playtested there.
+    - A hotfix is made from `main`, merged into `main`, then `main` is merged back into `develop`.
+  - **`.github/workflows/deploy.yml`** runs on every push to `main` or `develop`. A Pages deploy replaces the whole site, so each run builds both branches:
+    - `main` is verified and built into the site root
+    - `develop` is verified and built into `/dev/` with `VITE_COMMIT`
+    - `actions/deploy-pages` then publishes the result
+    - A broken `develop` never blocks `main`: on a push to `main` it is left out with a warning; on a push to `develop` the run fails.
+    - The `github-pages` environment allows deployments from both `main` and `develop`.
+  - **`.github/workflows/ci.yml`** (job `test-and-build`) runs `npm run verify`, the browser tests and both builds on every pull request, and on pushes to `feature/**` and `hotfix/**`.
+  - **The dev site:**
+    - it is titled "Spore & Sprawl (dev)", carries `noindex`, and shows a `DEV BUILD · <sha>` tag
+    - it keeps its own localStorage keys (prefix `dev/`, `src/app/channel.ts`), because both sites share an origin, so a dev run never resumes or overwrites a saved run on the game
   - The user creates the GitHub repository and sets Pages' source to "GitHub Actions". Claude can't push without the user's remote and credentials. Locally, `npm run preview` serves the production build, and the screenshot check runs against it.
 
 ---
@@ -2263,7 +2284,7 @@ These are explicitly **not** built in v1 (Milestones 1–8). Anything here needs
 **Gameplay**
 
 5. A second playable faction or faction selection. The Gray Rot is enemy-only.
-6. Direct unit control: rally points, hold/advance stances, formations, unit-activated abilities.
+6. Direct unit control: rally points, formations, unit-activated abilities. (Per-lane Hold / Advance was adopted on 2026-10-28, §5.2.)
 7. Flying units, anti-air, burrowing, and any terrain that changes movement except root walls.
 8. Pathfinding, and unit collision with buildings.
 9. Fog of war, and any hidden information beyond the general's vague telegraph.

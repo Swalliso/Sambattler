@@ -18,8 +18,10 @@ export const PROTO_PRESETS: Record<string, Json> = {
   b3: { firingCongestion: { freeRanks: 2, corridorHalfWidth: 0.6, blockedDamageMult: 0.5 } },
   /** B4: units wither 90 s after spawning (merged units start a fresh lifespan). */
   b4: { unitLifespan: { seconds: 90 } },
+  /** Rules without E1 Hold / Advance (adopted 2026-10-28), for measuring against the old default. */
+  nohold: { laneStance: null },
   /**
-   * E1 (engagement review): per-lane Hold / Advance. Held units rally in the middle of the column
+   * E1 (engagement review): per-lane Hold / Advance, the shipped default since 2026-10-28. Held units rally in the middle of the column
    * behind the border column, so their spacing never spills into the frontier; holds last up to
    * 30 s, then a 10 s cooldown. Every AI side musters: it holds until 12 supply stands in the lane,
    * then advances, and holds again below 4.
@@ -35,6 +37,7 @@ export const PROTO_PRESETS: Record<string, Json> = {
   t3: { spawnerDefense: { damage: 12, damageType: 'pierce', interval: 1, range: 6, projectileSpeed: 12, homeOnly: true } },
 };
 
+/** Sets a dotted path; `null` removes the setting instead (`laneStance:null` turns Hold off). */
 function setPath(obj: Json, path: string, value: unknown): void {
   const keys = path.split('.');
   let o = obj;
@@ -42,7 +45,8 @@ function setPath(obj: Json, path: string, value: unknown): void {
     if (typeof o[k] !== 'object' || o[k] === null) o[k] = {};
     o = o[k] as Json;
   }
-  o[keys[keys.length - 1]!] = value;
+  if (value === null) delete o[keys[keys.length - 1]!];
+  else o[keys[keys.length - 1]!] = value;
 }
 
 /** Splits on commas outside brackets and braces, so JSON values can hold lists. */

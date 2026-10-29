@@ -33,6 +33,8 @@ button { font: inherit; color: inherit; }
 .stat b { font-variant-numeric: tabular-nums; }
 .stat .sub { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
 #hud-gold { color: var(--gold); }
+.stat.bump { animation: bump .45s ease-out; transform-origin: left center; }
+@keyframes bump { 30% { transform: scale(1.12); } }
 .storm-on { color: var(--lilac); }
 .tug { display: flex; align-items: center; gap: 10px; }
 .tugbar { flex: 1; height: 12px; display: flex; border: 1px solid var(--line); background: #0d0a10; border-radius: 2px; overflow: hidden; }
@@ -60,6 +62,7 @@ button { font: inherit; color: inherit; }
 .callout.good { border-color: #5b3b8a; color: var(--lilac); }
 .callout.bad { border-color: #7a3a33; color: #ffb4a8; }
 @keyframes pop { from { transform: translateY(-4px); opacity: 0; } to { transform: none; opacity: 1; } }
+.callout.tip { border-color: #b8862f; color: var(--gold); }
 .field { flex: 1; display: flex; align-items: center; justify-content: center; position: relative; min-height: 0; }
 .fieldwrap { position: relative; }
 #battlefield { display: block; image-rendering: pixelated; image-rendering: crisp-edges; cursor: crosshair; background: #0c0a0e; }
@@ -70,11 +73,12 @@ button { font: inherit; color: inherit; }
 .ghost-tip .bad { color: #ff9c8f; }
 .ghost-tip .good { color: var(--ok); }
 .ghost-tip .muted { color: var(--muted); }
+.dev-badge { position: fixed; left: 50%; top: 0; transform: translateX(-50%); z-index: 30; pointer-events: none; padding: 0 8px; border: 1px solid #b8862f; border-top: 0; border-radius: 0 0 4px 4px; background: rgba(20, 14, 26, .92); color: var(--gold); font: 10px/13px var(--mono); letter-spacing: .08em; }
 .pausebadge { position: absolute; left: 50%; top: 8px; transform: translateX(-50%); padding: 2px 10px; background: rgba(20, 14, 26, .85); border: 1px solid var(--line); border-radius: 3px; font-size: 13px; letter-spacing: .1em; }
 
 /* ---- bottom band ---- */
 .bottom { display: grid; grid-template-columns: 170px 1fr 260px; gap: 10px; padding: 8px 12px 10px; background: var(--panel); border-top: 1px solid var(--line); height: 168px; }
-.controls { display: flex; flex-direction: column; gap: 8px; }
+.controls { display: flex; flex-direction: column; gap: 5px; }
 .controls .row { display: flex; gap: 4px; flex-wrap: wrap; }
 .controls .row .btn { font-size: 12px; padding: 4px 7px; }
 .speed { display: flex; gap: 4px; }
@@ -86,18 +90,32 @@ button { font: inherit; color: inherit; }
 .btn:disabled { opacity: .45; cursor: default; }
 .btn.danger { border-color: #7a3a33; }
 .hint { font-size: 12px; color: var(--muted); }
-.tray { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(84px, 1fr); gap: 5px; align-content: start; overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; }
-.card { border: 1px solid var(--line); background: var(--panel-2); border-radius: 4px; padding: 5px 6px 6px; cursor: pointer; display: flex; flex-direction: column; gap: 2px; min-width: 0; text-align: left; }
+.tray { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(90px, 1fr); gap: 5px; align-content: start; overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; }
+.card.economy, .role.economy { --role: var(--gold); }
+.card.spawner, .role.spawner { --role: var(--lilac); }
+.card.tower, .role.tower { --role: #ff9f6b; }
+.card.utility, .role.utility { --role: #7fd0c8; }
+.card { border: 1px solid var(--line); background: var(--panel-2); border-radius: 4px; padding: 5px 6px 6px 8px; cursor: pointer; display: flex; flex-direction: column; gap: 2px; min-width: 0; text-align: left; box-shadow: inset 3px 0 0 var(--role); }
 .card:hover { border-color: var(--lilac); }
-.card.sel { border-color: var(--violet); box-shadow: inset 0 0 0 1px var(--violet); }
+.card.sel { border-color: var(--violet); box-shadow: inset 3px 0 0 var(--role), inset 0 0 0 1px var(--violet); }
 .card.poor { opacity: .45; }
+.card.nudge { border-color: var(--gold); animation: nudge 1s ease-in-out infinite; }
+@keyframes nudge { 50% { box-shadow: inset 3px 0 0 var(--role), inset 0 0 0 2px var(--gold); } }
+.role { align-self: flex-start; color: var(--role); border: 1px solid var(--role); border-radius: 8px; padding: 0 5px; font-size: 10px; line-height: 13px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
 .card .head { display: flex; justify-content: space-between; align-items: center; }
 .card .key { font-family: var(--mono); font-size: 12px; color: var(--muted); }
 .card .price { color: var(--gold); font-variant-numeric: tabular-nums; font-size: 13px; }
-.card canvas { width: 40px; height: 40px; image-rendering: pixelated; align-self: center; }
+.card canvas { width: 32px; height: 32px; image-rendering: pixelated; align-self: center; }
 .card .name { font-size: 12px; font-weight: 600; line-height: 1.15; min-height: 2.3em; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.card .out { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.card .mx { font-size: 12px; color: var(--muted); line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.card .out { font-size: 12px; color: var(--muted); line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.card-tip { position: fixed; z-index: 20; width: 310px; pointer-events: none; padding: 7px 9px; background: rgba(20, 14, 26, .97); border: 1px solid var(--line); border-radius: 4px; font-size: 12px; display: flex; flex-direction: column; gap: 3px; box-shadow: 0 6px 18px rgba(0, 0, 0, .45); }
+.card-tip .tip-head { display: flex; align-items: center; gap: 7px; font-size: 13px; }
+.card-tip .tip-head .price { margin-left: auto; color: var(--gold); font-variant-numeric: tabular-nums; }
+.card-tip .tip-desc { margin-bottom: 3px; }
+.card-tip .row { display: flex; justify-content: space-between; gap: 10px; }
+.card-tip .row span:first-child { color: var(--muted); white-space: nowrap; }
+.card-tip .row span:last-child { text-align: right; }
+.card-tip .tip-foot { color: var(--muted); border-top: 1px dashed var(--line); padding-top: 4px; margin-top: 2px; }
 .inspect { border: 1px solid var(--line); background: var(--panel-2); border-radius: 4px; padding: 6px 8px; font-size: 12px; overflow: hidden; display: flex; flex-direction: column; gap: 3px; }
 .inspect h3 { margin: 0 0 2px; font-size: 13px; letter-spacing: .04em; }
 .inspect .muted { color: var(--muted); }

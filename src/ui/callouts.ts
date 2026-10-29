@@ -1,13 +1,14 @@
-// Callout lane (SPEC §10.2): at most 3 banners at once, each for 2.5 s, in priority order:
-// counter warnings > building lost > Heartcap under attack > column flipped > merges.
+// Callout lane (SPEC §10.2): at most 3 banners at once, each for 2.5 s (tips 6 s), in priority order:
+// counter warnings > building lost > Heartcap under attack > tips > column flipped > merges.
 import { h } from './h.ts';
 
-export type CalloutKind = 'counter' | 'buildingLost' | 'heartcap' | 'column' | 'merge' | 'info';
-const PRIORITY: Record<CalloutKind, number> = { counter: 0, buildingLost: 1, heartcap: 2, column: 3, merge: 4, info: 5 };
+export type CalloutKind = 'counter' | 'buildingLost' | 'heartcap' | 'tip' | 'column' | 'merge' | 'info';
+const PRIORITY: Record<CalloutKind, number> = { counter: 0, buildingLost: 1, heartcap: 2, tip: 3, column: 4, merge: 5, info: 6 };
 const LIFE_MS = 2500;
+const TIP_MS = 6000;
 const MAX = 3;
 
-interface Item { kind: CalloutKind; text: string; tone: 'good' | 'bad' | ''; t0: number; el: HTMLElement }
+interface Item { kind: CalloutKind; text: string; tone: 'good' | 'bad' | ''; t0: number; life: number; el: HTMLElement }
 
 export class Callouts {
   readonly el = h('div', { class: 'callouts', id: 'callouts', 'aria-live': 'polite' });
@@ -23,13 +24,13 @@ export class Callouts {
     const dup = this.items.find((i) => i.text === text);
     if (dup) { dup.t0 = now; return; }
     const el = h('div', { class: `callout ${tone} ${kind}` }, text);
-    this.items.push({ kind, text, tone, t0: now, el });
+    this.items.push({ kind, text, tone, t0: now, life: kind === 'tip' ? TIP_MS : LIFE_MS, el });
     this.render();
   }
 
   update(now: number): void {
     const before = this.items.length;
-    this.items = this.items.filter((i) => now - i.t0 < LIFE_MS);
+    this.items = this.items.filter((i) => now - i.t0 < i.life);
     if (this.items.length !== before) this.render();
   }
 

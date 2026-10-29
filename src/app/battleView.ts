@@ -12,6 +12,7 @@ import { activeText, generalName, intentOf, rememberText, warningText } from '..
 import { DraftOverlay } from '../ui/draftOverlay.ts';
 import { TopBand } from '../ui/hud/top.ts';
 import { Tray } from '../ui/hud/tray.ts';
+import { trayOrder } from '../ui/buildingInfo.ts';
 import { CombatLog, InspectPanel } from '../ui/inspect.ts';
 import type { BattleState } from '../sim/index.ts';
 import type { Session } from './session.ts';
@@ -19,6 +20,9 @@ import { loadSettings, saveSettings } from './settings.ts';
 
 const NUMBERS_LABEL: Record<DamageNumbers, string> = { off: 'off', big: 'big hits', all: 'all' };
 const NUMBERS_NEXT: Record<DamageNumbers, DamageNumbers> = { off: 'big', big: 'all', all: 'off' };
+/** Battle 1's economy tip (playtest 2026-10-28): when it fires, and how long the economy cards pulse. */
+const NUDGE_AT_SECONDS = 30;
+const NUDGE_PULSE_MS = 12000;
 
 export interface ViewActions {
   begin(): void;
@@ -55,6 +59,8 @@ export class BattleView {
   private help: HTMLElement | null = null;
   private pausedBeforeHelp = false;
   private ended = false;
+  private nudged = false;
+  private nudgeUntil = 0;
   scale = 1;
 
   constructor(private session: Session, content: Content, private atlas: Atlas, private actions: ViewActions, debug: boolean) {
@@ -86,17 +92,19 @@ export class BattleView {
       class: 'btn', id: 'numbers-btn', title: 'Damage numbers: off, big hits only, or all',
       onclick: () => this.cycleNumbers(),
     }, '');
-    // prototype E1: one Hold / Advance button per lane
+    // E1: one Hold / Advance button per lane
     const stance = state.rules.stance ? h('div', { class: 'stance', id: 'stance' },
       ...state.lanes.map((_, i) => {
-        const b = h('button', { class: 'btn', 'data-lane': i, onclick: () => session.toggleStance(i) }, '');
+        const title = `Hold or advance ${state.lanes.length > 1 ? `lane ${i + 1}` : 'the lane'} (F: every lane)`;
+        const b = h('button', { class: 'btn', 'data-lane': i, title, onclick: () => session.toggleStance(i) }, '');
         this.stanceBtns.push(b);
         return b;
       }),
     ) : null;
     const controls = h('div', { class: 'controls' },
       h('div', { class: 'speed' }, ...this.speedBtns, this.pauseBtn),
-      h('div', { class: 'hint' }, state.rules.stance ? 'Space pause · [ ] speed · F hold' : 'Space pause · [ ] speed'),
+      // one line: F is on the Hold buttons' tooltips and in Help, so two lanes still fit the band
+      h('div', { class: 'hint' }, 'Space pause · [ ] speed'),
       stance,
       h('div', { class: 'row' }, h('button', { class: 'btn', id: 'help-btn', onclick: () => this.toggleHelp() }, 'Help [H]'), this.numbersBtn),
       debug ? h('div', { class: 'hint' }, 'F3 debug overlay') : null,
@@ -171,8 +179,11 @@ export class BattleView {
   onTick(state: BattleState, now: number): void {
     this.renderer.onTick(state, now);
     this.log.onTick(state);
+    this.economyNudge(state, now);
     for (const e of state.events) {
-      if (e.t === 'columnFlipped') {
+      if (e.t === 'income' && e.side === 'player') {
+        this.top.bump();
+      } else if (e.t === 'columnFlipped') {
         this.callouts.push('column', e.to === 'player' ? `Column ${e.column} claimed` : `Column ${e.column} lost`, e.to === 'player' ? 'good' : 'bad', now);
       } else if (e.t === 'buildingDestroyed') {
         const name = this.session.content.buildings[e.buildingId]?.name ?? e.buildingId;
@@ -201,6 +212,29 @@ export class BattleView {
     }
   }
 
+  /** Does the player have, or are they placing, an economy building? */
+  private hasEconomy(state: BattleState): boolean {
+    const s = this.session;
+    const eco = (id: string | null | undefined) => !!id && s.content.buildings[id]?.kind === 'economy';
+    return eco(s.placing) || state.buildings.some((b) => b.side === 'player' && eco(b.buildingId))
+      || s.pending().some((c) => c.type === 'place' && eco(c.buildingId));
+  }
+
+  /** Battle 1 only, once: a tip and a pulse on the economy cards if none is built 30 s in. */
+  private economyNudge(state: BattleState, now: number): void {
+    if (this.nudged || state.phase !== 'live' || state.tick < NUDGE_AT_SECONDS * state.rules.tickRate) return;
+    this.nudged = true;
+    if (state.config.battleIndex !== 1 || this.hasEconomy(state)) return;
+    const content = this.session.content;
+    const order = trayOrder(content, state.sides.player.kit);
+    const i = order.findIndex((id) => content.buildings[id]!.kind === 'economy');
+    if (i < 0) return;
+    const b = content.buildings[order[i]!]!;
+    const key = i < 9 ? ` [${i + 1}]` : '';
+    this.callouts.push('tip', `Tip: a ${b.name}${key} earns gold every ${content.balance.incomeTickSeconds} s all battle. Build one early!`, '', now);
+    this.nudgeUntil = now + NUDGE_PULSE_MS;
+  }
+
   frame(state: BattleState, alpha: number, now: number, debugOverlay: boolean): void {
     const s = this.session;
     const ghost = s.ghost();
@@ -220,7 +254,8 @@ export class BattleView {
       this.tray = next;
       this.trayKit = kit;
     }
-    this.tray.update(s.available(), s.placing);
+    if (this.nudgeUntil > now && this.hasEconomy(state)) this.nudgeUntil = 0;
+    this.tray.update(state, s.available(), s.placing, this.nudgeUntil > now);
     this.draft.update(state, s.pending().some((c) => c.type === 'draftPick' || c.type === 'draftReroll' || c.type === 'draftSkip'));
     this.inspect.update(state, s.selected);
     this.callouts.update(now);

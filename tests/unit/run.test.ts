@@ -155,13 +155,17 @@ describe('battle setup and rewards (SPEC §6.1, §6.5, §8.5–8.6)', () => {
   });
 
   it('the boss actually places its added Scythecap Grove during ordinary AI play', () => {
-    const run = createRun(content, { seed: 1, player: 'bot:balanced' });
-    run.battles = Array.from({ length: 3 }, (_, i) => ({ index: i + 1 }) as RunState['battles'][number]);
-    const state = createBattle(content, battleConfig(content, run, { kind: 'boss', map: 'stumpfield', general: 'scripted' }));
-    queueCommand(state, { tick: 0, side: 'player', type: 'begin' });
-    runHeadless(state, { until: 3600 });
-    expect(Object.values(state.stats.enemy.buildingTypes)).toContain('scythecapGrove');
-    expect(state.stats.enemy.rejectedCommands).toBe(0);
+    // it's one choice among many (about 1 battle in 10 by 3:00), so look across seeds
+    const placed = Array.from({ length: 10 }, (_, i) => {
+      const run = createRun(content, { seed: i + 1, player: 'bot:balanced' });
+      run.battles = Array.from({ length: 3 }, (_, j) => ({ index: j + 1 }) as RunState['battles'][number]);
+      const state = createBattle(content, battleConfig(content, run, { kind: 'boss', map: 'stumpfield', general: 'scripted' }));
+      queueCommand(state, { tick: 0, side: 'player', type: 'begin' });
+      runHeadless(state, { until: 3600 });
+      expect(state.stats.enemy.rejectedCommands).toBe(0);
+      return Object.values(state.stats.enemy.buildingTypes).includes('scythecapGrove');
+    });
+    expect(placed).toContain(true);
   });
 
   it('the reward table', () => {

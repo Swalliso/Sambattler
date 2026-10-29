@@ -3,6 +3,36 @@
 Every change from the SPEC's first-pass numbers, with the guardrail or verification result that
 motivated it. Tools: `npm run balance -- duel`, `npm run balance -- tournament`, `npm run test:slow`.
 
+## Adopted: E1 Hold / Advance (2026-10-28)
+
+**Rule change, approved by the user.** The user asked for the prototypes that helped to go into the game,
+and to leave out the ones that didn't. Only E1 qualified. `laneStance` (the `hold` preset: rally 1.5
+tiles back, 30 s holds, 10 s cooldown, AI muster at 12 supply and release below 4) is now in
+`balance.json`. Golden replays were refreshed. Two AI tests were adjusted: one now keeps its battle
+alive past 7:00, the other looks across 10 seeds for the boss's Scythecap Grove (it's placed by 3:00
+in 1–2 of 10 seeds with or without Hold). `--proto nohold` restores the old rules for comparison.
+
+`npm run experiment` with checks g3, g4, g5, g7, boss and engagement:
+
+| Check | Before (no Hold) | Hold (now shipped) | All nine prototypes together |
+|---|---|---|---|
+| First column flip | 2:16–4:14 | 0:34–1:29 | 0:34–1:42 |
+| Player commands per minute | 1.3–1.4 | 2.1–2.6 | 1.7–2.1 |
+| G3 mono Gill Nest | 100% ✗ | 100% ✗ | 100% ✗ |
+| G3 other mono bots above 55% | none | Sporeling 65% ✗ | Sporeling 80% ✗ |
+| G4 median / Decisions | 7:12 / 5% ✓ | 7:13 / 10% ✓ | 9:38 / 48% ✗ |
+| G5 | 70% ✓ | 75% ✓ | 70% ✓ |
+| G7 mirror / Slayer mirror | 58% / 50% ✓ | 60% / 56% ✗ | 61% / 56% ✗ |
+| Runs reaching the boss | 25% | 11% | 41% |
+
+- **Why Hold:** it is the one prototype that does its job. Battles open within the first 1:30
+  instead of after 3:00, and players act about twice as often. Battle length stays in band.
+- **Known costs, still open:** mono Sporeling now wins 65% (G3), G7's Slayer mirror reads 56%,
+  and bot runs reach the boss less often (25% → 11%). Bots muster by rule; human players may use
+  Hold differently. Re-measure after the first dev-site playtests.
+- **The rest stay off:** B1, B3, B4, A2, A3 and T1–T3 stay as presets. All nine together keep
+  archers at 100%, hand G3 to Sporelings and stall battles (`t3`).
+
 ## Engagement prototype E1: Hold / Advance (2026-10-28)
 
 **Nothing adopted; no number, rule or default changed.** A per-lane Hold / Advance command (`laneStance`,

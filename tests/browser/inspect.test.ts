@@ -31,10 +31,10 @@ beforeEach(async () => {
   // Two different home buildings let us check that persistent controls follow the selection.
   const canvas = page.locator('#battlefield');
   const box = (await canvas.boundingBox())!;
-  await page.keyboard.press('1');
+  await page.locator('[data-building="sporelingBurrow"]').click();
   await canvas.click({ position: { x: box.width * 2.5 / 36, y: box.height * 0.5 / 8 } });
   await page.waitForFunction(() => window.__GAME__?.summary()?.buildings.player === 1);
-  await page.keyboard.press('2');
+  await page.locator('[data-building="capguardHall"]').click();
   await canvas.click({ position: { x: box.width * 2.5 / 36, y: box.height * 3.5 / 8 } });
   await page.waitForFunction(() => window.__GAME__?.summary()?.buildings.player === 2);
 });

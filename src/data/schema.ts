@@ -65,9 +65,9 @@ export const BalanceSchema = z.object({
    */
   unitLifespan: z.object({ seconds: Pos, tierMult: Pos.optional() }).strict().optional(),
   /**
-   * Prototype E1 (engagement review), absent by default: a per-lane Hold / Advance command. While a
-   * side holds a lane, its idle units gather at a rally line `rallyBack` tiles behind the front edge
-   * of its border column; units that dealt or took damage in the last 2 s fight as usual. A held lane
+   * E1 (engagement review; adopted 2026-10-28, set in balance.json): a per-lane Hold / Advance
+   * command. While a side holds a lane, its idle units gather at a rally line `rallyBack` tiles
+   * behind the front edge of its border column; units that dealt or took damage in the last 2 s fight as usual. A held lane
    * advances on its own after `maxHoldSeconds`, and can't be held again for `cooldownSeconds` after
    * it advances. `ai` gives every AI side (or those whose profile id starts with one of `profiles`)
    * a muster policy: hold a lane until `musterSupply` stands in it, then advance; hold again once it

@@ -1,7 +1,7 @@
 // Canvas renderer (SPEC §13.6). Reads sim state and per-tick events; never mutates the sim.
 // Layers, back to front: terrain → territory tint and capture progress → buildings → merge tethers
 // and knit glow → units (by y, then id; merged units larger, with tier pips) → projectiles and
-// sparks → labels (merge pops, damage numbers) → overlays (placement ghost, ranges, debug).
+// sparks → labels (merge pops, damage numbers, coin pops) → overlays (placement ghost, ranges, debug).
 import type { Content } from '../data/registry.ts';
 import {
   canMerge, frontierBlocked, holdsLane, isSuppressed, lanePresence, rallyX, turretPos,
@@ -37,8 +37,10 @@ export class Renderer {
   private territoryKey = '';
   private matTile: Record<Side, HTMLCanvasElement>;
   readonly effects = new Effects(512);
-  /** Merge pops and damage numbers, kept apart so a big fight's sparks never evict them. */
+  /** Merge pops, damage numbers and coin pops, kept apart so a big fight's sparks never evict them. */
   readonly labels = new Effects(256);
+  /** Each economy building's gold total at the last income tick, so a coin pop shows what it just paid. */
+  private goldSeen = new Map<string, number>();
   damageNumbers: DamageNumbers = 'off';
   private sorted: UnitState[] = [];
   private eligible: UnitState[] = [];
@@ -60,6 +62,10 @@ export class Renderer {
     this.territory = document.createElement('canvas');
     this.territory.width = this.width;
     this.territory.height = this.height;
+    // a resumed battle starts from the totals so far, not with one giant pop
+    for (const side of ['player', 'enemy'] as Side[]) {
+      for (const [id, gold] of Object.entries(state.stats[side].goldByBuilding)) this.goldSeen.set(`${side}:${id}`, gold);
+    }
   }
 
   /** Screen x (native px) of a world x. */
@@ -154,7 +160,7 @@ export class Renderer {
     }
   }
 
-  /** Feed one tick's events (spark, puff and flash effects, merge pops, damage numbers). */
+  /** Feed one tick's events (spark, puff and flash effects, merge pops, damage numbers, coin pops). */
   onTick(state: BattleState, now: number): void {
     for (const e of state.events) {
       if (e.t === 'hit') {
@@ -165,10 +171,26 @@ export class Renderer {
       else if (e.t === 'died') this.effects.add(e.side === 'player' ? 4 : 5, e.x, e.y, now, 0);
       else if (e.t === 'healed') this.effects.add(10, e.x, e.y, now, 0);
       else if (e.t === 'buildingDestroyed') this.effects.add(6, e.col + 1, e.row + 1, now, 0);
+      else if (e.t === 'income') this.coinPops(state, e.side, now);
       else if (e.t === 'spawned') {
         const u = state.units.find((x) => x.id === e.id);
         if (u) this.effects.add(7, u.x, u.y, now, 0);
       }
+    }
+  }
+
+  /** A coin pop over each of a side's economy buildings that paid out this income tick. */
+  private coinPops(state: BattleState, side: Side, now: number): void {
+    const paid = state.stats[side].goldByBuilding;
+    for (const b of state.buildings) {
+      if (b.side !== side) continue;
+      const def = state.compiled[side].buildings[b.buildingId]!;
+      if (!def.economy) continue;
+      const key = `${side}:${b.id}`;
+      const total = paid[String(b.id)] ?? 0;
+      const gain = total - (this.goldSeen.get(key) ?? 0);
+      this.goldSeen.set(key, total);
+      if (gain > 0) this.labels.add(11, b.col + def.w / 2, b.row + 0.3, now, side === 'player' ? 0 : 1, gain);
     }
   }
 
