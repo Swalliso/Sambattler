@@ -70,6 +70,14 @@ export default tseslint.config(
     },
   },
   {
+    files: ['src/audio/**/*.ts'],
+    rules: {
+      'no-restricted-imports': ['error', { patterns: [
+        { group: ['**/sim/**', '**/run/**', '**/render/**', '**/ui/**', '**/app/**', '**/tools/**'], message: 'src/audio plays sounds from data; the app feeds it events (SPEC §13.9).' },
+      ] }],
+    },
+  },
+  {
     files: ['src/render/**/*.ts'],
     rules: {
       'no-restricted-imports': ['error', { patterns: [

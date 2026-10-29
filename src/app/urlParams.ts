@@ -18,6 +18,8 @@ export interface Params {
   flagProblems: string[];
   debug: boolean;
   test: boolean;
+  /** `?sound=1` turns sound on in an automated browser (it is off there by default; `?test=1` always wins). */
+  sound: boolean;
   /** A balance-backlog prototype spec (`?proto=b1,besiegedBy:melee`), or null for the shipped rules. */
   proto: string | null;
   /** `run` (play a whole run with bots) or `battles:<n>` (the first n battles), for route and summary screens. */
@@ -41,8 +43,8 @@ export function parseParams(search: string): Params {
   const auto = q.get('autoplay');
   const am = auto?.match(/^battles:(\d+)$/);
   return {
-    // no scene: a run (resuming a saved one), unless battle parameters ask for a single battle
-    scene: q.get('scene') ?? (BATTLE_PARAMS.some((k) => q.has(k)) ? 'battle' : 'run'),
+    // no scene: the title screen, unless battle parameters ask for a single battle
+    scene: q.get('scene') ?? (BATTLE_PARAMS.some((k) => q.has(k)) ? 'battle' : 'title'),
     map: q.get('map') ?? 'bogwater-hollow',
     seed: num('seed'),
     battleIndex: num('battleIndex') ?? 1,
@@ -55,6 +57,7 @@ export function parseParams(search: string): Params {
     flagProblems: parsed ? parsed.problems : [],
     debug: q.get('debug') === '1',
     test: q.get('test') === '1',
+    sound: q.get('sound') === '1',
     proto: q.get('proto') || null,
     autoplay: auto === 'run' ? { battles: 'all' } : am ? { battles: Number(am[1]) } : null,
   };

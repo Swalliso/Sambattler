@@ -933,37 +933,47 @@ Each feat is a data record: `id`, `name`, `description`, `scope` (`battle` or `r
 ### 10.2 Battle screen layout
 
 ```
-┌──────────────────────────────────────────────────────────────┬──────────────────┐
-│ ◆ 245 (+212/min)   ⬢ 38/60   ⧗ Wave 4 · 3:42   ☁ Storm 0    │ GENERAL'S INTENT │
-│ territory ▓▓▓▓▓▓▓▓▓▓▓▓▓░░░░░░▒▒▒▒▒▒▒▒▒▒▒▒   13 : 11 columns  │ ☻ Lichen Baron   │
-│                                                              │ ⚠ SWARM · 1 wave │
-├──────────────────────────────────────────────────────────────┴──────────────────┤
-│                   [ callout lane: "Column 13 claimed" ]                         │
-│ ♥ 2710/3000                                                      ♥ 1650/2000    │
-│                                                                                 │
-│                        BATTLEFIELD  (canvas, pixel-scaled)                      │
-│                                                                                 │
-├──────────────┬─────────────────────────────────────────────────┬───────────────┤
-│ (Q) POWER    │ [1] Cellar 150  [2] Burrow 110  [3] Capguard 150│ INSPECT       │
-│  ◔ ready 0:34│ [4] Gill 150 [5] Rootbreaker 200 [6] Mortar 160 │ Capguard Hall │
-│ 1× 2× 3×  ❚❚ │                                                 │ merge ON [M]  │
-│              │                                                 │ sell 90 [X]   │
-└──────────────┴─────────────────────────────────────────────────┴───────────────┘
+┌─────────────────┬─────────────────────────────────────────┬───────────────────┬────────────────────┐
+│ ♥ YOUR HEARTCAP │ (◆ 245 +212/min)  (⬢ 38/60 supply)      │ GRAY ROT HEART ♥  │ GENERAL'S INTENT   │
+│   2710/3000     │ (⧗ Wave 4 3:42)  (☁ Storm 0)            │       1650/2000   │ ☻ Lichen Baron     │
+│ ▓▓▓▓▓▓▓▓▓▓▓░░░  │ ▓▓▓▓▓▓▓▓▓▓▓▓|·:·:·:·:▒▒▒▒▒▒▒▒▒▒▒▒▒▒     │ ░░▒▒▒▒▒▒▒▒▒▒▒▒▒   │ Watching your army │
+│                 │ 13 columns     territory    11 columns  │                   │ ⚠ SWARM ●● 2 waves │
+├─────────────────┴─────────────────────────────────────────┴───────────────────┴────────────────────┤
+│        [ callout lane: "Column 13 claimed" · pinned: deploy hint, "Paused" ]                       │
+│                                                                                                    │
+│                  BATTLEFIELD  (canvas, pixel-scaled, in its frame)                                 │
+│                                                                                                    │
+├────────────────┬──────────────────────────────────────────────────────────────┬────────────────────┤
+│ (Q) POWER      │ ╭──────╮╭──────╮╭──────╮╭──────╮                             │ INSPECT            │
+│ [Begin Enter]  │ │1  150││2  110││3  150││4  150│  …                          │ Capguard Hall      │
+│ (1× 2× 3× ❚❚)  │ │ art  ││ art  ││ art  ││ art  │                             │ merge ON [M]       │
+│ (▣|») Advancing│ │Cellar││Burrow││Capgd ││ Gill │                             │ sell 90 [X]        │
+│ spk cog Help H │ ╰──────╯╰──────╯╰──────╯╰──────╯                             │                    │
+└────────────────┴──────────────────────────────────────────────────────────────┴────────────────────┘
 ```
 
-- **Top band:**
-  - gold with its per-minute rate, supply used/cap, wave number and clock, Sporestorm stacks
-  - a territory tug bar with column counts
-  - the **General's Intent** panel at the top right
+- **Top band** (docs/ui-ux-plan.md, Phase 1b): the win condition frames it.
+  - **Your Heartcap** at the left end and **the Gray Rot's** at the right: the Heartcap's cap, its HP in the display face and a striped HP bar that drains toward the field's centre. Below a third of its HP, the number turns danger red.
+  - Between them, **stat chips** (a pixel icon, a tabular display-face number and a small word): gold with its per-minute rate, supply used/cap, wave number and clock, and Sporestorm stacks (lit lilac once the storm is on). The gold chip pulses whenever income lands.
+  - Under the chips, the **territory tug**: one bar per lane, a tick per column, your columns striped violet from the left, theirs striped ash from the right, unclaimed columns between, and a glowing lilac line at your frontier. Column counts sit under its ends.
+  - The **General's Intent** panel at the top right: the general's portrait at 3× (48 px), name and doctrine. When a counter is coming, a warning row names the kind and counts down in waves, with one lit pip per wave that pulses (still under `prefers-reduced-motion`).
 - **Callout lane:** transient banners centered above the battlefield. At most 3 show at once, each for 2.5 s (tips 6 s), in priority order: counter warnings > building lost > Heartcap under attack > tips > column flipped > merges.
   - **Battle-1 economy tip** (playtest 2026-10-28): in battle 1 only, if the player has no economy building built, queued or being placed 30 s after Begin, a tip names the first economy card and its hotkey, and the economy cards pulse for 12 s or until one is placed. It fires at most once.
-- **Heartcap HP** is pinned at each end of the battlefield.
+  - **Pinned callouts** come before the timed ones and stay until they no longer apply: the deploy hint, "Paused" while a live battle is paused, and a notice when a saved battle couldn't be restored. Nothing else sits on the field.
+- **Field frame** (docs/ui-ux-plan.md, Phase 1a): the void between the bands, above, below and beside the battlefield, is drawn as the earth the field sits in.
+  - What it shows: a roots ceiling, a soil bed with each side's buried threads (lilac under your half, ash under theirs), roots down each side, and each Heartcap's crown rising into the ceiling.
+  - How it's drawn: text sprites from `data/sprites/frame.json`, baked onto a canvas behind the field and the bands at the field's own pixel scale, with its pixels lined up with the field's. It stays darker than the field and takes no input.
+  - **Ambient spores** drift across it, thicker with each Sporestorm stack. They move at the game's speed, stop while the battle is paused, held or over, and hold still under `prefers-reduced-motion` and `?test=1`.
 - **Bottom band:**
-  - commander power and speed/pause controls (left)
-  - the building tray (center): cards are grouped by role, economy first, then army, defense and utility, each group in kit order; the `1`–`9` hotkeys follow this order. Each card shows its hotkey, sprite, base price, a colored role tag (Economy, Army, Defense, Utility) and a one-line summary, and greys out when unaffordable. Hovering a card, or focusing it from the keyboard, shows a tooltip with the description, output, unit stats, matchups (strong vs, weak vs, armor), merge perks and, for economy, the payback time. Stats come from the compiled side, so upgrades and relics show.
-  - the gold counter pulses whenever income lands
-  - the inspect panel (right)
-- **Deploy phase:** the same layout, with a large **Begin** button and the starting gold. The general's opener appears when you press Begin, so both sides place blind.
+  - **Controls** (left): the commander power; **Begin** in deploy, then one segmented control for 1×, 2×, 3× and pause; a **Hold / Advance** switch per lane (the `i-hold` and `i-advance` icons, the lit one is the lane's stance) with its state and timer beside it ("Advancing", "Hold · 25 s", "Hold in 12 s"; a hold on cooldown is unlit); then the speaker (§13.9), the **settings** cog and Help. The settings popover holds the damage-numbers choice (§10.4) until the settings screen arrives (§10.5).
+  - **The building tray** (centre): cards are grouped by role, economy first, then army, defense and utility, each group in kit order; the `1`–`9` hotkeys follow this order.
+    - Each card has a cap-shaped band across its top in its role's colour, its hotkey, its base price as a gold chip, the building at 2× (64 px), its name, a role tag (Economy, Army, Defense, Utility) and a one-line summary (at most two lines).
+    - A card you can't afford is **unlit**: the sprite desaturates, the price turns danger red, and the summary becomes a bar filling toward the price and "need N". The name stays readable; nothing fades.
+    - Cards keep a card's width (88–108 px) however few there are. When they don't fit one row (14 cards at 1280 px), the tray turns **compact**: two rows of smaller cards with the sprite at 1× beside the hotkey and price, then the name, the role and the summary. The tray never clips a card or scrolls sideways.
+    - Hovering a card, or focusing it from the keyboard, shows a tooltip with the description, output, unit stats, matchups (strong vs, weak vs, armor), merge perks and, for economy, the payback time. Stats come from the compiled side, so upgrades and relics show.
+  - **The inspect panel** (right). Empty, it shows a short tip; the hotkeys live in Help.
+- **Deploy phase:** the same layout. **Begin** is the bottom band's one primary button, and the deploy hint with the starting gold is pinned in the callout lane, so the field stays clear for placing. The general's opener appears when you press Begin, so both sides place blind.
+- **Placing:** while a building is chosen, every tile of your mat where it could go gets a soft lilac grid (gold isn't considered; a hover you can't afford still says so). The ghost's tip sits beside its footprint inside the field, flipping to the left near the right edge, so it never covers the ghost, a band or the callout lane.
 - **Draft overlay:** the battlefield dims, and three large cards show type, rarity, effect text and an "owned: X" context line. Reroll shows its cost; Skip shows "+40 gold".
 
 ### 10.3 Controls
@@ -971,7 +981,7 @@ Each feat is a data record: `id`, `name`, `description`, `scope` (`battle` or `r
 | Input | Action |
 |---|---|
 | `1`–`9` or click a tray card | Choose a building to place |
-| Mouse move (placing) | The ghost snaps to the grid and shows legality (with a reason when illegal), the final price including surcharge, depth and the loam bonus |
+| Mouse move (placing) | Your legal tiles show a lilac grid. The ghost snaps to the grid and shows legality (with a reason when illegal), the final price including surcharge, depth and the loam bonus |
 | Left click (placing) | Place. Hold `Shift` to keep placing the same building. |
 | Right click / `Esc` | Cancel placement, or deselect |
 | Left click a building or unit | Inspect it |
@@ -981,13 +991,14 @@ Each feat is a data record: `id`, `name`, `description`, `scope` (`battle` or `r
 | `Space` | Pause or resume (every command still works while paused) |
 | `]` / `[` | Speed up or down (1× / 2× / 3×) |
 | `Tab` | Cycle through your buildings |
-| `F`, or a lane's Hold / Advance button | Hold every lane, or advance them all; the buttons toggle one lane (§5.2) |
+| `F`, or a lane's Hold / Advance switch | Hold every lane, or advance them all; the switch sets one lane (§5.2) |
 | `H` | Help overlay: matrix chart, tags, hotkeys |
+| `S`, or the speaker button | Sound on or off, anywhere in the game. Hovering or focusing the speaker opens the volume sliders (§13.9) |
 | `F3` | Debug overlay (only with `?debug=1`): column presence numbers, capture progress, aggro radii, ids |
 
 ### 10.4 Feedback rules (clean field, rich inspection)
 
-- **Damage numbers:** none by default. The setting offers *off*, *big hits only* and *all*.
+- **Damage numbers:** none by default. The setting offers *off*, *big hits only* and *all*; until the settings screen exists it lives in the battle's settings popover (the cog in the bottom band) and is saved with the other settings.
 - **HP bars:** shown only on damaged units and buildings; always shown on Heartcaps.
 - **Hit sparks** come in three tints by effectiveness class (§5.3):
   - *strong:* a large, bright gold spark
@@ -1029,6 +1040,16 @@ Each feat is a data record: `id`, `name`, `description`, `scope` (`battle` or `r
 - Settings: damage numbers, screen shake, default speed, save export/import, reset profile
 
 Milestone 1 needs only Battle (with deploy) and a simple end screen.
+
+**Run screens as built (docs/ui-ux-plan.md, Phase 2).** Every run screen is DOM (so Playwright can query it), with spores drifting behind it, the run bar on top and a footer with the seed.
+- **Title** (the page with no `scene`): "Spore & Sprawl" in the display face beside the Heartcap's silhouette, lit from below. Continue (only with a saved run, and naming its row and Heartcap), New run (after a confirm if a run is saved), How to play (Help) and Settings (sound and damage numbers, until the settings screen arrives). The run's route and summary have a Title button back. It becomes the door to the Underroot in M6.
+- **Run bar:** the Heartcap's HP and bar, Spores and Amber with their icons, battles won, the kit and the relics. Each relic is a pixel badge whose shape and rim name its rarity (round, diamond, star), with a tooltip on hover or focus.
+- **Route map:** spore pods on soil, one icon per node kind, joined by hyphae from every node to every node in the next row (and from the colony's start to the first row). The path you walked glows violet, the threads you can take now glow lilac, the rest stay dim, and hovering or focusing a pod lights its threads. A legend names the node kinds.
+- **Draft and spoils cards:** a frame per rarity (common bark, uncommon teal-lit, rare amber-lit with a spore sparkle), each keeping its word; the type's icon in the header; a blueprint's price, output and role as chips; `1`–`3` as keycaps (the keys pick on spoils too). Cards deal in left to right and lift on hover.
+- **Event and Grove:** a framed scene at 4× per event (`v-<event id>`) and for the Grove, the story on stalk cream, and the choices as cards with outcome chips (gains, costs with a real minus, gold, notes), each with a word and usually an icon. Number keys pick a choice.
+- **Battle report and run summary:** an outcome banner (on a win the Heartcap blooms in lilac spores, on a loss the cap wilts to ash) with the MVP building beside it, then a staged reveal: the banner, the front line, then the bars. Every table stays.
+- **Help:** four tabs (Matrix · Merging · The general · Keys), each fitting 1280×720; keys are drawn as keycaps.
+- **Motion:** things grow in (from 0.96, ease-out) and nothing bounces more than once. Under `prefers-reduced-motion` there's no stagger, lift, sparkle or drift, and fades take 120 ms or less. `?test=1` holds every run screen still.
 
 ---
 
@@ -1390,6 +1411,7 @@ tools (Node CLIs) ──► run, meta, sim, data
 │  ├─ blights.json  feats.json  events.json  mastery.json
 │  ├─ bots.json                       # strategy bot definitions (§7.1)
 │  ├─ scenarios/<scenario-id>.json    # fixed setups for tests/screenshots
+│  ├─ sounds.json                     # synthesized sounds as parameters (§13.9)
 │  └─ sprites/<sheet>.json            # text-defined pixel sprites
 ├─ src/
 │  ├─ data/        schema.ts (zod)  registry.ts (load + index + cross-ref check)  patch.ts (strain/upgrade patching)  effects.ts (modifier DSL)
@@ -1401,8 +1423,9 @@ tools (Node CLIs) ──► run, meta, sim, data
 │  ├─ run/         route.ts  draft.ts  rewards.ts  events.ts  runState.ts  resume.ts
 │  ├─ meta/        profile.ts  feats.ts  traits.ts  strains.ts  mastery.ts  blights.ts  migrations.ts  storage.ts
 │  ├─ render/      atlas.ts (bake text sprites)  renderer.ts  layers/*.ts  effects.ts  interpolate.ts
+│  ├─ audio/       engine.ts (WebAudio graph, ambient bed)  synth.ts (layers to nodes)  limits.ts (voice cap, cooldowns)
 │  ├─ ui/          h.ts  hud/*.ts  screens/*.ts  callouts.ts  inspect.ts  draftOverlay.ts  report.ts
-│  └─ app/         main.ts  loop.ts  input.ts  urlParams.ts  debugBridge.ts (window.__GAME__)
+│  └─ app/         main.ts  loop.ts  input.ts  urlParams.ts  debugBridge.ts (window.__GAME__)  sound.ts  battleSound.ts  soundBoard.ts
 ├─ tools/          sim.ts  balance.ts  bench.ts  screenshot.ts  validate-data.ts  golden.ts
 ├─ tests/
 │  ├─ unit/**      # fast suite (npm test)
@@ -1472,7 +1495,23 @@ Commands from input are queued with `tick = state.tick + 1`. Headless tools call
   - **The dev site:**
     - it is titled "Spore & Sprawl (dev)", carries `noindex`, and shows a `DEV BUILD · <sha>` tag
     - it keeps its own localStorage keys (prefix `dev/`, `src/app/channel.ts`), because both sites share an origin, so a dev run never resumes or overwrites a saved run on the game
+  - **Link previews:** `index.html` carries Open Graph and Twitter card tags, so a link shared in Slack, Discord or elsewhere shows the title, a line of description and a 1200×630 image. Previews need absolute addresses, so `vite.config.ts` fills them in per build: the game's tags point at `https://swalliso.github.io/Sambattler/og-image.png`, and the dev site's at `/Sambattler/dev/og-image.png` with "(dev)" in the title. The image lives in `public/` (Vite copies it to the site root); `npm run og-image` renders it again from the title screen after the title's art changes.
   - The user creates the GitHub repository and sets Pages' source to "GitHub Actions". Claude can't push without the user's remote and credentials. Locally, `npm run preview` serves the production build, and the screenshot check runs against it.
+
+### 13.9 Audio
+
+Every sound is synthesized with WebAudio from parameters in `data/sounds.json`, the way sprites are text-defined, so the game ships no audio files. A sound can switch to a CC0 sample later if the synthesized one feels thin.
+
+- **Engine (`src/audio/`).** A sound layers up to six sources. Each is an oscillator (sine, triangle, square, saw) or looping noise (white, pink, brown), through an optional biquad filter (lowpass, highpass, bandpass, notch or peaking), shaped by an envelope (attack, decay, sustain level, hold, release). Oscillators can glide in pitch and wobble (vibrato); filters can sweep; a layer can start late, for arpeggios. Each play can jitter pitch, gain and pan by a small random amount. `src/audio` uses `Math.random` and WebAudio, so it sits outside the pure layers and imports nothing but data types.
+- **Routing.** Voices go to an `sfx`, `ui` or `ambient` bus, then a master gain, then a limiter (a DynamicsCompressor), then the speakers. Each bus also sends to a short generated cave reverb.
+- **Data format.** `data/sounds.json` holds the bus levels, `enemyGain`, `maxVoices`, the speed thinning, the reverb, the ambient bed, and the sounds. Each sound has an id, name, note, bus, gain, priority (0–10), `cooldownMs`, an optional `frequent` flag, optional jitter and its layers, for example `{ "wave": "sine", "freq": 150, "sweep": { "to": 55, "time": 0.14 }, "env": { "attack": 0.004, "decay": 0.16, "sustain": 0, "hold": 0, "release": 0.05 }, "gain": 0.9 }`. `SoundBankSchema` in `src/data/schema.ts` validates it, and the registry checks that every sound the game plays exists (`REQUIRED_SOUNDS`) and that the drips are ambient sounds, so `npm run validate:data` catches mistakes. It loads into `Content.audio` and `Content.sounds` like the sprite sheets. The sim never reads it, so sound changes never move a golden hash.
+- **Throttling.** Each sound has a cooldown (per key: the two Heartcaps throttle separately). At most 12 voices play at once: a new sound takes over the oldest voice of lower priority, or is dropped. At 2× and 3× speed, `frequent` sounds (spawn puffs, knits) stretch their cooldown 2× and 3.5× and play at 70% and 50% gain.
+- **Battle sounds** (`src/app/battleSound.ts`) come from each tick's sim events, render-side only, the way callouts are: place, sell, a refused placement, the player's income (once per income tick), spawn, column claimed or lost, a building lost or razed, knit, merge (fuller for an Elder), a Heartcap hit (at most once every 1.5 s per Heartcap; ordinary hits make no sound), the counter warning and activation, the Sporestorm, each new wave, Begin, the draft opening and a pick, and the win or loss. The enemy's sounds play at `enemyGain` (50%), and sounds with a place on the field pan with it.
+- **UI sounds.** A very soft tick when the pointer moves onto a button, and a click when one is pressed, delegated from the document so every screen has them. Route nodes, event and Grove choices, and draft and spoils cards have their own sounds; a button's `data-sfx` overrides the choice.
+- **Ambient bed.** Low-passed brown noise whose cutoff drifts slowly, plus a random water drip every 2.5–9 s, on the ambient bus. It keeps going while a battle is paused, at half level.
+- **Browser rules.** The AudioContext is made on the first `pointerdown` or `keydown` (autoplay rules) and is suspended while the tab is hidden or sound is muted. Without WebAudio, under `?test=1`, in automated browsers (`navigator.webdriver`, unless `?sound=1`) and in Node, the engine does nothing and never throws, so screenshots and tests are unaffected.
+- **Settings.** `masterVolume` (default 0.6), `sfxVolume` (0.8; it also sets the UI bus), `ambientVolume` (0.5) and `muted` live in `spore-sprawl/settings/v1`, and saves from before sound load with these defaults. Gains follow the square of the slider, which sounds closer to even steps. The speaker button sits in the battle's speed row and in the run bar: a click mutes, and hovering or focusing it opens the volume sliders. `S` mutes or unmutes anywhere.
+- **Sound board.** `?scene=sounds` lists every sound with Play and ×8 (eight plays 70 ms apart, to hear cooldowns and the voice cap), plays the ambient bed, and can audition 2× and 3× speed, the enemy's quieter side and the paused level.
 
 ---
 
@@ -1765,6 +1804,7 @@ Everything here is runnable by Claude, headlessly, from the project root.
 | `bench` | Performance benchmark (§15.4) |
 | `golden` | Verify or update golden replays (§15.5) |
 | `screenshot` | Playwright browser check (§15.6) |
+| `og-image` | Render the link-preview image `public/og-image.png` (1200×630) from the title screen (§13.8) |
 | `verify` | `typecheck` → `lint` → `validate:data` → `test` → `golden verify` → a sim smoke test (3 seeds) → `bench --quick`. One command, non-zero exit on any failure. |
 
 ### 15.2 Headless simulator: `npm run sim -- [options]`
@@ -1845,7 +1885,7 @@ Script options: `--name <file>`, `--params "<query>"`, `--url <base>`, `--browse
 
 | Param | Meaning |
 |---|---|
-| `scene` | `battle` (default in M1), `deploy`, `draft`, `report`, `route`, `summary`, `underroot`, `title` |
+| `scene` | `title` (the default: with no `scene` and no battle parameters the page opens on the title), `run` (resume the saved run or start one, skipping the title), `battle` (the default when battle parameters are given), `deploy`, `draft`, `report`, `route`, `summary`, `underroot`, and the tool `sounds` (the sound board, §13.9) |
 | `map`, `seed`, `battleIndex` | Battle setup |
 | `player`, `enemy` | Controllers: `human`, `bot:<id>`, `general:<id>` |
 | `scenario` | Start from a scenario file |
@@ -1853,19 +1893,20 @@ Script options: `--name <file>`, `--params "<query>"`, `--url <base>`, `--browse
 | `paused` | `1` = start paused (stable screenshots) |
 | `flags` | Feature flags, as in the CLI |
 | `debug` | `1` = debug overlay and the `window.__GAME__` bridge |
-| `test` | `1` = the bridge without the overlay |
+| `test` | `1` = the bridge without the overlay; sound is off |
+| `sound` | `1` = sound on in an automated browser, where it is off by default (`test=1` still wins) |
 | `autoplay` | Let bots play through `run` (a whole run) or `battles:<n>` (the first n battles), for route and summary screens |
 | `tab`, `profile` | Underroot tab; `profile=fixture:<name>` loads a test profile from `tests/fixtures/` |
 | `targeting`, `measure` | `targeting=1` opens power targeting; `measure=frames` records frame times into the bridge |
 
-**Bridge** (`window.__GAME__`, only with `debug=1` or `test=1`): `{ ready, tick, hash, summary(), errors[] }`.
+**Bridge** (`window.__GAME__`, only with `debug=1` or `test=1`): `{ ready, scene, tick, hash, summary(), run(), battle(), errors[] }`. `battle()` is the live state, for browser tests that stage a HUD case (a smaller kit, less gold); changing it gives up the hash check.
 
 **Assertions** the script makes before saving:
 
 1. No console errors and no page errors.
 2. `__GAME__.hash` equals the hash from headless `npm run sim` with the same parameters at the same tick. This cross-checks Node against the browser.
 3. The canvas isn't blank: at least 12 distinct colors in a sampled grid, and both team tints present in their home columns.
-4. The HUD agrees with the state. For example, `#hud-gold` equals `summary().gold.player` and `#hud-supply` equals `summary().supply.player`.
+4. The HUD agrees with the state. For example, `#hud-gold` equals `summary().gold.player` and `#hud-supply` equals `summary().supply.player`. On run screens the DOM agrees with the run: the route's six rows and node icons, the draft's cards, the summary's battles, the intel bars, and on the title the wordmark, a primary button, How to play and Settings. The title holds no run or battle yet, so its hash check compares empty hashes.
 5. It writes `artifacts/screenshots/<name>.png` and a matching `<name>.json` summary.
 
 Claude then **opens the PNG with the Read tool** and checks the milestone's visual checklist. For interactive spot checks it can also open `npm run dev` in its built-in browser pane.
@@ -1886,6 +1927,7 @@ Claude then **opens the PNG with the Read tool** and checks the milestone's visu
 | AI (M4) | Analysis scores for synthetic mixes; warning and activation ticks; doctrine weights; selling for space; intel decay |
 | Run (M3) | Route constraints; draft weights and exclusions; effect compilation order; rewards; save round-trip |
 | Meta (M6) | Feat conditions; strain patching; trait capacity; mastery thresholds; migrations |
+| Sound | The sound bank's schema and references; cooldowns per key; the voice cap and priority stealing; speed thinning; the engine as a no-op in Node; which battle events make sounds, at whose gain; settings migration |
 | Purity | No forbidden imports or globals in `src/sim`, `src/run` or `src/meta` |
 
 ---

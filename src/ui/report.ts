@@ -1,7 +1,12 @@
 // Battle report (SPEC §10.4, §10.5): the outcome and how it was decided, the front-line graph
 // (columns owned over time, one band per lane), damage by building, gold by source, and units
-// spawned and merged. Shown when a battle ends and for `scene=report`.
+// spawned and merged. Shown when a battle ends and for `scene=report`. The outcome is a banner (on a
+// win the Heartcap blooms in lilac spores, on a loss the cap wilts to ash) with the MVP building beside
+// it, and the report reveals in stages: the banner, then the front line, then the bars (docs/ui-ux-plan.md C4).
 import type { Content } from '../data/registry.ts';
+import type { Atlas } from '../render/atlas.ts';
+import { spriteToCanvas } from '../render/atlas.ts';
+import { sporeLayer } from '../render/spores.ts';
 import type { BattleState, Side } from '../sim/index.ts';
 import { formatClock } from '../sim/index.ts';
 import { columnsOwned } from '../sim/world.ts';
@@ -45,7 +50,7 @@ export function frontLineGraph(state: BattleState, width = 900): SVGElement {
   const home = state.map.homeCols;
   const end = Math.max(state.tick, 1);
   const pad = { l: 34, r: 8, t: 6, b: 18 };
-  const band = state.lanes.length === 1 ? 132 : state.lanes.length === 2 ? 86 : 64;
+  const band = state.lanes.length === 1 ? 104 : state.lanes.length === 2 ? 68 : 50;
   const gap = 8;
   const plotW = width - pad.l - pad.r;
   const height = pad.t + state.lanes.length * band + (state.lanes.length - 1) * gap + pad.b;
@@ -139,7 +144,61 @@ export function counterSection(content: Content, state: BattleState): HTMLElemen
   return h('section', { id: 'report-counters' }, h('h3', null, `${name} countered…`), h('ul', { class: 'counterlist' }, ...lines));
 }
 
-export function battleReport(content: Content, state: BattleState, actions: { again: () => void; rematch: () => void; continueRun?: () => void }): HTMLElement {
+/** The building type that dealt the most damage (Heartcap turrets aside), its count and its share of the side's damage. */
+export interface Mvp { type: string; value: number; count: number; share: number }
+
+export function mvpOf(damage: Record<string, number>, counts: Record<string, number> = {}): Mvp | null {
+  const total = Object.values(damage).reduce((a, b) => a + b, 0);
+  const best = Object.entries(damage).filter(([id]) => id !== 'turret').sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1))[0];
+  if (!best || best[1] <= 0) return null;
+  return { type: best[0], value: best[1], count: counts[best[0]] ?? 1, share: best[1] / Math.max(1, total) };
+}
+
+/** A battle's damage by building type for one side (turrets keyed `turret`), and how many of each type it built. */
+export function damageTotals(state: BattleState, side: Side): { damage: Record<string, number>; counts: Record<string, number> } {
+  const st = state.stats[side];
+  const damage: Record<string, number> = {};
+  for (const [id, dmg] of Object.entries(st.damageByBuilding)) {
+    const type = id === '0' ? 'turret' : st.buildingTypes[id] ?? '?';
+    damage[type] = (damage[type] ?? 0) + dmg;
+  }
+  const counts: Record<string, number> = {};
+  for (const type of Object.values(st.buildingTypes)) counts[type] = (counts[type] ?? 0) + 1;
+  return { damage, counts };
+}
+
+/** The MVP callout: the building at 2×, its name and what it did. */
+export function mvpCallout(content: Content, atlas: Atlas | undefined, mvp: Mvp | null, scope: string): HTMLElement | null {
+  if (!mvp) return null;
+  const b = content.buildings[mvp.type];
+  if (!b) return null;
+  return h('div', { class: 'mvp', id: 'mvp' },
+    atlas ? Object.assign(spriteToCanvas(atlas, b.sprite, 'velvet-bloom'), { className: 'mvp-art' }) : null,
+    h('div', { class: 'mvp-text' },
+      h('span', { class: 'eyebrow' }, `MVP building ${scope}`),
+      h('b', null, `${b.name}${mvp.count > 1 ? ` ×${mvp.count}` : ''}`),
+      h('span', null, `${mvp.value.toLocaleString('en-US')} damage · ${Math.round(mvp.share * 100)}% of yours`)));
+}
+
+/**
+ * The outcome banner's art: on a win the Heartcap at 2× with lilac spores rising off it; on a loss the cap
+ * wilted to ash, with ash drifting down.
+ */
+export function outcomeArt(atlas: Atlas | undefined, won: boolean): HTMLElement {
+  const box = h('div', { class: `outcome-art ${won ? 'win' : 'loss'}`, 'aria-hidden': 'true' });
+  if (!atlas) return box;
+  const still = document.documentElement.classList.contains('still');
+  const art = won
+    ? h('div', { class: 'bloom' }, Object.assign(spriteToCanvas(atlas, 'heartcap-cap', 'velvet-bloom'), { className: 'cap' }),
+      Object.assign(spriteToCanvas(atlas, 'heartcap-stalk', 'velvet-bloom'), { className: 'stalk' }))
+    : Object.assign(spriteToCanvas(atlas, 'hc-wilt', 'velvet-bloom'), { className: 'wilt' });
+  box.append(art);
+  const color = getComputedStyle(document.documentElement).getPropertyValue(won ? '--lilac' : '--rot-light').trim();
+  requestAnimationFrame(() => sporeLayer(box, { scale: 2, density: won ? 40 : 26, rate: won ? 2.2 : -1.2, still, color, seed: won ? 0xb100 : 0xa54 }));
+  return box;
+}
+
+export function battleReport(content: Content, state: BattleState, actions: { again: () => void; rematch: () => void; continueRun?: () => void }, atlas?: Atlas): HTMLElement {
   const o = state.outcome!;
   const won = o.winner === 'player';
   const st = state.stats;
@@ -154,18 +213,21 @@ export function battleReport(content: Content, state: BattleState, actions: { ag
     for (const [k, label] of SOURCES) if (st[side].goldEarned[k] > 0) gold.push({ label, value: st[side].goldEarned[k], side });
   }
   const row = (label: string, f: (s: Side) => string | number) => h('tr', null, h('td', null, label), h('td', null, String(f('player'))), h('td', null, String(f('enemy'))));
+  const totals = damageTotals(state, 'player');
   const card = h('div', { class: 'reportcard', id: 'report', role: 'dialog', 'aria-label': 'Battle report' },
-    h('div', { class: 'reporthead' },
-      h('div', null,
+    h('div', { class: `banner reveal ${won ? 'win' : 'loss'}`, style: '--d:0' },
+      outcomeArt(atlas, won),
+      h('div', { class: 'banner-text' },
         h('h1', { class: won ? 'win' : 'loss', id: 'end-title' }, won ? 'Victory' : 'Defeat'),
         h('div', { class: 'how', id: 'end-how' }, outcomeText(state)),
-      ),
-      h('div', { class: 'hint' }, `Battle length ${formatClock(o.tick, state.rules.tickRate)} · Sporestorm ${state.sporestorm} stack${state.sporestorm === 1 ? '' : 's'}`),
+        h('div', { class: 'hint' }, `Battle length ${formatClock(o.tick, state.rules.tickRate)} · Sporestorm ${state.sporestorm} stack${state.sporestorm === 1 ? '' : 's'}`)),
+      mvpCallout(content, atlas, mvpOf(totals.damage, totals.counts), 'this battle'),
     ),
-    h('h3', null, 'Front line'),
-    frontLineGraph(state),
-    counterSection(content, state),
-    h('div', { class: 'reportgrid' },
+    h('div', { class: 'reveal', style: '--d:1' },
+      h('h3', null, 'Front line'),
+      frontLineGraph(state),
+      counterSection(content, state)),
+    h('div', { class: 'reportgrid reveal', style: '--d:2' },
       h('section', null,
         h('h3', null, 'Damage by building', h('span', { class: 'legend' }, h('i', { class: 'player' }), NAME.player, h('i', { class: 'enemy' }), NAME.enemy)),
         bars('report-damage', damage),
@@ -186,10 +248,10 @@ export function battleReport(content: Content, state: BattleState, actions: { ag
       ),
     ),
     actions.continueRun
-      ? h('div', { class: 'actions' }, h('button', { class: 'btn on', onclick: actions.continueRun, id: 'continue-run' }, 'Continue the run'))
+      ? h('div', { class: 'actions' }, h('button', { class: 'btn primary', onclick: actions.continueRun, id: 'continue-run' }, 'Continue the run'))
       : h('div', { class: 'actions' },
         h('button', { class: 'btn', onclick: actions.rematch, id: 'rematch' }, 'Rematch (same seed)'),
-        h('button', { class: 'btn on', onclick: actions.again, id: 'play-again' }, 'Play again'),
+        h('button', { class: 'btn primary', onclick: actions.again, id: 'play-again' }, 'Play again'),
       ),
   );
   return h('div', { class: 'overlay' }, card);

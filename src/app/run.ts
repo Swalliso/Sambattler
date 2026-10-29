@@ -12,11 +12,13 @@ import { createBattle, queueCommand, runHeadless } from '../sim/index.ts';
 import type { BattleState, Content } from '../sim/index.ts';
 import { eventScreen, groveScreen, promptScreen, routeScreen, spoilsScreen, summaryScreen } from '../ui/screens/run.ts';
 import { h } from '../ui/h.ts';
+import { sporeLayer } from '../render/spores.ts';
 import { BattleView } from './battleView.ts';
 import { storageKey } from './channel.ts';
 import { bindInput } from './input.ts';
 import { GameLoop } from './loop.ts';
 import { Session } from './session.ts';
+import { soundToggle } from './sound.ts';
 
 /**
  * localStorage behind the run layer's Storage interface (failures, e.g. private mode, are ignored),
@@ -35,7 +37,11 @@ export interface RunEnv {
   /** False for seeded and test runs: nothing is written to storage. */
   persist: boolean;
   debug: boolean;
+  /** Ambient motion holds still (`?test=1`), so screenshots and browser tests are stable. */
+  still: boolean;
   newSeed: () => number;
+  /** Back to the title screen, when the run was opened from it. */
+  toTitle?: () => void;
 }
 
 interface LiveBattle { state: BattleState; view: BattleView; loop: GameLoop; unbind: () => void }
@@ -86,7 +92,10 @@ export class RunController {
     let el: HTMLElement | null = null;
     switch (s.kind) {
       case 'route':
-        el = routeScreen(content, atlas, run, { choose: (i) => this.act(() => chooseNode(content, run, i)), abandon: () => this.abandon() });
+        el = routeScreen(content, atlas, run, {
+          choose: (i) => this.act(() => chooseNode(content, run, i)), abandon: () => this.abandon(),
+          ...(this.env.toTitle ? { toTitle: this.env.toTitle } : {}),
+        });
         break;
       case 'battle': {
         const ticks = this.pendingTicks;
@@ -110,10 +119,15 @@ export class RunController {
         el = promptScreen(content, atlas, run, { answer: (o) => this.act(() => promptAnswer(content, run, o)) });
         break;
       case 'summary':
-        el = summaryScreen(content, atlas, run, { newRun: () => this.newRun() });
+        el = summaryScreen(content, atlas, run, { newRun: () => this.newRun(), ...(this.env.toTitle ? { toTitle: this.env.toTitle } : {}) });
         break;
     }
     if (el) {
+      el.querySelector('.runbar')?.append(soundToggle(atlas, 'down'));
+      // spores drift behind every run screen, as on the title
+      const sky = h('div', { class: 'run-sky', 'aria-hidden': 'true' });
+      el.prepend(sky);
+      requestAnimationFrame(() => sporeLayer(sky, { scale: 3, density: 1.2, still: this.env.still }));
       if (this.rewardRecoveryNotice) el.prepend(h('div', { class: 'hint', id: 'reward-recovery', role: 'status' }, this.rewardRecoveryNotice));
       app.replaceChildren(el);
       // run screens have no game loop: report readiness on the next frame
@@ -138,10 +152,9 @@ export class RunController {
     const state = resumed ?? createBattle(content, config);
     const session = new Session(state, content);
     const begin = () => { if (state.phase === 'deploy' && !state.queue.some((c) => c.type === 'begin')) session.issue({ type: 'begin' }); };
-    const view = new BattleView(session, content, atlas, { begin, again: () => {}, rematch: () => {}, continueRun: () => this.finish() }, this.env.debug);
+    const view = new BattleView(session, content, atlas, { begin, again: () => {}, rematch: () => {}, continueRun: () => this.finish() }, this.env.debug, this.env.still);
     if (recoveryNotice) {
-      view.root.querySelector('#begin-box')!.prepend(h('div', { class: 'hint', id: 'save-recovery', role: 'status' },
-        'The saved battle could not be restored. This battle restarted from deployment; your run progress is preserved.'));
+      view.notice('save-recovery', 'The saved battle could not be restored. This battle restarted from deployment; your run progress is preserved.');
     }
     document.getElementById('app')!.replaceChildren(view.root);
     if (state.phase === 'deploy' && (config.player.controller.kind !== 'human' || ticks !== null)) {
@@ -171,9 +184,9 @@ export class RunController {
     this.newRun();
   }
 
-  newRun(): void {
+  newRun(seed?: number): void {
     if (this.env.persist) clearRun(this.env.storage);
-    this.run = createRun(this.env.content, { seed: this.env.newSeed() });
+    this.run = createRun(this.env.content, { seed: seed ?? this.env.newSeed() });
     this.save();
     this.show();
   }

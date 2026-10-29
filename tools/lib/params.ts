@@ -12,9 +12,9 @@ import type { BattleState } from '../../src/sim/index.ts';
 const BATTLE_PARAMS = ['player', 'enemy', 'ticks', 'scenario', 'map', 'battleIndex', 'flags', 'paused'];
 export const RUN_SCENES = ['run', 'route', 'draft', 'summary'];
 
-/** The scene the browser opens for this query (no `scene`: a battle if battle parameters are present, else a run). */
+/** The scene the browser opens for this query (no `scene`: a battle if battle parameters are present, else the title). */
 export function sceneOf(q: URLSearchParams): string {
-  return q.get('scene') ?? (BATTLE_PARAMS.some((k) => q.has(k)) ? 'battle' : 'run');
+  return q.get('scene') ?? (BATTLE_PARAMS.some((k) => q.has(k)) ? 'battle' : 'title');
 }
 
 function ticksOf(q: URLSearchParams): number | 'end' | null {

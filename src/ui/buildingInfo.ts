@@ -2,9 +2,11 @@
 // 2026-10-28: a player never noticed the economy buildings, and the cards read as jargon). Stats come
 // from the compiled side, so upgrades and relics show.
 import type { Content } from '../data/registry.ts';
+import type { Atlas } from '../render/atlas.ts';
 import { formatClock } from '../sim/index.ts';
 import type { BattleState, BuildingKind } from '../sim/index.ts';
 import { h } from './h.ts';
+import { priceEl } from './icons.ts';
 import { strongVs, vulnerableTo, weakVs } from './matrixHints.ts';
 import { perkText } from './mergeHints.ts';
 
@@ -20,23 +22,28 @@ const secs = (s: number) => `${Math.round(s * 10) / 10} s`;
 const plural = (n: number, name: string) => (n === 1 ? name : `${name}s`);
 const cap = (s: string) => s[0]!.toUpperCase() + s.slice(1);
 
-/** What the building does, in a few words for the card face (90 px wide when the tray is full). */
+/**
+ * What the building does, in a few words for the card face: one line on a compact card (about 105 px),
+ * at most two on a full one (76 px at its narrowest). Non-breaking spaces keep a number with its unit.
+ */
 export function cardLine(content: Content, state: BattleState, id: string): string {
   const cb = state.compiled.player.buildings[id]!;
   const tr = state.rules.tickRate;
+  const nb = (s: string) => s.replaceAll(' ', '\u00a0');
   // the building's name already names its unit; the tooltip spells it out
-  if (cb.spawn) return `${cb.spawn.count} every ${secs(cb.spawn.intervalHalfTicks / 2 / tr)}`;
-  if (cb.attack) return `${cb.attack.splashRadius ? 'splash, ' : ''}range ${cb.attack.range}`;
+  if (cb.spawn) return `${cb.spawn.count} every ${nb(secs(cb.spawn.intervalHalfTicks / 2 / tr))}`;
+  if (cb.attack) return `${cb.attack.splashRadius ? 'splash, ' : ''}${nb(`range ${cb.attack.range}`)}`;
   if (cb.economy) {
-    const g = `+${cb.economy.goldPerTick} gold`;
-    return cb.economy.interestCapAdd ? `${g} · interest +${cb.economy.interestCapAdd}` : `${g} / ${secs(content.balance.incomeTickSeconds)}`;
+    // an interest building's point is the cap; its trickle of gold is in the tooltip
+    if (cb.economy.interestCapAdd) return `${nb('interest cap')} +${cb.economy.interestCapAdd}`;
+    return `${nb(`+${cb.economy.goldPerTick} gold`)} / ${nb(secs(content.balance.incomeTickSeconds))}`;
   }
-  if (cb.utility) return `+${cb.utility.supplyCapAdd} supply cap`;
+  if (cb.utility) return `+${cb.utility.supplyCapAdd} ${nb('supply cap')}`;
   return ROLE_LABEL[cb.kind];
 }
 
 /** The tooltip body for a tray card: role, description, what it makes or does, and the unit's matchups. */
-export function buildingTip(content: Content, state: BattleState, id: string, hotkey: string): HTMLElement[] {
+export function buildingTip(content: Content, atlas: Atlas, state: BattleState, id: string, hotkey: string): HTMLElement[] {
   const b = content.buildings[id]!;
   const cb = state.compiled.player.buildings[id]!;
   const cs = state.compiled.player;
@@ -76,7 +83,7 @@ export function buildingTip(content: Content, state: BattleState, id: string, ho
   if (cb.utility) rows.push(['Supply cap', `+${cb.utility.supplyCapAdd} (at most ${cb.utility.maxCount} count)`]);
   rows.push(['Building HP', String(cb.hp)]);
   return [
-    h('div', { class: 'tip-head' }, h('b', null, b.name), h('span', { class: `role ${cb.kind}` }, ROLE_LABEL[cb.kind]), h('span', { class: 'price' }, `◆ ${b.cost}`)),
+    h('div', { class: 'tip-head' }, h('b', null, b.name), h('span', { class: `role ${cb.kind}` }, ROLE_LABEL[cb.kind]), priceEl(atlas, b.cost)),
     h('div', { class: 'tip-desc' }, b.description),
     ...rows.map(([k, v]) => h('div', { class: 'row' }, h('span', { class: 'muted' }, k), h('span', null, v))),
     h('div', { class: 'tip-foot' }, `${hotkey ? `Press ${hotkey} or click` : 'Click'}, then click the field. Building farther from home costs more.`),

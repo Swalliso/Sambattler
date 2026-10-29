@@ -1,12 +1,18 @@
-// The battle screen (SPEC §10.2): top band, callout lane, the pixel-scaled battlefield with Heartcap
-// HP pinned at each end, and the bottom band (speed/pause, building tray, inspect panel).
+// The battle screen (SPEC §10.2): the top band (both Heartcaps, the territory tug, stat chips and the
+// General's Intent), the callout lane, the pixel-scaled battlefield inside its frame of roots and soil,
+// and the bottom band (Begin in deploy, then speed and pause; Hold / Advance; sound, settings and help;
+// the building tray; the inspect panel).
 import type { Content } from '../data/registry.ts';
 import { Renderer, TILE } from '../render/renderer.ts';
-import type { DamageNumbers } from '../render/renderer.ts';
 import type { Atlas } from '../render/atlas.ts';
+import { FieldFrame } from '../render/frame.ts';
 import { Callouts } from '../ui/callouts.ts';
 import { h, setText, toggleClass } from '../ui/h.ts';
 import { helpOverlay } from '../ui/help.ts';
+import { uiIcon } from '../ui/icons.ts';
+import { uiScale } from '../ui/scale.ts';
+import { settingsControl } from '../ui/settingsControl.ts';
+import type { SettingsControl } from '../ui/settingsControl.ts';
 import { battleReport } from '../ui/report.ts';
 import { activeText, generalName, intentOf, rememberText, warningText } from '../ui/doctrine.ts';
 import { DraftOverlay } from '../ui/draftOverlay.ts';
@@ -15,11 +21,14 @@ import { Tray } from '../ui/hud/tray.ts';
 import { trayOrder } from '../ui/buildingInfo.ts';
 import { CombatLog, InspectPanel } from '../ui/inspect.ts';
 import type { BattleState } from '../sim/index.ts';
+import { BattleSound } from './battleSound.ts';
 import type { Session } from './session.ts';
 import { loadSettings, saveSettings } from './settings.ts';
+import { sfx, soundDim, soundSpeed, soundToggle } from './sound.ts';
 
-const NUMBERS_LABEL: Record<DamageNumbers, string> = { off: 'off', big: 'big hits', all: 'all' };
-const NUMBERS_NEXT: Record<DamageNumbers, DamageNumbers> = { off: 'big', big: 'all', all: 'off' };
+/** The ghost tip's gap from the footprint, and its margin inside the field (layout px). */
+const TIP_GAP = 14;
+const TIP_MARGIN = 4;
 /** Battle 1's economy tip (playtest 2026-10-28): when it fires, and how long the economy cards pulse. */
 const NUDGE_AT_SECONDS = 30;
 const NUDGE_PULSE_MS = 12000;
@@ -36,10 +45,13 @@ export class BattleView {
   readonly root: HTMLElement;
   readonly renderer: Renderer;
   readonly canvas: HTMLCanvasElement;
+  /** The roots ceiling, soil bed and ambient spores around the field. */
+  readonly frameArt: FieldFrame;
   readonly callouts = new Callouts();
   readonly log = new CombatLog();
   readonly inspect: InspectPanel;
   readonly draft: DraftOverlay;
+  private sound: BattleSound;
   private top: TopBand;
   private tray: Tray;
   private trayKit = '';
@@ -47,15 +59,18 @@ export class BattleView {
   private report: HTMLElement | null = null;
   private fieldWrap: HTMLElement;
   private field: HTMLElement;
-  private hpP = h('div', { class: 'hp player', id: 'hud-hp-player' });
-  private hpE = h('div', { class: 'hp enemy', id: 'hud-hp-enemy' });
   private tip = h('div', { class: 'ghost-tip', id: 'ghost-tip', hidden: true });
-  private pauseBadge = h('div', { class: 'pausebadge', hidden: true }, '❚❚ PAUSED');
+  /** Pinned in the callout lane: the deploy hint and "Paused". */
+  private deployCallout: HTMLElement;
+  private pausedCallout: HTMLElement;
+  /** One gold icon, moved into each frame's ghost tip. */
+  private tipGold: HTMLCanvasElement;
   private beginBox: HTMLElement;
+  private speedSeg: HTMLElement;
   private speedBtns: HTMLButtonElement[] = [];
-  private stanceBtns: HTMLButtonElement[] = [];
+  private stanceRows: { hold: HTMLButtonElement; advance: HTMLButtonElement; status: HTMLElement }[] = [];
   private pauseBtn: HTMLButtonElement;
-  private numbersBtn: HTMLButtonElement;
+  private settings: SettingsControl;
   private help: HTMLElement | null = null;
   private pausedBeforeHelp = false;
   private ended = false;
@@ -63,10 +78,13 @@ export class BattleView {
   private nudgeUntil = 0;
   scale = 1;
 
-  constructor(private session: Session, content: Content, private atlas: Atlas, private actions: ViewActions, debug: boolean) {
+  /** @param still ambient motion holds still (`?test=1`), so screenshots and browser tests are stable */
+  constructor(private session: Session, content: Content, private atlas: Atlas, private actions: ViewActions, debug: boolean, still = false) {
     const state = session.state;
     this.canvas = h('canvas', { id: 'battlefield', 'aria-label': 'Battlefield' });
     this.renderer = new Renderer(this.canvas, content, atlas, state);
+    this.frameArt = new FieldFrame(content, atlas, this.renderer.width, this.renderer.height, still);
+    this.sound = new BattleSound(state, content.audio.enemyGain, sfx);
     this.top = new TopBand(content, atlas, state);
     this.tray = new Tray(content, atlas, state, (id) => this.pick(id));
     this.trayKit = state.sides.player.kit.join();
@@ -77,36 +95,51 @@ export class BattleView {
     });
     this.inspect = new InspectPanel(content, this.log, (id) => session.issue({ type: 'sell', entityId: id }),
       (id) => session.toggleMerge(id), (_state, id) => session.mergeShown(id));
-    this.fieldWrap = h('div', { class: 'fieldwrap' }, this.canvas, this.hpP, this.hpE, this.tip, this.pauseBadge);
+    this.tipGold = uiIcon(atlas, 'i-gold');
+    this.fieldWrap = h('div', { class: 'fieldwrap' }, this.canvas, this.tip);
+    this.field = h('main', { class: 'field' }, this.frameArt.el, this.fieldWrap);
+    this.deployCallout = h('div', { class: 'callout deploy', id: 'deploy-hint' },
+      `Deploy phase: place your opener with ${state.sides.player.gold} gold, then press Begin`, h('kbd', null, 'Enter'));
+    this.pausedCallout = h('div', { class: 'callout paused', id: 'paused-callout' }, uiIcon(atlas, 'i-pause'), 'Paused', h('kbd', null, 'Space'));
+    // deploy: Begin is the one primary button; once the battle is live, speed and pause take its place
     this.beginBox = h('div', { class: 'begin', id: 'begin-box' },
-      h('button', { class: 'btn', id: 'begin-btn', onclick: () => actions.begin() }, 'Begin'),
-      h('div', { class: 'hint' }, `Deploy phase: place your opener with ${state.sides.player.gold} gold, then press Begin (Enter).`),
+      h('button', { class: 'btn primary', id: 'begin-btn', title: 'Start the battle (Enter)', onclick: () => actions.begin() }, 'Begin', h('kbd', null, 'Enter')),
     );
-    this.field = h('main', { class: 'field' }, this.fieldWrap, this.beginBox);
     for (const s of [1, 2, 3]) {
-      this.speedBtns.push(h('button', { class: 'btn', 'data-speed': s, onclick: () => { session.speed = s; } }, `${s}×`));
+      this.speedBtns.push(h('button', { class: 'btn', 'data-speed': s, title: `Speed ${s}× ([ and ] change it)`, 'aria-pressed': 'false', onclick: () => { session.speed = s; } }, `${s}×`));
     }
-    this.pauseBtn = h('button', { class: 'btn', id: 'pause-btn', onclick: () => { session.paused = !session.paused; } }, '❚❚');
+    this.pauseBtn = h('button', {
+      class: 'btn has-ico', id: 'pause-btn', title: 'Pause (Space)', 'aria-label': 'Pause', 'aria-pressed': 'false', onclick: () => { session.paused = !session.paused; },
+    }, uiIcon(atlas, 'i-pause'));
+    this.speedSeg = h('div', { class: 'seg speed', role: 'group', 'aria-label': 'Speed and pause' }, ...this.speedBtns, this.pauseBtn);
     this.renderer.damageNumbers = loadSettings().damageNumbers;
-    this.numbersBtn = h('button', {
-      class: 'btn', id: 'numbers-btn', title: 'Damage numbers: off, big hits only, or all',
-      onclick: () => this.cycleNumbers(),
-    }, '');
-    // E1: one Hold / Advance button per lane
+    this.settings = settingsControl(atlas, (v) => {
+      this.renderer.damageNumbers = v;
+      saveSettings({ damageNumbers: v });
+    });
+    // E1: a Hold / Advance switch per lane, with what the lane is doing (and any timer) beside it
+    const lanes = state.lanes.length;
     const stance = state.rules.stance ? h('div', { class: 'stance', id: 'stance' },
       ...state.lanes.map((_, i) => {
-        const title = `Hold or advance ${state.lanes.length > 1 ? `lane ${i + 1}` : 'the lane'} (F: every lane)`;
-        const b = h('button', { class: 'btn', 'data-lane': i, title, onclick: () => session.toggleStance(i) }, '');
-        this.stanceBtns.push(b);
-        return b;
+        const which = lanes > 1 ? `lane ${i + 1}` : 'the lane';
+        const hold = h('button', { class: 'btn has-ico', 'data-stance': 'hold', 'data-lane': i, 'aria-pressed': 'false', title: `Hold ${which}: units gather at the rally line (F: every lane)`, 'aria-label': `Hold ${which}`, onclick: () => { if (!session.stanceShown(i)) session.toggleStance(i); } }, uiIcon(atlas, 'i-hold'));
+        const advance = h('button', { class: 'btn has-ico', 'data-stance': 'advance', 'data-lane': i, 'aria-pressed': 'true', title: `Advance ${which} (F: every lane)`, 'aria-label': `Advance ${which}`, onclick: () => { if (session.stanceShown(i)) session.toggleStance(i); } }, uiIcon(atlas, 'i-advance'));
+        const status = h('span', { class: 'status' });
+        this.stanceRows.push({ hold, advance, status });
+        return h('div', { class: 'stance-row' },
+          lanes > 1 ? h('span', { class: 'lane', title: `Lane ${i + 1}` }, String(i + 1)) : null,
+          h('div', { class: 'seg', role: 'group', 'aria-label': `Stance, ${which}` }, hold, advance), status);
       }),
     ) : null;
     const controls = h('div', { class: 'controls' },
-      h('div', { class: 'speed' }, ...this.speedBtns, this.pauseBtn),
-      // one line: F is on the Hold buttons' tooltips and in Help, so two lanes still fit the band
-      h('div', { class: 'hint' }, 'Space pause · [ ] speed'),
+      this.beginBox,
+      this.speedSeg,
       stance,
-      h('div', { class: 'row' }, h('button', { class: 'btn', id: 'help-btn', onclick: () => this.toggleHelp() }, 'Help [H]'), this.numbersBtn),
+      h('div', { class: 'row' },
+        soundToggle(atlas, 'up'),
+        this.settings.el,
+        h('button', { class: 'btn', id: 'help-btn', title: 'Help: the matrix, merging, the general and every hotkey', onclick: () => this.toggleHelp() }, 'Help', h('kbd', null, 'H')),
+      ),
       debug ? h('div', { class: 'hint' }, 'F3 debug overlay') : null,
     );
     this.root = h('div', { id: 'battle', style: 'display:contents' },
@@ -117,11 +150,15 @@ export class BattleView {
       this.draft.el,
     );
     window.addEventListener('resize', this.onResize);
+    // the self-hosted fonts change the bands' heights when they swap in
+    void document.fonts.ready.then(this.onResize);
   }
 
   /** Removes window listeners and overlays this view added (a run plays several battles). */
   dispose(): void {
     window.removeEventListener('resize', this.onResize);
+    soundSpeed(1);
+    soundDim(false);
     this.help?.remove();
     this.report?.remove();
   }
@@ -142,10 +179,9 @@ export class BattleView {
 
   get helpOpen(): boolean { return this.help !== null; }
 
-  private cycleNumbers(): void {
-    const next = NUMBERS_NEXT[this.renderer.damageNumbers];
-    this.renderer.damageNumbers = next;
-    saveSettings({ damageNumbers: next });
+  /** A notice pinned in the callout lane while the battle is in deploy (e.g. a save that couldn't be restored). */
+  notice(id: string, text: string): void {
+    this.callouts.pin(id, h('div', { class: 'callout bad notice', id, role: 'status' }, text));
   }
 
   pick(id: string): void {
@@ -154,16 +190,25 @@ export class BattleView {
     this.session.selected = null;
   }
 
-  /** Integer scaling when it wastes ≤30% of the area, else fractional (SPEC §10.1). */
+  /**
+   * Integer scaling when it wastes ≤30% of the area, else fractional (SPEC §10.1). The scale is in
+   * screen pixels, so under UI scale (src/ui/scale.ts) the field still lands on whole screen pixels.
+   * Nothing sits on the field's edges any more (Heartcap HP lives in the top band), so it keeps 8 px
+   * of margin on each side.
+   */
   fit(): void {
-    const r = this.field.getBoundingClientRect();
-    const availW = Math.max(100, r.width - 16), availH = Math.max(100, r.height - 40);
+    const r = this.field.getBoundingClientRect(), ui = uiScale();
+    const availW = Math.max(100, r.width - 16 * ui), availH = Math.max(100, r.height - 16 * ui);
     const nw = this.renderer.width, nh = this.renderer.height;
     const frac = Math.min(availW / nw, availH / nh);
     const int = Math.floor(frac);
     this.scale = int >= 1 && (int * int) / (frac * frac) >= 0.7 ? int : frac;
-    this.canvas.style.width = `${Math.round(nw * this.scale)}px`;
-    this.canvas.style.height = `${Math.round(nh * this.scale)}px`;
+    this.canvas.style.width = `${Math.round(nw * this.scale) / ui}px`;
+    this.canvas.style.height = `${Math.round(nh * this.scale) / ui}px`;
+    // the frame fills everything between the bands: from the top band down, past the callout lane
+    this.frameArt.el.style.top = `${(this.top.el.getBoundingClientRect().bottom - r.top) / ui}px`;
+    this.frameArt.layout(this.canvas.getBoundingClientRect(), this.frameArt.el.getBoundingClientRect(), ui);
+    this.tray.fit();
   }
 
   /** Converts a mouse event to world tile coordinates. */
@@ -175,9 +220,10 @@ export class BattleView {
     return { x, y, col: Math.floor(x), row: Math.floor(y) };
   }
 
-  /** Per-tick feed: effects, callouts, combat log. */
+  /** Per-tick feed: effects, sounds, callouts, combat log. */
   onTick(state: BattleState, now: number): void {
     this.renderer.onTick(state, now);
+    this.sound.onTick(state);
     this.log.onTick(state);
     this.economyNudge(state, now);
     for (const e of state.events) {
@@ -242,9 +288,13 @@ export class BattleView {
       ghost: ghost ? { buildingId: ghost.buildingId, col: ghost.col, row: ghost.row, legal: ghost.legal } : null,
       selected: s.selected,
       pending: s.pending(),
+      placeable: s.legalTiles(),
       debug: debugOverlay,
       timeMs: now,
     });
+    // spores drift at the game's speed, and stop while it is paused, held for a draft or over
+    const running = state.phase === 'deploy' || (state.phase === 'live' && !s.paused && !state.held);
+    this.frameArt.frame(state.sporestorm, now, running ? (state.phase === 'live' ? s.speed : 1) : 0);
     this.top.update(state);
     const kit = state.sides.player.kit.join();
     if (kit !== this.trayKit) {
@@ -253,30 +303,38 @@ export class BattleView {
       this.tray.el.replaceWith(next.el);
       this.tray = next;
       this.trayKit = kit;
+      next.fit();
     }
     if (this.nudgeUntil > now && this.hasEconomy(state)) this.nudgeUntil = 0;
     this.tray.update(state, s.available(), s.placing, this.nudgeUntil > now);
     this.draft.update(state, s.pending().some((c) => c.type === 'draftPick' || c.type === 'draftReroll' || c.type === 'draftSkip'));
     this.inspect.update(state, s.selected);
     this.callouts.update(now);
-    setText(this.hpP, `♥ ${state.sides.player.heartcapHp}/${state.sides.player.heartcapMaxHp}`);
-    setText(this.hpE, `♥ ${state.sides.enemy.heartcapHp}/${state.sides.enemy.heartcapMaxHp}`);
-    this.speedBtns.forEach((b, i) => toggleClass(b, 'on', s.speed === i + 1));
-    this.stanceBtns.forEach((b, i) => {
+    this.speedBtns.forEach((b, i) => this.lit(b, s.speed === i + 1));
+    this.stanceRows.forEach((row, i) => {
       const st = state.sides.player.stance![i]!;
       const held = s.stanceShown(i);
-      const lane = state.lanes.length > 1 ? `Lane ${i + 1}: ` : '';
       const secs = (ticks: number) => `${Math.max(0, Math.ceil(ticks / state.rules.tickRate))} s`;
       const text = held
-        ? `${lane}■ Holding${st.hold ? ` · ${secs(state.rules.stance!.maxHoldTicks - (state.tick - st.since))}` : ''}`
-        : `${lane}▶ Advancing${s.canHold(i) ? '' : ` · hold in ${secs(st.readyAt - state.tick)}`}`;
-      setText(b, text);
-      toggleClass(b, 'on', held);
+        ? st.hold ? `Hold · ${secs(state.rules.stance!.maxHoldTicks - (state.tick - st.since))}` : 'Holding'
+        : s.canHold(i) ? 'Advancing' : `Hold in ${secs(st.readyAt - state.tick)}`;
+      this.lit(row.hold, held);
+      this.lit(row.advance, !held);
+      // a hold on cooldown is unlit (src/app/session.ts refuses it); advancing back is always open
+      row.hold.disabled = !held && !s.canHold(i);
+      setText(row.status, text);
     });
-    setText(this.numbersBtn, `Numbers: ${NUMBERS_LABEL[this.renderer.damageNumbers]}`);
-    toggleClass(this.pauseBtn, 'on', s.paused);
-    this.pauseBadge.hidden = !(s.paused && state.phase === 'live');
-    this.beginBox.hidden = state.phase !== 'deploy';
+    this.settings.sync(this.renderer.damageNumbers);
+    this.lit(this.pauseBtn, s.paused);
+    soundSpeed(s.speed);
+    soundDim(s.paused && state.phase === 'live');
+    if (s.paused && state.phase === 'live') this.callouts.pin('paused', this.pausedCallout);
+    else this.callouts.unpin('paused');
+    const deploy = state.phase === 'deploy';
+    if (deploy) this.callouts.pin('deploy', this.deployCallout);
+    else { this.callouts.unpin('deploy'); this.callouts.unpin('save-recovery'); }
+    this.beginBox.hidden = !deploy;
+    this.speedSeg.hidden = deploy;
     if (ghost && s.hover) {
       this.tip.hidden = false;
       const name = s.content.buildings[ghost.buildingId]!.name;
@@ -284,15 +342,10 @@ export class BattleView {
       const def = s.content.buildings[ghost.buildingId]!;
       const loam = def.economy && ghost.loam ? ` · Rich Loam +${Math.round(s.content.balance.loamBonus * 100)}%` : '';
       this.tip.replaceChildren(
-        h('div', null, `${name} · `, h('b', null, `◆ ${ghost.price}`), h('span', { class: 'muted' }, surcharge + loam)),
+        h('div', null, `${name} · `, h('b', { class: 'gold' }, this.tipGold, String(ghost.price)), h('span', { class: 'muted' }, surcharge + loam)),
         ghost.legal ? h('div', { class: 'good' }, 'Click to place' + (s.shift ? ' (Shift: keep placing)' : '')) : h('div', { class: 'bad' }, ghost.reason ?? 'illegal'),
       );
-      const rect = this.canvas.getBoundingClientRect();
-      const wrap = this.fieldWrap.getBoundingClientRect();
-      const cx = ((ghost.col + 2 + 1) * TILE * rect.width) / this.renderer.width;
-      const cy = (ghost.row * TILE * rect.height) / this.renderer.height;
-      this.tip.style.left = `${rect.left - wrap.left + cx}px`;
-      this.tip.style.top = `${rect.top - wrap.top + cy}px`;
+      this.placeTip(ghost.col, ghost.row, s.state.compiled.player.buildings[ghost.buildingId]!);
     } else {
       this.tip.hidden = true;
     }
@@ -300,8 +353,37 @@ export class BattleView {
       this.ended = true;
       s.placing = null;
       if (this.help) this.toggleHelp();
-      this.report = battleReport(s.content, state, { again: this.actions.again, rematch: this.actions.rematch, ...(this.actions.continueRun ? { continueRun: this.actions.continueRun } : {}) });
+      this.report = battleReport(s.content, state, { again: this.actions.again, rematch: this.actions.rematch, ...(this.actions.continueRun ? { continueRun: this.actions.continueRun } : {}) }, this.atlas);
       document.body.append(this.report);
     }
+  }
+
+  /** Sets a toggle's lit state and its aria-pressed. */
+  private lit(b: HTMLButtonElement, on: boolean): void {
+    if (b.classList.contains('on') === on) return;
+    toggleClass(b, 'on', on);
+    b.setAttribute('aria-pressed', String(on));
+  }
+
+  /**
+   * Puts the ghost tip beside the footprint, inside the field, so it never covers the ghost, the
+   * bands or the callout lane: to the right, or to the left when the right has no room, vertically
+   * centred on the footprint and clamped to the field.
+   */
+  private placeTip(col: number, row: number, def: { w: number; h: number }): void {
+    const rect = this.canvas.getBoundingClientRect();
+    const wrap = this.fieldWrap.getBoundingClientRect();
+    // screen pixels back to layout pixels under UI scale
+    const ui = uiScale();
+    const px = rect.width / this.renderer.width / ui;
+    const fieldL = (rect.left - wrap.left) / ui, fieldT = (rect.top - wrap.top) / ui;
+    const fieldR = fieldL + rect.width / ui, fieldB = fieldT + rect.height / ui;
+    const left = fieldL + (col + 2) * TILE * px, right = left + def.w * TILE * px;
+    const top = fieldT + row * TILE * px, bottom = top + def.h * TILE * px;
+    const w = this.tip.offsetWidth, hgt = this.tip.offsetHeight;
+    const x = right + TIP_GAP + w <= fieldR - TIP_MARGIN ? right + TIP_GAP : Math.max(fieldL + TIP_MARGIN, left - TIP_GAP - w);
+    const y = Math.min(Math.max(fieldT + TIP_MARGIN, (top + bottom - hgt) / 2), fieldB - TIP_MARGIN - hgt);
+    this.tip.style.left = `${x}px`;
+    this.tip.style.top = `${y}px`;
   }
 }

@@ -3,11 +3,11 @@
 import type { z } from 'zod';
 import {
   BalanceSchema, BalanceTargetsSchema, BotSchema, BuildingSchema, CommanderSchema, EliteSchema, EventSchema,
-  FactionSchema, GeneralSchema, MapSchema, RelicSchema, ScenarioSchema, SpriteSheetSchema, UnitSchema, UpgradeTrackSchema,
+  FactionSchema, GeneralSchema, MapSchema, RelicSchema, ScenarioSchema, SoundBankSchema, SpriteSheetSchema, UnitSchema, UpgradeTrackSchema,
 } from './schema.ts';
 import type {
   BalanceDef, BalanceTargets, BotDef, BuildingDef, CommanderDef, EffectBundle, EliteDef, EventDef, FactionDef,
-  GeneralDef, MapDef, RelicDef, ScenarioDef, SpriteDef, UnitDef, UpgradeTrackDef,
+  GeneralDef, MapDef, RelicDef, ScenarioDef, SoundBankDef, SoundDef, SpriteDef, UnitDef, UpgradeTrackDef,
 } from './schema.ts';
 
 /** Raw data files keyed by their path relative to `data/`, e.g. `maps/bogwater-hollow.json`. */
@@ -37,6 +37,9 @@ export interface Content {
   elites: Record<string, EliteDef>;
   eliteOrder: string[];
   commanders: Record<string, CommanderDef>;
+  /** The sound bank (data/sounds.json), read only by src/audio and src/app: it never enters sim state. */
+  audio: SoundBankDef;
+  sounds: Record<string, SoundDef>;
 }
 
 export class ContentError extends Error {
@@ -50,6 +53,14 @@ export class ContentError extends Error {
 export const REQUIRED_SPRITES = [
   't-soil', 't-soil2', 't-loam', 't-stump', 't-wall',
   'heartcap-cap', 'heartcap-stalk', 'heartcap-base', 'turret',
+  'f-ceiling', 'f-bed', 'f-hyphae', 'f-hyphae-rot', 'f-earth', 'f-side', 'f-crown',
+];
+
+/** Sounds the game plays by id (src/app/sound.ts, src/app/battleSound.ts), besides the ambient drips. */
+export const REQUIRED_SOUNDS = [
+  'place', 'sell', 'illegal', 'income', 'spawn', 'column-gained', 'column-lost', 'building-lost', 'building-razed',
+  'knit', 'merge', 'merge-elder', 'heartcap-hit', 'counter-warn', 'counter-active', 'sporestorm', 'wave', 'begin',
+  'draft-open', 'draft-pick', 'win', 'loss', 'ui-hover', 'ui-click', 'ui-node', 'ui-choice', 'ui-toggle',
 ];
 
 export function loadContent(raw: RawContent): Content {
@@ -73,6 +84,7 @@ export function loadContent(raw: RawContent): Content {
 
   for (const f of ['upgrades.json', 'relics.json', 'events.json', 'elites.json', 'commanders.json']) need(f);
   const balance = need('balance.json') ? parse(BalanceSchema, 'balance.json') : undefined;
+  const audio = need('sounds.json') ? parse(SoundBankSchema, 'sounds.json') : undefined;
   const targets = need('balance-targets.json') ? parse(BalanceTargetsSchema, 'balance-targets.json') : undefined;
 
   const factions: Record<string, FactionDef> = {};
@@ -93,6 +105,7 @@ export function loadContent(raw: RawContent): Content {
   const elites: Record<string, EliteDef> = {};
   const eliteOrder: string[] = [];
   const commanders: Record<string, CommanderDef> = {};
+  const sounds: Record<string, SoundDef> = {};
 
   function addUnique<T extends { id: string }>(into: Record<string, T>, item: T, path: string, kind: string): boolean {
     if (item.id in into) { problems.push(`${path}: duplicate ${kind} id "${item.id}"`); return false; }
@@ -148,7 +161,7 @@ export function loadContent(raw: RawContent): Content {
       for (const e of parse(EliteSchema.array(), path) ?? []) if (addUnique(elites, e, path, 'elite modifier')) eliteOrder.push(e.id);
     } else if (path === 'commanders.json') {
       for (const c of parse(CommanderSchema.array(), path) ?? []) addUnique(commanders, c, path, 'commander');
-    } else if (path === 'balance.json' || path === 'balance-targets.json') {
+    } else if (path === 'balance.json' || path === 'balance-targets.json' || path === 'sounds.json') {
       // parsed above
     } else {
       problems.push(`${path}: unrecognised data file (no schema for this path)`);
@@ -224,6 +237,15 @@ export function loadContent(raw: RawContent): Content {
       for (const u of side.units ?? []) if (!(u.unit in units)) problems.push(`scenario ${s.id}: unit "${u.unit}" does not exist`);
     }
   }
+  if (audio) {
+    for (const s of audio.sounds) addUnique(sounds, s, 'sounds.json', 'sound');
+    for (const id of REQUIRED_SOUNDS) if (!(id in sounds)) problems.push(`sounds.json: the game plays "${id}" but it is not defined`);
+    for (const id of audio.ambient.drips.sounds) {
+      const s = sounds[id];
+      if (!s) problems.push(`sounds.json ambient drips: sound "${id}" does not exist`);
+      else if (s.bus !== 'ambient') problems.push(`sounds.json ambient drips: sound "${id}" is on the ${s.bus} bus, not ambient`);
+    }
+  }
   if (balance) {
     for (const map of Object.values(maps)) {
       if (map.lanes.length > 3) problems.push(`map ${map.id}: at most 3 lanes`);
@@ -244,9 +266,9 @@ export function loadContent(raw: RawContent): Content {
     }
   }
 
-  if (problems.length || !balance || !targets) throw new ContentError(problems.length ? problems : ['balance files failed to parse']);
+  if (problems.length || !balance || !targets || !audio) throw new ContentError(problems.length ? problems : ['balance or sound files failed to parse']);
   return {
     balance, targets, factions, buildings, buildingOrder, units, maps, sprites, spriteOrder, generals, bots, scenarios,
-    upgrades, relics, relicOrder, events, eventOrder, elites, eliteOrder, commanders,
+    upgrades, relics, relicOrder, events, eventOrder, elites, eliteOrder, commanders, audio, sounds,
   };
 }

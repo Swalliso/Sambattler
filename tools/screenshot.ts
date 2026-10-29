@@ -94,6 +94,7 @@ async function main(): Promise<number> {
     const url = `${base.replace(/\/$/, '')}/?${q.toString()}`;
     await page.goto(url);
     await page.waitForFunction(() => window.__GAME__?.ready === true, null, { timeout: 60000 });
+    await page.evaluate(() => document.fonts.ready.then(() => true)); // the self-hosted fonts have swapped in
     await page.waitForTimeout(300); // a few frames so effects and layout settle
     if (args.filter) {
       await page.evaluate((matrix) => {
@@ -119,7 +120,11 @@ async function main(): Promise<number> {
     let node: BattleState | null;
     let nodeHash: string;
     let runBrief: unknown = null;
-    if (RUN_SCENES.includes(scene)) {
+    if (scene === 'title') {
+      // the title holds no run or battle yet: the bridge's hash is empty
+      node = null;
+      nodeHash = '';
+    } else if (RUN_SCENES.includes(scene)) {
       const r = runForParams(content, q);
       node = r.battle;
       nodeHash = node ? hashState(node) : hashRun(r.run);
@@ -202,7 +207,17 @@ async function main(): Promise<number> {
     }
 
     // 4b. run screens: the DOM shows what the run state holds
-    if (scene === 'draft') {
+    if (scene === 'title') {
+      dom = await page.evaluate(() => ({
+        wordmark: document.querySelector('#title .wordmark')?.textContent ?? '',
+        primary: document.querySelector('#title .title-menu .primary')?.id ?? null,
+        menu: [...document.querySelectorAll('#title .title-menu > .btn, #title .title-menu .settings-ctl > .btn')].map((b) => b.textContent ?? ''),
+      }));
+      const d = dom as { wordmark: string; primary: string | null; menu: string[] };
+      if (d.wordmark !== 'Spore & Sprawl') failures.push(`the title's wordmark reads "${d.wordmark}"`);
+      if (!d.primary) failures.push('the title has no primary button');
+      for (const want of ['How to play', 'Settings']) if (!d.menu.some((t) => t.includes(want))) failures.push(`the title menu has no ${want}`);
+    } else if (scene === 'draft') {
       dom = await page.evaluate(() => [...document.querySelectorAll('#draft .draft-card')].map((c) => ({
         type: c.querySelector('.draft-type')?.textContent ?? '', rarity: c.querySelector('.draft-rarity')?.textContent ?? '',
         name: c.querySelector('.draft-name')?.textContent ?? '', text: c.querySelector('.draft-text')?.textContent ?? '',
