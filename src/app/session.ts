@@ -37,6 +37,17 @@ export class Session {
     return queueCommand(this.state, { ...body, tick: nextCommandTick(this.state), side: 'player' } as Parameters<typeof queueCommand>[1]);
   }
 
+  /**
+   * Begin (Enter, Space or the Begin button in deploy). The battle always starts running: a pause
+   * from deploy (`?paused=1`, or a key pressed there) never carries into the live battle.
+   */
+  begin(): boolean {
+    if (this.state.phase !== 'deploy' || this.state.queue.some((c) => c.type === 'begin')) return false;
+    this.issue({ type: 'begin' });
+    this.paused = false;
+    return true;
+  }
+
   /** Player commands queued but not yet executed (shown as pending while paused). */
   pending(): Command[] {
     return this.state.queue.filter((c) => c.side === 'player');

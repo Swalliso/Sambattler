@@ -1,12 +1,14 @@
 // Player settings kept in localStorage, edited on the settings screen (src/ui/settingsScreen.ts; the
 // profile save arrives in M6). Reads and writes never throw: a private window or blocked storage falls
 // back to the defaults. Every field lives in the one record, spore-sprawl/settings/v1, and a record
-// saved before a field existed loads with that field's default.
+// saved before a field existed loads with that field's default. Which first-time tips were shown is kept
+// apart, under spore-sprawl/tips/v1, so "Show tips again" clears it without touching a setting.
 import { UI_SCALE_STEPS } from '../ui/settingsScreen.ts';
 import type { ScreenSettings, SettingsStore } from '../ui/settingsScreen.ts';
 import { storageKey } from './channel.ts';
 
 const KEY = storageKey('spore-sprawl/settings/v1');
+const TIPS_KEY = storageKey('spore-sprawl/tips/v1');
 
 /**
  * What the settings screen edits (damage numbers, default speed, screen shake, UI scale, reduced motion,
@@ -23,6 +25,7 @@ export interface Settings extends ScreenSettings {
 export const DEFAULT_SETTINGS: Readonly<Settings> = {
   damageNumbers: 'off', masterVolume: 0.6, sfxVolume: 0.8, ambientVolume: 0.5, muted: false,
   reducedMotion: 'system', uiScale: 'auto', colorAssist: false, defaultSpeed: 1, screenShake: false,
+  tips: true, spawnTimers: true,
 };
 
 const volume = (v: unknown, fallback: number): number => (typeof v === 'number' && Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : fallback);
@@ -46,6 +49,8 @@ export function loadSettings(): Settings {
       colorAssist: flag(s.colorAssist, d.colorAssist),
       defaultSpeed: oneOf(s.defaultSpeed, [1, 2, 3] as const, d.defaultSpeed),
       screenShake: flag(s.screenShake, d.screenShake),
+      tips: flag(s.tips, d.tips),
+      spawnTimers: flag(s.spawnTimers, d.spawnTimers),
     };
   } catch {
     return { ...d };
@@ -71,8 +76,32 @@ export function saveSettings(patch: Partial<Settings>): Settings {
   return next;
 }
 
+/** The first-time tips already shown (src/app/tips.ts), by id. */
+export function tipsShown(): Set<string> {
+  try {
+    const raw = localStorage.getItem(TIPS_KEY);
+    const shown = (raw ? JSON.parse(raw) : {}) as { shown?: unknown };
+    return new Set(Array.isArray(shown.shown) ? shown.shown.filter((x): x is string => typeof x === 'string') : []);
+  } catch {
+    return new Set();
+  }
+}
+
+/** Remembers that a tip was shown, so it never shows again (until "Show tips again"). */
+export function markTipShown(id: string): void {
+  const shown = tipsShown();
+  shown.add(id);
+  try { localStorage.setItem(TIPS_KEY, JSON.stringify({ shown: [...shown] })); } catch { /* storage unavailable: it may show again next page */ }
+}
+
+/** "Show tips again": every first-time tip can show once more. */
+export function resetTips(): void {
+  try { localStorage.removeItem(TIPS_KEY); } catch { /* storage unavailable */ }
+}
+
 /** The settings screen's view of the record. */
 export const settingsStore: SettingsStore = {
   get: () => loadSettings(),
   set: (patch) => { saveSettings(patch); },
+  resetTips,
 };

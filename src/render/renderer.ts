@@ -5,11 +5,14 @@
 // Color-blind assist (the settings screen) adds a team mark under every unit, a light ring for the
 // Velvet Bloom and a dark dashed bar for the Gray Rot, and bolder mat textures: brighter wandering
 // strands for the Bloom, dark ash tufts for the Rot, so the sides differ in shape and lightness.
+// Spawn timers (playtest round 3, F7; a setting, on by default): a thin bar along the foot of each of
+// your spawners fills toward its next spawn, and rests full and dim while it waits for supply.
 import type { Content } from '../data/registry.ts';
 import {
   canMerge, frontierBlocked, holdsLane, isSuppressed, lanePresence, rallyX, turretPos,
 } from '../sim/index.ts';
-import type { BattleState, Command, Side, UnitState } from '../sim/index.ts';
+import type { BattleState, BuildingState, Command, CompiledBuilding, Side, UnitState } from '../sim/index.ts';
+import { positionalValue } from '../sim/effects.ts';
 import type { Atlas, Faction } from './atlas.ts';
 import { Effects } from './effects.ts';
 
@@ -116,6 +119,8 @@ export class Renderer {
   /** Each economy building's gold total at the last income tick, so a coin pop shows what it just paid. */
   private goldSeen = new Map<string, number>();
   damageNumbers: DamageNumbers = 'off';
+  /** A bar under each of your spawners, filling toward its next spawn (the settings screen). */
+  spawnTimers = true;
   private assist = false;
   private sorted: UnitState[] = [];
   private eligible: UnitState[] = [];
@@ -284,6 +289,7 @@ export class Renderer {
       if (besieged) this.glyph('½', x + def.w * TILE - 7, y + 10, '#ffb4a8');
       if (b.holding) this.glyph('⬢!', x + 2, y + 10, '#f0c85a');
       if (def.spawn && !b.mergeOn) this.knotOff(x + def.w * TILE - 9, y + def.h * TILE - 9, this.mat(b.side).glow);
+      if (this.spawnTimers && def.spawn && b.side === 'player') this.spawnTimer(state, b, def, x, y);
     }
     // pending placements (queued while paused)
     for (const c of view.pending) {
@@ -581,6 +587,22 @@ export class Renderer {
     g.fillRect(x, y, 6, 4);
     g.fillRect(x + 1, y + 4, 4, 2);
     g.fillRect(x + 2, y + 6, 2, 1);
+  }
+
+  /**
+   * How far a spawner is toward its next spawn, as a 1 px bar along the foot of its footprint (render only:
+   * the sim's own countdown, against the interval it will reset to). Full and dim while waiting for supply.
+   */
+  private spawnTimer(state: BattleState, b: BuildingState, def: CompiledBuilding, x: number, y: number): void {
+    const sp = def.spawn!;
+    const full = sp.positional ? Math.round(positionalValue(state, b, sp.positional, 'building.spawnInterval') * state.rules.tickRate) * 2 : sp.intervalHalfTicks;
+    const frac = b.holding ? 1 : 1 - b.timer / Math.max(1, full);
+    const g = this.ctx;
+    const w = def.w * TILE - 6, by = y + def.h * TILE - 2;
+    g.fillStyle = 'rgba(13, 10, 16, 0.75)';
+    g.fillRect(x + 3, by, w, 1);
+    g.fillStyle = b.holding ? '#7b6c90' : '#c9a2ff';
+    g.fillRect(x + 3, by, Math.round(w * Math.max(0, Math.min(1, frac))), 1);
   }
 
   private bar(x: number, y: number, w: number, frac: number, side: Side, h = 2): void {

@@ -223,7 +223,7 @@ function start(content: Content, atlas: ReturnType<typeof bakeAtlas>, params: Pa
     start(content, atlas, { ...params, seed: nextSeed, ticks: null, paused: false }, nextSeed);
   });
   const view = new BattleView(session, content, atlas, {
-    begin: () => { if (state.phase === 'deploy' && !state.queue.some((c) => c.type === 'begin')) session.issue({ type: 'begin' }); },
+    begin: () => { session.begin(); },
     again: () => restart(randomSeed()),
     rematch: () => restart(seed),
   }, params.debug, params.test);
@@ -241,7 +241,7 @@ function start(content: Content, atlas: ReturnType<typeof bakeAtlas>, params: Pa
   view.fit();
   const loop = new GameLoop(session, view);
   const unbind = bindInput(session, view, {
-    begin: () => { if (state.phase === 'deploy' && !state.queue.some((c) => c.type === 'begin')) session.issue({ type: 'begin' }); },
+    begin: () => { session.begin(); },
     toggleDebug: () => { if (params.debug) loop.debugOverlay = !loop.debugOverlay; },
   });
   loop.debugOverlay = params.debug;

@@ -210,12 +210,16 @@ html.assist .tugbar .p { background: repeating-linear-gradient(90deg, var(--lila
 
 /* ---- callouts + field ---- */
 .callouts { height: 30px; display: flex; justify-content: center; align-items: center; gap: 10px; }
+/* a first-time tip about the draft shows above the draft's scrim (the lane sits above the field, clear of the cards) */
+body:has(.draft-overlay:not([hidden])) .callouts { position: relative; z-index: 11; }
+.callout kbd { font-size: 12px; }
 .callout { display: inline-flex; align-items: center; gap: var(--space-3); padding: 3px 12px; border: 1px solid var(--line-strong); background: var(--panel-2); border-radius: var(--radius-sm); font-size: 13px; animation: pop .18s ease-out; white-space: nowrap; }
 .callout.good { border-color: var(--violet); color: var(--lilac); }
 .callout.bad { border-color: var(--danger-line); color: var(--danger-soft); }
 @keyframes pop { from { transform: translateY(-4px); opacity: 0; } to { transform: none; opacity: 1; } }
 .callout.settled { animation: none; }
-.callout.tip { border-color: var(--gold-deep); color: var(--gold); }
+.callout.tip { border-color: var(--stalk-shade); color: var(--stalk); }
+.callout.tip b.tip-word { color: var(--lilac); letter-spacing: .06em; text-transform: uppercase; font-size: 12px; }
 .callout.deploy { border-color: var(--lilac); box-shadow: 0 0 10px var(--glow-lilac); }
 .callout.paused { letter-spacing: .06em; }
 .callout kbd { margin-left: -2px; }
@@ -344,6 +348,63 @@ html.assist .tugbar .p { background: repeating-linear-gradient(90deg, var(--lila
 .card-tip .row span:first-child { color: var(--muted); white-space: nowrap; }
 .card-tip .row span:last-child { text-align: right; }
 .card-tip .tip-foot { color: var(--muted); border-top: 1px dashed var(--line); padding-top: 4px; margin-top: 2px; }
+/* anchored tooltips (src/ui/tooltip.ts): the HUD chips, the territory tug and the in-battle relics, styled like the card tips */
+.hud-tip { position: fixed; z-index: 20; width: 320px; pointer-events: none; padding: 8px 10px; background: var(--tooltip-bg); border: 1px solid var(--line-strong); border-radius: var(--radius-md); box-shadow: var(--shadow-tooltip); font: 12px/16px var(--font-text); color: var(--text); display: flex; flex-direction: column; gap: 3px; white-space: normal; text-align: left; }
+.hud-tip .tip-head { display: flex; align-items: center; gap: var(--space-3); font-size: 13px; padding-bottom: 2px; }
+.hud-tip .tip-num { margin-left: auto; font: 400 20px/20px var(--font-display); font-synthesis: none; font-variant-numeric: tabular-nums; }
+.hud-tip .tip-num.gold, .hud-tip b.gold { color: var(--gold); }
+.hud-tip .tip-num.lit { color: var(--lilac); }
+.hud-tip .tip-num.bad, .hud-tip p.bad { color: var(--danger-soft); }
+.hud-tip .tip-sec { margin-top: 5px; font: 700 12px/16px var(--font-text); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.hud-tip .row { display: flex; justify-content: space-between; gap: 10px; font-variant-numeric: tabular-nums; }
+.hud-tip .row > span:first-child { color: var(--muted); }
+.hud-tip .row > span:first-child small { font-size: 12px; }
+.hud-tip .row > :last-child { text-align: right; white-space: nowrap; }
+.hud-tip .row.zero > :last-child { color: var(--muted); }
+.hud-tip .row.cost > :last-child { color: var(--danger-soft); }
+.hud-tip .row.lit > :last-child { color: var(--lilac); }
+.hud-tip .row.total { border-top: 1px dashed var(--line); padding-top: 3px; margin-top: 1px; }
+.hud-tip .row.total > span:first-child { color: var(--text); font-weight: 700; }
+.hud-tip p { margin: 1px 0; }
+.hud-tip p.muted { color: var(--muted); }
+.hud-tip p.note { color: var(--warn); }
+.hud-tip .tip-foot { color: var(--muted); border-top: 1px dashed var(--line); padding-top: 4px; margin-top: 3px; }
+.hud-tip kbd { font-size: 12px; }
+.chip.tip-open, .tug.tip-open .tugbar { border-color: var(--lilac); box-shadow: var(--shadow-glow); }
+.chip, .tug { cursor: help; }
+.chip:focus-visible { border-color: var(--lilac); }
+/* your relics and upgrades in battle (src/ui/hud/kit.ts): a chip in the top band and its popover */
+.chip.kit-chip { font: inherit; color: var(--text); cursor: pointer; padding-right: 6px; }
+.chip.kit-chip:hover { border-color: var(--lilac); }
+.chip.kit-chip kbd { margin-left: 2px; color: var(--muted); background: transparent; border-color: var(--line); }
+.kit-pop { position: fixed; z-index: 15; width: 440px; padding: var(--space-5) var(--space-6) var(--space-6); background: var(--panel); border: 1px solid var(--line-strong); border-radius: var(--radius-lg); box-shadow: var(--shadow-tooltip); display: flex; flex-direction: column; gap: var(--space-5); font-size: 13px; }
+.kit-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); }
+.kit-head h2 { margin: 0; font: 400 24px/24px var(--font-display); font-synthesis: none; }
+.kit-sec h3 { display: flex; align-items: center; gap: var(--space-3); margin: 0 0 var(--space-3); font: 700 12px/16px var(--font-text); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.kit-sec h3 small { margin-left: auto; font: 12px/16px var(--font-text); letter-spacing: 0; text-transform: none; }
+.kit-sec p { margin: 0; }
+.kit-pop .relics { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+/* the relic tips hang outside the popover, so only the upgrade list scrolls (a long run) */
+.kit-ups { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-4); max-height: calc(var(--app-h, 100vh) - 330px); overflow: auto; }
+.kit-ups > li { display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: var(--space-4); align-items: start; }
+.kit-ups canvas { width: 32px; height: 32px; image-rendering: pixelated; image-rendering: crisp-edges; }
+.kit-up-name { display: flex; justify-content: space-between; gap: var(--space-4); }
+.kit-up-name .lvl { color: var(--lilac); font-size: 12px; white-space: nowrap; }
+.kit-ups ol { margin: 2px 0 0; padding-left: 18px; font-size: 12px; color: var(--muted); }
+.kit-ups ol li.on { color: var(--text); }
+.kit-ups ol li.on::marker { color: var(--lilac); }
+/* a relic's layout rule as a picture (src/ui/words.ts): a building, two that touch it on a side, one only on a corner */
+.adj-diagram { display: flex; align-items: center; gap: var(--space-5); margin-top: 3px; }
+.adj-grid { display: grid; grid-template-columns: repeat(3, 12px); grid-auto-rows: 12px; gap: 2px; padding: 3px; background: var(--well); border: 1px solid var(--line); border-radius: var(--radius-xs); }
+.adj-grid i, .adj-key i { display: block; width: 12px; height: 12px; border-radius: 2px; }
+.adj-grid i { background: var(--soil-deep); }
+.adj-grid i.mid { background: var(--lilac); }
+.adj-key i.mid { background: var(--lilac); }
+.adj-grid i.side, .adj-key i.side { background: var(--violet); box-shadow: inset 0 0 0 1px var(--lilac); }
+.adj-grid i.corner, .adj-key i.corner { background: repeating-linear-gradient(135deg, var(--line-strong) 0 2px, transparent 2px 4px); box-shadow: inset 0 0 0 1px var(--line-strong); }
+.adj-key { display: flex; flex-direction: column; gap: 3px; font-size: 12px; color: var(--muted); }
+.adj-key span { display: inline-flex; align-items: center; gap: var(--space-3); }
+.draft-card .adj-diagram { justify-content: center; }
 .inspect { border: 1px solid var(--line); background: var(--panel-2); border-radius: 4px; padding: 6px 8px; font-size: 12px; overflow: hidden; display: flex; flex-direction: column; gap: 3px; }
 .inspect h3 { margin: 0 0 2px; font-size: 13px; letter-spacing: .04em; }
 .inspect .muted { color: var(--muted); }
@@ -438,6 +499,13 @@ html.assist .tugbar .p { background: repeating-linear-gradient(90deg, var(--lila
 .kindlist { list-style: none; padding: 0 !important; display: flex; flex-direction: column; gap: var(--space-4); }
 .kind-tag { display: inline-block; min-width: 64px; padding: 0 6px; border: 1px solid var(--gold-deep); border-radius: var(--radius-pill); color: var(--warn); font-size: 12px; letter-spacing: .06em; text-align: center; }
 .keys-grid { grid-template-columns: 1.3fr 1fr; }
+/* the economy and Sporestorm tabs: label and value rows */
+.rules { width: 100%; font-size: 13px; }
+.rules td, .rules th { padding: 5px 8px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+.rules td:first-child { color: var(--muted); white-space: nowrap; }
+.rules th { color: var(--muted); font-weight: 400; }
+.storm-table td, .storm-table th { text-align: right; font-variant-numeric: tabular-nums; }
+.storm-table td:first-child, .storm-table th:first-child { text-align: center; color: var(--lilac); }
 .keys { font-size: 14px; }
 .keys td { padding: 5px 12px 5px 0; vertical-align: middle; border-bottom: 1px solid var(--line); }
 .keys td:first-child { white-space: nowrap; }
@@ -450,6 +518,7 @@ kbd { font-family: var(--font-mono); font-size: 12px; line-height: 16px; padding
 .draft-top { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
 .draft-top h2 { margin: 0; font: 400 30px/32px var(--font-display); font-synthesis: none; }
 .draft-top kbd { margin: 0 2px; }
+.spoils-what { margin: -6px 0 0; color: var(--text); font-size: 14px; line-height: 20px; }
 .draft-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-6); padding: var(--space-2) 0; }
 .draft-card { --edge: var(--bark); position: relative; display: flex; flex-direction: column; gap: var(--space-3); min-height: 284px; padding: 18px 18px 16px; background: var(--panel-2); border: 2px solid var(--edge); border-radius: var(--radius-md); box-shadow: var(--shadow-bevel); color: var(--text); font: inherit; text-align: left; cursor: pointer; animation: deal 260ms ease-out backwards; animation-delay: calc(var(--i, 0) * 80ms); transition: transform 120ms ease-out, box-shadow 120ms ease-out, border-color 120ms ease-out; }
 .draft-card.uncommon { --edge: var(--rarity-uncommon-line); box-shadow: var(--shadow-bevel), 0 0 12px var(--glow-teal); }
@@ -586,6 +655,10 @@ kbd { font-family: var(--font-mono); font-size: 12px; line-height: 16px; padding
 .route-node .node-general .portrait { width: 16px; height: 16px; image-rendering: pixelated; }
 .route-node .node-elite { color: var(--danger-soft); }
 .route-node .node-sub { color: var(--muted); }
+.route-node .node-reward { display: flex; flex-direction: column; align-items: center; gap: 1px; margin-top: 2px; }
+.route-node .node-reward .eyebrow { font-size: 12px; color: var(--muted); }
+.route-node .node-reward-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 0 var(--space-4); }
+.route-node .node-reward-chips > span { display: inline-flex; align-items: center; gap: var(--space-1); color: var(--text); font-weight: 700; }
 .route-node.elite .node-title { color: var(--danger-soft); }
 .route-node.open { cursor: pointer; }
 .route-node.open .pod { filter: drop-shadow(0 0 6px var(--glow-lilac)); }
@@ -635,6 +708,22 @@ kbd { font-family: var(--font-mono); font-size: 12px; line-height: 16px; padding
 .outcome.gold { color: var(--gold); border-color: var(--gold-deep); }
 .outcome.note { color: var(--warn); border-color: var(--gold-deep); }
 .choice:disabled .outcome { color: var(--muted); border-color: var(--line); }
+/* an event's result (playtest round 3): what a random outcome gave, then Continue */
+.results { display: flex; flex-direction: column; gap: var(--space-4); }
+.result-card { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: var(--space-5); align-items: center; padding: var(--space-5) var(--space-6); background: var(--panel-2); border: 1px solid var(--line-strong); border-radius: var(--radius-lg); box-shadow: var(--shadow-bevel); animation: growin 180ms ease-out both; }
+.result-card .result-art { width: 64px; height: 64px; image-rendering: pixelated; image-rendering: crisp-edges; }
+.result-card.lost { background: var(--panel); border-color: var(--danger-line); box-shadow: none; }
+.result-card.lost .result-art { filter: grayscale(1) brightness(.75); }
+.result-card.lost .eyebrow { color: var(--danger-soft); }
+.result-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.result-main > b { font: 400 24px/24px var(--font-display); font-synthesis: none; }
+.result-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); }
+.result-head .lvl { color: var(--lilac); font: 700 12px/16px var(--font-text); }
+.result-text { font-size: 13px; line-height: 18px; }
+.result-chip { display: flex; }
+.result-go { display: flex; justify-content: flex-end; }
+.result-go .btn.primary { width: auto; min-width: 200px; }
+html.still .result-card, html.reduce-motion .result-card { animation: none; }
 
 /* ---- the title (src/ui/screens/title.ts): the wordmark beside the Heartcap's silhouette, lit from below ---- */
 .titlescreen { position: relative; overflow: hidden; background: var(--bg); }
@@ -685,6 +774,7 @@ kbd { font-family: var(--font-mono); font-size: 12px; line-height: 16px; padding
 .settings-head { display: flex; align-items: center; gap: var(--space-6); }
 .settings-head h2 { margin: 0; font: 400 30px/32px var(--font-display); font-synthesis: none; }
 .settings-head > .btn { margin-left: auto; display: inline-flex; align-items: center; gap: var(--space-3); box-shadow: var(--shadow-bevel); }
+.settings-head > .set-note + .btn { margin-left: 0; }
 .set-paused { display: inline-flex; align-items: center; gap: var(--space-3); height: 26px; padding: 0 10px 0 6px; border: 1px solid var(--line-strong); border-radius: var(--radius-pill); background: var(--panel-2); font-size: 13px; color: var(--text); }
 .settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
 .settings-col { display: flex; flex-direction: column; gap: var(--space-6); min-width: 0; }
@@ -695,6 +785,8 @@ kbd { font-family: var(--font-mono); font-size: 12px; line-height: 16px; padding
 .set-label b { font: 700 14px/18px var(--font-text); }
 .set-hint { font-size: 12px; line-height: 16px; color: var(--muted); }
 .set-row .seg { align-self: flex-start; }
+.set-ctl { display: flex; align-items: center; gap: var(--space-4); }
+.set-ctl .btn { padding: 4px 12px; font-size: 13px; }
 .set-row .seg .btn { flex: none; min-width: 60px; padding: 4px 12px; font-size: 13px; }
 .set-section .sound-ctl.inline { gap: var(--space-3); }
 .set-section .sound-ctl.inline .sound-mute { box-shadow: var(--shadow-bevel); }
@@ -706,7 +798,7 @@ kbd { font-family: var(--font-mono); font-size: 12px; line-height: 16px; padding
 .set-preview figcaption { display: flex; justify-content: space-between; font: 700 12px/16px var(--font-text); letter-spacing: .06em; text-transform: uppercase; }
 .set-preview figcaption .p { color: var(--lilac); }
 .set-preview figcaption .e { color: var(--rot-light); }
-.set-note { margin: auto 0 0; font-size: 12px; line-height: 16px; color: var(--muted); }
+.set-note { margin: 0 0 0 auto; max-width: 360px; font-size: 12px; line-height: 16px; color: var(--muted); text-align: right; }
 .settingscard .btn:hover:not(:disabled) { border-color: var(--lilac); }
 .settings-head > .btn:hover, .set-section .sound-mute:hover { box-shadow: var(--shadow-bevel), var(--shadow-glow); }
 .settings-head > .btn, .set-section .sound-mute { transition: box-shadow 120ms ease-out, border-color 120ms ease-out; }

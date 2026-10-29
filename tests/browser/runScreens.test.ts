@@ -1,7 +1,7 @@
 // The run screens (docs/ui-ux-plan.md, Phase 2): the title opens with no scene and offers Continue only
 // with a saved run; the route draws a hypha from every node to every node in the next row and lights a
 // pod's threads on hover; spoils take keys 1–3; event choices carry outcome chips with a real minus for
-// costs; Help's four tabs fit at 1280×720; and no run screen clips at 1280×720 or 1366×650.
+// costs; Help's six tabs fit at 1280×720; and no run screen clips at 1280×720 or 1366×650.
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { chromium } from 'playwright';
 import type { Browser, Page } from 'playwright';
@@ -83,10 +83,10 @@ describe('the title', () => {
     await p.waitForSelector('#title-continue');
   });
 
-  it('opens Help in four tabs, and the settings screen with sound and damage numbers', async () => {
+  it('opens Help in six tabs, and the settings screen with sound and damage numbers', async () => {
     const p = await open('/?test=1');
     await p.locator('#title-help').click();
-    expect(await p.locator('#help [role="tab"]').allTextContents()).toEqual(['Matrix', 'Merging', 'The general', 'Keys']);
+    expect(await p.locator('#help [role="tab"]').allTextContents()).toEqual(['Matrix', 'Merging', 'The general', 'Economy', 'Sporestorm', 'Keys']);
     await p.locator('#help-tab-matrix').focus();
     await p.keyboard.press('ArrowRight');
     expect(await p.locator('#help-tab-merging').getAttribute('aria-selected')).toBe('true');
@@ -174,7 +174,7 @@ describe('fit at small windows', () => {
   it('Help fits at 1280×720 with no key cell over two lines', async () => {
     const p = await open('/?scene=deploy&map=test-flat&enemy=human&seed=1&test=1&paused=1');
     await p.locator('#help-btn').click();
-    for (const tab of ['matrix', 'merging', 'general', 'keys']) {
+    for (const tab of ['matrix', 'merging', 'general', 'economy', 'storm', 'keys']) {
       await p.locator(`#help-tab-${tab}`).click();
       const fit = await p.evaluate(() => {
         const card = document.getElementById('help')!.getBoundingClientRect();
