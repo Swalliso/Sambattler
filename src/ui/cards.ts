@@ -1,7 +1,8 @@
 // Draft cards (SPEC §8.3, docs/ui-ux-plan.md C3), shared by the in-battle draft overlay and the run's
 // spoils screen. Each rarity has a frame (common bark, uncommon teal-lit, rare amber-lit with a spore
 // sparkle) and keeps its word; the type's icon heads the card; a blueprint shows stat chips (its price,
-// what it makes or does, its role) instead of prose. Cards deal in left to right and lift on hover.
+// what it makes or does, its role) instead of prose. Cards deal in left to right, and lift and lean a
+// little toward the pointer on hover (src/ui/motion.ts).
 import type { Content } from '../data/registry.ts';
 import type { Atlas } from '../render/atlas.ts';
 import { spriteToCanvas } from '../render/atlas.ts';
@@ -10,6 +11,7 @@ import type { DraftCard } from '../sim/index.ts';
 import { ROLE_LABEL } from './buildingInfo.ts';
 import { h } from './h.ts';
 import { priceEl, uiIcon } from './icons.ts';
+import { hoverTilt } from './motion.ts';
 
 const TYPE_LABEL = { blueprint: 'Blueprint', upgrade: 'Upgrade', relic: 'Relic' } as const;
 const TYPE_ICON = { blueprint: 'i-blueprint', upgrade: 'i-upgrade', relic: 'i-relic' } as const;
@@ -81,7 +83,7 @@ export function cardView(content: Content, atlas: Atlas, card: DraftCard, upgrad
   art.className = 'draft-sprite';
   const badge = c.type === 'upgrade' ? uiIcon(atlas, 'i-upgrade') : null;
   if (badge) badge.className = 'draft-badge';
-  return h('button', { class: `draft-card ${card.type} ${card.rarity}`, 'data-card': card.id, style: `--i:${index}`, onclick: onPick },
+  const el = h('button', { class: `draft-card ${card.type} ${card.rarity}`, 'data-card': card.id, style: `--i:${index}`, onclick: onPick },
     ...frame(atlas, card.rarity),
     h('div', { class: 'draft-head' },
       h('span', { class: 'draft-type' }, uiIcon(atlas, TYPE_ICON[card.type]), TYPE_LABEL[card.type]),
@@ -93,4 +95,6 @@ export function cardView(content: Content, atlas: Atlas, card: DraftCard, upgrad
     chips,
     key ? h('kbd', { class: 'draft-key', 'aria-label': `Key ${key}` }, key) : null,
   );
+  hoverTilt(el);
+  return el;
 }

@@ -2,6 +2,9 @@
 // Layers, back to front: terrain → territory tint and capture progress → buildings → merge tethers
 // and knit glow → units (by y, then id; merged units larger, with tier pips) → projectiles and
 // sparks → labels (merge pops, damage numbers, coin pops) → overlays (placement ghost, ranges, debug).
+// Color-blind assist (the settings screen) adds a team mark under every unit, a light ring for the
+// Velvet Bloom and a dark dashed bar for the Gray Rot, and bolder mat textures: brighter wandering
+// strands for the Bloom, dark ash tufts for the Rot, so the sides differ in shape and lightness.
 import type { Content } from '../data/registry.ts';
 import {
   canMerge, frontierBlocked, holdsLane, isSuppressed, lanePresence, rallyX, turretPos,
@@ -30,6 +33,9 @@ export interface View {
 }
 
 const factionOf = (side: Side): Faction => (side === 'player' ? 'velvet-bloom' : 'gray-rot');
+const INK_DEEP = '#120a16';
+/** Color-blind assist: where the Gray Rot's ash tufts sit in a mat tile (each is a dark stroke with a pale tip). */
+const TUFTS: readonly [number, number][] = [[2, 2], [9, 1], [13, 6], [5, 8], [11, 12], [1, 12], [7, 14]];
 
 export class Renderer {
   readonly canvas: HTMLCanvasElement;
@@ -44,6 +50,7 @@ export class Renderer {
   /** Each economy building's gold total at the last income tick, so a coin pop shows what it just paid. */
   private goldSeen = new Map<string, number>();
   damageNumbers: DamageNumbers = 'off';
+  private assist = false;
   private sorted: UnitState[] = [];
   private eligible: UnitState[] = [];
   private trio: UnitState[] = [];
@@ -70,6 +77,15 @@ export class Renderer {
     }
   }
 
+  /** Color-blind assist: team marks under units and bolder mat textures (the mats rebake when it changes). */
+  get colorAssist(): boolean { return this.assist; }
+  set colorAssist(on: boolean) {
+    if (on === this.assist) return;
+    this.assist = on;
+    this.matTile = { player: this.makeMatTile('player'), enemy: this.makeMatTile('enemy') };
+    this.territoryKey = '';
+  }
+
   /** Screen x (native px) of a world x. */
   sx(x: number): number { return (x + STRIP) * TILE; }
 
@@ -83,12 +99,24 @@ export class Renderer {
     c.width = TILE; c.height = TILE;
     const g = c.getContext('2d')!;
     const m = this.mat(side);
-    g.globalAlpha = 0.42;
+    g.globalAlpha = this.assist ? 0.5 : 0.42;
     g.fillStyle = m.base;
     g.fillRect(0, 0, TILE, TILE);
     g.globalAlpha = 1;
-    g.fillStyle = m.strand;
-    // a few wandering strands, deterministic per side
+    if (this.assist && side === 'enemy') {
+      // ash tufts: short dark strokes with pale tips, nothing like the Bloom's light wandering strands
+      for (const [x, y] of TUFTS) {
+        g.fillStyle = INK_DEEP;
+        g.fillRect(x, y, 1, 3);
+        g.fillRect(x + 1, y + 1, 1, 2);
+        g.fillStyle = m.glow;
+        g.fillRect(x, y, 1, 1);
+      }
+      return c;
+    }
+    // a few wandering strands, deterministic per side; under the assist the Bloom's are lighter
+    g.fillStyle = this.assist ? m.glow : m.strand;
+    g.globalAlpha = this.assist ? 0.5 : 1;
     let seed = side === 'player' ? 7 : 13;
     const rnd = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
     for (let s = 0; s < 3; s++) {
@@ -99,6 +127,7 @@ export class Renderer {
         y = (y + (rnd() < 0.5 ? 1 : -1) + TILE) % TILE;
       }
     }
+    g.globalAlpha = 1;
     g.fillStyle = m.glow;
     g.fillRect(Math.floor(rnd() * TILE), Math.floor(rnd() * TILE), 1, 1);
     return c;
@@ -266,6 +295,7 @@ export class Renderer {
       const w = Math.round(r.w * scale), hgt = Math.round(r.h * scale);
       const dx = Math.round(this.sx(x) - r.ax * scale), dy = Math.round(y * TILE - r.ay * scale);
       if (u.tier === 3) this.elderAura(this.sx(x), y * TILE, w, this.mat(u.side).glow, t + u.id * 37);
+      if (this.assist) this.teamMark(Math.round(this.sx(x)), Math.round(y * TILE), w, u.side);
       g.drawImage(this.atlas.canvas as CanvasImageSource, r.x, r.y, r.w, r.h, dx, dy, w, hgt);
       if (u.id === view.selected) {
         g.strokeStyle = '#ffe9a8';
@@ -297,7 +327,7 @@ export class Renderer {
     if (state.sporestorm > 0) {
       g.fillStyle = `rgba(201, 162, 255, ${0.025 * state.sporestorm})`;
       g.fillRect(0, 0, this.width, this.height);
-      g.fillStyle = 'rgba(232, 217, 181, 0.55)';
+      g.fillStyle = 'rgba(251, 246, 255, 0.55)'; // spore-white: spores are the one particle
       const n = 14 * state.sporestorm;
       for (let i = 0; i < n; i++) {
         const sx = ((i * 97.3 + t * 0.012 * (1 + (i % 3))) % this.width + this.width) % this.width;
@@ -500,6 +530,29 @@ export class Renderer {
     g.ellipse(cx, footY - 1, w * 0.55, 3.5, 0, 0, Math.PI * 2);
     g.fill();
     g.globalAlpha = 1;
+  }
+
+  /**
+   * Color-blind assist: a mark under a unit's feet that peeks out either side of the sprite. The Velvet
+   * Bloom's is a light lilac ring; the Gray Rot's is a dark bar with pale dashes along its foot.
+   */
+  private teamMark(cx: number, footY: number, w: number, side: Side): void {
+    const g = this.ctx;
+    const half = Math.max(5, Math.round(w / 2) + 1);
+    const x0 = cx - half, x1 = cx + half - 1;
+    if (side === 'player') {
+      g.fillStyle = INK_DEEP;
+      g.fillRect(x0, footY + 2, x1 - x0 + 1, 1);
+      g.fillStyle = '#c9a2ff';
+      g.fillRect(x0, footY - 1, 1, 2);
+      g.fillRect(x1, footY - 1, 1, 2);
+      g.fillRect(x0 + 1, footY + 1, x1 - x0 - 1, 1);
+    } else {
+      g.fillStyle = INK_DEEP;
+      g.fillRect(x0, footY, x1 - x0 + 1, 3);
+      g.fillStyle = '#b8c4a8';
+      for (let x = x0 + 1; x < x1; x += 3) g.fillRect(x, footY + 2, 1, 1);
+    }
   }
 
   /** "Merge off" status glyph: a knot struck through. */

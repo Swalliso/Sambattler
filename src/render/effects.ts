@@ -1,7 +1,9 @@
 // Fixed-capacity ring buffer of short-lived visual effects (SPEC §13.6): hit sparks tinted by
 // effectiveness, death puffs, building rubble, spawn puffs, merge pops, damage numbers, heals and coin
-// pops. Entries are reused, never allocated after construction.
+// pops. Entries are reused, never allocated after construction. Death and spawn puffs are spores, the
+// one particle (docs/ui-ux-plan.md, "lit from below"): motes 1–2 px across in spore-white.
 import { GLYPH_H, pixelText, textWidth } from './pixelText.ts';
+import { SPORE_WHITE } from './spores.ts';
 
 /**
  * kind: 1 strong spark, 2 normal spark, 3 weak spark, 4/5 death puff (player/enemy), 6 rubble,
@@ -11,8 +13,13 @@ import { GLYPH_H, pixelText, textWidth } from './pixelText.ts';
  */
 interface Fx { kind: number; x: number; y: number; t0: number; flag: number; value: number }
 
-const LIFE = [0, 220, 160, 140, 380, 380, 600, 300, 1100, 650, 450, 1000];
+const LIFE = [0, 220, 160, 140, 420, 420, 600, 320, 1100, 650, 450, 1000];
 const NUMBER_COLOR = ['', '#f0c85a', '#ffffff', '#a39cab'];
+/** Spore puffs: each mote's drift over its life (native px, mirrored for every other puff) and its size. */
+const DEATH_MOTES: readonly (readonly [number, number, number])[] = [
+  [-7, -3, 2], [6, -4, 1], [-3, -8, 1], [4, -9, 2], [-8, 1, 1], [8, 0, 1], [-2, -5, 2], [2, -2, 1], [-5, -7, 1], [6, -7, 1],
+];
+const SPAWN_MOTES: readonly (readonly [number, number, number])[] = [[-3, -5, 1], [2, -7, 1], [-1, -9, 2], [4, -4, 1], [-5, -3, 1]];
 
 export class Effects {
   private buf: Fx[];
@@ -53,15 +60,9 @@ export class Effects {
           g.fillRect(x, y, 2, 2);
           break;
         case 4:
-        case 5: {
-          const r = 2 + Math.round(k * 5);
-          g.globalAlpha = 1 - k;
-          g.fillStyle = e.kind === 4 ? '#c9a2ff' : '#b8c4a8';
-          g.fillRect(x - r, y - 1, 1, 2); g.fillRect(x + r, y - 1, 1, 2);
-          g.fillRect(x - 1, y - r, 2, 1); g.fillRect(x - 1, y + r, 2, 1);
-          g.globalAlpha = 1;
+        case 5: // death: the unit bursts into spores that drift up and thin out
+          this.motes(g, DEATH_MOTES, x, y - 4, k, x & 1 ? -1 : 1);
           break;
-        }
         case 6: {
           g.globalAlpha = 1 - k;
           g.fillStyle = '#7a5236';
@@ -69,14 +70,9 @@ export class Effects {
           g.globalAlpha = 1;
           break;
         }
-        case 7: {
-          g.globalAlpha = 0.7 * (1 - k);
-          g.fillStyle = '#e8d9b5';
-          const r = 1 + Math.round(k * 4);
-          g.fillRect(x - r, y - r, r * 2, r * 2);
-          g.globalAlpha = 1;
+        case 7: // spawn: a few spores rise off the ground at the unit's feet
+          this.motes(g, SPAWN_MOTES, x, y, k, x & 1 ? -1 : 1);
           break;
-        }
         case 10: { // heal: a small green plus rising over the healed unit
           g.globalAlpha = 1 - k;
           g.fillStyle = '#7be0a0';
@@ -129,5 +125,17 @@ export class Effects {
         }
       }
     }
+  }
+
+  /** Spore motes easing out from (x, y) as k runs 0→1, rising a little and fading. */
+  private motes(g: CanvasRenderingContext2D, motes: readonly (readonly [number, number, number])[], x: number, y: number, k: number, flip: number): void {
+    const ease = 1 - (1 - k) * (1 - k);
+    g.fillStyle = SPORE_WHITE;
+    for (let i = 0; i < motes.length; i++) {
+      const [dx, dy, size] = motes[i]!;
+      g.globalAlpha = (1 - k) * (i % 3 === 0 ? 0.95 : 0.7);
+      g.fillRect(Math.round(x + dx * ease * flip), Math.round(y + dy * ease - k * 2), size, size);
+    }
+    g.globalAlpha = 1;
   }
 }

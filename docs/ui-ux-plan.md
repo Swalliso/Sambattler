@@ -148,16 +148,44 @@ Built 2026-10-29 (branch `feature/run-screens`). The sprite preview sheet and ro
 
 ### Phase 3: Feel (M)
 
-- **Sound (A5).** Done ahead of Phase 1 (decision 3, SPEC §13.9): battle and UI sounds, a dripping-cave ambient bed, master/effects/ambience volume and mute, saved through `storageKey()`. The Phase 3 settings screen still gets the volume sliders.
-- **Motion (A6).** A spore-burst wipe between screens (≤400 ms), roll-up counters for rewards and a restrained hover tilt on draft cards. The duration and easing tokens are in the design system README.
-- **Settings screen (SPEC §10.5).** Volume, reduced motion, screen shake, damage numbers, UI scale and color-blind assist.
-- Align M8's spawn and death puffs with the spore particle.
+Built 2026-10-29 (branch `feature/feel-settings`). No new sprites: the settings screen uses the existing icons, and the color-blind marks are drawn in code like the tier pips. Rough settings screenshots from the title and from battle went to the user on 2026-10-29.
 
-### Phase 4: Verify (S, after each phase)
+- **Sound (A5).** Done ahead of Phase 1 (decision 3, SPEC §13.9). The settings screen holds the same mute and sliders; the speakers keep their quick mute.
+- **Settings screen (SPEC §10.5). Built** (`src/ui/settingsScreen.ts`, replacing Phase 1b's popover, `settingsControl.ts`).
+  - It opens from the title's Settings button, the battle's cog (the battle pauses, and the sheet says so) and a new cog beside the run bar's speaker. Esc, Close or a press on the scrim closes it; keys reach nothing behind it except `S`, and Tab stays inside.
+  - Sound: mute and three sliders. Battle: damage numbers (moved out of the popover; `#numbers [data-numbers]` kept), default speed (each battle runs at it once it begins) and screen shake. Display and motion: UI scale (Auto, 125%, 150%, 175%, 200%; a step never lays the page out below 1280×720), reduced motion (System, On, Off) and color-blind assist.
+  - Every field is in the one record, `spore-sprawl/settings/v1`, through `storageKey()`. Older records load with the new fields at their defaults, and unknown values fall back (`loadSettings`). `onSettings()` tells the page and the battle what changed, so scale, motion, assist and damage numbers apply at once.
+  - Save export/import and a profile reset wait for the profile (M6); the sheet says so.
+- **Motion (A6). Built** (`src/ui/motion.ts`).
+  - *Spore-burst wipe* between screens (title, route, spoils, event, Grove, prompt, summary, battle, the battle's report, Play again): a veil of the void rises over the old screen on a band of spore-white motes (150 ms, ease-in), the screen swaps, and the veil lifts off the new one from the bottom up (210 ms, ease-out), 360 ms in all. It is the spore particle (`SporeVeil` in `src/render/spores.ts`, same motes and alpha steps as the drift). Clicks and keys wait while it runs. The page's first screen appears at once. The in-battle draft, which opens over a field that stays, gets a burst of spores alone.
+  - *Roll-up counters:* the report's banner now names what the battle earned (gold; in a run, Spores and any Amber, with an elite's Amber shown as a chance), and those, the gold-by-source bars and the summary's Spores, Amber and Commander XP roll up from 0 (600 ms, ease-out) and bump once.
+  - *Hover tilt:* draft and spoils cards lean toward the pointer, at most 3° and 4°, on top of the 4 px lift.
+  - *Reduced motion* is now a setting: System follows `prefers-reduced-motion`, On and Off override it. It is the `reduce-motion` class on `<html>` (the old media query moved under it), and the spore drift reads the same class. It drops wipes, tilt, roll-ups, drift and shake, and keeps fades at 120 ms (a screen change fades in over 120 ms). `?test=1` makes every change instant and every counter final.
+- **Screen shake. Built, off by default** (SPEC §10.4): a jolt of the field when a Heartcap is hit, up to 3 screen px by damage, 180 ms, at most once every 1.5 s per Heartcap, never under reduced motion or `?test=1`. It didn't drag in other M8 work.
+- **Color-blind assist (B9). Built.** The deuteranopia and protanopia screenshots came first. They showed the units' caps already differ (blue against gray under both filters) and the mats differ in pattern, but the factions are close in lightness, and units carried their side only by cap color. The assist adds:
+  - a team mark under every unit's feet that peeks out either side of the sprite: a light lilac ring for the Velvet Bloom, a dark bar with pale dashes for the Gray Rot, so the sides differ in shape and lightness;
+  - bolder mats: the Bloom's strands in its light glow color, the Rot's replaced by dark ash tufts with pale tips;
+  - a leaning hatch on the Gray Rot's half of the territory bar.
+- **Puffs.** The renderer's spawn and death puffs (stalk squares and lilac or ash rings) are now spore-white motes, 1–2 px, drifting up and fading. The Sporestorm's specks on the field are spore-white too.
+- *Done when:* met. `tests/browser/settings.test.ts` covers each setting saving and surviving a reload, old and malformed records loading, Esc and Tab, the run bar's cog, UI scale (and the battle refitting), reduced motion, the assist, default speed, the wipe, reduced motion's fade and the roll-ups. `tests/browser/hud.test.ts` checks that the cog pauses the battle until Esc, and `tests/unit/settings.test.ts` checks the record's migration. The resume tests use reduced motion, since their persisted runs need `debug=1` rather than `test=1`.
 
-- Run `npm run screenshot` on every screen at 1280×720, 1366×650 and 1920×1080, plus `--filter deuteranopia|protanopia`.
-- Contrast: text at least 4.5:1, control borders and focus rings at least 3:1 (the pairs are in the design system).
-- Playtest questions: Does it feel like a fungal world? Can you tell what you can afford at a glance? Did you know where you could place? Did the route feel like a journey?
+### Phase 4: Verify
+
+Done 2026-10-29, after Phase 3. `npm run screenshot` gained `--size`, `--click` (to open the settings screen or a Help tab) and `--settings` (to stage a setting such as the assist), and checks the settings screen when a click opened it.
+
+- **Screenshots.** Every screen at 1280×720, 1366×650 and 1920×1080. Through `npm run screenshot`: title, title with settings, route (start, mid-run, near the boss, with settings), draft, battle (deploy, mid, mid with the assist, two lanes, Sporestorm, counter warning, with settings), report (win and loss), summary (win and loss) and the four Help tabs. The title's Continue, spoils, an event and the Grove need a saved run, so the Playwright script from Phase 2 took those. With the color-vision filters: battle mid (assist off and on), two lanes and the route, under deuteranopia and protanopia, at 1280×720 and 1920×1080. 82 `npm run screenshot` captures, all passing (one failed while the dev server was reloading mid-run and passed again on its own). The shots are in `artifacts/screenshots/phase4/` (gitignored).
+- **Fixed during the check:**
+  - The battle report overflowed 1280×720 by 17 px, so its buttons scrolled. That was already true in Phase 2. Table rows lost a pixel of padding and the front line's band is 96 px (was 104), so the report now fits with nothing to scroll.
+  - The Abandon run button's resting edge was `danger-line`, 1.8:1 on the panel. It is `danger` now (5:1).
+  - A plain lit `.btn.on` had a `violet` edge on `panel-selected`, 2.5:1. It is `lilac` now (6.1:1), as the segmented controls already were.
+  - A card you can't afford, picked for placing, put its `danger` price on `panel-selected` at 3.7:1. That price turns `danger-soft` (7.4:1).
+- **Contrast.** `tests/unit/contrast.test.ts` reads the tokens from `styles.css` and checks 58 pairs the UI uses: every text pair at 4.5:1 or better and every control edge and the focus ring at 3:1 or better. All pass. The tightest are `danger` on `panel-2` (4.50:1, used at 20 px and up) and `violet` on `panel-2` (3.07:1, territory and bars, never text).
+- **Accepted exceptions:**
+  - `line` (1.24:1 on `panel-2`) stays a decorative divider and is never a control's only edge.
+  - `danger-line` still edges bad callouts and cost chips, which are status, not controls; their text is `danger-soft`, 9:1.
+  - Under the deuteranopia and protanopia filters the faction hues stay close in lightness. With the assist off, the sides still read by cap color, which survives both filters, by mat pattern and by which side of the field they hold. With it on, shape and lightness carry them too.
+  - At 1920×1080 the run screens keep their 960–1180 px columns, so the sides stay empty, as in Phase 2.
+- **Playtest questions** (for the dev site): Does it feel like a fungal world? Can you tell what you can afford at a glance? Did you know where you could place? Did the route feel like a journey? And now: does the wipe feel quick, and does anything in the settings need explaining?
 
 ## Decisions (2026-10-28)
 
@@ -166,7 +194,7 @@ Built 2026-10-29 (branch `feature/run-screens`). The sprite preview sheet and ro
 3. **Sound:** done, ahead of Phase 1. Sounds are synthesized with WebAudio from parameters in `data/sounds.json`, the way sprites are text-defined, with no audio files (SPEC §13.9; audition them at `?scene=sounds`). Specific sounds can switch to CC0 samples later if the synthesized set feels thin.
 4. **Order:** the battle screen before the run screens. The run screens still get Phase 0's fonts, icons and borders for free.
 
-Build order: Phase 0, then sound, then Phase 1 (split into the field frame and the HUD/tray/deploy work), then a playtest on the dev site. Phase 2 comes after that. Each step is a PR into `develop`. Phase 0 (PR #12), sound (PR #13), Phase 1a, the field frame (PR #14), and Phase 1b, the HUD, deploy, tray and controls (PR #15), are merged. The frame's preview sheet was approved on 2026-10-29, crowns included, and so was the `i-settings` cog, Phase 1b's one new sprite. Phase 2, the run screens, was built on 2026-10-29, after its sprite sheet and rough screens were approved the same day.
+Build order: Phase 0, then sound, then Phase 1 (split into the field frame and the HUD/tray/deploy work), then a playtest on the dev site. Phase 2 comes after that. Each step is a PR into `develop`. Phase 0 (PR #12), sound (PR #13), Phase 1a, the field frame (PR #14), and Phase 1b, the HUD, deploy, tray and controls (PR #15), are merged. The frame's preview sheet was approved on 2026-10-29, crowns included, and so was the `i-settings` cog, Phase 1b's one new sprite. Phase 2, the run screens, was built on 2026-10-29, after its sprite sheet and rough screens were approved the same day, and released to `main` with the earlier phases (PR #17). Phase 3 (motion, the settings screen, the color-blind assist and spore puffs) and the Phase 4 check were built on 2026-10-29 on `feature/feel-settings`. That finishes the plan.
 
 ## Research notes
 

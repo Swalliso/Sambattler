@@ -13,6 +13,7 @@ import { cardView } from '../cards.ts';
 import { mvpCallout, mvpOf, outcomeArt } from '../report.ts';
 import { h } from '../h.ts';
 import { uiIcon } from '../icons.ts';
+import { rollUp } from '../motion.ts';
 import { uiScale } from '../scale.ts';
 
 const NODE_ICON: Record<RouteNode['kind'], string> = { battle: 'i-battle', elite: 'i-elite', event: 'i-event', grove: 'i-grove', boss: 'i-boss' };
@@ -443,9 +444,10 @@ export function summaryScreen(content: Content, atlas: Atlas, run: RunState, act
         h('section', null,
           h('h3', null, 'Earned'),
           h('table', { id: 'summary-earned' },
-            h('tr', null, h('td', null, 'Spores'), h('td', null, String(run.spores))),
-            h('tr', null, h('td', null, 'Amber'), h('td', null, String(run.amber))),
-            h('tr', null, h('td', null, 'Commander XP'), h('td', null, String(run.xp))),
+            // the run's rewards roll up once their stage has revealed
+            h('tr', { class: 'earned spores' }, h('td', null, uiIcon(atlas, 'i-spores'), 'Spores'), h('td', null, rollUp(h('b'), run.spores, { delay: 700 }))),
+            h('tr', { class: 'earned amber' }, h('td', null, uiIcon(atlas, 'i-amber'), 'Amber'), h('td', null, rollUp(h('b'), run.amber, { delay: 850 }))),
+            h('tr', null, h('td', null, 'Commander XP'), h('td', null, rollUp(h('span'), run.xp, { delay: 1000 }))),
             h('tr', null, h('td', null, 'Feats'), h('td', null, 'none yet (Milestone 6)')),
             h('tr', null, h('td', null, 'Decay'), h('td', null, '0')),
           ),
