@@ -410,3 +410,165 @@ By building, Bogwater Hollow without the relic:
 - **Twin Roots has the only clear signal.** Split-half ρ is 0.68 at 3:00, and it comes from which lane a building goes in, not from depth.
 
 The bar for step C: a network rule set on Bogwater should lift split-half ρ well above about 0.3, to at least Twin Roots' 0.6–0.7. It should also lift best − median well above about 25% of a building's worth, and do both at 1:00 as well as 3:00. The test is `npm run experiment -- --proto <network knob> --checks spread`.
+
+## Second front: two-lane test maps (2026-10-30)
+
+Step A suggested that a second front, perhaps with the diver, is the archer answer. This tests it on test-only two-lane versions of the one-lane maps. Nothing is adopted: the rules, the shipped maps, the run pool and the goldens are unchanged.
+
+G3 numbers use 50 seeds per seat (100 games, about ±5 points), merging on, `bot:balanced` as the defender unless stated. ✗ marks a rate above the 55% limit. The test maps are leads, not verdicts.
+
+### The test maps
+
+| Map | Lanes | W × H | 2×2 plots (packed) | Home plots |
+|---|---|---|---|---|
+| Bogwater Hollow | 1 × 8 rows | 32 × 8 | 59 | 8 |
+| `test-bogwater-2lane` | 2 × 4 rows | 32 × 9 | 60 | 8 |
+| `test-bogwater-2lane-tall` | 2 × 6 rows | 32 × 13 | 92 | 12 |
+| Stumpfield | 1 × 8 rows | 34 × 8 | 49 | 8 |
+| `test-stumpfield-2lane` | 2 × 4 rows | 34 × 9 | 49 | 8 |
+| `test-stumpfield-2lane-tall` | 2 × 6 rows | 34 × 13 | 76 | 12 |
+| Twin Roots | 2 × 6 rows | 32 × 13 | 87 | 12 |
+
+- **`2lane`** splits the rows the way Twin Roots does. The original rows 0–3 become the upper lane, then a root wall, then rows 4–7 become the lower lane. Width, home columns, plots, stumps and loam tiles are the original's. Bogwater's central loam patch is cut in two, one strip in each lane.
+- **`2lane-tall`** adds an empty row on each side of each lane. That gives Twin Roots' shape (6 + wall + 6) and 50% more plots. These were added after the `2lane` maps played very differently from Twin Roots.
+- **All four are `testOnly`.** `mapPool()` drops them, so runs never draw them. The goldens didn't move: the route draws only from that pool, and a battle's state holds only its own map.
+- **Tool changes:**
+  - `npm run experiment` now reports any `testOnly` map as a lead. It used to use a hard-coded list.
+  - `--checks g4` now plays each map in `--maps`.
+
+### G3 against `bot:balanced`
+
+`npm run experiment -- --checks g3 --g3seeds 50 --maps bogwater-hollow,test-bogwater-2lane,stumpfield,test-stumpfield-2lane`, and the same with `--maps test-bogwater-2lane-tall,test-stumpfield-2lane-tall,twin-roots`. The one-lane and Twin Roots columns match step A exactly.
+
+| Mono bot | Bogwater (1 lane) | 2 × 4 rows | 2 × 6 rows | Stumpfield (1 lane) | 2 × 4 rows | 2 × 6 rows | Twin Roots |
+|---|---|---|---|---|---|---|---|
+| Gill Archer Nest | **100** ✗ | **80** ✗ | **62** ✗ | **100** ✗ | **85** ✗ | **67** ✗ | **63** ✗ |
+| Sporeling Burrow | **75** ✗ | **82** ✗ | **76** ✗ | **70** ✗ | **72** ✗ | **67** ✗ | **77** ✗ |
+| Amanita Lodge | 48 | **73** ✗ | **65** ✗ | 41 | **71** ✗ | **58** ✗ | **64** ✗ |
+| Morel Warren | 54 | **62** ✗ | 52 | **57** ✗ | 53 | 55 | 54 |
+| Veilstalker Hollow | 31 | 47 | 53 | 42 | **63** ✗ | 48 | 51 |
+| Rootbreaker Den | 15 | 42 | 53 | 17 | 47 | 52 | 53 |
+| Capguard Hall | 49 | 24 | 27 | 41 | 29 | 19 | 27 |
+| Scythecap Grove | 42 | 9 | 17 | 38 | 14 | 17 | 11 |
+| Hammercap Forge | 28 | 17 | 22 | 23 | 20 | 13 | 20 |
+| Puffball Mortar | 9 | 0 | 0 | 8 | 3 | 1 | 0 |
+| Tender's Ring, Truffle Cellar, Rhizome Vault, Spore Exchange | 0–2 | 0–4 | 0 | 0–1 | 0–9 | 0 | 0 |
+
+- **A second lane cuts the archers but doesn't pass.**
+  - At the original plot count, mono Gill Nest drops from 100% to 80% (Bogwater) and 85% (Stumpfield).
+  - With Twin Roots' shape, it drops to 62% and 67%, Twin Roots' own failing number.
+- **Every two-lane version adds a mono Amanita takeover (58–73%).**
+- **Mono Sporeling still fails on every version (67–82%).**
+- The other changes follow the Twin Roots pattern from step A. The single-building concentrators gain (Rootbreaker 15 → 42–53, Veilstalker up to 63 on the 4-row Stumpfield). Capguards and Scythecaps lose.
+
+### Why the shape matters
+
+Traces with `--checks lanes --seeds 25` (50 games), mono Gill Nest against `bot:balanced`. "Busy lane" is the lane where the mono side placed most of its spawners.
+
+| | Bogwater | 2 × 4 rows | 2 × 6 rows | Twin Roots |
+|---|---|---|---|---|
+| Mono wins (this sample) | 100% | 82% | 56% | 58% |
+| Mono spawners all in one lane | 100% of games | 0% (62% in the busy lane) | 0% (65%) | 0% (64%) |
+| Defender supply, busy + other lane, at 4:00 / 5:00 | 2.3 / 0.6 (one lane) | 4.4 + 2.9 / 3.8 + 2.8 | 4.3 + 4.3 / 3.5 + 5.8 | 4.3 + 4.4 / 3.5 + 5.6 |
+| Mono side's Heartcap hit | 0 of 50 | 19 of 50 | 31 of 50 | 30 of 50 |
+
+On Stumpfield the mono side's Heartcap is hit in 0 / 18 / 33 of 50 games (one lane / 2 × 4 / 2 × 6).
+
+**Concentration diagnostic.** A scratch script, as in step A, set the AI's aggressive lane style on one or both sides. 100 games each, mono Gill Nest win rate:
+
+| Map | Default (both split) | Mono side concentrates | Both concentrate |
+|---|---|---|---|
+| Bogwater 2 × 4 rows | 80% | 84% | 98% |
+| Stumpfield 2 × 4 rows | 85% | 84% | 94% |
+| Bogwater 2 × 6 rows | 62% | 78% | 93% |
+| Stumpfield 2 × 6 rows | 67% | 82% | 90% |
+| Twin Roots | 63% | 78% | 94% |
+
+**Width-only diagnostic** (scratch, not committed). The tall maps were rebuilt with stumps on each lane's top and bottom row. Units can walk on 6 rows, but buildings fit only where the 4-row maps allow them. Mono Gill Nest wins 79% on Bogwater and 88% on Stumpfield, the same as the 4-row maps.
+
+- **The sides split on every two-lane version.** The mono side never puts all its spawners in one lane, so the second front exists in all of them.
+- **What decides it is build room in the other lane, not walking room.** With 4 buildable rows per lane, each side has 4 home plots per lane.
+  - On the 4-row Bogwater, the defender's second lane stays near 3 supply (2.8 at 5:00) and rarely counterattacks. The archers' Heartcap is hit in 36–38% of games on either 4-row map.
+  - With 6 buildable rows, that lane reaches 5.8 by 5:00 (5.6 on Twin Roots), and the archers' Heartcap is hit in 62–66% of games, as on Twin Roots.
+- **Concentration still wins.** When both sides concentrate, every version plays like a one-lane map (90–98%). The second front helps only because `bot:balanced` happens to split.
+
+### The diver on two-lane maps
+
+`diverdef` is step A's one-off defender. Its spec:
+
+```
+--defender bot:diverdef --proto 'bot.diverdef:{"opener":["sporelingBurrow","veilstalkerHollow"],"weights":{"sporelingBurrow":3,"capguardHall":3,"gillNest":2,"truffleCellar":2,"rootbreakerDen":1,"puffballMortar":1,"scythecapGrove":2,"veilstalkerHollow":5},"limits":{"truffleCellar":{"maxOwned":3},"rootbreakerDen":{"afterSeconds":180}},"mergePolicy":"on"}'
+```
+
+Add `diverleap,` to the front of the `--proto` spec for the diver. It reproduces step A's 95 / 54 and 97 / 37.
+
+| Mono Gill Nest win rate | Bogwater (1 lane) | 2 × 4 rows | 2 × 6 rows | Stumpfield (1 lane) | 2 × 4 rows | 2 × 6 rows | Twin Roots |
+|---|---|---|---|---|---|---|---|
+| vs `bot:balanced` | 100 | 80 | 62 | 100 | 85 | 67 | 63 |
+| vs `bot:balanced`, `diverleap` | 100 | 80 | 67 | 100 | 86 | 67 | 67 |
+| vs `diverdef` | 95 | 59 | 54 | 99 | 67 | 64 | 54 |
+| vs `diverdef`, `diverleap` | 97 | 50 | **41** | 94 | 68 | 63 | **37** |
+
+- **The diver works only against a Hollow-opening defender, and only on Bogwater-shaped maps:** 41% on tall Bogwater, 50% on the 4-row split. On both Stumpfield versions it does nothing (63–68%). This run doesn't show why.
+- **Under `bot:balanced` it slightly hurts,** as on Twin Roots: 62 → 67 on tall Bogwater. Mono Veilstalker gains (47 → 53 on the 4-row Bogwater, 53 → 59 ✗ on the tall one). No other mono bot moves: all 14 were checked on the one-lane and 4-row maps, and six on the tall maps.
+- **Against `diverdef`,** mono Sporeling is 71–76% on every two-lane version and mono Amanita 53–62%. The diver doesn't touch either, since they field no ranged units.
+
+### Side effects
+
+- **Mono Amanita takes over on every two-lane map** (58–73%). The tall-map traces show why: 92% of its games put every Lodge in one lane, breaking it while `bot:balanced` splits. Its own Heartcap is hit in 47–50 of 50 games, so these games are races. When both sides concentrate, Amanita falls to 40–51%.
+- **Mono Sporeling.** Two lanes don't fix it, and the 4-row split makes it worse on Bogwater (75 → 82%). It wins whether lanes split or not (79–98% when both concentrate). Hold's 12-supply muster is still the suspect, and it isn't fixed here.
+- **Morel** reaches 62% on the 4-row Bogwater. **Veilstalker** reaches 63% on the 4-row Stumpfield. **Rootbreaker** reaches 52–53% on the tall maps, just under the limit.
+- **G4** (`--checks g4 --maps …`, `bot:balanced` against the scripted general, 40 seeds) passes on every map:
+
+  | | Bogwater | 2 × 4 rows | 2 × 6 rows | Stumpfield | 2 × 4 rows | 2 × 6 rows | Twin Roots |
+  |---|---|---|---|---|---|---|---|
+  | Median length | 7:13 | 7:06 | 6:51 | 7:13 | 7:27 | 7:11 | 7:12 |
+  | Decisions | 10% | 3% | 0% | 13% | 5% | 8% | 5% |
+  | Bot wins | 55% | 60% | 43% | 48% | 63% | 38% | 40% |
+
+- **Turrets come per lane.** `turret.perLane` is 2, so a two-lane map has 4 turrets per side. With `--proto turret.perLane:1` on the 4-row maps (the one-lane total):
+  - mono Gill Nest falls to 61 / 63%;
+  - mono Sporeling rises to 97 / 97%, Morel to 76 / 81% and Amanita to 66 / 60%.
+
+  The extra turrets are part of what holds the swarms down on two-lane maps. A lane-count change can't drop them.
+
+### What one-lane maps would lose
+
+A second lane works only in Twin Roots' shape. That shape:
+- **makes Bogwater and Stumpfield 13 rows tall with 12 home plots,** above §4.1's scarcity target (4–6 of a battle's 10–14 buildings fit at home);
+- **removes the simplest battle:** one front, one Hold button and one place to watch. Bogwater is the first map players see, and round 3 said "too much to learn" (F8);
+- **blurs map identity.** Twin Roots' character is lane choice. If every map has two lanes, the maps differ only in their tiles;
+- **halves each lane's fight,** which works against colony-swarm's bigger swarms;
+- **re-tunes everything that counts lanes:** turrets (above), Armilla's tithe (columns held across lanes), and the area powers, Spore Burst and Puppet Bloom, which catch fewer units.
+
+### Options that keep one lane (sketch, not built)
+
+From two lanes we learned what has to be copied:
+- the defender needs production the archer mass can't reach;
+- that production needs a way to hit the archers' Heartcap past the mass.
+
+A taller one-lane map won't do it. Step A and the width-only check both say walking room doesn't matter, and extra plots help only where the archers aren't.
+
+| Option | The second-front effect it copies | What it needs | Main risk |
+|---|---|---|---|
+| **Forward buildings worth defending:** colony-swarm's terrain in contested ground, or the network review's Fed/Starved forward buildings | The archer side has to hold more than one point, so the mass divides | A payoff worth fighting for, ideally one that changes units rather than adding a percentage. The general must value it (§7.3) | In one lane every forward point is on the archers' path, so the mass may take them in passing and the rule rewards the push |
+| **Flank orders:** a lane stance that sends a spawner's units along the lane's edge rows, past the front, onto the spawners and Heartcap behind it | The counterattack past the mass that hits the archers' Heartcap in 60% of Twin Roots games | A movement rule (§5.2: units walk their spawn row), a readable path, and an AI that uses it. It sits next to Hold / Advance | Sporeling flanks become the next swarm takeover, as with B1. Burrowing stays excluded (§17 #7) |
+
+The other half, production the archers can't suppress, was B2 (`besiegedBy`). On its own it didn't move G3 in round 1. Any option above would be measured the same way as this test: `--checks g3,lanes` on the run maps and on these test maps.
+
+### Recommendation
+
+**Don't give the one-lane maps a second lane as the archer fix.**
+- At the original plot count it leaves mono Gill Nest at 80–85%.
+- Twin Roots' shape reaches 62–67%, which is Twin Roots' own failure, not a pass. That shape also costs the map identity above.
+- Every two-lane version adds a mono Amanita takeover, and mono Sporeling still fails.
+- The diver gets below 55% only on the tall Bogwater, only against a Hollow-opening defender, and not on Stumpfield.
+
+**What to keep from it:**
+- **The mechanism.** A second front works when the defender can build a real army where the archers aren't. A one-lane fix should copy that (options above). Unit rules haven't managed it.
+- **The test maps,** as a bench. Measure any archer candidate on `test-bogwater-2lane-tall` and `test-stumpfield-2lane-tall` as well as the run maps.
+- **For the G3 rewrite and the AI.** On two-lane maps the right lane play depends on the opponent:
+  - Splitting beats archers: 62% against 93% when both sides concentrate.
+  - Concentrating beats Amanita: 42% against 65%.
+
+  `bot:balanced` always splits, so G3 on two-lane maps measures its habit as much as the mono bot. A defender whose lane choice reads the opponent would make two-lane G3 fairer. That's AI work, and the user's call.

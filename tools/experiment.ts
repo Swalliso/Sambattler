@@ -8,10 +8,11 @@
 // reports/experiments/<label>.json and prints a summary.
 //
 // G3 options (g3, g3gill and lanes): `--maps a,b` plays every listed map (G3 itself is Bogwater
-// Hollow; test maps like test-3lane are reported as leads), `--g3seeds n` sets seeds per seat
+// Hollow; `testOnly` maps like test-3lane are reported as leads), `--g3seeds n` sets seeds per seat
 // (default G3's 20, about ±8 points; 50 gives about ±5), `--mono a,b` picks the mono bots.
 // `lanes` traces mono bots (default Gill Nest) against the defender on `--maps`, `--seeds n` per
 // seat (default 10), `--traces` keeps every battle's trace in the report (tools/lib/lanes.ts).
+// `g4` also plays every map in `--maps` (the guardrail itself is Bogwater Hollow).
 //
 // Run options (runs and engagement): `--commander <id|all>` plays a commander (runs default to
 // Vesper; single battles to none) and `--power-policy none|auto` sets how the bot uses its power
@@ -49,14 +50,14 @@ const ALL = ['duels', 'g3', 'g4', 'g5', 'g6', 'g7', 'g8', 'g11', 'boss'];
 const checks = new Set((opt('--checks') ?? ALL.join(',')).split(','));
 /** Maps for the g3, g3gill and lanes checks (G3 itself is Bogwater Hollow). */
 const maps = (opt('--maps') ?? 'bogwater-hollow').split(',');
-/** Test maps are reported as leads; their G3 rows don't fail the check. */
-const TEST_MAPS = ['test-3lane', 'test-flat'];
 /** Seeds per seat for g3 and g3gill (default G3's own). */
 const g3SeedsOpt = Number(opt('--g3seeds') ?? 0);
 /** Mono bots for g3, g3gill and lanes, in place of the check's default list. */
 const monoIds = opt('--mono')?.split(',');
 const content = protoContent(proto);
 const g3Seeds = g3SeedsOpt || content.targets.G3.seeds;
+/** Test maps (`testOnly`) are reported as leads; their G3 rows don't fail the check. */
+const isTestMap = (map: string): boolean => !!content.maps[map]?.testOnly;
 /** Commanders for the runs and engagement checks: one id, `all`, or none (the run default, Vesper; no commander in single battles). */
 const commanderOpt = opt('--commander');
 const commanders: (string | undefined)[] = commanderOpt === 'all' ? Object.keys(content.commanders) : [commanderOpt];
@@ -114,7 +115,7 @@ if (checks.has('g3') || checks.has('g3gill')) {
   const rows: Record<string, unknown>[] = [];
   let pass = true;
   for (const map of maps) {
-    if (maps.length > 1) lines.push(`G3 on ${map}${TEST_MAPS.includes(map) ? ' (test map: a lead, not a verdict)' : ''}, ${g3Seeds} seeds per seat`);
+    if (maps.length > 1) lines.push(`G3 on ${map}${isTestMap(map) ? ' (test map: a lead, not a verdict)' : ''}, ${g3Seeds} seeds per seat`);
     for (const id of ids) {
       const seat = { player: 0, enemy: 0 };
       const lengths: number[] = [];
@@ -142,7 +143,7 @@ if (checks.has('g3') || checks.has('g3gill')) {
         .map(([src, n]) => `${src} ${pct(n / Math.max(1, balDmg))}`).join(', ');
       const diag = `mono units lost ${monoLost}/${monoSpawned} (${pct(monoLost / Math.max(1, monoSpawned))}); balanced damage: Sporelings ${pct(sporeDmg / Math.max(1, balDmg))}, turrets ${pct(turretDmg / Math.max(1, balDmg))}${others ? `; then ${others}` : ''}`;
       const rate = (seat.player + seat.enemy) / (2 * g3Seeds);
-      if (rate > t.maxMonoWinRate && !TEST_MAPS.includes(map)) pass = false;
+      if (rate > t.maxMonoWinRate && !isTestMap(map)) pass = false;
       rows.push({
         map, id, rate, player: seat.player / g3Seeds, enemy: seat.enemy / g3Seeds, median: median(lengths), decisions: decisions / (2 * g3Seeds),
         monoLost, monoSpawned, sporeDmg, turretDmg, balDmg, defDamage,
@@ -176,8 +177,11 @@ if (checks.has('lanes')) {
 }
 
 if (checks.has('g4')) {
-  const v = evaluateG4(content);
-  out.G4 = { ...verdict(v), median: median(v.stats.lengths), decisions: v.stats.decisions / v.stats.games, win: v.stats.winsA / v.stats.games };
+  const rows = maps.map((map) => {
+    const v = evaluateG4(content, map);
+    return { map, ...verdict(v), median: median(v.stats.lengths), decisions: v.stats.decisions / v.stats.games, win: v.stats.winsA / v.stats.games };
+  });
+  out.G4 = rows.length === 1 ? rows[0] : rows;
 }
 if (checks.has('g5')) out.G5 = verdict(evaluateG5(content));
 if (checks.has('g6')) out.G6 = verdict(evaluateG6(content));
