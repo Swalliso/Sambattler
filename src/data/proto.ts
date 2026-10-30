@@ -33,6 +33,10 @@ export const PROTO_PRESETS: Record<string, Json> = {
   t1: { rangedFirstSpawnFraction: 1 },
   /** T2: melee units outnumbered near their target fall back toward home for up to 10 s. */
   t2: { fallBack: { radius: 5, ratio: 1, maxHoldSeconds: 10 } },
+  /** Diver (step A): Veilstalkers prefer ranged units and see them from 2 tiles farther. */
+  diver: { diveRanged: { units: ['veilstalker'], aggroAdd: 2 } },
+  /** Diver with a burst: Veilstalkers also sprint at ×2.5 for 1.5 s onto a ranged target, every 8 s at most. */
+  diverleap: { diveRanged: { units: ['veilstalker'], aggroAdd: 2, burst: { speedMult: 2.5, seconds: 1.5, cooldownSeconds: 8 } } },
   /** T3: home-column spawners shoot the nearest enemy unit within 6 tiles (12 Pierce per second). */
   t3: { spawnerDefense: { damage: 12, damageType: 'pierce', interval: 1, range: 6, projectileSpeed: 12, homeOnly: true } },
 };

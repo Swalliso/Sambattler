@@ -21,6 +21,7 @@ describe('prototype knobs are off by default', () => {
     expect(b.rangedFirstSpawnFraction).toBeUndefined();
     expect(b.fallBack).toBeUndefined();
     expect(b.spawnerDefense).toBeUndefined();
+    expect(b.diveRanged).toBeUndefined();
     const s = liveState();
     expect(s.rules.rush).toBeUndefined();
     expect(s.rules.congestion).toBeUndefined();
@@ -28,6 +29,7 @@ describe('prototype knobs are off by default', () => {
     expect(s.rules.ai.counter.floorWeight).toBeUndefined();
     expect(s.rules.fallBack).toBeUndefined();
     expect(s.rules.spawnerDefense).toBeUndefined();
+    expect(s.rules.dive).toBeUndefined();
     expect(unit(s, 'player', 'sporeling', 5, 1)).not.toHaveProperty('expiresTick');
   });
 
@@ -343,5 +345,50 @@ describe('T3 spawner defense (balance spawnerDefense)', () => {
     expect(shots(true, 0)).toBe(36); // 3 shots of 12 Pierce vs Light in 3 s
     expect(shots(true, 10)).toBe(0);
     expect(shots(false, 10)).toBe(36);
+  });
+});
+
+describe('diver (balance diveRanged)', () => {
+  const DIVE = { units: ['veilstalker'], aggroAdd: 2 };
+  /**
+   * A Veilstalker at x 10 with a frozen enemy Capguard 2 tiles ahead and a frozen enemy archer at
+   * `archerX`; the diver's target after one step, and its x after `n` steps.
+   */
+  function dive(rules: BattleState['rules']['dive'], archerX: number, n = 1, withCapguard = true): { target: string; x: number } {
+    const s = liveState({ test: { noTurrets: true, noTerritory: true, noHeartcapTargets: true } });
+    if (rules) s.rules.dive = rules;
+    const v = unit(s, 'player', 'veilstalker', 10, 2);
+    for (const [id, x] of [...(withCapguard ? [['capguard', 12]] as const : []), ['gillArcher', archerX] as const]) {
+      unit(s, 'enemy', id, x, 2).cooldown = 1e9;
+      s.compiled.enemy.units[id]!.tiers[0].speedPerTick = 0;
+    }
+    steps(s, n);
+    const t = s.units.find((u) => u.id === v.targetId);
+    return { target: t?.unitId ?? 'none', x: v.x };
+  }
+
+  it('compiles from the presets', () => {
+    const c = protoContent('diverleap');
+    const s = createBattle(c, makeConfig(c, { seed: 1, mapId: 'test-flat', player: 'human', enemy: 'human' }));
+    expect(s.rules.dive).toEqual({ units: ['veilstalker'], aggroAdd: 2, burst: { speedMult: 2.5, ticks: 30, cooldownTicks: 160 } });
+  });
+
+  it('a listed unit prefers a ranged unit over a nearer melee one, and sees it from aggroAdd farther', () => {
+    expect(dive(undefined, 14.5).target).toBe('capguard');
+    expect(dive(DIVE, 14.5).target).toBe('gillArcher');
+    // 6.5 tiles away: beyond the Veilstalker's aggro 5, within 5 + 2
+    expect(dive({ ...DIVE, aggroAdd: 0 }, 17).target).toBe('capguard');
+    expect(dive(DIVE, 17).target).toBe('gillArcher');
+    expect(dive({ ...DIVE, units: ['capguard'] }, 14.5).target).toBe('capguard');
+  });
+
+  it('with a burst it sprints onto a ranged target, and only onto one', () => {
+    const burst = { ...DIVE, burst: { speedMult: 3, ticks: 30, cooldownTicks: 160 } };
+    const walk = dive(DIVE, 15, 10, false).x - 10;
+    expect(walk).toBeCloseTo(10 * 1.4 / 20, 5);
+    expect(dive(burst, 15, 10, false).x - 10).toBeGreaterThan(2.5 * walk);
+    // the Capguard is nearer and preferred by no one: the diver walks to it at its normal speed
+    const melee = { ...burst, units: ['veilstalker'], aggroAdd: 0 };
+    expect(dive(melee, 30, 10).x).toBeCloseTo(dive(undefined, 30, 10).x, 9);
   });
 });

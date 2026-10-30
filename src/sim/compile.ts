@@ -66,6 +66,17 @@ export function compileRules(b: BalanceDef, config: BattleConfig): Rules {
         range: b.spawnerDefense.range, projectileSpeed: b.spawnerDefense.projectileSpeed, homeOnly: b.spawnerDefense.homeOnly,
       },
     } : {}),
+    ...(b.diveRanged ? {
+      dive: {
+        units: [...b.diveRanged.units], aggroAdd: b.diveRanged.aggroAdd ?? 0,
+        ...(b.diveRanged.burst ? {
+          burst: {
+            speedMult: b.diveRanged.burst.speedMult, ticks: secToTicks(b.diveRanged.burst.seconds, tr),
+            cooldownTicks: secToTicks(b.diveRanged.burst.cooldownSeconds, tr),
+          },
+        } : {}),
+      },
+    } : {}),
     timeLimitTicks: secToTicks(test.timeLimitSeconds ?? b.timeLimitSeconds, tr),
     captureStep: 100,
     captureThreshold: Math.round(b.captureSeconds * tr * 100),

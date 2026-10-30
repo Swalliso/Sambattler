@@ -102,6 +102,17 @@ export const BalanceSchema = z.object({
   spawnerDefense: z.object({
     damage: Pos, damageType: DamageType, interval: Pos, range: Pos, projectileSpeed: Pos, homeOnly: z.boolean(),
   }).strict().optional(),
+  /**
+   * Diver prototype (step A of docs/ideas/one-more-run-review.md), absent by default: listed units
+   * prefer `ranged`-tagged enemy units over other targets and see them from `aggroAdd` tiles
+   * farther. With `burst`, a diver closing on a ranged unit sprints at `speedMult` for up to
+   * `seconds`, then waits `cooldownSeconds` before the next burst.
+   */
+  diveRanged: z.object({
+    units: z.array(z.string()).min(1),
+    aggroAdd: z.number().nonnegative().optional(),
+    burst: z.object({ speedMult: Pos, seconds: Pos, cooldownSeconds: Seconds }).strict().optional(),
+  }).strict().optional(),
   firstSpawnFraction: z.number().min(0).max(1),
   timeLimitSeconds: Pos,
   heartcapPlayerHp: z.number().int().positive(),

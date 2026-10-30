@@ -8,6 +8,7 @@ import { buildGrid, nearBuffer, queryNear } from '../spatial.ts';
 import { MAX_RADIUS, edgeDistance, tp } from '../targets.ts';
 import { clampToLane, tierDef, unitDef, unitRadius } from '../world.ts';
 import { holdsLane, rallyX } from './stance.ts';
+import { isRangedUnit } from './targeting.ts';
 
 export function movementSystem(state: BattleState): void {
   const r = state.rules;
@@ -40,7 +41,9 @@ export function movementSystem(state: BattleState): void {
         if (d > t.range) {
           const dx = tp.x - u.x, dy = tp.y - u.y;
           const dist = Math.sqrt(dx * dx + dy * dy);
-          const step = Math.min(r.rush && !tp.preferredBuilding ? rushSpeed(state, u, speed) : speed, d - t.range);
+          let move = r.rush && !tp.preferredBuilding ? rushSpeed(state, u, speed) : speed;
+          if (r.dive?.burst && !tp.preferredBuilding) move = diveSpeed(state, u, move);
+          const step = Math.min(move, d - t.range);
           if (dist > 1e-9) {
             u.x += (dx / dist) * step;
             u.y += (dy / dist) * step;
@@ -78,6 +81,22 @@ function rushSpeed(state: BattleState, u: UnitState, speed: number): number {
   u.rushUntil = tick + rush.ticks;
   u.rushReady = tick + rush.ticks + rush.cooldownTicks;
   return speed * rush.speedMult;
+}
+
+/**
+ * Diver prototype (balance `diveRanged.burst`): a listed unit closing on a ranged enemy unit
+ * sprints for a few ticks, then waits out a cooldown (sharing B1's rush timers).
+ */
+function diveSpeed(state: BattleState, u: UnitState, speed: number): number {
+  const dive = state.rules.dive!;
+  const burst = dive.burst!;
+  if (!dive.units.includes(u.unitId) || !isRangedUnit(state, u.targetId)) return speed;
+  const tick = state.tick;
+  if (u.rushUntil !== undefined && tick < u.rushUntil) return speed * burst.speedMult;
+  if (u.rushReady !== undefined && tick < u.rushReady) return speed;
+  u.rushUntil = tick + burst.ticks;
+  u.rushReady = tick + burst.ticks + burst.cooldownTicks;
+  return speed * burst.speedMult;
 }
 
 /**
