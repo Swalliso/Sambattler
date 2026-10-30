@@ -2,7 +2,9 @@
 import type { Content } from '../data/registry.ts';
 import { buildLibrary, compileRules, compileSides, configLoadout, creationStat, secToTicks } from './compile.ts';
 import { seedStream } from './rng.ts';
+import { aiDraft } from './ai/draftPolicy.ts';
 import { adaptiveRoster, isAdaptive, resolveAiProfile } from './ai/profiles.ts';
+import { openDraft } from './draft.ts';
 import { placementProblem } from './placement.ts';
 import { MAX_RADIUS } from './targets.ts';
 import { clampToLane, laneOfRow, supplyCapOf, unitRadius } from './world.ts';
@@ -281,6 +283,10 @@ export function createBattle(content: Content, config: BattleConfig): BattleStat
   for (const s of SIDES) {
     if (!state.library.powers?.[config[s].power ?? '']) continue;
     Object.assign(state.stats[s], { powerUses: 0, powerDamage: 0, powerCaptures: 0, powerMerges: 0, powerGold: 0 });
+  }
+  // hot-start prototype: a free draft before the clock starts (not in scenarios, which start live)
+  if (rules.deployDraft && config.flags.drafts && !config.scenario) {
+    for (const s of SIDES) if (openDraft(state, s, rules.deployDraft)) aiDraft(state, s);
   }
   return state;
 }

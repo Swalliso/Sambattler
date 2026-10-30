@@ -187,6 +187,22 @@ export function fireTriggers(state: BattleState, side: Side, on: TriggerOn, ctx:
   }
 }
 
+/**
+ * Fires `side`'s `heartcapBreach` triggers whose threshold its Heartcap just fell to or below, from
+ * `before` HP to its current HP. A Heartcap that falls to 0 breaches nothing: the battle is over.
+ */
+export function fireBreaches(state: BattleState, side: Side, before: number, ctx: TriggerContext): void {
+  const ss = state.sides[side];
+  if (ss.heartcapHp <= 0) return;
+  for (const t of state.compiled[side].triggers) {
+    if (t.on !== 'heartcapBreach') continue;
+    const at = t.at! * ss.heartcapMaxHp;
+    if (before <= at || ss.heartcapHp > at || !triggerMatches(state, t, ctx)) continue;
+    state.events.push({ t: 'heartcapBreach', side, at: t.at!, x: ctx.x, y: ctx.y });
+    for (const a of t.do) runAction(state, side, a, ctx);
+  }
+}
+
 /** Runs one effect action for `side` (also used by units' own `onDeath` actions). */
 export function runAction(state: BattleState, side: Side, a: EffectAction, ctx: TriggerContext): void {
   if ('gainGold' in a) {
@@ -201,6 +217,11 @@ export function runAction(state: BattleState, side: Side, a: EffectAction, ctx: 
       damage: a.explode.damage, damageType: a.explode.damageType, splashRadius: a.explode.radius,
       siegeMult: 1, slayerMult: 1, sourceBuildingId: ctx.sourceBuildingId, sourceType: 'effect', ranged: false,
     });
+  } else if ('shieldHeartcap' in a) {
+    const ticks = Math.round(a.shieldHeartcap.seconds * state.rules.tickRate);
+    state.sides[side].heartcapShield = { untilTick: state.tick + ticks, takenMult: a.shieldHeartcap.takenMult };
+  } else if ('readyPower' in a) {
+    state.sides[side].powerCooldown = 0;
   } else {
     const ss = state.sides[side];
     ss.heartcapHp = Math.min(ss.heartcapMaxHp, ss.heartcapHp + Math.round(ss.heartcapMaxHp * a.repairHeartcapPct));

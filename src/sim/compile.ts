@@ -77,6 +77,8 @@ export function compileRules(b: BalanceDef, config: BattleConfig): Rules {
         } : {}),
       },
     } : {}),
+    ...(b.hotStart?.deployDraft ? { deployDraft: { ...b.hotStart.deployDraft } } : {}),
+    ...(b.bigDrafts ? { bigDrafts: { picks: b.bigDrafts.picks ?? 1, rareBonus: b.bigDrafts.rareBonus ?? 0 } } : {}),
     timeLimitTicks: secToTicks(test.timeLimitSeconds ?? b.timeLimitSeconds, tr),
     captureStep: 100,
     captureThreshold: Math.round(b.captureSeconds * tr * 100),
@@ -314,7 +316,8 @@ export function compileSide(lib: Library, lo: Loadout, mods: readonly ModifierDe
       projectileSpeed: bal.turret.projectileSpeed,
       perLane: bal.turret.perLane,
     },
-    triggers: [...triggers],
+    // the Heartcap breach prototype's triggers come after the loadout's (absent by default)
+    triggers: [...triggers, ...(bal.sideTriggers ?? [])],
   };
   // absent at ×1, so sides without a cooldown relic compile (and hash) as before powers existed
   const powerCooldown = m('side.powerCooldown', 1);
