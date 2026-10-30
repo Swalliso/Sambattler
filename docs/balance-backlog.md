@@ -783,3 +783,150 @@ The other half, production the archers can't suppress, was B2 (`besiegedBy`). On
   - Concentrating beats Amanita: 42% against 65%.
 
   `bot:balanced` always splits, so G3 on two-lane maps measures its habit as much as the mono bot. A defender whose lane choice reads the opponent would make two-lane G3 fairer. That's AI work, and the user's call.
+
+## Combat rework P1 (2026-10-30)
+
+Built on `feature/combat-rework`: the five settings of the combat rework's Level 2 package (P1 of `docs/ideas/combat-rework.md`, which isn't committed yet), each a default-off preset. **Nothing is adopted.** `balance.json` doesn't change, the Rhizomorph exists only under its preset, and the goldens are unchanged. This is a first read with the existing checks, not P2: G3 uses 20 seeds per seat (40 games per map, about ±8 points).
+
+### The settings
+
+| Preset | What it does | Where it lives |
+|---|---|---|
+| `pinned` | A ranged unit with an enemy unit within 1 tile (edge distance) attacks at 0.35× its rate: its cooldown runs on 350 ticks in 1,000 | balance `pinned` |
+| `callforhelp` | When an enemy unit or tower damages a unit or building, every friendly unit in its lane within 5 tiles of it that has no target takes the attacker as its target | balance `callForHelp` |
+| `sporecloud` | The Puffball Mortar reaches 7 tiles. Each shell leaves a cloud (radius 1.5, 6 s) that deals 10 damage a second, ignoring armor, to every enemy unit inside it. Not buildings or friends | balance `sporeCloud`; clouds are entities in `state.clouds` |
+| `rhizomorph` | A new unit and spawner (below) | content only: `unit.rhizomorph`, `building.rhizomorphTunnel`, both rosters |
+| `waves` | Spawns wait inside their building and leave with their side's next wave. Both sides release every 20 s on the same tick | balance `waves` |
+| `rework` | All five | |
+
+**The Rhizomorph** (preset `rhizomorph`): 140 HP, medium armor, 16 slash every 1.0 s, speed 1.2, 2 supply. It has a new tag, `burrow`.
+- **Underground,** it can't be targeted, hit, pinned or merged. It doesn't collide, hold ground or attack.
+- **It tunnels** at its speed toward the nearest enemy ranged unit or spawner at or behind the enemy's frontmost unit. With none, it heads for that frontmost unit, else the enemy border. It surfaces once its attack range reaches its target.
+- **Above ground,** it prefers ranged targets (the diver's targeting).
+- **The Rhizomorph Tunnel** costs 160 and makes one every 18 s.
+- **Merge perks:** Bloomed speed ×1.1 and Elder damage ×1.1, like the Morel Runner. The design gave none, and the schema needs both.
+
+**Hooks for relics and perks:** `side.waveBeat` (seconds between a side's releases) and `side.waveSize` (× the units each spawner releases) are new modifier stats.
+
+**Proto layer:** presets can now carry content paths. `unit.<id>:{…}`, `building.<id>:{…}` and `general.<id>:{…}` add an entry when the id is new. `faction.<id>.…` patches a faction file, and `path+:value` adds to a list (`faction.gray-rot.buildings+:"rhizomorphTunnel"`). Buildings have an optional `aiWeight`: every bot and general whose weights don't list the building buys it at that weight (mono bots never do), and generals field it in their run kits. The Rhizomorph Tunnel uses weight 1, about 6% of `bot:balanced`'s purchases.
+
+**Display, enough to playtest `?proto=rework`:** clouds as a spore haze, a tunnelling Rhizomorph as a moving mound, a beat chip in the top band (seconds to the next wave, the units waiting, a bar), a +N badge on each spawner for the units inside, and tooltip and inspect lines for each setting.
+
+### Judgment calls
+
+- **Where a wave waits:** inside its building. A spawn adds to the spawner's `stored` count and its supply counts at once. On the beat, every spawner releases its count at its own front edge. Nothing waits on the field. A spawner sold or destroyed lets its units out at once.
+- **How a wave forms up:** units come out at their own buildings, so a wave starts staggered by building depth (a few tiles; more once spawners spread forward). Two rules keep it a block on the way:
+  - **Pace:** a wave's units with no target march at the speed of its slowest such unit in the lane (`matchPace`, on by default).
+  - **Order:** an idle ranged unit stays 1 tile behind its side's frontmost melee unit in the lane (`rangedGap`). It never walks back, and it is free to fight once it has a target. With no friendly melee in the lane (mono archers), ranged units walk freely.
+- **Hold under waves:** holding a lane keeps that lane's next wave home, and the beat spends the hold, so the next beat releases both. The 30 s timeout and the rally line don't apply: held units are inside buildings. The usual 10 s cooldown applies, so a player can hold again before the following beat. **The AI never holds** under waves.
+- **Call for help's leash:** the usual leash (aggro × 1.25 = 5 tiles for melee) alone drops most calls. In E1's layout (a building at the border, an archer at range 5), a held unit at its rally line is 5.15 tiles from the archer. So a called unit also keeps the attacker while the attacker is still attacking it or a friend within 5 tiles of it. Hits already carried the attacker's id (`sourceId`). Spore-cloud damage doesn't call for help.
+- **Pinned** slows the attack cooldown while the unit is pinned. It applies tick by tick, so an archer that gets free shoots at full rate again at once. "Ranged" means the `ranged` tag.
+- **Clouds** pulse on a fixed 1 s cadence of the battle clock, 6 pulses each, and overlapping clouds stack. The damage ignores the matrix, merge resistances and the Sporestorm.
+- **The AI's Mortar placement:** under `sporecloud`, each tile of lane a cloud tower reaches past the side's border adds 1 to the spot's score. Next to `towerFront` (5) and `towerThreat` (2 per supply), that pulls Mortars forward.
+
+### G3: each setting alone, and all five
+
+`npm run experiment -- --proto <preset> --checks g3 --g3seeds 20`. Mean / worst map over Bogwater Hollow, Stumpfield and Twin Roots; bold fails a limit (mean ≤ 55, worst ≤ 60).
+
+| Mono bot | Baseline | `pinned` | `callforhelp` | `sporecloud` | `rhizomorph` | `waves` | `rework` |
+|---|---|---|---|---|---|---|---|
+| Gill Archer Nest | **86 / 100** | **75 / 93** | **87 / 100** | **87 / 100** | **88 / 100** | **93 / 98** | **74 / 83** |
+| Sporeling Burrow | **72 / 75** | **75 / 78** | **67 / 75** | **68 / 73** | **81 / 88** | **90 / 98** | **94 / 98** |
+| Amanita Lodge | **47 / 65** | **50 / 63** | **53 / 65** | 40 / 60 | **54 / 65** | **53 / 63** | 52 / 53 |
+| Morel Warren | 53 / 60 | **59 / 60** | **60 / 65** | 51 / 55 | 54 / 57 | **48 / 63** | **60 / 68** |
+| Veilstalker Hollow | 36 / 48 | 41 / 53 | 43 / 57 | 28 / 43 | **53 / 68** | **60 / 80** | **63 / 90** |
+| Capguard Hall | 38 / 45 | 41 / 53 | 43 / 50 | 30 / 38 | 36 / 53 | 48 / 57 | 49 / 57 |
+| Rootbreaker Den | 28 / 53 | 28 / 55 | 29 / 48 | 28 / 53 | 34 / 55 | 22 / 25 | 25 / 28 |
+| Scythecap Grove | 25 / 38 | 26 / 38 | 33 / 48 | 23 / 33 | 30 / 43 | 19 / 33 | 25 / 33 |
+| Hammercap Forge | 22 / 25 | 23 / 25 | 27 / 33 | 20 / 25 | 24 / 33 | 28 / 33 | 25 / 35 |
+| Puffball Mortar | 8 / 13 | 8 / 13 | 7 / 13 | 13 / 20 | 10 / 15 | 0 / 0 | 4 / 5 |
+| Rhizomorph Tunnel | – | – | – | – | 0 / 0 | – | 8 / 15 |
+
+The baseline reproduces the 50-seed table within noise (Gill Nest 88 / 100, Sporeling 74 / 77). Mono Gill Nest per map (Bogwater / Stumpfield / Twin Roots): baseline 100 / 100 / 57, `pinned` 90 / 93 / 43, `waves` 95 / 98 / 88, `rework` 80 / 83 / 60.
+
+- **Only `pinned` moves the archers on its own:** 86 → 75 mean, and 57 → 43 on Twin Roots. It lifts mono Morel to 59.
+- **`callforhelp` and `sporecloud` leave the archers at 87 / 100.** Clouds hurt the armored builds instead, since they ignore armor: Amanita 47 → 40 (it passes), Capguard 38 → 30, Veilstalker 36 → 28.
+- **`rhizomorph` weakens the reference bot.** At weight 1 it spends on Tunnels, and mono Sporeling (81), Veilstalker (53 / 68) and Amanita get stronger. Mono Rhizomorph wins nothing.
+- **`waves` makes swarms dominant,** as Hold did in E1, only more so: mono Sporeling 90 / 98, Veilstalker 60 / 80. It also helps the archers on Twin Roots (57 → 88).
+- **All five:** mono Gill Nest drops to 74 / 83, its best yet, and mono Amanita passes. But mono Sporeling reaches 94 / 98, and Veilstalker (63 / 90) and Morel (60 / 68) fail too. Four mono bots fail, against three on today's rules.
+
+### Two follow-ups on waves
+
+| Variant | Gill Nest | Sporeling | Veilstalker | Amanita | Morel |
+|---|---|---|---|---|---|
+| `waves` | 93 / 98 | 90 / 98 | 60 / 80 | 53 / 63 | 48 / 63 |
+| `waves,waves.matchPace:false` | 88 / 98 | 93 / 98 | 54 / 65 | – | – |
+| `rework` | 74 / 83 | 94 / 98 | 63 / 90 | 52 / 53 | 60 / 68 |
+| `rework,waves.matchPace:false` | 72 / 85 | 94 / 100 | 52 / 65 | – | – |
+| The four without waves | 79 / 98 | 71 / 83 | 39 / 48 | 49 / 65 | **69 / 73** |
+
+- **Pace matching isn't the cause.** Without it, mono Sporeling stays at 93–94; only the Veilstalker drops (60 → 54, 63 → 52). Releasing a whole beat's production at once is what helps the swarm.
+- **Without waves, the other four** leave mono Sporeling at baseline (71) and the archers at 79. Mono Morel rises to 69 / 73: pinning and calls both help it (59 and 60 alone).
+
+### The Rhizomorph alone
+
+10 battles on Bogwater Hollow each, mono Rhizomorph Tunnel as the player:
+
+| Against | Settings | Wins | Rhizomorphs that surfaced and died | Median life after surfacing | Surfaced inside turret range |
+|---|---|---|---|---|---|
+| `bot:balanced` | `rhizomorph` | 0 / 10 | 355 | 2.5 s | 229 (65%) |
+| `bot:balanced` | `rework` | 1 / 10 | 475 | 4.8 s | 275 (58%) |
+| mono Gill Nest | `rhizomorph` | 0 / 10 | 140 | 3.8 s | 10 |
+| mono Gill Nest | `rework` | 0 / 10 | 860 | 7.8 s | 0 |
+
+- **Against a mixed army, it dives onto turrets.** `bot:balanced` fields few archers, so its nearest target is a spawner behind the front. Those stand in or near the enemy's home, inside the Heartcap turrets' 9 tiles, and it dies in a few seconds.
+- **Against the archer mass, it reaches the archers** (it surfaces in its own half, where they are) **but alone.** The full package doubles its life: pinning slows the archers next to it, and waves bring several up at once.
+
+### `rework`: G4, engagement and runs
+
+`npm run experiment -- --proto rework --checks g4,engagement,runs --commander all --power-policy auto`, beside the same command on today's rules.
+
+**G4** (`bot:balanced` against the scripted general, Bogwater, 40 seeds): today 7:13 median, 10% Decisions, bot wins 55% (pass). Under `rework`, **8:51, 33% Decisions, bot wins 20%: it fails all three.**
+
+**Engagement** (`bot:balanced` with each commander and its power on auto, 30 seeds per general on Bogwater). Each cell is scripted / Old Mother Mold / Lichen Baron / Blightwright.
+
+| Commander | Rules | Player wins | Decisions | Median length | First flip | Player supply at 5:00 | Merges |
+|---|---|---|---|---|---|---|---|
+| Vesper | today | 80 / 47 / 87 / 80% | 0 / 3 / 3 / 0% | 5:50 / 6:19 / 6:51 / 5:42 | 1:40 / 1:09 / 0:34 / 0:34 | 23 / 21 / 24 / 28 | 26 / 39 / 18 / 10 |
+| Vesper | `rework` | 83 / 40 / 77 / 70% | 7 / 13 / 30 / 3% | 6:13 / 6:21 / 8:46 / 5:53 | 1:32 / 1:22 / 3:03 / 2:02 | 36 / 32 / 36 / 39 | 41 / 62 / 46 / 29 |
+| Armilla | today | 67 / 70 / 83 / 60% | 0 / 3 / 0 / 0% | 6:23 / 6:04 / 5:58 / 5:34 | 1:15 / 1:07 / 0:34 / 0:34 | 28 / 31 / 30 / 27 | 29 / 40 / 14 / 12 |
+| Armilla | `rework` | 90 / 43 / 83 / 53% | 13 / 3 / 57 / 13% | 7:30 / 6:56 / 10:00 / 6:29 | 1:12 / 1:04 / 2:02 / 1:42 | 46 / 43 / 40 / 41 | 60 / 86 / 46 / 26 |
+| Cordis | today | 43 / 20 / 70 / 60% | 0 / 7 / 3 / 3% | 6:59 / 6:08 / 7:04 / 5:48 | 1:16 / 1:12 / 0:34 / 0:34 | 24 / 24 / 24 / 26 | 38 / 40 / 23 / 15 |
+| Cordis | `rework` | 57 / 13 / 67 / 50% | 23 / 17 / 57 / 20% | 8:59 / 6:46 / 10:00 / 7:06 | 2:34 / 1:22 / 2:43 / 2:22 | 42 / 36 / 38 / 41 | 87 / 84 / 54 / 44 |
+
+- **Battles get slower and bigger.** The front moves later, armies on the field are 30–75% bigger at 5:00, and merges roughly double (a wave comes out together, idle). Against the defensive Lichen Baron, 30–57% of battles go to a Decision.
+- **The cliff is unchanged.** The loser's Heartcap still falls 9–27 s after its first hit, the winner's is untouched in 360 of 360 battles, and there are no comebacks.
+- **Player commands per minute fall** from 2.6–3.7 to 1.8–2.8, because the bot no longer holds.
+
+**Runs** (80 per commander, auto power):
+
+| Commander | Rules | Reached the boss | Won | Ended in battle 1 | Boss fights won | Battle minutes per run |
+|---|---|---|---|---|---|---|
+| Vesper | today | 31 (39%) | 22 (28%) | 24 (30%) | 22 of 31 | 15.5 |
+| Vesper | `rework` | 27 (34%) | 27 (34%) | 25 (31%) | 27 of 27 | 15.8 |
+| Armilla | today | 25 (31%) | 17 (21%) | 29 (36%) | 17 of 25 | 14.5 |
+| Armilla | `rework` | 29 (36%) | 25 (31%) | 22 (28%) | 25 of 29 | 18.3 |
+| Cordis | today | 20 (25%) | 15 (19%) | 26 (33%) | 15 of 20 | 13.8 |
+| Cordis | `rework` | 18 (23%) | 17 (21%) | 34 (43%) | 17 of 18 | 15.1 |
+
+- **Runs won rise** from 54 to 69 of 240, mostly at the boss: 69 of 74 boss fights won, against 54 of 76.
+- **Battle-1 losses don't move** (81 against 79 of 240).
+
+**Tick cost** (G11 bench): 0.18 ms mean and 0.56 ms p99 under `rework`, against 0.17 and 0.50 ms today.
+
+### What it suggests for P2
+
+- **The package doesn't pass G3 as built.** It takes the archers from 86 / 100 to 74 / 83, a real drop but still a failure. It makes swarms dominant (Sporeling 94 / 98, Veilstalker 63 / 90), and it fails G4.
+- **Waves carry both results.** They make swarms dominant and slow battles down. Pinning carries most of the archer gain. Call for help and clouds don't move the archers at 20 seeds.
+- **The Rhizomorph needs a surfacing rule that avoids turret cover,** and probably company. Alone it never wins, and against a mixed army it surfaces under the enemy's turrets.
+- **P2's one-piece-removed runs should start with waves.** Two things to separate: whether the swarm gain is waves itself or `bot:balanced`'s answer to it (try a Scythecap-heavy defender), and whether an AI that holds under waves changes it.
+- These are 40-game cells (±8 points). The engagement and runs numbers come from one 30-seed or 80-run sample each.
+
+### Questions for the user
+
+1. **Waves form up at their buildings.** A wave starts staggered by building depth. Should it gather first? That would mean waiting on the field, which sank Hold. Or should deeper buildings release earlier, so the wave arrives together?
+2. **Hold under waves skips one beat,** and can be renewed every beat after its 10 s cooldown, so a player can keep a lane's wave home indefinitely. Is that the timing verb you want, or should a hold cap at one or two beats? Should the AI hold under waves (it doesn't now)?
+3. **A wave marches at its slowest unit's pace,** so a mixed wave crosses at Capguard or Rootbreaker speed while a mono swarm runs. It turned out not to cause the swarm result. Keep it?
+4. **Should the Rhizomorph avoid turret range,** or prefer ranged units over spawners? Today it surfaces beside spawners in the enemy's home and dies to the turrets.
+5. **Clouds stack,** and they hurt armored builds more than archers. Is that the intended role? Should clouds also slow, or keep units from merging?
+6. **`aiWeight` reaches every non-mono bot,** including P0's pair bots, under `rhizomorph`. Should hand-written test bots opt out?

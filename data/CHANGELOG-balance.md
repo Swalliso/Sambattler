@@ -3,6 +3,19 @@
 Every change from the SPEC's first-pass numbers, with the guardrail or verification result that
 motivated it. Tools: `npm run balance -- duel`, `npm run balance -- tournament`, `npm run test:slow`.
 
+## Combat rework P1 prototypes (2026-10-30)
+
+**Nothing adopted; no shipped number, rule or default changed.** The combat rework's five settings
+(`pinned`, `callforhelp`, `sporecloud`, `rhizomorph`, `waves`, and `rework` for all five) are presets in
+`src/data/proto.ts`, absent from `balance.json`, so goldens and hashes are unchanged. The Rhizomorph and
+its Rhizomorph Tunnel exist only under the `rhizomorph` preset; the one data change is their two sprites
+in `data/sprites/` (display only, never in battle state). First numbers (G3 at 20 seeds per seat) are in
+[the backlog](../docs/balance-backlog.md#combat-rework-p1-2026-10-30):
+- `rework`: mono Gill Nest 74% mean / 83% worst (from 86 / 100), but mono Sporeling 94 / 98 and mono
+  Veilstalker 63 / 90; G4 fails (8:51 median, 33% Decisions, bot wins 20%).
+- `waves` alone makes swarms dominant (Sporeling 90 / 98); `pinned` is the only piece that moves the
+  archers alone (75 / 93).
+
 ## Second-front test maps (2026-10-30)
 
 **Nothing adopted; no shipped number, rule, map or default changed.** Four test-only maps in
