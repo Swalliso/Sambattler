@@ -351,7 +351,8 @@ export class BattleView {
       } else if (e.t === 'power' && e.side === 'player') {
         const def = state.library.powers?.[e.power];
         const name = def?.name ?? 'Power';
-        const what = def?.kind === 'surge' ? `took ${e.lanes.length} column${e.lanes.length === 1 ? '' : 's'}`
+        const what = def?.kind === 'tithe' ? `paid ${e.gold ?? 0} gold`
+          : def?.kind === 'surge' ? `took ${e.lanes.length} column${e.lanes.length === 1 ? '' : 's'}`
           : def?.kind === 'bloom' ? `merged ${e.merges} trio${e.merges === 1 ? '' : 's'}` : `hit ${e.hits} target${e.hits === 1 ? '' : 's'}`;
         this.callouts.push('merge', `${name} ${what}!`, 'good', now);
       } else if (e.t === 'merged' && (e.side === 'player' || e.tier === 3)) {
@@ -526,6 +527,7 @@ export class BattleView {
     if (preview) {
       const what = def.kind === 'burst' ? `${preview.count} target${preview.count === 1 ? '' : 's'} in range`
         : def.kind === 'bloom' ? `${preview.count} trio${preview.count === 1 ? '' : 's'} to merge`
+          : def.kind === 'tithe' ? `${preview.count} column${preview.count === 1 ? '' : 's'} held · +${def.goldPerColumn * preview.count} gold`
           : `${preview.count} column${preview.count === 1 ? '' : 's'} to take`;
       const act = def.target === 'point' ? (s.aim ? (preview.valid ? 'click to fire' : preview.reason ?? '') : 'move over the field') : (preview.valid ? 'click the field to fire' : preview.reason ?? '');
       this.aimCallout.replaceChildren(uiIcon(this.atlas, 'i-power'), h('b', null, def.name), `${s.aim || def.target === 'global' ? `${what} · ` : ''}${act}`, h('kbd', null, 'Esc'));

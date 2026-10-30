@@ -16,7 +16,7 @@
   },
   {
     "id": "armilla", "sprite": "c-armilla", "name": "Armilla the Vast", "milestone": 5, "title": "The landholder",
-    "description": "Slow, heavy and greedy for ground: she takes columns faster and can seize the whole front at once.",
+    "description": "Slow, heavy and greedy for ground: she takes columns faster, and her roots draw gold from every one she holds.",
     "core": ["capguardHall", "rootbreakerDen", "puffballMortar", "truffleCellar", "hammercapForge", "rhizomeVault"],
     "starter": ["capguardHall", "truffleCellar", "puffballMortar"],
     "passive": {
@@ -24,9 +24,9 @@
       "effects": { "modifiers": [{ "stat": "side.captureSpeed", "op": "mul", "value": 1.25 }] }
     },
     "power": {
-      "id": "rhizomeSurge", "name": "Rhizome Surge", "kind": "surge", "target": "global",
-      "cooldown": 100, "firstReady": 90,
-      "text": "Instantly capture your frontier column in every lane where no enemy building stands on it."
+      "id": "rhizomeTithe", "name": "Rhizome Tithe", "kind": "tithe", "target": "global", "goldPerColumn": 30,
+      "cooldown": 75, "firstReady": 60,
+      "text": "Your roots draw on your ground: +30 gold for every column you hold past your home columns."
     }
   },
   {

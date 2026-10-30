@@ -142,7 +142,7 @@ function powerLine(state: BattleState): string {
   const st = state.stats.player;
   const def = state.library.powers?.[state.config.player.power ?? ''];
   const uses = st.powerUses ?? 0;
-  const what = def?.kind === 'surge' ? `${st.powerCaptures ?? 0} columns` : def?.kind === 'bloom' ? `${st.powerMerges ?? 0} trios` : `${st.powerDamage ?? 0} damage`;
+  const what = def?.kind === 'tithe' ? `${st.powerGold ?? 0} gold` : def?.kind === 'surge' ? `${st.powerCaptures ?? 0} columns` : def?.kind === 'bloom' ? `${st.powerMerges ?? 0} trios` : `${st.powerDamage ?? 0} damage`;
   return `${uses}× · ${what}`;
 }
 

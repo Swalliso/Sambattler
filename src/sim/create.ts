@@ -280,7 +280,7 @@ export function createBattle(content: Content, config: BattleConfig): BattleStat
   };
   for (const s of SIDES) {
     if (!state.library.powers?.[config[s].power ?? '']) continue;
-    Object.assign(state.stats[s], { powerUses: 0, powerDamage: 0, powerCaptures: 0, powerMerges: 0 });
+    Object.assign(state.stats[s], { powerUses: 0, powerDamage: 0, powerCaptures: 0, powerMerges: 0, powerGold: 0 });
   }
   return state;
 }

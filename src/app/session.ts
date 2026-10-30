@@ -2,7 +2,7 @@
 // placement). Player input becomes ordinary tick-stamped commands (SPEC §13.5).
 import type { Content } from '../data/registry.ts';
 import {
-  bloomTrios, burstPreview, footprintOnLoam, legalPlacements, nextCommandTick, placementProblem, powerOf, powerProblem, priceAt, depthOf,
+  bloomTrios, burstPreview, footprintOnLoam, heldColumns, legalPlacements, nextCommandTick, placementProblem, powerOf, powerProblem, priceAt, depthOf,
   queueCommand, surgeLanes,
 } from '../sim/index.ts';
 import type { PowerDef } from '../data/schema.ts';
@@ -130,12 +130,17 @@ export class Session {
 
   /**
    * What the power would do at the aim right now: for a point power, the targets (Spore Burst) or trios
-   * (Puppet Bloom) inside the reticle and whether it may fire there; for a global one, the lanes it takes.
+   * (Puppet Bloom) inside the reticle and whether it may fire there; for Rhizome Tithe, the columns it pays
+   * for; for Rhizome Surge, the lanes it takes.
    */
   powerPreview(): { valid: boolean; count: number; lanes: number[] | null; reason: string | null } {
     const def = this.power();
     if (!def) return { valid: false, count: 0, lanes: null, reason: 'no power' };
     const s = this.state;
+    if (def.kind === 'tithe') {
+      const held = heldColumns(s, 'player');
+      return { valid: held > 0, count: held, lanes: null, reason: held ? null : 'you hold no ground past home yet' };
+    }
     if (def.target === 'global') {
       const lanes = surgeLanes(s, 'player');
       return { valid: lanes.length > 0, count: lanes.length, lanes, reason: lanes.length ? null : 'every frontier column has an enemy building on it' };

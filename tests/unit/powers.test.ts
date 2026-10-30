@@ -10,13 +10,29 @@ import { building, content, setBorders, steps, unit } from '../helpers.ts';
 
 const POWERS: Flags = { merging: true, drafts: false, adaptiveGeneral: false, powers: true };
 
+/**
+ * Rhizome Surge as SPEC §11.10 first specced it (Armilla's power until her M5 rework; kept as a power
+ * kind): a test-only commander carries it.
+ */
+const withSurge: typeof content = {
+  ...content,
+  commanders: {
+    ...content.commanders,
+    surger: {
+      ...content.commanders.armilla!, id: 'surger',
+      power: { id: 'rhizomeSurge', name: 'Rhizome Surge', kind: 'surge', target: 'global', cooldown: 100, firstReady: 90, text: 'Captures the frontier.' },
+    },
+  },
+};
+
 /** A live battle on the flat map, human against human, the player led by `commander`, the clock at `tick`. */
 function battle(commander: string, opts: { tick?: number; flags?: Partial<Flags>; relics?: string[] } = {}): BattleState {
-  const config = makeConfig(content, {
+  const c = commander === 'surger' ? withSurge : content;
+  const config = makeConfig(c, {
     seed: 1, mapId: 'test-flat', player: 'human', enemy: 'human', commander, flags: { ...POWERS, ...opts.flags },
   });
   if (opts.relics) config.player.relics = opts.relics;
-  const s = createBattle(content, config);
+  const s = createBattle(c, config);
   s.phase = 'live';
   // the clock starts at 0 when the battle goes live; skip ahead as live play would
   const t = opts.tick ?? 0;
@@ -60,9 +76,37 @@ describe('Spore Burst (Vesper)', () => {
   });
 });
 
-describe('Rhizome Surge (Armilla)', () => {
-  it('captures the frontier column at once, unless an enemy building stands on it', () => {
+describe('Rhizome Tithe (Armilla)', () => {
+  it('pays 30 gold for every column held past home, in every lane, and moves no border', () => {
     const s = battle('armilla', { tick: 2000 });
+    setBorders(s, 9, 22); // home is columns 0–3: six columns past it
+    const gold = s.sides.player.gold;
+    use(s);
+    expect(used(s)).toBe(true);
+    expect(s.sides.player.gold - gold).toBe(6 * 30);
+    expect(s.stats.player.powerGold).toBe(180);
+    expect(s.stats.player.goldEarned.effects).toBe(180);
+    expect(s.events).toContainEqual(expect.objectContaining({ t: 'power', power: 'rhizomeTithe', gold: 180 }));
+    expect(s.lanes[0]!.pBorder).toBe(9);
+  });
+
+  it('is refused with no ground past home (the charge is kept), and the auto policy waits for 3 columns a lane', () => {
+    const s = battle('armilla', { tick: 2000 });
+    setBorders(s, 3, 28);
+    expect(autoPowerTarget(s, 'player')).toBeNull();
+    use(s);
+    expect(rejected(s)).toEqual(['you hold no ground past home']);
+    expect(s.sides.player.powerCooldown).toBe(0);
+    setBorders(s, 5, 28);
+    expect(autoPowerTarget(s, 'player')).toBeNull();
+    setBorders(s, 6, 28);
+    expect(autoPowerTarget(s, 'player')).toEqual({});
+  });
+});
+
+describe('Rhizome Surge (a power kind; Armilla\'s first-pass power)', () => {
+  it('captures the frontier column at once, unless an enemy building stands on it', () => {
+    const s = battle('surger', { tick: 2000 });
     setBorders(s, 9, 22);
     use(s);
     expect(used(s)).toBe(true);
@@ -72,7 +116,7 @@ describe('Rhizome Surge (Armilla)', () => {
     expect(s.events).toContainEqual({ t: 'columnFlipped', lane: 0, column: 10, to: 'player' });
 
     // a fort on the frontier blocks it, and with nothing to capture the use is refused (no cooldown spent)
-    const t = battle('armilla', { tick: 2000 });
+    const t = battle('surger', { tick: 2000 });
     setBorders(t, 9, 22);
     building(t, 'enemy', 'truffleCellar', 10, 3);
     use(t);
@@ -82,7 +126,7 @@ describe('Rhizome Surge (Armilla)', () => {
   });
 
   it('takes an enemy-held frontier column, pushing their border back', () => {
-    const s = battle('armilla', { tick: 2000 });
+    const s = battle('surger', { tick: 2000 });
     setBorders(s, 12, 13);
     use(s);
     expect(s.lanes[0]!.pBorder).toBe(13);
@@ -116,12 +160,12 @@ describe('Puppet Bloom (Cordis)', () => {
 });
 
 describe('cooldown and first-ready time', () => {
-  it.each([['vesper', 45, 75], ['armilla', 90, 100], ['cordis', 60, 80]] as const)('%s: first ready at %i s, then every %i s', (id, first, cd) => {
+  it.each([['vesper', 45, 75], ['armilla', 60, 75], ['cordis', 60, 80], ['surger', 90, 100]] as const)('%s: first ready at %i s, then every %i s', (id, first, cd) => {
     const s = battle(id);
     expect(s.sides.player.powerCooldown).toBe(first * 20);
-    const def = content.commanders[id]!.power;
-    // armilla needs a capturable frontier, the point powers a point on the field
-    if (id === 'armilla') setBorders(s, 9, 22);
+    const def = withSurge.commanders[id]!.power;
+    // the global powers need ground (past home, or a capturable frontier), the point powers a point on the field
+    if (id === 'armilla' || id === 'surger') setBorders(s, 9, 22);
     const at = { x: 12, y: 3 };
     // counting down through live ticks: refused the tick before, accepted on the first ready tick
     steps(s, first * 20 - 1);
@@ -133,7 +177,7 @@ describe('cooldown and first-ready time', () => {
     expect(used(s)).toBe(true);
     expect(s.sides.player.powerCooldown).toBe(cd * 20 - 1); // set on use, then this tick's countdown
     expect(powerCooldownTicks(s, 'player', def)).toBe(cd * 20);
-    if (id === 'armilla') setBorders(s, 9, 22);
+    if (id === 'surger') setBorders(s, 9, 22);
     steps(s, cd * 20 - 2);
     use(s, at);
     expect(rejected(s)[0]).toMatch(/^power ready in/);

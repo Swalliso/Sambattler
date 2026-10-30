@@ -80,9 +80,9 @@ if (mode === 'duel') {
   const seeds = seedsArg >= 0 ? Number(args[seedsArg + 1]) : 30;
   const t = commanderTournament(content, commanderList, seeds);
   md.push(`## Commanders: whole runs (${seeds} seeds each, bot:balanced, greedy drafts, random route, power policy auto)`, '',
-    '| commander | runs won | boss reached | battles won | power uses | power damage | columns | trios |', '|---|---|---|---|---|---|---|---|');
+    '| commander | runs won | boss reached | battles won | power uses | power damage | columns | trios | gold |', '|---|---|---|---|---|---|---|---|---|');
   for (const r of t.rows) {
-    md.push(`| ${r.commander} | ${((100 * r.victories) / r.runs).toFixed(0)}% (${r.victories}/${r.runs}) | ${r.reachedBoss}/${r.runs} | ${r.battlesWon}/${r.battles} | ${r.powerUses} | ${r.powerDamage} | ${r.powerCaptures} | ${r.powerMerges} |`);
+    md.push(`| ${r.commander} | ${((100 * r.victories) / r.runs).toFixed(0)}% (${r.victories}/${r.runs}) | ${r.reachedBoss}/${r.runs} | ${r.battlesWon}/${r.battles} | ${r.powerUses} | ${r.powerDamage} | ${r.powerCaptures} | ${r.powerMerges} | ${r.powerGold} |`);
   }
   md.push('');
   json.commanders = t.rows;

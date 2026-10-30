@@ -422,7 +422,7 @@ export type SimEvent =
   | { t: 'counterWarned'; side: Side; kind: CounterKind; activatesAtTick: number }
   | { t: 'counterActive'; side: Side; kind: CounterKind }
   /** A commander power went off: its point (if it has one) and what it did. */
-  | { t: 'power'; side: Side; power: string; x?: number; y?: number; hits: number; lanes: number[]; merges: number }
+  | { t: 'power'; side: Side; power: string; x?: number; y?: number; hits: number; lanes: number[]; merges: number; gold?: number }
   /** Prototype E1: a lane switched between Hold and Advance (`auto` when the hold timer ran out). */
   | { t: 'stance'; side: Side; lane: number; hold: boolean; auto: boolean }
   | { t: 'ended'; winner: Side; by: 'rout' | 'decision' };
@@ -544,11 +544,12 @@ export interface SideStats {
   maxGoldBanked: number;
   columnsLost: number;
   rejectedCommands: number;
-  /** Commander power use (present only for a side with a power): uses, damage dealt, columns captured, trios merged. */
+  /** Commander power use (present only for a side with a power): uses, damage dealt, columns captured, trios merged, gold paid. */
   powerUses?: number;
   powerDamage?: number;
   powerCaptures?: number;
   powerMerges?: number;
+  powerGold?: number;
 }
 
 export interface BattleState {

@@ -63,8 +63,8 @@ export class BattleSound {
           this.side(e.tier === 3 ? 'merge-elder' : 'merge', e.side, this.pan(state, e.x));
           break;
         case 'power':
-          // the commander power: a razing crash for Spore Burst, a claimed column for Rhizome Surge, an Elder bloom for Puppet Bloom
-          this.side(e.lanes.length ? 'column-gained' : e.merges ? 'merge-elder' : 'building-razed', e.side, e.x === undefined ? 0 : this.pan(state, e.x));
+          // the commander power: a razing crash for Spore Burst, coins for Rhizome Tithe, a claimed column for a surge, an Elder bloom for Puppet Bloom
+          this.side(e.gold ? 'income' : e.lanes.length ? 'column-gained' : e.merges ? 'merge-elder' : 'building-razed', e.side, e.x === undefined ? 0 : this.pan(state, e.x));
           break;
         case 'hit':
           // only Heartcaps make hit sounds, each at most every 1.5 s

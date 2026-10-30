@@ -12,7 +12,7 @@ const steps: [string, string[]][] = [
   ['golden verify', ['run', 'golden', '--', 'verify']],
   ['sim smoke (3 seeds)', ['run', 'sim', '--', '--seeds', '1..3', '--player', 'bot:balanced', '--enemy', 'general:scripted', '--summary', '--assert', 'rejectedCommands=0', '--assert', 'durationTicks<=12000']],
   ['sim smoke, adaptive general (2 seeds)', ['run', 'sim', '--', '--seeds', '4..5', '--player', 'bot:mono:sporelingBurrow', '--enemy', 'general:mother-mold', '--flags', 'merging,adaptive', '--summary', '--assert', 'rejectedCommands=0', '--assert', 'counters[0].kind=swarm', '--assert', 'counters[0].warnedAt=2400', '--assert', 'counters[0].activeAt=4800']],
-  ...([['armilla', 'powerCaptures'], ['cordis', 'powerMerges']] as const).map(([c, stat]): [string, string[]] => [
+  ...([['armilla', 'powerGold'], ['cordis', 'powerMerges']] as const).map(([c, stat]): [string, string[]] => [
     `sim smoke, ${c}'s power`,
     ['run', 'sim', '--', '--seed', '3', '--player', 'bot:balanced', '--commander', c, '--power-policy', 'auto', '--flags', 'merging,adaptive,powers', '--summary',
       '--assert', 'rejectedCommands=0', '--assert', `stats.player.${stat}>=1`],

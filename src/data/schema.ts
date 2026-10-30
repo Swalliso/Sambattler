@@ -559,13 +559,15 @@ export const EliteSchema = z.object({
 /**
  * A commander's active power (SPEC §6.6, §11.10). `burst` deals damage to every enemy unit and building
  * within `radius` of a point; `surge` captures the side's frontier column in every lane where no enemy
- * building stands; `bloom` merges every same-type trio within `radius` of a point at once.
+ * building stands; `bloom` merges every same-type trio within `radius` of a point at once; `tithe` pays
+ * `goldPerColumn` for every column the side holds past its home columns.
  */
 const PowerBase = { id: Id, name: z.string().min(1), text: z.string().min(1), cooldown: Pos, firstReady: Seconds };
 export const PowerSchema = z.discriminatedUnion('kind', [
   z.object({ ...PowerBase, kind: z.literal('burst'), target: z.literal('point'), radius: Pos, damage: Pos, damageType: DamageType }).strict(),
   z.object({ ...PowerBase, kind: z.literal('surge'), target: z.literal('global') }).strict(),
   z.object({ ...PowerBase, kind: z.literal('bloom'), target: z.literal('point'), radius: Pos }).strict(),
+  z.object({ ...PowerBase, kind: z.literal('tithe'), target: z.literal('global'), goldPerColumn: z.number().int().positive() }).strict(),
 ]);
 
 /** Commanders (SPEC §11.10): a core pool, a starter kit, a passive and an active power. */

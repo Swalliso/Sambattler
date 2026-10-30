@@ -9,7 +9,7 @@ import { canMerge, mergeTriosNow } from './systems/merging.ts';
 import { captureFrontier, frontier, frontierBlocked, frontierValid, lanePresence } from './systems/territory.ts';
 import { other } from './state.ts';
 import type { BattleState, Command, Side, UnitState } from './state.ts';
-import { buildingDef, rectDistance, unitDef, unitRadius } from './world.ts';
+import { buildingDef, columnsOwned, rectDistance, unitDef, unitRadius } from './world.ts';
 
 type PowerCommand = Extract<Command, { type: 'power' }>;
 
@@ -28,6 +28,11 @@ export function powerCooldownTicks(state: BattleState, side: Side, def: PowerDef
 /** Ticks of live play before the power is first ready (the battle clock starts at 0). */
 export function powerFirstReadyTicks(state: BattleState, def: PowerDef): number {
   return secToTicks(def.firstReady, state.rules.tickRate);
+}
+
+/** Columns the side holds past its home columns, over every lane (what Rhizome Tithe pays for). */
+export function heldColumns(state: BattleState, side: Side): number {
+  return Math.max(0, columnsOwned(state, side) - state.map.homeCols * state.lanes.length);
 }
 
 /** The lanes where Rhizome Surge would capture the side's frontier column now. */
@@ -110,6 +115,7 @@ export function powerProblem(state: BattleState, side: Side, cmd: { x?: number; 
   }
   if (def.kind === 'surge' && !surgeLanes(state, side).length) return 'no frontier column can be captured';
   if (def.kind === 'bloom' && !state.config.flags.merging) return 'merging is off in this battle';
+  if (def.kind === 'tithe' && heldColumns(state, side) === 0) return 'you hold no ground past home';
   return null;
 }
 
@@ -117,7 +123,7 @@ export function powerProblem(state: BattleState, side: Side, cmd: { x?: number; 
 export function usePower(state: BattleState, side: Side, cmd: PowerCommand): void {
   const def = powerOf(state, side)!;
   const st = state.stats[side];
-  let hits = 0, merges = 0;
+  let hits = 0, merges = 0, gold = 0;
   let lanes: number[] = [];
   if (def.kind === 'burst') {
     const before = st.damageDealt;
@@ -127,6 +133,12 @@ export function usePower(state: BattleState, side: Side, cmd: PowerCommand): voi
     lanes = surgeLanes(state, side);
     for (const li of lanes) captureFrontier(state, li, side);
     st.powerCaptures = (st.powerCaptures ?? 0) + lanes.length;
+  } else if (def.kind === 'tithe') {
+    gold = def.goldPerColumn * heldColumns(state, side);
+    state.sides[side].gold += gold;
+    st.goldEarned.effects += gold;
+    st.powerGold = (st.powerGold ?? 0) + gold;
+    state.events.push({ t: 'effectGold', side, amount: gold });
   } else {
     const { trios } = bloomTrios(state, side, cmd.x!, cmd.y!, def.radius);
     mergeTriosNow(state, trios);
@@ -136,7 +148,7 @@ export function usePower(state: BattleState, side: Side, cmd: PowerCommand): voi
   st.powerUses = (st.powerUses ?? 0) + 1;
   state.sides[side].powerCooldown = powerCooldownTicks(state, side, def);
   state.events.push({
-    t: 'power', side, power: def.id, ...(def.target === 'point' ? { x: cmd.x!, y: cmd.y! } : {}), hits, lanes, merges,
+    t: 'power', side, power: def.id, ...(def.target === 'point' ? { x: cmd.x!, y: cmd.y! } : {}), hits, lanes, merges, ...(gold ? { gold } : {}),
   });
 }
 
@@ -152,19 +164,26 @@ export function powerClock(state: BattleState): void {
 
 /** Spore Burst fires on a point worth at least this much damage (two full hits). */
 const BURST_MIN_VALUE = 180;
+/** Rhizome Tithe waits for this many columns past home per lane. */
+const TITHE_MIN_COLUMNS = 3;
 /** Puppet Bloom fires on at least this many trios, or one trio still in combat. */
 const BLOOM_MIN_TRIOS = 2;
 
 /**
  * Where an auto-policy side would use its ready power now, or null to wait. Candidate points are the
  * targets' own positions (enemy units and building centres for Spore Burst, the side's units for Puppet
- * Bloom), scanned in id order with ties to the first; Rhizome Surge waits until at least half the
+ * Bloom), scanned in id order with ties to the first; Rhizome Tithe waits for 3 columns past home per
+ * lane; Rhizome Surge waits until at least half the
  * lanes (rounded up) can be captured where the side's units are already pushing (at the frontier or
  * just behind it, at least matching the enemy there). Draws no randomness.
  */
 export function autoPowerTarget(state: BattleState, side: Side): { x?: number; y?: number } | null {
   const def = powerOf(state, side);
   if (!def || state.sides[side].powerCooldown > 0 || state.phase !== 'live') return null;
+  if (def.kind === 'tithe') {
+    // waits until the side holds a few columns past home in each lane
+    return heldColumns(state, side) >= TITHE_MIN_COLUMNS * state.lanes.length ? {} : null;
+  }
   if (def.kind === 'surge') {
     // only lanes the side is already pushing in: its units at the frontier, at least matching the enemy's
     const pushing = surgeLanes(state, side).filter((li) => {

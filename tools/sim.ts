@@ -151,7 +151,7 @@ function main(): number {
     const { at: _at, frontLine: _fl, stats: _st, ...brief } = r;
     const p = r.stats.player;
     const power = p.powerUses === undefined ? null
-      : { uses: p.powerUses, damage: p.powerDamage, captures: p.powerCaptures, merges: p.powerMerges };
+      : { uses: p.powerUses, damage: p.powerDamage, captures: p.powerCaptures, merges: p.powerMerges, gold: p.powerGold };
     console.log(JSON.stringify({ ...brief, power, frontLineSamples: r.frontLine.map((l) => l.length) }, null, 2));
   } else {
     printSummary(results);

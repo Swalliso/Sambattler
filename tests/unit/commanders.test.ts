@@ -14,7 +14,7 @@ const ROSTER = content.factions['velvet-bloom']!.buildings;
 describe('the three commanders (SPEC §11.10)', () => {
   it('each has six core buildings, a starter kit of three from its core, a passive and a power', () => {
     expect(Object.keys(content.commanders)).toEqual(['vesper', 'armilla', 'cordis']);
-    const powers = { vesper: ['sporeBurst', 75, 45], armilla: ['rhizomeSurge', 100, 90], cordis: ['puppetBloom', 80, 60] } as const;
+    const powers = { vesper: ['sporeBurst', 75, 45], armilla: ['rhizomeTithe', 75, 60], cordis: ['puppetBloom', 80, 60] } as const;
     for (const [id, [power, cooldown, first]] of Object.entries(powers)) {
       const c = content.commanders[id]!;
       expect(c.core).toHaveLength(6);

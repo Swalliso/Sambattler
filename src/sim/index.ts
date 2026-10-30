@@ -10,7 +10,7 @@ export { canMerge } from './systems/merging.ts';
 export { queueCommand, nextCommandTick, sellValue, draftCommandDue } from './commands.ts';
 export { step } from './step.ts';
 export {
-  autoPowerTarget, bloomTrios, burstPreview, powerCooldownTicks, powerFirstReadyTicks, powerOf, powerProblem, surgeLanes,
+  autoPowerTarget, bloomTrios, burstPreview, heldColumns, powerCooldownTicks, powerFirstReadyTicks, powerOf, powerProblem, surgeLanes,
 } from './powers.ts';
 export { runHeadless } from './headless.ts';
 export type { HeadlessOptions, HeadlessResult } from './headless.ts';

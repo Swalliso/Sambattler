@@ -19,13 +19,13 @@ Each is easy to reverse; say so if you want one changed.
 1. **Who has a commander.** A run always has one (Vesper unless chosen). A single battle has none unless `--commander`, `?scenario=` with a `commander`, or a golden names one, so G1–G8, the M1–M4 goldens and every existing single-battle check play exactly as before. The passive applies whenever a commander is set; the power also needs `flags.powers`, which is now on by default (M5 ships it).
 2. **Cooldown clock.** Both the first-ready time and the cooldown count live ticks: nothing counts in deploy, while paused or while the sim is held for a draft. A scenario's starting clock counts as live play.
 3. **Spore Burst** strikes at once when the command runs (no projectile): every enemy unit whose body touches the 2-tile circle and every enemy building whose footprint does, in any lane, through the matrix (crush) with no tag multipliers. Never a Heartcap. Its damage is credited to its own key, shown as its own row in the report, and never counts as the MVP.
-4. **Rhizome Surge** is global. It takes the frontier column in each lane where no enemy building stands on it, including an enemy-held one (their border falls back), never a home column. With nothing to take it is refused and keeps its charge, so a stray press doesn't waste it.
+4. **Rhizome Surge** (Armilla's first-pass power, replaced by Rhizome Tithe in the rework below) is global. It takes the frontier column in each lane where no enemy building stands on it, including an enemy-held one (their border falls back), never a home column. With nothing to take it is refused and keeps its charge, so a stray press doesn't waste it.
 5. **Puppet Bloom** takes the player's units whose body touches the 3-tile circle, groups them by lane, unit and tier, and merges them three at a time in id order: one pass (new Bloomed units don't cascade into an Elder), Elders and units already knitting left out, the merge toggle respected. It is refused when merging is off.
 6. **Passives as data.** Vesper: `building.spawnInterval ×0.91` in home columns (the "10% faster" convention of Mother Mold and Mycorrhizal Link). Armilla: `side.captureSpeed ×1.25`. Cordis: `side.knitTicks ×0.5` and `side.mergeRadius` set to 2.0. Each is a battle modifier with source `commander:<id>`, like a general's passive.
 7. **Bans.** 0–3 distinct roster buildings outside the commander's core, stored as `bans` in the run save (`spore-sprawl.run.v1`; a save from before M5 loads with none). They come out of the shared pool, so out of in-battle drafts, spoils and anything else that draws blueprints from it. Switching commander in the Underroot drops bans that are now core.
 8. **The commander select flow.** Title → New run → the Underroot (`scene=underroot&tab=commanders|bans`) → Begin run. The run is created and saved only at Begin; Back returns to the title. The summary's New run and Abandon also go through the Underroot.
 9. **Targeting.** `Q` or the power button starts aiming; the reticle follows the cursor; a click fires on the next tick; `Esc` or right-click cancels. A global power also waits for a click on the field, so `Q` alone never fires it. While it recharges, `Q` is refused with a callout ("Spore Burst is ready in 12 s"). A use queued while paused shows as a dashed ring.
-10. **The auto policy** (`--power-policy auto`, bots only): Spore Burst fires on the enemy unit or building centre where it would deal the most damage, if that is at least 180; Puppet Bloom fires where it would merge two trios, or one trio still in combat; Rhizome Surge fires when at least half the lanes (rounded up) can be taken where the bot's units are already at the frontier, at least matching the enemy there. No randomness.
+10. **The auto policy** (`--power-policy auto`, bots only): Spore Burst fires on the enemy unit or building centre where it would deal the most damage, if that is at least 180; Puppet Bloom fires where it would merge two trios, or one trio still in combat; Rhizome Tithe fires once the side holds 3 columns past home per lane; Rhizome Surge fires when at least half the lanes (rounded up) can be taken where the bot's units are already at the frontier, at least matching the enemy there. No randomness.
 11. **Run-only bot weights.** A bot player in a run gets weight 1 on its commander's core buildings that its profile never buys (Hammercap Forge and Rhizome Vault for Armilla, Tender's Ring for Cordis), as the run already does for a general's run-only kit entries. Without it, `bot:balanced` never drafts or builds them. A bot's opener also skips buildings missing from its kit (Armilla's starter has no Sporeling Burrow; this used to throw).
 
 ## Architecture
@@ -53,7 +53,7 @@ Each is easy to reverse; say so if you want one changed.
 ### App and UI
 
 - **The Underroot** (`src/ui/screens/underroot.ts`): three commander cards (portrait, title, description, passive, power with its aim and timing, starter kit, the rest of the core pool), a Bans tab with core buildings marked and locked, a first-time tip (remembered with the battle tips) and real tooltips on every building.
-- **Power UX:** a power button under speed and pause with its cooldown as a conic ring and its state ("Ready at 0:45", "12 s", "Ready", "Aiming", "Next tick"), and a tooltip with the text, aim and timing. While aiming, a pinned callout says what a click does ("Spore Burst · 10 targets in range · click to fire") and the field shows the reticle (crosshair, radius ring with a dark edge, a breathing wash; red where it can't fire) or, for Rhizome Surge, the frontier columns it would take. A lilac ring sweeps out when a power goes off; a sound and a callout say what it did.
+- **Power UX:** a power button under speed and pause with its cooldown as a conic ring and its state ("Ready at 0:45", "12 s", "Ready", "Aiming", "Next tick"), and a tooltip with the text, aim and timing. While aiming, a pinned callout says what a click does ("Spore Burst · 10 targets in range · click to fire") and the field shows the reticle (crosshair, radius ring with a dark edge, a breathing wash; red where it can't fire) or, for Rhizome Tithe, the columns held and the gold they'd pay ("8 columns held · +240 gold"). A lilac ring sweeps out when a power goes off; a sound and a callout say what it did.
 - **Clarity:** a first-time tip when the power is first ready (`Q`, aim, works while paused); `Q` in Help's keys; a commander chip in the run bar with passive, power and bans in its tooltip; the report's Units table gains the power's uses and result.
 - **Refused keys** get their own callout priority, just below Heartcap alerts, so a refusal is never crowded out of the lane.
 
@@ -79,11 +79,12 @@ Each is easy to reverse; say so if you want one changed.
 - **Commander parity.** First-pass numbers, measured with one reference bot. A gap that power numbers can't close goes to the user.
 - **Hold/Advance and territory.** Rally lines follow the border, so instant captures may change how the bot's muster plays out.
 
-## As built (2026-10-29)
+## As built (2026-10-29, Armilla reworked 2026-10-30)
 
 ### Changes from the plan
 
-- **The tournament target fails** and nothing was tuned in to hide it (details below). The commander numbers are the SPEC's.
+- **Armilla reworked (your call, 2026-10-30).** Rhizome Surge failed the tournament by 33 points. Her power is now **Rhizome Tithe: +30 gold for every column held past home, cooldown 75 s, first ready at 1:00**; her core pool, starter kit and passive are unchanged. SPEC §11.10 and the §16 assert (`stats.player.powerGold>=1`) are updated to match. Surge stays in the code as a power kind for a later alternate power. Details below and in `data/CHANGELOG-balance.md`.
+- Vesper's and Cordis's numbers are the SPEC's.
 - **One run test widened:** the boss's Scythecap Grove check now looks across 30 seeds (it is placed by 3:00 in 4 of 30 with Vesper's passive on; seeds 1–10 all miss).
 - **Three motion tests** take the extra Underroot step after New run.
 
@@ -91,9 +92,9 @@ Each is easy to reverse; say so if you want one changed.
 
 | # | Check | Result |
 |---|---|---|
-| 1 | `npm run verify`, with new unit tests for each power's effect, cooldown, first-ready time and targeting validation, ban filtering and core-pool weighting | PASS: 339 unit tests (22 new), 8 goldens (M1–M4 hash-identical, run golden refreshed, 3 new M5), the scripted and adaptive smokes, both power smokes, bench |
-| 2 | `--commander armilla … --assert "stats.player.powerCaptures>=1"` and `--commander cordis … --assert "stats.player.powerMerges>=1"` (seed 3) | PASS: Armilla used Rhizome Surge 3× and took 3 columns; Cordis used Puppet Bloom 3× and merged 3 trios. Both battles won by Rout |
-| 3 | `npm run balance -- tournament --commanders all --seeds 30`: no commander's run win rate more than 15 points above another's | **FAIL: spread 33 points.** Vesper 33%, Cordis 33%, Armilla 0% (below) |
+| 1 | `npm run verify`, with new unit tests for each power's effect, cooldown, first-ready time and targeting validation, ban filtering and core-pool weighting | PASS: 342 unit tests (25 new, Rhizome Surge kept under test), 8 goldens (M1–M4 hash-identical, run golden refreshed, 3 new M5), the scripted and adaptive smokes, both power smokes, bench |
+| 2 | `--commander armilla … --assert "stats.player.powerGold>=1"` (was `powerCaptures`, before the rework) and `--commander cordis … --assert "stats.player.powerMerges>=1"` (seed 3) | PASS: Armilla used Rhizome Tithe 3× for 780 gold (the battle was lost by Rout at 6:08); Cordis used Puppet Bloom 3× and merged 3 trios (won by Rout). Before the rework, Rhizome Surge took 3 columns in the same battle |
+| 3 | `npm run balance -- tournament --commanders all --seeds 30`: no commander's run win rate more than 15 points above another's | PASS after the rework: spread 10 points. Vesper 33%, Cordis 33%, Armilla 23%. With Rhizome Surge it failed by 33 points (Armilla 0%) |
 | 4 | Browser checks `m5-commander-select` (`scene=underroot&tab=commanders`) and `m5-power-targeting` (`scenario=power-demo&targeting=1&paused=1`) | PASS both. Hash matches Node; 43 of 48 points sampled on the reticle ring are lilac |
 | 5 | `npm run test:browser` | PASS: 72 tests in 10 files (4 new) |
 | 6 | `npm run test:slow` before and after | Unchanged, see below. Single battles have no commander, so M5 can't move G1–G8 |
@@ -130,12 +131,15 @@ M5 doesn't move G1, G3, G7 or G8; archer spam is untouched. A commander's passiv
 | Commander | Runs won | Boss reached | Battles won | Power uses |
 |---|---|---|---|---|
 | Vesper | 10/30 (33%) | 12/30 | 62/82 | 355 (162,216 damage) |
-| Armilla | 0/30 (0%) | 2/30 | 11/43 | 100 (129 columns) |
+| Armilla, Rhizome Tithe (shipped) | 7/30 (23%) | 10/30 | 54/77 | 253 (89,970 gold) |
 | Cordis | 10/30 (33%) | 11/30 | 59/80 | 273 (306 trios) |
+| *Armilla, Rhizome Surge (first pass)* | *0/30 (0%)* | *2/30* | *11/43* | *100 (129 columns)* |
 
-Battle 1 alone (40 seeds, the same policies), power off then on: Vesper 53% → 75%, Cordis 58% → 75%, Armilla 30% → 23%.
+On seeds 1–60: Vesper 16/60 (27%), Armilla 14/60 (23%), Cordis 13/60 (22%).
 
-What I measured for Armilla (whole runs, 30 seeds, the content patched in memory only):
+Battle 1 alone (40 seeds, the same policies), power off then on: Vesper 53% → 75%, Cordis 58% → 75%, Armilla 30% → 70% with the Tithe (30% → 23% with the Surge). The Tithe is the biggest single-battle swing of the three; watch it in human playtests, where a player who holds more ground earns more from it.
+
+#### Before the rework: what I measured for Armilla with Rhizome Surge (whole runs, 30 seeds, the content patched in memory only)
 
 | Variant | Runs won | Battles won |
 |---|---|---|
@@ -157,8 +161,20 @@ Findings:
 - **Her kit is weaker for this bot too.** With power and passive off she wins 3/30 runs against Vesper's 10/30: one spawner in the starter kit, against two.
 - **The allowed levers can't close it.** No power or passive number gets Armilla within 15 points of 33%. The only way to meet the target inside the rules would be to weaken Vesper's and Cordis's powers, which would just hide the problem.
 
-Options, each needing your call:
+You chose to rework Armilla's content: a second spawner, or a power that makes captured ground pay off.
 
-1. **Change Armilla's content:** a second spawner in her starter kit, or a different power (for example, Surge also fortifies what it takes, or grants gold per column) so that ground pays off.
-2. **Change the rule that makes ground a liability:** the bot's placement depth or the rally line following the border. This touches the reference bot or the Hold rules.
-3. **Accept the gap for M5:** keep Armilla as specced, log it in the balance backlog, and measure again with human playtests on the dev site.
+#### The rework (2026-10-30)
+
+| Armilla variant (seeds 1–30) | Runs won | Battles won |
+|---|---|---|
+| Second spawner for the Mortar (Hammercap, Rootbreaker, or Sporeling Burrow swapped into the core), power off | 0–1/30 | 13–20/44–50 |
+| Surge + 40 or 80 gold per column taken | 1/30 | 14–16/45–46 |
+| Hammercap starter + Surge + 40 or 80 gold per column | 2/30 | 16–23/44–51 |
+| Tithe 20 / 30 / 40 gold per held column, Surge's timing (100 s, 1:30) | 4 / 3 / 6 of 30 | 40/69 · 35/62 · 54/78 |
+| Tithe 30, capture passive off | 6/30 | 51/76 |
+| **Tithe 30, cooldown 75 s, first ready 1:00 (shipped)** | **7/30** | **54/77** |
+| Tithe 30 or 40 that also takes the frontier, cooldown 75 s (seeds 1–60) | 7–8/60 | 87–88/143–144 |
+
+- **A second spawner never helped.** For this bot the Puffball Mortar is worth more than another army building, so the starter kit stays as specced.
+- **Paying for ground works; taking it doesn't.** Every version that still captures costs about 10 points, so the Tithe moves no border. The capture-speed passive stays: holding more ground is what the Tithe pays for.
+- **The rule-side causes stay open** (the bot's forward placement, rally lines that follow the border). They would matter again if a capture power returns as an alternate.
