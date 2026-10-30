@@ -3,6 +3,21 @@
 Every change from the SPEC's first-pass numbers, with the guardrail or verification result that
 motivated it. Tools: `npm run balance -- duel`, `npm run balance -- tournament`, `npm run test:slow`.
 
+## G3 measures every map in the run pool (2026-10-30, proposed)
+
+**Guardrail change, proposed and awaiting the user's approval. No content changed, so no battle or
+golden changes.** `balance-targets.json` G3 goes from `seeds` 20 and `maxMonoWinRate` 0.55
+(Bogwater Hollow only, 40 games) to `seeds` 50, `maxMeanWinRate` 0.55 and `maxMapWinRate` 0.60. Every
+mono bot now plays `bot:balanced` on every run-pool map, 100 games per map, and must keep its mean
+≤ 55% and its worst map ≤ 60% (SPEC §12.3).
+
+Why: step A found the 40-game Bogwater check read mono Sporeling at 65% (75% over 100 games) and
+missed every failure on other maps ([backlog](../docs/balance-backlog.md#g3-on-every-map-the-proposed-rewrite-2026-10-30)).
+
+Result (`npm run test:slow`): **G3 fails for mono Gill Nest** (mean 88%, worst 100%), **mono Sporeling**
+(74%, 77%) and **mono Amanita** (worst 64%, Twin Roots). Mono Morel passes exactly on the mean limit
+(55%, worst 57%). Nothing was tuned to pass.
+
 ## Milestone 5: Armilla reworked, Rhizome Surge → Rhizome Tithe (2026-10-30)
 
 **Content change, approved by the user** ("rework Armilla's content … and rerun the tournament").
