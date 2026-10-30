@@ -13,6 +13,7 @@
 // a quicker read), `--mono a,b` picks the mono bots. g3 and g3gill share G3's loop (tools/lib/balance.ts).
 // `lanes` traces mono bots (default Gill Nest) against the defender on `--maps`, `--seeds n` per
 // seat (default 10), `--traces` keeps every battle's trace in the report (tools/lib/lanes.ts).
+// `g4` also plays every map in `--maps` (the guardrail itself is Bogwater Hollow).
 //
 // Run options (runs and engagement): `--commander <id|all>` plays a commander (runs default to
 // Vesper; single battles to none) and `--power-policy none|auto` sets how the bot uses its power
@@ -49,7 +50,7 @@ const defender = opt('--defender') ?? 'bot:balanced';
 const ALL = ['duels', 'g3', 'g4', 'g5', 'g6', 'g7', 'g8', 'g11', 'boss'];
 const checks = new Set((opt('--checks') ?? ALL.join(',')).split(','));
 const mapsOpt = opt('--maps')?.split(',');
-/** Maps for the lanes and spread checks (default Bogwater Hollow). */
+/** Maps for the lanes, spread and g4 checks (default Bogwater Hollow). */
 const maps = mapsOpt ?? ['bogwater-hollow'];
 /** Seeds per seat for g3 and g3gill (default G3's own). */
 const g3SeedsOpt = Number(opt('--g3seeds') ?? 0);
@@ -138,8 +139,11 @@ if (checks.has('lanes')) {
 }
 
 if (checks.has('g4')) {
-  const v = evaluateG4(content);
-  out.G4 = { ...verdict(v), median: median(v.stats.lengths), decisions: v.stats.decisions / v.stats.games, win: v.stats.winsA / v.stats.games };
+  const rows = maps.map((map) => {
+    const v = evaluateG4(content, map);
+    return { map, ...verdict(v), median: median(v.stats.lengths), decisions: v.stats.decisions / v.stats.games, win: v.stats.winsA / v.stats.games };
+  });
+  out.G4 = rows.length === 1 ? rows[0] : rows;
 }
 if (checks.has('g5')) out.G5 = verdict(evaluateG5(content));
 if (checks.has('g6')) out.G6 = verdict(evaluateG6(content));

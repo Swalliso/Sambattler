@@ -220,6 +220,29 @@ What it shows:
 - Playtest `?proto=breach` separately, to ask whether a 35 s siege ending feels better than the cliff.
 - Adopting any of it, moving Mold, or retuning the boss is a data change and waits for the user.
 
+## Second-front test (2026-10-30)
+
+Measured on `feature/second-front-test` with four test-only maps. Nothing is adopted, and the run pool is unchanged. Full tables are in the [balance backlog](../balance-backlog.md#second-front-two-lane-test-maps-2026-10-30). 100 games per cell, mono win rate against `bot:balanced`:
+
+| | Bogwater | Stumpfield | Twin Roots |
+|---|---|---|---|
+| One lane (today) | Gill Nest 100 | Gill Nest 100 | — |
+| Two 4-row lanes (same plots) | Gill Nest 80, Amanita 73 | Gill Nest 85, Amanita 71 | — |
+| Two 6-row lanes (Twin Roots' shape, +50% plots) | Gill Nest 62, Amanita 65 | Gill Nest 67, Amanita 58 | Gill Nest 63, Amanita 64 |
+
+- **The sides split on every two-lane version, but that isn't enough.** The archers fall to 80–85% at the same plot count, and to Twin Roots' failing 62–67% only in Twin Roots' shape.
+- **Build room in the other lane is what matters, not lane width.** With 4-row lanes the defender's second lane stays small and rarely counterattacks. A tall map whose lane edges are stumps plays like the 4-row maps (79 / 88%).
+- **Every two-lane version adds a mono Amanita takeover** (58–73%). Mono Sporeling still fails (67–82%).
+- **The diver helps only in one case:** a defender that opens with a Veilstalker Hollow, on Bogwater shapes (41% tall, 50% at 4 rows). It does nothing on Stumpfield (63–68%).
+- **G4 passes on every test map** (medians 6:51–7:27, Decisions 0–8%).
+
+What it suggests:
+- **A second lane alone isn't the archer fix.** It moves one-lane maps to Twin Roots' level, which also fails, and it costs the one-lane maps their identity: one front, 8 rows and 8 home plots.
+- **The lesson is the mechanism.** The defender needs somewhere to build an army the archer mass can't reach, and a way past the mass to the archers' Heartcap. A one-lane fix should copy that. The backlog sketches forward buildings worth defending and flank orders.
+- **For the G3 rewrite:** on two-lane maps, splitting beats archers but concentrating beats Amanita. `bot:balanced` always splits, so a two-lane G3 partly measures that habit.
+
+Whether one-lane maps get a second front stays the user's call. On these numbers, the recommendation is no.
+
 ## Decisions (2026-10-30)
 
 The user's answers:
@@ -234,4 +257,4 @@ The user's answers:
 
 Still open:
 - whether Codex's two uncommitted notes and the original design review should come into `docs/ideas/`;
-- whether one-lane maps get a second front.
+- whether one-lane maps get a second front (measured [above](#second-front-test-2026-10-30): not as the archer fix on its own).

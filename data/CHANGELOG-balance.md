@@ -3,6 +3,17 @@
 Every change from the SPEC's first-pass numbers, with the guardrail or verification result that
 motivated it. Tools: `npm run balance -- duel`, `npm run balance -- tournament`, `npm run test:slow`.
 
+## Second-front test maps (2026-10-30)
+
+**Nothing adopted; no shipped number, rule, map or default changed.** Four test-only maps in
+`data/maps/` split the one-lane maps into two lanes, to measure whether a second front fixes G3 (mono
+Gill Nest): `test-bogwater-2lane`, `test-stumpfield-2lane` and their `-tall` versions. They're
+`testOnly`, so runs never draw them, and goldens and hashes are unchanged. Results are in
+[the backlog](../docs/balance-backlog.md#second-front-two-lane-test-maps-2026-10-30).
+- Two 4-row lanes, same plots: mono Gill Nest 80% / 85% (Bogwater / Stumpfield), from 100%.
+- Two 6-row lanes (Twin Roots' shape): 62% / 67%, Twin Roots' own 63%.
+- Every two-lane version: mono Amanita 58–73%, and mono Sporeling still 67–82%.
+
 ## G3 measures every map in the run pool (2026-10-30)
 
 **Guardrail change, approved by the user** ("Keep G3 as proposed: mean ≤ 55%, worst map ≤ 60%, 50 seeds per seat."). **No content changed,
