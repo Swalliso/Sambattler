@@ -109,6 +109,10 @@ export function battleConfig(content: Content, run: RunState, node: RouteNode): 
   const modifiers: BattleModifier[] = sideModifiers(content, { player, enemy });
   const elite = node.elite ? content.elites[node.elite] : undefined;
   if (elite?.effects) modifiers.push({ side: 'enemy', source: `elite:${elite.id}`, effects: elite.effects });
+  // hot-start prototype (absent by default): effects for the run's first battles, such as a gentler battle 1
+  const hot = bal.hotStart?.battles?.[index - 1];
+  if (hot?.player) modifiers.push({ side: 'player', source: 'proto:hotStart', effects: hot.player });
+  if (hot?.enemy) modifiers.push({ side: 'enemy', source: 'proto:hotStart', effects: hot.enemy });
   if (run.next.sporestormShiftSeconds) {
     modifiers.push({ side: 'both', source: 'event:next-battle', effects: { modifiers: [{ stat: 'battle.sporestormStart', op: 'add', value: run.next.sporestormShiftSeconds }] } });
   }

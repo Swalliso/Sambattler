@@ -24,12 +24,13 @@ export class DraftOverlay {
   private rerollCost = h('span');
   private skipBtn: HTMLButtonElement;
   private title = h('h2', { id: 'draft-title' }, '');
+  private lastKey = h('kbd', null, '3');
 
   constructor(private content: Content, private atlas: Atlas, private actions: DraftActions) {
     this.rerollBtn = h('button', { class: 'btn has-ico', id: 'draft-reroll', onclick: () => this.actions.reroll() }, 'Reroll', uiIcon(atlas, 'i-gold'), this.rerollCost);
     this.skipBtn = h('button', { class: 'btn', id: 'draft-skip', onclick: () => this.actions.skip() }, 'Skip');
     const card = h('div', { class: 'draftcard', id: 'draft', role: 'dialog', 'aria-label': 'Draft' },
-      h('div', { class: 'draft-top' }, this.title, h('div', { class: 'hint' }, 'The battle is held while you choose. Press ', h('kbd', null, '1'), '–', h('kbd', null, '3'), ' to pick a card.')),
+      h('div', { class: 'draft-top' }, this.title, h('div', { class: 'hint' }, 'The battle is held while you choose. Press ', h('kbd', null, '1'), '–', this.lastKey, ' to pick a card.')),
       this.cards,
       h('div', { class: 'actions' }, this.rerollBtn, this.skipBtn),
     );
@@ -54,7 +55,11 @@ export class DraftOverlay {
     this.skipBtn.disabled = pending;
     if (key === this.shown) return;
     this.shown = key;
-    this.title.textContent = `Draft ${d.index}: choose 1 of ${d.offer.length}`;
+    // a deploy draft (hot-start prototype) opens before the clock starts; a bigger draft has picks left
+    const name = state.phase === 'deploy' ? 'Deploy draft' : `Draft ${d.index}`;
+    this.title.textContent = `${name}: choose ${d.picks ?? 1} of ${d.offer.length}`;
+    this.cards.style.setProperty('--cols', String(Math.max(3, d.offer.length)));
+    setText(this.lastKey, String(d.offer.length));
     this.cards.replaceChildren(...d.offer.map((c, i) =>
       cardView(this.content, this.atlas, c, state.sides.player.upgrades, () => this.actions.pick(c.id), String(i + 1), i)));
   }

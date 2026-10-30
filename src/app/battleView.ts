@@ -336,6 +336,9 @@ export class BattleView {
         this.shakeOn(e.target, e.amount, now);
       } else if (e.t === 'sporestorm') {
         this.callouts.push('info', `The Sporestorm thickens (${e.stacks})`, '', now);
+      } else if (e.t === 'heartcapBreach') {
+        const pct = Math.round(e.at * 100);
+        this.callouts.push('counter', e.side === 'player' ? `Your Heartcap is breached (${pct}%)!` : `Enemy Heartcap breached (${pct}%)!`, e.side === 'player' ? 'bad' : 'good', now);
       } else if (e.t === 'begin') {
         this.callouts.push('info', 'The battle begins', '', now);
         const opening = intentOf(state).opening;

@@ -202,6 +202,8 @@ export interface OpenDraft {
   rerolls: number;
   /** 1-based draft number within the battle. */
   index: number;
+  /** Bigger-drafts prototype: cards still to take from this offer, when more than one. */
+  picks?: number;
 }
 
 /** Global rule constants, converted to ticks and integers at battle creation. */
@@ -236,6 +238,10 @@ export interface Rules {
   spawnerDefense?: { damage: number; damageType: DamageType; intervalTicks: number; range: number; projectileSpeed: number; homeOnly: boolean };
   /** Diver prototype (balance `diveRanged`); absent by default. */
   dive?: { units: string[]; aggroAdd: number; burst?: { speedMult: number; ticks: number; cooldownTicks: number } };
+  /** Hot-start prototype (balance `hotStart.deployDraft`): a free draft before the clock starts; absent by default. */
+  deployDraft?: { cards?: number };
+  /** Bigger-drafts prototype (balance `bigDrafts`): cards taken per in-battle draft and the offers' rare bonus; absent by default. */
+  bigDrafts?: { picks: number; rareBonus: number };
   timeLimitTicks: number;
   captureThreshold: number;
   captureStep: number;
@@ -427,6 +433,8 @@ export type SimEvent =
   | { t: 'power'; side: Side; power: string; x?: number; y?: number; hits: number; lanes: number[]; merges: number; gold?: number }
   /** Prototype E1: a lane switched between Hold and Advance (`auto` when the hold timer ran out). */
   | { t: 'stance'; side: Side; lane: number; hold: boolean; auto: boolean }
+  /** Heartcap breach prototype: a side's Heartcap fell to `at` of its max HP, firing its `heartcapBreach` triggers. */
+  | { t: 'heartcapBreach'; side: Side; at: number; x: number; y: number }
   | { t: 'ended'; winner: Side; by: 'rout' | 'decision' };
 
 export interface AiWeight { building: string; weight: number; maxOwned: number; afterTick: number }
@@ -515,6 +523,8 @@ export interface SideState {
   draftsOpened: number;
   /** Prototype E1: each lane's Hold / Advance stance. Absent unless `rules.stance`. */
   stance?: LaneStance[];
+  /** Heartcap breach prototype: the Heartcap takes × `takenMult` damage until `untilTick` (a `shieldHeartcap` action). */
+  heartcapShield?: { untilTick: number; takenMult: number };
   ai?: AiState;
 }
 

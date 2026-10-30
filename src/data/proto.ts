@@ -37,6 +37,36 @@ export const PROTO_PRESETS: Record<string, Json> = {
   diver: { diveRanged: { units: ['veilstalker'], aggroAdd: 2 } },
   /** Diver with a burst: Veilstalkers also sprint at ×2.5 for 1.5 s onto a ranged target, every 8 s at most. */
   diverleap: { diveRanged: { units: ['veilstalker'], aggroAdd: 2, burst: { speedMult: 2.5, seconds: 1.5, cooldownSeconds: 8 } } },
+  /** Hot start (step B): a free draft at deploy, and a general on ¾ income in battle 1 of a run. */
+  hotstart: {
+    hotStart: {
+      deployDraft: {},
+      battles: [{ enemy: { modifiers: [{ stat: 'side.stipend', op: 'mul', value: 0.75 }] } }],
+    },
+  },
+  /**
+   * Heartcap breach (step B): at ⅔ HP a breach (a defensive pulse in the lane, 10 s of half damage
+   * taken, +150 gold); at ⅓ a last stand (another pulse, 20 s of quarter damage, the commander power
+   * ready, +150 gold). The Sporestorm adds +10% Heartcap damage per stack instead of +20%.
+   */
+  breach: {
+    sideTriggers: [
+      {
+        on: 'heartcapBreach', at: 0.67,
+        do: [{ explode: { damage: 150, damageType: 'crush', radius: 4 } }, { shieldHeartcap: { seconds: 10, takenMult: 0.5 } }, { gainGold: 150 }],
+      },
+      {
+        on: 'heartcapBreach', at: 0.33,
+        do: [
+          { explode: { damage: 150, damageType: 'crush', radius: 4 } }, { shieldHeartcap: { seconds: 20, takenMult: 0.25 } }, { readyPower: true },
+          { gainGold: 150 },
+        ],
+      },
+    ],
+    'sporestorm.heartcapTakenPerStack': 0.1,
+  },
+  /** Bigger drafts (step B): drafts after waves 2 and 5 instead of 2, 4, 6 and 8; take 2 of 4 cards, +10 rare. */
+  bigdrafts: { draftWaves: [2, 5], 'draft.cards': 4, bigDrafts: { picks: 2, rareBonus: 10 } },
   /** T3: home-column spawners shoot the nearest enemy unit within 6 tiles (12 Pierce per second). */
   t3: { spawnerDefense: { damage: 12, damageType: 'pierce', interval: 1, range: 6, projectileSpeed: 12, homeOnly: true } },
 };

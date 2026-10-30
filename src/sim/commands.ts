@@ -1,6 +1,7 @@
 // The command queue and log (SPEC §14.5). Commands are validated when they execute, so an
 // illegal command becomes a deterministic `commandRejected` event on replay too.
 import { noteBuilt } from './ai/counter.ts';
+import { aiDraft } from './ai/draftPolicy.ts';
 import { addBuilding } from './create.ts';
 import { executeDraftCommand } from './draft.ts';
 import { placementProblem, priceAt } from './placement.ts';
@@ -148,6 +149,8 @@ function execute(state: BattleState, cmd: Command): boolean {
     case 'draftSkip': {
       const problem = executeDraftCommand(state, side, cmd);
       if (problem) reject(state, cmd, problem);
+      // bigger drafts: an AI side takes its next card from an offer still open after a pick
+      else if (cmd.type === 'draftPick' && ss.draft) aiDraft(state, side);
       return false;
     }
     default:
