@@ -230,7 +230,8 @@ The user's answers:
 
 - **Step A ran on 2026-10-30** with no rule or data change (results [above](#step-a-results-and-what-they-suggest-for-b-and-c)). Steps B (battle-feel prototypes) and C (a small placement and network test) come later, each in its own session, and both are judged with step A's tools.
 - **Step B ran on 2026-10-30** as default-off prototypes (results [above](#step-b-results-2026-10-30)). Nothing is adopted; the playtest and the data changes wait for the user.
+- **G3 measures every map** (decided after step A): every mono bot against `bot:balanced` on every run-pool map, 50 seeds per seat, with mean ≤ 55% and worst map ≤ 60%. Mono Gill Nest, Sporeling and Amanita fail it; mono Morel sits exactly on the mean limit. See the [backlog](../balance-backlog.md#g3-on-every-map-the-rewrite-2026-10-30).
 
 Still open:
 - whether Codex's two uncommitted notes and the original design review should come into `docs/ideas/`;
-- after step A, how to rewrite G3, and whether one-lane maps get a second front.
+- whether one-lane maps get a second front.

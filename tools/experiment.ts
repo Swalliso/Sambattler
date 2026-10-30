@@ -7,9 +7,10 @@
 // end), `lanes` (per-lane traces) and `spread` (placement spread). Writes
 // reports/experiments/<label>.json and prints a summary.
 //
-// G3 options (g3, g3gill and lanes): `--maps a,b` plays every listed map (G3 itself is Bogwater
-// Hollow; test maps like test-3lane are reported as leads), `--g3seeds n` sets seeds per seat
-// (default G3's 20, about ±8 points; 50 gives about ±5), `--mono a,b` picks the mono bots.
+// G3 options (g3, g3gill and lanes): `--maps a,b` plays every listed map (G3 itself plays the run's
+// map pool, the default for g3 and g3gill; maps outside the pool, like test-3lane, are reported as
+// leads), `--g3seeds n` sets seeds per seat (default G3's 50, about ±5 points; 20 gives about ±8 for
+// a quicker read), `--mono a,b` picks the mono bots. g3 and g3gill share G3's loop (tools/lib/balance.ts).
 // `lanes` traces mono bots (default Gill Nest) against the defender on `--maps`, `--seeds n` per
 // seat (default 10), `--traces` keeps every battle's trace in the report (tools/lib/lanes.ts).
 //
@@ -27,7 +28,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { protoContent, ROOT } from './lib/content.ts';
 import {
-  evaluateG1, evaluateG2, evaluateG4, evaluateG5, evaluateG6, evaluateG7, evaluateG8, rosterIds, supplyDuel,
+  evaluateG1, evaluateG2, evaluateG3, evaluateG4, evaluateG5, evaluateG6, evaluateG7, evaluateG8, rosterIds, supplyDuel,
 } from './lib/balance.ts';
 import type { Verdict } from './lib/balance.ts';
 import { runBench } from './lib/bench.ts';
@@ -35,8 +36,8 @@ import { engagement, engagementLines, runEndingLines, runEndings } from './lib/e
 import { laneLines, laneSummary } from './lib/lanes.ts';
 import { spreadCase, spreadLines, spreadSummary } from './lib/spread.ts';
 import type { SpreadOptions } from './lib/spread.ts';
-import { fmtTicks, median, runBattle } from './lib/run.ts';
-import { simulateRun } from '../src/run/index.ts';
+import { fmtTicks, median } from './lib/run.ts';
+import { mapPool, simulateRun } from '../src/run/index.ts';
 import type { PowerPolicy } from '../src/sim/index.ts';
 
 const args = process.argv.slice(2);
@@ -47,16 +48,17 @@ const label = opt('--label') ?? (proto || 'baseline').replace(/[^a-zA-Z0-9.=-]+/
 const defender = opt('--defender') ?? 'bot:balanced';
 const ALL = ['duels', 'g3', 'g4', 'g5', 'g6', 'g7', 'g8', 'g11', 'boss'];
 const checks = new Set((opt('--checks') ?? ALL.join(',')).split(','));
-/** Maps for the g3, g3gill and lanes checks (G3 itself is Bogwater Hollow). */
-const maps = (opt('--maps') ?? 'bogwater-hollow').split(',');
-/** Test maps are reported as leads; their G3 rows don't fail the check. */
-const TEST_MAPS = ['test-3lane', 'test-flat'];
+const mapsOpt = opt('--maps')?.split(',');
+/** Maps for the lanes and spread checks (default Bogwater Hollow). */
+const maps = mapsOpt ?? ['bogwater-hollow'];
 /** Seeds per seat for g3 and g3gill (default G3's own). */
 const g3SeedsOpt = Number(opt('--g3seeds') ?? 0);
 /** Mono bots for g3, g3gill and lanes, in place of the check's default list. */
 const monoIds = opt('--mono')?.split(',');
 const content = protoContent(proto);
 const g3Seeds = g3SeedsOpt || content.targets.G3.seeds;
+/** Maps for g3 and g3gill: G3's own, the run pool, unless `--maps` lists others (maps outside the pool are leads). */
+const g3Maps = mapsOpt ?? mapPool(content);
 /** Commanders for the runs and engagement checks: one id, `all`, or none (the run default, Vesper; no commander in single battles). */
 const commanderOpt = opt('--commander');
 const commanders: (string | undefined)[] = commanderOpt === 'all' ? Object.keys(content.commanders) : [commanderOpt];
@@ -109,56 +111,16 @@ if (checks.has('duels')) {
 }
 
 if (checks.has('g3') || checks.has('g3gill')) {
-  const t = content.targets.G3;
   const ids = monoIds ?? (checks.has('g3') ? rosterIds(content) : ['gillNest', 'sporelingBurrow', 'capguardHall']);
-  const rows: Record<string, unknown>[] = [];
-  let pass = true;
-  for (const map of maps) {
-    if (maps.length > 1) lines.push(`G3 on ${map}${TEST_MAPS.includes(map) ? ' (test map: a lead, not a verdict)' : ''}, ${g3Seeds} seeds per seat`);
-    for (const id of ids) {
-      const seat = { player: 0, enemy: 0 };
-      const lengths: number[] = [];
-      let decisions = 0, monoSpawned = 0, monoLost = 0, sporeDmg = 0, turretDmg = 0, balDmg = 0;
-      const defDamage: Record<string, number> = {};
-      for (let seed = 1; seed <= g3Seeds; seed++) {
-        for (const side of ['player', 'enemy'] as const) {
-          const { result } = runBattle(content, {
-            seed, map, player: side === 'player' ? `bot:mono:${id}` : defender, enemy: side === 'player' ? defender : `bot:mono:${id}`,
-          });
-          if (result.winner === side) seat[side]++;
-          if (result.by === 'decision') decisions++;
-          lengths.push(result.durationTicks);
-          const bal = side === 'player' ? 'enemy' : 'player';
-          monoSpawned += Object.values(result.stats[side].spawned).reduce((a, b) => a + b, 0);
-          monoLost += result.stats[side].unitsLost;
-          const bySrc = result.stats[bal].damageBySource;
-          sporeDmg += bySrc.sporeling ?? 0;
-          turretDmg += bySrc.turret ?? 0;
-          for (const [src, n] of Object.entries(bySrc)) defDamage[src] = (defDamage[src] ?? 0) + n;
-          balDmg += result.stats[bal].damageDealt;
-        }
-      }
-      const others = Object.entries(defDamage).filter(([src]) => src !== 'sporeling' && src !== 'turret').sort((a, b) => b[1] - a[1]).slice(0, 3)
-        .map(([src, n]) => `${src} ${pct(n / Math.max(1, balDmg))}`).join(', ');
-      const diag = `mono units lost ${monoLost}/${monoSpawned} (${pct(monoLost / Math.max(1, monoSpawned))}); balanced damage: Sporelings ${pct(sporeDmg / Math.max(1, balDmg))}, turrets ${pct(turretDmg / Math.max(1, balDmg))}${others ? `; then ${others}` : ''}`;
-      const rate = (seat.player + seat.enemy) / (2 * g3Seeds);
-      if (rate > t.maxMonoWinRate && !TEST_MAPS.includes(map)) pass = false;
-      rows.push({
-        map, id, rate, player: seat.player / g3Seeds, enemy: seat.enemy / g3Seeds, median: median(lengths), decisions: decisions / (2 * g3Seeds),
-        monoLost, monoSpawned, sporeDmg, turretDmg, balDmg, defDamage,
-      });
-      lines.push(`${rate > t.maxMonoWinRate ? 'FAIL' : 'ok  '} G3 mono:${id}: ${pct(rate)} (as player ${pct(seat.player / g3Seeds)}, as enemy ${pct(seat.enemy / g3Seeds)}), median ${fmtTicks(median(lengths))}, decisions ${pct(decisions / (2 * g3Seeds))}${id === 'gillNest' ? `\n    ${diag}` : ''}`);
-    }
+  const g3 = evaluateG3(content, { maps: g3Maps, ids, seeds: g3Seeds, defender });
+  // per map and mono bot: both seats, length, Decisions, and for Gill Nest what the defender does to it
+  for (const r of g3.rows) {
+    const others = Object.entries(r.defDamage).filter(([src]) => src !== 'sporeling' && src !== 'turret').sort((a, b) => b[1] - a[1]).slice(0, 3)
+      .map(([src, n]) => `${src} ${pct(n / Math.max(1, r.defDamageTotal))}`).join(', ');
+    const diag = `mono units lost ${r.monoLost}/${r.monoSpawned} (${pct(r.monoLost / Math.max(1, r.monoSpawned))}); defender damage: Sporelings ${pct((r.defDamage.sporeling ?? 0) / Math.max(1, r.defDamageTotal))}, turrets ${pct((r.defDamage.turret ?? 0) / Math.max(1, r.defDamageTotal))}${others ? `; then ${others}` : ''}`;
+    lines.push(`G3 ${r.map} mono:${r.id}: ${pct(r.rate)} (as player ${pct(r.player)}, as enemy ${pct(r.enemy)}), median ${fmtTicks(r.median)}, decisions ${pct(r.decisions)}${r.id === 'gillNest' ? `\n    ${diag}` : ''}`);
   }
-  if (maps.length > 1) {
-    // mono win rate per map, one row per mono bot
-    lines.push(`G3 by map (mono win %, ${2 * g3Seeds} games each): ${maps.join(' | ')}`);
-    for (const id of ids) {
-      const cells = maps.map((m) => rows.find((r) => r.map === m && r.id === id)).map((r) => `${Math.round(100 * (r!.rate as number))}`.padStart(3));
-      lines.push(`    ${id.padEnd(18)} ${cells.join(' | ')}`);
-    }
-  }
-  out.G3 = { pass, seeds: g3Seeds, maps, rows };
+  out.G3 = { ...verdict(g3), seeds: g3.seeds, maps: g3.maps, bots: g3.bots, rows: g3.rows };
 }
 
 if (checks.has('lanes')) {

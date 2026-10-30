@@ -305,7 +305,8 @@ export const BalanceTargetsSchema = z.object({
     /** Intended edges that must hold (in ≥ minSeedsForEdge seeds) for G2 to pass: the M4 edges. */
     assertedEdges: z.array(z.tuple([DuelUnit, DuelUnit])).optional(),
   }).strict(),
-  G3: z.object({ seeds: z.number().int().positive(), maxMonoWinRate: z.number() }).strict(),
+  /** G3: mono bots against `bot:balanced` on every map in the run pool; `seeds` per seat, limits on the mean over maps and the worst map. */
+  G3: z.object({ seeds: z.number().int().positive(), maxMeanWinRate: z.number(), maxMapWinRate: z.number() }).strict(),
   G4: z.object({ seeds: z.number().int().positive(), medianMinSeconds: Pos, medianMaxSeconds: Pos, maxDecisionShare: z.number(), botWinMin: z.number(), botWinMax: z.number() }).strict(),
   G5: z.object({ seeds: z.number().int().positive(), bonusGold: z.number().int(), minWinRate: z.number(), maxWinRate: z.number() }).strict(),
   G6: z.object({ seeds: z.number().int().positive(), scenario: Id, minBehindWinRate: z.number() }).strict(),

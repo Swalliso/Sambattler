@@ -6,7 +6,7 @@ import { addBuilding, addUnit } from '../../src/sim/create.ts';
 import { createBattle, makeConfig, runHeadless, summarize } from '../../src/sim/index.ts';
 import type { BattleConfig, BattleState, Side, Tier } from '../../src/sim/index.ts';
 import { buildingDef } from '../../src/sim/world.ts';
-import { simulateRun } from '../../src/run/index.ts';
+import { mapPool, simulateRun } from '../../src/run/index.ts';
 import { median, runBattle } from './run.ts';
 
 const DUEL_TEST = { noTurrets: true, noTerritory: true, noHeartcapTargets: true };
@@ -277,18 +277,102 @@ export function tagShare(content: Content, spawnedSupply: Record<string, number>
   return all > 0 ? tagged / all : 0;
 }
 
-export function evaluateG3(content: Content): Verdict {
-  const t = content.targets.G3;
-  const details: string[] = [];
-  let pass = true;
-  for (const id of rosterIds(content)) {
-    const m = matchup(content, `bot:mono:${id}`, 'bot:balanced', t.seeds, true);
-    const rate = m.winsA / m.games;
-    const ok = rate <= t.maxMonoWinRate;
-    if (!ok) pass = false;
-    details.push(`${ok ? 'ok  ' : 'FAIL'} mono:${id} vs balanced: ${(rate * 100).toFixed(0)}% over ${m.games} games`);
+/** One G3 cell: `bot:mono:<id>` against the defender on one map, `seeds` per seat. Rates are the mono bot's. */
+export interface G3Row {
+  map: string; id: string;
+  /** Mono wins and games over both seats. */
+  wins: number; games: number;
+  /** Win rate over both seats, then as player and as enemy. */
+  rate: number; player: number; enemy: number;
+  /** Median length in ticks, and the share of games that ended by Decision. */
+  median: number; decisions: number;
+  /** Diagnostics for the experiment tool: mono units spawned and lost, the defender's damage by source and in all. */
+  monoSpawned: number; monoLost: number; defDamage: Record<string, number>; defDamageTotal: number;
+}
+
+export function g3Row(content: Content, map: string, id: string, seeds: number, defender = 'bot:balanced'): G3Row {
+  const seat = { player: 0, enemy: 0 };
+  const lengths: number[] = [];
+  let decisions = 0, monoSpawned = 0, monoLost = 0, defDamageTotal = 0;
+  const defDamage: Record<string, number> = {};
+  for (let seed = 1; seed <= seeds; seed++) {
+    for (const side of ['player', 'enemy'] as const) {
+      const { result } = runBattle(content, {
+        seed, map, player: side === 'player' ? `bot:mono:${id}` : defender, enemy: side === 'player' ? defender : `bot:mono:${id}`,
+      });
+      if (result.winner === side) seat[side]++;
+      if (result.by === 'decision') decisions++;
+      lengths.push(result.durationTicks);
+      const def: Side = side === 'player' ? 'enemy' : 'player';
+      monoSpawned += Object.values(result.stats[side].spawned).reduce((a, b) => a + b, 0);
+      monoLost += result.stats[side].unitsLost;
+      for (const [src, n] of Object.entries(result.stats[def].damageBySource)) defDamage[src] = (defDamage[src] ?? 0) + n;
+      defDamageTotal += result.stats[def].damageDealt;
+    }
   }
-  return { id: 'G3', pass, summary: `every mono bot wins ≤${pct(t.maxMonoWinRate)} vs balanced (both seats)`, details };
+  return {
+    map, id, wins: seat.player + seat.enemy, games: 2 * seeds,
+    rate: (seat.player + seat.enemy) / (2 * seeds), player: seat.player / seeds, enemy: seat.enemy / seeds,
+    median: median(lengths), decisions: decisions / (2 * seeds), monoSpawned, monoLost, defDamage, defDamageTotal,
+  };
+}
+
+export interface G3Options {
+  /** Maps to play (default: the run's map pool). Maps outside the pool, like test maps, are leads: reported, not counted. */
+  maps?: string[];
+  /** Mono bots (default: the whole roster). */
+  ids?: string[];
+  /** Seeds per seat (default: the target's). */
+  seeds?: number;
+  /** The opponent (default `bot:balanced`, the guardrail's). */
+  defender?: string;
+}
+
+/** A mono bot's G3 reading over the pool maps it played (NaN when it played none). */
+export interface G3Bot { id: string; mean: number; worst: number; worstMap: string; pass: boolean }
+
+/**
+ * G3: every mono bot plays `bot:balanced` on every map in the run pool, in both seats. A bot passes
+ * if its mean win rate over those maps is ≤ `maxMeanWinRate` and its worst map ≤ `maxMapWinRate`.
+ */
+export function evaluateG3(content: Content, opts: G3Options = {}): Verdict & { rows: G3Row[]; bots: G3Bot[]; maps: string[]; seeds: number } {
+  const t = content.targets.G3;
+  const pool = mapPool(content);
+  const maps = opts.maps ?? pool;
+  const ids = opts.ids ?? rosterIds(content);
+  const seeds = opts.seeds ?? t.seeds;
+  const defender = opts.defender ?? 'bot:balanced';
+  const rows = maps.flatMap((map) => ids.map((id) => g3Row(content, map, id, seeds, defender)));
+  const counted = maps.filter((m) => pool.includes(m));
+  const bots = ids.map((id): G3Bot => {
+    const mine = counted.map((m) => rows.find((r) => r.map === m && r.id === id)!);
+    const rates = mine.map((r) => r.rate);
+    const worst = rates.length ? Math.max(...rates) : NaN;
+    // every map plays the same games, so this is the mean of the rates, but exact: summed float rates can land a hair either side of the limit
+    const mean = rates.length ? mine.reduce((a, r) => a + r.wins, 0) / mine.reduce((a, r) => a + r.games, 0) : NaN;
+    const pass = !rates.length || (mean <= t.maxMeanWinRate && worst <= t.maxMapWinRate);
+    return { id, mean, worst, worstMap: rates.length ? counted[rates.indexOf(worst)]! : '', pass };
+  });
+  // one row per mono bot: its win % on each map, then the mean and worst over the pool maps
+  const cell = (x: number) => (Number.isFinite(x) ? String(Math.round(x * 100)) : '–');
+  const col = (s: string, w: number) => s.padStart(Math.max(w, 5));
+  const heads = maps.map((m) => (pool.includes(m) ? m : `${m}*`));
+  const idWidth = Math.max(...ids.map((id) => id.length));
+  const details = [
+    `mono win % against ${defender}, ${2 * seeds} games per map (both seats). Limits: mean ≤${pct(t.maxMeanWinRate)}, worst map ≤${pct(t.maxMapWinRate)}`,
+    `     ${''.padEnd(idWidth)}  ${heads.map((h) => col(h, 0)).join('  ')}  ${col('mean', 0)}  ${col('worst', 0)}`,
+  ];
+  for (const b of bots) {
+    const cells = maps.map((m, i) => col(cell(rows.find((r) => r.map === m && r.id === b.id)!.rate), heads[i]!.length));
+    const over = [b.mean > t.maxMeanWinRate ? 'mean' : '', b.worst > t.maxMapWinRate ? `worst (${b.worstMap})` : ''].filter(Boolean).join(', ');
+    details.push(`${b.pass ? 'ok  ' : 'FAIL'} ${b.id.padEnd(idWidth)}  ${cells.join('  ')}  ${col(cell(b.mean), 0)}  ${col(cell(b.worst), 0)}${over ? `  over: ${over}` : ''}`);
+  }
+  if (heads.some((h) => h.endsWith('*'))) details.push('* not in the run pool (a test map): a lead, not counted');
+  return {
+    id: 'G3', pass: bots.every((b) => b.pass), rows, bots, maps, seeds,
+    summary: `every mono bot vs balanced on the run's maps (both seats): mean ≤${pct(t.maxMeanWinRate)}, worst map ≤${pct(t.maxMapWinRate)}`,
+    details,
+  };
 }
 
 export function evaluateG4(content: Content): Verdict & { stats: MatchStats } {

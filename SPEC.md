@@ -1353,7 +1353,7 @@ These run as the slow test suite, `npm run test:slow`. Their thresholds live in 
 |---|---|---|
 | G1 | Production duels: no building wins more than 80% of its pairings; every building wins at least one pairing and loses at least one clearly (the opponent keeps ≥ 30% more remaining value) | M1 |
 | G2 | Supply duels (12 supply each, 5 seeds) form a healthy counter graph: every unit type beats at least one other type and loses to at least one in ≥ 4 of 5 seeds. The report also checks the intended edges: M1 per §11.4; M2 adds Scythecap > Sporeling and Veilstalker > Bloomed Capguard; M4 adds Hammercap > Amanita Knight and Amanita Knight > Gill Archer | M1, extended each milestone |
-| G3 | Every `script:mono:<id>` bot wins ≤ 55% against `script:balanced` (honest, symmetric) | M1 |
+| G3 | Every `script:mono:<id>` bot plays `script:balanced` on every map in the run pool (the §11.9 maps shipped so far, never test maps; a new map joins when it ships), 50 seeds per seat: 100 games per map (honest, symmetric). A bot passes if its mean win rate over those maps is ≤ 55% and its worst map ≤ 60% | M1; rewritten after step A (2026-10-30) |
 | G4 | `script:balanced` vs the scripted general on Bogwater Hollow over 40 seeds: median length 5:30–8:30, ≤ 15% of battles end by Decision | M1 |
 | G5 | Snowball: a side given +150 starting gold wins 55–75% | M1 |
 | G6 | Comeback: starting from a scenario with a 6-column deficit at 3:00, the behind side still wins ≥ 20% | M1 |
@@ -1362,6 +1362,8 @@ These run as the slow test suite, `npm run test:slow`. Their thresholds live in 
 | G9 | Meta ceiling: a full 12-capacity trait loadout raises `script:balanced`'s win rate by ≤ 15 points | M6 |
 | G10 | Blights: Decay 6 lowers `script:balanced`'s run win rate by 25–50 points against Decay 0 | M7 |
 | G11 | Performance budgets (§13.7) | M1 |
+
+**Why G3 measures every map.** Until step A, G3 required every mono bot to win ≤ 55% on Bogwater Hollow alone, with 40 games. That missed mono Sporeling's real rate (about 75% over 100 games; the 40-game check read 65%) and every failure that only shows on another map, such as mono Amanita on Twin Roots. Each map's rate is measured to about ±5 points, so the worst of three maps reads high on noise alone; the worst-map limit is 5 points above the mean's to allow for that. The mean catches a bot that is a little too strong everywhere, and the worst map catches one that dominates a single map.
 
 ### 12.4 Tuning workflow
 
