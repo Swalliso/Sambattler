@@ -1,10 +1,11 @@
 // Staggered target selection for units and towers (SPEC §5.2): preferred class first, then the
-// nearest by edge distance, ties to the lowest id; sticky within aggro × leash.
+// nearest by edge distance, ties to the lowest id; sticky within aggro × leash. The diver prototype
+// (balance `diveRanged`) adds ranged units as a preferred class for the listed units.
 import { HEARTCAP_ID, other } from '../state.ts';
 import type { BattleState, BuildingState, UnitState } from '../state.ts';
 import { buildGrid, nearBuffer, queryNear } from '../spatial.ts';
 import { MAX_RADIUS, edgeDistance, tp } from '../targets.ts';
-import { buildingDef, heartcapEdgeX, rectDistance, unitDef, unitRadius } from '../world.ts';
+import { buildingDef, findUnit, heartcapEdgeX, rectDistance, unitDef, unitRadius } from '../world.ts';
 
 let bestId = 0, bestD = 0, bestPref = false;
 
@@ -39,15 +40,24 @@ export function targetingSystem(state: BattleState): void {
   }
 }
 
+/** Diver prototype (balance `diveRanged`): is this a living enemy unit with the `ranged` tag? */
+export function isRangedUnit(state: BattleState, id: number): boolean {
+  const v = id > 0 ? findUnit(state, id) : undefined;
+  return !!v && unitDef(state, v).tags.includes('ranged');
+}
+
 function retargetUnit(state: BattleState, u: UnitState, r: number, curD: number): void {
   const def = unitDef(state, u);
   const aggro = def.aggroRange;
   const enemy = other(u.side);
   const prefBuildings = def.siege;
   const prefElite = def.slayer;
+  // diver prototype: prefers ranged units, and sees them from farther
+  const diver = !!state.rules.dive && state.rules.dive.units.includes(u.unitId);
+  const reach = diver ? aggro + state.rules.dive!.aggroAdd : aggro;
   bestId = 0; bestD = 0; bestPref = false;
 
-  const n = queryNear(u.x, u.y, aggro + r + MAX_RADIUS);
+  const n = queryNear(u.x, u.y, reach + r + MAX_RADIUS);
   const near = nearBuffer();
   for (let k = 0; k < n; k++) {
     const v = state.units[near[k]!]!;
@@ -55,6 +65,11 @@ function retargetUnit(state: BattleState, u: UnitState, r: number, curD: number)
     const dx = v.x - u.x, dy = v.y - u.y;
     let d = Math.sqrt(dx * dx + dy * dy) - r - unitRadius(state, v);
     if (d < 0) d = 0;
+    if (diver) {
+      const ranged = unitDef(state, v).tags.includes('ranged');
+      if (d <= (ranged ? reach : aggro)) consider(v.id, d, ranged || (prefElite && v.tier >= 2));
+      continue;
+    }
     if (d <= aggro) consider(v.id, d, prefElite && v.tier >= 2);
   }
   for (const b of state.buildings) {
@@ -72,9 +87,9 @@ function retargetUnit(state: BattleState, u: UnitState, r: number, curD: number)
   }
 
   // stickiness: keep a live current target within leash unless a preferred-class candidate appears
-  if (u.targetId !== 0 && curD >= 0 && curD <= aggro * state.rules.leashMult) {
+  if (u.targetId !== 0 && curD >= 0 && curD <= reach * state.rules.leashMult) {
     edgeDistance(state, u.x, u.y, r, u.targetId, enemy, u.lane);
-    const curPref = (prefBuildings && tp.preferredBuilding) || (prefElite && tp.tier >= 2);
+    const curPref = (prefBuildings && tp.preferredBuilding) || (prefElite && tp.tier >= 2) || (diver && isRangedUnit(state, u.targetId));
     if (!(bestPref && !curPref)) return;
   }
   u.targetId = bestId;

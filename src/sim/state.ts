@@ -234,6 +234,8 @@ export interface Rules {
   fallBack?: { radius: number; ratio: number; maxHoldTicks: number };
   /** Prototype T3 (balance `spawnerDefense`); absent by default. */
   spawnerDefense?: { damage: number; damageType: DamageType; intervalTicks: number; range: number; projectileSpeed: number; homeOnly: boolean };
+  /** Diver prototype (balance `diveRanged`); absent by default. */
+  dive?: { units: string[]; aggroAdd: number; burst?: { speedMult: number; ticks: number; cooldownTicks: number } };
   timeLimitTicks: number;
   captureThreshold: number;
   captureStep: number;
@@ -313,7 +315,7 @@ export interface UnitState {
   sourceBuildingId: number;
   /** Set while the unit knits with two others (SPEC §5.6); undefined otherwise. */
   knit?: KnitState;
-  /** Prototype B1: the current rush ends at this tick, and the next may start at `rushReady`. Absent unless `rules.rush`. */
+  /** Prototype B1 (and the diver's burst): the current rush ends at this tick, and the next may start at `rushReady`. Absent unless `rules.rush` or `rules.dive.burst`. */
   rushUntil?: number;
   rushReady?: number;
   /** Prototype B4: the unit withers at this tick. Absent unless `rules.lifespan`. */

@@ -210,3 +210,203 @@ Mono Gill Nest against each defender, 20 seeds in both seats. One-off bots were 
 Nothing here is worth adopting, and none of the round-2 settings passes the guardrails. G3 looks structural rather than numeric: in a single lane with Heartcap turrets, a ranged mass that grows behind its own front always beats a melee stream. Approach speed, archer numbers, damage to structures, firing lanes, lifespans, opening delays, conditional fall-back and home defense each either leave it at 85–100% or move it only by making battles stall or another mono bot dominant. What remains untried are rule-level changes to how melee armies arrive: true mustering combined with B1 and a 21–24 s Nest, or a melee wave release. Both change §5.2 and need the user's explicit OK. The other option is to reconsider whether G3's "≤ 55% against `bot:balanced`" is the right target while a single-lane map gives ranged mass this edge.
 
 For a human feel test only, the closest to a playable balance is mild B1 with a 21 s Nest: `?proto=b1,approachRush.speedMult:2,approachRush.seconds:1,building.gillNest.spawn.interval:21` (mono Gill Nest 83%, G4 in band, mono Sporeling 57%, G7 fails). The setting that reaches the G3 limit is `?proto=b1,building.gillNest.spawn.interval:24` (55%), but it costs G4 and G7.
+
+## Step A: measurement before M6 (2026-10-30)
+
+Step A of the [One More Run review](ideas/one-more-run-review.md#suggested-path): measure, with no rule or data change. Goldens and hashes are unchanged. The new pieces are default-off or tool-only:
+
+- `npm run experiment` options: `--maps`, `--g3seeds` and `--mono` for G3 on any map. The `lanes` check gives per-lane traces. `--commander` and `--power-policy` apply to `runs` and `engagement`. The `spread` check measures placement spread. The options are in the tool's header comment.
+- The diver knob `diveRanged` in `balance.json`, with the presets `diver` and `diverleap` in `src/data/proto.ts`.
+
+G3 numbers below use 50 seeds per seat (100 games, about ±5 points), merging on, `bot:balanced` as the defender unless stated.
+
+### G3 on every map
+
+Mono bot win rate against `bot:balanced` (✗ above the 55% limit). `test-3lane` is a bench map, so its column is a lead, not a verdict.
+
+| Mono bot | Bogwater Hollow (1 lane) | Stumpfield (1 lane) | Twin Roots (2 lanes) | test-3lane (3 lanes, lead) |
+|---|---|---|---|---|
+| Gill Archer Nest | **100** ✗ | **100** ✗ | **63** ✗ | 54 |
+| Sporeling Burrow | **75** ✗ | **70** ✗ | **77** ✗ | 85 |
+| Amanita Lodge | 48 | 41 | **64** ✗ | 81 |
+| Morel Warren | 54 | **57** ✗ | 54 | 47 |
+| Capguard Hall | 49 | 41 | 27 | 11 |
+| Veilstalker Hollow | 31 | 42 | 51 | 66 |
+| Rootbreaker Den | 15 | 17 | 53 | 54 |
+| Scythecap Grove | 42 | 38 | 11 | 1 |
+| Hammercap Forge | 28 | 23 | 20 | 22 |
+| Puffball Mortar | 9 | 8 | 0 | 0 |
+| Tender's Ring, Truffle Cellar, Rhizome Vault, Spore Exchange | 0–2 | 0–1 | 0 | 0–3 |
+
+- **Archers are a one-lane problem.** Mono Gill Nest wins every game on both one-lane maps, 63% on Twin Roots and 54% on three lanes.
+- **Mono Sporeling fails G3 on every map (70–85%).** In the 40-game guardrail it reads 65% on Bogwater. It has been above 55% since Hold was adopted, and it is now the other standing G3 miss.
+- **Each map type has its own winners.** More lanes help the single-building concentrators (Amanita, Rootbreaker, Veilstalker) and hurt Capguards and Scythecaps.
+- **The guardrail tests too little.** `npm run test:slow` measures G3 on Bogwater only, with 40 games. It misses Sporeling's real rate and every multi-lane failure.
+
+### Why Twin Roots differs
+
+Traces with `--checks lanes`, mono Gill Nest against `bot:balanced`, 25 seeds per seat (50 games). "Busy lane" is the lane where the mono side placed most of its spawners.
+
+| | Bogwater Hollow | Twin Roots |
+|---|---|---|
+| Mono wins | 100% | 58% |
+| Mono spawners all in one lane | 100% of games | 0% (64% in the busy lane) |
+| Archer supply on the field at 1:00 / 2:00 / 3:00 / 4:00 / 5:00 | 14 / 12 / 14 / 20 / 24 | 11 / 14 / 12 / 15 / 16, split 5.4+5.5 … 10.3+5.2 |
+| Defender supply on the field, same marks | 3.9 / 3.8 / 3.8 / 2.3 / 0.6 | 4.0 / 7.2 / 7.8 / 8.7 / 9.1 |
+| Defender's Heartcap hit | 50 of 50, all in the archers' lane | 44 of 50, 23 in the archers' busy lane |
+| Mono side's Heartcap hit | 0 of 50 | 30 of 50 |
+| Defender units spawned in the minute before its Heartcap was first hit | 273, all in the broken lane | 111 in the broken lane, 394 in the other |
+
+For the first three minutes the archers field about as much as on Bogwater, but in two halves. Neither half is big enough to beat the stream in front of it. The defender's second lane keeps producing untouched and counterattacks: the archers' own Heartcap is hit in 60% of games.
+
+A diagnostic confirms it: a scratch script set the AI's existing aggressive lane style, which puts spawners in the lane where the opponent holds the fewest columns. 100 games each:
+
+| Twin Roots, mono win rate | Default (both spread) | Mono side concentrates | Both sides concentrate |
+|---|---|---|---|
+| Gill Archer Nest | 63% | 78% | **94%** |
+| Sporeling Burrow | 77% | 85% | 84% |
+| Amanita Lodge | 64% | 63% | 48% |
+| Capguard Hall | 27% | 36% | 23% |
+
+- **Lane width isn't the cause.** When both sides concentrate, Twin Roots' 6-row lanes play like Bogwater (94%).
+- **Splitting is the cause.** The archer edge is about mass in one lane. A second lane halves that mass and gives the defender a front the archers can't reach.
+- **Amanita is the reverse case.** Its 300-gold opener buys one Lodge, so 94–99% of its Lodges end up in one lane. It wins Twin Roots by breaking that lane (47 of 47 breaks) while `bot:balanced` splits. When `bot:balanced` concentrates too, Amanita falls to 48%.
+- **Sporeling wins however the lanes are used.**
+
+### Diver prototype
+
+`diveRanged` (absent by default): the listed units prefer `ranged`-tagged enemy units over other targets and see them from `aggroAdd` tiles farther. With `burst`, a diver closing on a ranged unit sprints for a moment, then cools down (B1's mechanism, aimed at ranged targets only). There's no burrowing (§17 #7).
+
+| Preset or spec | Setting |
+|---|---|
+| `diver` | Veilstalkers prefer ranged units, aggro +2 against them |
+| `diverleap` | `diver`, plus ×2.5 speed for 1.5 s onto a ranged target, at most every 8 s |
+| Morel leap (`diveRanged:{"units":["morelRunner"],"aggroAdd":2,"burst":{…}}`) | The same, on Morel Runners |
+
+**Against `bot:balanced`** (Veilstalker weight 1 of 15), G3 on every map, 100 games:
+
+| Mono win rate (Bogwater / Stumpfield / Twin Roots) | Baseline | `diver` | `diverleap` | Morel leap |
+|---|---|---|---|---|
+| Gill Archer Nest | 100 / 100 / 63 | 100 / 100 / 66 | 100 / 100 / 67 | 100 / 100 / 63 |
+| Veilstalker Hollow | 31 / 42 / 51 | 31 / 44 / 52 | 37 / 49 / 55 | 31 / 42 / 51 |
+| Morel Warren | 54 / 57 / 54 | unchanged | unchanged | **65 / 60** / 53 ✗ |
+| Every other mono bot | — | unchanged | unchanged | unchanged |
+
+**Against defenders with more divers**, 100 games each. `diverdef` is a one-off bot (`--proto bot.diverdef:{…}`): `bot:balanced` with a Sporeling Burrow + Veilstalker Hollow opener and Hollow weight 5. `bot:slayer` is the G7 reference bot, with Hollow weight 8 and the balanced opener. `morelldef` is the same as `diverdef`, with Morel Warrens in place of Veilstalker Hollows.
+
+| Mono Gill Nest win rate (Bogwater / Twin Roots) | No diver | `diver` | `diverleap` |
+|---|---|---|---|
+| vs `diverdef` | 95 / 54 | 100 / 62 | 97 / **37** |
+| vs `bot:slayer` | 98 / 67 | 99 / 75 | 99 / 70 |
+| vs `morelldef` (Morel leap in the last column) | 96 / 61 | — | 98 / 66 |
+
+Mono Sporeling, Capguard and Amanita are unchanged against each defender (they field no ranged units).
+
+**Every guardrail.** Columns are `npm run experiment -- --proto <preset>` with the default checks (G3 there is 20 seeds per seat, Bogwater):
+
+| Check | Baseline | diver | diverleap |
+|---|---|---|---|
+| G3 mono Gill Nest (as player / as enemy) | 100% (100 / 100) | 100% (100 / 100) | 100% (100 / 100) |
+| Other mono bots above 55% | sporelingBurrow 65% | sporelingBurrow 65% | sporelingBurrow 65% |
+| Defender damage vs mono Gill Nest: Sporelings / turrets | 22% / 69% | 23% / 69% | 23% / 69% |
+| G1 | ✗ (gillNest: wins 7/8 pairings) | ✗ (gillNest: wins 7/8 pairings) | ✗ (gillNest: wins 7/8 pairings) |
+| G2 | ✓ | ✓ | ✓ |
+| G4 median / Decisions / bot wins | 7:13 / 10% / 55% ✓ | 7:13 / 8% / 50% ✓ | 7:13 / 12% / 50% ✓ |
+| G5 (+150 gold wins) | 75% ✓ | 75% ✓ | 78% ✗ |
+| G6 (6 columns behind wins) | 55% ✓ | 55% ✓ | 55% ✓ |
+| G7 mirror / Slayer mirror | 60% / 56% ✗ | 60% / 53% ✗ | 59% / 53% ✗ |
+| G8 asserted rows passing / `bot:balanced` vs Baron | 0 of 8 / 67% | 0 of 8 / 67% | 0 of 8 / 63% |
+| G11 tick mean / p99 | 0.17 / 0.50 ms ✓ | 0.22 / 1.17 ms ✓ | 0.23 / 1.04 ms ✓ |
+| Runs reaching the boss (80) | 20% | 20% | 20% |
+
+- **G5:** `diverleap`'s 78% is 3 points over the 75% limit. The baseline sits exactly at the limit, and over 40 games that's noise.
+- **G11:** the diver columns' G11 ran alongside other jobs, so their tick times are high.
+- **Every other verdict** matches the baseline.
+
+**Verdict: don't adopt the diver as an archer fix.**
+
+- It works only where the archer mass is already split: Twin Roots, with the burst and a defender that opens with a Hollow (54% → 37%).
+- On one-lane maps it changes nothing (95–100%).
+- Without the burst, the preference makes things worse: Veilstalkers walk into archer fire sooner (54 → 62 and 67 → 75).
+- The Morel version creates a mono Morel takeover.
+- Under `bot:balanced` it is harmless: no guardrail verdict changes, and mono Veilstalker gains 4–7 points. It could stay as flavour ("Veilstalkers hunt archers") if the user wants that, but not as balance.
+
+### Runs with commanders
+
+`npm run experiment -- --checks runs --commander all --power-policy auto|none --runs 60`: `bot:balanced`, greedy drafts, a random route, seeds 1–60. The auto row reproduces the [review's](ideas/one-more-run-review.md#fresh-measurements-2026-10-30-31f081d) scratch numbers exactly.
+
+| Commander | Power | Ended in battle 1 | Ended in 2 / 3 / 4 / 5 | Reached the boss | Won | Boss fights won | Battle minutes per run (mean) / when the boss is reached (median) |
+|---|---|---|---|---|---|---|---|
+| Vesper | auto | 19 (32%) | 13 / 5 / 4 / 3 | 23 (38%) | 16 (27%) | 16 of 23 | 15.3 / 24.5 |
+| Armilla | auto | 22 (37%) | 10 / 7 / 7 / 0 | 20 (33%) | 14 (23%) | 14 of 20 | 14.8 / 22.5 |
+| Cordis | auto | 20 (33%) | 22 / 2 / 3 / 0 | 15 (25%) | 13 (22%) | 13 of 15 | 13.3 / 20.5 |
+| Vesper | none | 31 (52%) | 12 / 3 / 1 / 1 | 14 (23%) | 12 (20%) | 12 of 14 | 12.3 / 23.4 |
+| Armilla | none | 42 (70%) | 10 / 2 / 3 / 1 | 6 (10%) | 2 (3%) | 2 of 6 | 10.0 / 25.1 |
+| Cordis | none | 25 (42%) | 17 / 5 / 6 / 1 | 11 (18%) | 6 (10%) | 6 of 11 | 12.8 / 21.6 |
+
+Battles lost by map, auto powers, all three commanders: Bogwater 57 of 165 (35%), Stumpfield 45 of 160 (28%), Twin Roots 39 of 119 (33%).
+
+- **The run is decided early.** A third of runs end in battle 1, and Cordis loses another 37% in battle 2. A run that reaches the boss wins 70–87% of the time.
+- **Powers matter.** Without them, battle-1 losses rise to 42–70%, and Armilla wins 3% of runs.
+- **Losses don't depend on the map**, even though mono archers are degenerate only on one-lane maps. A run's bot plays a mixed army, so the map-level G3 gap isn't what ends runs.
+- **The old `runs` check undercounted.** It played Vesper with no power policy, so its "about half end in battle 1" overstated M5 runs.
+
+`--checks engagement --commander all --power-policy auto` (single battles on Bogwater, 30 seeds) gives the per-commander pacing baseline for step B. Same column order: scripted / Old Mother Mold / Lichen Baron / Blightwright.
+
+| Commander | Player wins | Median length | First flip | Heartcap first hit → dead |
+|---|---|---|---|---|
+| Vesper | 80 / 47 / 87 / 80% | 5:50 / 6:19 / 6:51 / 5:42 | 1:40 / 1:09 / 0:34 / 0:34 | 20 / 22 / 18 / 23 s |
+| Armilla | 67 / 70 / 83 / 60% | 6:23 / 6:04 / 5:58 / 5:34 | 1:15 / 1:07 / 0:34 / 0:34 | 12 / 14 / 16 / 17 s |
+| Cordis | 43 / 20 / 70 / 60% | 6:59 / 6:08 / 7:04 / 5:48 | 1:16 / 1:12 / 0:34 / 0:34 | 15 / 22 / 15 / 21 s |
+
+The winner's Heartcap is untouched in 359 of 360 battles: the cliff is unchanged.
+
+### Placement spread (step C's baseline)
+
+`npm run experiment -- --checks spread` (`tools/lib/spread.ts`) is colony-swarm's version of Hivemind's puzzle generator. It asks how much better the best plot is than a typical one.
+
+**Board states.** `bot:balanced` (player) against `general:scripted` (the G4 pairing), seeds 1–3, paused at 1:00 and 3:00.
+
+**Placement.** For each of five buildings (Gill Nest, Sporeling Burrow, Capguard Hall, Truffle Cellar, Puffball Mortar), the player places it on every legal plot:
+- It gets the base cost as a gift and pays the plot's price, so a forward plot costs its surcharge.
+- Plots it can't afford even so are skipped. "Pass" places nothing.
+
+**Futures.** Each placement plays on for 90 s, over 8 futures that reseed the combat and AI streams identically for every plot.
+
+**Score.** The player's margin in supply at the horizon: field supply + columns + (bank + standing buildings' cost × HP fraction) / 50 + Heartcap HP taken / 50, each as the player's minus the opponent's.
+
+**Statistics.**
+- The best plot is cross-validated: chosen on half the futures, scored on the other half.
+- "Split-half ρ" is the rank correlation of the plots' scores between the two halves. Near 0, the ranking is noise. Near 1, plots really differ.
+- "Worth" is median plot − pass.
+
+**Run time.** About 1–4 minutes per building and setting.
+
+All 30 cases per setting (5 buildings × 3 seeds × 2 pauses), medians:
+
+| Setting | Paused at | Legal plots | Building worth | Best − median | As % of worth | Split-half ρ | ρ vs depth | ρ vs adjacency | Noise (one plot's SE) |
+|---|---|---|---|---|---|---|---|---|---|
+| Bogwater Hollow | 1:00 | 6 | 8.8 | +0.0 | 1% | 0.21 | −0.30 | −0.03 | ±2.0 |
+| Bogwater Hollow | 3:00 | 56 | 17.4 | +4.1 | 25% | 0.31 | −0.31 | 0.16 | ±4.4 |
+| Bogwater, Mycorrhizal Link | 1:00 | 6 | 10.4 | +0.5 | 10% | 0.20 | −0.03 | 0.15 | ±2.0 |
+| Bogwater, Mycorrhizal Link | 3:00 | 56 | 18.2 | +3.6 | 34% | 0.38 | −0.49 | 0.21 | ±5.0 |
+| Twin Roots | 1:00 | 17 | 10.7 | +1.1 | 17% | 0.40 | −0.26 | 0.26 | ±2.5 |
+| Twin Roots | 3:00 | 14 | 13.0 | +6.4 | 32% | 0.68 | 0.25 | 0.08 | ±3.3 |
+
+By building, Bogwater Hollow without the relic:
+
+| Building | Worth 1:00 / 3:00 | Best − median 1:00 / 3:00 | Split-half ρ 1:00 / 3:00 | ρ vs depth 3:00 |
+|---|---|---|---|---|
+| Gill Archer Nest | 11.6 / 26.6 | −0.6 / +5.8 | −0.20 / 0.64 | −0.80 |
+| Sporeling Burrow | 8.1 / 15.1 | +0.0 / +4.1 | 0.66 / 0.30 | −0.53 |
+| Capguard Hall | 12.5 / 19.0 | +1.0 / +2.6 | 0.57 / 0.25 | −0.41 |
+| Truffle Cellar | 6.3 / 6.8 | −0.0 / +1.7 | −0.14 / 0.02 | −0.25 |
+| Puffball Mortar | 2.4 / 9.7 | +0.5 / +7.3 | 0.26 / 0.37 | 0.49 |
+
+- **At 1:00 on Bogwater, placement doesn't matter.** The player owns only its home zone (about 6 free plots), and the best plot is the median plot.
+- **At 3:00 there is a little signal, and it is mostly "don't build forward".** Spawner scores fall with depth (Gill Nest ρ −0.80), and forward Nests die. Only the Mortar wants to be forward (ρ +0.49).
+- **Truffle Cellars are pure noise.** That matches F1: loam is a forward bet that doesn't pay.
+- **Mycorrhizal Link is below the noise floor.** ρ vs adjacency moves from 0.16 to 0.21 at 3:00 and split-half ρ barely moves. A 13% faster spawn interval is worth about 1 archer in 90 s, against a one-plot noise of ±4–5 supply.
+- **Twin Roots has the only clear signal.** Split-half ρ is 0.68 at 3:00, and it comes from which lane a building goes in, not from depth.
+
+The bar for step C: a network rule set on Bogwater should lift split-half ρ well above about 0.3, to at least Twin Roots' 0.6–0.7. It should also lift best − median well above about 25% of a building's worth, and do both at 1:00 as well as 3:00. The test is `npm run experiment -- --proto <network knob> --checks spread`.

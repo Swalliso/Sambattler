@@ -1,10 +1,10 @@
 // Engagement numbers (docs/engagement-review.md): how a battle is paced rather than who wins it.
 // The guardrails ask "is it degenerate?"; these ask when the front first moves, how many units are
 // on the field, how fast a beaten Heartcap falls, how often a side issues a command, and how a run
-// ends. Used by `npm run experiment -- --checks engagement,runs`.
+// ends, per commander and power policy when asked. Used by `npm run experiment -- --checks engagement,runs`.
 import type { Content } from '../../src/data/registry.ts';
 import { runHeadless } from '../../src/sim/index.ts';
-import type { BattleState, Side } from '../../src/sim/index.ts';
+import type { BattleState, PowerPolicy, Side } from '../../src/sim/index.ts';
 import { simulateRun } from '../../src/run/index.ts';
 import { buildState, median } from './run.ts';
 
@@ -13,6 +13,9 @@ export const SUPPLY_AT = [60, 120, 180, 300];
 
 export interface EngagementRow {
   player: string;
+  /** The player's commander and power policy, when given. */
+  commander?: string;
+  powerPolicy?: PowerPolicy;
   enemy: string;
   map: string;
   battles: number;
@@ -55,14 +58,19 @@ function track(state: BattleState, t: Tracker): void {
 
 const finite = (xs: number[]) => xs.filter(Number.isFinite);
 
-export function engagement(content: Content, opts: { player: string; enemy: string; map?: string; seeds: number[] }): EngagementRow {
+export function engagement(
+  content: Content, opts: { player: string; enemy: string; map?: string; seeds: number[]; commander?: string; powerPolicy?: PowerPolicy },
+): EngagementRow {
   const map = opts.map ?? 'bogwater-hollow';
   const flips: number[] = [], lengths: number[] = [], fall: number[] = [], fallHalf: number[] = [];
   const cmds: number[] = [], cpm: number[] = [], stance: number[] = [], merges: number[] = [];
   const supply: Record<number, number[]> = Object.fromEntries(SUPPLY_AT.map((s) => [s, []]));
   let wins = 0, decisions = 0, routs = 0, untouched = 0, noFlipBy3 = 0;
   for (const seed of opts.seeds) {
-    const state = buildState(content, { seed, map, player: opts.player, enemy: opts.enemy });
+    const state = buildState(content, {
+      seed, map, player: opts.player, enemy: opts.enemy,
+      ...(opts.commander ? { commander: opts.commander } : {}), ...(opts.powerPolicy ? { powerPolicy: opts.powerPolicy } : {}),
+    });
     const t: Tracker = { firstFlip: Infinity, firstHit: { player: Infinity, enemy: Infinity }, half: { player: Infinity, enemy: Infinity }, supply: {} };
     runHeadless(state, { until: 'end', onTick: (s) => track(s, t) });
     const tr = state.rules.tickRate;
@@ -88,6 +96,7 @@ export function engagement(content: Content, opts: { player: string; enemy: stri
   }
   return {
     player: opts.player, enemy: opts.enemy, map, battles: opts.seeds.length, playerWins: wins, decisions,
+    ...(opts.commander ? { commander: opts.commander } : {}), ...(opts.powerPolicy ? { powerPolicy: opts.powerPolicy } : {}),
     medianSeconds: median(lengths),
     firstFlipSeconds: finite(flips).length ? median(finite(flips)) : Infinity,
     noFlipBy3,
@@ -103,23 +112,71 @@ export function engagementLines(r: EngagementRow): string[] {
   const n = r.battles;
   const pct = (x: number) => `${Math.round((100 * x) / Math.max(1, n))}%`;
   return [
-    `${r.player} vs ${r.enemy} on ${r.map} (${n} seeds): player ${pct(r.playerWins)}, Decisions ${pct(r.decisions)}, median ${clock(r.medianSeconds)}`,
+    `${r.player}${r.commander ? ` (${r.commander}, power ${r.powerPolicy ?? 'none'})` : ''} vs ${r.enemy} on ${r.map} (${n} seeds): player ${pct(r.playerWins)}, Decisions ${pct(r.decisions)}, median ${clock(r.medianSeconds)}`,
     `    first flip ${clock(r.firstFlipSeconds)} (none by 3:00 in ${pct(r.noFlipBy3)}); supply on field ${SUPPLY_AT.map((s) => `${clock(s)} ${r.supplyAt[s]}`).join(' · ')}`,
     `    routs ${r.routs}: Heartcap first hit → dead ${r.fallSeconds.toFixed(1)} s, half → dead ${r.fallFromHalfSeconds.toFixed(1)} s; winner untouched ${r.winnerUntouched}/${n}`,
     `    player commands ${r.playerCommands} per battle (${r.playerCommandsPerMinute.toFixed(1)}/min, stance ${r.stanceCommands}); merges ${r.merges}`,
   ];
 }
 
-export interface RunEnding { runs: number; reachedBoss: number; victories: number; endedInBattle: Record<number, number>; fullHeartcapVictories: number }
+export interface RunEnding {
+  runs: number;
+  /** The run's commander (the run default when none was asked for) and how the bot used its power. */
+  commander: string;
+  power: PowerPolicy;
+  reachedBoss: number;
+  victories: number;
+  /** Defeats by the battle they ended in (1-based). */
+  endedInBattle: Record<number, number>;
+  fullHeartcapVictories: number;
+  /** Battles played and lost, by map. */
+  playedOnMap: Record<string, number>;
+  lostOnMap: Record<string, number>;
+  /** Battle minutes per run: the mean over all runs, and the median over runs that reached the boss. */
+  meanBattleMinutes: number;
+  medianBattleMinutesAtBoss: number;
+}
 
-/** How runs end (`bot:balanced`, greedy drafts, random route). */
-export function runEndings(content: Content, runs: number, player = 'bot:balanced'): RunEnding {
-  const ended: Record<number, number> = {};
-  let boss = 0, wins = 0, full = 0;
+export interface RunEndingOptions {
+  player?: string;
+  /** A commander id; omitted plays the run default. */
+  commander?: string;
+  /** How the bot uses the commander power (default none, as before M5). */
+  power?: PowerPolicy;
+}
+
+/** How runs end (`bot:balanced`, greedy drafts, random route), with an optional commander and power policy. */
+export function runEndings(content: Content, runs: number, opts: RunEndingOptions = {}): RunEnding {
+  const player = opts.player ?? 'bot:balanced';
+  const power = opts.power ?? 'none';
+  const ended: Record<number, number> = {}, playedOnMap: Record<string, number> = {}, lostOnMap: Record<string, number> = {};
+  const atBoss: number[] = [];
+  let boss = 0, wins = 0, full = 0, minutes = 0, commander = opts.commander ?? '';
   for (let seed = 1; seed <= runs; seed++) {
-    const r = simulateRun(content, seed, { player, draft: 'greedy', route: 'random' });
-    if (r.reachedBoss) boss++;
+    const r = simulateRun(content, seed, { player, draft: 'greedy', route: 'random', power }, opts.commander ? { commander: opts.commander } : {});
+    commander = r.run.commander;
+    const mins = r.totalBattleTicks / content.balance.tickRate / 60;
+    minutes += mins;
+    if (r.reachedBoss) { boss++; atBoss.push(mins); }
     if (r.outcome === 'victory') { wins++; if (r.heartcap.hp === r.heartcap.max) full++; } else ended[r.battleCount] = (ended[r.battleCount] ?? 0) + 1;
+    for (const b of r.battles) {
+      playedOnMap[b.map] = (playedOnMap[b.map] ?? 0) + 1;
+      if (b.winner !== 'player') lostOnMap[b.map] = (lostOnMap[b.map] ?? 0) + 1;
+    }
   }
-  return { runs, reachedBoss: boss, victories: wins, endedInBattle: ended, fullHeartcapVictories: full };
+  return {
+    runs, commander, power, reachedBoss: boss, victories: wins, endedInBattle: ended, fullHeartcapVictories: full, playedOnMap, lostOnMap,
+    meanBattleMinutes: minutes / runs, medianBattleMinutesAtBoss: median(atBoss),
+  };
+}
+
+export function runEndingLines(r: RunEnding): string[] {
+  const pct = (x: number) => `${Math.round((100 * x) / Math.max(1, r.runs))}%`;
+  const ended = Object.entries(r.endedInBattle).map(([b, n]) => `${n} in battle ${b}`).join(', ');
+  const lost = Object.entries(r.playedOnMap).sort((a, b) => a[0].localeCompare(b[0])).map(([m, n]) => `${m} ${r.lostOnMap[m] ?? 0}/${n}`).join(', ');
+  return [
+    `runs (${r.commander}, power ${r.power}): ${r.reachedBoss}/${r.runs} reach the boss (${pct(r.reachedBoss)}), ${r.victories} win (${pct(r.victories)}; ${r.fullHeartcapVictories} at full Heartcap); boss fights won ${r.victories} of ${r.reachedBoss}`,
+    `    defeats ended ${ended || 'nowhere'}; ended in battle 1: ${r.endedInBattle[1] ?? 0} (${pct(r.endedInBattle[1] ?? 0)})`,
+    `    battle minutes: mean ${r.meanBattleMinutes.toFixed(1)} per run, median ${Number.isFinite(r.medianBattleMinutesAtBoss) ? r.medianBattleMinutesAtBoss.toFixed(1) : '—'} when the boss is reached; battles lost by map: ${lost}`,
+  ];
 }
