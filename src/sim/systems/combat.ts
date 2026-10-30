@@ -104,13 +104,39 @@ function spawnerDefense(state: BattleState, storm: number): void {
   }
 }
 
+/** Combat rework `pinned`: does an enemy unit stand within `radius` tiles (edge distance) of `u`? */
+export function isPinned(state: BattleState, u: UnitState, radius: number): boolean {
+  const r = unitRadius(state, u);
+  const n = queryNear(u.x, u.y, radius + r + MAX_RADIUS + 1);
+  const near = nearBuffer();
+  for (let k = 0; k < n; k++) {
+    const v = state.units[near[k]!]!;
+    if (v.side === u.side || v.lane !== u.lane || v.hp <= 0) continue;
+    const dx = v.x - u.x, dy = v.y - u.y;
+    const reach = radius + r + unitRadius(state, v);
+    if (dx * dx + dy * dy <= reach * reach) return true;
+  }
+  return false;
+}
+
+/**
+ * Combat rework `pinned` (balance `pinned`): a pinned ranged unit's attack cooldown runs on only
+ * `permille` ticks in 1000, spread evenly (phased by unit id), so it attacks at that share of its
+ * rate. True on the ticks its cooldown skips.
+ */
+function pinSkips(state: BattleState, u: UnitState, pin: NonNullable<BattleState['rules']['pin']>): boolean {
+  if (((state.tick + u.id) * pin.permille) % 1000 < pin.permille) return false;
+  return unitDef(state, u).tags.includes('ranged') && isPinned(state, u, pin.radius);
+}
+
 const turretScratch = { x: 0, y: 0, lane: 0 };
 
 export function attackSystem(state: BattleState): void {
   const tick = state.tick;
   const storm = stormMult(state);
+  const pin = state.rules.pin;
   for (const u of state.units) {
-    if (u.cooldown > 0) u.cooldown--;
+    if (u.cooldown > 0 && !(pin && pinSkips(state, u, pin))) u.cooldown--;
     if (u.cooldown > 0 || u.targetId === 0) continue;
     const def = unitDef(state, u);
     if (def.support) continue; // healers hold at range and never attack

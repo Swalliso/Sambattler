@@ -69,6 +69,9 @@ export const PROTO_PRESETS: Record<string, Json> = {
   bigdrafts: { draftWaves: [2, 5], 'draft.cards': 4, bigDrafts: { picks: 2, rareBonus: 10 } },
   /** T3: home-column spawners shoot the nearest enemy unit within 6 tiles (12 Pierce per second). */
   t3: { spawnerDefense: { damage: 12, damageType: 'pierce', interval: 1, range: 6, projectileSpeed: 12, homeOnly: true } },
+  // ---- the combat rework's package (docs/ideas/combat-rework.md, P1); `rework` turns on all five ----
+  /** Pinned: a ranged unit with an enemy unit within 1 tile attacks at 0.35× its rate. */
+  pinned: { pinned: { radius: 1, rateMult: 0.35 } },
 };
 
 /** Sets a dotted path; `null` removes the setting instead (`laneStance:null` turns Hold off). */

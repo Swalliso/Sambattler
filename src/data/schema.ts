@@ -203,6 +203,11 @@ export const BalanceSchema = z.object({
    * rarity points from common to rare. `draftWaves` and `draft.cards` set how many drafts and cards.
    */
   bigDrafts: z.object({ picks: z.number().int().positive().optional(), rareBonus: z.number().nonnegative().optional() }).strict().optional(),
+  /**
+   * Combat rework `pinned` (docs/ideas/combat-rework.md, P1), absent by default: a `ranged` unit with
+   * an enemy unit within `radius` tiles (edge distance) attacks at `rateMult` × its normal rate.
+   */
+  pinned: z.object({ radius: Pos, rateMult: z.number().gt(0).max(1) }).strict().optional(),
   firstSpawnFraction: z.number().min(0).max(1),
   timeLimitSeconds: Pos,
   heartcapPlayerHp: z.number().int().positive(),

@@ -242,6 +242,11 @@ export interface Rules {
   deployDraft?: { cards?: number };
   /** Bigger-drafts prototype (balance `bigDrafts`): cards taken per in-battle draft and the offers' rare bonus; absent by default. */
   bigDrafts?: { picks: number; rareBonus: number };
+  /**
+   * Combat rework `pinned` (balance `pinned`): a ranged unit with an enemy unit within `radius` runs
+   * its attack cooldown on `permille` ticks in 1000; absent by default.
+   */
+  pin?: { radius: number; permille: number };
   timeLimitTicks: number;
   captureThreshold: number;
   captureStep: number;

@@ -79,6 +79,7 @@ export function compileRules(b: BalanceDef, config: BattleConfig): Rules {
     } : {}),
     ...(b.hotStart?.deployDraft ? { deployDraft: { ...b.hotStart.deployDraft } } : {}),
     ...(b.bigDrafts ? { bigDrafts: { picks: b.bigDrafts.picks ?? 1, rareBonus: b.bigDrafts.rareBonus ?? 0 } } : {}),
+    ...(b.pinned ? { pin: { radius: b.pinned.radius, permille: Math.round(b.pinned.rateMult * 1000) } } : {}),
     timeLimitTicks: secToTicks(test.timeLimitSeconds ?? b.timeLimitSeconds, tr),
     captureStep: 100,
     captureThreshold: Math.round(b.captureSeconds * tr * 100),
