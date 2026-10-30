@@ -215,6 +215,18 @@ export const BalanceSchema = z.object({
    * (aggro × leashMult), and also while the attacker is still attacking it or a friend within `radius`.
    */
   callForHelp: z.object({ radius: Pos }).strict().optional(),
+  /**
+   * Combat rework `sporeCloud`, absent by default: every shell from a listed tower (the Puffball
+   * Mortar) leaves a spore cloud of `radius` tiles where it lands, for `seconds`. Every
+   * `pulseSeconds` (default 1) on the battle clock, a cloud deals `damagePerSecond` × pulseSeconds,
+   * ignoring armor, to every enemy unit whose body is inside it; buildings and friendly units are
+   * untouched. `range` replaces the listed towers' base range. When the AI places a listed tower, each
+   * tile of lane it reaches past the side's border adds `aiCover` to the spot's score (default 1).
+   */
+  sporeCloud: z.object({
+    buildings: z.array(z.string()).min(1), radius: Pos, seconds: Pos, damagePerSecond: Pos,
+    pulseSeconds: Pos.optional(), range: Pos.optional(), aiCover: z.number().nonnegative().optional(),
+  }).strict().optional(),
   firstSpawnFraction: z.number().min(0).max(1),
   timeLimitSeconds: Pos,
   heartcapPlayerHp: z.number().int().positive(),

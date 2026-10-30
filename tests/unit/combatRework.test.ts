@@ -3,10 +3,12 @@
 // exists only under its preset, so the shipped rules are unchanged; with a setting on, it behaves as
 // described.
 import { describe, expect, it } from 'vitest';
+import { laneCover } from '../../src/sim/ai/controller.ts';
 import { createBattle, makeConfig } from '../../src/sim/index.ts';
 import type { BattleState, Content } from '../../src/sim/index.ts';
+import { addCloud } from '../../src/sim/systems/clouds.ts';
 import { protoContent } from '../../tools/lib/content.ts';
-import { building, content, liveState, steps, unit } from '../helpers.ts';
+import { building, content, liveState, setBorders, steps, unit } from '../helpers.ts';
 
 const NO_FIELD = { noTurrets: true, noTerritory: true, noHeartcapTargets: true };
 
@@ -28,13 +30,15 @@ describe('the combat rework settings are off by default', () => {
     const b = content.balance;
     expect(b.pinned).toBeUndefined();
     expect(b.callForHelp).toBeUndefined();
+    expect(b.sporeCloud).toBeUndefined();
     const s = liveState();
     expect(s.rules.pin).toBeUndefined();
     expect(s.rules.help).toBeUndefined();
+    expect(s.rules.cloud).toBeUndefined();
   });
 
   it('the presets compile', () => {
-    for (const p of ['pinned', 'callforhelp']) expect(() => protoContent(p)).not.toThrow();
+    for (const p of ['pinned', 'callforhelp', 'sporecloud']) expect(() => protoContent(p)).not.toThrow();
     expect(protoState(protoContent('pinned')).rules.pin).toEqual({ radius: 1, permille: 350 });
     expect(protoState(protoContent('callforhelp')).rules.help).toEqual({ radius: 5 });
   });
@@ -119,5 +123,56 @@ describe('call for help (balance callForHelp)', () => {
     const { guard, archer } = siege(true, 40, { busy: true });
     expect(guard.targetId).not.toBe(0);
     expect(guard.targetId).not.toBe(archer.id);
+  });
+});
+
+describe('spore clouds (balance sporeCloud)', () => {
+  it('the Mortar reaches 7 tiles under the setting, 6 without; battles without it carry no clouds', () => {
+    expect(liveState().compiled.player.buildings.puffballMortar!.attack!.range).toBe(6);
+    expect(liveState().clouds).toBeUndefined();
+    const s = protoState(protoContent('sporecloud'));
+    expect(s.compiled.player.buildings.puffballMortar!.attack!.range).toBe(7);
+    expect(s.rules.cloud).toEqual({ buildings: ['puffballMortar'], radius: 1.5, ticks: 120, pulseTicks: 20, damage: 10, aiCover: 1 });
+    expect(s.clouds).toEqual([]);
+  });
+
+  it('a cloud deals 10 a second for 6 s, ignoring armor, to the enemy units inside it only', () => {
+    const s = protoState(protoContent('sporecloud'));
+    const knight = unit(s, 'enemy', 'amanitaKnight', 10, 3);
+    const archer = unit(s, 'enemy', 'gillArcher', 10.8, 3.6);
+    const outside = unit(s, 'enemy', 'sporeling', 13, 3);
+    const friend = unit(s, 'player', 'capguard', 9.2, 2.2);
+    const cellar = building(s, 'enemy', 'truffleCellar', 9, 4);
+    for (const [side, id] of [['enemy', 'amanitaKnight'], ['enemy', 'gillArcher'], ['enemy', 'sporeling'], ['player', 'capguard']] as const) freeze(s, side, id);
+    addCloud(s, 'player', 0, 10, 3, 0);
+    steps(s, 200);
+    expect(knight.maxHp - knight.hp).toBe(60); // heavy armor doesn't matter
+    expect(archer.maxHp - archer.hp).toBe(60);
+    expect(outside.hp).toBe(outside.maxHp);
+    expect(friend.hp).toBe(friend.maxHp);
+    expect(cellar.hp).toBe(cellar.maxHp);
+    expect(s.clouds).toEqual([]);
+    expect(s.stats.player.damageBySource.sporeCloud).toBe(120);
+  });
+
+  it("a Mortar's shell leaves a cloud where it lands; without the setting it leaves none", () => {
+    for (const on of [true, false]) {
+      const s = on ? protoState(protoContent('sporecloud')) : liveState({ test: NO_FIELD });
+      building(s, 'player', 'puffballMortar', 4, 2);
+      const knight = unit(s, 'enemy', 'amanitaKnight', 10, 3);
+      freeze(s, 'enemy', 'amanitaKnight');
+      steps(s, 60);
+      if (!on) { expect(s.clouds).toBeUndefined(); continue; }
+      expect(s.clouds).toHaveLength(1);
+      expect(s.clouds![0]).toMatchObject({ side: 'player', lane: 0, x: knight.x, y: knight.y });
+    }
+  });
+
+  it('the AI scores a cloud tower by the lane it reaches past its border', () => {
+    const s = protoState(protoContent('sporecloud'));
+    setBorders(s, 6, 25);
+    expect(laneCover(s, 'player', 0, 5, 7)).toBe(5);
+    expect(laneCover(s, 'player', 0, 1, 3)).toBe(0);
+    expect(laneCover(s, 'enemy', 0, 27, 7)).toBe(5);
   });
 });

@@ -190,6 +190,12 @@ export function weakestOpponentLane(state: BattleState, side: Side): number {
   return best;
 }
 
+/** Combat rework `sporeCloud`: tiles of `lane` past `side`'s border that a tower centred at `cx` reaches. */
+export function laneCover(state: BattleState, side: Side, lane: number, cx: number, range: number): number {
+  const L = state.lanes[lane]!;
+  return Math.max(0, side === 'player' ? cx + range - (L.pBorder + 1) : L.eBorder - (cx - range));
+}
+
 /** Best-scoring legal position (SPEC §7.3), or null if none. */
 export function choosePlacement(
   state: BattleState, side: Side, buildingId: string, planned: Plan[], pressure: Pressure,
@@ -239,6 +245,8 @@ export function choosePlacement(
       const front = p.lane === pressure.mostLane &&
         (side === 'player' ? p.col + def.w - 1 >= L.pBorder - 1 : p.col <= L.eBorder + 1);
       score = (front ? sc.towerFront : 0) - sc.towerThreat * threat;
+      // combat rework `sporeCloud`: a cloud tower values the lane it reaches past the border
+      if (r.cloud && def.attack && r.cloud.buildings.includes(buildingId)) score += r.cloud.aiCover * laneCover(state, side, p.lane, cx, def.attack.range);
     } else {
       score = -sc.economyDepth * p.depth - sc.towerThreat * threat;
     }

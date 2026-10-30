@@ -6,6 +6,7 @@ import { fireTriggers } from './effects.ts';
 import { powerClock } from './powers.ts';
 import { healingSystem } from './systems/healing.ts';
 import { attackSystem, deathSystem, resolveHitsSystem } from './systems/combat.ts';
+import { cloudSystem } from './systems/clouds.ts';
 import { clockSystem, incomeSystem } from './systems/economy.ts';
 import { mergingSystem } from './systems/merging.ts';
 import { movementSystem } from './systems/movement.ts';
@@ -65,8 +66,9 @@ export function step(state: BattleState): void {
   movementSystem(state);
   // 9. attacks
   attackSystem(state);
-  // 10. resolve hits due this tick
+  // 10. resolve hits due this tick (and, with the combat rework's spore clouds, the clouds' pulses)
   resolveHitsSystem(state);
+  if (state.clouds) cloudSystem(state);
   // 11. healing (Tenders) and out-of-combat regeneration
   healingSystem(state);
   // 12. deaths and removals

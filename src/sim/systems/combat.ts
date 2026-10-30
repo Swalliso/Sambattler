@@ -1,6 +1,7 @@
 // Attacks, projectiles, damage and deaths (SPEC §5.3, §4.5 turrets).
 import { fireBreaches, fireTriggers, runAction } from '../effects.ts';
 import { insertHit } from '../hits.ts';
+import { addCloud } from './clouds.ts';
 import { HEARTCAP_ID, POWER_SOURCE_ID, SIDES, other } from '../state.ts';
 import type { Armor, BattleState, DamageType, Effectiveness, PendingHit, Side, UnitState } from '../state.ts';
 import { nearBuffer, queryNear } from '../spatial.ts';
@@ -337,6 +338,7 @@ export function resolveHitsSystem(state: BattleState): void {
   while (n < hits.length && hits[n]!.tick <= state.tick) n++;
   if (n === 0) return;
   const falloff = state.rules.splashFalloff;
+  const cloud = state.rules.cloud;
   for (let i = 0; i < n; i++) {
     const h = hits[i]!;
     const enemy = other(h.side);
@@ -353,6 +355,7 @@ export function resolveHitsSystem(state: BattleState): void {
       alive = state.sides[enemy].heartcapHp > 0;
     }
     if (alive) applyDamage(state, h, h.targetId, 1, ix, iy);
+    if (cloud && cloud.buildings.includes(h.sourceType)) addCloud(state, h.side, h.lane, ix, iy, h.sourceBuildingId);
     if (h.splashRadius > 0) {
       const s = h.splashRadius;
       // splash falls off around a struck target; a ground burst (no target) hits everything at full damage

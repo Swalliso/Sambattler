@@ -81,6 +81,14 @@ export function compileRules(b: BalanceDef, config: BattleConfig): Rules {
     ...(b.bigDrafts ? { bigDrafts: { picks: b.bigDrafts.picks ?? 1, rareBonus: b.bigDrafts.rareBonus ?? 0 } } : {}),
     ...(b.pinned ? { pin: { radius: b.pinned.radius, permille: Math.round(b.pinned.rateMult * 1000) } } : {}),
     ...(b.callForHelp ? { help: { radius: b.callForHelp.radius } } : {}),
+    ...(b.sporeCloud ? {
+      cloud: {
+        buildings: [...b.sporeCloud.buildings], radius: b.sporeCloud.radius, ticks: secToTicks(b.sporeCloud.seconds, tr),
+        pulseTicks: Math.max(1, secToTicks(b.sporeCloud.pulseSeconds ?? 1, tr)),
+        damage: Math.max(1, Math.round(b.sporeCloud.damagePerSecond * (b.sporeCloud.pulseSeconds ?? 1))),
+        aiCover: b.sporeCloud.aiCover ?? 1,
+      },
+    } : {}),
     timeLimitTicks: secToTicks(test.timeLimitSeconds ?? b.timeLimitSeconds, tr),
     captureStep: 100,
     captureThreshold: Math.round(b.captureSeconds * tr * 100),
@@ -263,11 +271,13 @@ export function compileBuilding(lib: Library, id: string, mods: readonly Modifie
     if (interval.positional) out.spawn.positional = interval.positional;
   }
   if (b.attack) {
+    // combat rework `sporeCloud`: the cloud towers' base range
+    const cloud = bal.sporeCloud?.range !== undefined && bal.sporeCloud.buildings.includes(b.id) ? bal.sporeCloud.range : undefined;
     out.attack = {
       damage: stat('tower.damage', b.attack.damage).value,
       damageType: b.attack.damageType,
       intervalTicks: Math.max(1, secToTicks(b.attack.interval, tr)),
-      range: stat('tower.range', b.attack.range).value,
+      range: stat('tower.range', cloud ?? b.attack.range).value,
       minRange: b.attack.minRange ?? 0,
       splashRadius: stat('tower.splashRadius', b.attack.splashRadius ?? 0).value,
       projectileSpeed: b.attack.projectileSpeed,

@@ -249,6 +249,12 @@ export interface Rules {
   pin?: { radius: number; permille: number };
   /** Combat rework `callForHelp` (balance `callForHelp`): the call's radius; absent by default. */
   help?: { radius: number };
+  /**
+   * Combat rework `sporeCloud` (balance `sporeCloud`): towers whose shells leave clouds, the clouds'
+   * radius and lifetime, the damage per pulse and the pulse cadence, and the AI's cover score per
+   * tile; absent by default.
+   */
+  cloud?: { buildings: string[]; radius: number; ticks: number; pulseTicks: number; damage: number; aiCover: number };
   timeLimitTicks: number;
   captureThreshold: number;
   captureStep: number;
@@ -373,6 +379,21 @@ export interface BuildingState {
   hasProduced: boolean;
   mergeOn: boolean;
   holding: boolean;
+}
+
+/**
+ * Combat rework `sporeCloud`: a spore cloud left where a tower's shell landed. It damages enemy units
+ * of `side`'s opponent inside it on every pulse until `untilTick`. Clouds keep the order they formed in.
+ */
+export interface CloudState {
+  id: number;
+  side: Side;
+  lane: number;
+  x: number;
+  y: number;
+  untilTick: number;
+  /** The tower that fired it (damage-by-building stats). */
+  sourceBuildingId: number;
 }
 
 export interface PendingHit {
@@ -589,6 +610,8 @@ export interface BattleState {
   units: UnitState[];
   buildings: BuildingState[];
   hits: PendingHit[];
+  /** Combat rework `sporeCloud`: the clouds on the field, oldest first. Absent unless `rules.cloud`. */
+  clouds?: CloudState[];
   sporestorm: number;
   queue: Command[];
   log: Command[];

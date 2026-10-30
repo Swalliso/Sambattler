@@ -74,6 +74,11 @@ export const PROTO_PRESETS: Record<string, Json> = {
   pinned: { pinned: { radius: 1, rateMult: 0.35 } },
   /** Call for help: friendly units within 5 tiles of a unit or building that takes damage, and have no target, take the attacker. */
   callforhelp: { callForHelp: { radius: 5 } },
+  /**
+   * Spore clouds: the Puffball Mortar reaches 7 tiles, and each shell leaves a cloud (radius 1.5,
+   * 6 s) that deals 10 damage a second, ignoring armor, to the enemy units inside it.
+   */
+  sporecloud: { sporeCloud: { buildings: ['puffballMortar'], range: 7, radius: 1.5, seconds: 6, damagePerSecond: 10, aiCover: 1 } },
 };
 
 /** Sets a dotted path; `null` removes the setting instead (`laneStance:null` turns Hold off). */
