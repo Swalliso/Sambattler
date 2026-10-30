@@ -1,10 +1,11 @@
 // The shared AI framework for the generals and the strategy bots (SPEC §7.2–7.3, §7.9). It acts
-// only by queueing ordinary commands for the next tick (placements, merge toggles and, during a
-// doctrine change, sales), and draws randomness only from the `ai` stream. The counter cycle lives in
-// counter.ts; here its doctrine scales the purchase weights.
+// only by queueing ordinary commands for the next tick (placements, merge toggles, the commander power
+// under the auto policy and, during a doctrine change, sales), and draws randomness only from the `ai`
+// stream. The counter cycle lives in counter.ts; here its doctrine scales the purchase weights.
 import { counterFloor, doctrineMult } from './counter.ts';
 import { queueCommand } from '../commands.ts';
 import { legalPlacements } from '../placement.ts';
+import { autoPowerTarget } from '../powers.ts';
 import { nextFloat, nextSigned } from '../rng.ts';
 import { other } from '../state.ts';
 import type { AiState, BattleState, Side } from '../state.ts';
@@ -36,6 +37,7 @@ export function aiThink(state: BattleState, side: Side): void {
   if (!ai) return;
   applyMergePolicy(state, side, ai);
   applyStancePolicy(state, side, ai);
+  applyPowerPolicy(state, side);
   const pressure = assessPressure(state, side);
   if (ai.target && state.tick - ai.targetSince >= state.rules.ai.stickyTicks) ai.target = null;
   if (!ai.target) {
@@ -68,6 +70,14 @@ export function slayerSpawnShare(state: BattleState, side: Side): number {
     if (u.slayer) slayer += rate;
   }
   return all > 0 ? slayer / all : 0;
+}
+
+/** With `powerPolicy: auto`, uses a ready commander power on the best target it sees (src/sim/powers.ts). */
+function applyPowerPolicy(state: BattleState, side: Side): void {
+  if (state.config[side].powerPolicy !== 'auto') return;
+  if (state.queue.some((c) => c.side === side && c.type === 'power')) return;
+  const target = autoPowerTarget(state, side);
+  if (target) queueCommand(state, { tick: state.tick + 1, side, type: 'power', ...target });
 }
 
 /** Sets each spawner's merge toggle per the side's policy, through ordinary toggleMerge commands. */

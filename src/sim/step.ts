@@ -3,6 +3,7 @@ import { executeCommands, executeHeldCommands } from './commands.ts';
 import { aiOpener, aiThink } from './ai/controller.ts';
 import { counterTick } from './ai/counter.ts';
 import { fireTriggers } from './effects.ts';
+import { powerClock } from './powers.ts';
 import { healingSystem } from './systems/healing.ts';
 import { attackSystem, deathSystem, resolveHitsSystem } from './systems/combat.ts';
 import { clockSystem, incomeSystem } from './systems/economy.ts';
@@ -46,8 +47,9 @@ export function step(state: BattleState): void {
   // 2. commands (and, with prototype E1, holds that have run out)
   executeCommands(state, state.tick);
   if (state.rules.stance) stanceSystem(state);
-  // 3. clock, waves, Sporestorm
+  // 3. clock, waves, Sporestorm, power cooldowns
   clockSystem(state);
+  powerClock(state);
   // 4. income and interest
   incomeSystem(state);
   // 5. building timers and spawns

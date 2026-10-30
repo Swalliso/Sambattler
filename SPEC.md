@@ -1292,7 +1292,7 @@ All maps are point-symmetric and hand-authored. Map files sit next to the other 
 | Commander | Core pool (6) | Starter kit (3) | Passive | Active power |
 |---|---|---|---|---|
 | **Vesper Velvetcap** (starter) | Burrow, Capguard Hall, Gill Nest, Rootbreaker Den, Puffball Mortar, Truffle Cellar | Burrow, Capguard Hall, Truffle Cellar | Buildings in home columns spawn 10% faster | **Spore Burst:** 90 crush to every enemy unit and building within 2 tiles of a point. Cooldown 75 s; first ready at 0:45. |
-| **Armilla the Vast** | Capguard Hall, Rootbreaker Den, Puffball Mortar, Truffle Cellar, Hammercap Forge, Rhizome Vault | Capguard Hall, Truffle Cellar, Puffball Mortar | Capture speed +25% | **Rhizome Surge:** instantly capture your frontier column in every lane where it holds no enemy building. Cooldown 100 s; first ready at 1:30. |
+| **Armilla the Vast** | Capguard Hall, Rootbreaker Den, Puffball Mortar, Truffle Cellar, Hammercap Forge, Rhizome Vault | Capguard Hall, Truffle Cellar, Puffball Mortar | Capture speed +25% | **Rhizome Tithe:** +30 gold for every column you hold past your home columns. Cooldown 75 s; first ready at 1:00. (Reworked in M5 from Rhizome Surge, which captured the frontier column in every lane: instant captures cost the reference bot battles. See docs/m5-plan.md.) |
 | **Cordis the Puppeteer** | Burrow, Gill Nest, Scythecap Grove, Veilstalker Hollow, Tender's Ring, Truffle Cellar | Burrow, Gill Nest, Truffle Cellar | Knit time −50%; merge radius 2.0 | **Puppet Bloom:** every same-type trio within 3 tiles of a point merges instantly, ignoring the combat timer. Cooldown 80 s; first ready at 1:00. |
 
 ### 11.11 Generals' doctrine weights (Milestone 4)
@@ -2241,7 +2241,7 @@ The verification blocks below are written so Claude can run them unattended. Scr
 2. Powers take effect:
 
    ```bash
-   npm run sim -- --seed 3 --player bot:balanced --commander armilla --power-policy auto --flags merging,adaptive,powers --assert "stats.player.powerCaptures>=1"
+   npm run sim -- --seed 3 --player bot:balanced --commander armilla --power-policy auto --flags merging,adaptive,powers --assert "stats.player.powerGold>=1"
    npm run sim -- --seed 3 --player bot:balanced --commander cordis  --power-policy auto --flags merging,adaptive,powers --assert "stats.player.powerMerges>=1"
    ```
 

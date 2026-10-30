@@ -2,10 +2,11 @@
 // first two battles of a run, each tip shows once, ever: the frontier and territory a few seconds after
 // Begin, Hold / Advance a little later, the first draft as it opens, the Sporestorm as it starts and
 // interest the first time it pays. They go through the callout lane, one at a time and never over the
-// field, and each names its key. Which tips were shown is remembered (spore-sprawl/tips/v1, through
+// field, and each names its key. The commander power's tip comes the first time it is ready. Which tips were shown is remembered (spore-sprawl/tips/v1, through
 // storageKey()); the settings screen turns tips off or shows them all again. Battle 1's economy tip
 // (playtest 2026-10-28) goes through the same queue, but it isn't remembered: it fires whenever battle 1
 // reaches 0:30 without an economy building.
+import { powerOf } from '../sim/index.ts';
 import type { BattleState } from '../sim/index.ts';
 import type { Callouts } from '../ui/callouts.ts';
 import { h } from '../ui/h.ts';
@@ -20,7 +21,7 @@ const WINDOW = 30;
 /** Tips show in a run's first two battles (and in single battles numbered 1 or 2). */
 const LAST_BATTLE = 2;
 
-export type TipId = 'frontier' | 'hold' | 'draft' | 'storm' | 'interest' | 'economy';
+export type TipId = 'frontier' | 'hold' | 'draft' | 'storm' | 'interest' | 'economy' | 'power';
 
 interface Pending { id: TipId; parts: (string | Node)[]; remember: boolean; onShow?: (now: number) => void }
 
@@ -88,6 +89,11 @@ export class TipCoach {
       } else if (e.t === 'interest' && e.side === 'player' && e.amount > 0) {
         this.offer(state, 'interest', [tipWord(), `Interest +${e.amount}: each wave pays 1 gold per ${r.interestPer} you hold, up to a cap. Hover your gold.`], { now: true });
       }
+    }
+    const power = powerOf(state, 'player');
+    if (power && state.sides.player.powerCooldown === 0) {
+      const aim = power.target === 'point' ? 'then click where it should land' : 'then click the field';
+      this.offer(state, 'power', [tipWord(), `${power.name} is ready: press `, kbd('Q'), ` or its button, ${aim}. You can aim while paused.`], { now: true });
     }
     // last, so it goes first: the draft is on screen now (it opens on the same tick as a wave's interest)
     if (state.sides.player.draft) {

@@ -1,11 +1,11 @@
 // Callout lane (SPEC §10.2): at most 3 banners at once, each for 2.5 s (tips 6 s or as long as they ask),
-// in priority order: counter warnings > building lost > Heartcap under attack > tips > column flipped >
-// merges. Pinned callouts (the deploy hint, "Paused", a save-recovery notice) stay until unpinned and come
+// in priority order: counter warnings > building lost > Heartcap under attack > a refused key (the power
+// recharging) > tips > column flipped > merges. Pinned callouts (the deploy hint, "Paused", a save-recovery notice) stay until unpinned and come
 // first, so the field itself stays clear. A callout's text may hold keycaps.
 import { h } from './h.ts';
 
-export type CalloutKind = 'counter' | 'buildingLost' | 'heartcap' | 'tip' | 'column' | 'merge' | 'info';
-const PRIORITY: Record<CalloutKind, number> = { counter: 0, buildingLost: 1, heartcap: 2, tip: 3, column: 4, merge: 5, info: 6 };
+export type CalloutKind = 'counter' | 'buildingLost' | 'heartcap' | 'refused' | 'tip' | 'column' | 'merge' | 'info';
+const PRIORITY: Record<CalloutKind, number> = { counter: 0, buildingLost: 1, heartcap: 2, refused: 3, tip: 4, column: 5, merge: 6, info: 7 };
 const LIFE_MS = 2500;
 const TIP_MS = 6000;
 const MAX = 3;

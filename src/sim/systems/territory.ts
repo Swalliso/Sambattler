@@ -81,22 +81,28 @@ export function territorySystem(state: BattleState): void {
       } else {
         cap.progress = Math.max(0, cap.progress - r.captureDecay);
       }
-      if (cap.progress >= r.captureThreshold) {
-        const wasOwner = L.owner[F];
-        if (side === 'player') {
-          L.owner[F] = 1;
-          if (L.eBorder === F) L.eBorder = F + 1;
-          L.pBorder = F;
-        } else {
-          L.owner[F] = 2;
-          if (L.pBorder === F) L.pBorder = F - 1;
-          L.eBorder = F;
-        }
-        if (wasOwner === (side === 'player' ? 2 : 1)) state.stats[opp].columnsLost++;
-        cap.progress = 0;
-        cap.column = side === 'player' ? F + 1 : F - 1;
-        state.events.push({ t: 'columnFlipped', lane: li, column: F, to: side });
-      }
+      if (cap.progress >= r.captureThreshold) captureFrontier(state, li, side);
     }
   }
+}
+
+/** Flips `side`'s frontier column in a lane to it and moves the frontier on (a capture, or Rhizome Surge). */
+export function captureFrontier(state: BattleState, li: number, side: Side): void {
+  const L = state.lanes[li]!;
+  const F = frontier(state, li, side);
+  const cap = L.capture[side];
+  const wasOwner = L.owner[F];
+  if (side === 'player') {
+    L.owner[F] = 1;
+    if (L.eBorder === F) L.eBorder = F + 1;
+    L.pBorder = F;
+  } else {
+    L.owner[F] = 2;
+    if (L.pBorder === F) L.pBorder = F - 1;
+    L.eBorder = F;
+  }
+  if (wasOwner === (side === 'player' ? 2 : 1)) state.stats[other(side)].columnsLost++;
+  cap.progress = 0;
+  cap.column = side === 'player' ? F + 1 : F - 1;
+  state.events.push({ t: 'columnFlipped', lane: li, column: F, to: side });
 }

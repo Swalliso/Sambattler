@@ -555,6 +555,7 @@ kbd { font-family: var(--font-mono); font-size: 12px; line-height: 16px; padding
 .runscreen { position: relative; flex: 1; display: flex; flex-direction: column; min-height: 0; }
 .runscreen > * { position: relative; }
 .runscreen > .run-sky { position: absolute; inset: 0; pointer-events: none; }
+.runscreen > .hud-tip { position: fixed; } /* the Underroot's building tooltips float over the screen */
 .runbar .muted, .muted { color: var(--muted); }
 .intel .intel-title { color: var(--muted); letter-spacing: .04em; }
 .intel .intel-kind { display: flex; align-items: center; gap: 4px; }
@@ -824,3 +825,74 @@ html.reduce-motion .card.nudge { animation: none; box-shadow: var(--shadow-glow-
 html.reduce-motion .card, html.reduce-motion .bottom .btn, html.reduce-motion .hpbar i { transition: none; }
 html.reduce-motion .card.sel { transform: none; }
 html.reduce-motion .settingscard { animation: fadein 120ms ease-out; }
+
+/* ---- the Underroot (SPEC §8.1): commander cards and bans before a run ---- */
+.runpanel.underroot { gap: var(--space-5); }
+.uc-top { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--space-6); }
+.uc-tabs { flex: none; }
+.uc-tabs .btn { padding: 4px 14px; }
+.uc-tabs .tab-count { color: var(--lilac); }
+.uc-hint { align-self: flex-start; white-space: normal; animation: none; }
+.uc-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-5); }
+.commander-card { display: flex; flex-direction: column; gap: var(--space-4); padding: var(--space-6); text-align: left; background: var(--panel-2); color: var(--text); font: inherit; border: 1px solid var(--line-strong); border-radius: var(--radius-lg); box-shadow: var(--shadow-bevel); cursor: pointer; transition: box-shadow 120ms ease-out, border-color 120ms ease-out; }
+.commander-card:hover { border-color: var(--lilac); box-shadow: var(--shadow-bevel), var(--shadow-glow); }
+.commander-card.on { background: var(--panel-selected); border-color: var(--lilac); box-shadow: var(--shadow-bevel), var(--shadow-glow); }
+.commander-card:focus-visible { box-shadow: var(--shadow-focus); }
+.uc-head { display: flex; align-items: center; gap: var(--space-5); }
+.uc-portrait { width: 64px; height: 64px; flex: none; image-rendering: pixelated; image-rendering: crisp-edges; background: var(--well); border: 1px solid var(--line-strong); border-radius: var(--radius-md); }
+.uc-name { display: flex; flex-direction: column; gap: 2px; }
+.uc-name b { font: 400 24px/24px var(--font-display); font-synthesis: none; }
+.uc-desc { margin: 0; color: var(--muted); font-size: 13px; line-height: 18px; min-height: 36px; }
+.uc-sec { display: flex; flex-direction: column; gap: var(--space-2); padding-top: var(--space-4); border-top: 1px dashed var(--line); }
+.uc-sec .eyebrow kbd { font-size: 11px; }
+.uc-text { font-size: 13px; line-height: 18px; }
+.uc-power-name { display: flex; align-items: center; gap: var(--space-3); color: var(--lilac); }
+.uc-power-name b { font: 400 20px/20px var(--font-display); font-synthesis: none; }
+.uc-meta { color: var(--muted); font-size: 12px; line-height: 16px; }
+.uc-kit { display: flex; flex-direction: column; gap: var(--space-2); }
+.uc-kit.row { flex-direction: row; flex-wrap: wrap; }
+.uc-piece { display: inline-flex; align-items: center; gap: var(--space-3); font-size: 13px; border-radius: var(--radius-sm); }
+.uc-piece .uc-sprite { width: 32px; height: 32px; image-rendering: pixelated; image-rendering: crisp-edges; }
+.uc-piece.small .uc-sprite { width: 24px; height: 24px; }
+.uc-bans { display: flex; flex-direction: column; gap: var(--space-5); }
+.uc-bans-text { margin: 0; color: var(--muted); }
+.uc-bans-text b { color: var(--text); }
+.ban-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-4); }
+.ban { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; align-items: center; gap: var(--space-4); padding: var(--space-4) var(--space-5); text-align: left; background: var(--panel-2); color: var(--text); font: inherit; font-size: 13px; border: 1px solid var(--line-strong); border-radius: var(--radius-md); box-shadow: var(--shadow-bevel); cursor: pointer; }
+.ban .uc-sprite { width: 32px; height: 32px; image-rendering: pixelated; image-rendering: crisp-edges; }
+.ban:hover:not(:disabled) { border-color: var(--lilac); box-shadow: var(--shadow-bevel), var(--shadow-glow); }
+.ban.on { background: var(--well); border-color: var(--danger); }
+.ban.on .uc-sprite { filter: grayscale(1) brightness(.6); }
+.ban.on .ban-name { text-decoration: line-through; color: var(--muted); }
+.ban .ban-state { font: 700 12px/16px var(--font-text); letter-spacing: .06em; text-transform: uppercase; }
+.ban.on .ban-state { color: var(--danger-soft); }
+.ban.core .ban-state { color: var(--lilac); }
+.ban:disabled { cursor: default; box-shadow: none; }
+.ban:disabled:not(.core) { opacity: .6; }
+.uc-chosen { color: var(--muted); }
+.uc-begin .btn.primary { width: auto; min-width: 220px; }
+
+/* ---- the commander power (SPEC §6.6, §10.3): a button with its cooldown as a ring, and the aim callout ---- */
+.power-btn { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; align-items: center; gap: var(--space-3); padding: 3px 8px 3px 4px; text-align: left; box-shadow: var(--shadow-bevel); }
+.power-ring { position: relative; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%;
+  background: conic-gradient(var(--lilac) calc(var(--charge) * 360deg), var(--line) 0); }
+.power-ring::before { content: ''; position: absolute; inset: 3px; border-radius: 50%; background: var(--well); }
+.power-ring .ico { position: relative; }
+.power-btn { --charge: 0; } /* set per frame from the cooldown (src/app/battleView.ts); the ring inherits it */
+.power-label { display: flex; flex-direction: column; min-width: 0; line-height: 15px; }
+.power-label b { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.power-state { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.power-btn[data-state="charging"] .ico { filter: grayscale(1) brightness(.7); }
+.power-btn[data-state="ready"] { border-color: var(--lilac); box-shadow: var(--shadow-bevel), var(--shadow-glow); }
+.power-btn[data-state="ready"] .power-state { color: var(--lilac); }
+.power-btn[data-state="aiming"] .power-state, .power-btn[data-state="pending"] .power-state { color: var(--lilac); }
+.callout.aim { border-color: var(--lilac); color: var(--text); box-shadow: 0 0 10px var(--glow-lilac); animation: none; }
+.callout.aim b { color: var(--lilac); }
+.callout.aim.bad { border-color: var(--danger-line); color: var(--danger-soft); box-shadow: none; }
+#battlefield.aiming { cursor: crosshair; }
+/* the run bar's commander chip: portrait, name and power, its tooltip opening below-right of the bar's edge */
+.rb-commander { align-items: center; gap: var(--space-3); padding-right: var(--space-5); border-right: 1px solid var(--line); }
+.rb-commander .portrait { width: 32px; height: 32px; image-rendering: pixelated; image-rendering: crisp-edges; }
+.rb-commander > span:not(.relic-tip) { display: flex; flex-direction: column; line-height: 15px; }
+.rb-commander small { color: var(--lilac); font-size: 12px; }
+.rb-commander .relic-tip { left: 0; transform: none; }

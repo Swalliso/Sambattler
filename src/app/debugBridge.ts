@@ -13,6 +13,9 @@ export interface RunBrief {
   battles: { index: number; kind: string; map: string; winner: string; by: string }[];
   heartcap: RunState['heartcap'];
   outcome: RunState['outcome'] | null;
+  commander: string;
+  bans: string[];
+  kit: string[];
 }
 
 export interface GameBridge {
@@ -55,6 +58,7 @@ export function installBridge(src: BridgeSources, errors: string[]): GameBridge 
       if (!r) return null;
       return {
         screen: r.screen.kind, row: r.path.length, heartcap: { ...r.heartcap }, outcome: r.outcome ?? null,
+        commander: r.commander, bans: [...r.bans], kit: [...r.kit],
         battles: r.battles.map((b) => ({ index: b.index, kind: b.kind, map: b.map, winner: b.winner, by: b.by })),
       };
     },

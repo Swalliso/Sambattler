@@ -9,11 +9,11 @@ import { SPORE_WHITE } from './spores.ts';
  * kind: 1 strong spark, 2 normal spark, 3 weak spark, 4/5 death puff (player/enemy), 6 rubble,
  * 7 spawn puff, 8 merge pop (flag = tier, value = 0 player / 1 enemy), 9 damage number
  * (flag = 1 strong / 2 normal / 3 weak, value = amount), 10 heal plus, 11 coin pop (flag = 0 player /
- * 1 enemy, value = gold)
+ * 1 enemy, value = gold), 12 commander power ring (value = radius in tiles)
  */
 interface Fx { kind: number; x: number; y: number; t0: number; flag: number; value: number }
 
-const LIFE = [0, 220, 160, 140, 420, 420, 600, 320, 1100, 650, 450, 1000];
+const LIFE = [0, 220, 160, 140, 420, 420, 600, 320, 1100, 650, 450, 1000, 520];
 const NUMBER_COLOR = ['', '#f0c85a', '#ffffff', '#a39cab'];
 /** Spore puffs: each mote's drift over its life (native px, mirrored for every other puff) and its size. */
 const DEATH_MOTES: readonly (readonly [number, number, number])[] = [
@@ -73,6 +73,23 @@ export class Effects {
         case 7: // spawn: a few spores rise off the ground at the unit's feet
           this.motes(g, SPAWN_MOTES, x, y, k, x & 1 ? -1 : 1);
           break;
+        case 12: { // commander power: a lilac ring sweeping out to the power's radius, with spores at its edge
+          const r = Math.max(2, Math.round(e.value * tile * (0.35 + 0.65 * Math.sqrt(k))));
+          g.globalAlpha = 1 - k;
+          g.strokeStyle = '#c9a2ff';
+          g.lineWidth = 2;
+          g.beginPath();
+          g.arc(x, y, r, 0, Math.PI * 2);
+          g.stroke();
+          g.lineWidth = 1;
+          g.fillStyle = SPORE_WHITE;
+          for (let i = 0; i < 12; i++) {
+            const a = (i / 12) * Math.PI * 2;
+            g.fillRect(Math.round(x + Math.cos(a) * r), Math.round(y + Math.sin(a) * r), 1, 1);
+          }
+          g.globalAlpha = 1;
+          break;
+        }
         case 10: { // heal: a small green plus rising over the healed unit
           g.globalAlpha = 1 - k;
           g.fillStyle = '#7be0a0';

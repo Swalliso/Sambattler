@@ -278,7 +278,7 @@ export function compileSide(lib: Library, lo: Loadout, mods: readonly ModifierDe
     buildings[id] = cb;
     if (cb.spawn && !(cb.spawn.unit in units)) units[cb.spawn.unit] = compileUnit(lib, cb.spawn.unit, mods);
   }
-  return {
+  const out: CompiledSide = {
     units,
     buildings,
     supplyCap: Math.round(m('side.supplyCap', bal.supplyCap)),
@@ -305,6 +305,10 @@ export function compileSide(lib: Library, lo: Loadout, mods: readonly ModifierDe
     },
     triggers: [...triggers],
   };
+  // absent at ×1, so sides without a cooldown relic compile (and hash) as before powers existed
+  const powerCooldown = m('side.powerCooldown', 1);
+  if (powerCooldown !== 1) out.powerCooldownMult = powerCooldown;
+  return out;
 }
 
 /** Compiles both sides together (a modifier may target the opponent). */

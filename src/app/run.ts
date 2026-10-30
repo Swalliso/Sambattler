@@ -50,6 +50,8 @@ export interface RunEnv {
   newSeed: () => number;
   /** Back to the title screen, when the run was opened from it. */
   toTitle?: () => void;
+  /** Run setup (the Underroot) for a new run; without it, a new run starts with the default commander. */
+  setup?: () => void;
 }
 
 interface LiveBattle { state: BattleState; view: BattleView; loop: GameLoop; unbind: () => void }
@@ -107,6 +109,12 @@ export class RunController {
       this.trail = null;
       if (trail.random) this.result = { event: trail.event, title: trail.title, choice: trail.choice, changes: runChanges(this.env.content, trail.before, runSnapshot(run)) };
     });
+  }
+
+  /** Leaves the run's screens (to the title or the Underroot): stops any battle and the hidden-tab save. */
+  stop(): void {
+    this.stopBattle();
+    document.removeEventListener('visibilitychange', this.onHidden);
   }
 
   private stopBattle(): void {
@@ -254,12 +262,20 @@ export class RunController {
 
   private abandon(): void {
     if (!window.confirm('Abandon this run? It cannot be resumed.')) return;
+    if (this.env.persist) clearRun(this.env.storage);
     this.newRun();
   }
 
-  newRun(seed?: number): void {
+  /** A new run: through the Underroot when there is one, else at once with the default commander. */
+  newRun(): void {
+    if (this.env.setup) { this.env.setup(); return; }
+    this.start(createRun(this.env.content, { seed: this.env.newSeed() }));
+  }
+
+  /** Replaces any saved run with `run` (just set up in the Underroot), saves it and shows it. */
+  start(run: RunState): void {
     if (this.env.persist) clearRun(this.env.storage);
-    this.run = createRun(this.env.content, { seed: seed ?? this.env.newSeed() });
+    this.run = run;
     this.save();
     this.show();
   }

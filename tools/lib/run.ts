@@ -5,7 +5,7 @@ import type { Content } from '../../src/data/registry.ts';
 import {
   createBattle, createFromScenario, makeConfig, runHeadless, summarize,
 } from '../../src/sim/index.ts';
-import type { BattleConfig, BattleState, BattleSummary, Command, DraftPolicy, Side } from '../../src/sim/index.ts';
+import type { BattleConfig, BattleState, BattleSummary, Command, DraftPolicy, PowerPolicy, Side } from '../../src/sim/index.ts';
 
 export interface RunSpec {
   seed: number;
@@ -17,6 +17,10 @@ export interface RunSpec {
   flags?: Partial<BattleConfig['flags']>;
   /** Draft policy for a bot player when drafts are on. */
   autoDraft?: DraftPolicy;
+  /** The player's commander (its passive, and its power with the powers flag). */
+  commander?: string;
+  /** How a bot player uses the power. */
+  powerPolicy?: PowerPolicy;
   startingGold?: Partial<Record<Side, number>>;
   test?: BattleConfig['test'];
   /** Use this exact config instead of building one (replays). */
@@ -105,6 +109,7 @@ export function buildState(content: Content, spec: RunSpec): BattleState {
     if (spec.player) over.player = spec.player;
     if (spec.enemy) over.enemy = spec.enemy;
     if (spec.flags) over.flags = spec.flags;
+    if (spec.powerPolicy) over.powerPolicy = spec.powerPolicy;
     return createFromScenario(content, spec.scenario, over);
   }
   const opts: Parameters<typeof makeConfig>[1] = {
@@ -117,6 +122,8 @@ export function buildState(content: Content, spec: RunSpec): BattleState {
   if (spec.flags) opts.flags = spec.flags;
   if (spec.startingGold) opts.startingGold = spec.startingGold;
   if (spec.test) opts.test = spec.test;
+  if (spec.commander) opts.commander = spec.commander;
+  if (spec.powerPolicy) opts.powerPolicy = spec.powerPolicy;
   const config = makeConfig(content, opts);
   if (spec.autoDraft && config.player.controller.kind !== 'human') config.player.autoDraft = spec.autoDraft;
   return createBattle(content, config);

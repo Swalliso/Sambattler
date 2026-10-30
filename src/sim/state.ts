@@ -1,6 +1,6 @@
 // Runtime state: plain, JSON-serializable data only (SPEC §13.3 rule 8, §14.4).
 import type {
-  BalanceDef, BuildingDef, EffectBundle, ModifierDef, RelicDef, TriggerDef, UnitDef, UpgradeTrackDef,
+  BalanceDef, BuildingDef, EffectBundle, ModifierDef, PowerDef, RelicDef, TriggerDef, UnitDef, UpgradeTrackDef,
 } from '../data/schema.ts';
 
 export type Side = 'player' | 'enemy';
@@ -16,6 +16,8 @@ export type Effectiveness = 'strong' | 'normal' | 'weak';
 /** Heartcaps are targetable but live off-grid; they use fixed negative ids. */
 export const HEARTCAP_ID: Record<Side, number> = { player: -1, enemy: -2 };
 export const NO_TARGET = 0;
+/** The damage-by-building key for a commander power's damage (turrets use 0). */
+export const POWER_SOURCE_ID = -3;
 
 export type Controller =
   | { kind: 'human' }
@@ -31,6 +33,8 @@ export type IntelProfile = Record<CounterKind, number>;
 export type CardType = 'blueprint' | 'upgrade' | 'relic';
 /** How a bot side answers its own drafts: `none` leaves them to the player (UI). */
 export type DraftPolicy = 'first' | 'random' | 'greedy' | 'none';
+/** How an AI-controlled side uses its commander power: `auto` picks targets itself (SPEC §16 M5); `none` never. */
+export type PowerPolicy = 'none' | 'auto';
 
 /** The cards a side can be offered in battle (SPEC §8.4): blueprints split into core and shared pools. */
 export interface DraftPool { core: string[]; shared: string[]; relics: string[] }
@@ -56,6 +60,12 @@ export interface SideConfig {
    * doctrine against the top kind (the boss: a dual doctrine against the top two).
    */
   intel?: IntelProfile;
+  /** The side's commander (SPEC §11.10); its passive is one of the battle's modifiers. */
+  commander?: string;
+  /** The commander's active power (SPEC §6.6); usable while `flags.powers` is on. */
+  power?: string;
+  /** Power policy for an AI-controlled side (default none); humans use the power through the UI. */
+  powerPolicy?: PowerPolicy;
 }
 
 /** A battle-wide effect source: an event outcome, the elite modifier, later blights (SPEC §14.4). */
@@ -163,6 +173,8 @@ export interface CompiledSide {
   turret: { damage: number; damageType: DamageType; intervalTicks: number; range: number; projectileSpeed: number; perLane: number };
   /** Triggers from upgrades, relics and battle modifiers, in source order. */
   triggers: TriggerDef[];
+  /** The power's cooldown multiplier (`side.powerCooldown`); present only when it isn't 1. */
+  powerCooldownMult?: number;
 }
 
 /**
@@ -176,6 +188,8 @@ export interface Library {
   units: Record<string, UnitDef>;
   upgrades: Record<string, UpgradeTrackDef>;
   relics: Record<string, RelicDef>;
+  /** The commander powers in this battle (present only when a side has one). */
+  powers?: Record<string, PowerDef>;
 }
 
 /** What a side owns in this battle: the inputs to compilation besides battle modifiers. */
@@ -407,6 +421,8 @@ export type SimEvent =
   | { t: 'healed'; target: number; src: number; amount: number; x: number; y: number }
   | { t: 'counterWarned'; side: Side; kind: CounterKind; activatesAtTick: number }
   | { t: 'counterActive'; side: Side; kind: CounterKind }
+  /** A commander power went off: its point (if it has one) and what it did. */
+  | { t: 'power'; side: Side; power: string; x?: number; y?: number; hits: number; lanes: number[]; merges: number; gold?: number }
   /** Prototype E1: a lane switched between Hold and Advance (`auto` when the hold timer ran out). */
   | { t: 'stance'; side: Side; lane: number; hold: boolean; auto: boolean }
   | { t: 'ended'; winner: Side; by: 'rout' | 'decision' };
@@ -486,6 +502,7 @@ export interface SideState {
   heartcapHp: number;
   heartcapMaxHp: number;
   turretCooldowns: number[];
+  /** Live ticks until the commander power is ready (0: ready, or no power). */
   powerCooldown: number;
   kit: string[];
   upgrades: Record<string, number>;
@@ -527,6 +544,12 @@ export interface SideStats {
   maxGoldBanked: number;
   columnsLost: number;
   rejectedCommands: number;
+  /** Commander power use (present only for a side with a power): uses, damage dealt, columns captured, trios merged, gold paid. */
+  powerUses?: number;
+  powerDamage?: number;
+  powerCaptures?: number;
+  powerMerges?: number;
+  powerGold?: number;
 }
 
 export interface BattleState {

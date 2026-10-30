@@ -3,6 +3,75 @@
 Every change from the SPEC's first-pass numbers, with the guardrail or verification result that
 motivated it. Tools: `npm run balance -- duel`, `npm run balance -- tournament`, `npm run test:slow`.
 
+## Milestone 5: Armilla reworked, Rhizome Surge → Rhizome Tithe (2026-10-30)
+
+**Content change, approved by the user** ("rework Armilla's content … and rerun the tournament").
+Armilla's power was Rhizome Surge (take the frontier column in every lane, cooldown 100 s, first ready
+1:30). It is now **Rhizome Tithe: +30 gold for every column held past home, cooldown 75 s, first ready
+1:00.** Her core pool, starter kit and passive (capture +25%) are unchanged; the passive now feeds the
+tithe. Rhizome Surge stays in the code as a power kind (tested on a test-only commander), so it can
+come back as an alternate power (SPEC §9.5, mastery 3).
+
+What was tried (whole runs, seeds 1–30, `bot:balanced`, power policy auto; Vesper and Cordis win 10/30):
+
+| Armilla variant | Runs won | Battles won |
+|---|---|---|
+| As first specced (Surge) | 0/30 | 11/43 |
+| Second spawner in the starter kit (Hammercap, Rootbreaker or Sporeling Burrow for the Mortar), power off | 0–1/30 | 13–20/44–50 |
+| Surge + 40–80 gold per column taken | 1/30 | 14–16/45–46 |
+| Second spawner + Surge + 40–80 gold per column | 0–2/30 | 16–23/44–51 |
+| Tithe 20 / 30 / 40 per held column, Surge's timing | 4 / 3 / 6 of 30 | 40/69 · 35/62 · 54/78 |
+| **Tithe 30, cooldown 75 s, first ready 1:00 (adopted)** | **7/30** | **54/77** |
+| Tithe 30 or 40 that also takes the frontier (cooldown 75 s) | 7–8/60 | 87–88/143–144 |
+
+On seeds 1–60 the adopted tithe wins 14/60 (23%), against Vesper 16/60 (27%) and Cordis 13/60 (22%).
+A second spawner never helped: the Puffball Mortar is worth more to this bot than another army
+building. Any version that still captures costs about 10 points.
+
+Tournament (`npm run balance -- tournament --commanders all --seeds 30`): Vesper 10/30 (33%), Armilla
+7/30 (23%), Cordis 10/30 (33%). **Spread 10 points, inside the 15-point target.** Battle 1 alone
+(40 seeds): Armilla 30% without her power, 70% with it, the largest power swing of the three (Vesper
+53% → 75%, Cordis 58% → 75%); worth watching in human playtests.
+
+Goldens: `m5-armilla-power-s3` changes behavior; `m3-run-s7` and the other two M5 replays are
+hash-only (the new `powerGold` counter). The §16 assert for Armilla is now `stats.player.powerGold>=1`.
+
+## Milestone 5: commanders and powers (2026-10-29)
+
+**New content at the SPEC's first-pass numbers; no existing number or rule changed.** Vesper, Armilla
+and Cordis ship with the passives, powers, cooldowns and first-ready times of SPEC §11.10, unchanged:
+no tuning in this entry moved the commander tournament inside its target, so none was kept (the
+measurements are below and in [docs/m5-plan.md](../docs/m5-plan.md)).
+
+Two harness changes affect what bots do, both only where they used to crash or never applied:
+
+- **A bot's opener skips buildings missing from its kit.** Armilla's starter kit has no Sporeling
+  Burrow, and `bot:balanced` opens with one; that used to throw. Generals keep the strict check.
+  Single battles always field the whole roster, so no guardrail battle changes.
+- **A bot player in a run gets weight 1 on its commander's core buildings that its profile never
+  buys** (`botCoreWeights`, the same rule the run already uses for a general's run-only kit
+  entries). `bot:balanced` never drafted or built Armilla's Hammercap Forge and Rhizome Vault or
+  Cordis's Tender's Ring. Runs only; Vesper's core is all inside `bot:balanced`, so it is unchanged.
+
+Run-golden change: `m3-run-s7` now plays with Vesper's passive and the powers flag on (the bot's power
+policy stays `none` in that replay). The M1–M4 single-battle replays are hash-identical; three M5
+replays pin each power under the auto policy.
+
+Commander tournament (`npm run balance -- tournament --commanders all --seeds 30`, `bot:balanced`,
+greedy drafts, random route, power policy auto):
+
+| Commander | Runs won | Boss reached | Battles won | Power uses |
+|---|---|---|---|---|
+| Vesper | 10/30 (33%) | 12/30 | 62/82 | 355 (162,216 damage) |
+| Armilla | 0/30 (0%) | 2/30 | 11/43 | 100 (129 columns) |
+| Cordis | 10/30 (33%) | 11/30 | 59/80 | 273 (306 trios) |
+
+Target: no commander more than 15 points above another. **Fails by 33 points** (Armilla; fixed by the
+rework in the entry above). Within the
+allowed levers (power and passive numbers), Armilla's best was 3/30 with her power and passive both
+effectively off: in this sim, taking ground faster or instantly costs the bot battles. The fix needs a
+content or rule decision; see [docs/m5-plan.md](../docs/m5-plan.md#the-commander-tournament).
+
 ## Adopted: E1 Hold / Advance (2026-10-28)
 
 **Rule change, approved by the user.** The user asked for the prototypes that helped to go into the game,
