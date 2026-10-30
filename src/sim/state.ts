@@ -247,6 +247,8 @@ export interface Rules {
    * its attack cooldown on `permille` ticks in 1000; absent by default.
    */
   pin?: { radius: number; permille: number };
+  /** Combat rework `callForHelp` (balance `callForHelp`): the call's radius; absent by default. */
+  help?: { radius: number };
   timeLimitTicks: number;
   captureThreshold: number;
   captureStep: number;

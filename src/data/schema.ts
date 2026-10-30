@@ -208,6 +208,13 @@ export const BalanceSchema = z.object({
    * an enemy unit within `radius` tiles (edge distance) attacks at `rateMult` × its normal rate.
    */
   pinned: z.object({ radius: Pos, rateMult: z.number().gt(0).max(1) }).strict().optional(),
+  /**
+   * Combat rework `callForHelp`, absent by default: when an enemy unit or tower damages a unit or
+   * building, every friendly unit in its lane within `radius` tiles of it (edge distance) that has no
+   * target takes the attacker as its target. A unit keeps that target within the usual leash
+   * (aggro × leashMult), and also while the attacker is still attacking it or a friend within `radius`.
+   */
+  callForHelp: z.object({ radius: Pos }).strict().optional(),
   firstSpawnFraction: z.number().min(0).max(1),
   timeLimitSeconds: Pos,
   heartcapPlayerHp: z.number().int().positive(),

@@ -255,6 +255,7 @@ function applyDamage(state: BattleState, h: PendingHit, targetId: number, fallof
   const dmg = damageFor(r, h.damage * falloff, h.damageType, h.siegeMult, h.slayerMult, armor, tier, resist * taken);
   const combined = effMult;
   let dealt = dmg;
+  if (r.help && h.sourceId > 0 && (u || b)) noteCall(h.sourceId, targetId);
   if (u) {
     if (dealt > u.hp) dealt = u.hp;
     u.hp -= dmg;
@@ -281,6 +282,53 @@ function applyDamage(state: BattleState, h: PendingHit, targetId: number, fallof
   st.damageByBuilding[key] = (st.damageByBuilding[key] ?? 0) + dealt;
   st.damageBySource[h.sourceType] = (st.damageBySource[h.sourceType] ?? 0) + dealt;
   state.events.push({ t: 'hit', target: targetId, src: h.sourceId, amount: dmg, eff: classify(state, combined), x: ix, y: iy, splash: falloff !== 1 });
+}
+
+// Combat rework `callForHelp`: (attacker, victim) pairs from this tick's hits, answered once every
+// hit has resolved (splash walks the shared spatial buffer, so the call can't query it mid-loop).
+const callAttackers: number[] = [];
+const callVictims: number[] = [];
+
+function noteCall(attacker: number, victim: number): void {
+  const n = callAttackers.length;
+  if (n && callAttackers[n - 1] === attacker && callVictims[n - 1] === victim) return;
+  callAttackers.push(attacker);
+  callVictims.push(victim);
+}
+
+/**
+ * Combat rework `callForHelp` (balance `callForHelp`): for each unit or building an enemy unit or
+ * tower damaged this tick, every friendly unit in its lane within the radius of it (edge distance)
+ * that has no target, can attack and isn't knitting takes the attacker as its target, provided it
+ * is a target that unit could have (alive, in the lane). Pairs are answered in the order they were hit.
+ */
+function answerCalls(state: BattleState): void {
+  const radius = state.rules.help!.radius;
+  for (let i = 0; i < callAttackers.length; i++) {
+    const attacker = callAttackers[i]!, id = callVictims[i]!;
+    const vu = findUnit(state, id);
+    const vb = vu ? undefined : findBuilding(state, id);
+    if (!vu && !vb) continue;
+    const side = vu ? vu.side : vb!.side, lane = vu ? vu.lane : vb!.lane;
+    const bd = vb ? buildingDef(state, vb) : undefined;
+    const ext = vu ? unitRadius(state, vu) : (bd!.w + bd!.h) / 2;
+    const cx = vu ? vu.x : vb!.col + bd!.w / 2, cy = vu ? vu.y : vb!.row + bd!.h / 2;
+    const n = queryNear(cx, cy, radius + ext + MAX_RADIUS + 1);
+    const near = nearBuffer();
+    for (let k = 0; k < n; k++) {
+      const v = state.units[near[k]!]!;
+      if (v.side !== side || v.lane !== lane || v.hp <= 0 || v.targetId !== 0 || v.knit) continue;
+      const rv = unitRadius(state, v);
+      let d: number;
+      if (vu) { const dx = v.x - vu.x, dy = v.y - vu.y; d = Math.sqrt(dx * dx + dy * dy) - rv - ext; }
+      else d = rectDistance(v.x, v.y, vb!.col, vb!.row, bd!.w, bd!.h) - rv;
+      if (d > radius || unitDef(state, v).support) continue;
+      if (edgeDistance(state, v.x, v.y, rv, attacker, other(side), lane) < 0) continue;
+      v.targetId = attacker;
+    }
+  }
+  callAttackers.length = 0;
+  callVictims.length = 0;
 }
 
 export function resolveHitsSystem(state: BattleState): void {
@@ -325,6 +373,7 @@ export function resolveHitsSystem(state: BattleState): void {
     }
   }
   hits.splice(0, n);
+  if (callAttackers.length) answerCalls(state);
 }
 
 /**

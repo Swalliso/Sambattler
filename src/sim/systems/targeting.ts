@@ -5,7 +5,7 @@ import { HEARTCAP_ID, other } from '../state.ts';
 import type { BattleState, BuildingState, UnitState } from '../state.ts';
 import { buildGrid, nearBuffer, queryNear } from '../spatial.ts';
 import { MAX_RADIUS, edgeDistance, tp } from '../targets.ts';
-import { buildingDef, findUnit, heartcapEdgeX, rectDistance, unitDef, unitRadius } from '../world.ts';
+import { buildingDef, findBuilding, findUnit, heartcapEdgeX, rectDistance, unitDef, unitRadius } from '../world.ts';
 
 let bestId = 0, bestD = 0, bestPref = false;
 
@@ -87,12 +87,37 @@ function retargetUnit(state: BattleState, u: UnitState, r: number, curD: number)
   }
 
   // stickiness: keep a live current target within leash unless a preferred-class candidate appears
-  if (u.targetId !== 0 && curD >= 0 && curD <= reach * state.rules.leashMult) {
+  // (with call for help, also while the target is still attacking this unit or a friend near it)
+  if (u.targetId !== 0 && curD >= 0 && (curD <= reach * state.rules.leashMult || (state.rules.help && answering(state, u)))) {
     edgeDistance(state, u.x, u.y, r, u.targetId, enemy, u.lane);
     const curPref = (prefBuildings && tp.preferredBuilding) || (prefElite && tp.tier >= 2) || (diver && isRangedUnit(state, u.targetId));
     if (!(bestPref && !curPref)) return;
   }
   u.targetId = bestId;
+}
+
+/**
+ * Combat rework `callForHelp`: is `u`'s target (an enemy unit or tower) still attacking `u`, or a
+ * unit or building of `u`'s side in the lane within the call radius of `u`? Such a target stays
+ * sticky beyond the usual leash, so a unit answering a call can close on an attacker that shoots
+ * from outside its aggro range.
+ */
+function answering(state: BattleState, u: UnitState): boolean {
+  const t = u.targetId;
+  const victim = t > 0 ? (findUnit(state, t)?.targetId ?? findBuilding(state, t)?.targetId ?? 0) : 0;
+  if (victim <= 0) return false;
+  if (victim === u.id) return true;
+  const reach = state.rules.help!.radius + unitRadius(state, u);
+  const v = findUnit(state, victim);
+  if (v) {
+    if (v.side !== u.side || v.lane !== u.lane) return false;
+    const dx = v.x - u.x, dy = v.y - u.y;
+    return Math.sqrt(dx * dx + dy * dy) - unitRadius(state, v) <= reach;
+  }
+  const b = findBuilding(state, victim);
+  if (!b || b.side !== u.side || b.lane !== u.lane) return false;
+  const bd = buildingDef(state, b);
+  return rectDistance(u.x, u.y, b.col, b.row, bd.w, bd.h) <= reach;
 }
 
 const tr = { cx: 0, cy: 0, min: 0, max: 0 };

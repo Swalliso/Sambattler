@@ -72,6 +72,8 @@ export const PROTO_PRESETS: Record<string, Json> = {
   // ---- the combat rework's package (docs/ideas/combat-rework.md, P1); `rework` turns on all five ----
   /** Pinned: a ranged unit with an enemy unit within 1 tile attacks at 0.35× its rate. */
   pinned: { pinned: { radius: 1, rateMult: 0.35 } },
+  /** Call for help: friendly units within 5 tiles of a unit or building that takes damage, and have no target, take the attacker. */
+  callforhelp: { callForHelp: { radius: 5 } },
 };
 
 /** Sets a dotted path; `null` removes the setting instead (`laneStance:null` turns Hold off). */
