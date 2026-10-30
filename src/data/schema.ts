@@ -19,6 +19,75 @@ const Hex = z.string().regex(/^#[0-9a-fA-F]{6}$/, 'colors are #rrggbb');
 
 const MatrixRow = z.object({ light: Pos, medium: Pos, heavy: Pos, structure: Pos }).strict();
 
+// ---- the effects DSL (SPEC §14.1–14.2): one modifier and trigger language for every source ----
+
+/** Stat keys the compiler understands. The list grows deliberately, one system at a time. */
+export const UNIT_STATS = [
+  'unit.hp', 'unit.damage', 'unit.attackInterval', 'unit.range', 'unit.speed', 'unit.splashRadius',
+  'unit.resist.slash', 'unit.resist.pierce', 'unit.resist.crush', 'unit.siegeMult', 'unit.regenPctPerSec', 'unit.healAmount',
+] as const;
+export const BUILDING_STATS = [
+  'building.hp', 'building.spawnInterval', 'building.spawnCount', 'building.goldPerTick', 'building.firstSpawnFraction',
+  'tower.damage', 'tower.range', 'tower.splashRadius',
+] as const;
+export const SIDE_STATS = [
+  'side.supplyCap', 'side.interestCap', 'side.stipend', 'side.captureSpeed', 'side.startingGold', 'side.sellRefund',
+  'side.supplyLineRate', 'side.knitTicks', 'side.mergeRadius', 'side.rerollCost', 'side.draftCards', 'side.heartcapMaxHp',
+  'side.turretDamage', 'side.comebackEnabled', 'side.loamBonus', 'side.powerCooldown',
+] as const;
+export const BATTLE_STATS = ['battle.sporestormStart'] as const;
+export const StatKey = z.enum([...UNIT_STATS, ...BUILDING_STATS, ...SIDE_STATS, ...BATTLE_STATS]);
+/** Building stats that may use positional selectors; they are evaluated when used, not compiled once. */
+export const POSITIONAL_STATS: readonly string[] = ['building.spawnInterval', 'building.goldPerTick'];
+
+const TierSel = z.union([z.literal(1), z.literal(2), z.literal(3)]);
+export const SelectorSchema = z.object({
+  unit: Id.optional(), building: Id.optional(), tag: Tag.optional(), tier: TierSel.optional(),
+  zone: z.enum(['home', 'contested']).optional(), onLoam: z.boolean().optional(),
+  adjacentOwnBuildingsGte: z.number().int().positive().optional(),
+}).strict();
+
+export const ModifierSchema = z.object({
+  stat: StatKey, op: z.enum(['add', 'mul', 'set']), value: z.number(),
+  /** Whose stats change: the owner of the source (default) or the opponent. */
+  side: z.enum(['self', 'opponent']).optional(),
+  where: SelectorSchema.optional(),
+}).strict().superRefine((m, ctx) => {
+  const w = m.where ?? {};
+  const scope = m.stat.split('.')[0];
+  const positional = w.zone !== undefined || w.onLoam !== undefined || w.adjacentOwnBuildingsGte !== undefined;
+  if ((scope === 'side' || scope === 'battle') && m.where) ctx.addIssue({ code: 'custom', message: `${m.stat} applies to the whole ${scope}; it takes no "where"` });
+  if (positional && !POSITIONAL_STATS.includes(m.stat)) {
+    ctx.addIssue({ code: 'custom', message: `positional selectors (zone, onLoam, adjacentOwnBuildingsGte) only work on ${POSITIONAL_STATS.join(' and ')}` });
+  }
+  if (w.tier !== undefined && scope !== 'unit') ctx.addIssue({ code: 'custom', message: 'a tier selector only applies to unit stats' });
+});
+
+export const EffectActionSchema = z.union([
+  z.object({ gainGold: z.number().int() }).strict(),
+  z.object({ explode: z.object({ damage: Pos, damageType: DamageType, radius: Pos }).strict() }).strict(),
+  z.object({ repairHeartcapPct: z.number().positive().max(1) }).strict(),
+  /** The side's Heartcap takes × `takenMult` damage for `seconds` (a last stand's shield). */
+  z.object({ shieldHeartcap: z.object({ seconds: Pos, takenMult: z.number().min(0).max(1) }).strict() }).strict(),
+  /** The side's commander power is ready at once. */
+  z.object({ readyPower: z.literal(true) }).strict(),
+]);
+
+export const TriggerSchema = z.object({
+  on: z.enum(['merge', 'unitDeath', 'buildingDestroyed', 'enemyUnitKilled', 'waveStart', 'battleStart', 'heartcapBreach']),
+  /** `heartcapBreach` only: the fraction of max HP that the owner's Heartcap falls to or below. */
+  at: z.number().gt(0).lt(1).optional(),
+  if: SelectorSchema.extend({ sporestormGte: z.number().int().nonnegative().optional() }).strict().optional(),
+  do: z.array(EffectActionSchema).min(1),
+}).strict().superRefine((t, ctx) => {
+  if ((t.on === 'heartcapBreach') !== (t.at !== undefined)) ctx.addIssue({ code: 'custom', message: 'a heartcapBreach trigger needs "at", and only it takes one' });
+});
+
+export const EffectBundleSchema = z.object({
+  modifiers: z.array(ModifierSchema).optional(),
+  triggers: z.array(TriggerSchema).optional(),
+}).strict();
+
 export const BalanceSchema = z.object({
   tickRate: z.literal(20),
   waveSeconds: Pos,
@@ -113,6 +182,27 @@ export const BalanceSchema = z.object({
     aggroAdd: z.number().nonnegative().optional(),
     burst: z.object({ speedMult: Pos, seconds: Pos, cooldownSeconds: Seconds }).strict().optional(),
   }).strict().optional(),
+  /**
+   * Hot-start prototype (step B of docs/ideas/one-more-run-review.md), absent by default. With
+   * `deployDraft`, a side that drafts this battle gets a free draft before the clock starts (`cards`
+   * cards, default its usual offer). `battles[i]` gives each side effects for run battle i + 1, as
+   * battle modifiers, so the first battles can be gentler.
+   */
+  hotStart: z.object({
+    deployDraft: z.object({ cards: z.number().int().positive().optional() }).strict().optional(),
+    battles: z.array(z.object({ player: EffectBundleSchema.optional(), enemy: EffectBundleSchema.optional() }).strict()).optional(),
+  }).strict().optional(),
+  /**
+   * Heartcap breach prototype (step B), absent by default: triggers both sides get in every battle,
+   * as if from a relic, such as `heartcapBreach` triggers for a breach and a last stand.
+   */
+  sideTriggers: z.array(TriggerSchema).optional(),
+  /**
+   * Bigger-drafts prototype (step B), absent by default: a side takes `picks` cards from each
+   * in-battle draft's offer (the cards it leaves stay on offer), and every offer moves `rareBonus`
+   * rarity points from common to rare. `draftWaves` and `draft.cards` set how many drafts and cards.
+   */
+  bigDrafts: z.object({ picks: z.number().int().positive().optional(), rareBonus: z.number().nonnegative().optional() }).strict().optional(),
   firstSpawnFraction: z.number().min(0).max(1),
   timeLimitSeconds: Pos,
   heartcapPlayerHp: z.number().int().positive(),
@@ -232,67 +322,6 @@ export const BalanceTargetsSchema = z.object({
     slayers: z.object({ mergeBot: Id, noMergeBot: Id, share: z.number(), maxWinRate: z.number() }).strict(),
   }).strict(),
   G11: z.object({ tickMeanMs: Pos, tickP99Ms: Pos, battleWallMs: Pos, benchTicks: z.number().int().positive(), quickTicks: z.number().int().positive() }).strict(),
-}).strict();
-
-// ---- the effects DSL (SPEC §14.1–14.2): one modifier and trigger language for every source ----
-
-/** Stat keys the compiler understands. The list grows deliberately, one system at a time. */
-export const UNIT_STATS = [
-  'unit.hp', 'unit.damage', 'unit.attackInterval', 'unit.range', 'unit.speed', 'unit.splashRadius',
-  'unit.resist.slash', 'unit.resist.pierce', 'unit.resist.crush', 'unit.siegeMult', 'unit.regenPctPerSec', 'unit.healAmount',
-] as const;
-export const BUILDING_STATS = [
-  'building.hp', 'building.spawnInterval', 'building.spawnCount', 'building.goldPerTick', 'building.firstSpawnFraction',
-  'tower.damage', 'tower.range', 'tower.splashRadius',
-] as const;
-export const SIDE_STATS = [
-  'side.supplyCap', 'side.interestCap', 'side.stipend', 'side.captureSpeed', 'side.startingGold', 'side.sellRefund',
-  'side.supplyLineRate', 'side.knitTicks', 'side.mergeRadius', 'side.rerollCost', 'side.draftCards', 'side.heartcapMaxHp',
-  'side.turretDamage', 'side.comebackEnabled', 'side.loamBonus', 'side.powerCooldown',
-] as const;
-export const BATTLE_STATS = ['battle.sporestormStart'] as const;
-export const StatKey = z.enum([...UNIT_STATS, ...BUILDING_STATS, ...SIDE_STATS, ...BATTLE_STATS]);
-/** Building stats that may use positional selectors; they are evaluated when used, not compiled once. */
-export const POSITIONAL_STATS: readonly string[] = ['building.spawnInterval', 'building.goldPerTick'];
-
-const TierSel = z.union([z.literal(1), z.literal(2), z.literal(3)]);
-export const SelectorSchema = z.object({
-  unit: Id.optional(), building: Id.optional(), tag: Tag.optional(), tier: TierSel.optional(),
-  zone: z.enum(['home', 'contested']).optional(), onLoam: z.boolean().optional(),
-  adjacentOwnBuildingsGte: z.number().int().positive().optional(),
-}).strict();
-
-export const ModifierSchema = z.object({
-  stat: StatKey, op: z.enum(['add', 'mul', 'set']), value: z.number(),
-  /** Whose stats change: the owner of the source (default) or the opponent. */
-  side: z.enum(['self', 'opponent']).optional(),
-  where: SelectorSchema.optional(),
-}).strict().superRefine((m, ctx) => {
-  const w = m.where ?? {};
-  const scope = m.stat.split('.')[0];
-  const positional = w.zone !== undefined || w.onLoam !== undefined || w.adjacentOwnBuildingsGte !== undefined;
-  if ((scope === 'side' || scope === 'battle') && m.where) ctx.addIssue({ code: 'custom', message: `${m.stat} applies to the whole ${scope}; it takes no "where"` });
-  if (positional && !POSITIONAL_STATS.includes(m.stat)) {
-    ctx.addIssue({ code: 'custom', message: `positional selectors (zone, onLoam, adjacentOwnBuildingsGte) only work on ${POSITIONAL_STATS.join(' and ')}` });
-  }
-  if (w.tier !== undefined && scope !== 'unit') ctx.addIssue({ code: 'custom', message: 'a tier selector only applies to unit stats' });
-});
-
-export const EffectActionSchema = z.union([
-  z.object({ gainGold: z.number().int() }).strict(),
-  z.object({ explode: z.object({ damage: Pos, damageType: DamageType, radius: Pos }).strict() }).strict(),
-  z.object({ repairHeartcapPct: z.number().positive().max(1) }).strict(),
-]);
-
-export const TriggerSchema = z.object({
-  on: z.enum(['merge', 'unitDeath', 'buildingDestroyed', 'enemyUnitKilled', 'waveStart', 'battleStart']),
-  if: SelectorSchema.extend({ sporestormGte: z.number().int().nonnegative().optional() }).strict().optional(),
-  do: z.array(EffectActionSchema).min(1),
-}).strict();
-
-export const EffectBundleSchema = z.object({
-  modifiers: z.array(ModifierSchema).optional(),
-  triggers: z.array(TriggerSchema).optional(),
 }).strict();
 
 const StatPatch = z.object({

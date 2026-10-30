@@ -1,5 +1,5 @@
 // Attacks, projectiles, damage and deaths (SPEC §5.3, §4.5 turrets).
-import { fireTriggers, runAction } from '../effects.ts';
+import { fireBreaches, fireTriggers, runAction } from '../effects.ts';
 import { insertHit } from '../hits.ts';
 import { HEARTCAP_ID, POWER_SOURCE_ID, SIDES, other } from '../state.ts';
 import type { Armor, BattleState, DamageType, Effectiveness, PendingHit, Side, UnitState } from '../state.ts';
@@ -221,6 +221,8 @@ function applyDamage(state: BattleState, h: PendingHit, targetId: number, fallof
   } else if (heart) {
     armor = 'structure';
     taken = 1 + r.storm.heartcapTaken * state.sporestorm;
+    const shield = state.sides[heart].heartcapShield;
+    if (shield && state.tick < shield.untilTick) taken *= shield.takenMult;
   } else {
     return;
   }
@@ -240,8 +242,10 @@ function applyDamage(state: BattleState, h: PendingHit, targetId: number, fallof
   } else if (heart) {
     const hs = state.sides[heart];
     if (dealt > hs.heartcapHp) dealt = hs.heartcapHp;
+    const before = hs.heartcapHp;
     hs.heartcapHp = Math.max(0, hs.heartcapHp - dmg);
     state.stats[heart].heartcapDamageTaken += dealt;
+    if (state.compiled[heart].triggers.length) fireBreaches(state, heart, before, { x: ix, y: iy, lane: h.lane, sourceBuildingId: 0 });
   }
   const attacker = h.sourceId > 0 ? findUnit(state, h.sourceId) : undefined;
   if (attacker) attacker.lastCombatTick = state.tick;

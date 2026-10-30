@@ -88,9 +88,10 @@ export function resumeBattle(content: Content, save: BattleSave): BattleState {
   if (save.tick > 0) {
     runHeadless(state, { until: save.tick, commands: save.commands });
   } else {
-    // Deploy commands and Begin also execute without advancing tick 0.
+    // Deploy commands and Begin also execute without advancing tick 0 (after a deploy draft's answer).
     for (const c of save.commands) queueCommand(state, c);
     if (state.queue.length) step(state);
+    if (state.queue.length && state.phase === 'deploy' && !state.held) step(state);
     // Headless bot games synthesize Begin rather than retaining it as human input.
     if (state.phase === 'deploy' && save.phase !== 'deploy') {
       queueCommand(state, { tick: 0, side: 'player', type: 'begin' });

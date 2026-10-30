@@ -411,6 +411,173 @@ By building, Bogwater Hollow without the relic:
 
 The bar for step C: a network rule set on Bogwater should lift split-half ρ well above about 0.3, to at least Twin Roots' 0.6–0.7. It should also lift best − median well above about 25% of a building's worth, and do both at 1:00 as well as 3:00. The test is `npm run experiment -- --proto <network knob> --checks spread`.
 
+## Step B: battle-feel prototypes (2026-10-30)
+
+Step B of the [One More Run review](ideas/one-more-run-review.md#suggested-path): engagement review recommendations 2–3 and the design review's P1, as prototypes. **Nothing is adopted.** Each knob is absent from `balance.json`, so goldens and hashes are unchanged:
+
+| Preset | Knob | What it does |
+|---|---|---|
+| `hotstart` | `hotStart.deployDraft`, `hotStart.battles` | A free draft at deploy, before the clock starts (any side with a draft pool; in a run, the player). In battle 1 of a run, the general earns ¾ of its stipend. `battles[i]` takes any effects, per side, for run battle i + 1 |
+| `breach` | `sideTriggers`, `sporestorm.heartcapTakenPerStack` | Two new `heartcapBreach` triggers, which every side gets. At ⅔ HP: a 150 Crush pulse (radius 4) in the breached lane, 10 s of half damage taken, +150 gold. At ⅓, a last stand: another pulse, 20 s of quarter damage, the commander power ready, +150 gold. The Sporestorm adds +10% Heartcap damage per stack, not +20% |
+| `bigdrafts` | `draftWaves`, `draft.cards`, `bigDrafts` | Drafts after waves 2 and 5 instead of 2, 4, 6 and 8. Each offers 4 cards; take 2, and +10 rare |
+
+**New sim pieces**, all inert without a knob:
+- The trigger `on: heartcapBreach` with `at` (a fraction of max HP), and the actions `shieldHeartcap { seconds, takenMult }` and `readyPower`. They are in the effects DSL, so a relic could use them too.
+- A deploy-time draft, and multi-pick drafts.
+- A `heartcapBreach` event, which the browser shows as a callout and a ring the size of the pulse.
+
+Tests are in `tests/unit/battleFeel.test.ts`.
+
+**Measured with** `npm run experiment -- --proto <spec> --checks runs,engagement --commander all --power-policy auto --runs 100`:
+- **Runs:** `bot:balanced`, greedy drafts, random route, seeds 1–100 for each of Vesper, Armilla and Cordis. That's 300 runs per cell. A pooled rate near 33% has a standard error of about ±2.7 points, and a per-commander rate about ±4.7. Every cell uses the same seeds, so differences between cells are a little tighter than that.
+- **Single battles:** `bot:balanced` against the engagement review's four generals (scripted, Old Mother Mold, the Lichen Baron, the Blightwright) on Bogwater Hollow, seeds 1–30, for each commander. That's 360 battles per cell. Fall times are the median of the 12 per-row medians, with the row range in brackets.
+- **Not touched:** single battles have no drafts and aren't run battles, so `hotstart` and `bigdrafts` leave the engagement numbers unchanged. They match the baseline digit for digit, which confirms nothing leaks.
+
+The engagement check gained ⅔ → dead, ⅓ → dead and comeback counts (the winner won after its own Heartcap fell to ⅔). The runs check gained losses by battle number and cards drafted per battle.
+
+### Hot start
+
+| Variant (`--proto`) | Battle 1 lost | Battle 2 lost | Reached the boss | Runs won | Boss fights won |
+|---|---|---|---|---|---|
+| Baseline | 33.0% (32 / 34 / 33) | 35% | 35% | 24% | 72 of 105 |
+| Deploy draft only (`hotStart.deployDraft:{}`) | 31.0% | 26% | 39% | 29% | 87 of 116 |
+| General's battle-1 income ×0.75 only | 16.3% | 33% | 42% | 30% | 91 of 125 |
+| **`hotstart`** (both) | **17.7%** (10 / 20 / 23) | 26% | 45% | 34% | 102 of 134 |
+| Income ×0.67 instead | 16.7% | 30% | 45% | 35% | 105 of 136 |
+| `hotstart`, plus battle 2 at ×0.85 | 17.7% | 21% | 48% | 35% | 104 of 144 |
+| The player gets +100 gold in battle 1, in place of the income cut | 20.3% | 28% | 42% | 34% | 103 of 127 |
+
+Per-commander numbers in brackets are Vesper / Armilla / Cordis.
+
+**Battle 1 is Old Mother Mold or the Lichen Baron, and Mold does most of the damage.** In the baseline, 79 of the 99 battle-1 losses are to Mold (51% of Mold fights) and 20 to the Baron (14%). `hotstart` cuts that to 27% and 8%. By map, losses fall from 37 / 27 / 35% to 25 / 7 / 21% (Bogwater / Stumpfield / Twin Roots).
+
+- **The gentler battle 1 does the work.** A quarter off the general's income halves battle-1 losses, and a deeper cut (×0.67) gains nothing more. What's left is Mold's mustered swarm, the same strength that keeps mono Sporeling above G3 since Hold.
+- **The deploy draft is a decision, not a difficulty lever.**
+  - It gives a first choice at 0:00, which the design review asked for ("first decision < 30 s").
+  - It moves battle-1 losses by noise (33 → 31%).
+  - Its extra card pays off later: battle-2 losses fall to 26%, and runs won rise from 24 to 29%.
+- **85% battle-1 wins isn't reached** (82%). A lead, measured with a scratch content edit and not a knob: move Old Mother Mold out of battle 1 (`appearsIn` [1, 2, 3] → [2, 3] in `generals.json`).
+
+  | | Battle 1 lost | Battle 2 lost | Reached the boss | Runs won |
+  |---|---|---|---|---|
+  | Today's rules, Mold out of battle 1 | 15.0% | 40% | 37% | 26% |
+  | `hotstart`, Mold out of battle 1 | **6.0%** (3 / 8 / 7) | 37% | 42% | 33% |
+
+  - With `hotstart`, it passes the design review's 85%.
+  - But Mold then lands in battle 2, which gets deadlier: it moves the deaths more than it removes them.
+  - It's a data change, so it's the user's call. Every run would also open against the Baron.
+
+### Heartcap breach and last stand
+
+Single battles (360 per cell). `bot:balanced` wins 64% in every cell.
+
+| Variant | First hit → dead | ⅔ → dead | ⅓ → dead | Median length (row range) | Decisions | Comebacks | Battle 1 lost (runs) |
+|---|---|---|---|---|---|---|---|
+| Baseline | 17.7 s (12–23) | 9.3 s | 4.2 s | 6:06 (5:34–7:04) | 2% | 0 | 33.0% |
+| Storm +10% per stack only | 20.4 s (14–25) | 10.3 s | 5.0 s | 6:09 | 2% | 0 | 32.7% |
+| Pulses at ⅔ and ⅓ (150 Crush, radius 4), storm +10% | 24.8 s (16–31) | 14.6 s | 7.0 s | 6:15 | 2% | 0 | 31.7% |
+| Pulses, plus a last stand at ⅓: 15 s at ×0.5 and the power ready (storm +10%) | 31.1 s (19–37) | 20.5 s | 12.9 s | 6:19 | 2% | 0 | 31.7% |
+| Same, storm +20% (today's) | 26.7 s (17–34) | 17.6 s | 11.2 s | 6:16 | 2% | 0 | 31.3% |
+| Same, storm +0% | 33.9 s (24–45) | 23.9 s | 15.6 s | 6:24 | 2% | 0 | 31.3% |
+| Same, pulses 300 Crush, radius 5 | 36.8 s (26–51) | 26.7 s | 17.8 s | 6:28 | 2% | 0 | 31.3% |
+| Same, +150 gold at each mark | 35.1 s (21–46) | 23.9 s | 16.2 s | 6:26 | 2% | 0 | 30.7% |
+| Same, +300 gold at each mark | 35.2 s (21–64) | 25.4 s | 17.2 s | 6:37 | 3% | **5** | 31.0% |
+| **`breach`**: shields at both marks (⅔: 10 s at ×0.5; ⅓: 20 s at ×0.25), +150 gold at each | **45.5 s** (34–53) | **35.0 s** | 22.2 s | 6:33 (6:02–7:26) | 2% | **2** | 31.7% |
+
+Rows other than the preset are `breach` with a `sideTriggers:[…]` or `sporestorm.heartcapTakenPerStack:<x>` override that has the parts the row names. "Comebacks" counts battles the winner won after its own Heartcap fell to ⅔.
+
+**Why bots never come back: the cliff is upstream of the Heartcap.**
+- A scratch trace of 120 baseline battles found 119 routs.
+- When the loser's Heartcap is first hit, the loser has a median of 1 building left (from a peak of 6), none in 41 battles, and 0 units on the field.
+- It loses half its buildings a median 34.5 s before it dies, and its last building 13.2 s before.
+
+So the 12–23 s Heartcap fall is the epilogue of a ~35 s collapse.
+
+- **A breach can lengthen the epilogue, and it does.** `breach` turns an 18 s fall into 45 s. The time from ⅔ to dead goes from 9 s to 35 s, at a cost of 27 s more per battle. The median length stays inside G4's band, and Decisions don't move.
+- **It can't make a comeback by itself.** The defender has nothing left to fight with. Only gold lets it rebuild: +300 gold per mark gives 5 comebacks in 360, and `breach` gives 2. `bot:balanced` still wins 64%.
+- **The storm bonus matters less than the triggers.** Today's +20% against +10% against 0 moves the fall by about ±3–4 s.
+- **Runs barely change.** Battle-1 losses go from 33% to 31–32% (noise). Runs won go from 24% to 27%.
+
+What a real comeback would need is a moment earlier in the collapse, or a run-level rule. Neither is tested here:
+- a trigger when a side has lost half its buildings;
+- a defensive rally while the base is still standing;
+- engagement review rec 2's run half: a rout loss costs 40–50% of the run's Heartcap instead of ending the run.
+
+### Bigger drafts
+
+| Variant (`--proto`) | Holds per battle (at most) | Cards per battle | Battle 1 lost | Battle 2 lost | Reached the boss | Runs won | Boss fights won |
+|---|---|---|---|---|---|---|---|
+| Baseline: waves 2, 4, 6, 8; take 1 of 3 | 4 | 2.4 | 33.0% | 35% | 35% | 24% | 72 of 105 |
+| Waves 2, 5; take 1 of 3 (`draftWaves:[2,5]`) | 2 | 1.7 | 35.3% | 36% | 28% | 20% | 61 of 85 |
+| Waves 2, 5; take 1 of 4, +30 rare | 2 | 1.7 | 35.3% | 37% | 27% | 18% | 55 of 81 |
+| **`bigdrafts`**: waves 2, 5; take 2 of 4, +10 rare | 2 | 3.2 | 31.0% | 30% | 37% | 28% | 83 of 110 |
+| Waves 1, 4; take 2 of 4, +10 rare | 2 | 3.6 | 30.0% | 30% | 36% | 29% | 88 of 109 |
+
+- **Bigger has to mean more picks, not rarer cards.** Two 1-of-3 or 1-of-4 drafts lose cards and cost 4–6 points of run wins. Rarity doesn't make up for it: today's rare cards aren't much stronger than common ones.
+- **`bigdrafts` halves the holds** (at most 2 instead of 4). Because battles end around 6:00, before the wave-8 draft, it also gives about 0.8 more cards per battle. Runs won go from 24 to 28%, and battle-2 losses from 35 to 30%.
+- **It doesn't make cards bigger.** Engagement review rec 5's rule-bending relics, mutation cards and signature upgrades are new content, out of scope here.
+
+### All three together
+
+`hotstart,breach,bigdrafts`, same 300 runs and 360 battles:
+
+| | Battle 1 lost | Battles 2 / 3 / 4 lost | Reached the boss | Runs won | Boss fights won | Battle minutes per run (mean) |
+|---|---|---|---|---|---|---|
+| Baseline | 33% (99/300) | 35% / 21% / 28% | 35% | 24% | 72 of 105 (69%) | 15.1 |
+| `hotstart,bigdrafts` | 18% | 22% / 19% / 15% | 51% | 42% | 125 of 152 | 16.5 |
+| **`hotstart,breach,bigdrafts`** | **16%** (12 / 15 / 21) | 20% / 20% / 14% | 52% | 44% | 131 of 155 (85%) | 18.6 |
+
+The single battles are exactly `breach`'s: 45.5 s falls, 6:33 median, 2% Decisions.
+
+- **Battle 1 is now the gentlest battle, not the deadliest.** The run-loss curve is flat at 14–20% per battle instead of front-loaded.
+- **The boss gets easier too:** it loses 85% of its fights against 69% today. Runs won go from 24 to 44%.
+  - Bots aren't people, so that number isn't a difficulty target.
+  - But if the boss should be the hardest fight, it needs its own retune. That's a data change, so it waits for the user's OK.
+
+### Every guardrail
+
+`npm run experiment -- --proto <preset>` with the default checks. G3 is 20 seeds per seat on Bogwater, and `boss` is 80 runs with Vesper and no power policy. G11 ran alongside other jobs, so its times are an upper bound.
+
+| Check | Baseline | `hotstart` | `breach` | `bigdrafts` | All three |
+|---|---|---|---|---|---|
+| G1 | ✗ (gillNest wins 7/8) | ✗ (same) | ✗ (same) | ✗ (same) | ✗ (same) |
+| G2 | ✓ | ✓ | ✓ | ✓ | ✓ |
+| G3 mono Gill Nest; others above 55% | 100%; Sporeling 65% | same | same | same | same |
+| G4 median / Decisions / bot wins | 7:13 / 10% / 55% ✓ | same | **7:51 / 12% / 55%** ✓ | same | 7:51 / 12% / 55% ✓ |
+| G5 (+150 gold wins) | 75% ✓ | 75% ✓ | 73% ✓ | 75% ✓ | 73% ✓ |
+| G6 (6 columns behind wins) | 55% ✓ | 55% ✓ | 53% ✓ | 55% ✓ | 53% ✓ |
+| G7 mirror / Slayer mirror | 60% / 56% ✗ | same | same | same | same |
+| G8 rows passing / `bot:balanced` vs Baron | 0 of 9 / 67% ✗ | same | 1 of 9 / 67% ✗ | same | 1 of 9 / 67% ✗ |
+| G11 tick mean / p99 | 0.18 / 0.51 ms ✓ | 0.18 / 0.52 ms ✓ | 0.17 / 0.51 ms ✓ | 0.18 / 0.52 ms ✓ | 0.18 / 0.53 ms ✓ |
+| `boss` (80 runs): reached / won | 20% / 18% | 34% / 29% | 24% / 16% | 21% / 20% | 48% / 41% |
+
+- **No verdict changes.** G1, G3, G7 and G8 are today's standing misses.
+- **`breach` is the only knob that touches single battles.** It adds 38 s to G4's median and 2 points of Decisions, inside the band. Its one extra G8 row (Rootbreaker drops 23 points instead of 17) is one game in 30.
+
+### Recommendation
+
+1. **Playtest `hotstart` and `bigdrafts` together.** They are the clearest wins:
+   - Battle-1 losses fall from 33% to 18%, and battle-2 losses from 35% to 22%.
+   - The in-battle holds halve (at most 2 instead of 4), and the player gets a choice at 0:00.
+   - Neither touches a single-battle guardrail.
+
+   If the playtest agrees, adopting them is a data change, so it needs the user's OK:
+   - `hotStart` (deploy draft, battle 1 at ¾ general income), `draftWaves` [2, 5], `draft.cards` 4 and `bigDrafts` {picks 2, rareBonus 10} go into `balance.json`;
+   - SPEC §8.3 changes, and the goldens are refreshed.
+2. **Playtest `breach` on its own question:** does a 35 s window from ⅔ to dead feel like a siege worth fighting, or a slog?
+   - Bots can't answer it. The defender has nothing left when its Heartcap is hit, so the window almost never turns a battle (2 comebacks in 360).
+   - If testers want comebacks and not just a longer ending, the next prototype is a trigger earlier in the collapse (half the base lost), or a rout loss that costs run HP instead of the run.
+3. **For the 85% battle-1 target,** `hotstart` alone reaches 82%. With Old Mother Mold moved out of battle 1 it reaches 94%, but battle 2 gets deadlier (37%). That's a data change, so it's the user's call.
+4. **Once the early battles are gentler, the boss is the next problem.** With all three knobs, bots win 85% of boss fights and 44% of runs. A harder boss is a retune for after the playtest.
+
+**Playtest strings** (the dev site, once this branch is on `develop`; prototype runs are never saved):
+- All three: `https://swalliso.github.io/Sambattler/dev/?proto=hotstart,breach,bigdrafts`
+- The recommended pair: `?proto=hotstart,bigdrafts`
+- One at a time: `?proto=hotstart`, `?proto=breach`, `?proto=bigdrafts`
+- The breach in a single battle: `?scene=battle&proto=breach`
+- A lighter breach, the earlier last stand without shields or gold:
+  `?proto=breach,sideTriggers:[{"on":"heartcapBreach","at":0.67,"do":[{"explode":{"damage":150,"damageType":"crush","radius":4}}]},{"on":"heartcapBreach","at":0.33,"do":[{"explode":{"damage":150,"damageType":"crush","radius":4}},{"shieldHeartcap":{"seconds":15,"takenMult":0.5}},{"readyPower":true}]}]`
+
 ## G3 on every map: the rewrite (2026-10-30)
 
 Made on `feature/g3-every-map`. The user approved the thresholds and the seed count ("Keep G3 as proposed: mean ≤ 55%, worst map ≤ 60%, 50 seeds per seat."). Only the guardrail and its targets change: no rule or content, so the goldens are unchanged.

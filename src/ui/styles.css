@@ -519,7 +519,7 @@ kbd { font-family: var(--font-mono); font-size: 12px; line-height: 16px; padding
 .draft-top h2 { margin: 0; font: 400 30px/32px var(--font-display); font-synthesis: none; }
 .draft-top kbd { margin: 0 2px; }
 .spoils-what { margin: -6px 0 0; color: var(--text); font-size: 14px; line-height: 20px; }
-.draft-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-6); padding: var(--space-2) 0; }
+.draft-cards { display: grid; grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr)); gap: var(--space-6); padding: var(--space-2) 0; }
 .draft-card { --edge: var(--bark); position: relative; display: flex; flex-direction: column; gap: var(--space-3); min-height: 284px; padding: 18px 18px 16px; background: var(--panel-2); border: 2px solid var(--edge); border-radius: var(--radius-md); box-shadow: var(--shadow-bevel); color: var(--text); font: inherit; text-align: left; cursor: pointer; animation: deal 260ms ease-out backwards; animation-delay: calc(var(--i, 0) * 80ms); transition: transform 120ms ease-out, box-shadow 120ms ease-out, border-color 120ms ease-out; }
 .draft-card.uncommon { --edge: var(--rarity-uncommon-line); box-shadow: var(--shadow-bevel), 0 0 12px var(--glow-teal); }
 .draft-card.rare { --edge: var(--rarity-rare-line); box-shadow: var(--shadow-bevel), 0 0 14px var(--glow-amber); }
