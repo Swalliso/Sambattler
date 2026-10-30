@@ -120,7 +120,7 @@ The external research (sales figures, quotes and fungal biology) wasn't checked.
 - a hot start: a free pick at deploy and a gentler battle 1
 - bigger drafts, not more drafts
 
-**C. Network test** (the doc's P2, colony-swarm's cheapest test). Needs §17 #11 changed first:
+**C. Network test** (the doc's P2, colony-swarm's cheapest test). Needs §17 #11 changed first. *On 2026-10-30 this was put behind a [combat rework](combat-rework.md): placement tests mean little while one unit type wins alone.* As first planned:
 - **On paper:** six to eight buildings with printed neighbor rules.
 - **In game, on Bogwater:** three or four rules about *which* neighbor, at least two of them changing what units do. Hover stars and threads, and placement scores for the general.
 - **Judged by:** the placement-spread number and the colony-swarm playtest questions.
@@ -257,4 +257,4 @@ The user's answers:
 
 Still open:
 - whether Codex's two uncommitted notes and the original design review should come into `docs/ideas/`;
-- whether one-lane maps get a second front (measured [above](#second-front-test-2026-10-30): not as the archer fix on its own).
+- whether one-lane maps get a second front (measured [above](#second-front-test-2026-10-30): not as the archer fix on its own). The [combat rework](combat-rework.md) looks for the fix in how armies meet instead.
