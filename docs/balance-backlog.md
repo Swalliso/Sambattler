@@ -205,6 +205,8 @@ Mono Gill Nest against each defender, 20 seeds in both seats. One-off bots were 
 
 (Percentages are the mono attacker's win rate.) No defender holds, even the one that wins the 3-minute production duel 6/6. Battle traces explain it. Mono Sporeling builds 5–6 Burrows but never has more than 2–6 supply on the field, against 10–34 for the archers' 2–4 Nests. Each Sporeling walks into a growing archer mass, about 3 in transit at any time. The first fights happen under the archer side's own turrets, and from then on the archers advance column by column. The supply duels (all units at once) and the production duels (no turrets, no territory, 3 minutes) don't reproduce that stream-against-mass dynamic, so G1 and G2 can't see it.
 
+**Update, 2026-10-30: this no longer holds.** Hold was adopted on 2026-10-28, the day after this test. With it, the Sporeling-heavy defender beats mono Gill Nest 92% of the time, and mono Sporeling beats it 95%. See [D1 before and after Hold](#d1-before-and-after-hold).
+
 ### Recommendation after round 2
 
 Nothing here is worth adopting, and none of the round-2 settings passes the guardrails. G3 looks structural rather than numeric: in a single lane with Heartcap turrets, a ranged mass that grows behind its own front always beats a melee stream. Approach speed, archer numbers, damage to structures, firing lanes, lifespans, opening delays, conditional fall-back and home defense each either leave it at 85–100% or move it only by making battles stall or another mono bot dominant. What remains untried are rule-level changes to how melee armies arrive: true mustering combined with B1 and a 21–24 s Nest, or a melee wave release. Both change §5.2 and need the user's explicit OK. The other option is to reconsider whether G3's "≤ 55% against `bot:balanced`" is the right target while a single-lane map gives ranged mass this edge.
@@ -783,3 +785,182 @@ The other half, production the archers can't suppress, was B2 (`besiegedBy`). On
   - Concentrating beats Amanita: 42% against 65%.
 
   `bot:balanced` always splits, so G3 on two-lane maps measures its habit as much as the mono bot. A defender whose lane choice reads the opponent would make two-lane G3 fairer. That's AI work, and the user's call.
+
+## Counter matrix on today's rules (2026-10-30)
+
+Made on `feature/counter-matrix`: P0 of the [combat rework](ideas/combat-rework.md). Nothing in the rules or content changes. The answer bots are `bot.<id>` specs that the tool adds through `protoContent`, so `data/bots.json`, `src/data/proto.ts` and the goldens are unchanged.
+
+**The check** (`npm run experiment -- --checks counters`, `evaluateCounters` in `tools/lib/balance.ts`):
+- **Builds tested:** every `bot:mono:<id>` whose G3 mean is above 40%. The check plays G3 first (50 seeds per seat) to pick them: Gill Nest, Sporeling, Amanita, Morel and Veilstalker. Its G3 table matches [the rewrite's](#g3-on-every-map-the-rewrite-2026-10-30) cell for cell.
+- **Answers, 74 per build:**
+  - every other mono bot (13);
+  - every pair of the 10 army buildings (the 9 fighting spawners and the Puffball Mortar), weighted evenly (45);
+  - `bot:balanced`;
+  - 11 hand-written counter bots ([below](#the-answer-bots));
+  - the other data bots: `bot:rush`, `bot:turtle`, `bot:greedy` and `bot:slayer`.
+- **Every pairing** plays every run-pool map in both seats, through G3's own loop (`g3Row`).
+- **Screen:** seeds 1–10 per seat (20 games per map) rank the answers by their mean over the maps.
+- **Confirm:** each build's top 3 on seeds 11–60 (100 games per map, about ±5 points, and ±3 on the mean). The seeds are fresh, so the screen's luck doesn't flatter its winners.
+- **Proposed pass rule:** each build has an answer that wins ≥ 60% on the mean over maps. ⚑ marks a mono answer that fails G3 itself.
+
+### Result
+
+**Every strong mono build has an answer, so the proposed rule passes on today's rules.**
+- **Mono Gill Nest has answers: Sporeling-led builds.** Mono Sporeling wins 88% (⚑, it fails G3 itself). A Sporeling and Veilstalker forward rush wins 81%, and D1's own Sporeling-heavy defender 80%. They win on every map (71–91%).
+- **D1 predates Hold.** Round 2's "no defender holds" was measured on 2026-10-27, and Hold was adopted the next day. With `--proto nohold`, the rebuilt D1 defenders reproduce D1's table. With Hold, D1's Sporeling-heavy defender beats mono Gill Nest 92% of the time on Bogwater ([below](#d1-before-and-after-hold)).
+- **Mono Sporeling is the hard one.** `bot:turtle` wins 61%, within noise of the bar. D1's Amanita-heavy defender wins 57% and mono Capguard 56%. On Twin Roots they win 21–45%, and nothing tried there wins half its games ([below](#mono-sporeling-on-twin-roots)).
+- **Amanita:** mono Hammercap wins 93%, which is the asserted Hammercap > Amanita Knight edge. **Morel:** Veilstalker + Amanita wins 98%, mono Veilstalker 97%. **Veilstalker:** Sporeling + Gill Nest wins 95%.
+- **`bot:balanced` loses to Gill Nest, Sporeling, Amanita and Morel.** In G3 it wins 12%, 26%, 49% and 45% of those games. G3 fails because the reference mix doesn't build the answer, not because there's none.
+
+### Top answers
+
+Answer win % against each mono build, confirmed on seeds 11–60 (100 games per map). Bold is ≥ 60%.
+
+| Mono build (G3 mean) | Answer | Bogwater | Stumpfield | Twin Roots | Mean |
+|---|---|---|---|---|---|
+| Gill Archer Nest (88%) | mono Sporeling ⚑ | 91 | 83 | 91 | **88** |
+| | `counter-rush` | 81 | 76 | 86 | **81** |
+| | `d1-sporeling` | 81 | 71 | 89 | **80** |
+| Sporeling Burrow (74%) | `bot:turtle` | 77 | 86 | 21 | **61** |
+| | `d1-amanita` | 57 | 70 | 45 | 57 |
+| | mono Capguard | 79 | 65 | 25 | 56 |
+| Amanita Lodge (51%) | mono Hammercap | 100 | 100 | 80 | **93** |
+| | Amanita + Morel | 95 | 99 | 77 | **90** |
+| | Gill Nest + Morel | 100 | 100 | 67 | **89** |
+| Morel Warren (55%) | Veilstalker + Amanita | 98 | 100 | 95 | **98** |
+| | mono Veilstalker | 99 | 99 | 93 | **97** |
+| | mono Gill Nest ⚑ | 100 | 96 | 83 | **93** |
+| Veilstalker Hollow (41%) | Sporeling + Gill Nest | 100 | 100 | 84 | **95** |
+| | mono Gill Nest ⚑ | 100 | 100 | 73 | **91** |
+| | Gill Nest + Veilstalker | 100 | 100 | 66 | **89** |
+
+**Verdict under the proposed rule:** all five pass. Mono Gill Nest's best answer fails G3 itself, but its next two don't. Mono Sporeling's pass rests on one answer at 61% (184 of 300 games).
+
+### Mono against mono
+
+From the screen (60 games a cell, about ±6.5 points): the answer's win %, with the strong builds as rows. Bold is ≥ 60%. The four mono bots with no army (Tender's Ring, Truffle Cellar, Rhizome Vault, Spore Exchange) won no games and are left out.
+
+| Build \ answer | Sporeling | Capguard | Gill Nest | Rootbreaker | Mortar | Scythecap | Veilstalker | Hammercap | Amanita | Morel |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Gill Nest | **90** | 2 | – | 0 | 0 | 0 | 8 | 0 | 17 | 7 |
+| Sporeling | – | **63** | 10 | 15 | 0 | 37 | 23 | 2 | 43 | 35 |
+| Amanita | 57 | 30 | **83** | **82** | 0 | 35 | **70** | **92** | – | **90** |
+| Morel | **65** | 17 | **93** | 8 | 0 | 12 | **95** | 3 | 10 | – |
+| Veilstalker | **77** | 37 | **92** | 0 | 3 | 15 | – | 0 | 30 | 5 |
+
+- **The intended triangle holds between pure builds.** Sporeling beats Gill Nest (88% confirmed), Gill Nest beats Capguard (98% in the screen), and Capguard beats Sporeling (56% confirmed).
+- **The two worst builds are answered by near-pure builds.**
+  - The Gill Nest answers are Sporeling-led: mono Sporeling, `counter-rush` and `d1-sporeling`.
+  - The Sporeling answers are Capguards (`bot:turtle`, with Mortars at home, and mono Capguard) or Amanita Knights (`d1-amanita`).
+  - `bot:balanced` wins 18% and 23% against them in the screen.
+
+Named bots against each build (screen mean, bold ≥ 60%):
+
+| Answer | Gill Nest | Sporeling | Amanita | Morel | Veilstalker |
+|---|---|---|---|---|---|
+| `balanced` | 18 | 23 | 50 | 55 | **65** |
+| `d1-burrows` | 52 | 35 | 55 | **63** | **62** |
+| `d1-sporeling` | **90** | 50 | 53 | **72** | **85** |
+| `d1-amanita` | 18 | **70** | **78** | 25 | **77** |
+| `d1-adaptive` | 18 | 23 | 45 | **62** | **60** |
+| `diverdef` | 17 | 43 | 43 | **85** | **78** |
+| `counter-archers` | **62** | 27 | 47 | **72** | **77** |
+| `counter-rush` | **92** | 48 | 58 | **78** | **73** |
+| `counter-swarm` | 0 | 43 | 27 | 8 | 23 |
+| `counter-tenders` | 0 | 47 | 22 | 5 | 20 |
+| `counter-knights` | 2 | 8 | **87** | 42 | 8 |
+| `counter-runners` | 5 | 42 | **80** | 47 | 55 |
+| `rush` | **73** | 38 | 48 | 55 | **73** |
+| `turtle` | 2 | **67** | **62** | 48 | **68** |
+| `greedy` | 3 | 13 | 50 | 42 | 52 |
+| `slayer` | 13 | 30 | 50 | **68** | 57 |
+
+### D1 before and after Hold
+
+Round 2's [D1 table](#d1-is-g3-a-reference-bot-artifact), rebuilt and played as D1 was: Bogwater, seeds 1–20 per seat (40 games). Each cell is the mono attacker's win %: D1 on 2026-10-27 / the rebuild with `--proto nohold` / today.
+
+| Defender | vs mono Gill Nest | vs mono Sporeling | vs mono Capguard |
+|---|---|---|---|
+| `bot:balanced` | 100 / 100 / 100 | 40 / 40 / 65 | 25 / 25 / 45 |
+| `d1-burrows` (two-Burrow opener) | 98 / 98 / 60 | 43 / 43 / 75 | 55 / 55 / 48 |
+| `d1-adaptive` | 100 / 100 / 98 | 48 / 48 / 72 | 15 / 15 / 22 |
+| `d1-sporeling` (Sporeling-heavy) | 95 / 95 / **8** | 35 / 35 / 43 | 95 / 95 / 85 |
+| `d1-amanita` (Amanita-heavy) | 100 / 100 / 100 | 15 / 10 / 28 | 35 / 35 / 35 |
+| mono Sporeling Burrow | 98 / 98 / **5** | the mirror, not played | 98 / 98 / 90 |
+| mono Amanita Lodge | 100 / 100 / 100 | 0 / 0 / 40 | 20 / 20 / 55 |
+
+- **The rebuild matches D1 in every cell but one,** so the bots and the tool agree with round 2. What changed is the rules.
+- **Hold is the likely reason.** Every AI side now musters 12 supply in a lane before it advances. Sporelings arrive as a wave rather than one or two at a time, which was the diagnosis's first cause (the trickle). This run doesn't trace it.
+- **`bot:balanced` still loses every game to the archers on Bogwater.** Its Sporelings are too few to make that wave.
+- **Hold also made mono Sporeling stronger against every defender here,** by 8–40 points. That is the G3 cost the [Hold adoption](../data/CHANGELOG-balance.md#adopted-e1-hold--advance-2026-10-28) recorded.
+
+### Mono Sporeling on Twin Roots
+
+The screen's 8 best answers on Twin Roots, confirmed there on seeds 11–60 (100 games each). Answer win %:
+
+| Answer | Twin Roots |
+|---|---|
+| `bot:rush` | 46 |
+| `d1-amanita` | 45 |
+| `counter-rush` | 42 |
+| Sporeling + Veilstalker | 41 |
+| Sporeling + Amanita | 41 |
+| Sporeling + Gill Nest | 32 |
+| Sporeling + Rootbreaker | 26 |
+| Capguard + Amanita | 8 |
+
+The main confirmation adds `bot:turtle` at 21% and mono Capguard at 25%. No answer tried wins half its games against mono Sporeling on Twin Roots. On the one-lane maps, Capguards answer it: `bot:turtle` (Capguards and Mortars at home) wins 77% and 86%, mono Capguard 79% and 65%.
+
+### What it means for the rework
+
+- **The proposed pass rule passes today,** so on its own it can't tell the rework from today's rules. Two stricter versions, and what they say today:
+  - an answer that wins ≥ 60% on every map: fails mono Sporeling only (Twin Roots, best 46%);
+  - an answer that isn't itself a mono build failing G3: changes nothing, since mono Gill Nest keeps `counter-rush` (76–86% on every map).
+- **The archer premise is out of date.** The rework doc's diagnosis rests on D1: no defender beats mono archers, and an all-Sporeling army wins 2%. Since Hold, Sporeling-led armies win 80–95%. By the doc's own test ("a strong build that something beats is a strategy"), mono Gill Nest is now a strategy.
+- **What's left without a good answer:**
+  - mono Sporeling. Nothing answers it on Twin Roots, and its best answer overall wins 61%, near the bar;
+  - G3 itself. `bot:balanced` loses to the committed builds: the Sporeling-led bots beat the archers 80–88%, but the reference mix wins 12%.
+- **The answers say what the general's counter cycle (§7.4) would need to build:**
+  - Sporelings against archers;
+  - Capguards, or Amanita Knights, against Sporelings;
+  - Hammercaps against Amanita;
+  - Veilstalkers against Morel;
+  - archers against Veilstalkers.
+
+### The answer bots
+
+The tool generates these (`counterBots` in `tools/lib/balance.ts`) and adds them with `bot.<id>:{…}` specs. The shipped bots are untouched.
+
+- **Pairs** (`pair-<a>-<b>`): weights 1 and 1, merging on. The opener alternates a, b, a, … while the 300 starting gold covers it, the way a mono bot spends its starting gold on its one building.
+- **D1's defenders** are rebuilt from round 2's descriptions, since their specs weren't recorded. With `--proto nohold` they reproduce D1's table. The one miss is Amanita-heavy against mono Sporeling (10% against D1's 15%, 2 games of 40).
+
+| Bot | What it is | Opener | Weights (other settings) |
+|---|---|---|---|
+| `d1-burrows` | `bot:balanced` with a two-Burrow opener | Burrow, Burrow | `bot:balanced`'s |
+| `d1-sporeling` | D1's Sporeling-heavy defender | Burrow, Burrow | Burrow 5, Capguard 1, Cellar 1, Scythecap 1 (≤ 3 Cellars) |
+| `d1-amanita` | D1's Amanita-heavy defender | Lodge | Lodge 4, Burrow 2 |
+| `d1-adaptive` | `bot:balanced` running the adaptive counter cycle | Burrow, Cellar | `bot:balanced`'s (`adaptive`) |
+| `diverdef` | Step A's defender, without the diver rule | Burrow, Hollow | `bot:balanced`'s, Hollow 5 |
+| `counter-archers` | Amanita Knights soak arrows (Pierce ×0.75 on heavy) while Sporelings and Veilstalkers close in | Burrow, Burrow | Lodge 3, Burrow 3, Hollow 2, Cellar 1 (≤ 2 Cellars) |
+| `counter-rush` | Sporelings and Veilstalkers placed forward, to strike before the archer mass stands | Burrow, Burrow | Burrow 4, Hollow 3, Lodge 1 (forward placement: `spawnerDepthWeight` 3, as `bot:rush`) |
+| `counter-swarm` | Capguards and Scythecaps (Slash ×1.5 on light) behind Mortar splash | Capguard, Capguard | Capguard 4, Scythecap 3, Mortar 2, Cellar 1 (≤ 2 Cellars, ≤ 3 Mortars) |
+| `counter-tenders` | Capguards and Scythecaps healed by Tenders | Capguard, Capguard | Capguard 4, Scythecap 2, Tender's Ring 2, Cellar 1 (≤ 2 Cellars) |
+| `counter-knights` | Hammercaps and Rootbreakers (Crush ×1.5 on heavy), with Veilstalkers for merged Knights (Slayer ×3 on elites) | Hammercap | Hammercap 4, Rootbreaker 2, Hollow 2, Cellar 1 (≤ 2 Cellars) |
+| `counter-runners` | Archers and Veilstalkers (Pierce ×1.5 on medium) behind Capguards, with Mortar splash | Gill Nest, Capguard | Gill Nest 3, Hollow 2, Capguard 2, Mortar 1, Cellar 1 (≤ 2 Cellars) |
+
+Every hand-written bot merges (`mergePolicy` on).
+
+### Runtime and commands
+
+- **The full check** plays 30,900 games: 4,200 for G3, 22,200 in the screen and 4,500 in the confirmation. It took 361 s on 6 workers while other work shared the machine. That's 2,110 s of CPU, 0.068 s a game, or about 35 minutes single-threaded.
+- **Workers:** `--workers n` plays the cells in worker threads (`tools/lib/pool.ts`), by default half the machine's threads. Each cell is deterministic and results come back in job order. A small run gave identical reports in process and on 4 workers.
+- **Options:** `--mono`, `--answers`, `--maps`, `--screen-seeds`, `--confirm-seeds`, `--top` and `--g3seeds`. A narrow run for iterating takes 47 s:
+  ```
+  npm run experiment -- --checks counters --mono gillNest,sporelingBurrow --answers bot:mono:sporelingBurrow,bot:mono:capguardHall,bot:counter-rush,bot:turtle,bot:d1-amanita --g3seeds 10
+  ```
+- **The D1 table** comes from the screen of this command, with and without `--proto nohold`:
+  ```
+  npm run experiment -- --checks counters --mono gillNest,sporelingBurrow,capguardHall --answers bot:balanced,bot:d1-burrows,bot:d1-adaptive,bot:d1-sporeling,bot:d1-amanita,bot:mono:sporelingBurrow,bot:mono:amanitaLodge --maps bogwater-hollow --screen-seeds 20
+  ```
+- **The Twin Roots confirmation:** `npm run experiment -- --checks counters --mono sporelingBurrow --maps twin-roots --answers <the 8 above> --top 8`.
+- **For P2:** the same check with `--proto rework`.

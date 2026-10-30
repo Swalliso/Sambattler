@@ -1,7 +1,8 @@
 // Balance harness (SPEC §12): production and supply duels, bot tournaments, the guardrail
-// evaluations G1–G8 and the commander tournament (SPEC §16 M5). Shared by `npm run balance` and the slow test suite. Duels measure the base
+// evaluations G1–G8, the counter matrix (combat rework P0) and the commander tournament (SPEC §16 M5). Shared by `npm run balance`, `npm run experiment` and the slow test suite. Duels measure the base
 // counter matrix, so they run with merging off; battles use the milestone's default flags.
 import type { Content } from '../../src/data/registry.ts';
+import type { BotDef } from '../../src/data/schema.ts';
 import { addBuilding, addUnit } from '../../src/sim/create.ts';
 import { createBattle, makeConfig, runHeadless, summarize } from '../../src/sim/index.ts';
 import type { BattleConfig, BattleState, Side, Tier } from '../../src/sim/index.ts';
@@ -290,12 +291,13 @@ export interface G3Row {
   monoSpawned: number; monoLost: number; defDamage: Record<string, number>; defDamageTotal: number;
 }
 
-export function g3Row(content: Content, map: string, id: string, seeds: number, defender = 'bot:balanced'): G3Row {
+/** Seeds `firstSeed` to `firstSeed + seeds - 1`, in both seats (the counter check confirms on fresh seeds). */
+export function g3Row(content: Content, map: string, id: string, seeds: number, defender = 'bot:balanced', firstSeed = 1): G3Row {
   const seat = { player: 0, enemy: 0 };
   const lengths: number[] = [];
   let decisions = 0, monoSpawned = 0, monoLost = 0, defDamageTotal = 0;
   const defDamage: Record<string, number> = {};
-  for (let seed = 1; seed <= seeds; seed++) {
+  for (let seed = firstSeed; seed < firstSeed + seeds; seed++) {
     for (const side of ['player', 'enemy'] as const) {
       const { result } = runBattle(content, {
         seed, map, player: side === 'player' ? `bot:mono:${id}` : defender, enemy: side === 'player' ? defender : `bot:mono:${id}`,
@@ -335,14 +337,24 @@ export interface G3Bot { id: string; mean: number; worst: number; worstMap: stri
  * G3: every mono bot plays `bot:balanced` on every map in the run pool, in both seats. A bot passes
  * if its mean win rate over those maps is ≤ `maxMeanWinRate` and its worst map ≤ `maxMapWinRate`.
  */
-export function evaluateG3(content: Content, opts: G3Options = {}): Verdict & { rows: G3Row[]; bots: G3Bot[]; maps: string[]; seeds: number } {
+export function evaluateG3(content: Content, opts: G3Options = {}): G3Verdict {
+  const s = g3Setup(content, opts);
+  return g3Verdict(content, s.maps.flatMap((map) => s.ids.map((id) => g3Row(content, map, id, s.seeds, s.defender))), s);
+}
+
+export type G3Verdict = Verdict & { rows: G3Row[]; bots: G3Bot[]; maps: string[]; seeds: number };
+
+/** G3's maps, bots, seeds and defender, defaults filled in. */
+export function g3Setup(content: Content, opts: G3Options = {}): Required<G3Options> {
+  return {
+    maps: opts.maps ?? mapPool(content), ids: opts.ids ?? rosterIds(content), seeds: opts.seeds ?? content.targets.G3.seeds, defender: opts.defender ?? 'bot:balanced',
+  };
+}
+
+/** G3's verdict from its cells, however they were played (in process here, or through a RowRunner by the counter check). */
+export function g3Verdict(content: Content, rows: G3Row[], { maps, ids, seeds, defender }: Required<G3Options>): G3Verdict {
   const t = content.targets.G3;
   const pool = mapPool(content);
-  const maps = opts.maps ?? pool;
-  const ids = opts.ids ?? rosterIds(content);
-  const seeds = opts.seeds ?? t.seeds;
-  const defender = opts.defender ?? 'bot:balanced';
-  const rows = maps.flatMap((map) => ids.map((id) => g3Row(content, map, id, seeds, defender)));
   const counted = maps.filter((m) => pool.includes(m));
   const bots = ids.map((id): G3Bot => {
     const mine = counted.map((m) => rows.find((r) => r.map === m && r.id === id)!);
@@ -480,6 +492,248 @@ export function evaluateG8(content: Content): Verdict & { rows: G8Row[] } {
   return {
     id: 'G8', pass, rows,
     summary: `adaptation: every mono bot drops ≥${Math.round(t.minDrop * 100)} points against adaptive ${t.general}; balanced wins ${pct(t.balancedMin)}–${pct(t.balancedMax)}`,
+    details,
+  };
+}
+
+// ---------------------------------------------------------------- the counter matrix
+
+/**
+ * The counter check (docs/ideas/combat-rework.md): a strong mono build is a strategy if something beats
+ * it, and the bug if nothing does. Defaults, and the proposed pass rule: some answer wins ≥ 60%.
+ */
+export const COUNTERS = { screenSeeds: 10, confirmSeeds: 50, top: 3, minBuildMean: 0.4, minAnswerRate: 0.6 };
+
+/** One G3 cell to play: `bot:mono:<id>` against `defender` on `map`, `seeds` per seat from `firstSeed` (default 1). */
+export interface G3Job { map: string; id: string; seeds: number; defender: string; firstSeed?: number }
+
+/** Plays G3 cells and returns their rows in job order. */
+export type RowRunner = (jobs: G3Job[]) => Promise<G3Row[]>;
+
+/** Plays the cells in this thread (tools/lib/pool.ts plays the same jobs in worker threads). */
+export function inProcessRows(content: Content): RowRunner {
+  return (jobs) => Promise.resolve(jobs.map((j) => g3Row(content, j.map, j.id, j.seeds, j.defender, j.firstSeed)));
+}
+
+/** The buildings that fight: spawners of fighting units (spawnerIds) and towers. The check pairs these. */
+export function armyIds(content: Content): string[] {
+  const spawners = spawnerIds(content);
+  return rosterIds(content).filter((id) => spawners.includes(id) || content.buildings[id]!.kind === 'tower');
+}
+
+/** A pair bot's opener: a, b, a, … while the starting gold covers it, as a mono bot spends its starting gold on its building. */
+function pairOpener(content: Content, a: string, b: string): string[] {
+  const opener: string[] = [];
+  for (let spent = 0, i = 0; ; i++) {
+    const id = i % 2 ? b : a;
+    spent += content.buildings[id]!.cost;
+    if (spent > content.balance.startingGold) return opener;
+    opener.push(id);
+  }
+}
+
+/**
+ * The answer bots the check adds to the content: one bot per pair of army buildings, weighted evenly
+ * (`pair-<a>-<b>`), and hand-written counter bots in the style of round 2's D1 defenders. D1's own
+ * specs weren't recorded, so `d1-*` are rebuilt from the backlog's descriptions; with `nohold` they
+ * reproduce D1's table, Amanita-heavy within 2 games of 40.
+ */
+export function counterBots(content: Content): Record<string, Omit<BotDef, 'id'>> {
+  const bots: Record<string, Omit<BotDef, 'id'>> = {};
+  const army = armyIds(content);
+  for (let i = 0; i < army.length; i++) for (let j = i + 1; j < army.length; j++) {
+    const a = army[i]!, b = army[j]!;
+    bots[`pair-${a}-${b}`] = { description: `${content.buildings[a]!.name} and ${content.buildings[b]!.name}, weighted evenly`, opener: pairOpener(content, a, b), weights: { [a]: 1, [b]: 1 }, mergePolicy: 'on' };
+  }
+  const { id: _id, description: _desc, ...balanced } = content.bots.balanced!;
+  const cellar = { truffleCellar: { maxOwned: 2 } };
+  Object.assign(bots, {
+    'd1-burrows': { ...balanced, description: 'D1: bot:balanced with a two-Burrow opener (no Cellar)', opener: ['sporelingBurrow', 'sporelingBurrow'] },
+    'd1-sporeling': {
+      description: 'D1: Sporeling-heavy (two Burrows; weight 5 Burrow, 1 Capguard, Cellar, Scythecap)', opener: ['sporelingBurrow', 'sporelingBurrow'],
+      weights: { sporelingBurrow: 5, capguardHall: 1, truffleCellar: 1, scythecapGrove: 1 }, limits: { truffleCellar: { maxOwned: 3 } }, mergePolicy: 'on',
+    },
+    'd1-amanita': { description: 'D1: Amanita-heavy (Lodge opener; weight 4 Lodge, 2 Burrow)', opener: ['amanitaLodge'], weights: { amanitaLodge: 4, sporelingBurrow: 2 }, mergePolicy: 'on' },
+    'd1-adaptive': { ...balanced, description: 'D1: bot:balanced running the adaptive counter cycle', adaptive: true },
+    diverdef: {
+      ...balanced, description: "Step A's defender: bot:balanced with a Veilstalker opener and weight 5 Hollow (no diver rule)", opener: ['sporelingBurrow', 'veilstalkerHollow'],
+      weights: { ...balanced.weights, veilstalkerHollow: 5 },
+    },
+    'counter-archers': {
+      description: 'vs archers: Amanita Knights soak arrows (Pierce ×0.75 on heavy) while Sporelings and Veilstalkers close in', opener: ['sporelingBurrow', 'sporelingBurrow'],
+      weights: { amanitaLodge: 3, sporelingBurrow: 3, veilstalkerHollow: 2, truffleCellar: 1 }, limits: cellar, mergePolicy: 'on',
+    },
+    'counter-rush': {
+      description: 'vs archers: Sporelings and Veilstalkers placed forward, to strike before the mass stands', opener: ['sporelingBurrow', 'sporelingBurrow'],
+      weights: { sporelingBurrow: 4, veilstalkerHollow: 3, amanitaLodge: 1 }, placement: { spawnerDepthWeight: 3 }, mergePolicy: 'on',
+    },
+    'counter-swarm': {
+      description: 'vs swarms: Capguards and Scythecaps (Slash ×1.5 on light) behind Mortar splash', opener: ['capguardHall', 'capguardHall'],
+      weights: { capguardHall: 4, scythecapGrove: 3, puffballMortar: 2, truffleCellar: 1 }, limits: { ...cellar, puffballMortar: { maxOwned: 3 } }, mergePolicy: 'on',
+    },
+    'counter-tenders': {
+      description: 'vs swarms: Capguards and Scythecaps healed by Tenders', opener: ['capguardHall', 'capguardHall'],
+      weights: { capguardHall: 4, scythecapGrove: 2, tendersRing: 2, truffleCellar: 1 }, limits: cellar, mergePolicy: 'on',
+    },
+    'counter-knights': {
+      description: 'vs Amanita Knights: Hammercaps and Rootbreakers (Crush ×1.5 on heavy), Veilstalkers for merged Knights (Slayer ×3 on elites)', opener: ['hammercapForge'],
+      weights: { hammercapForge: 4, rootbreakerDen: 2, veilstalkerHollow: 2, truffleCellar: 1 }, limits: cellar, mergePolicy: 'on',
+    },
+    'counter-runners': {
+      description: 'vs Morel Runners: archers and Veilstalkers (Pierce ×1.5 on medium) behind Capguards, with Mortar splash', opener: ['gillNest', 'capguardHall'],
+      weights: { gillNest: 3, veilstalkerHollow: 2, capguardHall: 2, puffballMortar: 1, truffleCellar: 1 }, limits: cellar, mergePolicy: 'on',
+    },
+  } satisfies Record<string, Omit<BotDef, 'id'>>);
+  return bots;
+}
+
+/** The proto spec that adds `counterBots` (`bot.<id>:{…}` entries): build the check's content with `protoContent`. */
+export function counterBotSpec(content: Content): string {
+  return Object.entries(counterBots(content)).map(([id, def]) => `bot.${id}:${JSON.stringify(def)}`).join(',');
+}
+
+/** The data bots that are strategies of their own (the G7 merge-off twins are left out). */
+const OTHER_BOTS = ['bot:rush', 'bot:turtle', 'bot:greedy', 'bot:slayer'];
+
+export type AnswerKind = 'mono' | 'pair' | 'reference' | 'counter' | 'bot';
+
+/** Every answer the check tries: each other mono bot, every even pair, `bot:balanced`, the counter bots and the other data bots. */
+export function counterAnswers(content: Content, build: string): string[] {
+  const added = Object.keys(counterBots(content));
+  return [
+    ...rosterIds(content).filter((id) => id !== build).map((id) => `bot:mono:${id}`),
+    ...added.filter((id) => id.startsWith('pair-')).map((id) => `bot:${id}`),
+    'bot:balanced',
+    ...added.filter((id) => !id.startsWith('pair-')).map((id) => `bot:${id}`),
+    ...OTHER_BOTS.filter((c) => content.bots[c.slice(4)]),
+  ];
+}
+
+export function answerKind(controller: string): AnswerKind {
+  if (controller.startsWith('bot:mono:')) return 'mono';
+  if (controller.startsWith('bot:pair-')) return 'pair';
+  if (controller === 'bot:balanced') return 'reference';
+  return OTHER_BOTS.includes(controller) ? 'bot' : 'counter';
+}
+
+/** An answer's results against one build: its wins per map and its mean over the counted maps. */
+export interface CounterResult {
+  answer: string; kind: AnswerKind;
+  maps: { map: string; wins: number; games: number; rate: number }[];
+  wins: number; games: number; mean: number;
+  /** A mono answer that fails G3 itself. */
+  failsG3: boolean;
+}
+
+export interface CounterBuild {
+  build: string; g3Mean: number;
+  /** Every answer's screen result, best first. */
+  screen: CounterResult[];
+  /** The top answers, confirmed on fresh seeds, best first. */
+  top: CounterResult[];
+  /** The proposed pass rule: the best confirmed answer wins ≥ `minAnswerRate`. */
+  pass: boolean;
+}
+
+export interface CounterOptions {
+  /** Maps (default: the run pool). Maps outside the pool are leads, as in G3. */
+  maps?: string[];
+  /** Mono builds to answer (default: every mono bot whose G3 mean is above `minBuildMean`). */
+  builds?: string[];
+  /** Answers to try against every build (default: counterAnswers). */
+  answers?: string[];
+  /** G3, if the caller has already played it on these maps; otherwise it's played here. */
+  g3?: G3Verdict;
+  /** Seeds per seat for that G3 run (default the target's). */
+  g3Seeds?: number;
+  screenSeeds?: number;
+  confirmSeeds?: number;
+  top?: number;
+  /** Plays the cells (default: in process). */
+  rows?: RowRunner;
+}
+
+export type CounterVerdict = Verdict & {
+  builds: CounterBuild[]; g3: G3Verdict; maps: string[]; screenSeeds: number; confirmSeeds: number; answers: Record<string, string[]>;
+};
+
+/**
+ * The counter matrix: each strong mono build (G3 mean above 40%) against every answer on every map, in
+ * both seats. A screen at `screenSeeds` per seat finds each build's `top` answers, and a confirmation
+ * on the next `confirmSeeds` seeds measures them, so the screen's luck doesn't flatter them. Passes if
+ * every build has an answer that wins ≥ 60% on the mean over the pool maps. Content must hold the
+ * bots from `counterBotSpec`. A mono answer that fails G3 itself is flagged.
+ */
+export async function evaluateCounters(content: Content, opts: CounterOptions = {}): Promise<CounterVerdict> {
+  const c = COUNTERS;
+  const pool = mapPool(content);
+  const maps = opts.maps ?? pool;
+  const counted = maps.some((m) => pool.includes(m)) ? maps.filter((m) => pool.includes(m)) : maps;
+  const screenSeeds = opts.screenSeeds ?? c.screenSeeds, confirmSeeds = opts.confirmSeeds ?? c.confirmSeeds, top = opts.top ?? c.top;
+  const rows = opts.rows ?? inProcessRows(content);
+  let g3 = opts.g3;
+  if (!g3) {
+    const s = g3Setup(content, { maps, ...(opts.g3Seeds ? { seeds: opts.g3Seeds } : {}) });
+    g3 = g3Verdict(content, await rows(s.maps.flatMap((map) => s.ids.map((id) => ({ map, id, seeds: s.seeds, defender: s.defender })))), s);
+  }
+  const g3Bots = g3.bots;
+  const builds = opts.builds ?? g3Bots.filter((b) => b.mean > c.minBuildMean).map((b) => b.id);
+  const answers = Object.fromEntries(builds.map((b) => [b, (opts.answers ?? counterAnswers(content, b)).filter((a) => a !== `bot:mono:${b}`)]));
+  for (const a of new Set(Object.values(answers).flat())) {
+    const m = a.match(/^bot:(.+)$/);
+    if (m && !m[1]!.startsWith('mono:') && !content.bots[m[1]!]) throw new Error(`counter answer ${a} isn't in the content (build it with counterBotSpec)`);
+  }
+  const failsG3 = (a: string) => g3Bots.some((b) => `bot:mono:${b.id}` === a && !b.pass);
+  // the build's rows are the mono side's; an answer wins every game the build loses (there are no draws)
+  const result = (answer: string, cells: G3Row[]): CounterResult => {
+    const mine = cells.map((r) => ({ map: r.map, wins: r.games - r.wins, games: r.games, rate: (r.games - r.wins) / r.games }));
+    const inMean = mine.filter((m) => counted.includes(m.map));
+    const wins = inMean.reduce((s, m) => s + m.wins, 0), games = inMean.reduce((s, m) => s + m.games, 0);
+    return { answer, kind: answerKind(answer), maps: mine, wins, games, mean: wins / games, failsG3: failsG3(answer) };
+  };
+  const play = async (pairs: [string, string][], seeds: number, firstSeed: number) => {
+    const jobs = pairs.flatMap(([build, answer]) => maps.map((map): G3Job => ({ map, id: build, seeds, defender: answer, firstSeed })));
+    const out = await rows(jobs);
+    return pairs.map(([, answer], i) => result(answer, out.slice(i * maps.length, (i + 1) * maps.length)));
+  };
+  // sort is stable, so ties keep the answers' order
+  const best = (rs: CounterResult[]) => [...rs].sort((x, y) => y.mean - x.mean);
+  const screenPairs = builds.flatMap((b) => answers[b]!.map((a): [string, string] => [b, a]));
+  const screened = await play(screenPairs, screenSeeds, 1);
+  const screens = builds.map((b) => best(screened.filter((_, i) => screenPairs[i]![0] === b)));
+  const confirmPairs = builds.flatMap((b, i) => screens[i]!.slice(0, top).map((r): [string, string] => [b, r.answer]));
+  const confirmed = await play(confirmPairs, confirmSeeds, screenSeeds + 1);
+  const results = builds.map((build, i): CounterBuild => {
+    const tops = best(confirmed.filter((_, k) => confirmPairs[k]![0] === build));
+    return { build, g3Mean: g3Bots.find((b) => b.id === build)?.mean ?? NaN, screen: screens[i]!, top: tops, pass: (tops[0]?.mean ?? 0) >= c.minAnswerRate };
+  });
+
+  const cell = (x: number) => (Number.isFinite(x) ? String(Math.round(x * 100)) : '–');
+  const heads = maps.map((m) => (pool.includes(m) ? m : `${m}*`));
+  const ansWidth = Math.max(...results.flatMap((r) => r.top.map((t) => t.answer.length)), 6);
+  const details = [
+    `answer win % against each mono build, both seats. Screen: ${2 * screenSeeds} games per map (seeds 1–${screenSeeds}); top ${top} confirmed on ${2 * confirmSeeds} per map (seeds ${screenSeeds + 1}–${screenSeeds + confirmSeeds}). Pass: an answer wins ≥${pct(c.minAnswerRate)} on the mean`,
+  ];
+  for (const r of results) {
+    const b = r.top[0], clean = r.top.find((t) => !t.failsG3);
+    const alsoClean = b?.failsG3 && clean ? `; best that passes G3: ${clean.answer} ${cell(clean.mean)}%` : '';
+    details.push(`${r.pass ? 'ok  ' : 'FAIL'} mono:${r.build} (G3 mean ${cell(r.g3Mean)}%, ${r.screen.length} answers): best ${b ? `${b.answer} ${cell(b.mean)}%${b.failsG3 ? ' (fails G3 itself)' : ''}${alsoClean}` : 'none'}`);
+    details.push(`       ${'answer'.padEnd(ansWidth)}  ${heads.join('  ')}   mean`);
+    for (const t of r.top) {
+      const cells = maps.map((m, i) => cell(t.maps.find((x) => x.map === m)!.rate).padStart(heads[i]!.length));
+      details.push(`       ${t.answer.padEnd(ansWidth)}  ${cells.join('  ')}  ${cell(t.mean).padStart(5)}${t.failsG3 ? '  ⚑ fails G3' : ''}`);
+    }
+    details.push(`       screen, next best: ${r.screen.slice(top, top + 5).map((s) => `${s.answer} ${cell(s.mean)}`).join(', ')}`);
+    const onMap = (m: string) => (s: CounterResult) => s.maps.find((x) => x.map === m)!.rate;
+    details.push(`       screen, best on each map: ${maps.map((m) => {
+      const s = [...r.screen].sort((x, y) => onMap(m)(y) - onMap(m)(x))[0]!;
+      return `${m} ${s.answer} ${cell(onMap(m)(s))}`;
+    }).join(', ')}`);
+  }
+  if (heads.some((h) => h.endsWith('*'))) details.push('* not in the run pool (a test map): a lead, not in the mean');
+  return {
+    id: 'counters', pass: results.every((r) => r.pass), builds: results, g3, maps, screenSeeds, confirmSeeds, answers,
+    summary: `counter matrix: every mono build with a G3 mean above ${pct(c.minBuildMean)} has an answer that wins ≥${pct(c.minAnswerRate)} on the mean over the run's maps (proposed)`,
     details,
   };
 }
