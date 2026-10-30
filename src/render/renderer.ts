@@ -301,6 +301,8 @@ export class Renderer {
       if (b.hp < b.maxHp) this.bar(x + 2, y + 1, def.w * TILE - 4, b.hp / b.maxHp, b.side);
       if (besieged) this.glyph('½', x + def.w * TILE - 7, y + 10, '#ffb4a8');
       if (b.holding) this.glyph('⬢!', x + 2, y + 10, '#f0c85a');
+      // combat rework `waves`: the units waiting inside for the next wave
+      if (b.stored) this.glyph(`+${b.stored}`, x + 2, y + def.h * TILE - 3, this.mat(b.side).glow);
       if (def.spawn && !b.mergeOn) this.knotOff(x + def.w * TILE - 9, y + def.h * TILE - 9, this.mat(b.side).glow);
       if (this.spawnTimers && def.spawn && b.side === 'player') this.spawnTimer(state, b, def, x, y);
     }
@@ -323,6 +325,7 @@ export class Renderer {
       }
     }
 
+    if (state.clouds?.length) this.drawClouds(state, t);
     this.drawMergeLinks(state, alpha, t);
 
     // units, sorted by y then id; merged units are drawn larger, with tier pips
@@ -333,6 +336,7 @@ export class Renderer {
     for (const u of us) {
       const x = u.px + (u.x - u.px) * alpha;
       const y = u.py + (u.y - u.py) * alpha;
+      if (u.burrowed) { this.mound(this.sx(x), y * TILE, u, t, view.selected === u.id); continue; }
       const sprite = this.content.units[u.unitId]!.sprite;
       const moving = u.x !== u.px || u.y !== u.py;
       const attacking = state.tick - u.lastAttackTick < 6 && u.lastAttackTick >= 0;
@@ -433,9 +437,76 @@ export class Renderer {
     }
   }
 
-  /** Prototype E1: a marching dashed rally line, topped by a pennant, in every lane a side holds. */
+  /**
+   * Combat rework `sporeCloud`: each cloud is a soft spore haze in its owner's glow, clipped to its
+   * lane, with spores drifting in it; it thins over its last quarter.
+   */
+  private drawClouds(state: BattleState, t: number): void {
+    const g = this.ctx;
+    const c = state.rules.cloud!;
+    for (const cl of state.clouds!) {
+      const L = state.lanes[cl.lane]!;
+      const fade = Math.min(1, (4 * (cl.untilTick - state.tick)) / c.ticks);
+      const cx = this.sx(cl.x), cy = cl.y * TILE, r = c.radius * TILE;
+      g.save();
+      g.beginPath();
+      g.rect(0, L.rowStart * TILE, this.width, (L.rowEnd + 1 - L.rowStart) * TILE);
+      g.clip();
+      g.fillStyle = this.mat(cl.side).glow;
+      g.globalAlpha = 0.14 * fade;
+      g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.fill();
+      g.globalAlpha = 0.22 * fade;
+      g.beginPath(); g.arc(cx, cy, r * 0.62, 0, Math.PI * 2); g.fill();
+      g.globalAlpha = 0.85 * fade;
+      g.fillStyle = '#fbf6ff'; // spore-white: spores are the one particle
+      for (let i = 0; i < 10; i++) {
+        const a = i * 2.39996 + cl.id + t * 0.0007 * (i % 2 ? 1 : -1);
+        const d = r * (0.2 + (0.75 * ((i * 37 + cl.id * 13) % 10)) / 10);
+        g.fillRect(Math.round(cx + Math.cos(a) * d), Math.round(cy + Math.sin(a) * d * 0.8), 1, 1);
+      }
+      g.restore();
+    }
+  }
+
+  /** Combat rework (the Rhizomorph): a tunnelling unit is a mound of earth on the move, kicking up crumbs behind it. */
+  private mound(cx: number, footY: number, u: UnitState, t: number, selected: boolean): void {
+    const g = this.ctx;
+    const x = Math.round(cx), y = Math.round(footY);
+    // a dark outline, the earth, a lit crest and a glowing seam where the hyphae break the surface
+    g.fillStyle = INK_DEEP;
+    g.fillRect(x - 8, y - 3, 16, 4);
+    g.fillRect(x - 6, y - 5, 12, 2);
+    g.fillRect(x - 3, y - 6, 6, 1);
+    g.fillStyle = '#5c4330';
+    g.fillRect(x - 7, y - 3, 14, 3);
+    g.fillRect(x - 5, y - 5, 10, 2);
+    g.fillStyle = '#7a5236';
+    g.fillRect(x - 4, y - 5, 6, 1);
+    g.fillRect(x - 2, y - 6, 3, 1);
+    g.fillStyle = this.mat(u.side).glow;
+    g.fillRect(x - 3, y - 2, 1, 1);
+    g.fillRect(x + 1, y - 3, 1, 1);
+    g.fillRect(x + 4, y - 2, 1, 1);
+    // crumbs thrown up behind it as it goes
+    const back = u.side === 'player' ? -1 : 1;
+    g.fillStyle = '#7a5236';
+    for (let i = 0; i < 4; i++) {
+      const k = (Math.floor(t / 110) + u.id + i) % 5;
+      g.fillRect(x + back * (8 + 2 * k), y - 2 - (k % 3), 1, 1);
+    }
+    if (selected) {
+      g.strokeStyle = '#ffe9a8';
+      g.strokeRect(x - 9.5, y - 7.5, 19, 10);
+    }
+  }
+
+  /**
+   * Prototype E1: a marching dashed rally line, topped by a pennant, in every lane a side holds. Under
+   * the combat rework's waves a hold keeps the wave in its buildings, so only the pennant shows.
+   */
   private drawRally(state: BattleState, t: number): void {
     const g = this.ctx;
+    const waves = !!state.rules.waves;
     for (const side of ['player', 'enemy'] as Side[]) {
       for (let li = 0; li < state.lanes.length; li++) {
         if (!holdsLane(state, side, li)) continue;
@@ -446,10 +517,10 @@ export class Renderer {
         const shift = Math.floor(t / 120) % 6;
         g.globalAlpha = 0.55;
         g.fillStyle = '#120a16'; // a dark backing stripe keeps the line readable on the side's own mat
-        g.fillRect(x - 1, top, 3, bottom - top);
+        g.fillRect(x - 1, top, 3, waves ? 7 : bottom - top);
         g.globalAlpha = 0.95;
         g.fillStyle = glow;
-        for (let y = top + 6 + shift; y < bottom; y += 6) g.fillRect(x, y, 1, 3);
+        if (!waves) for (let y = top + 6 + shift; y < bottom; y += 6) g.fillRect(x, y, 1, 3);
         g.fillRect(x, top, 1, 6);
         const dir = side === 'player' ? -1 : 1; // the pennant flies back toward home
         for (let i = 0; i < 4; i++) g.fillRect(dir < 0 ? x - 1 - i : x + 1, top + i / 2, i + 1, 4 - i);

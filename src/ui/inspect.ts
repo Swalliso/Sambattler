@@ -133,7 +133,8 @@ export class InspectPanel {
     ];
     if (t.slayerMult !== 1) pairs.push(['Slayer', `×${t.slayerMult} vs Bloomed & Elder`]);
     if (u.tier > 1) pairs.push(['Perk', perkText(this.content, u.unitId, u.tier)]);
-    if (u.knit) pairs.push(['Status', `merging · ${TIER_NAME[u.tier === 1 ? 1 : 2]} in ${(Math.max(0, u.knit.untilTick - state.tick) / state.rules.tickRate).toFixed(1)}s`]);
+    if (u.burrowed) pairs.push(['Status', 'tunnelling: can\'t be hit, surfaces beside an archer or spawner']);
+    else if (u.knit) pairs.push(['Status', `merging · ${TIER_NAME[u.tier === 1 ? 1 : 2]} in ${(Math.max(0, u.knit.untilTick - state.tick) / state.rules.tickRate).toFixed(1)}s`]);
     else if (state.config.flags.merging && u.tier < 3) pairs.push(['Merge', u.mergeOn ? 'on' : 'off (its building)']);
     pairs.push(['Damage / s', this.log.dps(state, u.id).toFixed(1)], ['Kills', String(this.log.kills.get(u.id) ?? 0)]);
     this.buttons.hidden = true;
@@ -153,6 +154,7 @@ export class InspectPanel {
       const ticks = b.holding ? 0 : Math.ceil(b.timer / (slowed ? state.rules.besiegedHalfTicks : state.rules.normalHalfTicks));
       pairs.push(['Next spawn', b.holding ? 'waiting for supply ⬢!' : `${(ticks / state.rules.tickRate).toFixed(1)}s${slowed ? ' (½ speed)' : ''}`]);
       pairs.push(['Living units', String(state.units.filter((x) => x.sourceBuildingId === b.id).length)]);
+      if (state.rules.waves) pairs.push(['Waiting inside', `${b.stored ?? 0} (out with the next wave)`]);
     }
     if (cb.attack) pairs.push(['Attack', `${cb.attack.damageType} ${cb.attack.damage} · range ${cb.attack.minRange}–${cb.attack.range}`]);
     pairs.push(['Damage dealt', String(state.stats[b.side].damageByBuilding[String(b.id)] ?? 0)]);

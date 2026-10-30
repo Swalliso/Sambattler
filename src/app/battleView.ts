@@ -174,7 +174,8 @@ export class BattleView {
     const stance = state.rules.stance ? h('div', { class: 'stance', id: 'stance' },
       ...state.lanes.map((_, i) => {
         const which = lanes > 1 ? `lane ${i + 1}` : 'the lane';
-        const hold = h('button', { class: 'btn has-ico', 'data-stance': 'hold', 'data-lane': i, 'aria-pressed': 'false', title: `Hold ${which}: units gather at the rally line (F: every lane)`, 'aria-label': `Hold ${which}`, onclick: () => { if (!session.stanceShown(i)) session.toggleStance(i); } }, uiIcon(atlas, 'i-hold'));
+        const holdWhat = state.rules.waves ? 'its next wave stays home, so the one after leaves twice as big' : 'units gather at the rally line';
+        const hold = h('button', { class: 'btn has-ico', 'data-stance': 'hold', 'data-lane': i, 'aria-pressed': 'false', title: `Hold ${which}: ${holdWhat} (F: every lane)`, 'aria-label': `Hold ${which}`, onclick: () => { if (!session.stanceShown(i)) session.toggleStance(i); } }, uiIcon(atlas, 'i-hold'));
         const advance = h('button', { class: 'btn has-ico', 'data-stance': 'advance', 'data-lane': i, 'aria-pressed': 'true', title: `Advance ${which} (F: every lane)`, 'aria-label': `Advance ${which}`, onclick: () => { if (session.stanceShown(i)) session.toggleStance(i); } }, uiIcon(atlas, 'i-advance'));
         const status = h('span', { class: 'status' });
         this.stanceRows.push({ hold, advance, status });
@@ -350,7 +351,9 @@ export class BattleView {
         this.callouts.push('counter', activeText(generalName(this.session.content, state), e.kind), 'bad', now);
       } else if (e.t === 'stance' && (e.side === 'enemy' || e.auto) && !e.hold) {
         const lane = state.lanes.length > 1 ? ` in lane ${e.lane + 1}` : '';
-        this.callouts.push('info', e.side === 'player' ? `Hold time is up: advancing${lane}` : `The Gray Rot advances${lane}`, e.side === 'player' ? '' : 'bad', now);
+        // combat rework `waves`: the beat spent the hold, keeping that wave home
+        const spent = state.rules.waves ? `Wave kept home${lane}: the next leaves twice as big` : `Hold time is up: advancing${lane}`;
+        this.callouts.push('info', e.side === 'player' ? spent : `The Gray Rot advances${lane}`, e.side === 'player' ? '' : 'bad', now);
       } else if (e.t === 'power' && e.side === 'player') {
         const def = state.library.powers?.[e.power];
         const name = def?.name ?? 'Power';
@@ -462,8 +465,10 @@ export class BattleView {
       const st = state.sides.player.stance![i]!;
       const held = s.stanceShown(i);
       const secs = (ticks: number) => `${Math.max(0, Math.ceil(ticks / state.rules.tickRate))} s`;
+      const beat = state.compiled.player.waveBeatTicks;
       const text = held
-        ? st.hold ? `Hold · ${secs(state.rules.stance!.maxHoldTicks - (state.tick - st.since))}` : 'Holding'
+        ? beat ? `Keeping the wave home · ${secs(beat - (state.tick % beat))}`
+          : st.hold ? `Hold · ${secs(state.rules.stance!.maxHoldTicks - (state.tick - st.since))}` : 'Holding'
         : s.canHold(i) ? 'Advancing' : `Hold in ${secs(st.readyAt - state.tick)}`;
       this.lit(row.hold, held);
       this.lit(row.advance, !held);

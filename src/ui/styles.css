@@ -172,6 +172,12 @@ button { font: inherit; color: inherit; }
 .chip.gold b { color: var(--gold); }
 .chip.storm.on { border-color: var(--lilac); box-shadow: 0 0 8px var(--glow-lilac); }
 .chip.storm.on b { color: var(--lilac); }
+/* combat rework `waves` (a prototype): the next beat, the units waiting for it, and a bar filling toward it */
+.chip.beat { position: relative; flex: none; }
+.chip.beat .beatbar { position: absolute; left: 12px; right: 12px; bottom: 2px; height: 2px; background: var(--line); }
+.chip.beat .beatbar i { display: block; height: 100%; width: 0; background: var(--lilac); }
+.chip.beat.soon { border-color: var(--lilac); }
+.chip.beat.soon b { color: var(--lilac); }
 .chip.bump { animation: bump .45s ease-out; }
 @keyframes bump { 30% { transform: scale(1.1); } }
 /* the territory tug: one bar per lane, a tick per column, stripes for each side and a glowing frontier */

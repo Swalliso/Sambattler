@@ -27,7 +27,7 @@ const RHIZOMORPH: Json = {
     name: 'Rhizomorph', sprite: 'u-rhizomorph', milestone: 5,
     hp: 140, armor: 'medium', damage: 16, damageType: 'slash', attackInterval: 1.0,
     range: 0.5, projectileSpeed: 0, speed: 1.2, supply: 2, aggroRange: 4, radius: 0.3,
-    tags: ['burrow'], mergePerks: { 2: {}, 3: {} },
+    tags: ['burrow'], mergePerks: { 2: { speedMult: 1.1 }, 3: { damageMult: 1.1 } },
   },
   'building.rhizomorphTunnel': {
     name: 'Rhizomorph Tunnel', sprite: 'b-rhizomorphTunnel', milestone: 5, rarity: 'uncommon',

@@ -242,3 +242,29 @@ export function territoryTip(content: Content, atlas: Atlas, state: BattleState)
     },
   };
 }
+
+/** Combat rework `waves`: units waiting inside `side`'s spawners for its next wave. */
+export function waitingUnits(state: BattleState, side: 'player' | 'enemy'): number {
+  let n = 0;
+  for (const b of state.buildings) if (b.side === side) n += b.stored ?? 0;
+  return n;
+}
+
+/** Combat rework `waves` (a prototype): the beat chip's tip, when the next wave leaves and how Hold works with waves. */
+export function beatTip(content: Content, atlas: Atlas, state: BattleState): TipSource {
+  return {
+    key: () => `${Math.floor(state.tick / state.rules.tickRate)}|${state.phase}|${waitingUnits(state, 'player')}`,
+    build: () => {
+      const beat = state.compiled.player.waveBeatTicks!;
+      const left = state.phase === 'deploy' ? beat : beat - (state.tick % beat);
+      const waiting = waitingUnits(state, 'player');
+      return [
+        head(atlas, 'i-wave', 'Next wave', clock(state, left)),
+        para(`Your spawners keep their units inside until the next wave. Every ${clock(state, beat)}, both sides send their waves out at once.`),
+        row('Waiting inside', h('b', null, `${waiting} unit${waiting === 1 ? '' : 's'}`), 'they count toward supply'),
+        para('A wave marches at the pace of its slowest unit, with ranged units a tile behind their melee.'),
+        h('p', { class: 'tip-foot' }, 'Hold a lane to keep its next wave home for one more beat: the wave after leaves twice as big.'),
+      ];
+    },
+  };
+}
