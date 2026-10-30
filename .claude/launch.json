@@ -1,0 +1,7 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    { "name": "dev", "runtimeExecutable": "npm", "runtimeArgs": ["run", "dev", "--", "--strictPort"], "port": 5173 },
+    { "name": "dev-site", "runtimeExecutable": "npx", "runtimeArgs": ["vite", "--mode", "develop", "--port", "5174", "--strictPort"], "port": 5174 }
+  ]
+}
