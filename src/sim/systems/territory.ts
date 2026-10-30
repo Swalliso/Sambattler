@@ -14,7 +14,7 @@ export function lanePresence(state: BattleState, lane: number): { player: Int32A
   presence.player.fill(0, 0, W);
   presence.enemy.fill(0, 0, W);
   for (const u of state.units) {
-    if (u.lane !== lane || u.hp <= 0) continue;
+    if (u.lane !== lane || u.hp <= 0 || u.burrowed) continue; // a tunnelling unit holds no ground
     const c = Math.floor(u.x);
     if (c >= 0 && c < W) presence[u.side][c]! += u.supply;
   }

@@ -6,6 +6,39 @@ import type { RawContent } from './registry.ts';
 
 type Json = Record<string, unknown>;
 
+// ---- the combat rework's package (docs/ideas/combat-rework.md, P1); `rework` turns on all five ----
+
+/** Pinned: a ranged unit with an enemy unit within 1 tile attacks at 0.35× its rate. */
+const PINNED: Json = { pinned: { radius: 1, rateMult: 0.35 } };
+/** Call for help: friendly units within 5 tiles of a unit or building that takes damage, and have no target, take the attacker. */
+const CALL_FOR_HELP: Json = { callForHelp: { radius: 5 } };
+/**
+ * Spore clouds: the Puffball Mortar reaches 7 tiles, and each shell leaves a cloud (radius 1.5,
+ * 6 s) that deals 10 damage a second, ignoring armor, to the enemy units inside it.
+ */
+const SPORE_CLOUD: Json = { sporeCloud: { buildings: ['puffballMortar'], range: 7, radius: 1.5, seconds: 6, damagePerSecond: 10, aiCover: 1 } };
+/**
+ * The Rhizomorph: a burrowing unit (the `burrow` tag) and its spawner, which exist only under this
+ * preset. It joins both rosters (the Gray Rot mirrors the Velvet Bloom until M7), and every bot and
+ * general that doesn't list it buys it at weight 1 (`aiWeight`; mono bots never do).
+ */
+const RHIZOMORPH: Json = {
+  'unit.rhizomorph': {
+    name: 'Rhizomorph', sprite: 'u-rhizomorph', milestone: 5,
+    hp: 140, armor: 'medium', damage: 16, damageType: 'slash', attackInterval: 1.0,
+    range: 0.5, projectileSpeed: 0, speed: 1.2, supply: 2, aggroRange: 4, radius: 0.3,
+    tags: ['burrow'], mergePerks: { 2: {}, 3: {} },
+  },
+  'building.rhizomorphTunnel': {
+    name: 'Rhizomorph Tunnel', sprite: 'b-rhizomorphTunnel', milestone: 5, rarity: 'uncommon',
+    description: 'Rhizomorphs tunnel under the front line and surface beside the archers or spawners behind it.',
+    kind: 'spawner', footprint: { w: 2, h: 2 }, cost: 160, hp: 450,
+    spawn: { unit: 'rhizomorph', count: 1, interval: 18 }, aiWeight: 1,
+  },
+  'faction.velvet-bloom.buildings+': 'rhizomorphTunnel',
+  'faction.gray-rot.buildings+': 'rhizomorphTunnel',
+};
+
 /** Presets: the settings each prototype was measured with (see the backlog's results tables). */
 export const PROTO_PRESETS: Record<string, Json> = {
   /** B1: Sporelings sprint at enemy units they close on, then wait out a cooldown. */
@@ -69,19 +102,20 @@ export const PROTO_PRESETS: Record<string, Json> = {
   bigdrafts: { draftWaves: [2, 5], 'draft.cards': 4, bigDrafts: { picks: 2, rareBonus: 10 } },
   /** T3: home-column spawners shoot the nearest enemy unit within 6 tiles (12 Pierce per second). */
   t3: { spawnerDefense: { damage: 12, damageType: 'pierce', interval: 1, range: 6, projectileSpeed: 12, homeOnly: true } },
-  // ---- the combat rework's package (docs/ideas/combat-rework.md, P1); `rework` turns on all five ----
-  /** Pinned: a ranged unit with an enemy unit within 1 tile attacks at 0.35× its rate. */
-  pinned: { pinned: { radius: 1, rateMult: 0.35 } },
-  /** Call for help: friendly units within 5 tiles of a unit or building that takes damage, and have no target, take the attacker. */
-  callforhelp: { callForHelp: { radius: 5 } },
-  /**
-   * Spore clouds: the Puffball Mortar reaches 7 tiles, and each shell leaves a cloud (radius 1.5,
-   * 6 s) that deals 10 damage a second, ignoring armor, to the enemy units inside it.
-   */
-  sporecloud: { sporeCloud: { buildings: ['puffballMortar'], range: 7, radius: 1.5, seconds: 6, damagePerSecond: 10, aiCover: 1 } },
+  // the combat rework (above)
+  pinned: PINNED,
+  callforhelp: CALL_FOR_HELP,
+  sporecloud: SPORE_CLOUD,
+  rhizomorph: RHIZOMORPH,
+  /** All five of the combat rework's settings. */
+  rework: { ...PINNED, ...CALL_FOR_HELP, ...SPORE_CLOUD, ...RHIZOMORPH },
 };
 
-/** Sets a dotted path; `null` removes the setting instead (`laneStance:null` turns Hold off). */
+/**
+ * Sets a dotted path; `null` removes the setting instead (`laneStance:null` turns Hold off). A
+ * trailing `+` adds to the list at the path instead (a list value adds each item), skipping items
+ * already there: `faction.velvet-bloom.buildings+:"rhizomorphTunnel"`.
+ */
 function setPath(obj: Json, path: string, value: unknown): void {
   const keys = path.split('.');
   let o = obj;
@@ -89,8 +123,16 @@ function setPath(obj: Json, path: string, value: unknown): void {
     if (typeof o[k] !== 'object' || o[k] === null) o[k] = {};
     o = o[k] as Json;
   }
-  if (value === null) delete o[keys[keys.length - 1]!];
-  else o[keys[keys.length - 1]!] = value;
+  const last = keys[keys.length - 1]!;
+  if (last.endsWith('+')) {
+    const k = last.slice(0, -1);
+    if (!Array.isArray(o[k])) o[k] = [];
+    const list = o[k] as unknown[];
+    for (const v of Array.isArray(value) ? value : [value]) {
+      if (!list.some((x) => JSON.stringify(x) === JSON.stringify(v))) list.push(v);
+    }
+  } else if (value === null) delete o[last];
+  else o[last] = value;
 }
 
 /** Splits on commas outside brackets and braces, so JSON values can hold lists. */
@@ -112,70 +154,99 @@ function parseValue(v: string): unknown {
 }
 
 /**
- * Applies a comma-separated prototype spec to a copy of `balance`: preset names (`b1`) and
- * `path:value` overrides (`besiegedBy:melee`, `approachRush.speedMult:3`), in order. Values parse
- * as JSON when they can (`approachRush.units:["sporeling","morelRunner"]`), else as strings.
- * Unknown presets are reported, not applied.
+ * A spec's settings in order, as (path, value) pairs: each preset name (`b1`) expands to its paths,
+ * and each `path:value` override parses its value as JSON when it can
+ * (`approachRush.units:["sporeling","morelRunner"]`), else as a string. Unknown presets are reported.
  */
-export function applyProtoToBalance(balance: unknown, spec: string): { balance: Json; problems: string[] } {
-  const out = structuredClone(balance) as Json;
-  const problems: string[] = [];
+function specItems(spec: string, problems: string[]): [string, unknown][] {
+  const out: [string, unknown][] = [];
   for (const raw of splitSpec(spec)) {
     const colon = raw.indexOf(':');
-    if (colon < 0) {
-      const preset = PROTO_PRESETS[raw.toLowerCase()];
-      if (!preset) { problems.push(`proto: unknown preset "${raw}" (known: ${Object.keys(PROTO_PRESETS).join(', ')})`); continue; }
-      for (const [k, v] of Object.entries(preset)) setPath(out, k, structuredClone(v));
-    } else {
-      setPath(out, raw.slice(0, colon), parseValue(raw.slice(colon + 1)));
-    }
+    if (colon >= 0) { out.push([raw.slice(0, colon), parseValue(raw.slice(colon + 1))]); continue; }
+    const preset = PROTO_PRESETS[raw.toLowerCase()];
+    if (!preset) { problems.push(`proto: unknown preset "${raw}" (known: ${Object.keys(PROTO_PRESETS).join(', ')})`); continue; }
+    for (const [k, v] of Object.entries(preset)) out.push([k, structuredClone(v)]);
   }
-  return { balance: out, problems };
+  return out;
 }
 
-/** Content collections an override can reach by id: `building.<id>.…`, `unit.<id>.…`, `bot.<id>`. */
+/**
+ * Content collections an override can reach by id: `building.<id>.…`, `unit.<id>.…`, `bot.<id>…`,
+ * `general.<id>…` and `faction.<id>…` (a faction file is one entry).
+ */
 const ENTRY_FILES: Record<string, (path: string) => boolean> = {
   building: (f) => f.endsWith('buildings.json'),
   unit: (f) => f.endsWith('units.json'),
   bot: (f) => f === 'bots.json',
+  general: (f) => f === 'generals.json',
+  faction: (f) => /^factions\/[^/]+\/faction\.json$/.test(f),
 };
+
+/** The entry kind a path reaches (`unit.rhizomorph.hp` → unit), or undefined for a balance path. */
+function entryKind(path: string): string | undefined {
+  const [kind, id] = path.split('.');
+  return kind && id && ENTRY_FILES[kind] ? kind : undefined;
+}
+
+/**
+ * Applies a comma-separated prototype spec to a copy of `balance`: preset names (`b1`) and
+ * `path:value` overrides (`besiegedBy:melee`, `approachRush.speedMult:3`), in order. Paths into
+ * content entries (`unit.…`, `building.…`) need {@link applyProto}; here they are reported, not applied.
+ */
+export function applyProtoToBalance(balance: unknown, spec: string): { balance: Json; problems: string[] } {
+  const out = structuredClone(balance) as Json;
+  const problems: string[] = [];
+  for (const [path, value] of specItems(spec, problems)) {
+    if (entryKind(path)) problems.push(`proto: "${path}" patches content; apply the spec with applyProto`);
+    else setPath(out, path, value);
+  }
+  return { balance: out, problems };
+}
 
 /**
  * The raw content with a prototype spec applied (validation happens in loadContent). Balance
- * presets and paths go to balance.json; `building.gillNest.spawn.interval:19` and
- * `unit.gillArcher.hp:100` patch an entry of a buildings or units file by id; `bot.<id>:{…}` adds
- * or replaces a bot (for one-off diagnostics; the reference bots are untouched unless named).
+ * presets and paths go to balance.json, and a preset may also carry content paths. Content paths
+ * patch an entry by id: `building.gillNest.spawn.interval:19`, `unit.gillArcher.hp:100`,
+ * `faction.gray-rot.buildings+:"rhizomorphTunnel"`. `<kind>.<id>:{…}` replaces an entry, or adds it
+ * when no entry has that id (a new building, unit, bot or general goes to the first file of its kind;
+ * the reference bots are untouched unless named).
  */
 export function applyProto(raw: RawContent, spec: string): { raw: RawContent; problems: string[] } {
   const out: RawContent = { ...raw };
-  const balanceParts: string[] = [];
   const problems: string[] = [];
-  for (const part of splitSpec(spec)) {
-    const colon = part.indexOf(':');
-    const key = colon < 0 ? part : part.slice(0, colon);
-    const [kind, id, ...rest] = key.split('.');
-    const match = colon >= 0 && kind && id ? ENTRY_FILES[kind] : undefined;
-    if (!match) { balanceParts.push(part); continue; }
-    const value = parseValue(part.slice(colon + 1));
-    const files = Object.keys(out).filter((f) => match(f) && Array.isArray(out[f]));
+  const balanceItems: [string, unknown][] = [];
+  for (const [path, value] of specItems(spec, problems)) {
+    const kind = entryKind(path);
+    if (!kind) { balanceItems.push([path, value]); continue; }
+    const [, id, ...rest] = path.split('.');
+    const files = Object.keys(out).filter(ENTRY_FILES[kind]!).sort();
     let done = false;
     for (const f of files) {
-      const list = structuredClone(out[f]) as Json[];
-      const i = list.findIndex((e) => e.id === id);
-      if (i < 0) continue;
-      if (rest.length) setPath(list[i]!, rest.join('.'), value);
-      else list[i] = { ...(value as Json), id };
-      out[f] = list;
+      if (Array.isArray(out[f])) {
+        const list = structuredClone(out[f]) as Json[];
+        const i = list.findIndex((e) => e.id === id);
+        if (i < 0) continue;
+        if (rest.length) setPath(list[i]!, rest.join('.'), value);
+        else list[i] = { ...(value as Json), id };
+        out[f] = list;
+      } else {
+        if ((out[f] as Json | undefined)?.id !== id) continue;
+        const entry = structuredClone(out[f]) as Json;
+        if (rest.length) setPath(entry, rest.join('.'), value);
+        out[f] = rest.length ? entry : { ...(value as Json), id };
+      }
       done = true;
       break;
     }
-    if (!done && kind === 'bot' && !rest.length && files[0]) {
-      out[files[0]] = [...(out[files[0]] as Json[]), { ...(value as Json), id }];
+    const first = files.find((f) => Array.isArray(out[f]));
+    if (!done && kind !== 'faction' && !rest.length && first) {
+      out[first] = [...(out[first] as Json[]), { ...(value as Json), id }];
       done = true;
     }
-    if (!done) problems.push(`proto: no ${kind} "${id}" for "${part}"`);
+    if (!done) problems.push(`proto: no ${kind} "${id}" for "${path}"`);
   }
-  const { balance, problems: bp } = applyProtoToBalance(raw['balance.json'], balanceParts.join(','));
+  const balance = structuredClone(raw['balance.json']) as Json;
+  for (const [path, value] of balanceItems) setPath(balance, path, value);
   out['balance.json'] = balance;
-  return { raw: out, problems: [...problems, ...bp] };
+  return { raw: out, problems };
 }

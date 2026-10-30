@@ -3,10 +3,10 @@
 // centroid (SPEC §5.6). Overlapping units are pushed apart by half their overlap each, for a fixed
 // number of passes, using the spatial hash.
 import { other } from '../state.ts';
-import type { BattleState, UnitState } from '../state.ts';
+import type { BattleState, CompiledTier, UnitState } from '../state.ts';
 import { buildGrid, nearBuffer, queryNear } from '../spatial.ts';
 import { MAX_RADIUS, edgeDistance, tp } from '../targets.ts';
-import { clampToLane, tierDef, unitDef, unitRadius } from '../world.ts';
+import { buildingDef, clampToLane, rectDistance, tierDef, unitDef, unitRadius } from '../world.ts';
 import { holdsLane, rallyX } from './stance.ts';
 import { isRangedUnit } from './targeting.ts';
 
@@ -16,6 +16,7 @@ export function movementSystem(state: BattleState): void {
     const t = tierDef(state, u);
     const rad = t.radius;
     const speed = t.speedPerTick;
+    if (u.burrowed) { tunnel(state, u, t); continue; }
     if (u.knit) {
       const dx = u.knit.x - u.x, dy = u.knit.y - u.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
@@ -66,6 +67,54 @@ export function movementSystem(state: BattleState): void {
     clampToLane(state, u, rad);
   }
   separationSystem(state);
+}
+
+/**
+ * Combat rework (the Rhizomorph's `burrow` tag): a burrowed unit tunnels straight at its surfacing
+ * point at its speed, passing under every unit, and surfaces once its attack range reaches it. The
+ * point is the nearest enemy ranged unit or spawner in the lane at or behind the enemy's frontmost
+ * unit (by edge distance, ties to the lower id); else that frontmost unit; else the enemy's border.
+ */
+function tunnel(state: BattleState, u: UnitState, t: CompiledTier): void {
+  const enemy = other(u.side);
+  const dir = u.side === 'player' ? 1 : -1;
+  let front: UnitState | undefined;
+  for (const v of state.units) {
+    if (v.side !== enemy || v.lane !== u.lane || v.hp <= 0 || v.burrowed) continue;
+    if (!front || v.x * dir < front.x * dir) front = v;
+  }
+  const L = state.lanes[u.lane]!;
+  const frontX = front ? front.x : u.side === 'player' ? L.eBorder : L.pBorder + 1;
+  let best = 0, bestD = Infinity, px = 0, py = 0;
+  for (const v of state.units) {
+    if (v.side !== enemy || v.lane !== u.lane || v.hp <= 0 || v.burrowed || !unitDef(state, v).tags.includes('ranged')) continue;
+    const dx = v.x - u.x, dy = v.y - u.y;
+    const d = Math.sqrt(dx * dx + dy * dy) - t.radius - unitRadius(state, v);
+    if (d < bestD || (d === bestD && v.id < best)) { best = v.id; bestD = d; px = v.x; py = v.y; }
+  }
+  for (const b of state.buildings) {
+    if (b.side !== enemy || b.lane !== u.lane || b.hp <= 0) continue;
+    const bd = buildingDef(state, b);
+    if (!bd.spawn || (b.col + bd.w / 2 - frontX) * dir < 0) continue;
+    const d = rectDistance(u.x, u.y, b.col, b.row, bd.w, bd.h) - t.radius;
+    if (d < bestD || (d === bestD && b.id < best)) {
+      best = b.id; bestD = d;
+      px = u.x < b.col ? b.col : u.x > b.col + bd.w ? b.col + bd.w : u.x;
+      py = u.y < b.row ? b.row : u.y > b.row + bd.h ? b.row + bd.h : u.y;
+    }
+  }
+  if (!best && front) {
+    const dx = front.x - u.x, dy = front.y - u.y;
+    bestD = Math.sqrt(dx * dx + dy * dy) - t.radius - unitRadius(state, front); px = front.x; py = front.y;
+  } else if (!best) {
+    bestD = (frontX - u.x) * dir; px = frontX; py = u.y;
+  }
+  if (bestD <= t.range + 1e-6) { u.burrowed = false; return; } // the attack check's tolerance
+  const dx = px - u.x, dy = py - u.y;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  const step = Math.min(t.speedPerTick, bestD - t.range);
+  if (dist > 1e-9) { u.x += (dx / dist) * step; u.y += (dy / dist) * step; }
+  clampToLane(state, u, t.radius);
 }
 
 /**
@@ -147,7 +196,7 @@ function separationSystem(state: BattleState): void {
         const j = near[k]!;
         if (j <= i) continue;
         const b = units[j]!;
-        if (b.lane !== a.lane) continue;
+        if (b.lane !== a.lane || a.burrowed || b.burrowed) continue; // a tunnelling unit passes under everyone
         const minD = ra + unitRadius(state, b);
         const dx = b.x - a.x, dy = b.y - a.y;
         const d2 = dx * dx + dy * dy;

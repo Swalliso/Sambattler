@@ -53,6 +53,14 @@ export function resolveAiProfile(
     if (bot.placement?.spawnerDepthWeight !== undefined) spawnerDepthWeight = bot.placement.spawnerDepthWeight;
   }
   if (side.aiWeights) weights = { ...weights, ...side.aiWeights };
+  // prototype content (the combat rework's Rhizomorph): a building with an `aiWeight` joins every
+  // profile that doesn't list it, except a mono bot's
+  if (!mono) {
+    for (const id of content.buildingOrder) {
+      const w = content.buildings[id]!.aiWeight;
+      if (w !== undefined && weights[id] === undefined) weights = { ...weights, [id]: w };
+    }
+  }
   const list: AiWeight[] = [];
   for (const id of content.buildingOrder) {
     const w = weights[id];

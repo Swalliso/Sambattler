@@ -59,7 +59,7 @@ function inCircle(state: BattleState, u: UnitState, x: number, y: number, r: num
 export function bloomTrios(state: BattleState, side: Side, x: number, y: number, radius: number): { trios: UnitState[][]; blocked: number } {
   const groups = new Map<string, UnitState[]>();
   for (const u of state.units) {
-    if (u.side !== side || u.hp <= 0 || u.tier >= 3 || !u.mergeOn || u.knit || !inCircle(state, u, x, y, radius)) continue;
+    if (u.side !== side || u.hp <= 0 || u.tier >= 3 || !u.mergeOn || u.knit || u.burrowed || !inCircle(state, u, x, y, radius)) continue;
     const key = `${u.lane}|${u.unitId}|${u.tier}`;
     const g = groups.get(key);
     if (g) g.push(u); else groups.set(key, [u]);
@@ -85,7 +85,7 @@ export function burstPreview(state: BattleState, side: Side, def: Extract<PowerD
   const enemy = other(side);
   let targets = 0, value = 0;
   for (const u of state.units) {
-    if (u.side !== enemy || u.hp <= 0 || !inCircle(state, u, x, y, def.radius)) continue;
+    if (u.side !== enemy || u.hp <= 0 || u.burrowed || !inCircle(state, u, x, y, def.radius)) continue;
     const t = unitDef(state, u);
     const resist = t.tiers[u.tier - 1]!.resist[def.damageType];
     targets++;

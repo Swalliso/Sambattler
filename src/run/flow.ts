@@ -103,7 +103,7 @@ export function battleConfig(content: Content, run: RunState, node: RouteNode): 
   // Run progression may introduce buildings the historical single-battle profile never bought.
   // Give only those kit entries a purchase path, leaving the base profile and its replays intact.
   const generalWeights = content.generals[node.general ?? 'scripted']!.weights;
-  const extraWeights = Object.fromEntries(enemyKit.filter((id) => !(generalWeights[id]! > 0)).map((id) => [id, 1]));
+  const extraWeights = Object.fromEntries(enemyKit.filter((id) => !(generalWeights[id]! > 0)).map((id) => [id, content.buildings[id]!.aiWeight ?? 1]));
   if (Object.keys(extraWeights).length) enemy.aiWeights = extraWeights;
   if (Object.keys(enemyUpgrades).length) enemy.upgrades = enemyUpgrades;
   const modifiers: BattleModifier[] = sideModifiers(content, { player, enemy });
@@ -166,6 +166,8 @@ export function generalKit(content: Content, run: RunState, node: RouteNode, ind
       if (kit.length >= size) break;
       if (!kit.includes(id) && roster.includes(id)) kit.push(id);
     }
+    // prototype content (the combat rework's Rhizomorph): roster buildings with an `aiWeight` join every kit
+    for (const id of roster) if (content.buildings[id]!.aiWeight !== undefined && !kit.includes(id)) kit.push(id);
   }
   const upgrades: Record<string, number> = {};
   const tracks = () => kit.filter((id) => content.buildings[id]!.spawn && content.upgrades[id] && (upgrades[id] ?? 0) < 3);

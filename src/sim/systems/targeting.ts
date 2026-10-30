@@ -23,6 +23,7 @@ export function targetingSystem(state: BattleState): void {
   const tick = state.tick;
   for (const u of state.units) {
     if (u.knit) { u.targetId = 0; continue; } // knitting units stop retargeting (SPEC §5.6)
+    if (u.burrowed) { u.targetId = 0; continue; } // combat rework: a tunnelling unit has no target
     const enemy = other(u.side);
     const r = unitRadius(state, u);
     const curD = u.targetId !== 0 ? edgeDistance(state, u.x, u.y, r, u.targetId, enemy, u.lane) : -1;
@@ -52,16 +53,18 @@ function retargetUnit(state: BattleState, u: UnitState, r: number, curD: number)
   const enemy = other(u.side);
   const prefBuildings = def.siege;
   const prefElite = def.slayer;
-  // diver prototype: prefers ranged units, and sees them from farther
-  const diver = !!state.rules.dive && state.rules.dive.units.includes(u.unitId);
-  const reach = diver ? aggro + state.rules.dive!.aggroAdd : aggro;
+  // diver prototype: prefers ranged units, and sees them from farther; the combat rework's burrowers
+  // (surfaced Rhizomorphs) prefer them too
+  const dive = state.rules.dive?.units.includes(u.unitId) ? state.rules.dive : undefined;
+  const diver = !!dive || def.tags.includes('burrow');
+  const reach = dive ? aggro + dive.aggroAdd : aggro;
   bestId = 0; bestD = 0; bestPref = false;
 
   const n = queryNear(u.x, u.y, reach + r + MAX_RADIUS);
   const near = nearBuffer();
   for (let k = 0; k < n; k++) {
     const v = state.units[near[k]!]!;
-    if (v.side !== enemy || v.lane !== u.lane || v.hp <= 0) continue;
+    if (v.side !== enemy || v.lane !== u.lane || v.hp <= 0 || v.burrowed) continue;
     const dx = v.x - u.x, dy = v.y - u.y;
     let d = Math.sqrt(dx * dx + dy * dy) - r - unitRadius(state, v);
     if (d < 0) d = 0;
@@ -144,7 +147,7 @@ function retargetTower(state: BattleState, b: BuildingState, keep: boolean): voi
   const near = nearBuffer();
   for (let k = 0; k < n; k++) {
     const v = state.units[near[k]!]!;
-    if (v.side !== enemy || v.lane !== b.lane || v.hp <= 0) continue;
+    if (v.side !== enemy || v.lane !== b.lane || v.hp <= 0 || v.burrowed) continue;
     const dx = v.x - t.cx, dy = v.y - t.cy;
     let d = Math.sqrt(dx * dx + dy * dy) - unitRadius(state, v);
     if (d < 0) d = 0;

@@ -3,11 +3,17 @@
 // exists only under its preset, so the shipped rules are unchanged; with a setting on, it behaves as
 // described.
 import { describe, expect, it } from 'vitest';
+import { applyProto, applyProtoToBalance } from '../../src/data/proto.ts';
+import { loadContent } from '../../src/data/registry.ts';
+import { createRun } from '../../src/run/index.ts';
+import { generalKit } from '../../src/run/flow.ts';
 import { laneCover } from '../../src/sim/ai/controller.ts';
 import { createBattle, makeConfig } from '../../src/sim/index.ts';
 import type { BattleState, Content } from '../../src/sim/index.ts';
+import { addBuilding } from '../../src/sim/create.ts';
 import { addCloud } from '../../src/sim/systems/clouds.ts';
-import { protoContent } from '../../tools/lib/content.ts';
+import { lanePresence } from '../../src/sim/systems/territory.ts';
+import { protoContent, readRawContent } from '../../tools/lib/content.ts';
 import { building, content, liveState, setBorders, steps, unit } from '../helpers.ts';
 
 const NO_FIELD = { noTurrets: true, noTerritory: true, noHeartcapTargets: true };
@@ -174,5 +180,118 @@ describe('spore clouds (balance sporeCloud)', () => {
     expect(laneCover(s, 'player', 0, 5, 7)).toBe(5);
     expect(laneCover(s, 'player', 0, 1, 3)).toBe(0);
     expect(laneCover(s, 'enemy', 0, 27, 7)).toBe(5);
+  });
+});
+
+describe('proto specs can add content', () => {
+  it('presets carry content paths; new units and buildings are added and validate; + appends once', () => {
+    const { raw, problems } = applyProto(readRawContent(), 'rhizomorph,faction.velvet-bloom.buildings+:["rhizomorphTunnel","gillNest"]');
+    expect(problems).toEqual([]);
+    const c = loadContent(raw);
+    expect(c.units.rhizomorph).toMatchObject({ hp: 140, armor: 'medium', damage: 16, damageType: 'slash', attackInterval: 1, speed: 1.2, supply: 2, tags: ['burrow'] });
+    expect(c.buildings.rhizomorphTunnel).toMatchObject({ cost: 160, spawn: { unit: 'rhizomorph', count: 1, interval: 18 }, aiWeight: 1 });
+    const roster = c.factions['velvet-bloom']!.buildings;
+    expect(roster.filter((id) => id === 'rhizomorphTunnel')).toHaveLength(1);
+    expect(roster.filter((id) => id === 'gillNest')).toHaveLength(1);
+    expect(c.factions['gray-rot']!.buildings).toEqual(roster);
+    expect(raw['factions/velvet-bloom/faction.json']).not.toBe(readRawContent()['factions/velvet-bloom/faction.json']);
+    // without the preset, none of it exists
+    expect(content.units.rhizomorph).toBeUndefined();
+    expect(content.buildings.rhizomorphTunnel).toBeUndefined();
+    expect(content.factions['velvet-bloom']!.buildings).not.toContain('rhizomorphTunnel');
+    expect(applyProtoToBalance(content.balance, 'rhizomorph').problems[0]).toMatch(/patches content/);
+  });
+});
+
+describe('the Rhizomorph (preset rhizomorph)', () => {
+  const rc = protoContent('rhizomorph');
+
+  it('bots and generals buy its tunnel at weight 1, mono bots never; generals field it in runs', () => {
+    const weight = (s: BattleState, side: 'player' | 'enemy') => s.sides[side].ai!.weights.find((w) => w.building === 'rhizomorphTunnel')?.weight;
+    const b = createBattle(rc, makeConfig(rc, { seed: 1, mapId: 'bogwater-hollow', player: 'bot:balanced', enemy: 'general:mother-mold' }));
+    expect(weight(b, 'player')).toBe(1);
+    expect(weight(b, 'enemy')).toBe(1);
+    expect(b.sides.player.kit).toContain('rhizomorphTunnel');
+    const mono = createBattle(rc, makeConfig(rc, { seed: 1, mapId: 'bogwater-hollow', player: 'bot:mono:gillNest', enemy: 'bot:balanced' }));
+    expect(weight(mono, 'player')).toBeUndefined();
+    const plain = createBattle(content, makeConfig(content, { seed: 1, mapId: 'bogwater-hollow', player: 'bot:balanced', enemy: 'bot:balanced' }));
+    expect(weight(plain, 'player')).toBeUndefined();
+    const run = createRun(rc, { seed: 3, commander: 'vesper' });
+    for (const node of run.route.flat().filter((n) => n.general)) {
+      expect(generalKit(rc, run, node, 2).kit).toContain('rhizomorphTunnel');
+      expect(generalKit(content, run, node, 2).kit).not.toContain('rhizomorphTunnel');
+    }
+  });
+
+  /** A Rhizomorph burrowed at x 5 with frozen enemy Capguards in a wall at x 12, plus what `extra` adds. */
+  function tunnelRun(extra: (s: BattleState) => void, ticks: number) {
+    const s = protoState(rc);
+    const rhizo = unit(s, 'player', 'rhizomorph', 5, 4);
+    rhizo.burrowed = true;
+    for (const y of [1, 2.5, 4, 5.5, 7]) unit(s, 'enemy', 'capguard', 12, y);
+    freeze(s, 'enemy', 'capguard');
+    extra(s);
+    let targeted = false, maxX = rhizo.x;
+    let surfacedAt = -1;
+    for (let i = 0; i < ticks; i++) {
+      steps(s, 1);
+      if (rhizo.burrowed && s.units.some((u) => u.targetId === rhizo.id)) targeted = true;
+      if (rhizo.burrowed) maxX = rhizo.x;
+      if (!rhizo.burrowed && surfacedAt < 0) surfacedAt = s.tick;
+    }
+    return { s, rhizo, targeted, surfacedAt, maxX };
+  }
+
+  it('spawns underground from its tunnel', () => {
+    const s = protoState(rc);
+    addBuilding(s, 'player', 'rhizomorphTunnel', 0, 1, 3, 160);
+    steps(s, 181);
+    const r = s.units.find((u) => u.unitId === 'rhizomorph')!;
+    expect(r.burrowed).toBe(true);
+    expect(s.units.filter((u) => u.unitId !== 'rhizomorph').every((u) => u.burrowed === undefined)).toBe(true);
+  });
+
+  it('tunnels at 1.2 tiles a second under the enemy line, unseen, and surfaces beside an archer behind it', () => {
+    const { s, rhizo, targeted, surfacedAt } = tunnelRun((st) => {
+      const a = unit(st, 'enemy', 'gillArcher', 17, 3);
+      unit(st, 'enemy', 'gillArcher', 21, 5);
+      st.compiled.enemy.units.gillArcher!.tiers[0].speedPerTick = 0;
+      a.cooldown = 0;
+    }, 260);
+    expect(targeted).toBe(false);
+    expect(surfacedAt).toBeGreaterThan(150);
+    expect(rhizo.burrowed).toBe(false);
+    const near = s.units.find((u) => u.unitId === 'gillArcher' && Math.hypot(u.x - rhizo.x, u.y - rhizo.y) < 1.2);
+    expect(near?.x).toBe(17);
+    expect(rhizo.targetId).toBe(near!.id); // it prefers the ranged unit it came up beside
+  });
+
+  it('moves at its speed underground', () => {
+    const { rhizo } = tunnelRun((st) => { unit(st, 'enemy', 'gillArcher', 25, 4); }, 20);
+    expect(rhizo.burrowed).toBe(true);
+    expect(rhizo.x).toBeCloseTo(5 + 1.2, 5);
+  });
+
+  it('with no ranged unit or spawner behind the front, it surfaces at the front', () => {
+    const { rhizo, maxX } = tunnelRun(() => {}, 200);
+    expect(rhizo.burrowed).toBe(false);
+    expect(maxX).toBeLessThan(12);
+    expect(maxX).toBeGreaterThan(10.5);
+  });
+
+  it('heads for a spawner behind the front', () => {
+    const { s, rhizo } = tunnelRun((st) => { addBuilding(st, 'enemy', 'amanitaLodge', 0, 22, 0, 260).timer = 1e9; }, 400);
+    expect(rhizo.burrowed).toBe(false);
+    expect(rhizo.x).toBeGreaterThan(21);
+    expect(s.units.filter((u) => u.side === 'enemy').every((u) => u.targetId !== rhizo.id || !rhizo.burrowed)).toBe(true);
+  });
+
+  it('holds no ground and merges with no one while underground', () => {
+    const s = protoState(rc, { noTurrets: true, noHeartcapTargets: true });
+    const r = unit(s, 'player', 'rhizomorph', 10.5, 4);
+    r.burrowed = true;
+    expect(lanePresence(s, 0).player[10]).toBe(0);
+    r.burrowed = false;
+    expect(lanePresence(s, 0).player[10]).toBe(2);
   });
 });

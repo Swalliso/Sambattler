@@ -24,7 +24,7 @@ export function mergingSystem(state: BattleState): void {
 
 /** True if `u` may join a new trio now (SPEC §5.6 eligibility). */
 export function canMerge(state: BattleState, u: UnitState): boolean {
-  return u.tier < 3 && u.mergeOn && !u.knit && u.hp > 0 && state.tick - u.lastCombatTick >= state.rules.merge.cooldownTicks;
+  return u.tier < 3 && u.mergeOn && !u.knit && !u.burrowed && u.hp > 0 && state.tick - u.lastCombatTick >= state.rules.merge.cooldownTicks;
 }
 
 function resolveKnits(state: BattleState): void {

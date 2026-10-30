@@ -8,7 +8,11 @@ export const Id = z.string().min(1).regex(/^[a-zA-Z0-9:_-]+$/, 'ids use letters,
 export const DamageType = z.enum(['slash', 'pierce', 'crush']);
 export const UnitArmor = z.enum(['light', 'medium', 'heavy']);
 export const ArmorType = z.enum(['light', 'medium', 'heavy', 'structure']);
-export const Tag = z.enum(['siege', 'slayer', 'ranged', 'swarm', 'support']);
+/**
+ * `burrow` (combat rework, the Rhizomorph's preset): the unit spawns underground and tunnels at its
+ * speed until it surfaces beside an enemy ranged unit or spawner behind the enemy front.
+ */
+export const Tag = z.enum(['siege', 'slayer', 'ranged', 'swarm', 'support', 'burrow']);
 export const Rarity = z.enum(['common', 'uncommon', 'rare']);
 const Seconds = z.number().nonnegative();
 /** A unit id, optionally at a merge tier: `capguard` or `capguard@2`. */
@@ -388,6 +392,11 @@ export const BuildingSchema = z.object({
   economy: z.object({ goldPerTick: z.number().int().nonnegative(), interestCapAdd: z.number().int().optional() }).strict().optional(),
   /** Utility effects while the building stands (Rhizome Vault: +supply cap, at most `maxCount` count). */
   utility: z.object({ supplyCapAdd: z.number().int().positive(), maxCount: z.number().int().positive() }).strict().optional(),
+  /**
+   * Prototype content (the combat rework's Rhizomorph): the purchase weight of every bot and general
+   * whose weights don't list this building (mono bots never buy it), and generals field it in runs.
+   */
+  aiWeight: Pos.optional(),
 }).strict().superRefine((b, ctx) => {
   const need = { spawner: 'spawn', tower: 'attack', economy: 'economy', utility: null } as const;
   const key = need[b.kind];

@@ -5,7 +5,7 @@ import { addUnit } from '../create.ts';
 import { positionalValue } from '../effects.ts';
 import { nextSigned } from '../rng.ts';
 import { buildingDef, isSuppressed } from '../world.ts';
-import type { BattleState } from '../state.ts';
+import type { BattleState, BuildingState } from '../state.ts';
 
 export function spawningSystem(state: BattleState): void {
   const r = state.rules;
@@ -34,17 +34,30 @@ export function spawningSystem(state: BattleState): void {
     b.timer += sp.positional
       ? Math.round(positionalValue(state, b, sp.positional, 'building.spawnInterval') * r.tickRate) * 2
       : sp.intervalHalfTicks;
-    const x = b.side === 'player' ? b.col + def.w + r.spawnOffset : b.col - r.spawnOffset;
-    const cy = b.row + def.h / 2;
-    const stats = state.stats[b.side];
-    const firstId = state.nextId;
-    for (let k = 0; k < sp.count; k++) {
-      const y = cy + nextSigned(state.rng.combat) * r.spawnJitter;
-      const u = addUnit(state, b.side, sp.unit, b.lane, x, y, b.id);
-      u.mergeOn = b.mergeOn;
-      stats.spawned[sp.unit] = (stats.spawned[sp.unit] ?? 0) + 1;
-      state.events.push({ t: 'spawned', id: u.id });
-    }
-    noteSpawn(state, b, firstId, sp.count);
+    emerge(state, b, sp.unit, sp.count);
   }
+}
+
+/**
+ * `count` units of `unitId` come out of spawner `b` just in front of its front edge (SPEC §4.4),
+ * each at the building's centre ± the seeded jitter. A `burrow` unit (the combat rework's
+ * Rhizomorph) comes out underground.
+ */
+export function emerge(state: BattleState, b: BuildingState, unitId: string, count: number): void {
+  const r = state.rules;
+  const def = buildingDef(state, b);
+  const burrow = state.compiled[b.side].units[unitId]!.tags.includes('burrow');
+  const x = b.side === 'player' ? b.col + def.w + r.spawnOffset : b.col - r.spawnOffset;
+  const cy = b.row + def.h / 2;
+  const stats = state.stats[b.side];
+  const firstId = state.nextId;
+  for (let k = 0; k < count; k++) {
+    const y = cy + nextSigned(state.rng.combat) * r.spawnJitter;
+    const u = addUnit(state, b.side, unitId, b.lane, x, y, b.id);
+    u.mergeOn = b.mergeOn;
+    if (burrow) u.burrowed = true;
+    stats.spawned[unitId] = (stats.spawned[unitId] ?? 0) + 1;
+    state.events.push({ t: 'spawned', id: u.id });
+  }
+  noteSpawn(state, b, firstId, count);
 }

@@ -459,6 +459,51 @@
         "....k..k....",
         "...kk..kk..."
       ]
+     ]},
+    {"id": "u-rhizomorph", "w": 12, "h": 12, "anchor": [6, 11], "factionSwap": true, "palette": {".": null, "b": "#3b2a1e", "d": "#5a2f99", "k": "#1a1020", "l": "#c9a2ff", "n": "#5c4330", "v": "#8a4fd8", "w": "#fbf6ff"},
+     "frames": [
+      [
+        "....kkkk....",
+        "..kkvdvdkk..",
+        ".kvdlvvdvdk.",
+        ".kdkwkkwkdk.",
+        ".kddddddddk.",
+        "..kbnnnnbk..",
+        ".kbnbnnbnbk.",
+        ".kbnnbbnnbk.",
+        "kbnk.nn.knbk",
+        "kb.k.kk.k.bk",
+        "k..k....k..k",
+        "..kk....kk.."
+      ],
+      [
+        "....kkkk....",
+        "..kkvdvdkk..",
+        ".kvdlvvdvdk.",
+        ".kdkwkkwkdk.",
+        ".kddddddddk.",
+        "..kbnnnnbk..",
+        ".kbnbnnbnbk.",
+        ".kbnnbbnnbk.",
+        ".kbk.nn.kbk.",
+        "kb.k.kk.k.bk",
+        "...kk..kk...",
+        "..k......k.."
+      ],
+      [
+        ".....kkkk...",
+        "...kkvdvdkk.",
+        "..kvdlvvdvdk",
+        "..kdkwkkwkdk",
+        "..kddddddddk",
+        "...kbnnnnbkk",
+        "..kbnbnnbnnn",
+        "..kbnnbbnnbk",
+        ".kbnk.nn.knk",
+        ".kb.k.kk.k..",
+        ".k..k....k..",
+        "...kk....kk."
+      ]
      ]}
   ]
 }

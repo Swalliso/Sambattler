@@ -341,6 +341,12 @@ export interface UnitState {
   expiresTick?: number;
   /** Prototype T2: the tick the unit started falling back (kept while committed). Absent unless `rules.fallBack`. */
   holdSince?: number;
+  /**
+   * Combat rework: true while a `burrow` unit (the Rhizomorph) tunnels. It can't be targeted, hit,
+   * pinned or merged, doesn't collide or hold ground, and can't attack; false once it has surfaced.
+   * Absent for every other unit.
+   */
+  burrowed?: boolean;
 }
 
 export interface KnitState {

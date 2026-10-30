@@ -42,7 +42,7 @@ function pulse(state: BattleState, cl: CloudState, radius: number, damage: numbe
   const near = nearBuffer();
   for (let k = 0; k < n; k++) {
     const v = state.units[near[k]!]!;
-    if (v.side !== enemy || v.lane !== cl.lane || v.hp <= 0 || !inCloud(state, cl, v.x, v.y, unitRadius(state, v))) continue;
+    if (v.side !== enemy || v.lane !== cl.lane || v.hp <= 0 || v.burrowed || !inCloud(state, cl, v.x, v.y, unitRadius(state, v))) continue;
     const dealt = Math.min(damage, v.hp);
     v.hp -= damage;
     v.lastCombatTick = state.tick;

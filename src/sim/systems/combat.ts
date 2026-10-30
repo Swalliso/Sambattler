@@ -92,7 +92,7 @@ function spawnerDefense(state: BattleState, storm: number): void {
     const near = nearBuffer();
     for (let k = 0; k < n; k++) {
       const v = state.units[near[k]!]!;
-      if (v.side !== enemy || v.lane !== b.lane || v.hp <= 0) continue;
+      if (v.side !== enemy || v.lane !== b.lane || v.hp <= 0 || v.burrowed) continue;
       let d = rectDistance(v.x, v.y, b.col, b.row, def.w, def.h) - unitRadius(state, v);
       if (d < 0) d = 0;
       if (d <= sd.range && (d < bestD || (d === bestD && v.id < best))) { best = v.id; bestD = d; }
@@ -112,7 +112,7 @@ export function isPinned(state: BattleState, u: UnitState, radius: number): bool
   const near = nearBuffer();
   for (let k = 0; k < n; k++) {
     const v = state.units[near[k]!]!;
-    if (v.side === u.side || v.lane !== u.lane || v.hp <= 0) continue;
+    if (v.side === u.side || v.lane !== u.lane || v.hp <= 0 || v.burrowed) continue;
     const dx = v.x - u.x, dy = v.y - u.y;
     const reach = radius + r + unitRadius(state, v);
     if (dx * dx + dy * dy <= reach * reach) return true;
@@ -183,7 +183,7 @@ export function attackSystem(state: BattleState): void {
       const near = nearBuffer();
       for (let k = 0; k < n; k++) {
         const v = state.units[near[k]!]!;
-        if (v.side !== enemy || v.lane !== lane || v.hp <= 0) continue;
+        if (v.side !== enemy || v.lane !== lane || v.hp <= 0 || v.burrowed) continue;
         const dx = v.x - x, dy = v.y - y;
         let d = Math.sqrt(dx * dx + dy * dy) - unitRadius(state, v);
         if (d < 0) d = 0;
@@ -318,7 +318,7 @@ function answerCalls(state: BattleState): void {
     const near = nearBuffer();
     for (let k = 0; k < n; k++) {
       const v = state.units[near[k]!]!;
-      if (v.side !== side || v.lane !== lane || v.hp <= 0 || v.targetId !== 0 || v.knit) continue;
+      if (v.side !== side || v.lane !== lane || v.hp <= 0 || v.targetId !== 0 || v.knit || v.burrowed) continue;
       const rv = unitRadius(state, v);
       let d: number;
       if (vu) { const dx = v.x - vu.x, dy = v.y - vu.y; d = Math.sqrt(dx * dx + dy * dy) - rv - ext; }
@@ -364,7 +364,7 @@ export function resolveHitsSystem(state: BattleState): void {
       const near = nearBuffer();
       for (let k = 0; k < cnt; k++) {
         const v = state.units[near[k]!]!;
-        if (v.side !== enemy || v.lane !== h.lane || v.hp <= 0 || v.id === h.targetId) continue;
+        if (v.side !== enemy || v.lane !== h.lane || v.hp <= 0 || v.id === h.targetId || v.burrowed) continue;
         const dx = v.x - ix, dy = v.y - iy;
         if (Math.sqrt(dx * dx + dy * dy) - unitRadius(state, v) <= s) applyDamage(state, h, v.id, share, v.x, v.y);
       }
@@ -392,7 +392,7 @@ export function burstAt(state: BattleState, side: Side, x: number, y: number, ra
   };
   let n = 0;
   for (const u of state.units) {
-    if (u.side !== enemy || u.hp <= 0) continue;
+    if (u.side !== enemy || u.hp <= 0 || u.burrowed) continue;
     const dx = u.x - x, dy = u.y - y;
     if (Math.sqrt(dx * dx + dy * dy) - unitRadius(state, u) > radius) continue;
     applyDamage(state, h, u.id, 1, u.x, u.y);
