@@ -190,6 +190,36 @@ What this suggests:
   - Mycorrhizal Link's +13% doesn't register at all, which supports the review's point that the rules must change what units do, not add percentages.
   - Run `--checks spread` with the network knob on, and pass `--plots` to see which plots win.
 
+## Step B results (2026-10-30)
+
+Measured on `feature/step-b-battle-feel`, from `develop` after step A. Three default-off knobs, each with a `?proto=` preset. The full tables, the guardrails and the playtest strings are in the [balance backlog](../balance-backlog.md#step-b-battle-feel-prototypes-2026-10-30). Runs: 300 per cell (seeds 1–100 × 3 commanders, auto powers), about ±3 points. Single battles: 360 per cell.
+
+| | Battle 1 lost | Battle 2 lost | Runs won | Heartcap first hit → dead (⅔ → dead) | Median battle |
+|---|---|---|---|---|---|
+| Today | 33% | 35% | 24% | 18 s (9 s) | 6:06 |
+| `hotstart`: deploy draft, general at ¾ income in battle 1 | 18% | 26% | 34% | unchanged | unchanged |
+| `breach`: breach at ⅔, last stand at ⅓, storm +10% | 32% | 32% | 27% | 45 s (35 s) | 6:33 |
+| `bigdrafts`: waves 2 and 5, take 2 of 4, +10 rare | 31% | 30% | 28% | unchanged | unchanged |
+| All three | **16%** | 20% | 44% | 45 s (35 s) | 6:33 |
+
+What it shows:
+- **The run is lost to one general.** Battle 1 is always Old Mother Mold or the Lichen Baron, and Mold accounts for 79 of 99 battle-1 losses (51% of Mold fights against 14% for the Baron).
+  - The gentler battle 1 halves the losses, but it flattens out at about 17%: what's left is Mold's mustered swarm.
+  - Moving Mold out of battle 1, a data change, gets `hotstart` to 6% battle-1 losses, but battle 2 then loses 37%.
+- **The deploy draft is a decision, not a lever.** It barely moves battle 1, but it gives a first choice at 0:00 and adds run wins later.
+- **Bigger drafts must mean more picks.** Two 1-card drafts cost runs, and rarity doesn't make up for it. Two 2-of-4 drafts halve the holds and help a little.
+- **The Heartcap cliff is the end of a collapse, not its cause.**
+  - When a loser's Heartcap is first hit, the loser has about 1 building and 0 units left. Its base fell over the previous ~35 s.
+  - A breach and last stand stretch the fall from 18 s to 45 s, inside G4's band. But bots almost never come back (2 in 360), because there is nothing left to come back with.
+  - A comeback needs a moment earlier in the collapse, or a run-level rule (a rout loss costs HP instead of the run).
+- **No guardrail verdict changes.** `breach` moves G4 from 7:13 / 10% to 7:51 / 12%.
+- **The boss gets easier with everything else** (85% of boss fights won with all three). The difficulty curve flattens but doesn't invert.
+
+**Recommendation:**
+- Playtest `?proto=hotstart,bigdrafts` as the likely adoption.
+- Playtest `?proto=breach` separately, to ask whether a 35 s siege ending feels better than the cliff.
+- Adopting any of it, moving Mold, or retuning the boss is a data change and waits for the user.
+
 ## Decisions (2026-10-30)
 
 The user's answers:
@@ -199,6 +229,7 @@ The user's answers:
 - **The spec and the original plan are malleable.** The goal is the most fun and engaging game, and the spec and milestones can change to get there. Rule changes and retunes still go to the user with numbers first (`.claude/rules/balance.md`).
 
 - **Step A ran on 2026-10-30** with no rule or data change (results [above](#step-a-results-and-what-they-suggest-for-b-and-c)). Steps B (battle-feel prototypes) and C (a small placement and network test) come later, each in its own session, and both are judged with step A's tools.
+- **Step B ran on 2026-10-30** as default-off prototypes (results [above](#step-b-results-2026-10-30)). Nothing is adopted; the playtest and the data changes wait for the user.
 
 Still open:
 - whether Codex's two uncommitted notes and the original design review should come into `docs/ideas/`;

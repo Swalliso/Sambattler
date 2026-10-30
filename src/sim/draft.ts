@@ -154,15 +154,26 @@ export function applyCard(lo: Loadout, cardIdText: string): void {
 
 // ---- in-battle drafts ----
 
-/** Opens a draft for `side` if it drafts this battle and anything is left to offer. Holds the sim. */
-export function openDraft(state: BattleState, side: Side): boolean {
+/** Offer options for `side`'s in-battle drafts, with the bigger-drafts prototype's rare bonus. */
+function battleOffer(state: BattleState, side: Side, cards = state.compiled[side].draftCards): OfferOptions {
+  const rareBonus = state.rules.bigDrafts?.rareBonus ?? 0;
+  return { cards, battleIndex: state.config.battleIndex, ...(rareBonus ? { rareBonus } : {}) };
+}
+
+/**
+ * Opens a draft for `side` if it drafts this battle and anything is left to offer. Holds the sim.
+ * `deploy` is the hot-start prototype's free draft before the clock starts: one pick, `cards` cards.
+ */
+export function openDraft(state: BattleState, side: Side, deploy?: { cards?: number }): boolean {
   const pool = state.config[side].draft;
   const ss = state.sides[side];
   if (!pool || ss.draft) return false;
   ss.draftsOpened++;
-  const offer = generateOffer(state.library, pool, ss, { cards: state.compiled[side].draftCards, battleIndex: state.config.battleIndex }, state.rng.draft);
+  const offer = generateOffer(state.library, pool, ss, deploy ? battleOffer(state, side, deploy.cards) : battleOffer(state, side), state.rng.draft);
   if (!offer.length) return false;
   ss.draft = { offer, rerolls: 0, index: ss.draftsOpened };
+  const picks = deploy ? 1 : Math.min(offer.length, state.rules.bigDrafts?.picks ?? 1);
+  if (picks > 1) ss.draft.picks = picks;
   state.held = true;
   state.events.push({ t: 'draftOpen', side, index: ss.draftsOpened });
   return true;
@@ -189,14 +200,22 @@ export function executeDraftCommand(state: BattleState, side: Side, cmd: { type:
     if (!d.offer.some((c) => c.id === cmd.cardId)) return 'that card is not in the offer';
     applyCard(ss, cmd.cardId);
     state.stats[side].drafted.push(cmd.cardId);
-    closeDraft(state, side, cmd.cardId);
+    if (d.picks !== undefined && d.picks > 1) {
+      // bigger drafts: the offer stays open with the cards left
+      d.offer = d.offer.filter((c) => c.id !== cmd.cardId);
+      d.picks--;
+      if (d.picks === 1) delete d.picks;
+      state.events.push({ t: 'drafted', side, cardId: cmd.cardId, skipped: false });
+    } else {
+      closeDraft(state, side, cmd.cardId);
+    }
     recompile(state);
     return null;
   }
   if (cmd.type === 'draftReroll') {
     const cost = rerollCost(state, side);
     if (ss.gold < cost) return 'not enough gold to reroll';
-    const offer = generateOffer(state.library, state.config[side].draft!, ss, { cards: state.compiled[side].draftCards, battleIndex: state.config.battleIndex }, state.rng.draft);
+    const offer = generateOffer(state.library, state.config[side].draft!, ss, battleOffer(state, side), state.rng.draft);
     if (!offer.length) return 'nothing left to offer';
     ss.gold -= cost;
     d.rerolls++;

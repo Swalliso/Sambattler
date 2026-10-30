@@ -246,6 +246,10 @@ export class Renderer {
       else if (e.t === 'power' && e.x !== undefined && e.y !== undefined) {
         const def = state.library.powers?.[e.power];
         this.effects.add(12, e.x, e.y, now, e.side === 'player' ? 0 : 1, def && def.target === 'point' ? def.radius : 2);
+      } else if (e.t === 'heartcapBreach') {
+        // Heartcap breach prototype: a ring the size of the breach's pulse, when it has one
+        const pulse = state.compiled[e.side].triggers.find((t) => t.on === 'heartcapBreach' && t.at === e.at)?.do.find((a) => 'explode' in a);
+        if (pulse && 'explode' in pulse) this.effects.add(12, e.x, e.y, now, e.side === 'player' ? 0 : 1, pulse.explode.radius);
       }
       else if (e.t === 'spawned') {
         const u = state.units.find((x) => x.id === e.id);
