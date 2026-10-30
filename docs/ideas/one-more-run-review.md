@@ -199,7 +199,8 @@ The user's answers:
 - **The spec and the original plan are malleable.** The goal is the most fun and engaging game, and the spec and milestones can change to get there. Rule changes and retunes still go to the user with numbers first (`.claude/rules/balance.md`).
 
 - **Step A ran on 2026-10-30** with no rule or data change (results [above](#step-a-results-and-what-they-suggest-for-b-and-c)). Steps B (battle-feel prototypes) and C (a small placement and network test) come later, each in its own session, and both are judged with step A's tools.
+- **G3 measures every map** (decided after step A): every mono bot against `bot:balanced` on every run-pool map, 50 seeds per seat, with mean ≤ 55% and worst map ≤ 60%. Mono Gill Nest, Sporeling and Amanita fail it; mono Morel sits exactly on the mean limit. See the [backlog](../balance-backlog.md#g3-on-every-map-the-rewrite-2026-10-30).
 
 Still open:
 - whether Codex's two uncommitted notes and the original design review should come into `docs/ideas/`;
-- after step A, how to rewrite G3, and whether one-lane maps get a second front.
+- whether one-lane maps get a second front.

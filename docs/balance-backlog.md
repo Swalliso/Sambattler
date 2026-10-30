@@ -241,7 +241,7 @@ Mono bot win rate against `bot:balanced` (✗ above the 55% limit). `test-3lane`
 - **Archers are a one-lane problem.** Mono Gill Nest wins every game on both one-lane maps, 63% on Twin Roots and 54% on three lanes.
 - **Mono Sporeling fails G3 on every map (70–85%).** In the 40-game guardrail it reads 65% on Bogwater. It has been above 55% since Hold was adopted, and it is now the other standing G3 miss.
 - **Each map type has its own winners.** More lanes help the single-building concentrators (Amanita, Rootbreaker, Veilstalker) and hurt Capguards and Scythecaps.
-- **The guardrail tests too little.** `npm run test:slow` measures G3 on Bogwater only, with 40 games. It misses Sporeling's real rate and every multi-lane failure. A rewrite that measures every map is [proposed below](#g3-on-every-map-the-proposed-rewrite-2026-10-30).
+- **The guardrail tests too little.** `npm run test:slow` measures G3 on Bogwater only, with 40 games. It misses Sporeling's real rate and every multi-lane failure. G3 now measures every map: see [the rewrite](#g3-on-every-map-the-rewrite-2026-10-30).
 
 ### Why Twin Roots differs
 
@@ -411,11 +411,11 @@ By building, Bogwater Hollow without the relic:
 
 The bar for step C: a network rule set on Bogwater should lift split-half ρ well above about 0.3, to at least Twin Roots' 0.6–0.7. It should also lift best − median well above about 25% of a building's worth, and do both at 1:00 as well as 3:00. The test is `npm run experiment -- --proto <network knob> --checks spread`.
 
-## G3 on every map: the proposed rewrite (2026-10-30)
+## G3 on every map: the rewrite (2026-10-30)
 
-Proposed on `feature/g3-every-map`. It waits for the user's call on the thresholds and the seed count. Only the guardrail and its targets change: no rule or content, so the goldens are unchanged.
+Made on `feature/g3-every-map`. The user approved the thresholds and the seed count ("Keep G3 as proposed: mean ≤ 55%, worst map ≤ 60%, 50 seeds per seat."). Only the guardrail and its targets change: no rule or content, so the goldens are unchanged.
 
-**The proposed G3** (SPEC §12.3, marked as proposed there):
+**G3 now** (SPEC §12.3):
 - Every mono bot plays `bot:balanced` on every map in the run pool, in both seats. The pool is `mapPool()` in `src/run/route.ts`: Bogwater Hollow, Stumpfield and Twin Roots today. Test maps stay out, and Three Hollows joins when it ships.
 - 50 seeds per seat: 100 games per map, about ±5 points each.
 - A bot passes if its mean over the maps is ≤ 55% and its worst map ≤ 60%. Each map is measured to about ±5 points, so the worst of three reads high on noise alone; the extra 5 points allow for that.
@@ -450,7 +450,7 @@ Proposed on `feature/g3-every-map`. It waits for the user's call on the threshol
 | Before (develop, Bogwater, 20 seeds per seat) | 224 s | 52 s | 23% |
 | After (run pool, 50 seeds per seat) | 689 s | 459 s | 67% |
 
-The after run shared the machine with other work: G7 and G8, which didn't change, took 1.3–1.5× as long as before. Scaled from the before run, G3 alone is roughly 390 s and the suite about 9½ minutes. G3 is now most of the suite. Options, none taken here:
-- **Keep 50 seeds per seat** (recommended). The 60% worst-map limit assumes ±5 points per map. `test:slow` isn't in CI; it runs after data changes.
-- **Run G3 beside the others.** In its own file under `tests/slow/`, vitest runs it in parallel with the rest, and the suite takes about as long as G3 alone. Playing the maps in worker threads would cut it further. Neither cuts games.
+The after run shared the machine with other work: G7 and G8, which didn't change, took 1.3–1.5× as long as before. Scaled from the before run, G3 alone is roughly 390 s and the suite about 9½ minutes. G3 is now most of the suite. The options considered:
+- **Keep 50 seeds per seat** (the user's choice). The 60% worst-map limit assumes ±5 points per map. `test:slow` isn't in CI; it runs after data changes.
+- **Run G3 beside the others** (not done; still open). In its own file under `tests/slow/`, vitest runs it in parallel with the rest, and the suite takes about as long as G3 alone. Playing the maps in worker threads would cut it further. Neither cuts games.
 - **30 seeds per seat** (60 games per map, about ±6.5 points) brings G3 to about 4 minutes. The per-map noise is then bigger than the 5-point allowance, so the worst-map limit would want to rise to about 62%. At 20 seeds (±8) the worst map says little.
