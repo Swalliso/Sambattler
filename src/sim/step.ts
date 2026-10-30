@@ -10,7 +10,7 @@ import { cloudSystem } from './systems/clouds.ts';
 import { clockSystem, incomeSystem } from './systems/economy.ts';
 import { mergingSystem } from './systems/merging.ts';
 import { movementSystem } from './systems/movement.ts';
-import { spawningSystem } from './systems/spawning.ts';
+import { spawningSystem, waveSystem } from './systems/spawning.ts';
 import { stanceSystem } from './systems/stance.ts';
 import { targetingSystem } from './systems/targeting.ts';
 import { territorySystem } from './systems/territory.ts';
@@ -53,8 +53,9 @@ export function step(state: BattleState): void {
   powerClock(state);
   // 4. income and interest
   incomeSystem(state);
-  // 5. building timers and spawns
+  // 5. building timers and spawns (and, with the combat rework's waves, each side's beat)
   spawningSystem(state);
+  if (state.rules.waves) waveSystem(state);
   // 6. AI: the counter cycle's analyses and activations (adaptive sides only), then think
   for (const side of SIDES) if (state.sides[side].ai?.counter) counterTick(state, side);
   if (state.tick % state.rules.ai.thinkEvery === 0) {

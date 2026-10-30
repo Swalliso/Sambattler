@@ -8,7 +8,7 @@ import { loadContent } from '../../src/data/registry.ts';
 import { createRun } from '../../src/run/index.ts';
 import { generalKit } from '../../src/run/flow.ts';
 import { laneCover } from '../../src/sim/ai/controller.ts';
-import { createBattle, makeConfig } from '../../src/sim/index.ts';
+import { createBattle, makeConfig, queueCommand, runHeadless } from '../../src/sim/index.ts';
 import type { BattleState, Content } from '../../src/sim/index.ts';
 import { addBuilding } from '../../src/sim/create.ts';
 import { addCloud } from '../../src/sim/systems/clouds.ts';
@@ -44,7 +44,10 @@ describe('the combat rework settings are off by default', () => {
   });
 
   it('the presets compile', () => {
-    for (const p of ['pinned', 'callforhelp', 'sporecloud']) expect(() => protoContent(p)).not.toThrow();
+    for (const p of ['pinned', 'callforhelp', 'sporecloud', 'rhizomorph', 'waves', 'rework']) expect(() => protoContent(p)).not.toThrow();
+    const all = protoState(protoContent('rework'));
+    expect([all.rules.pin, all.rules.help, all.rules.cloud, all.rules.waves].every(Boolean)).toBe(true);
+    expect(all.compiled.player.buildings.rhizomorphTunnel).toBeDefined();
     expect(protoState(protoContent('pinned')).rules.pin).toEqual({ radius: 1, permille: 350 });
     expect(protoState(protoContent('callforhelp')).rules.help).toEqual({ radius: 5 });
   });
@@ -293,5 +296,133 @@ describe('the Rhizomorph (preset rhizomorph)', () => {
     expect(lanePresence(s, 0).player[10]).toBe(0);
     r.burrowed = false;
     expect(lanePresence(s, 0).player[10]).toBe(2);
+  });
+});
+
+describe('waves (balance waves)', () => {
+  const wc = protoContent('waves');
+
+  /** A live waves battle on the flat map with idle sides, merging off, plus optional battle modifiers. */
+  function waveState(modifiers?: BattleState['config']['modifiers'], c: Content = wc): BattleState {
+    const config = makeConfig(c, { seed: 1, mapId: 'test-flat', player: 'human', enemy: 'human', test: NO_FIELD, flags: { merging: false } });
+    if (modifiers) config.modifiers = modifiers;
+    const s = createBattle(c, config);
+    s.phase = 'live';
+    return s;
+  }
+
+  it('is off by default: spawns walk straight out', () => {
+    expect(content.balance.waves).toBeUndefined();
+    const s = liveState({ test: NO_FIELD });
+    expect(s.rules.waves).toBeUndefined();
+    expect(s.compiled.player.waveBeatTicks).toBeUndefined();
+    const b = building(s, 'player', 'sporelingBurrow', 1, 3);
+    steps(s, 160);
+    expect(s.units).toHaveLength(2);
+    expect(b.stored).toBeUndefined();
+    expect(s.units[0]!.wave).toBeUndefined();
+  });
+
+  it('spawns wait inside, counting toward supply, and both sides release on the same 20 s beat', () => {
+    const s = waveState();
+    expect(s.rules.waves).toEqual({ rangedGap: 1, matchPace: true });
+    expect(s.compiled.player.waveBeatTicks).toBe(400);
+    const pb = addBuilding(s, 'player', 'sporelingBurrow', 0, 1, 3, 110);
+    addBuilding(s, 'enemy', 'gillNest', 0, 29, 3, 150);
+    steps(s, 160);
+    expect(s.units).toHaveLength(0);
+    expect(pb.stored).toBe(2);
+    expect(s.sides.player.supplyUsed).toBe(2);
+    steps(s, 239);
+    expect(s.units).toHaveLength(0);
+    steps(s, 1);
+    expect(s.tick).toBe(400);
+    expect(s.events.filter((e) => e.t === 'release')).toEqual([
+      { t: 'release', side: 'player', units: 2, held: [] }, { t: 'release', side: 'enemy', units: 1, held: [] },
+    ]);
+    expect(s.units.map((u) => [u.side, u.unitId, u.wave])).toEqual([['player', 'sporeling', 1], ['player', 'sporeling', 1], ['enemy', 'gillArcher', 1]]);
+    expect(pb.stored).toBe(0);
+    expect(s.sides.player.supplyUsed).toBe(2);
+  });
+
+  it('holding a lane keeps its wave home for one beat, and the beat spends the hold', () => {
+    const s = waveState();
+    const pb = addBuilding(s, 'player', 'sporelingBurrow', 0, 1, 3, 110);
+    steps(s, 300);
+    queueCommand(s, { tick: s.tick + 1, side: 'player', type: 'stance', lane: 0, hold: true });
+    steps(s, 100);
+    expect(s.units).toHaveLength(0);
+    expect(s.sides.player.stance![0]!.hold).toBe(false);
+    expect(s.events.find((e) => e.t === 'release')).toEqual({ t: 'release', side: 'player', units: 0, held: [0] });
+    steps(s, 400);
+    expect(pb.stored).toBe(0);
+    expect(s.units).toHaveLength(6); // spawns at 8, 24 and 40 s, out together at 40 s
+  });
+
+  it('a hold under waves lasts until the beat, not 30 s', () => {
+    const s = waveState();
+    s.sides.player.stance![0] = { hold: true, since: 0, readyAt: 0 };
+    s.sides.player.stance![0]!.since = -1000;
+    steps(s, 10);
+    expect(s.sides.player.stance![0]!.hold).toBe(true);
+  });
+
+  it('a spawner sold or destroyed lets its waiting units out', () => {
+    for (const how of ['sold', 'destroyed'] as const) {
+      const s = waveState();
+      const pb = addBuilding(s, 'player', 'sporelingBurrow', 0, 1, 3, 110);
+      steps(s, 170);
+      if (how === 'sold') queueCommand(s, { tick: s.tick + 1, side: 'player', type: 'sell', entityId: pb.id });
+      else pb.hp = 0;
+      steps(s, 1);
+      expect(s.buildings).toHaveLength(0);
+      expect(s.units.map((u) => [u.unitId, u.wave])).toEqual([['sporeling', undefined], ['sporeling', undefined]]);
+      expect(s.sides.player.supplyUsed).toBe(2);
+    }
+  });
+
+  it('a wave marches at its slowest idle unit’s pace, ranged units a tile behind their melee', () => {
+    const march = (c: Content) => {
+      const s = waveState(undefined, c);
+      addBuilding(s, 'player', 'sporelingBurrow', 0, 1, 0, 110);
+      addBuilding(s, 'player', 'capguardHall', 0, 1, 3, 150);
+      addBuilding(s, 'player', 'gillNest', 0, 1, 6, 150);
+      steps(s, 400);
+      const at = s.units.map((u) => u.x);
+      steps(s, 100);
+      const moved = (id: string) => { const i = s.units.findIndex((u) => u.unitId === id); return s.units[i]!.x - at[i]!; };
+      const x = (id: string) => s.units.find((u) => u.unitId === id)!.x;
+      return { sporeling: moved('sporeling'), capguard: moved('capguard'), gap: x('capguard') - x('gillArcher') };
+    };
+    const paced = march(wc);
+    expect(paced.capguard).toBeCloseTo(100 * 0.75 / 20, 5);
+    expect(paced.sporeling).toBeCloseTo(paced.capguard, 1);
+    expect(paced.gap).toBeGreaterThan(0.99);
+    const free = march(protoContent('waves,waves.matchPace:false'));
+    expect(free.sporeling).toBeGreaterThan(1.9 * free.capguard);
+  });
+
+  it('the AI never holds under waves', () => {
+    const s = createBattle(wc, makeConfig(wc, { seed: 2, mapId: 'bogwater-hollow', player: 'bot:balanced', enemy: 'general:mother-mold' }));
+    queueCommand(s, { tick: 0, side: 'player', type: 'begin' });
+    let holds = 0, releases = 0;
+    runHeadless(s, { until: 2400, onTick: (st) => {
+      for (const e of st.events) { if (e.t === 'stance' && e.hold) holds++; if (e.t === 'release') releases++; }
+    } });
+    expect(holds).toBe(0);
+    expect(releases).toBe(12); // both sides, every 20 s for 2 minutes
+  });
+
+  it('the beat and the wave size are modifier stats', () => {
+    const s = waveState([{ side: 'player', source: 'test', effects: { modifiers: [
+      { stat: 'side.waveBeat', op: 'set', value: 10 }, { stat: 'side.waveSize', op: 'mul', value: 2 },
+    ] } }]);
+    expect(s.compiled.player.waveBeatTicks).toBe(200);
+    expect(s.compiled.enemy.waveBeatTicks).toBe(400);
+    expect(s.compiled.player.waveSize).toBe(2);
+    addBuilding(s, 'player', 'sporelingBurrow', 0, 1, 3, 110);
+    steps(s, 200);
+    expect(s.units).toHaveLength(4); // two waiting, released twice over at 10 s
+    expect(s.sides.player.supplyUsed).toBe(4);
   });
 });

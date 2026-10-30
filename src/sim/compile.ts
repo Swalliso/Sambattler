@@ -81,6 +81,7 @@ export function compileRules(b: BalanceDef, config: BattleConfig): Rules {
     ...(b.bigDrafts ? { bigDrafts: { picks: b.bigDrafts.picks ?? 1, rareBonus: b.bigDrafts.rareBonus ?? 0 } } : {}),
     ...(b.pinned ? { pin: { radius: b.pinned.radius, permille: Math.round(b.pinned.rateMult * 1000) } } : {}),
     ...(b.callForHelp ? { help: { radius: b.callForHelp.radius } } : {}),
+    ...(b.waves ? { waves: { rangedGap: b.waves.rangedGap ?? 1, matchPace: b.waves.matchPace ?? true } } : {}),
     ...(b.sporeCloud ? {
       cloud: {
         buildings: [...b.sporeCloud.buildings], radius: b.sporeCloud.radius, ticks: secToTicks(b.sporeCloud.seconds, tr),
@@ -334,6 +335,11 @@ export function compileSide(lib: Library, lo: Loadout, mods: readonly ModifierDe
   // absent at ×1, so sides without a cooldown relic compile (and hash) as before powers existed
   const powerCooldown = m('side.powerCooldown', 1);
   if (powerCooldown !== 1) out.powerCooldownMult = powerCooldown;
+  // combat rework `waves`: the side's beat and wave size, hooks for relics and perks
+  if (bal.waves) {
+    out.waveBeatTicks = Math.max(1, secToTicks(m('side.waveBeat', bal.waves.beatSeconds), bal.tickRate));
+    out.waveSize = Math.max(0, m('side.waveSize', 1));
+  }
   return out;
 }
 

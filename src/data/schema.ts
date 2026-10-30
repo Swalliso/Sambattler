@@ -38,6 +38,8 @@ export const SIDE_STATS = [
   'side.supplyCap', 'side.interestCap', 'side.stipend', 'side.captureSpeed', 'side.startingGold', 'side.sellRefund',
   'side.supplyLineRate', 'side.knitTicks', 'side.mergeRadius', 'side.rerollCost', 'side.draftCards', 'side.heartcapMaxHp',
   'side.turretDamage', 'side.comebackEnabled', 'side.loamBonus', 'side.powerCooldown',
+  // combat rework `waves` (hooks for relics and perks): seconds between a side's wave releases, and × units per release
+  'side.waveBeat', 'side.waveSize',
 ] as const;
 export const BATTLE_STATS = ['battle.sporestormStart'] as const;
 export const StatKey = z.enum([...UNIT_STATS, ...BUILDING_STATS, ...SIDE_STATS, ...BATTLE_STATS]);
@@ -231,6 +233,16 @@ export const BalanceSchema = z.object({
     buildings: z.array(z.string()).min(1), radius: Pos, seconds: Pos, damagePerSecond: Pos,
     pulseSeconds: Pos.optional(), range: Pos.optional(), aiCover: z.number().nonnegative().optional(),
   }).strict().optional(),
+  /**
+   * Combat rework `waves`, absent by default: a spawner's units wait inside it (still counting toward
+   * supply) and join its side's next wave. Every `beatSeconds` both sides release their waves on the
+   * same tick. Units of one wave with no target march at the pace of the wave's slowest such unit in
+   * their lane (unless `matchPace` is false), and an idle ranged unit stays `rangedGap` tiles behind
+   * its side's frontmost melee unit in the lane (default 1). Holding a lane keeps its wave home for one
+   * more beat (the beat spends the hold), held lanes don't rally units on the field, and the AI never
+   * holds. `side.waveBeat` (seconds) and `side.waveSize` (× units released) are modifier stats.
+   */
+  waves: z.object({ beatSeconds: Pos, rangedGap: z.number().nonnegative().optional(), matchPace: z.boolean().optional() }).strict().optional(),
   firstSpawnFraction: z.number().min(0).max(1),
   timeLimitSeconds: Pos,
   heartcapPlayerHp: z.number().int().positive(),

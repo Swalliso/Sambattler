@@ -105,7 +105,7 @@ function applyMergePolicy(state: BattleState, side: Side, ai: AiState): void {
 function applyStancePolicy(state: BattleState, side: Side, ai: AiState): void {
   const policy = state.rules.stance?.ai;
   const lanes = state.sides[side].stance;
-  if (!policy || !lanes) return;
+  if (!policy || !lanes || state.rules.waves) return; // combat rework `waves`: the AI never holds
   if (policy.profiles && !policy.profiles.some((p) => ai.profileId.startsWith(p))) return;
   for (let li = 0; li < lanes.length; li++) {
     const st = lanes[li]!;

@@ -12,6 +12,7 @@ import { isRangedUnit } from './targeting.ts';
 
 export function movementSystem(state: BattleState): void {
   const r = state.rules;
+  if (r.waves) prepareWaves(state);
   for (const u of state.units) {
     const t = tierDef(state, u);
     const rad = t.radius;
@@ -54,12 +55,13 @@ export function movementSystem(state: BattleState): void {
         continue;
       }
     }
-    if (r.stance && holdsLane(state, u.side, u.lane) && state.tick - u.lastCombatTick > r.merge.cooldownTicks) {
+    if (r.stance && !r.waves && holdsLane(state, u.side, u.lane) && state.tick - u.lastCombatTick > r.merge.cooldownTicks) {
       // a held lane (prototype E1): idle units walk to the rally line and wait there
       const dx = rallyX(state, u.side, u.lane) - u.x;
       u.x += dx > speed ? speed : dx < -speed ? -speed : dx;
     } else {
-      u.x += u.side === 'player' ? speed : -speed;
+      const step = r.waves ? waveStep(state, u, speed) : speed;
+      u.x += u.side === 'player' ? step : -step;
     }
     const dy = u.spawnY - u.y;
     if (dy > 0) u.y += dy < r.driftPerTick ? dy : r.driftPerTick;
@@ -67,6 +69,48 @@ export function movementSystem(state: BattleState): void {
     clampToLane(state, u, rad);
   }
   separationSystem(state);
+}
+
+// Combat rework `waves`, rebuilt each tick: the slowest idle unit's speed per (wave, lane, side), and
+// each side's frontmost melee unit's x per lane (NaN: none).
+const pace = new Map<number, number>();
+let meleeFront = { player: new Float64Array(4), enemy: new Float64Array(4) };
+const paceKey = (u: UnitState): number => ((u.wave! * 4 + u.lane) * 2) + (u.side === 'player' ? 0 : 1);
+
+function prepareWaves(state: BattleState): void {
+  pace.clear();
+  if (meleeFront.player.length < state.lanes.length) meleeFront = { player: new Float64Array(state.lanes.length), enemy: new Float64Array(state.lanes.length) };
+  meleeFront.player.fill(NaN);
+  meleeFront.enemy.fill(NaN);
+  for (const u of state.units) {
+    if (u.hp <= 0 || u.burrowed) continue;
+    const def = unitDef(state, u);
+    if (!def.support && !def.tags.includes('ranged')) {
+      const f = meleeFront[u.side][u.lane]!;
+      if (Number.isNaN(f) || (u.side === 'player' ? u.x > f : u.x < f)) meleeFront[u.side][u.lane] = u.x;
+    }
+    if (u.wave !== undefined && u.targetId === 0 && !u.knit) {
+      const k = paceKey(u), speed = def.tiers[u.tier - 1]!.speedPerTick;
+      const cur = pace.get(k);
+      if (cur === undefined || speed < cur) pace.set(k, speed);
+    }
+  }
+}
+
+/**
+ * Combat rework `waves`: an idle unit's step along the lane. A unit a beat released marches at the
+ * pace of its wave's slowest idle unit in the lane (with `matchPace`), and an idle ranged unit stops
+ * `rangedGap` tiles behind its side's frontmost melee unit in the lane (it never walks back).
+ */
+function waveStep(state: BattleState, u: UnitState, speed: number): number {
+  const w = state.rules.waves!;
+  let step = speed;
+  if (w.matchPace && u.wave !== undefined) step = Math.min(step, pace.get(paceKey(u)) ?? step);
+  if (unitDef(state, u).tags.includes('ranged')) {
+    const f = meleeFront[u.side][u.lane]!;
+    if (!Number.isNaN(f)) step = Math.max(0, Math.min(step, u.side === 'player' ? f - w.rangedGap - u.x : u.x - f - w.rangedGap));
+  }
+  return step;
 }
 
 /**

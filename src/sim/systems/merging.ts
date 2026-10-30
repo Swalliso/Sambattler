@@ -112,6 +112,7 @@ function complete(state: BattleState, trio: UnitState[]): number {
   m.spawnY = spawnY / 3;
   m.mergeOn = lowest.mergeOn;
   m.lastCombatTick = lastCombat;
+  if (lowest.wave !== undefined) m.wave = lowest.wave; // combat rework `waves`: it marches with its wave
   state.stats[side].merges[tier === 2 ? '2' : '3']++;
   state.events.push({ t: 'merged', side, id: m.id, unitId: m.unitId, tier: tier as 2 | 3, x: m.x, y: m.y });
   const def = state.compiled[side].units[m.unitId]!;

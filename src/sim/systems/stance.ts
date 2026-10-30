@@ -25,10 +25,10 @@ export function setStance(state: BattleState, side: Side, lane: number, hold: bo
   state.events.push({ t: 'stance', side, lane, hold, auto });
 }
 
-/** Releases every hold that has run for `maxHoldTicks`. */
+/** Releases every hold that has run for `maxHoldTicks` (under the combat rework's waves, the beat spends holds instead). */
 export function stanceSystem(state: BattleState): void {
   const rules = state.rules.stance;
-  if (!rules) return;
+  if (!rules || state.rules.waves) return;
   for (const side of ['player', 'enemy'] as const) {
     const lanes = state.sides[side].stance!;
     for (let li = 0; li < lanes.length; li++) {

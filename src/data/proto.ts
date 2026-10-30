@@ -39,6 +39,13 @@ const RHIZOMORPH: Json = {
   'faction.gray-rot.buildings+': 'rhizomorphTunnel',
 };
 
+/**
+ * Waves: spawns wait inside their building and both sides release on a 20 s beat; a wave marches
+ * at its slowest unit's pace with ranged units 1 tile behind their melee front. Hold keeps a lane's
+ * wave home for one beat, and the AI never holds.
+ */
+const WAVES: Json = { waves: { beatSeconds: 20, rangedGap: 1, matchPace: true } };
+
 /** Presets: the settings each prototype was measured with (see the backlog's results tables). */
 export const PROTO_PRESETS: Record<string, Json> = {
   /** B1: Sporelings sprint at enemy units they close on, then wait out a cooldown. */
@@ -107,8 +114,9 @@ export const PROTO_PRESETS: Record<string, Json> = {
   callforhelp: CALL_FOR_HELP,
   sporecloud: SPORE_CLOUD,
   rhizomorph: RHIZOMORPH,
+  waves: WAVES,
   /** All five of the combat rework's settings. */
-  rework: { ...PINNED, ...CALL_FOR_HELP, ...SPORE_CLOUD, ...RHIZOMORPH },
+  rework: { ...PINNED, ...CALL_FOR_HELP, ...SPORE_CLOUD, ...RHIZOMORPH, ...WAVES },
 };
 
 /**

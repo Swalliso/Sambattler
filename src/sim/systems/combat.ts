@@ -2,6 +2,7 @@
 import { fireBreaches, fireTriggers, runAction } from '../effects.ts';
 import { insertHit } from '../hits.ts';
 import { addCloud } from './clouds.ts';
+import { releaseStored } from './spawning.ts';
 import { HEARTCAP_ID, POWER_SOURCE_ID, SIDES, other } from '../state.ts';
 import type { Armor, BattleState, DamageType, Effectiveness, PendingHit, Side, UnitState } from '../state.ts';
 import { nearBuffer, queryNear } from '../spatial.ts';
@@ -439,6 +440,7 @@ export function deathSystem(state: BattleState): void {
   for (let i = 0; i < bs.length; i++) {
     const b = bs[i]!;
     if (b.hp > 0) { bs[w++] = b; continue; }
+    if (b.stored) releaseStored(state, b); // combat rework `waves`: the units waiting inside come out
     state.stats[b.side].buildingsLost++;
     state.stats[other(b.side)].buildingsDestroyed++;
     state.events.push({ t: 'buildingDestroyed', id: b.id, side: b.side, buildingId: b.buildingId, col: b.col, row: b.row });
