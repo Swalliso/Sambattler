@@ -106,11 +106,11 @@ Rules A and C stay in the measurement as overrides of the same setting ([Setting
 ### Which build it answers
 
 Mono Sporeling first, then the other cheap swarms:
-- **Mono Sporeling** has been the build short of answers since P0. On today's rules `bot:turtle` wins 61% against it overall and 21% on Twin Roots ([P0](../balance-backlog.md#mono-sporeling-on-twin-roots)). Under P1c's package it passes the strict bar only with the Burster, and still beats `bot:balanced` 89–91% at a 20 s beat.
+- **Mono Sporeling** has been the build short of answers since P0. On today's rules `bot:turtle` wins 61% against it overall and 21% on Twin Roots ([P0](../balance-backlog.md#mono-sporeling-on-twin-roots)). Under P1c's package it passes the strict bar only through mixed-wave shields, which every two-building answer gets: a check after P1d found that without them its best answer falls from 85% to 47% ([the rework doc](combat-rework.md#p1d-fewer-stalls-and-the-shields-carry-the-strict-bar)). It still beats `bot:balanced` 89–91% at a 20 s beat.
 - **Mono Morel and mono Veilstalker** are the next two cheap builds. Under P1b's `rework` they failed G3's worst map (Morel 55 / 65, Veilstalker 51 / 75); with the Burster they pass. On today's rules mono Morel sits exactly on the G3 line (55 / 57).
 
 Why the air axis suits the swarm:
-- **Area damage can be out-massed, and immunity can't.** P1c found that area damage that travels with the army answers the swarm when it lands. A flyer doesn't need anything to land.
+- **Area damage can be out-massed, and immunity can't.** The Burster's area damage didn't answer the swarm in P1c: the answers that pass win on mixed-wave shields, and don't build Burster Pods. A flyer doesn't need anything to land.
 - **It doesn't depend on the map.** Mono Sporeling escaped its answers on Twin Roots, where the one-lane answers (Capguards behind Mortars) mostly fail (P0, P1b). A flyer is out of the swarm's reach in either lane.
 - **A small stake grows.** Against a swarm, a Drift Stalk's Driftlings never die, so a mixed army with one Stalk keeps every flyer it makes. That's an edge a mixed army gets from being mixed, which the rework doc says is missing ([What P0 and P1 found](combat-rework.md#what-p0-and-p1-found)).
 

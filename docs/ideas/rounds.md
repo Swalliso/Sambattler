@@ -6,6 +6,7 @@ Where Level 2 stands: P1c's write-up is on `feature/combat-rework` (`e648dee`), 
 - The strict counter bar passes in all nine of P1c's confirmed variants.
 - G3 passes in none, though 20 s beats come close: only mono Sporeling fails there.
 - G4 fails in all nine on Decisions (30–48%), because the answers to the swarm win by holding more columns at 10:00 rather than by taking the Heartcap.
+- P1d and a check after it found that the mixed-wave shields, not the Burster, are what pass the strict bar. Without them, mono Sporeling's best answer falls from 85% to 47% ([the rework doc](combat-rework.md#p1d-fewer-stalls-and-the-shields-carry-the-strict-bar)).
 
 ## In short
 
@@ -398,9 +399,9 @@ Clashes are big from round 1. Today each side has 4–7 supply on the field at 1
 | Pinning (×0.35 attack rate in contact) | Melee that reaches the back rank should count | Keep |
 | Spore clouds | Both armies start packed in formation, which is what clouds punish. P1b's densest-cluster aim fits. The Mortar needs its emplacement form to join the clash | Keep; likely more important |
 | Cleave (Scythecap) | Swarms surround their targets, so cleave hits many | Keep; cheap |
-| The Burster | P1c's best answer to the swarm: area damage that travels with the army. Under waves its bursts stalled battles into Decisions. A clash can't stall past 45 s, but the cap share needs watching | Keep |
+| The Burster | Area damage that travels with the army. Under waves it helps against the runners, but the swarm's answers are two-building armies that win on mixed-wave shields and don't build it. Its bursts stalled battles into Decisions. A clash can't stall past 45 s, but the cap share needs watching | Keep |
 | The Rhizomorph | Every clash has a back rank to reach, as TFT's assassins and Mechabellum's flyers do. P1's problem, surfacing beside spawners under the turrets, can't happen, because neither is in the clash | Keep; its job is clearer |
-| Mixed-wave shields | Rounds give a mixed army another edge, information. Measure with and without | Optional |
+| Mixed-wave shields | Under waves they're what passes the strict bar: without them, mono Sporeling's best answer falls from 85% to 47%. Rounds give a mixed army another edge, information, so measure with and without | Optional |
 | Flyers (approved, after P2) | Mechabellum's air and ground axis suits rounds | Later |
 
 ## Today's strong builds under rounds
@@ -443,7 +444,7 @@ The margins above are for equal supply. Below the cap, armies are equal in gold 
   - **Its weakness:** a pure ranged army has no front line, so any melee mass reaches it. P0's Sporeling-led answers already win 80–88%, and at equal gold the swarm's edge grows.
   - **Under rounds:** it should be answered.
   - **The catch:** at the cap its margin is the triangle's smallest (+8), so one archer upgrade could flip late rounds. Pinning and the Rhizomorph widen the margin.
-- **Mono Sporeling (swarm):** rounds give it what Hold gave it, arriving together, plus a gold edge that peaks in the middle rounds. Expect it to be the hard case again. P1c's answers are the likely ones: Capguards behind Mortar clouds, or Bursters.
+- **Mono Sporeling (swarm):** rounds give it what Hold gave it, arriving together, plus a gold edge that peaks in the middle rounds. Expect it to be the hard case again. Level 2's answers are the likely ones: two-building armies such as Sporeling + Veilstalker. Under waves those win on mixed-wave shields, so the prototype measures them with and without.
 - **`bot:balanced` against committed builds:**
   - **The problem:** a fixed mix splits its strength, and the square law punishes splitting.
   - **Where a mix wins:** where its parts protect each other. Capguards in front soaking fire while archers shoot from behind is the one combined-arms effect that a formation creates.
@@ -555,7 +556,7 @@ A headless check, `npm run experiment -- --checks clash`, with no change to the 
   - cleave;
   - the Rhizomorph.
 
-  A shield for mixed armies comes last.
+  A shield for mixed armies comes last, to see whether rounds need it. Under waves it's what passes the strict bar.
 - **Formation by building slot,** once formation by role reads clearly.
 
 ### Cost
