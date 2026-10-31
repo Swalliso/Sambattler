@@ -8,12 +8,13 @@ import { loadContent } from '../../src/data/registry.ts';
 import { createRun } from '../../src/run/index.ts';
 import { generalKit } from '../../src/run/flow.ts';
 import { laneCover } from '../../src/sim/ai/controller.ts';
-import { createBattle, makeConfig, queueCommand, runHeadless } from '../../src/sim/index.ts';
+import { createBattle, hashState, makeConfig, queueCommand, runHeadless } from '../../src/sim/index.ts';
 import type { BattleState, Content } from '../../src/sim/index.ts';
 import { addBuilding } from '../../src/sim/create.ts';
 import { addCloud } from '../../src/sim/systems/clouds.ts';
 import { lanePresence } from '../../src/sim/systems/territory.ts';
 import { protoContent, readRawContent } from '../../tools/lib/content.ts';
+import { runBattle } from '../../tools/lib/run.ts';
 import { building, content, liveState, setBorders, steps, unit } from '../helpers.ts';
 import type { UnitState } from '../../src/sim/index.ts';
 
@@ -33,6 +34,15 @@ function freeze(s: BattleState, side: 'player' | 'enemy', id: string): void {
 }
 
 describe('the combat rework settings are off by default', () => {
+  it("leaves today's battles exactly as on develop: a unit Vesper's Spore Burst kills still gets that tick's attack", () => {
+    // P1c gated nothing here at first, and this battle's final hash moved (d1d1102d0bb7c0d6); develop's is below
+    const { state } = runBattle(content, {
+      seed: 24, map: 'bogwater-hollow', player: 'bot:balanced', commander: 'vesper', powerPolicy: 'auto',
+      flags: { merging: true, adaptiveGeneral: true, powers: true },
+    });
+    expect(hashState(state)).toBe('c22ff682dd1bf0a8');
+  });
+
   it('balance.json sets none of them, so compiled rules carry none', () => {
     const b = content.balance;
     expect(b.pinned).toBeUndefined();

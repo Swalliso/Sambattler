@@ -139,7 +139,7 @@ export function attackSystem(state: BattleState): void {
   const pin = state.rules.pin;
   const bursts = !!state.rules.burst;
   for (const u of state.units) {
-    if (u.hp <= 0) continue; // struck down by a burst earlier this tick
+    if (bursts && u.hp <= 0) continue; // combat rework `burster`: struck down by a burst earlier this tick
     if (u.cooldown > 0 && !(pin && pinSkips(state, u, pin))) u.cooldown--;
     if (u.cooldown > 0 || u.targetId === 0) continue;
     const def = unitDef(state, u);
