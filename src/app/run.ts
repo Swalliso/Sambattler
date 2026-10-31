@@ -30,12 +30,14 @@ import { soundPrefs, soundToggle } from './sound.ts';
 
 /**
  * localStorage behind the run layer's Storage interface (failures, e.g. private mode, are ignored),
- * under this site's keys so the dev site and the main site keep separate saves.
+ * under this site's keys so the dev site and the main site keep separate saves. `space` keeps a
+ * prototype run's keys apart (`protoSpace`); the real save has none.
  */
 export class BrowserStorage implements Storage {
-  get(key: string): string | null { try { return localStorage.getItem(storageKey(key)); } catch { return null; } }
-  set(key: string, value: string): void { try { localStorage.setItem(storageKey(key), value); } catch { /* storage full or blocked */ } }
-  remove(key: string): void { try { localStorage.removeItem(storageKey(key)); } catch { /* blocked */ } }
+  constructor(private space = '') {}
+  get(key: string): string | null { try { return localStorage.getItem(storageKey(this.space + key)); } catch { return null; } }
+  set(key: string, value: string): void { try { localStorage.setItem(storageKey(this.space + key), value); } catch { /* storage full or blocked */ } }
+  remove(key: string): void { try { localStorage.removeItem(storageKey(this.space + key)); } catch { /* blocked */ } }
 }
 
 export interface RunEnv {
