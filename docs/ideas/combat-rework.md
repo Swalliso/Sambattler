@@ -1,6 +1,6 @@
 # Combat rework: no unit type should win alone
 
-Drafted on 2026-10-30 against `f5e70a9`. **Nothing here is adopted yet.** On 2026-10-30 the user chose Level 2 ([Decisions](#decisions-2026-10-30)), and P0 and P1 of the [prototype plan](#prototype-plan) are under way. This doc replaces the step C draft (sheltered forward plots), which is parked; see [What waits](#what-waits).
+Drafted on 2026-10-30 against `f5e70a9`. **Nothing here is adopted yet.** On 2026-10-30 the user chose Level 2 ([Decisions](#decisions-2026-10-30)). P0 and P1 of the [prototype plan](#prototype-plan) ran the same day, and their results changed the target: see [What P0 and P1 found](#what-p0-and-p1-found). P1b and P1c followed that evening, and P1d the next morning ([What P1b, P1c and P1d found](#what-p1b-p1c-and-p1d-found)). P2 started the same day ([P2: measure](#p2-measure)). This doc replaces the step C draft (sheltered forward plots), which is parked; see [What waits](#what-waits).
 
 The user's brief:
 - Fix battles that are one-sided because one unit type dominates, even if that takes significant rework.
@@ -10,17 +10,25 @@ The user's brief:
 
 ## In short
 
-- **The problem isn't only archers.** G3 now fails mono Gill Nest, mono Sporeling and mono Amanita, and mono Morel sits on the limit. Mono archers are the worst case. No defender we've built beats them, not even an all-Sporeling army, which is their designated counter. That army wins only 2% of the time.
-- **It isn't unit numbers or stats.** Sporelings already outnumber archers about 2 to 1 and win a straight fight, yet they lose in the lane. More than 20 single fixes since M1 have failed.
+- **The problem: a committed build beats a mixed one.** G3 fails mono Gill Nest, mono Sporeling and mono Amanita, and mono Morel sits on the limit. Each of them has an answer that wins most of its games, but the answers are committed builds too, such as Sporelings against archers and Capguards against Sporelings. The reference mix, `bot:balanced`, loses to all four, and wins only 12% against mono archers.
+- **On today's rules, mono Sporeling is the build without a reliable answer.** Its best answer wins 61% overall, and nothing wins half its games on Twin Roots.
+- **This corrects the first draft,** which said nothing beats mono archers, not even an all-Sporeling army. That came from round 2's D1 test, run the day before Hold was adopted. With Hold, Sporeling-led builds beat mono archers 80–88% on every map ([What P0 and P1 found](#what-p0-and-p1-found)).
+- **It isn't unit numbers or stats.** Sporelings outnumber archers about 2 to 1 and win a straight fight. They lost in the lane until Hold, most likely because Hold made them arrive together. More than 20 single fixes since M1 have failed.
 - **It's how armies meet:**
   - units arrive one or two at a time;
   - archers fight from outside melee reach;
   - a ranged mass grows in strength faster than anything that answers it.
 
-  Every dominant mono build wins by clumping, and nothing in the game punishes a clump.
+  Every dominant mono build wins by clumping, and nothing in the game punishes a clump. Hold showed both sides of this: grouping the Sporelings gave the archers an answer, and made the swarm the next problem.
 - **Other games solve this with several tools at once.** Armies arrive together, area damage punishes clumps, units can get past the front line, ranged units need protecting, units defend each other, and counters work on more than one axis. We have none of these.
 - **The proposal (Level 2):** change how armies meet, with waves on a shared clock, and add the missing tools: spore clouds, a burrowing unit (the Rhizomorph), call for help, and ranged units weakened in contact.
-- **How to judge it:** a new counter-matrix check. A strong build is fine as long as something beats it.
+- **P1 built it, and the first read fell short.** The full package takes mono archers from 86% to 74%, but waves make swarms stronger still (mono Sporeling 94%), and battles run long.
+- **P1b, P1c and P1d aimed it at swarms.** P1b made each wave arrive together and aimed the tools at clusters. P1c added the Burster, a unit that bursts on clusters like StarCraft II's Banelings, and gave mixed-wave shields to any wave of two unit types. P1d went after the stalls that followed.
+- **Every strong build now has an answer on every map,** Twin Roots included, so the strict counter bar passes. The shields carry it: every two-building answer gets them and a mono build never does. Without them, mono Sporeling's best answer falls from 85% to 47%.
+- **G3 still fails on the swarm.** `bot:balanced` loses to mono Sporeling 81–85% of the time at a 20 s beat, and to mono Veilstalker too when the storm grows waves.
+- **G4 nearly passes.** Dropping the Mortar's clouds and letting the Sporestorm grow waves cut Decisions from 28% to 18%, against a limit of 15%.
+- **Next: P2 measures the package,** now without the Mortar's clouds and with the storm, removing one piece at a time to find the fewest that carry the result. G8 shows whether an adapting general answers the swarm, which settles what G3's failure means.
+- **How to judge it:** two checks side by side. The counter matrix says every committed build has an answer, now with a stricter bar, since today's rules already pass the first one. G3 says a mixed army holds up against committed builds.
 - **If that fails:** move to rounds, as Mechabellum does. A wilder option, ranged power as structures, is sketched too.
 
 ## The problem
@@ -34,7 +42,14 @@ G3 on every map: each mono bot against `bot:balanced`, 100 games per map ([backl
 | Amanita Lodge | 51% | 64% (Twin Roots) |
 | Morel Warren | 55% | 57% (Stumpfield) |
 
-**A strong build isn't the bug. A build with no answer is.** In TFT or Mechabellum, strong compositions are the point of the game, and each one has answers you can scout and build. Mono archers have no answer. In round 2's D1 test, every defender lost 95–100% of its games to them, and an all-Sporeling army lost 98% ([backlog](../balance-backlog.md#d1-is-g3-a-reference-bot-artifact)). That's what needs fixing.
+**A strong build isn't the bug. A build with no answer is.** In TFT or Mechabellum, strong compositions are the point of the game, and each one has answers you can scout and build.
+
+The first draft said mono archers had no answer. In round 2's D1 test, every defender lost 95–100% of its games to them, and an all-Sporeling army lost 98% ([backlog](../balance-backlog.md#d1-is-g3-a-reference-bot-artifact)). That test ran on 2026-10-27, the day before Hold was adopted, and P0 found it no longer holds ([What P0 and P1 found](#what-p0-and-p1-found)). Today:
+- **Mono archers have answers.** Sporeling-led builds beat them 80–88%, on every map.
+- **Mono Sporeling has no reliable answer.** Its best, `bot:turtle`, wins 61% overall and 21% on Twin Roots, where nothing tried wins half its games.
+- **The answers are committed builds.** `bot:balanced` wins 12% against mono archers and 26% against mono Sporeling. A mixed army loses to every committed build, so the game rewards going all in on one unit.
+
+Those last two are what need fixing.
 
 ## Diagnosis
 
@@ -54,6 +69,8 @@ Adding melee bodies is the obvious lever. The numbers show melee already has the
   - Hold.
 
   Each one either left the archers at 78–100%, or let another mono build take over instead. No setting made a mixed army the winner.
+
+**Update after P0:** Hold did more than G3 showed. Since Hold, a Sporeling-led army beats mono archers 80–88%, but `bot:balanced` doesn't build enough Sporelings to make the wave, so G3 didn't see it. Hold also made mono Sporeling stronger against every defender, which is why it's now the build without a reliable answer.
 
 ### Three causes
 
@@ -149,7 +166,7 @@ Ranged and swarm dominance is an old problem. These are the tools other games us
   - single-target or area damage.
 - **Age of Empires II** layers bonus damage classes and pierce armor on top of its basic triangle.
 - **Warcraft III** combines an attack-type and armor-type table with abilities on almost every unit. **Castle Fight**, the Warcraft III custom map closest to our structure, relies on both. In it, buildings spawn units on timers, and the units march on the enemy castle.
-- **Us:** one triangle. Each mono build has exactly one answer, and the archers' answer can't reach them.
+- **Us:** one triangle, so each mono build's answer is a committed build of its own: Sporelings for archers, Capguards for Sporelings ([P0](#what-p0-and-p1-found)). A mixed army gets no edge from being mixed.
 
 ### What they share
 
@@ -211,7 +228,7 @@ Battles become a series of clashes, as in Mechabellum. This is the design review
 - It rewrites the sim loop, the AI, the UI and run pacing.
 - It moves the game toward Mechabellum and 9 Kings, which the design review warned against competing with head-on.
 
-**When to use it:** if Level 2 can't give every mono build an answer.
+**When to use it:** if Level 2 can't give every mono build an answer. The paper design is in [rounds.md](rounds.md).
 
 ### Wildcard: ranged power as structures
 
@@ -242,11 +259,13 @@ How the numbers play out:
 - **Spore clouds:** a cloud kills an archer that stands in it for 11 s. A Sporeling walking through takes about 20 damage, but a swarm standing around its target takes the full rate.
 - **The Rhizomorph:** it kills an archer in 5 hits, since slash does ×1.5 against light armor.
 
+P1 built these as written. [P1b](#p1b-aim-the-package-at-swarms-and-mixed-armies-done) changes how a wave forms up, where the Mortar aims and where the Rhizomorph surfaces, and adds a sixth setting, `mixedWave`. [P1c](#p1c-area-damage-that-travels-with-the-army-done) adds two counters to the swarm, `cleave` and `burster`. For P2, `rework` drops the Mortar's clouds and adds a Sporestorm that grows waves ([P2: measure](#p2-measure)).
+
 ### Flyers, later
 
-Flying units are approved in principle: spores on the wind, like Mechabellum's Wasps, Clash Royale's Minions or Plants vs. Zombies' Balloon Zombie. They wait until after P2, so the five pieces can be measured cleanly.
+Flying units are approved in principle: spores on the wind, like Mechabellum's Wasps, Clash Royale's Minions or Plants vs. Zombies' Balloon Zombie. They wait until after P2, so the package's pieces can be measured cleanly.
 
-The question to settle first is who can hit a flyer. If only ranged units can, a flyer is food for archers rather than an answer to them.
+The question to settle first is who can hit a flyer. If only ranged units can, a flyer is food for archers rather than an answer to them. The design is in [flyers.md](flyers.md).
 
 ## The counter-matrix check
 
@@ -254,71 +273,237 @@ The question to settle first is who can hit a flyer. If only ranged units can, a
 - It's G2's counter graph measured in real battles instead of duels.
 - It also tells the general's counter cycle (§7.4) what each build's answer is.
 
-**How it works:**
-- **Builds tested:** every `bot:mono:<id>`.
-- **Answers:**
-  - every mono bot;
-  - every pair of spawners, weighted evenly;
-  - `bot:balanced`;
-  - hand-written counter bots like D1's defenders. These are defined as data through `bot.<id>` specs, which the proto layer already supports.
+**How it works,** as P0 built it (`npm run experiment -- --checks counters`):
+- **Builds tested:** every `bot:mono:<id>` whose G3 mean is above 40%. Today that's Gill Nest, Sporeling, Amanita, Morel and Veilstalker.
+- **Answers, 74 per build:**
+  - every other mono bot;
+  - every pair of the 10 army buildings, weighted evenly;
+  - `bot:balanced` and the other data bots;
+  - 11 hand-written counter bots, including rebuilds of D1's defenders. The tool adds them as `bot.<id>` specs, so the shipped bots don't change.
 - **Two stages:**
-  - A screen at 10 seeds per seat (20 games per map) on every run map finds the 3 best answers for each mono build.
-  - A confirmation at 50 seeds per seat checks those 3.
-- **Proposed pass rule:** every mono build has an answer that wins at least 60% of its games on the mean over maps. G3 stays alongside it.
+  - A screen at 10 seeds per seat (20 games per map) on every run map ranks the answers.
+  - A confirmation on fresh seeds 11–60 (100 games per map) checks each build's top 3.
 
-**Cost:**
-- **Screen:** about 52,000 games. At the 0.09 s per game that G3 measures, that's about 80 minutes single-threaded. Worker threads would cut it.
-- **Confirmation:** about 12,600 games, around 20 minutes.
-- **Iteration:** a narrow version that covers only the failing mono builds and their known answers runs in minutes.
+**Cost:** the full check plays 30,900 games, about 6 minutes on 6 worker threads, or 35 minutes on one. A narrow run that covers only the failing builds and their known answers takes under a minute.
 
-The check sits beside G3, which stays (decided on 2026-10-30). If the package is adopted, it becomes guardrail G12 in `npm run test:slow` (SPEC §12.3).
+**The pass rule, made stricter after P0.** The first proposal was an answer that wins at least 60% on the mean over maps. That already passes on today's rules, so it can't judge the rework. The bar is now an answer that wins at least 60% **on every map**. Today that fails only mono Sporeling, on Twin Roots.
+
+The check sits beside G3, which stays (decided on 2026-10-30). The counter matrix says every committed build has an answer, and G3 says a mixed army holds up against them. If the package is adopted, the counter matrix becomes guardrail G12 in `npm run test:slow` (SPEC §12.3).
+
+## What P0 and P1 found
+
+Both ran on 2026-10-30, and the full results are in the backlog: P0's [counter matrix](../balance-backlog.md#counter-matrix-on-todays-rules-2026-10-30), from PR #31, and P1's first read, which stays on `feature/combat-rework` until that branch is merged.
+
+### P0: every strong build has an answer, and the answers are committed builds
+
+Each strong mono build's best answer, confirmed at 100 games per map. Answer win %:
+
+| Mono build (G3 mean) | Best answer | Bogwater | Stumpfield | Twin Roots | Mean |
+|---|---|---|---|---|---|
+| Gill Archer Nest (88%) | mono Sporeling | 91 | 83 | 91 | 88 |
+| Sporeling Burrow (74%) | `bot:turtle` | 77 | 86 | 21 | 61 |
+| Amanita Lodge (51%) | mono Hammercap | 100 | 100 | 80 | 93 |
+| Morel Warren (55%) | Veilstalker + Amanita | 98 | 100 | 95 | 98 |
+| Veilstalker Hollow (41%) | Sporeling + Gill Nest | 100 | 100 | 84 | 95 |
+
+- **The first pass rule passes on today's rules.** Every strong build has an answer that wins at least 60% on the mean, so that rule can't tell the rework from today. Held to every map, only mono Sporeling fails: on Twin Roots, the best answer tried wins 46%.
+- **Mono archers' best answer, mono Sporeling, fails G3 itself.** The next two don't: a Sporeling and Veilstalker rush wins 81%, and D1's Sporeling-heavy defender 80%.
+- **D1 predates Hold.** With `--proto nohold`, rebuilds of D1's defenders reproduce its table. With Hold, D1's Sporeling-heavy defender beats mono archers 92% of the time on Bogwater. Every AI side now musters 12 supply in a lane before it advances, so its Sporelings arrive as a wave.
+- **The intended triangle holds between pure builds.** Sporelings beat archers, archers beat Capguards, and Capguards beat Sporelings.
+- **The answers are committed builds.** `bot:balanced` wins 12% against mono archers, 26% against mono Sporeling, 49% against mono Amanita and 45% against mono Morel. G3 fails because the reference mix doesn't build the answer, not because there's none.
+
+### P1: the package, built and read once
+
+P1 built all five settings, each off by default, and a `rework` preset with all five. It added the hooks for relics and perks (`side.waveBeat` and `side.waveSize`) and enough display to playtest `?proto=rework`. It settled where a wave waits: inside its buildings, until each one releases its units at its front edge on the beat. Nothing waits on the field.
+
+G3 at 20 seeds per seat (about ±8 points), mean / worst map. The first column is P1's own baseline, within noise of the 50-seed table in [The problem](#the-problem):
+
+| Mono bot | Today | `pinned` | `waves` | `rework` (all five) |
+|---|---|---|---|---|
+| Gill Archer Nest | 86 / 100 | 75 / 93 | 93 / 98 | 74 / 83 |
+| Sporeling Burrow | 72 / 75 | 75 / 78 | 90 / 98 | 94 / 98 |
+| Amanita Lodge | 47 / 65 | 50 / 63 | 53 / 63 | 52 / 53 |
+| Morel Warren | 53 / 60 | 59 / 60 | 48 / 63 | 60 / 68 |
+| Veilstalker Hollow | 36 / 48 | 41 / 53 | 60 / 80 | 63 / 90 |
+
+- **Only `pinned` moves the archers on its own:** 86 → 75. Call for help and spore clouds leave them at 87.
+- **Waves make swarms dominant,** as Hold did, only more so. Releasing a whole beat's production at once is what helps the swarm. Matching the wave's pace isn't the cause.
+- **Spore clouds hurt the armored builds most,** since their damage ignores armor: mono Amanita 47 → 40, mono Capguard 38 → 30.
+- **The Rhizomorph dives onto turrets.** Mono Rhizomorph wins nothing. Against a mixed army, 65% of Rhizomorphs surface inside turret range and live about 2.5 s.
+- **All five together** give the archers' best result yet (74 / 83), and mono Amanita passes. But four mono builds fail, against three today. G4 fails too: median 8:51, 33% Decisions, and the reference bot wins 20% against the scripted general.
+- **Runs:** 69 of 240 won, against 54 today, mostly at the boss. Battle-1 losses don't move. The loser's Heartcap still falls 9–27 s after its first hit, and there are no comebacks.
+
+### What changes
+
+The rework now aims at swarms and at mixed armies, not at archers:
+- **Waves stay,** but each wave arrives as one block, and the tools that punish clumps get aimed at swarms.
+- **Spore clouds aim at the densest cluster,** where archer masses and swarms stand.
+- **A mixed wave gets a bonus** (`mixedWave`), so a mixed army has an edge of its own.
+- **`pinned` stays in every variant.** It's the one piece that helps against archers on its own.
+- **The counter matrix gets a stricter bar** ([The counter-matrix check](#the-counter-matrix-check)).
+
+[P1b](#p1b-aim-the-package-at-swarms-and-mixed-armies-done) makes these changes.
+
+## What P1b, P1c and P1d found
+
+P1b and P1c ran on 2026-10-30 and P1d on 2026-10-31, all on `feature/combat-rework`. The full tables are in that branch's backlog until it's merged. G3 is at 50 seeds per seat, mean / worst map, with limits of 55 / 60. The strict counter bar asks for an answer that wins at least 60% on every map. G4's limit on Decisions is 15%.
+
+### P1b: waves arrive together, and the swarm runs away
+
+P1b made the changes in its [plan](#p1b-aim-the-package-at-swarms-and-mixed-armies-done), and `mixedWave` joined `rework` because it helped the mixed army. Then it ran `rework` at shorter beats:
+
+| | Today | `rework`, 20 s beat | 17 s | 15 s |
+|---|---|---|---|---|
+| Mono Gill Nest | 88 / 100 | 59 / 67 | 75 / 89 | 82 / 95 |
+| Mono Sporeling | 74 / 77 | 95 / 98 | 74 / 88 | 58 / 69 |
+| Mono bots failing G3 | 3 | 4 | 2 | 3 |
+| Strict counter bar | fails | fails | passes | passes |
+| G4 Decisions | 10% | 15% | 20% | 28% |
+
+- **The beat is a dial between archers and swarms.** A longer beat sends bigger waves, which suits the swarm. At 20 s, mono Sporeling beats `bot:balanced` 95% of the time, and nothing tried answers it on Twin Roots. A shorter beat brings the swarm down and the archers back up.
+- **At 15 and 17 s, the strict bar passed for the first time,** but only just: mono Sporeling's answers on Twin Roots win 62–64%.
+- **Shorter beats stall more.** G4's Decisions rise from 15% at 20 s to 28% at 15 s.
+- **Each P1b fix worked as designed, and none reached the swarm.** Staggered release brings the archers down under waves, the Mortar's new aim answers the swarm on one-lane maps, and the Rhizomorph stops diving into turrets.
+- **Apart from the archers, every build that still failed was cheap, fast and 1-supply:** Sporeling, Veilstalker and Morel at 20 s. The area damage that worked, the Mortar's, stands still. That set up P1c.
+
+### P1c: the strict bar passes, and battles stall
+
+P1c added [`cleave` and the Burster](#p1c-area-damage-that-travels-with-the-army-done), moved `mixedWave` to two unit types (two helped `bot:balanced` more than three), and checked the Elder Sporeling's splash. Confirmed results, two-type `rework` plus both counters:
+
+| Beat | Mono Gill Nest | Mono Sporeling | Other G3 fails | Strict counter bar | G4 Decisions |
+|---|---|---|---|---|---|
+| 15 s | 78 / 93 | 47 / 56 | Rootbreaker 47 / 82 | passes | 48% |
+| 17 s | 68 / 81 | 63 / 71 | – | passes | 43% |
+| 20 s | 50 / 54 | 89 / 92 | – | passes | 35% |
+| 20 s, no Elder splash | 49 / 53 | 79 / 80 | – | passes | 30% |
+
+- **The strict bar passes in all nine confirmed variants:** three beats, each with both counters, the Burster alone, or both without the Elder splash. That includes Twin Roots, where mono Sporeling's answers now win 66–72%.
+- **The credit belongs to the shields, not the Burster.** P1c credited the Burster, but the answers that pass are two-building builds such as Sporeling + Veilstalker, and neither side builds Burster Pods in those games. What changed for them is mixed waves at two types: every two-building answer now gets shields ([P1d](#p1d-fewer-stalls-and-the-shields-carry-the-strict-bar)).
+- **The Burster helps in G3, against the runners.** `bot:balanced` builds a few Pods, and mono Veilstalker's G3 falls from 54 / 80 to 32 / 45 at 20 s. Against mono Sporeling it moves 1–3 points. Cleave adds 1–2 points in G3 and nothing in G4. Its one clear effect is making mono Scythecap an answer to the swarm.
+- **G3 still trades archers for swarms.** 20 s fails only mono Sporeling, 17 s fails both at 63–68, and 15 s fails the archers and the Rootbreaker.
+- **The Elder Sporeling's splash is worth 9–18 points to the swarm** under waves. Waves roughly double merges, so Elders come out in numbers.
+- **G4 now binds.** 30–48% of battles end in a Decision, with medians of 8:30–9:52. The Burster's burst adds about 20 points, the Mortar's clouds about 15, and two-type mixed waves 8–13 when the counters are off.
+- **Many answers to the swarm win by Decision,** holding more ground at 10:00 rather than taking the Heartcap. Mono Sporeling against Capguard + Scythecap ends in a Decision 56–67% of the time. So the strict bar's pass for the swarm seemed to lean on the 10:00 rule. P1d re-checked it, and the answers that pass win outright.
+
+### P1d: fewer stalls, and the shields carry the strict bar
+
+P1d first fixed a leak in P1c's code: a dead-unit rule ran even with the Burster off, so a few battles with commander powers differed from `develop`. Then it made `rework` the new base and added a stalemate breaker:
+- **The new `rework`:** the six settings with mixed waves at two types, plus the Burster, with the Elder Sporeling's splash off, at a 20 s beat. Cleave stays a separate setting.
+- **`stormwaves`:** each Sporestorm stack makes both sides' waves 20% bigger, so they're twice as big at five stacks (8:00), like Clash Royale's double elixir.
+
+| Variant | G3 fails | G4 median / Decisions | Strict counter bar |
+|---|---|---|---|
+| The new `rework` | Sporeling 81 / 84 | 8:42 / 28% | passes |
+| Without the Mortar's clouds | Sporeling 83 / 86, Veilstalker 45 / 61 | 8:26 / 22% | passes |
+| With `stormwaves` (20 seeds) | Sporeling 82 / 85, Veilstalker 68 / 78 | 8:19 / 20% | not run |
+| Both | Sporeling 85 / 86, Veilstalker 72 / 87 | 8:02 / 18% | passes |
+
+- **Both stall routes together come closest.** 18% of battles end in a Decision, one game in 40 over the limit, and G3's Decisions fall back to today's 7%.
+- **The swarm's answers win outright.** With both routes, Sporeling + Veilstalker beats mono Sporeling 100 / 100 / 86 with almost no Decisions. The answers that won by holding ground drop out.
+- **The storm feeds the runners.** Bigger waves give `bot:balanced` more merged units, and Veilstalkers deal triple damage to those. Mono Veilstalker took the Heartcap in 13 of 16 games with the storm, against 4 of 16 without it.
+- **The shields carry the strict bar.** In a check after P1d, under the new `rework`, Sporeling + Veilstalker beat mono Sporeling 93 / 91 / 71. With mixed waves at three types, a two-building army never gets shields, and the same pair won 52 / 54 / 36, so the strict bar failed. Neither side builds Burster Pods in those games.
+
+### Where it stands
+
+- **By P4's test, Level 2 hasn't failed.** Every strong mono build has an answer on every map, mostly winning outright. That rests on the mixed-wave shields, a direct reward for fielding two unit types.
+- **G4 is a game from passing,** with the Mortar's clouds off and the storm growing waves.
+- **G3 still fails on the swarm.** Even with shields and a few Pods, `bot:balanced` loses to mono Sporeling, and to mono Veilstalker once the storm grows waves.
+- **The user answered P1d's questions,** and P2 started ([Decisions](#decisions-2026-10-30)):
+  - G3 stays a bar, and `bot:balanced` stays as it is. G8 settles what G3's failure means;
+  - the storm stays at 20% a stack, and 18–22% Decisions is accepted for P2;
+  - the Mortar's clouds leave `rework`.
 
 ## Prototype plan
 
-### P0: the counter matrix on today's rules
+### P0: the counter matrix on today's rules (done)
 
-One session. No rule changes.
-- Build `--checks counters` in `tools/experiment.ts`, with `evaluateCounters` in `tools/lib/balance.ts`, using the two-stage screen.
-- Run it on today's rules. The expected result is that nothing answers mono Gill Nest. It should also show whether mono Sporeling, Amanita and Morel have answers. If they do, they're strong builds rather than bugs, and the bar for the rework changes.
-- Record the matrix in `docs/balance-backlog.md`.
+Built `--checks counters` (`evaluateCounters` in `tools/lib/balance.ts`) with worker threads, and ran it on today's rules, on `feature/counter-matrix`. The expected result was that nothing answers mono Gill Nest. Instead, every strong build has an answer, and mono Sporeling is the hard one ([What P0 and P1 found](#what-p0-and-p1-found)).
 
-### P1: build the package
+### P1: build the package (done)
 
-One session. It can run alongside P0, since P0 works in the tools and P1 in the sim and data.
-- **The five settings:** each off by default, with its preset and unit tests.
-- **Hooks for later relics and perks:** the wave beat and the wave size are modifier stats.
-- **The Rhizomorph under its setting only:**
-  - Extend `applyProto` so `unit.<id>` and `building.<id>` can add new entries, as `bot.<id>` already can.
-  - The Rhizomorph then exists only while its setting is on, and the golden hashes don't move.
-- **Enough rendering to playtest:**
-  - clouds;
-  - burrowed units, shown as a moving mound;
-  - the wave beat on the HUD.
-- **The AI:**
-  - Bots and generals get the Rhizomorph's building in their kits when its setting is on.
-  - The Mortar's placement score values covering the lane.
+Built on `feature/combat-rework`, alongside P0:
+- the five settings, with their presets and unit tests, and the `rework` preset;
+- the wave hooks for relics and perks;
+- an `applyProto` that can add units, buildings and generals, so the Rhizomorph exists only under its setting and the golden hashes don't move;
+- the AI's use of the Rhizomorph and the Mortar;
+- the display.
+
+The first read is in [What P0 and P1 found](#what-p0-and-p1-found).
+
+### P1b: aim the package at swarms and mixed armies (done)
+
+The same session, on the same branch. Each change is measured on its own as well as in `rework`:
+- **Waves arrive together.** Deeper buildings release earlier, so each side's wave reaches its front as one block. Nothing waits on the field.
+- **A hold lasts one beat at most.** After a held beat, the next beat always releases both waves. The AI still doesn't hold under waves.
+- **The Mortar aims at the densest cluster** of enemy units in range. Clouds still stack, and get no slow yet, so the retarget is measured on its own.
+- **The Rhizomorph stays out of turret range** when it surfaces, and prefers ranged units near the front over spawners.
+- **Test bots don't buy the Rhizomorph's building,** so each answer in the counter matrix is what its name says.
+- **`mixedWave`, a new setting:** when a lane's wave holds three or more unit types, each of its units gets a shield worth 20% of its max HP on release. It joins `rework` only if it helps.
+- **`pinned` stays in every variant.** Pace matching stays on, and the headline numbers are reported with it off as well.
+
+**Checks:** G3 (20 seeds per seat to screen, 50 for any number quoted), the counter matrix against the stricter bar, and G4.
+
+**Variants:**
+- each change alone;
+- `rework` with all of them;
+- `rework` plus `mixedWave`;
+- `rework` without waves.
+
+A variant that passes G3 goes on to P2's other checks.
+
+It ran as planned, and `mixedWave` joined `rework`. No variant passed G3 ([results](#p1b-waves-arrive-together-and-the-swarm-runs-away)).
+
+### P1c: area damage that travels with the army (done)
+
+The same session and branch. P1b found that, apart from the archers, every mono build still failing G3 is a cheap, fast, 1-supply unit, and that the Mortar's area damage answers the swarm only where it stands. P1c tested:
+- **`cleave`:** a Scythecap's swing hits every enemy unit within 1 tile of its target at full damage, where today it reaches 0.8 tiles at half damage. Its merge perks reach 1.2 and 1.4 tiles.
+- **`burster`:** a new unit, the Burster, and its building, the Burster Pod (working names).
+- **The Elder Sporeling's splash,** with and without.
+- **`mixedWave` at two unit types** against three, keeping whichever helps `bot:balanced` more.
+- **A beat re-sweep** at 15, 17 and 20 s, with the counters on.
+
+**The Burster:** 50 HP, light armor, speed 1.6, 1 supply, and no normal attack. It heads for the enemy unit with the most enemy units within 1.5 tiles, and bursts when it reaches it or when it dies. The burst deals 40 damage that ignores armor to every enemy unit within 1.5 tiles, and leaves a spore cloud (1.5 tiles, 4 s, 10 damage a second). It never hits buildings or friends. The Pod costs 130 gold and makes one every 10 s.
+
+No variant passed G3 and G4 together, so P2's other checks weren't run ([results](#p1c-the-strict-bar-passes-and-battles-stall)).
+
+### P1d: fewer stalls (done)
+
+The same session and branch, on 2026-10-31, with the user's answers to P1c's questions:
+- fix the leak first;
+- the new base, at a 20 s beat;
+- two ways to cut stalls, alone and together: `rework` without the Mortar's clouds, and `stormwaves`, a Sporestorm that grows waves.
+
+Nothing passed G3, G4 and the strict bar together, so P2's other checks weren't run ([results](#p1d-fewer-stalls-and-the-shields-carry-the-strict-bar)).
 
 ### P2: measure
 
-**Runs:**
-- each new piece alone;
-- the full package;
-- the package with one piece removed at a time.
+Running in the same session and on the same branch since 2026-10-31, with the user's answers to P1d's questions ([Decisions](#decisions-2026-10-30)).
+
+**The package:** `rework` becomes P1d's base without the Mortar's clouds, plus `stormwaves`. That's waves at a 20 s beat, pinning, call for help, the Rhizomorph, mixed waves at two types, the Burster, the Elder Sporeling without its splash, and a Sporestorm that grows waves 20% a stack. Cleave stays out. P3 can then playtest with `?proto=rework` alone.
+
+**Runs, in order:**
+1. The package, with every check below.
+2. The package with one piece removed at a time, starting with waves, each with G3, the strict counter bar and G4. The shields are removed two ways, off and at three types, and the storm is removed too.
+3. Each piece alone on today's rules, where it works alone, with G3 and G4.
+4. Every check on any smaller package that matches the full one on the strict bar and G4. Those are the candidates to adopt.
+
+Each run notes which bots build each piece, so a piece nobody builds isn't read as a piece with no effect.
 
 **Checks:**
 - G3 on every map;
-- the counter matrix;
-- G1–G2 duels, G4, and G5–G8;
+- the strict counter bar;
+- G4, at 200 games instead of 40, since 40 games leaves about ±6 points;
+- G1–G2 duels, and G5–G8. G8 matters most here: the adaptive general against mono Sporeling and mono Veilstalker, beside today's rules. If the general answers the swarm, G3 fails only because its fixed mix never adapts;
 - `engagement` (the opening, the Heartcap cliff, comebacks) and `runs` (battle-1 losses, boss reach), played with commanders.
 
 **Bars:**
-- Every mono build has an answer that wins ≥ 60%.
+- Every mono build with a G3 mean above 40% has an answer that wins ≥ 60% on every map.
 - G3 passes for every mono bot: mean ≤ 55%, worst map ≤ 60%.
-- G4 stays in band: median 5:30–8:30, Decisions ≤ 15%.
+- G4 stays in band: median 5:30–8:30, Decisions ≤ 15%. P2 reports against the Decisions limit but doesn't tune for it.
 - G2's counter graph stays healthy.
 - More comebacks than step B's 2 in 360 would be a bonus.
 
-The runs with one piece removed show which pieces carry the result, so the fewest can be adopted.
+P2 measures and doesn't retune. The runs with one piece removed show which pieces carry the result, so the fewest can be adopted.
 
 ### P3: playtest
 
@@ -341,23 +526,24 @@ One of three outcomes:
 - §4.4: spawners feeding waves.
 - §5.2: formation, call for help, pinning and burrowing.
 - §5.3: cloud damage.
-- §11: the Rhizomorph and the Mortar.
+- §11: the Rhizomorph, the Burster, the Mortar and the Scythecap.
 - §12.3: G12.
 - §17 #7: burrowing now, and flying later.
-- §7: the AI, for Rhizomorph and Mortar use and counter weights.
+- §7: the AI, for Rhizomorph, Burster and Mortar use, and counter weights.
 
 **Code:**
 - **Sim systems:**
   - `src/sim/systems/spawning.ts`: the wave reserve.
   - `src/sim/systems/stance.ts`: how Hold works with waves.
-  - `src/sim/systems/targeting.ts`: call for help, pinning, and Rhizomorph targets.
+  - `src/sim/systems/targeting.ts`: call for help, pinning, Rhizomorph targets, and the Mortar's and the Burster's aim at the densest cluster.
   - `src/sim/systems/movement.ts`: moving underground, and formation.
-  - `src/sim/systems/combat.ts`: the pinned attack rate and clouds.
+  - `src/sim/systems/combat.ts`: the pinned attack rate, the mixed-wave shield, cleave, and the Burster's burst.
+  - `src/sim/systems/clouds.ts`: spore clouds, from the Mortar's shells and the Burster's bursts.
 - **State and settings:**
   - `src/sim/state.ts`: clouds, burrow state and the wave reserve.
   - The settings themselves: `src/data/schema.ts`, `src/sim/compile.ts` and `src/data/proto.ts`.
   - `applyProto`, so it can add new entries.
-  - The Rhizomorph's unit and building data, under its setting.
+  - The Rhizomorph's and the Burster's unit and building data, under their settings.
 - **Display:** the renderer and HUD.
 - **AI:** `src/sim/ai/`.
 - **Tools:** the `counters` check.
@@ -414,7 +600,7 @@ Sources:
 
 With a shared beat, relics and perks can act on waves. These are examples, not proposals:
 - **Hooks:** the beat and the wave size as modifier stats. P1 exposes them.
-- **A bonus for mixed waves,** such as a shield for any wave with three or more unit types. This rewards diversity directly, instead of only punishing mono builds.
+- **A bonus for mixed waves,** such as a shield for any wave with three or more unit types. This rewards diversity directly, instead of only punishing mono builds. P1b tests it as a setting, `mixedWave`.
 - **Special waves:** a swarm wave every third beat, or a doubled first wave.
 - **Rhizomorphs that surface together** when they leave in the same wave.
 - **A relic that rewards a mono wave,** for the rare broken run that §1.2 allows.
@@ -438,3 +624,36 @@ The user's answers to this doc's questions:
 - **Names:** the burrowing unit is the **Rhizomorph**, and the area damage is **spore clouds**.
 - **P0 and P1 run now,** in parallel sessions.
 - **9 Kings is a model** for run-to-run variety ([Waves and run variety](#waves-and-run-variety)).
+
+After P0 and P1 reported, later the same day, the user approved re-aiming the plan:
+- **The target is swarms and mixed armies,** not archers, since mono archers have answers on today's rules.
+- **P1's questions are answered for P1b:**
+  - waves arrive together, because deeper buildings release earlier;
+  - a hold lasts one beat at most, and the AI doesn't hold under waves yet;
+  - the Mortar aims at the densest cluster;
+  - the Rhizomorph avoids turret range and prefers ranged units near the front;
+  - hand-written test bots don't buy the Rhizomorph.
+- **`mixedWave` gets tested** as a setting, from the relic and perk idea.
+- **`pinned` stays** in every variant.
+- **The counter-matrix bar is stricter:** an answer that wins at least 60% on every map.
+
+After P1b reported, the user approved P1c, with these answers to P1b's questions:
+- **Waves stay,** and the preset stays at 20 s. P1c re-sweeps the beat with the counters on, with 17 s as the lead.
+- **Twin Roots stays in the bar.** If only Twin Roots fails, P1c reports it as a lane-AI suspect.
+- **`mixedWave`:** test two unit types against three, and keep whichever helps `bot:balanced` more.
+- **The clouds' cost in G4 is accepted for now,** but every confirmed variant reports G4 and which matchups end in Decisions.
+
+On 2026-10-31, after P1c reported, the user approved P1d:
+- **The beat is 20 s.**
+- **The Elder Sporeling's splash is off under `rework`.** The shipped unit keeps it.
+- **Cleave leaves `rework`,** and stays a setting of its own.
+- **Mixed waves stay at two types.**
+- **The Burster joins `rework`.** "Burster" and "Burster Pod" stay working names.
+- **Stalls get both routes:** measure `rework` without the Mortar's clouds, and a Sporestorm that grows waves.
+
+On 2026-10-31, after P1d reported, the user approved P2, with these answers to P1d's questions:
+- **G3 stays a bar,** and `bot:balanced` stays as it is. G8 settles what G3's failure means: if the adaptive general answers the swarm, the failure is the fixed mix. If it doesn't, teaching the general the rework's answers is a follow-up to decide then.
+- **The storm stays at 20% a stack.** P2 accepts 18–22% Decisions and measures G4 at 200 games.
+- **The Mortar's clouds leave `rework`.** Spore clouds stay in the game through the Burster.
+- **`rework` becomes P2's package:** P1d's base without the Mortar's clouds, plus the storm.
+- **P2 measures only.** A number that looks wrong, such as the shield's size, comes back to the user with the evidence.
