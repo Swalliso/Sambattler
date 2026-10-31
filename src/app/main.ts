@@ -22,7 +22,7 @@ import type { UnderrootTab } from '../ui/screens/underroot.ts';
 import { sporeLayer } from '../render/spores.ts';
 import { closeSettings, openSettings, settingsButton, settingsOpen } from '../ui/settingsScreen.ts';
 import { BattleView } from './battleView.ts';
-import { BUILD_SHA, DEV_SITE } from './channel.ts';
+import { BUILD_SHA, DEV_SITE, protoSpace } from './channel.ts';
 import { browserContent } from './content.ts';
 import { installBridge } from './debugBridge.ts';
 import { bindInput } from './input.ts';
@@ -107,7 +107,7 @@ function boot(): void {
   // ?test=1 holds every screen still (no deal-in, reveal or twinkle), so screenshots are stable
   if (params.test) document.documentElement.classList.add('still');
   if (params.proto) {
-    console.info(`prototype rules: ${params.proto} (runs are not saved)`);
+    console.info(`prototype rules: ${params.proto} (${DEV_SITE ? 'runs save apart from the real save' : 'runs are not saved'})`);
     document.title = `[proto ${params.proto}] ${document.title}`;
   }
   if (DEV_SITE) {
@@ -122,10 +122,14 @@ function boot(): void {
   else start(content, atlas, params, params.seed ?? randomSeed());
 }
 
-/** Where a run is kept: normal play saves; seeded, test and prototype runs never touch storage. */
+/**
+ * Where a run is kept: normal play saves, and seeded and test runs never touch storage. A prototype run
+ * saves only on the dev site, apart from the real save (`protoSpace`).
+ */
 function runStorage(params: Params): { persist: boolean; storage: BrowserStorage | MemoryStorage } {
-  const persist = params.seed === null && !params.test && !params.proto; // a prototype run never overwrites the real save
-  return { persist, storage: persist ? new BrowserStorage() : new MemoryStorage() };
+  const space = params.proto ? protoSpace(params.proto) : '';
+  if (params.seed !== null || params.test || space === null) return { persist: false, storage: new MemoryStorage() };
+  return { persist: true, storage: new BrowserStorage(space) };
 }
 
 /** A rules-only battle for Help outside a battle (the title): the default map, kit and rules. */
@@ -226,9 +230,9 @@ function openTitle(content: Content, atlas: ReturnType<typeof bakeAtlas>, params
 }
 
 /**
- * A run (`scene=run`). Without a seed (normal play) the saved run resumes, or a new one starts; seeded,
- * test and prototype runs never touch storage (seeded and test runs are deterministic, so screenshots
- * match Node).
+ * A run (`scene=run`). Without a seed (normal play) the saved run resumes, or a new one starts; seeded
+ * and test runs never touch storage (they're deterministic, so screenshots match Node), and a prototype
+ * run saves only on the dev site, apart from the real save.
  */
 function startRun(content: Content, atlas: ReturnType<typeof bakeAtlas>, params: Params): void {
   const { persist, storage } = runStorage(params);
