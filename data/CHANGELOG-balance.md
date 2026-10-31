@@ -3,6 +3,28 @@
 Every change from the SPEC's first-pass numbers, with the guardrail or verification result that
 motivated it. Tools: `npm run balance -- duel`, `npm run balance -- tournament`, `npm run test:slow`.
 
+## Combat rework P1c prototypes (2026-10-30)
+
+**Nothing adopted; no shipped number, rule or default changed.** Two new default-off presets in
+`src/data/proto.ts`, so goldens and hashes are unchanged:
+- `cleave`: a Scythecap's swing hits every enemy unit within 1 tile of its target at full damage (1.2
+  and 1.4 tiles by tier).
+- `burster`: a new unit and spawner, the Burster and its Burster Pod (working names), which exist only
+  under the preset. A Burster rolls at the thickest knot of enemy units and bursts on reaching it or on
+  dying: 40 damage through any armor within 1.5 tiles, and a spore cloud (1.5 tiles, 4 s, 10 a second).
+- The one data change is their sprites in `data/sprites/` (display only, never in battle state).
+- `mixedwave` (and so `rework`) now needs 2 unit types, not 3: measured against 3, it helped `bot:balanced`
+  more in G3 at 20 s and 17 s, the user's rule for choosing.
+
+Results are in [the backlog](../docs/balance-backlog.md#combat-rework-p1c-2026-10-30):
+- With the Burster on two-type `rework`, the strict counter bar passes at 15, 17 and 20 s on every map,
+  Twin Roots included.
+- G3 still fails at every beat: mono Sporeling 89% at 20 s, Gill Nest and Sporeling 63–68% at 17 s, Gill
+  Nest 78% and the Rootbreaker on Twin Roots at 15 s.
+- G4 fails at every beat on Decisions (30–48%). The Burster's burst and the Mortar's clouds are the main
+  stallers.
+- Removing the Elder Sporeling's splash lowers mono Sporeling by 9–18 points under waves.
+
 ## Combat rework P1b prototypes (2026-10-30)
 
 **Nothing adopted; no shipped number, rule or default changed.** P1b applies the user's answers to P1's

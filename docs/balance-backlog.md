@@ -1348,3 +1348,201 @@ It loses to the swarm before it fields three unit types. On Twin Roots it splits
 - Counter matrix with G3 at 50 seeds: `npm run experiment -- --proto <spec> --checks counters --g3seeds 50 --top 5`. About 5–11 minutes a variant on 10 workers.
 - G4: `npm run experiment -- --proto <spec> --checks g4`.
 - Specs: the five are `pinned,callforhelp,sporecloud,rhizomorph,waves`; without waves, `pinned,callforhelp,sporecloud,rhizomorph`; pace off adds `waves.matchPace:false`; beats add `waves.beatSeconds:<n>`.
+
+## Combat rework P1c (2026-10-30)
+
+P1c adds two area-damage counters to the swarm, checks the Elder Sporeling's splash, settles mixed waves at two unit types, and re-sweeps the beat with the counters on. The P1b result behind it: apart from the archers, every mono build that still fails G3 under `rework` is a cheap, fast 1-supply unit, and area damage aimed at clusters answers the swarm when it can land. **Nothing is adopted.** Every setting stays off by default, and the goldens are unchanged.
+
+### The settings
+
+| Preset | What it does | Where it lives |
+|---|---|---|
+| `cleave` | A Scythecap's swing hits every enemy unit within 1 tile of its target at full damage (today 0.8 tiles at the global half). Its merge perks keep their steps: 1.2 and 1.4 tiles | balance `cleave` (the units whose splash hits units at full damage) and content patches for the Scythecap's radii |
+| `burster` | A new unit, the Burster, and its Burster Pod (both working names). Details below | balance `burst` (its cloud), content `unit.burster`, `building.bursterPod`, both rosters |
+| `mixedwave` | Now 2 unit types, from 3 ([below](#mixed-waves-two-types-against-three)). `rework` follows | balance `mixedWave.minTypes` |
+
+**The Burster:** 50 HP, light armor, speed 1.6, 1 supply, aggro range 5. It has a new tag, `burst`, and no normal attack.
+- **Aim:** with enemy units in its aggro range, it heads for the one with the most enemy units within 1.5 tiles (the Mortar's cluster rule). Otherwise it marches with its wave.
+- **Burst:** when it reaches its target, or when it dies, it bursts: 40 damage, ignoring armor, to every enemy unit within 1.5 tiles, and a spore cloud there (1.5 tiles, 4 s, 10 a second). Never buildings or friends.
+- **The Burster Pod** costs 130 and makes one every 10 s. Bots and generals buy it at weight 1, as they do the Rhizomorph Tunnel; mono bots and the counter check's test bots don't.
+- **Display:** a rolling puffball, the Pod as three puffballs on a mound, a pale puff swelling to the burst's radius, and tooltip and inspect lines.
+
+### Judgment calls
+
+- **Cleave:**
+  - full damage reaches enemy **units** only. A building beside the target still takes the falloff share (half), as today;
+  - the Mortar's and the Elder Sporeling's splash are untouched.
+- **The Burster's numbers live in its unit data:** `damage` 40 is the burst (so damage upgrades and relics would apply), `splashRadius` 1.5 is both the burst's and the aim's radius, `range` 0.3 is contact.
+- **Where it bursts:**
+  - on reaching its target, the burst is centred on the target, so it covers the knot it aimed at;
+  - on dying, it bursts where it fell. A burst that kills another Burster sets it off in the same tick.
+- **What the burst ignores:** armor, the damage matrix, merge resistances and the Sporestorm, as clouds do. It hits enemy units in its own lane; shields soak it, and tunnelling Rhizomorphs are out of reach.
+- **Aim:** re-picked on the usual retarget cadence; ties go to the nearer unit, then the lower id. With no enemy unit in range, it keeps a live target within its leash (a call for help may have given it one). It never targets buildings or the Heartcap.
+- **It never merges:** a Burster is spent whole. The schema needs merge perks, so it has placeholders.
+- **The Pod:** 450 HP and `uncommon` in drafts, like the other 2×2 spawners at its price.
+- **Clouds:** each cloud now carries its own radius, damage, cadence and lifetime, so a burst leaves one without `sporeCloud`. Burst clouds pulse on the same 1 s battle-clock cadence and stack with Mortar clouds. The P1b `rework` cells reproduce exactly after the change.
+- **Decisions:** the counter check now records each map's Decision share for every answer, so the matrix can say which matchups stall. With `fixedWeights`, these are my only edits to P0's `tools/lib/balance.ts`.
+
+### Screens: G3 at 20 seeds per seat
+
+`npm run experiment -- --proto <spec> --checks g3 --g3seeds 20` (40 games per map, about ±8 points). Mean / worst map; bold fails a limit (mean ≤ 55, worst ≤ 60). "Two-type `rework`" is `rework` after the mixed-wave change below; the 17 s columns add `waves.beatSeconds:17`.
+
+**Each counter alone, on today's rules:**
+
+| Mono bot | Today | `cleave` | `burster` |
+|---|---|---|---|
+| Gill Archer Nest | **86 / 100** | **86 / 100** | **88 / 100** |
+| Sporeling Burrow | **72 / 75** | **70 / 75** | **70 / 80** |
+| Veilstalker Hollow | 36 / 48 | 36 / 48 | 36 / 55 |
+| Morel Warren | 53 / 60 | 52 / 55 | 43 / 50 |
+| Amanita Lodge | 47 / **65** | 45 / **65** | 43 / **70** |
+| Capguard Hall | 38 / 45 | 37 / 50 | 27 / 35 |
+| Scythecap Grove | 25 / 38 | 39 / 50 | 23 / 30 |
+| Burster Pod | – | – | 9 / 15 |
+
+**With `rework` (three types, as P1b left it), at 20 s and 17 s:**
+
+| Mono bot | `rework` | + `cleave` | + `burster` | + both | 17 s | 17 s + `cleave` | 17 s + `burster` | 17 s + both |
+|---|---|---|---|---|---|---|---|---|
+| Gill Archer Nest | **57 / 68** | **57 / 68** | 54 / 55 | 54 / 55 | **73 / 88** | **71 / 85** | **70 / 80** | **69 / 78** |
+| Sporeling Burrow | **94 / 100** | **93 / 100** | **90 / 90** | **91 / 92** | **76 / 88** | **72 / 85** | **66 / 68** | **65 / 70** |
+| Veilstalker Hollow | 51 / **82** | 51 / **80** | 38 / 52 | 37 / 50 | 18 / 25 | 18 / 25 | 16 / 32 | 14 / 28 |
+| Morel Warren | 53 / **62** | 52 / **62** | 45 / 52 | 47 / 52 | 32 / 50 | 31 / 52 | 28 / 30 | 27 / 32 |
+| Scythecap Grove | 18 / 30 | 33 / 45 | 14 / 20 | 38 / 55 | 24 / 32 | 28 / 40 | 22 / 38 | 36 / 52 |
+| Burster Pod | – | – | 9 / 12 | 9 / 12 | – | – | 12 / 18 | 12 / 18 |
+
+- **The Burster does most of the work.** At 20 s it takes Gill Nest, Veilstalker and Morel under the limits, leaving only Sporeling (90). At 17 s it takes Sporeling from 76 to 66.
+- **Cleave lifts the Scythecap** (mono Scythecap 18 → 33 at 20 s) but barely moves the others in G3. `bot:balanced` rarely has a Scythecap when it matters: against mono Sporeling it spawned none in 6 test games. With cleave its Scythecaps deal 54% more damage against mono Gill Nest, without changing who wins.
+
+### Mixed waves: two types against three
+
+`rework,mixedWave.minTypes:2` against `rework`:
+
+| Mono bot | 20 s, three types | 20 s, two | 17 s, three | 17 s, two |
+|---|---|---|---|---|
+| Gill Archer Nest | **57 / 68** | 42 / 48 | **73 / 88** | **61 / 72** |
+| Sporeling Burrow | **94 / 100** | **94 / 98** | **76 / 88** | **62 / 75** |
+| Veilstalker Hollow | 51 / **82** | 54 / **80** | 18 / 25 | 13 / 25 |
+| Morel Warren | 53 / **62** | 43 / 55 | 32 / 50 | 31 / 45 |
+| Amanita Lodge | 37 / 42 | 27 / 32 | 38 / 40 | 32 / 38 |
+| Capguard Hall | 33 / 35 | 32 / 35 | 35 / 48 | 20 / 30 |
+
+**Two types helps `bot:balanced` more at both beats,** so `mixedwave` and `rework` now use two (the user's rule: keep whichever helps more). The cost is in G4: Decisions rise from 15% to 28% at 20 s ([G4](#g4-what-stalls)).
+
+### The Elder Sporeling's splash
+
+`rework` with `unit.sporeling.mergePerks.3.splashRadius:null` (mono Sporeling only, G3 at 20 seeds):
+
+| Rules | With the Elder splash | Without |
+|---|---|---|
+| `rework` (three types), 20 s | **94 / 100** | **85 / 90** |
+| `rework` (three types), 17 s | **76 / 88** | **58 / 68** |
+| Two-type `rework` + both counters, 17 s | **58 / 70** | 48 / 55 |
+
+**It moves a lot:** 9 points at 20 s and 10–18 at 17 s. Waves roughly double merges, so Elder Sporelings come out in numbers, and their splash is area damage the swarm brings to the fight. Without it, mono Sporeling passes G3 at 17 s with both counters.
+
+### Two-type `rework` with the counters
+
+| Mono bot | 20 s | 20 s + `burster` | 20 s + both | 17 s | 17 s + `burster` | 17 s + both | 17 s + both, no Elder splash | 15 s + both |
+|---|---|---|---|---|---|---|---|---|
+| Gill Archer Nest | 42 / 48 | 49 / 55 | 49 / 52 | **61 / 72** | **64 / 72** | **63 / 72** | **65 / 75** | **75 / 88** |
+| Sporeling Burrow | **94 / 98** | **93 / 95** | **91 / 95** | **62 / 75** | **59 / 70** | **58 / 70** | 48 / 55 | 47 / 55 |
+| Veilstalker Hollow | 54 / **80** | 32 / 45 | 31 / 45 | 13 / 25 | 14 / 25 | 15 / 28 | 16 / 30 | 12 / 15 |
+| Morel Warren | 43 / 55 | 38 / 50 | 37 / 50 | 31 / 45 | 25 / 35 | 25 / 35 | 22 / 30 | 27 / 35 |
+| Rootbreaker Den | 17 / 18 | 17 / 22 | 17 / 22 | 25 / 38 | 21 / 40 | 21 / 38 | 25 / 38 | 47 / **85** |
+| Scythecap Grove | 15 / 22 | 15 / 22 | 38 / 52 | 15 / 22 | 17 / 22 | 30 / 45 | 32 / 50 | 32 / 50 |
+| Mono bots failing | 2 | 1 | 1 | 2 | 2 | 2 | 1 | 2 |
+
+### Confirmed: G3 at 50 seeds, the strict matrix and G4
+
+Three variants of two-type `rework`, each at 15, 17 and 20 s: both counters (`rework,cleave,burster`), the Burster alone (`rework,burster`), and both counters without the Elder Sporeling's splash. `--checks counters --g3seeds 50 --top 5`, and `--checks g4`.
+
+**G3 at 50 seeds,** mean / worst map; bold fails a limit:
+
+| Mono bot | Both, 15 s | Both, 17 s | Both, 20 s | Burster, 15 s | Burster, 17 s | Burster, 20 s | No Elder splash, 15 s | 17 s | 20 s |
+|---|---|---|---|---|---|---|---|---|---|
+| Gill Archer Nest | **78 / 93** | **68 / 81** | 50 / 54 | **78 / 93** | **68 / 80** | 49 / 56 | **78 / 93** | **69 / 82** | 49 / 53 |
+| Sporeling Burrow | 47 / 56 | **63 / 71** | **89 / 92** | 47 / 56 | **65 / 74** | **91 / 95** | 36 / 39 | **56 / 64** | **79 / 80** |
+| Veilstalker Hollow | 11 / 15 | 15 / 26 | 41 / 54 | 11 / 16 | 15 / 25 | 43 / 57 | 11 / 15 | 16 / 28 | 41 / 55 |
+| Morel Warren | 19 / 27 | 23 / 32 | 35 / 46 | 19 / 26 | 24 / 34 | 35 / 45 | 20 / 28 | 23 / 31 | 38 / 47 |
+| Rootbreaker Den | 47 / **82** | 24 / 41 | 18 / 25 | 48 / **83** | 25 / 43 | 19 / 25 | 46 / **82** | 26 / 41 | 19 / 27 |
+| Scythecap Grove | 35 / 51 | 39 / 55 | 37 / 51 | 20 / 27 | 22 / 31 | 16 / 24 | 34 / 48 | 40 / 57 | 38 / 55 |
+| Burster Pod | 17 / 24 | 9 / 13 | 6 / 9 | 16 / 24 | 9 / 13 | 6 / 9 | 17 / 24 | 9 / 13 | 6 / 9 |
+| Mono bots failing | 2 | 2 | **1** | 2 | 2 | **1** | 2 | 2 | **1** |
+
+Mono Gill Nest is weakest on Twin Roots (41–51) and strongest on the one-lane maps (80–93 at 15–17 s).
+
+**The strict counter bar passes for all nine.** The best confirmed answer by its worst map, among answers that don't fail G3 themselves (Bogwater / Stumpfield / Twin Roots):
+
+| Variant | Mono Sporeling | Mono Gill Nest | Others tested |
+|---|---|---|---|
+| Both or Burster, 15 s | `turtle` 91 / 96 / 72 | Sporeling + Veilstalker 87 / 84 / 79 | Rootbreaker: Gill Nest + Amanita 100 / 100 / 90 |
+| Both or Burster, 17 s | `d1-amanita` 72 / 65 / 69 | Sporeling + Gill Nest 99 / 96 / 85 | – |
+| Both or Burster, 20 s | Sporeling + Veilstalker 88 / 86 / 66 | Sporeling + Veilstalker 100 / 100 / 92 | Veilstalker: `turtle` 92 / 98 / 93 |
+| No Elder splash, 15 s | not tested (G3 36%) | Sporeling + Veilstalker 85 / 85 / 79 | Rootbreaker: Gill Nest + Amanita 100 / 100 / 90 |
+| No Elder splash, 17 s | `d1-amanita` 96 / 90 / 71 | Sporeling + Gill Nest 99 / 97 / 85 | – |
+| No Elder splash, 20 s | Sporeling + Veilstalker 93 / 91 / 71 | Sporeling + Veilstalker 100 / 100 / 92 | Veilstalker: `turtle` 92 / 98 / 93 |
+
+On the mean, mono Sporeling's best answer at 17 s is mono Scythecap (83%) with cleave, and `turtle` (80%) without it.
+
+**G4 fails for all nine,** on Decisions (median / Decisions / bot wins; targets 5:30–8:30, ≤ 15%, 30–70%):
+
+| Variant | 15 s | 17 s | 20 s |
+|---|---|---|---|
+| Both counters | 9:49 / 48% / 50% | 9:40 / 43% / 55% | 9:04 / 35% / 40% |
+| Burster | 9:50 / 48% / 45% | 9:52 / 48% / 50% | 8:30 / 33% / 38% |
+| Both, no Elder splash | 9:44 / 48% / 53% | 9:45 / 45% / 60% | 8:46 / 30% / 43% |
+
+No variant passes G3, G4 and the strict bar, so P2's other checks weren't run.
+
+### G4: what stalls
+
+**Attribution,** G4 at 17 s (40 games, ±7 points) unless noted:
+
+| Rules | Median | Decisions |
+|---|---|---|
+| `rework`, three types (P1b) | 8:11 | 20% |
+| Two-type `rework` | 8:59 | 28% |
+| + `cleave` | 9:06 | 33% |
+| + `burster` | 9:52 | 48% |
+| + both | 9:40 | 43% |
+| + both, the Burster's cloud cut to 1 s | 9:31 | 43% |
+| + both, three types | 9:36 | 45% |
+| + both, three types, no Mortar clouds (`sporeCloud:null`) | 8:49 | 30% |
+| At 20 s: three-type `rework` / two-type / two-type + both / three-type + both | 8:12 / 8:20 / 9:04 / 9:20 | 15% / 28% / 35% / 33% |
+
+- **The Burster's burst is the biggest staller,** about 20 points at 17 s. Its cloud isn't: cutting the cloud to 1 s leaves Decisions at 43%.
+- **Mortar clouds add about 15** (45% → 30% without them).
+- **Two-type mixed waves add 8–13 points without the counters,** and none with them.
+
+**Matchups that end in Decisions,** from G3's rows and the matrix's confirmed cells. G3 overall: 7% today, and 17%, 21% and 24% with both counters at 20, 17 and 15 s.
+- **Defensive mono builds against `bot:balanced`:** mono Mortar 62–87% of games, mono Burster Pod 55–73%.
+- **The swarm against its answers:** mono Sporeling against Capguard + Scythecap 56–67% (17 s), mono Capguard 61–68% (20 s), mono Scythecap 52–64% (15–17 s), and `turtle` 47–60%.
+- **Veilstalker against its answers at 20 s:** `turtle` 64–67%, Capguard + Veilstalker 73%.
+
+Many of the answers to the swarm win by holding more columns at 10:00, not by taking the Heartcap.
+
+### What it suggests
+
+- **Area damage that travels with the army answers the swarm.** With the Burster, the strict bar passes at every beat tried, on every map: mono Sporeling's Twin Roots answers reach 66–72%. At 20 s, P1b's `rework` had no answer to mono Sporeling at all.
+- **Twin Roots is answered with the Burster,** so the AI's lane choice isn't needed to explain it here.
+- **G3 still trades archers for swarms across beats:** 20 s fails only mono Sporeling (89), 15 s fails mono Gill Nest (78) and Rootbreaker (Twin Roots 82), and 17 s fails both at 63–68.
+- **G4 is now the check that binds.** The counters win by holding, and 30–48% of G4's games end in Decisions.
+- **The Burster carries the effect.** Cleave adds 1–2 points in G3 and nothing in G4; its one clear effect is making mono Scythecap an answer to the swarm.
+- **The Elder splash is worth 9–18 points to the swarm under waves.** Without it, 20 s leaves mono Sporeling at 79 / 80, from 89 / 92.
+
+### Questions for the user
+
+1. **Decisions:** G4 fails at 30–48% Decisions in every confirmed variant, mostly from the Burster's burst and the Mortar's clouds. Tune the counters to stall less (a smaller burst, a dearer Pod, no Mortar clouds), or revisit how a battle ends under the rework (the 10:00 Decision is a SPEC rule)?
+2. **The Elder Sporeling's splash** is worth 9–18 points of mono Sporeling's G3 under waves. Trim or remove it for the rework (a content change to a shipped unit)?
+3. **The beat:** with the Burster, 20 s fails only mono Sporeling (89%, or 79% without the Elder splash), 17 s fails Gill Nest and Sporeling at 63–68, and 15 s fails the archers. Which beat should P2 carry: 20 s with an Elder change, or 17 s?
+4. **Cleave** makes mono Scythecap an answer to the swarm (83% at 17 s) but barely moves G3 or G4. Keep it in the package?
+5. **Mixed waves at two types** helped G3, as asked, but add 8–13 points of G4 Decisions when the counters are off. Keep two?
+6. **Names:** "Burster" and "Burster Pod" are working names.
+
+### Commands
+
+- Screens: `npm run experiment -- --proto <spec> --checks g3 --g3seeds 20` (add `--mono sporelingBurrow` for the Elder check).
+- Confirms: `npm run experiment -- --proto <spec> --checks counters --g3seeds 50 --top 5`, and `--checks g4`. About 6–11 minutes a variant on 10 workers.
+- Specs: `rework,cleave,burster`, `rework,burster`; beats add `waves.beatSeconds:<n>`; the Elder check adds `unit.sporeling.mergePerks.3.splashRadius:null`; three-type mixed waves add `mixedWave.minTypes:3`.
+- Decisions per matchup: the counter check's report now has `decisions` for each map of each answer, beside G3's rows.
