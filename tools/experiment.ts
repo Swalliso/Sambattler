@@ -4,7 +4,7 @@
 // Gill Archer → Capguard → Sporeling edges at 12, 30 and 60 supply and under sustained production,
 // and boss reach over 80 runs. Without --proto it measures the shipped rules. Opt-in checks:
 // `engagement` (pacing numbers from docs/engagement-review.md, `--seeds n`), `runs` (how runs
-// end), `lanes` (per-lane traces) and `spread` (placement spread). Writes
+// end), `lanes` (per-lane traces), `spread` (placement spread) and `counters` (the counter matrix). Writes
 // reports/experiments/<label>.json and prints a summary.
 //
 // G3 options (g3, g3gill and lanes): `--maps a,b` plays every listed map (G3 itself plays the run's
@@ -19,6 +19,14 @@
 // Vesper; single battles to none) and `--power-policy none|auto` sets how the bot uses its power
 // (default none, as before M5). `--runs n` sets runs per commander (default 80).
 //
+// Counter matrix (counters, tools/lib/balance.ts, opt-in): every mono build with a G3 mean above 40%
+// (or `--mono`) against each answer: every other mono bot, every even pair of army buildings,
+// `bot:balanced`, hand-written counter bots and the other data bots (or `--answers a,b`). It plays G3
+// itself unless `g3` ran on the whole roster too. A screen at `--screen-seeds n` per seat (default 10)
+// picks each build's `--top n` answers (default 3), which `--confirm-seeds n` more (default 50) then
+// measure, on `--maps` (default the run pool). `--workers n` plays the cells in worker threads
+// (default half the machine's threads; 1 plays them in process, with the same results).
+//
 // Placement spread (spread, tools/lib/spread.ts): `bot:balanced` against `--spread-enemy` (default
 // general:scripted) on `--maps`, paused at `--spread-at 60,180` seconds on `--seeds n` board seeds
 // (default 3). Each of `--spread-buildings` (default Gill Nest, Sporeling Burrow, Capguard Hall,
@@ -29,10 +37,12 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { protoContent, ROOT } from './lib/content.ts';
 import {
-  evaluateG1, evaluateG2, evaluateG3, evaluateG4, evaluateG5, evaluateG6, evaluateG7, evaluateG8, rosterIds, supplyDuel,
+  counterBotSpec, evaluateCounters, evaluateG1, evaluateG2, evaluateG3, evaluateG4, evaluateG5, evaluateG6, evaluateG7, evaluateG8, inProcessRows,
+  rosterIds, supplyDuel,
 } from './lib/balance.ts';
-import type { Verdict } from './lib/balance.ts';
+import type { G3Verdict, Verdict } from './lib/balance.ts';
 import { runBench } from './lib/bench.ts';
+import { defaultWorkers, rowPool } from './lib/pool.ts';
 import { engagement, engagementLines, runEndingLines, runEndings } from './lib/engagement.ts';
 import { laneLines, laneSummary } from './lib/lanes.ts';
 import { spreadCase, spreadLines, spreadSummary } from './lib/spread.ts';
@@ -111,9 +121,12 @@ if (checks.has('duels')) {
   out.triangle = tri;
 }
 
+/** G3 on the whole roster against `bot:balanced`, kept for the counters check. */
+let fullG3: G3Verdict | undefined;
 if (checks.has('g3') || checks.has('g3gill')) {
   const ids = monoIds ?? (checks.has('g3') ? rosterIds(content) : ['gillNest', 'sporelingBurrow', 'capguardHall']);
   const g3 = evaluateG3(content, { maps: g3Maps, ids, seeds: g3Seeds, defender });
+  if (checks.has('g3') && !monoIds && defender === 'bot:balanced') fullG3 = g3;
   // per map and mono bot: both seats, length, Decisions, and for Gill Nest what the defender does to it
   for (const r of g3.rows) {
     const others = Object.entries(r.defDamage).filter(([src]) => src !== 'sporeling' && src !== 'turret').sort((a, b) => b[1] - a[1]).slice(0, 3)
@@ -122,6 +135,34 @@ if (checks.has('g3') || checks.has('g3gill')) {
     lines.push(`G3 ${r.map} mono:${r.id}: ${pct(r.rate)} (as player ${pct(r.player)}, as enemy ${pct(r.enemy)}), median ${fmtTicks(r.median)}, decisions ${pct(r.decisions)}${r.id === 'gillNest' ? `\n    ${diag}` : ''}`);
   }
   out.G3 = { ...verdict(g3), seeds: g3.seeds, maps: g3.maps, bots: g3.bots, rows: g3.rows };
+}
+
+if (checks.has('counters')) {
+  // the counter matrix (combat rework P0): the answer bots join the content through a proto spec
+  const spec = [proto, counterBotSpec(content)].filter(Boolean).join(',');
+  const cc = protoContent(spec);
+  const workers = Number(opt('--workers') ?? defaultWorkers());
+  const num = (k: string) => (opt(k) ? Number(opt(k)) : undefined);
+  const pool = workers > 1 ? rowPool(spec, workers) : undefined;
+  try {
+    const t0 = Date.now();
+    const r = await evaluateCounters(cc, {
+      maps: g3Maps, g3Seeds, rows: pool?.run ?? inProcessRows(cc),
+      ...(fullG3 ? { g3: fullG3 } : {}), ...(monoIds ? { builds: monoIds } : {}),
+      ...(opt('--answers') ? { answers: opt('--answers')!.split(',') } : {}),
+      ...(num('--screen-seeds') ? { screenSeeds: num('--screen-seeds')! } : {}),
+      ...(num('--confirm-seeds') ? { confirmSeeds: num('--confirm-seeds')! } : {}),
+      ...(num('--top') ? { top: num('--top')! } : {}),
+    });
+    if (!fullG3) out.G3 = { ...verdict(r.g3), seeds: r.g3.seeds, maps: r.g3.maps, bots: r.g3.bots, rows: r.g3.rows };
+    out.counters = {
+      ...verdict(r), maps: r.maps, screenSeeds: r.screenSeeds, confirmSeeds: r.confirmSeeds, builds: r.builds, answers: r.answers,
+      bots: Object.fromEntries([...new Set(Object.values(r.answers).flat())].map((a) => [a, cc.bots[a.slice(4)]?.description ?? ''])),
+    };
+    lines.push(`counters: ${((Date.now() - t0) / 1000).toFixed(0)} s on ${workers} worker${workers > 1 ? 's' : ''}`);
+  } finally {
+    await pool?.close();
+  }
 }
 
 if (checks.has('lanes')) {
