@@ -6,7 +6,7 @@ import type { RawContent } from './registry.ts';
 
 type Json = Record<string, unknown>;
 
-// ---- the combat rework's package (docs/ideas/combat-rework.md, P1 and P1b); `rework` turns on all six ----
+// ---- the combat rework's settings (docs/ideas/combat-rework.md, P1 to P1d); `rework` is P2's package ----
 
 /** Pinned: a ranged unit with an enemy unit within 1 tile attacks at 0.35× its rate. */
 const PINNED: Json = { pinned: { radius: 1, rateMult: 0.35 } };
@@ -172,11 +172,13 @@ export const PROTO_PRESETS: Record<string, Json> = {
   burster: BURSTER,
   stormwaves: STORM_WAVES,
   /**
-   * The combat rework's base (P1d): the six settings (mixed waves at two types), the Burster, and the
-   * Elder Sporeling's splash off, at a 20 s beat. Cleave stays its own preset.
+   * The combat rework's P2 package: P1d's base without the Mortar's clouds, plus the storm that grows
+   * waves. Pinned, call for help, the Rhizomorph, waves on a 20 s beat with mixed waves at two types,
+   * the Burster (whose bursts still leave clouds), the Elder Sporeling's splash off, and `stormwaves`.
+   * The Mortar's clouds stay the `sporecloud` preset, and cleave its own.
    */
   rework: {
-    ...PINNED, ...CALL_FOR_HELP, ...SPORE_CLOUD, ...RHIZOMORPH, ...WAVES, ...MIXED_WAVE, ...BURSTER, ...NO_ELDER_SPLASH,
+    ...PINNED, ...CALL_FOR_HELP, ...RHIZOMORPH, ...WAVES, ...MIXED_WAVE, ...BURSTER, ...NO_ELDER_SPLASH, ...STORM_WAVES,
     // both new spawners join both rosters (spreading the two presets keeps only the second's append)
     'faction.velvet-bloom.buildings+': ['rhizomorphTunnel', 'bursterPod'],
     'faction.gray-rot.buildings+': ['rhizomorphTunnel', 'bursterPod'],

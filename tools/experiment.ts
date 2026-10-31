@@ -10,10 +10,12 @@
 // G3 options (g3, g3gill and lanes): `--maps a,b` plays every listed map (G3 itself plays the run's
 // map pool, the default for g3 and g3gill; maps outside the pool, like test-3lane, are reported as
 // leads), `--g3seeds n` sets seeds per seat (default G3's 50, about ±5 points; 20 gives about ±8 for
-// a quicker read), `--mono a,b` picks the mono bots. g3 and g3gill share G3's loop (tools/lib/balance.ts).
+// a quicker read), `--mono a,b` picks the mono bots. g3 and g3gill share G3's loop (tools/lib/balance.ts)
+// and play its cells on `--workers n` threads, as the counter matrix does (the same results).
 // `lanes` traces mono bots (default Gill Nest) against the defender on `--maps`, `--seeds n` per
 // seat (default 10), `--traces` keeps every battle's trace in the report (tools/lib/lanes.ts).
-// `g4` also plays every map in `--maps` (the guardrail itself is Bogwater Hollow).
+// `g4` also plays every map in `--maps` (the guardrail itself is Bogwater Hollow), and `--g4seeds n`
+// plays n games in place of its 40 (about ±6 points on the Decision share; 200 gives about ±3).
 //
 // Run options (runs and engagement): `--commander <id|all>` plays a commander (runs default to
 // Vesper; single battles to none) and `--power-policy none|auto` sets how the bot uses its power
@@ -37,8 +39,8 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { protoContent, ROOT } from './lib/content.ts';
 import {
-  counterBotSpec, evaluateCounters, evaluateG1, evaluateG2, evaluateG3, evaluateG4, evaluateG5, evaluateG6, evaluateG7, evaluateG8, inProcessRows,
-  rosterIds, supplyDuel,
+  counterBotSpec, evaluateCounters, evaluateG1, evaluateG2, evaluateG3, evaluateG4, evaluateG5, evaluateG6, evaluateG7, evaluateG8, g3Setup, g3Verdict,
+  inProcessRows, rosterIds, supplyDuel,
 } from './lib/balance.ts';
 import type { G3Verdict, Verdict } from './lib/balance.ts';
 import { runBench } from './lib/bench.ts';
@@ -68,6 +70,10 @@ const g3SeedsOpt = Number(opt('--g3seeds') ?? 0);
 const monoIds = opt('--mono')?.split(',');
 const content = protoContent(proto);
 const g3Seeds = g3SeedsOpt || content.targets.G3.seeds;
+/** G4's games (default the target's). */
+const g4Seeds = Number(opt('--g4seeds') ?? 0) || content.targets.G4.seeds;
+/** Threads for G3's cells and the counter matrix (1 plays them in process). */
+const workers = Number(opt('--workers') ?? defaultWorkers());
 /** Maps for g3 and g3gill: G3's own, the run pool, unless `--maps` lists others (maps outside the pool are leads). */
 const g3Maps = mapsOpt ?? mapPool(content);
 /** Commanders for the runs and engagement checks: one id, `all`, or none (the run default, Vesper; no commander in single battles). */
@@ -125,7 +131,17 @@ if (checks.has('duels')) {
 let fullG3: G3Verdict | undefined;
 if (checks.has('g3') || checks.has('g3gill')) {
   const ids = monoIds ?? (checks.has('g3') ? rosterIds(content) : ['gillNest', 'sporelingBurrow', 'capguardHall']);
-  const g3 = evaluateG3(content, { maps: g3Maps, ids, seeds: g3Seeds, defender });
+  const g3Opts = { maps: g3Maps, ids, seeds: g3Seeds, defender };
+  let g3: G3Verdict;
+  if (workers > 1) {
+    const s = g3Setup(content, g3Opts);
+    const pool = rowPool(proto, workers);
+    try {
+      g3 = g3Verdict(content, await pool.run(s.maps.flatMap((map) => s.ids.map((id) => ({ map, id, seeds: s.seeds, defender: s.defender })))), s);
+    } finally {
+      await pool.close();
+    }
+  } else g3 = evaluateG3(content, g3Opts);
   if (checks.has('g3') && !monoIds && defender === 'bot:balanced') fullG3 = g3;
   // per map and mono bot: both seats, length, Decisions, and for Gill Nest what the defender does to it
   for (const r of g3.rows) {
@@ -141,7 +157,6 @@ if (checks.has('counters')) {
   // the counter matrix (combat rework P0): the answer bots join the content through a proto spec
   const spec = [proto, counterBotSpec(content)].filter(Boolean).join(',');
   const cc = protoContent(spec);
-  const workers = Number(opt('--workers') ?? defaultWorkers());
   const num = (k: string) => (opt(k) ? Number(opt(k)) : undefined);
   const pool = workers > 1 ? rowPool(spec, workers) : undefined;
   try {
@@ -181,8 +196,8 @@ if (checks.has('lanes')) {
 
 if (checks.has('g4')) {
   const rows = maps.map((map) => {
-    const v = evaluateG4(content, map);
-    return { map, ...verdict(v), median: median(v.stats.lengths), decisions: v.stats.decisions / v.stats.games, win: v.stats.winsA / v.stats.games };
+    const v = evaluateG4(content, map, g4Seeds);
+    return { map, ...verdict(v), games: v.stats.games, median: median(v.stats.lengths), decisions: v.stats.decisions / v.stats.games, win: v.stats.winsA / v.stats.games };
   });
   out.G4 = rows.length === 1 ? rows[0] : rows;
 }

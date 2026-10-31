@@ -387,10 +387,13 @@ export function g3Verdict(content: Content, rows: G3Row[], { maps, ids, seeds, d
   };
 }
 
-/** G4 itself is Bogwater Hollow; `map` measures the same pairing elsewhere (`npm run experiment -- --checks g4 --maps …`). */
-export function evaluateG4(content: Content, map = 'bogwater-hollow'): Verdict & { stats: MatchStats } {
+/**
+ * G4 itself is Bogwater Hollow; `map` measures the same pairing elsewhere (`npm run experiment -- --checks g4 --maps …`),
+ * and `seeds` plays more games than the target's (`--g4seeds`).
+ */
+export function evaluateG4(content: Content, map = 'bogwater-hollow', seeds = content.targets.G4.seeds): Verdict & { stats: MatchStats } {
   const t = content.targets.G4;
-  const m = matchup(content, 'bot:balanced', 'general:scripted', t.seeds, false, 0, map);
+  const m = matchup(content, 'bot:balanced', 'general:scripted', seeds, false, 0, map);
   const med = median(m.lengths) / 20;
   const dec = m.decisions / m.games;
   const win = m.winsA / m.games;
@@ -402,7 +405,7 @@ export function evaluateG4(content: Content, map = 'bogwater-hollow'): Verdict &
   ] as const;
   return {
     id: 'G4', pass: checks.every((c) => c[0]), stats: m,
-    summary: `balanced vs scripted on ${content.maps[map]?.name ?? map}, ${t.seeds} seeds`,
+    summary: `balanced vs scripted on ${content.maps[map]?.name ?? map}, ${seeds} seeds`,
     details: checks.map(([ok, s]) => `${ok ? 'ok  ' : 'FAIL'} ${s}`),
   };
 }

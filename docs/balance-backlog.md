@@ -1524,11 +1524,11 @@ Many of the answers to the swarm win by holding more columns at 10:00, not by ta
 
 ### What it suggests
 
-- **Area damage that travels with the army answers the swarm.** With the Burster, the strict bar passes at every beat tried, on every map: mono Sporeling's Twin Roots answers reach 66–72%. At 20 s, P1b's `rework` had no answer to mono Sporeling at all.
-- **Twin Roots is answered with the Burster,** so the AI's lane choice isn't needed to explain it here.
+- **The two-type shields answer the swarm, not the Burster** (corrected in P2; this line first credited the Burster). P1c turned both on together, and with them the strict bar passes at every beat tried, on every map: mono Sporeling's Twin Roots answers reach 66–72%. At 20 s, P1b's `rework` (three-type shields, no Burster) had no answer to mono Sporeling at all. A check for P2's brief separated the two: under P1d's `rework`, Sporeling + Veilstalker beats mono Sporeling 93 / 91 / 71, and with `mixedWave.minTypes:3`, so a pair never gets shields, it wins 52 / 54 / 36 and the strict bar fails. Neither side built Burster Pods in those games. The Burster's own effect is in G3, against the runners: mono Veilstalker 54 / 80 → 32 / 45 at 20 s.
+- **Twin Roots is answered by mixed armies with shields,** so the AI's lane choice isn't needed to explain it here.
 - **G3 still trades archers for swarms across beats:** 20 s fails only mono Sporeling (89), 15 s fails mono Gill Nest (78) and Rootbreaker (Twin Roots 82), and 17 s fails both at 63–68.
 - **G4 is now the check that binds.** The counters win by holding, and 30–48% of G4's games end in Decisions.
-- **The Burster carries the effect.** Cleave adds 1–2 points in G3 and nothing in G4; its one clear effect is making mono Scythecap an answer to the swarm.
+- **Of the two counters, the Burster carries the effect in G3.** Cleave adds 1–2 points in G3 and nothing in G4; its one clear effect is making mono Scythecap an answer to the swarm.
 - **The Elder splash is worth 9–18 points to the swarm under waves.** Without it, 20 s leaves mono Sporeling at 79 / 80, from 89 / 92.
 
 ### Questions for the user

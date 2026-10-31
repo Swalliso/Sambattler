@@ -1,4 +1,4 @@
-// The combat rework's settings (docs/ideas/combat-rework.md, P1 to P1c): pinned, call for help,
+// The combat rework's settings (docs/ideas/combat-rework.md, P1 to P2): pinned, call for help,
 // spore clouds, the Rhizomorph, waves, mixed waves, cleave and the Burster. Every setting is absent from data/balance.json
 // and its content exists only under its preset, so the shipped rules are unchanged; with a setting
 // on, it behaves as described.
@@ -57,7 +57,7 @@ describe('the combat rework settings are off by default', () => {
   it('the presets compile', () => {
     for (const p of ['pinned', 'callforhelp', 'sporecloud', 'rhizomorph', 'waves', 'mixedwave', 'cleave', 'burster', 'stormwaves', 'rework']) expect(() => protoContent(p)).not.toThrow();
     const all = protoState(protoContent('rework'));
-    expect([all.rules.pin, all.rules.help, all.rules.cloud, all.rules.waves, all.rules.mixed, all.rules.burst].every(Boolean)).toBe(true);
+    expect([all.rules.pin, all.rules.help, all.rules.waves, all.rules.mixed, all.rules.burst, all.rules.stormWaves].every(Boolean)).toBe(true);
     expect(all.compiled.player.buildings.rhizomorphTunnel).toBeDefined();
     expect(protoState(protoContent('pinned')).rules.pin).toEqual({ radius: 1, permille: 350 });
     expect(protoState(protoContent('callforhelp')).rules.help).toEqual({ radius: 5 });
@@ -713,19 +713,48 @@ describe('the Burster (preset burster)', () => {
   });
 });
 
-describe('the rework base (P1d)', () => {
-  it('is the six settings with mixed waves at two types, the Burster, and no Elder splash, at 20 s; cleave stays out', () => {
+describe('the P2 package (preset rework)', () => {
+  it("is P1d's base without the Mortar's clouds, plus the storm: mixed waves at two types, the Burster, no Elder splash, at 20 s", () => {
     const rc = protoContent('rework');
     const s = protoState(rc);
+    expect(s.rules.pin).toBeDefined();
+    expect(s.rules.help).toBeDefined();
     expect(s.rules.mixed).toEqual({ minTypes: 2, shieldFrac: 0.2 });
     expect(s.compiled.player.waveBeatTicks).toBe(400);
     expect(s.rules.burst).toBeDefined();
+    expect(s.rules.stormWaves).toEqual({ perStack: 0.2 });
+    expect(s.rules.cloud).toBeUndefined();
     expect(s.rules.cleave).toBeUndefined();
-    expect(s.rules.stormWaves).toBeUndefined();
     expect(s.compiled.player.units.sporeling!.tiers.map((t) => t.splashRadius)).toEqual([0, 0, 0]);
     for (const f of ['velvet-bloom', 'gray-rot']) expect(rc.factions[f]!.buildings.slice(-2)).toEqual(['rhizomorphTunnel', 'bursterPod']);
     // the shipped unit keeps its Elder splash
     expect(liveState().compiled.player.units.sporeling!.tiers[2]!.splashRadius).toBe(0.6);
+  });
+
+  it("the Burster's bursts still leave clouds; the Mortar's shells don't, at its own 6 tiles", () => {
+    const rc = protoContent('rework');
+    const s = protoState(rc);
+    expect(s.compiled.player.buildings.puffballMortar!.attack!.range).toBe(6);
+    expect(s.clouds).toEqual([]);
+    building(s, 'player', 'puffballMortar', 4, 2);
+    const shelled = unit(s, 'enemy', 'amanitaKnight', 10, 3);
+    freeze(s, 'enemy', 'amanitaKnight');
+    steps(s, 60);
+    expect(shelled.hp).toBeLessThan(shelled.maxHp);
+    expect(s.clouds).toEqual([]);
+
+    const b = protoState(rc);
+    const knight = unit(b, 'enemy', 'amanitaKnight', 10, 3);
+    freeze(b, 'enemy', 'amanitaKnight');
+    unit(b, 'player', 'burster', 8.5, 3);
+    let at = -1;
+    for (let i = 0; i < 40 && at < 0; i++) { steps(b, 1); if (b.events.some((e) => e.t === 'burst')) at = b.tick; }
+    expect(at).toBeGreaterThan(0);
+    expect(b.clouds).toHaveLength(1);
+    expect(b.clouds![0]).toMatchObject({ side: 'player', radius: 1.5, damage: 10, untilTick: at + 80 });
+    steps(b, 80);
+    expect(b.clouds).toEqual([]);
+    expect(knight.maxHp - knight.hp).toBe(80); // 40 from the burst, 40 from 4 s of cloud
   });
 });
 
