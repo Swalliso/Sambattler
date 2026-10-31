@@ -95,6 +95,12 @@ const NO_ELDER_SPLASH: Json = { 'unit.sporeling.mergePerks.3.splashRadius': null
  * bigger, ×2 at five stacks (8:00), like Clash Royale's double elixir.
  */
 const STORM_WAVES: Json = { stormWaves: { perStack: 0.2 } };
+/**
+ * The general's swarm read (after P2): an adaptive general reads a 1-supply unit's spawner by its
+ * armor, whether or not its units merge. Under waves nearly every cheap unit merges, and the counter
+ * cycle read a merged Sporeling swarm as Elite in 155 of 199 reads (SPEC §7.4 means a merging swarm to).
+ */
+const SWARM_READ: Json = { 'ai.counter.swarmMaxSupply': 1 };
 
 /** Presets: the settings each prototype was measured with (see the backlog's results tables). */
 export const PROTO_PRESETS: Record<string, Json> = {
@@ -171,14 +177,16 @@ export const PROTO_PRESETS: Record<string, Json> = {
   cleave: CLEAVE,
   burster: BURSTER,
   stormwaves: STORM_WAVES,
+  swarmread: SWARM_READ,
   /**
-   * The combat rework's P2 package: P1d's base without the Mortar's clouds, plus the storm that grows
-   * waves. Pinned, call for help, the Rhizomorph, waves on a 20 s beat with mixed waves at two types,
-   * the Burster (whose bursts still leave clouds), the Elder Sporeling's splash off, and `stormwaves`.
-   * The Mortar's clouds stay the `sporecloud` preset, and cleave its own.
+   * The combat rework's package: P2's (P1d's base without the Mortar's clouds, plus the storm that
+   * grows waves) and the general's swarm read. Pinned, call for help, the Rhizomorph, waves on a 20 s
+   * beat with mixed waves at two types, the Burster (whose bursts still leave clouds), the Elder
+   * Sporeling's splash off, `stormwaves` and `swarmread`. The Mortar's clouds stay the `sporecloud`
+   * preset, and cleave its own.
    */
   rework: {
-    ...PINNED, ...CALL_FOR_HELP, ...RHIZOMORPH, ...WAVES, ...MIXED_WAVE, ...BURSTER, ...NO_ELDER_SPLASH, ...STORM_WAVES,
+    ...PINNED, ...CALL_FOR_HELP, ...RHIZOMORPH, ...WAVES, ...MIXED_WAVE, ...BURSTER, ...NO_ELDER_SPLASH, ...STORM_WAVES, ...SWARM_READ,
     // both new spawners join both rosters (spreading the two presets keeps only the second's append)
     'faction.velvet-bloom.buildings+': ['rhizomorphTunnel', 'bursterPod'],
     'faction.gray-rot.buildings+': ['rhizomorphTunnel', 'bursterPod'],

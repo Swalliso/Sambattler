@@ -159,6 +159,7 @@ export function compileRules(b: BalanceDef, config: BattleConfig): Rules {
         freeSlots: b.ai.counter.freeSlots,
         maxSells: b.ai.counter.maxSells,
         ...(b.ai.counter.counterFloorWeight ? { floorWeight: b.ai.counter.counterFloorWeight } : {}),
+        ...(b.ai.counter.swarmMaxSupply ? { swarmMaxSupply: b.ai.counter.swarmMaxSupply } : {}),
       },
       score: { ...b.ai.score },
     },

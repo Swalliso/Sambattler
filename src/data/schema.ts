@@ -359,6 +359,12 @@ export const BalanceSchema = z.object({
        * the general's weights.
        */
       counterFloorWeight: Pos.optional(),
+      /**
+       * Combat rework swarm read, absent by default: a spawner whose unit costs at most this much
+       * supply reads by its armor whether or not its units merge, so its merges don't count toward
+       * the Elite share. Under waves nearly every cheap unit merges, and a Sporeling swarm read as Elite.
+       */
+      swarmMaxSupply: Pos.optional(),
     }).strict(),
     score: z.object({
       spawnerDepth: z.number(), spawnerThreat: z.number(), spawnerSurcharge: z.number(),

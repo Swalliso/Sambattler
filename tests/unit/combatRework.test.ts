@@ -8,8 +8,8 @@ import { loadContent } from '../../src/data/registry.ts';
 import { createRun } from '../../src/run/index.ts';
 import { generalKit } from '../../src/run/flow.ts';
 import { laneCover } from '../../src/sim/ai/controller.ts';
-import { createBattle, hashState, makeConfig, queueCommand, runHeadless } from '../../src/sim/index.ts';
-import type { BattleState, Content } from '../../src/sim/index.ts';
+import { analyzeMix, createBattle, hashState, makeConfig, queueCommand, runHeadless, topKind } from '../../src/sim/index.ts';
+import type { BattleState, Content, CounterState } from '../../src/sim/index.ts';
 import { addBuilding } from '../../src/sim/create.ts';
 import { addCloud } from '../../src/sim/systems/clouds.ts';
 import { lanePresence } from '../../src/sim/systems/territory.ts';
@@ -799,6 +799,40 @@ describe('a storm that grows waves (preset stormwaves)', () => {
     for (let i = 0; i < 400; i++) { steps(s, 1); for (const e of s.events) if (e.t === 'waveCapped') capped += e.units; }
     expect(s.units).toHaveLength(3);
     expect(capped).toBe(1);
+  });
+});
+
+describe("the general's swarm read (preset swarmread)", () => {
+  /** A counter state that saw each spawner make 8 units a wave, 7 of them knit into merges. */
+  function mergeHeavy(ids: number[]): CounterState {
+    const t: CounterState = { schedule: [], history: [], current: -1, track: {}, waveIds: [], samples: [] };
+    for (const id of ids) t.track[String(id)] = { spawned: { 0: 8, 1: 8 }, merged: { 0: 7, 1: 7 } };
+    return t;
+  }
+  const read = (c: Content, ids: string[]) => {
+    const s = protoState(c);
+    s.tick = 2400;
+    const bs = ids.map((id, i) => building(s, 'player', id, 0, i * 2));
+    return analyzeMix(s, 'player', mergeHeavy(bs.map((b) => b.id)));
+  };
+
+  it('is off by default: a merge-heavy Sporeling swarm reads as Elite (SPEC §7.4)', () => {
+    expect(content.balance.ai.counter.swarmMaxSupply).toBeUndefined();
+    expect(liveState().rules.ai.counter.swarmMaxSupply).toBeUndefined();
+    expect(topKind(read(content, ['sporelingBurrow', 'sporelingBurrow']).scores)).toBe('elite');
+  });
+
+  it("under rework, 1-supply units' merges leave the Elite share: the swarm reads as Swarm, merging Capguards still as Elite", () => {
+    const rc = protoContent('rework');
+    expect(protoState(rc).rules.ai.counter.swarmMaxSupply).toBe(1);
+    const swarm = read(rc, ['sporelingBurrow', 'sporelingBurrow']);
+    expect(swarm.shares.elite).toBe(0);
+    expect(swarm.scores.swarm).toBe(1);
+    expect(topKind(swarm.scores)).toBe('swarm');
+    expect(topKind(read(rc, ['veilstalkerHollow', 'veilstalkerHollow']).scores)).toBe('swarm');
+    const capguards = read(rc, ['capguardHall', 'capguardHall']);
+    expect(capguards.shares.elite).toBeCloseTo(7 / 8, 9);
+    expect(topKind(capguards.scores)).toBe('elite');
   });
 });
 

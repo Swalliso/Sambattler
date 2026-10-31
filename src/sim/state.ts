@@ -308,6 +308,8 @@ export interface Rules {
       openingMult: number; openingOtherMult: number; dualMult: number; freeSlots: number; maxSells: number;
       /** Prototype A2 (balance `counterFloorWeight`); absent by default. */
       floorWeight?: number;
+      /** Combat rework swarm read (balance `swarmMaxSupply`); absent by default. */
+      swarmMaxSupply?: number;
     };
     score: { spawnerDepth: number; spawnerThreat: number; spawnerSurcharge: number; economyLoam: number;
       economyDepth: number; economyThreat: number; towerFront: number; towerThreat: number };
