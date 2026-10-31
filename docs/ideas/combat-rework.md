@@ -1,6 +1,6 @@
 # Combat rework: no unit type should win alone
 
-Drafted on 2026-10-30 against `f5e70a9`. **Nothing here is adopted yet.** On 2026-10-30 the user chose Level 2 ([Decisions](#decisions-2026-10-30)). P0 and P1 of the [prototype plan](#prototype-plan) ran the same day, and their results changed the target: see [What P0 and P1 found](#what-p0-and-p1-found). P1b and P1c followed that evening, and P1d the next morning ([What P1b, P1c and P1d found](#what-p1b-p1c-and-p1d-found)). P2 ran the same day and was cut short for a playtest, with flyers added ([What P2 found](#what-p2-found)). This doc replaces the step C draft (sheltered forward plots), which is parked; see [What waits](#what-waits).
+Drafted on 2026-10-30 against `f5e70a9`. **Nothing here is adopted yet.** On 2026-10-30 the user chose Level 2 ([Decisions](#decisions-2026-10-30)). P0 and P1 of the [prototype plan](#prototype-plan) ran the same day, and their results changed the target: see [What P0 and P1 found](#what-p0-and-p1-found). P1b and P1c followed that evening, and P1d the next morning ([What P1b, P1c and P1d found](#what-p1b-p1c-and-p1d-found)). P2 ran the same day and was cut short for a playtest, with flyers added ([What P2 found](#what-p2-found)). Flyers took the design's rule C, and the package went to `develop` for P3, the playtest ([#35](https://github.com/Swalliso/Sambattler/pull/35), [#36](https://github.com/Swalliso/Sambattler/pull/36)). [Where things stand](../status.md) tracks what's next. This doc replaces the step C draft (sheltered forward plots), which is parked; see [What waits](#what-waits).
 
 The user's brief:
 - Fix battles that are one-sided because one unit type dominates, even if that takes significant rework.
@@ -28,8 +28,10 @@ The user's brief:
 - **G3 still fails on the swarm.** `bot:balanced` loses to mono Sporeling 81–85% of the time at a 20 s beat, and to mono Veilstalker too when the storm grows waves. The adaptive general doesn't answer the swarm either.
 - **G4 passes.** With the Mortar's clouds off and a Sporestorm that grows waves, 12.5% of battles end in a Decision over 200 games, against a limit of 15%.
 - **P2 found what each piece carries.** Waves carry almost everything, the two-type shields carry the strict bar, the storm keeps battles short, and pinning, call for help, the Burster and the Elder change each hold one check. The Rhizomorph carries nothing measured.
-- **Flyers answer the swarm, but a flyer army takes over G3** (mono Drift Stalk 89%). Fallbacks from [flyers.md](flyers.md) are being measured.
-- **Next: P3, a playtest** on the dev site with `?proto=rework`, which now also has flyers and a fix for the general's swarm read ([P3](#p3-playtest)).
+- **Flyers answer the swarm, but a flyer army took over G3** (mono Drift Stalk 89%).
+  - Of the two fallbacks in [flyers.md](flyers.md), rule C cuts that to 72%, and the user took it for the playtest.
+  - Under rule C every unit can hit a flyer, but ground melee deals ×0.5.
+- **Now: P3, a playtest** on the dev site with `?proto=rework`, which also has flyers under rule C and a fix for the general's swarm read ([P3](#p3-playtest)).
 - **How to judge it:** two checks side by side. The counter matrix says every committed build has an answer, now with a stricter bar, since today's rules already pass the first one. G3 says a mixed army holds up against committed builds.
 - **If that fails:** move to rounds, as Mechabellum does. A wilder option, ranged power as structures, is sketched too.
 
@@ -451,7 +453,14 @@ P2 ran on 2026-10-31 and was cut short at the user's call, for a playtest ([Deci
 
 After P2, `rework` gained the general's swarm read and flyers, for the playtest. With both, G4 still passes (12% at 200 games), G2 stays healthy, and the strict bar passes. `bot:balanced` builds a Drift Stalk in about a fifth of its games, and flyers answer the swarm: Amanita + Drift Stalk beats mono Sporeling 100 / 100 / 94.
 
-**But mono Drift Stalk takes over G3,** at 93 / 96 / 78, and beats three of the four battle-1 generals; only the Lichen Baron holds. [flyers.md](flyers.md) names this risk. Its two fallbacks are being measured: rule C, where every unit reaches a flyer but ground melee deals it half damage, and a 2-supply Driftling with double stats.
+**But mono Drift Stalk takes over G3,** at 93 / 96 / 78, and beats three of the four battle-1 generals; only the Lichen Baron holds. [flyers.md](flyers.md) names this risk. Its two fallbacks were measured on top of the package ([backlog](../balance-backlog.md#after-p2-the-swarm-read-and-flyers)):
+- **Rule C:** every unit can hit a flyer, but ground melee deals it half damage.
+  - Mono Drift Stalk falls to 72 / 90, mostly on Twin Roots (78 → 40).
+  - The strict bar still passes, and so does G4, with 11% Decisions.
+  - It gives back some of the swarm: mono Sporeling rises to 83 / 86 and mono Veilstalker to 69 / 80.
+- **A 2-supply Driftling with double stats** makes the flyer army stronger: 95 / 98.
+
+The user took rule C for the playtest. It doesn't stop the flyer army on its own; a Driftling retune or the general's Anti-Air counter is still open.
 
 ## Prototype plan
 
@@ -547,7 +556,7 @@ P2 measures and doesn't retune. The runs with one piece removed show which piece
 
 ### P3: playtest
 
-Play battles and full runs on the dev site with `?proto=rework`: P2's package, plus the general's swarm read and flyers. A prototype run saves on the dev site, apart from the real save ([#34](https://github.com/Swalliso/Sambattler/pull/34)). The questions:
+Play battles and full runs on the dev site with `?proto=rework`: P2's package, plus the general's swarm read and flyers under rule C. A prototype run saves on the dev site, apart from the real save ([#34](https://github.com/Swalliso/Sambattler/pull/34)). The questions:
 - Did any battle feel decided by one unit type?
 - When the general massed something, could you answer it, and did you know how?
 - Do the waves give a battle rhythm, or make it feel less alive?
@@ -558,7 +567,7 @@ What P2 says to watch for:
 - falling back early is a big edge;
 - there are still no comebacks;
 - the general doesn't answer a swarm;
-- an army of only flyers is too strong. To try rule C, add its settings: `?proto=rework,flying.reachSupply:1,flying.meleeMult:0.5`;
+- an army of only flyers is still strong under rule C (72% against `bot:balanced`);
 - the Rhizomorph may not earn its place.
 
 ### P4: decide
@@ -712,3 +721,11 @@ On 2026-10-31, with P2's first results in, the user chose to playtest before mea
 - **Fix the general's swarm read** under `rework`.
 - **Save prototype runs on the dev site** ([#34](https://github.com/Swalliso/Sambattler/pull/34)).
 - **Merge it all into `develop`** for the playtest.
+
+After the two flyer fallbacks were measured, on 2026-10-31, the user went with the recommendation ("Let's go with your recommendations"):
+- **Flyers take rule C** for the playtest ([#36](https://github.com/Swalliso/Sambattler/pull/36)).
+- **The 2-supply Driftling is dropped.**
+- **Still undecided:**
+  - the Driftling retune;
+  - the general's Anti-Air counter;
+  - teaching the general to answer a swarm.

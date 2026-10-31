@@ -11,6 +11,7 @@ only some files live in `.claude/rules/` and load when Claude opens one of those
 - **Review before building.** Playtest notes, reviews and ideas get discussed with the user before anything is built from them.
 - **Balance and rules:** diagnose, measure and recommend. A rule change or a retune across several units waits for the user's OK (`.claude/rules/balance.md`).
 - **Where things get written down:**
+  - where things stand, what waits on the user and what's next: `docs/status.md`. Read it first, and update it when work lands or the user decides something
   - adopted rules and the milestones: `SPEC.md`, updated when a change is adopted
   - a milestone's plan, stand-ins and "As built" results: `docs/mN-plan.md`
   - balance candidates and prototype results: `docs/balance-backlog.md`; data changes: `data/CHANGELOG-balance.md`
