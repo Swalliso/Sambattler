@@ -175,6 +175,10 @@ export interface CompiledSide {
   triggers: TriggerDef[];
   /** The power's cooldown multiplier (`side.powerCooldown`); present only when it isn't 1. */
   powerCooldownMult?: number;
+  /** Combat rework `waves`: ticks between this side's wave releases (`side.waveBeat`). Present only under waves. */
+  waveBeatTicks?: number;
+  /** Combat rework `waves`: × the units each spawner releases on a beat (`side.waveSize`). Present only under waves. */
+  waveSize?: number;
 }
 
 /**
@@ -242,6 +246,39 @@ export interface Rules {
   deployDraft?: { cards?: number };
   /** Bigger-drafts prototype (balance `bigDrafts`): cards taken per in-battle draft and the offers' rare bonus; absent by default. */
   bigDrafts?: { picks: number; rareBonus: number };
+  /**
+   * Combat rework `pinned` (balance `pinned`): a ranged unit with an enemy unit within `radius` runs
+   * its attack cooldown on `permille` ticks in 1000; absent by default.
+   */
+  pin?: { radius: number; permille: number };
+  /** Combat rework `callForHelp` (balance `callForHelp`): the call's radius; absent by default. */
+  help?: { radius: number };
+  /**
+   * Combat rework `sporeCloud` (balance `sporeCloud`): towers whose shells leave clouds, the clouds'
+   * radius and lifetime, the damage per pulse and the pulse cadence, and the AI's cover score per
+   * tile; absent by default.
+   */
+  cloud?: CloudSpec & { buildings: string[]; aiCover: number };
+  /**
+   * Combat rework `waves` (balance `waves`): spawns wait in their building until their side's beat
+   * (`CompiledSide.waveBeatTicks`), spawners behind a lane's front one leaving early; idle wave units
+   * march at their wave's slowest pace (`matchPace`) and ranged units keep `rangedGap` behind their
+   * melee front. Absent by default.
+   */
+  waves?: { rangedGap: number; matchPace: boolean };
+  /**
+   * Combat rework `mixedWave` (balance `mixedWave`, only with `waves`): a lane's wave of `minTypes` or
+   * more unit types sets out with shields of `shieldFrac` × each unit's max HP. Absent by default.
+   */
+  mixed?: { minTypes: number; shieldFrac: number };
+  /** Combat rework `cleave` (balance `cleave`): units whose splash hits other units at full damage. Absent by default. */
+  cleave?: { units: string[] };
+  /** Combat rework `burster` (balance `burst`): the cloud a `burst` unit leaves where it bursts. Absent by default. */
+  burst?: { cloud: CloudSpec };
+  /** Combat rework `stormWaves` (balance `stormWaves`, only with `waves`): × (1 + perStack × storm stacks) on each wave release. Absent by default. */
+  stormWaves?: { perStack: number };
+  /** Combat rework `flyers` (balance `flying`): who can hit a flyer, and whether flyers hold ground. Absent by default. */
+  flying?: { reachSupply: number; meleeMult: number; mergedReach: boolean; cloudsReach: boolean; holdsGround: boolean };
   timeLimitTicks: number;
   captureThreshold: number;
   captureStep: number;
@@ -273,6 +310,8 @@ export interface Rules {
       openingMult: number; openingOtherMult: number; dualMult: number; freeSlots: number; maxSells: number;
       /** Prototype A2 (balance `counterFloorWeight`); absent by default. */
       floorWeight?: number;
+      /** Combat rework swarm read (balance `swarmMaxSupply`); absent by default. */
+      swarmMaxSupply?: number;
     };
     score: { spawnerDepth: number; spawnerThreat: number; spawnerSurcharge: number; economyLoam: number;
       economyDepth: number; economyThreat: number; towerFront: number; towerThreat: number };
@@ -328,6 +367,23 @@ export interface UnitState {
   expiresTick?: number;
   /** Prototype T2: the tick the unit started falling back (kept while committed). Absent unless `rules.fallBack`. */
   holdSince?: number;
+  /**
+   * Combat rework: true while a `burrow` unit (the Rhizomorph) tunnels. It can't be targeted, hit,
+   * pinned or merged, doesn't collide or hold ground, and can't attack; false once it has surfaced.
+   * Absent for every other unit.
+   */
+  burrowed?: boolean;
+  /** Combat rework `waves`: the beat that released this unit (beat tick ÷ beat length). Absent for units no beat released. */
+  wave?: number;
+  /** Combat rework `mixedWave`: what is left of the shield its mixed wave set out with. Absent when it has none. */
+  shield?: number;
+  /** Combat rework `burster`: true once a `burst` unit has burst (it is spent). Absent until then, and for every other unit. */
+  burst?: boolean;
+  /**
+   * Combat rework `flyers`: true for a unit of a `flying` type while the setting is on. It passes over
+   * ground units, holds no ground, and only attacks with reach can hit it. Absent for every other unit.
+   */
+  flying?: boolean;
 }
 
 export interface KnitState {
@@ -366,6 +422,35 @@ export interface BuildingState {
   hasProduced: boolean;
   mergeOn: boolean;
   holding: boolean;
+  /** Combat rework `waves`: units waiting inside for the side's next wave (they count toward supply). Absent until one waits. */
+  stored?: number;
+  /** Combat rework `waves`: the last beat whose release this spawner made (it makes one per beat). Absent without waves. */
+  lastWave?: number;
+  /** Combat rework `stormWaves`: thousandths of a unit owed to this spawner's next release. Absent until the storm grows a wave. */
+  waveCarry?: number;
+}
+
+/** Combat rework: a spore cloud's size, lifetime, damage per pulse and pulse cadence. */
+export interface CloudSpec { radius: number; ticks: number; damage: number; pulseTicks: number }
+
+/**
+ * Combat rework `sporeCloud` and `burster`: a spore cloud left where a tower's shell landed or a
+ * Burster burst. It deals `damage` to the enemy units of `side`'s opponent inside it on each cadence
+ * tick (every `pulseTicks`) after `fromTick`, up to `untilTick`. Clouds keep the order they formed in.
+ */
+export interface CloudState {
+  id: number;
+  side: Side;
+  lane: number;
+  x: number;
+  y: number;
+  radius: number;
+  damage: number;
+  pulseTicks: number;
+  fromTick: number;
+  untilTick: number;
+  /** The tower that fired it, or the spawner of the unit that burst (damage-by-building stats). */
+  sourceBuildingId: number;
 }
 
 export interface PendingHit {
@@ -392,6 +477,8 @@ export interface PendingHit {
   /** Unit id, tower building id or 'turret' (for damage-by-source stats). */
   sourceType: string;
   ranged: boolean;
+  /** Combat rework `flyers`: the attacker can't reach flyers, so its splash skips them. Absent otherwise. */
+  noAir?: boolean;
 }
 
 export type CommandBody =
@@ -433,6 +520,15 @@ export type SimEvent =
   | { t: 'power'; side: Side; power: string; x?: number; y?: number; hits: number; lanes: number[]; merges: number; gold?: number }
   /** Prototype E1: a lane switched between Hold and Advance (`auto` when the hold timer ran out). */
   | { t: 'stance'; side: Side; lane: number; hold: boolean; auto: boolean }
+  /**
+   * Combat rework `waves`: a side's wave set out on its beat with `units` units, counting those that
+   * left early (`held`: lanes it kept home; `shielded`: lanes whose mixed wave got shields).
+   */
+  | { t: 'release'; side: Side; units: number; held: number[]; shielded: number[] }
+  /** Combat rework `stormWaves`: a spawner's release lost `units` extra units to the supply cap. */
+  | { t: 'waveCapped'; side: Side; units: number }
+  /** Combat rework `burster`: unit `id` burst at (x, y), reaching `radius` tiles. */
+  | { t: 'burst'; side: Side; id: number; x: number; y: number; radius: number }
   /** Heartcap breach prototype: a side's Heartcap fell to `at` of its max HP, firing its `heartcapBreach` triggers. */
   | { t: 'heartcapBreach'; side: Side; at: number; x: number; y: number }
   | { t: 'ended'; winner: Side; by: 'rout' | 'decision' };
@@ -582,6 +678,8 @@ export interface BattleState {
   units: UnitState[];
   buildings: BuildingState[];
   hits: PendingHit[];
+  /** Combat rework `sporeCloud` and `burster`: the clouds on the field, oldest first. Absent unless `rules.cloud` or `rules.burst`. */
+  clouds?: CloudState[];
   sporestorm: number;
   queue: Command[];
   log: Command[];

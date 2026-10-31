@@ -280,6 +280,7 @@ export function createBattle(content: Content, config: BattleConfig): BattleStat
     stats: { player: emptyStats(), enemy: emptyStats() },
     frontLine: lanes.map((l) => [[0, l.pBorder, l.eBorder]]),
   };
+  if (rules.cloud || rules.burst) state.clouds = [];
   for (const s of SIDES) {
     if (!state.library.powers?.[config[s].power ?? '']) continue;
     Object.assign(state.stats[s], { powerUses: 0, powerDamage: 0, powerCaptures: 0, powerMerges: 0, powerGold: 0 });
@@ -414,6 +415,7 @@ export function addUnit(
   };
   const life = state.rules.lifespan;
   if (life) u.expiresTick = state.tick + Math.round(life.ticks * (tier === 1 ? 1 : tier === 2 ? life.tierMult : life.tierMult * life.tierMult));
+  if (state.rules.flying && def.tags.includes('flying')) u.flying = true; // combat rework `flyers`
   clampToLane(state, u, unitRadius(state, u));
   u.px = u.x; u.py = u.y; u.spawnY = u.y;
   state.units.push(u);

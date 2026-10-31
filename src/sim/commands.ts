@@ -6,6 +6,7 @@ import { addBuilding } from './create.ts';
 import { executeDraftCommand } from './draft.ts';
 import { placementProblem, priceAt } from './placement.ts';
 import { powerProblem, usePower } from './powers.ts';
+import { releaseStored } from './systems/spawning.ts';
 import { setStance } from './systems/stance.ts';
 import { buildingDef, findBuilding, isBesieged, supplyCapOf } from './world.ts';
 import type { BattleState, Command, CommandBody, Side } from './state.ts';
@@ -115,6 +116,7 @@ function execute(state: BattleState, cmd: Command): boolean {
       if (isBesieged(state, b)) { reject(state, cmd, 'cannot sell while besieged'); return false; }
       const refund = sellValue(state, b.id);
       ss.gold += refund;
+      if (b.stored) releaseStored(state, b); // combat rework `waves`: the units waiting inside come out
       const utility = !!buildingDef(state, b).utility;
       state.buildings.splice(state.buildings.indexOf(b), 1);
       if (utility) ss.supplyCap = supplyCapOf(state, side);

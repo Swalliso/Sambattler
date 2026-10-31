@@ -8,7 +8,11 @@ export const Id = z.string().min(1).regex(/^[a-zA-Z0-9:_-]+$/, 'ids use letters,
 export const DamageType = z.enum(['slash', 'pierce', 'crush']);
 export const UnitArmor = z.enum(['light', 'medium', 'heavy']);
 export const ArmorType = z.enum(['light', 'medium', 'heavy', 'structure']);
-export const Tag = z.enum(['siege', 'slayer', 'ranged', 'swarm', 'support']);
+/**
+ * `burrow` (combat rework, the Rhizomorph's preset): the unit spawns underground and tunnels at its
+ * speed until it surfaces beside an enemy ranged unit or spawner behind the enemy front.
+ */
+export const Tag = z.enum(['siege', 'slayer', 'ranged', 'swarm', 'support', 'burrow', 'burst', 'flying']);
 export const Rarity = z.enum(['common', 'uncommon', 'rare']);
 const Seconds = z.number().nonnegative();
 /** A unit id, optionally at a merge tier: `capguard` or `capguard@2`. */
@@ -34,6 +38,8 @@ export const SIDE_STATS = [
   'side.supplyCap', 'side.interestCap', 'side.stipend', 'side.captureSpeed', 'side.startingGold', 'side.sellRefund',
   'side.supplyLineRate', 'side.knitTicks', 'side.mergeRadius', 'side.rerollCost', 'side.draftCards', 'side.heartcapMaxHp',
   'side.turretDamage', 'side.comebackEnabled', 'side.loamBonus', 'side.powerCooldown',
+  // combat rework `waves` (hooks for relics and perks): seconds between a side's wave releases, and × units per release
+  'side.waveBeat', 'side.waveSize',
 ] as const;
 export const BATTLE_STATS = ['battle.sporestormStart'] as const;
 export const StatKey = z.enum([...UNIT_STATS, ...BUILDING_STATS, ...SIDE_STATS, ...BATTLE_STATS]);
@@ -203,6 +209,82 @@ export const BalanceSchema = z.object({
    * rarity points from common to rare. `draftWaves` and `draft.cards` set how many drafts and cards.
    */
   bigDrafts: z.object({ picks: z.number().int().positive().optional(), rareBonus: z.number().nonnegative().optional() }).strict().optional(),
+  /**
+   * Combat rework `pinned` (docs/ideas/combat-rework.md, P1), absent by default: a `ranged` unit with
+   * an enemy unit within `radius` tiles (edge distance) attacks at `rateMult` × its normal rate.
+   */
+  pinned: z.object({ radius: Pos, rateMult: z.number().gt(0).max(1) }).strict().optional(),
+  /**
+   * Combat rework `callForHelp`, absent by default: when an enemy unit or tower damages a unit or
+   * building, every friendly unit in its lane within `radius` tiles of it (edge distance) that has no
+   * target takes the attacker as its target. A unit keeps that target within the usual leash
+   * (aggro × leashMult), and also while the attacker is still attacking it or a friend within `radius`.
+   */
+  callForHelp: z.object({ radius: Pos }).strict().optional(),
+  /**
+   * Combat rework `sporeCloud`, absent by default: every shell from a listed tower (the Puffball
+   * Mortar) leaves a spore cloud of `radius` tiles where it lands, for `seconds`. Every
+   * `pulseSeconds` (default 1) on the battle clock, a cloud deals `damagePerSecond` × pulseSeconds,
+   * ignoring armor, to every enemy unit whose body is inside it; buildings and friendly units are
+   * untouched. `range` replaces the listed towers' base range. When the AI places a listed tower, each
+   * tile of lane it reaches past the side's border adds `aiCover` to the spot's score (default 1).
+   */
+  sporeCloud: z.object({
+    buildings: z.array(z.string()).min(1), radius: Pos, seconds: Pos, damagePerSecond: Pos,
+    pulseSeconds: Pos.optional(), range: Pos.optional(), aiCover: z.number().nonnegative().optional(),
+  }).strict().optional(),
+  /**
+   * Combat rework `waves`, absent by default: a spawner's units wait inside it (still counting toward
+   * supply) and join its side's next wave. Every `beatSeconds` both sides' waves set out on the same
+   * tick: a lane's frontmost spawner releases on the beat, and each spawner behind it releases early
+   * by its walk to that spawner's door, so the wave passes it together. Units of one wave with no
+   * target march at the pace of the wave's slowest such unit in their lane (unless `matchPace` is
+   * false), and an idle ranged unit stays `rangedGap` tiles behind its side's frontmost melee unit in
+   * the lane (default 1). Holding a lane keeps its next wave home for one beat; the beat spends the
+   * hold, and the lane can't hold again until the next beat has sent both waves. Held lanes don't
+   * rally units on the field, and the AI never holds. `side.waveBeat` (seconds) and `side.waveSize`
+   * (× units released) are modifier stats.
+   */
+  waves: z.object({ beatSeconds: Pos, rangedGap: z.number().nonnegative().optional(), matchPace: z.boolean().optional() }).strict().optional(),
+  /**
+   * Combat rework `mixedWave`, absent by default; it needs `waves`. When a lane's wave holds
+   * `minTypes` or more unit types as it sets out (a merged form counts as its base type), each of its
+   * units gets a shield worth `shieldFrac` × its max HP. A shield soaks damage of every kind before HP
+   * until it breaks. It never regrows or decays, healing doesn't touch it, and a merge keeps the
+   * trio's shields in proportion, as it does their HP.
+   */
+  mixedWave: z.object({ minTypes: z.number().int().min(2), shieldFrac: z.number().gt(0).max(1) }).strict().optional(),
+  /**
+   * Combat rework `cleave` (P1c), absent by default: a listed unit's splash (the Scythecap's swing)
+   * hits every enemy unit within its splash radius of its target at full damage, instead of at
+   * `splashFalloff`; buildings in it still take the falloff share. The `cleave` preset also widens
+   * the Scythecap's splash to 1, 1.2 and 1.4 tiles by tier.
+   */
+  cleave: z.object({ units: z.array(z.string()).min(1) }).strict().optional(),
+  /**
+   * Combat rework `burster` (P1c), absent by default: a `burst` unit has no normal attack. It heads for
+   * the enemy unit in its aggro range with the most enemy units within its splash radius, and when it
+   * reaches that unit, or when it dies, it bursts: its damage, ignoring armor, to every enemy unit within
+   * its splash radius, and a spore cloud of `cloud.radius` tiles for `cloud.seconds` that deals
+   * `cloud.damagePerSecond` (each second) to the enemy units inside it. Never buildings or friends.
+   */
+  burst: z.object({ cloud: z.object({ radius: Pos, seconds: Pos, damagePerSecond: Pos }).strict() }).strict().optional(),
+  /**
+   * Combat rework `stormWaves` (P1d), absent by default; it needs `waves`. Each Sporestorm stack makes
+   * both sides' waves `perStack` bigger: a spawner releases its waiting units × (1 + perStack × stacks),
+   * on top of `side.waveSize`, carrying the fraction to its next release. Extra units need free supply.
+   */
+  stormWaves: z.object({ perStack: Pos }).strict().optional(),
+  /**
+   * Combat rework `flyers` (docs/ideas/flyers.md), absent by default: a `flying` unit passes over ground
+   * units and holds no ground (unless `holdsGround`), and only attacks with reach can hit it: ranged
+   * units, Heartcap turrets, other flyers, commander powers, spore clouds (with `cloudsReach`), towers
+   * that don't lob (the Mortar's splashing shell does), and melee unit types of at least `reachSupply`
+   * supply (a merged unit's own supply with `mergedReach`). Melee hits on a flyer deal × `meleeMult`.
+   */
+  flying: z.object({
+    reachSupply: Pos, meleeMult: z.number().nonnegative(), mergedReach: z.boolean(), cloudsReach: z.boolean(), holdsGround: z.boolean(),
+  }).strict().optional(),
   firstSpawnFraction: z.number().min(0).max(1),
   timeLimitSeconds: Pos,
   heartcapPlayerHp: z.number().int().positive(),
@@ -287,6 +369,12 @@ export const BalanceSchema = z.object({
        * the general's weights.
        */
       counterFloorWeight: Pos.optional(),
+      /**
+       * Combat rework swarm read, absent by default: a spawner whose unit costs at most this much
+       * supply reads by its armor whether or not its units merge, so its merges don't count toward
+       * the Elite share. Under waves nearly every cheap unit merges, and a Sporeling swarm read as Elite.
+       */
+      swarmMaxSupply: Pos.optional(),
     }).strict(),
     score: z.object({
       spawnerDepth: z.number(), spawnerThreat: z.number(), spawnerSurcharge: z.number(),
@@ -364,6 +452,11 @@ export const BuildingSchema = z.object({
   economy: z.object({ goldPerTick: z.number().int().nonnegative(), interestCapAdd: z.number().int().optional() }).strict().optional(),
   /** Utility effects while the building stands (Rhizome Vault: +supply cap, at most `maxCount` count). */
   utility: z.object({ supplyCapAdd: z.number().int().positive(), maxCount: z.number().int().positive() }).strict().optional(),
+  /**
+   * Prototype content (the combat rework's Rhizomorph): the purchase weight of every bot and general
+   * whose weights don't list this building (mono bots never buy it), and generals field it in runs.
+   */
+  aiWeight: Pos.optional(),
 }).strict().superRefine((b, ctx) => {
   const need = { spawner: 'spawn', tower: 'attack', economy: 'economy', utility: null } as const;
   const key = need[b.kind];
@@ -525,6 +618,8 @@ export const BotSchema = z.object({
   id: Id, description: z.string().optional(), opener: z.array(Id), weights: z.record(Id, z.number().nonnegative()),
   limits: z.record(Id, Limit).optional(), mergePolicy: MergePolicy, adaptive: z.boolean().optional(),
   placement: z.object({ spawnerDepthWeight: z.number().optional() }).strict().optional(),
+  /** Buys only what `weights` lists: a prototype building's `aiWeight` skips it (the counter check's test bots). */
+  fixedWeights: z.boolean().optional(),
 }).strict();
 
 const ScenarioUnits = z.object({

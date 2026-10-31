@@ -387,10 +387,13 @@ export function g3Verdict(content: Content, rows: G3Row[], { maps, ids, seeds, d
   };
 }
 
-/** G4 itself is Bogwater Hollow; `map` measures the same pairing elsewhere (`npm run experiment -- --checks g4 --maps …`). */
-export function evaluateG4(content: Content, map = 'bogwater-hollow'): Verdict & { stats: MatchStats } {
+/**
+ * G4 itself is Bogwater Hollow; `map` measures the same pairing elsewhere (`npm run experiment -- --checks g4 --maps …`),
+ * and `seeds` plays more games than the target's (`--g4seeds`).
+ */
+export function evaluateG4(content: Content, map = 'bogwater-hollow', seeds = content.targets.G4.seeds): Verdict & { stats: MatchStats } {
   const t = content.targets.G4;
-  const m = matchup(content, 'bot:balanced', 'general:scripted', t.seeds, false, 0, map);
+  const m = matchup(content, 'bot:balanced', 'general:scripted', seeds, false, 0, map);
   const med = median(m.lengths) / 20;
   const dec = m.decisions / m.games;
   const win = m.winsA / m.games;
@@ -402,7 +405,7 @@ export function evaluateG4(content: Content, map = 'bogwater-hollow'): Verdict &
   ] as const;
   return {
     id: 'G4', pass: checks.every((c) => c[0]), stats: m,
-    summary: `balanced vs scripted on ${content.maps[map]?.name ?? map}, ${t.seeds} seeds`,
+    summary: `balanced vs scripted on ${content.maps[map]?.name ?? map}, ${seeds} seeds`,
     details: checks.map(([ok, s]) => `${ok ? 'ok  ' : 'FAIL'} ${s}`),
   };
 }
@@ -584,6 +587,8 @@ export function counterBots(content: Content): Record<string, Omit<BotDef, 'id'>
       weights: { gillNest: 3, veilstalkerHollow: 2, capguardHall: 2, puffballMortar: 1, truffleCellar: 1 }, limits: cellar, mergePolicy: 'on',
     },
   } satisfies Record<string, Omit<BotDef, 'id'>>);
+  // each answer stays what it's named: a prototype building's `aiWeight` (the combat rework's Rhizomorph) skips them
+  for (const def of Object.values(bots)) def.fixedWeights = true;
   return bots;
 }
 
@@ -619,7 +624,8 @@ export function answerKind(controller: string): AnswerKind {
 /** An answer's results against one build: its wins per map and its mean over the counted maps. */
 export interface CounterResult {
   answer: string; kind: AnswerKind;
-  maps: { map: string; wins: number; games: number; rate: number }[];
+  /** Per map: the answer's wins, and the share of games that ended by Decision. */
+  maps: { map: string; wins: number; games: number; rate: number; decisions: number }[];
   wins: number; games: number; mean: number;
   /** A mono answer that fails G3 itself. */
   failsG3: boolean;
@@ -686,7 +692,7 @@ export async function evaluateCounters(content: Content, opts: CounterOptions = 
   const failsG3 = (a: string) => g3Bots.some((b) => `bot:mono:${b.id}` === a && !b.pass);
   // the build's rows are the mono side's; an answer wins every game the build loses (there are no draws)
   const result = (answer: string, cells: G3Row[]): CounterResult => {
-    const mine = cells.map((r) => ({ map: r.map, wins: r.games - r.wins, games: r.games, rate: (r.games - r.wins) / r.games }));
+    const mine = cells.map((r) => ({ map: r.map, wins: r.games - r.wins, games: r.games, rate: (r.games - r.wins) / r.games, decisions: r.decisions }));
     const inMean = mine.filter((m) => counted.includes(m.map));
     const wins = inMean.reduce((s, m) => s + m.wins, 0), games = inMean.reduce((s, m) => s + m.games, 0);
     return { answer, kind: answerKind(answer), maps: mine, wins, games, mean: wins / games, failsG3: failsG3(answer) };

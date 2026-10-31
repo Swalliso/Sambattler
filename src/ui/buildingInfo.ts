@@ -4,6 +4,7 @@
 import type { Content } from '../data/registry.ts';
 import type { Atlas } from '../render/atlas.ts';
 import { formatClock } from '../sim/index.ts';
+import { towerReachesAir, typeReachesAir } from '../sim/world.ts';
 import type { BattleState, BuildingKind } from '../sim/index.ts';
 import { h } from './h.ts';
 import { priceEl } from './icons.ts';
@@ -56,22 +57,43 @@ export function buildingTip(content: Content, atlas: Atlas, state: BattleState, 
     const t = cu.tiers[0];
     rows.push(['Makes', `${cb.spawn.count} ${plural(cb.spawn.count, unit.name)} every ${secs(cb.spawn.intervalHalfTicks / 2 / tr)}${cb.spawn.positional ? ' (varies with where it stands)' : ''}`]);
     rows.push(['Each unit', `${t.hp} HP · ${t.supply} supply`]);
+    const burst = state.rules.burst && cu.tags.includes('burst') ? state.rules.burst : undefined;
     if (t.healAmount > 0) {
       rows.push(['Heals', `${t.healAmount} HP every ${secs(t.healTicks / tr)} · range ${t.range}`]);
+    } else if (burst) {
+      // the combat rework's Burster (a prototype): no attack, a burst
+      rows.push(['Bursts', `rolls at the thickest knot of enemy units within ${cu.aggroRange} tiles and bursts on reaching it, or when it dies: ${Math.round(t.damage)} damage through any armor to every enemy unit within ${t.splashRadius} tiles`]);
+      rows.push(['Spore cloud', `left where it bursts (${burst.cloud.radius} tiles, ${secs(burst.cloud.ticks / tr)}): ${Math.round((burst.cloud.damage * tr) / burst.cloud.pulseTicks)} damage a second to enemy units in it`]);
     } else {
       rows.push(['Attack', `${Math.round(t.damage * 10) / 10} ${cu.damageType} every ${secs(t.attackTicks / tr)} · ${cu.projectileSpeed > 0 ? `range ${t.range}` : 'melee'}`]);
       rows.push(['Strong vs', strongVs(state, cu.damageType)], ['Weak vs', weakVs(state, cu.damageType)]);
     }
     rows.push(['Armor', `${cap(cu.armor)} · hurt most by ${vulnerableTo(state, cu.armor)}`]);
     if (cu.siege) rows.push(['Siege', `×${t.siegeMult} vs buildings and Heartcaps`]);
+    // the combat rework's settings (prototypes; each line shows only while its setting is on)
+    if (cu.tags.includes('burrow')) rows.push(['Burrows', 'tunnels under the front where nothing can hit it, and surfaces beside the nearest archer (else a spawner behind the front) that no tower or turret covers; then it goes for ranged units first']);
+    if (state.rules.pin && cu.tags.includes('ranged')) rows.push(['Pinned', `attacks at ×${state.rules.pin.permille / 1000} its rate with an enemy within ${state.rules.pin.radius} tile`]);
+    if (state.rules.waves) rows.push(['Waves', 'its units wait inside and leave with your next wave (early, if it stands behind your front spawner, so they join the wave as it passes)']);
+    const mixed = state.rules.mixed;
+    if (mixed) rows.push(['Mixed wave', `a lane's wave of ${mixed.minTypes} or more unit types sets out shielded: ${Math.round(mixed.shieldFrac * 100)}% of each unit's HP`]);
+    const fly = state.rules.flying;
+    if (fly && cu.tags.includes('flying')) {
+      rows.push(['Flying', `floats over ground units${fly.holdsGround ? '' : ' and holds no ground'}; only units of ${fly.reachSupply}+ supply, archers, turrets, other flyers${fly.cloudsReach ? ', spore clouds' : ''} and powers can hit it`]);
+    } else if (fly && t.healAmount === 0) rows.push(['Flyers', typeReachesAir(state, cu) ? 'can hit them' : "can't reach them"]);
     if (cu.slayer) rows.push(['Slayer', `×${t.slayerMult} vs Bloomed and Elder units`]);
-    if (state.config.flags.merging) rows.push(['Bloomed', perkText(content, unit.id, 2)], ['Elder', perkText(content, unit.id, 3)]);
+    if (state.rules.cleave?.units.includes(cb.spawn.unit)) rows.push(['Cleave', `its swing hits every enemy unit within ${t.splashRadius} tiles of its target at full damage`]);
+    if (state.config.flags.merging) rows.push(...(burst ? [['Merge', 'never: a Burster is spent whole'] as [string, string]] : [['Bloomed', perkText(content, unit.id, 2)], ['Elder', perkText(content, unit.id, 3)]] as [string, string][]));
   }
   if (cb.attack) {
     const a = cb.attack;
     rows.push(['Attack', `${a.damage} ${a.damageType} every ${secs(a.intervalTicks / tr)}${a.splashRadius ? ` · splash ${a.splashRadius}` : ''}`]);
     rows.push(['Range', a.minRange ? `${a.minRange}–${a.range} (can't hit units hugging it)` : String(a.range)]);
     rows.push(['Strong vs', strongVs(state, a.damageType)]);
+    if (state.rules.flying && !towerReachesAir(cb)) rows.push(['Flyers', "its lobbed shells can't hit them"]);
+    const cloud = state.rules.cloud;
+    if (cloud?.buildings.includes(id)) {
+      rows.push(['Spore cloud', `each shell leaves a cloud (${cloud.radius} tiles, ${secs(cloud.ticks / tr)}): ${Math.round((cloud.damage * tr) / cloud.pulseTicks)} damage a second to enemy units in it, whatever their armor`]);
+    }
   }
   if (cb.economy) {
     const e = cb.economy;

@@ -3,6 +3,121 @@
 Every change from the SPEC's first-pass numbers, with the guardrail or verification result that
 motivated it. Tools: `npm run balance -- duel`, `npm run balance -- tournament`, `npm run test:slow`.
 
+## Combat rework: the general's swarm read and flyers (2026-10-31)
+
+**Nothing adopted; no shipped number, rule or default changed.** Goldens unchanged. Both join `rework`, the
+package for the P3 playtest.
+- **The swarm read** (preset `swarmread`): a new default-off knob, `ai.counter.swarmMaxSupply`. An adaptive
+  general reads a spawner whose unit costs at most that much supply by its armor, whether or not its units
+  merge; the preset sets 1. Under P2's package the Lichen Baron read a merging Sporeling swarm as Elite in 155
+  of 199 reads, and SPEC §7.4 means a merging swarm to read that way. With the knob, 199 of 199 read Swarm.
+- **Flyers** (preset `flyers`, docs/ideas/flyers.md):
+  - a `flying` tag and a balance setting, `flying`: units of 2+ supply, ranged units, turrets, other flyers,
+    clouds and powers reach a flyer, merging doesn't grant reach, melee ×1, and flyers hold no ground;
+  - the Driftling (70 HP, light, 8 slash a second, 1 supply, speed 1.4) and its Drift Stalk (160 gold, two
+    every 18 s, `aiWeight` 1), in both rosters, as content under the preset;
+  - sprites in `data/sprites/` (display only). The Bloatcap isn't built.
+- **The sanity pass on `rework` with both** (backlog, "After P2"): G4 at 200 passes (8:06, 12%, 52%), the strict
+  bar passes with flyers answering the swarm, and **mono Drift Stalk takes over G3 (89 / 96)**. Not retuned.
+
+## Combat rework P2 measurements (2026-10-31)
+
+**Nothing adopted; no shipped number, rule or default changed.** Goldens unchanged.
+- **`rework` became P2's package:** P1d's base without the Mortar's clouds, plus `stormwaves` at 0.2 (the
+  user's answers to P1d). The swarm read and flyers joined it after P2 (above).
+- **Tools:** `npm run experiment` gains `--g4seeds n`, and its g3 check runs on `--workers` threads.
+
+Results are in [the backlog](../docs/balance-backlog.md#combat-rework-p2-2026-10-31); P2 was wrapped up early for
+the playtest:
+- **The package passes the strict counter bar and G4 at 200 games** (7:56, 12.5% Decisions, bot wins 52%), and
+  fails G3 on mono Sporeling (85 / 86) and mono Veilstalker (72 / 87).
+- **Which pieces carry it:** waves and the two-type shields carry the strict bar, the storm carries G4, pinned
+  keeps the archers down, call for help keeps G2 healthy, and the Burster and the Elder change hold the swarm
+  and the runners in G3. The Rhizomorph carries nothing measured.
+- **The adaptive general doesn't answer the swarm** under the package (G8, 100 seeds).
+- **Runs:** battle-1 losses rise from 79 to 108 of 240 (Armilla and Cordis), and waves cause it.
+
+## Combat rework P1d prototypes (2026-10-31)
+
+**Nothing adopted; no shipped number, rule or default changed.** Goldens unchanged.
+- **Fix:** P1c's dead-unit skip in the attack loop now runs only with `burster` on. Before, a unit that
+  Vesper's Spore Burst killed lost that tick's attack in every battle. 72 commander battles now match develop.
+- **`rework` is the user's new base:**
+  - the six settings, with mixed waves at two types;
+  - the Burster;
+  - the Elder Sporeling's splash off, as a preset path (the shipped unit keeps it);
+  - a 20 s beat. Cleave stays its own preset.
+- **New `stormwaves` setting:** each Sporestorm stack makes both sides' waves 20% bigger, ×2 at five stacks
+  (8:00). Extra units need free supply, but the cap barely binds.
+
+Results are in [the backlog](../docs/balance-backlog.md#combat-rework-p1d-2026-10-31), G3 at 50 seeds:
+- **The base:** only mono Sporeling fails G3 (81 / 84), and the strict counter bar passes. G4 fails at 28%
+  Decisions.
+- **Without the Mortar's clouds:** G4 has 23% Decisions; mono Sporeling 83 / 86 and Veilstalker's worst
+  map (61) fail G3.
+- **Both stall routes:** G4 has 18% Decisions (7 of 40 games, where 6 is the limit), and G3's Decisions are
+  back to today's 7%. The strict bar passes with answers that win outright. Mono Sporeling (85 / 86) and
+  mono Veilstalker (72 / 87) fail G3.
+- Nothing passes G3, G4 and the strict bar, so P2's other checks weren't run.
+
+## Combat rework P1c prototypes (2026-10-30)
+
+**Nothing adopted; no shipped number, rule or default changed.** Two new default-off presets in
+`src/data/proto.ts`, so goldens and hashes are unchanged:
+- `cleave`: a Scythecap's swing hits every enemy unit within 1 tile of its target at full damage (1.2
+  and 1.4 tiles by tier).
+- `burster`: a new unit and spawner, the Burster and its Burster Pod (working names), which exist only
+  under the preset. A Burster rolls at the thickest knot of enemy units and bursts on reaching it or on
+  dying: 40 damage through any armor within 1.5 tiles, and a spore cloud (1.5 tiles, 4 s, 10 a second).
+- The one data change is their sprites in `data/sprites/` (display only, never in battle state).
+- `mixedwave` (and so `rework`) now needs 2 unit types, not 3: measured against 3, it helped `bot:balanced`
+  more in G3 at 20 s and 17 s, the user's rule for choosing.
+
+Results are in [the backlog](../docs/balance-backlog.md#combat-rework-p1c-2026-10-30):
+- With the Burster on two-type `rework`, the strict counter bar passes at 15, 17 and 20 s on every map,
+  Twin Roots included.
+- G3 still fails at every beat: mono Sporeling 89% at 20 s, Gill Nest and Sporeling 63–68% at 17 s, Gill
+  Nest 78% and the Rootbreaker on Twin Roots at 15 s.
+- G4 fails at every beat on Decisions (30–48%). The Burster's burst and the Mortar's clouds are the main
+  stallers.
+- Removing the Elder Sporeling's splash lowers mono Sporeling by 9–18 points under waves.
+
+## Combat rework P1b prototypes (2026-10-30)
+
+**Nothing adopted; no shipped number, rule or default changed.** P1b applies the user's answers to P1's
+questions, still as default-off presets in `src/data/proto.ts`, so goldens and hashes are unchanged:
+- `waves`: spawners behind a lane's front spawner release early, so the wave passes the front door
+  together on the beat; a hold lasts one beat, and the next beat always sends both waves.
+- `sporecloud`: the Mortar aims each shell at the densest cluster of enemy units in range.
+- `rhizomorph`: the Rhizomorph surfaces beside ranged units first and never where an enemy tower or
+  Heartcap turret covers it (it falls back to the front).
+- New `mixedwave` (with `waves`): a lane's wave of 3+ unit types sets out with shields of 20% of each
+  unit's max HP. It helped the mixed army, so `rework` now turns on all six settings.
+- The counter check's test bots carry `fixedWeights`, so the Rhizomorph's `aiWeight` skips them.
+
+Results are in [the backlog](../docs/balance-backlog.md#combat-rework-p1b-2026-10-30). G3 at 50 seeds per seat:
+- The five settings without `mixedwave`: mono Sporeling 96% mean / 99% worst, Gill Nest 68 / 79; no answer
+  to mono Sporeling reaches 60%, even on the mean. G4 fails (8:42, 23% Decisions).
+- `rework` (all six): Sporeling 95 / 98, Gill Nest 59 / 67; G4 passes (8:12, 15% Decisions, bot wins 43%).
+- Without waves: Sporeling 77 / 83, Gill Nest 80 / 95; mono Sporeling's answers fail on Twin Roots (best
+  45%), as on today's rules.
+- The beat length trades archers for swarms. With 15 s and 17 s beats, `rework` is the first variant to pass the
+  strict counter bar (every strong mono build has an answer ≥ 60% on every map), but G3 still fails (Gill Nest
+  82 / 75, Sporeling 58 / 74) and G4's Decisions reach 28% / 20%.
+
+## Combat rework P1 prototypes (2026-10-30)
+
+**Nothing adopted; no shipped number, rule or default changed.** The combat rework's five settings
+(`pinned`, `callforhelp`, `sporecloud`, `rhizomorph`, `waves`, and `rework` for all five) are presets in
+`src/data/proto.ts`, absent from `balance.json`, so goldens and hashes are unchanged. The Rhizomorph and
+its Rhizomorph Tunnel exist only under the `rhizomorph` preset; the one data change is their two sprites
+in `data/sprites/` (display only, never in battle state). First numbers (G3 at 20 seeds per seat) are in
+[the backlog](../docs/balance-backlog.md#combat-rework-p1-2026-10-30):
+- `rework`: mono Gill Nest 74% mean / 83% worst (from 86 / 100), but mono Sporeling 94 / 98 and mono
+  Veilstalker 63 / 90; G4 fails (8:51 median, 33% Decisions, bot wins 20%).
+- `waves` alone makes swarms dominant (Sporeling 90 / 98); `pinned` is the only piece that moves the
+  archers alone (75 / 93).
+
 ## Second-front test maps (2026-10-30)
 
 **Nothing adopted; no shipped number, rule, map or default changed.** Four test-only maps in

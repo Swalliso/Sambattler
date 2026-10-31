@@ -14,7 +14,7 @@ import { uiIcon } from '../icons.ts';
 import { KIND_HINT, KIND_ICON, KIND_LABEL, intentOf, wavesText } from '../doctrine.ts';
 import type { Intent } from '../doctrine.ts';
 import { AnchoredTip } from '../tooltip.ts';
-import { goldTip, stormTip, supplyTip, territoryTip, waveTip } from './explain.ts';
+import { beatTip, goldTip, stormTip, supplyTip, territoryTip, waitingUnits, waveTip } from './explain.ts';
 import { KitView } from './kit.ts';
 
 /** A Heartcap's block: its cap, HP and a bar that drains toward the field's centre. */
@@ -87,6 +87,11 @@ export class TopBand {
   private clock = h('small', { id: 'hud-clock' });
   private storm = h('b', { id: 'hud-storm' });
   private stormStat: HTMLElement;
+  /** Combat rework `waves`: seconds to the next beat, the units waiting for it, and a bar filling toward it. */
+  private beat = h('b', { id: 'hud-beat' });
+  private beatWaiting = h('small', { id: 'hud-beat-waiting' });
+  private beatFill = h('i');
+  private beatStat: HTMLElement | null = null;
   private colsP = h('span', { class: 'p' });
   private colsE = h('span', { class: 'e' });
   private hearts: HeartBar[];
@@ -123,11 +128,16 @@ export class TopBand {
     this.tip.attach(supplyStat, supplyTip(content, atlas, state));
     this.tip.attach(waveStat, waveTip(content, atlas, state));
     this.tip.attach(this.stormStat, stormTip(content, atlas, state));
+    if (state.rules.waves) {
+      this.beatStat = h('span', { class: 'chip beat', id: 'chip-beat', 'aria-label': 'Next wave' }, uiIcon(atlas, 'i-hold'), this.beat, this.beatWaiting,
+        h('span', { class: 'beatbar', 'aria-hidden': 'true' }, this.beatFill));
+      this.tip.attach(this.beatStat, beatTip(content, atlas, state));
+    }
     this.tip.attach(tug, territoryTip(content, atlas, state));
     this.el = h('header', { class: 'top' },
       this.hearts[0]!.el,
       h('div', { class: 'mid' },
-        h('div', { class: 'chips', 'data-native-tab': '' }, this.goldStat, supplyStat, waveStat, this.stormStat, this.kit.chip),
+        h('div', { class: 'chips', 'data-native-tab': '' }, this.goldStat, supplyStat, waveStat, this.beatStat, this.stormStat, this.kit.chip),
         tug,
         h('div', { class: 'tug-label', id: 'hud-columns' }, this.colsP, h('span', { class: 'muted' }, 'territory'), this.colsE),
       ),
@@ -191,6 +201,15 @@ export class TopBand {
     setText(this.wave, String(state.phase === 'deploy' ? 0 : wave));
     setText(this.clock, formatClock(state.tick, state.rules.tickRate));
     setText(this.storm, String(state.sporestorm));
+    if (this.beatStat) {
+      const beat = state.compiled.player.waveBeatTicks!;
+      const left = state.phase === 'deploy' ? beat : beat - (state.tick % beat);
+      setText(this.beat, `${Math.ceil(left / state.rules.tickRate)}s`);
+      const waiting = waitingUnits(state, 'player');
+      setText(this.beatWaiting, waiting ? `+${waiting}` : '');
+      this.beatFill.style.width = `${Math.round((100 * (beat - left)) / beat)}%`;
+      toggleClass(this.beatStat, 'soon', left <= 3 * state.rules.tickRate);
+    }
     toggleClass(this.stormStat, 'on', state.sporestorm > 0);
     for (const b of this.hearts) b.update(state);
     for (const l of this.lanes) l.update(state);

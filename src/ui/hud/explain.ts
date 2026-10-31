@@ -242,3 +242,58 @@ export function territoryTip(content: Content, atlas: Atlas, state: BattleState)
     },
   };
 }
+
+/** Combat rework `waves`: units waiting inside `side`'s spawners for its next wave. */
+export function waitingUnits(state: BattleState, side: 'player' | 'enemy'): number {
+  let n = 0;
+  for (const b of state.buildings) if (b.side === side) n += b.stored ?? 0;
+  return n;
+}
+
+/**
+ * Combat rework `mixedWave`: the unit types in `side`'s next wave in `lane`, counting the units
+ * still inside its spawners and those that already left early for it.
+ */
+export function nextWaveTypes(state: BattleState, side: 'player' | 'enemy', lane: number): number {
+  const beat = state.compiled[side].waveBeatTicks!;
+  const next = Math.ceil(state.tick / beat);
+  const types = new Set<string>();
+  for (const b of state.buildings) {
+    if (b.side !== side || b.lane !== lane || !b.stored) continue;
+    const unit = state.compiled[side].buildings[b.buildingId]?.spawn?.unit;
+    if (unit) types.add(unit);
+  }
+  for (const u of state.units) if (u.side === side && u.lane === lane && u.wave === next && u.hp > 0) types.add(u.unitId);
+  return types.size;
+}
+
+/** Combat rework `waves` (a prototype): the beat chip's tip, when the next wave leaves and how Hold works with waves. */
+export function beatTip(content: Content, atlas: Atlas, state: BattleState): TipSource {
+  return {
+    key: () => `${Math.floor(state.tick / state.rules.tickRate)}|${state.phase}|${waitingUnits(state, 'player')}|${state.sporestorm}`,
+    build: () => {
+      const beat = state.compiled.player.waveBeatTicks!;
+      const left = state.phase === 'deploy' ? beat : beat - (state.tick % beat);
+      const waiting = waitingUnits(state, 'player');
+      const mixed = state.rules.mixed;
+      const lanes = state.lanes.map((_, li) => nextWaveTypes(state, 'player', li));
+      const kinds = (n: number) => `${n} unit type${n === 1 ? '' : 's'}`;
+      return [
+        head(atlas, 'i-wave', 'Next wave', clock(state, left)),
+        para(`Your spawners keep their units inside until the next wave. Every ${clock(state, beat)}, both sides send their waves out at once; a spawner behind your front one lets its units out early, so they join the wave as it passes.`),
+        row('Waiting inside', h('b', null, `${waiting} unit${waiting === 1 ? '' : 's'}`), 'they count toward supply'),
+        ...(mixed ? [
+          row('Next wave', h('b', null, lanes.length > 1 ? lanes.map((n, li) => `lane ${li + 1}: ${n}`).join(' · ') : kinds(lanes[0] ?? 0)),
+            lanes.some((n) => n >= mixed.minTypes) ? 'mixed: it sets out shielded' : `${mixed.minTypes} types make a mixed wave`),
+          para(`A lane's wave of ${mixed.minTypes} or more unit types sets out with shields worth ${Math.round(mixed.shieldFrac * 100)}% of each unit's HP. A shield takes damage first and never comes back.`),
+        ] : []),
+        ...(state.rules.stormWaves ? [
+          row('Sporestorm', h('b', null, `waves ×${(Math.round(10 * (1 + state.rules.stormWaves.perStack * state.sporestorm)) / 10).toFixed(1)}`),
+            `each storm stack adds ${Math.round(state.rules.stormWaves.perStack * 100)}% (extra units need free supply)`),
+        ] : []),
+        para('A wave marches at the pace of its slowest unit, with ranged units a tile behind their melee.'),
+        h('p', { class: 'tip-foot' }, 'Hold a lane to keep its next wave home for one beat: the beat after sends both waves, and the lane can hold again once they have left.'),
+      ];
+    },
+  };
+}

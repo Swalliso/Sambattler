@@ -1,6 +1,6 @@
 # Flyers: spores on the wind
 
-Drafted on 2026-10-31 against `c556f3c`, with the combat rework's package as P1c left it on `feature/combat-rework` (`e648dee`). **Nothing here is built or adopted.** The user approved flying units in principle on 2026-10-30 ("Burrowing and flying units are in") and scheduled them for after P2 of the [combat rework](combat-rework.md#flyers-later), so that the rework's pieces could be measured cleanly first. This is the design to build once P2 ends. Rule changes still need the user's OK, with numbers; the numbers here are starting points for that measurement.
+Drafted on 2026-10-31 against `c556f3c`, with the combat rework's package as P1c left it on `feature/combat-rework` (`e648dee`). **Nothing here is adopted.** The user approved flying units in principle on 2026-10-30 ("Burrowing and flying units are in") and scheduled them for after P2 of the [combat rework](combat-rework.md#flyers), so that the rework's pieces could be measured cleanly first. Later on 2026-10-31 the user had them built for the playtest instead: `rework` includes them as the default-off `flyers` setting, without the Bloatcap, and the backlog's [After P2](../balance-backlog.md#after-p2-the-swarm-read-and-flyers) says how the open questions were settled. Rule changes still need the user's OK, with numbers; the numbers here are starting points for that measurement.
 
 P1, P1b and P1c's results are in the backlog on `feature/combat-rework` (sections "Combat rework P1", "P1b" and "P1c"), which isn't merged yet, so they're cited here without links.
 
@@ -447,7 +447,7 @@ Each runs on top of the package P4 adopts, written `<package>` below. `flyers` a
 
 ### Checks and bars
 
-P2's bars ([P2: measure](combat-rework.md#p2-measure)):
+P2's bars ([P2: measure](combat-rework.md#p2-measure-done)):
 - **G3, with mono flyers added:** every mono bot against `bot:balanced` on every run map, mono Drift Stalk included. Mean ≤ 55% and worst map ≤ 60%, at 50 seeds per seat ([the rewrite](../balance-backlog.md#g3-on-every-map-the-rewrite-2026-10-30)).
 - **The strict counter bar** (`--checks counters`, [the check](combat-rework.md#the-counter-matrix-check)): every mono build with a G3 mean above 40% needs an answer that wins at least 60% on every map, and that answer mustn't fail G3 itself. The Drift Stalk joins the pairs and the mono answers on its own.
 - **G4:** median 5:30–8:30, Decisions ≤ 15%, bot wins 30–70%.

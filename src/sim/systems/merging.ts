@@ -7,6 +7,7 @@ import { addUnit } from '../create.ts';
 import { fireTriggers } from '../effects.ts';
 import { SIDES } from '../state.ts';
 import type { BattleState, Side, Tier, UnitState } from '../state.ts';
+import { unitDef } from '../world.ts';
 
 // Reused scratch (no allocation in the hot loop once warm). `eligible` may hold stale entries past
 // the count in use; they are overwritten on the next pass.
@@ -24,7 +25,8 @@ export function mergingSystem(state: BattleState): void {
 
 /** True if `u` may join a new trio now (SPEC §5.6 eligibility). */
 export function canMerge(state: BattleState, u: UnitState): boolean {
-  return u.tier < 3 && u.mergeOn && !u.knit && u.hp > 0 && state.tick - u.lastCombatTick >= state.rules.merge.cooldownTicks;
+  return u.tier < 3 && u.mergeOn && !u.knit && !u.burrowed && u.hp > 0 && state.tick - u.lastCombatTick >= state.rules.merge.cooldownTicks
+    && !(state.rules.burst && unitDef(state, u).tags.includes('burst')); // combat rework: a Burster is spent whole, never merged
 }
 
 function resolveKnits(state: BattleState): void {
@@ -96,10 +98,11 @@ function complete(state: BattleState, trio: UnitState[]): number {
   const lowest = trio[0]!;
   const side = lowest.side;
   const tier = (lowest.tier + 1) as Tier;
-  let x = 0, y = 0, spawnY = 0, hp = 0, maxHp = 0, supply = 0, lastCombat = -Infinity;
+  let x = 0, y = 0, spawnY = 0, hp = 0, maxHp = 0, supply = 0, shield = 0, lastCombat = -Infinity;
   for (const u of trio) {
     x += u.x; y += u.y; spawnY += u.spawnY;
     hp += u.hp; maxHp += u.maxHp; supply += u.supply;
+    if (u.shield) shield += u.shield;
     if (u.lastCombatTick > lastCombat) lastCombat = u.lastCombatTick;
     if (u.tier === 1) noteMerged(state, side, u.id, u.sourceBuildingId);
     u.knit = undefined;
@@ -112,6 +115,11 @@ function complete(state: BattleState, trio: UnitState[]): number {
   m.spawnY = spawnY / 3;
   m.mergeOn = lowest.mergeOn;
   m.lastCombatTick = lastCombat;
+  if (lowest.wave !== undefined) m.wave = lowest.wave; // combat rework `waves`: it marches with its wave
+  if (shield > 0) { // combat rework `mixedWave`: the trio's shields carry over in proportion, as their HP does
+    const kept = Math.round((m.maxHp * shield) / maxHp);
+    if (kept > 0) m.shield = kept;
+  }
   state.stats[side].merges[tier === 2 ? '2' : '3']++;
   state.events.push({ t: 'merged', side, id: m.id, unitId: m.unitId, tier: tier as 2 | 3, x: m.x, y: m.y });
   const def = state.compiled[side].units[m.unitId]!;

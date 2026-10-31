@@ -6,10 +6,11 @@ import { fireTriggers } from './effects.ts';
 import { powerClock } from './powers.ts';
 import { healingSystem } from './systems/healing.ts';
 import { attackSystem, deathSystem, resolveHitsSystem } from './systems/combat.ts';
+import { cloudSystem } from './systems/clouds.ts';
 import { clockSystem, incomeSystem } from './systems/economy.ts';
 import { mergingSystem } from './systems/merging.ts';
 import { movementSystem } from './systems/movement.ts';
-import { spawningSystem } from './systems/spawning.ts';
+import { spawningSystem, waveSystem } from './systems/spawning.ts';
 import { stanceSystem } from './systems/stance.ts';
 import { targetingSystem } from './systems/targeting.ts';
 import { territorySystem } from './systems/territory.ts';
@@ -52,8 +53,9 @@ export function step(state: BattleState): void {
   powerClock(state);
   // 4. income and interest
   incomeSystem(state);
-  // 5. building timers and spawns
+  // 5. building timers and spawns (and, with the combat rework's waves, each side's beat)
   spawningSystem(state);
+  if (state.rules.waves) waveSystem(state);
   // 6. AI: the counter cycle's analyses and activations (adaptive sides only), then think
   for (const side of SIDES) if (state.sides[side].ai?.counter) counterTick(state, side);
   if (state.tick % state.rules.ai.thinkEvery === 0) {
@@ -65,8 +67,9 @@ export function step(state: BattleState): void {
   movementSystem(state);
   // 9. attacks
   attackSystem(state);
-  // 10. resolve hits due this tick
+  // 10. resolve hits due this tick (and, with the combat rework's spore clouds, the clouds' pulses)
   resolveHitsSystem(state);
+  if (state.clouds) cloudSystem(state);
   // 11. healing (Tenders) and out-of-combat regeneration
   healingSystem(state);
   // 12. deaths and removals

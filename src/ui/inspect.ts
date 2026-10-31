@@ -5,7 +5,7 @@
 import type { Content } from '../data/registry.ts';
 import { sellValue } from '../sim/index.ts';
 import type { BattleState } from '../sim/index.ts';
-import { findBuilding, findUnit, isBesieged, isSuppressed, tierDef } from '../sim/world.ts';
+import { findBuilding, findUnit, isBesieged, isSuppressed, reachesAir, tierDef } from '../sim/world.ts';
 import { h, setText, toggleClass } from './h.ts';
 import { strongVs, vulnerableTo, weakVs } from './matrixHints.ts';
 import { TIER_NAME, TIER_PIPS, perkText } from './mergeHints.ts';
@@ -122,18 +122,24 @@ export class InspectPanel {
     this.el.dataset.mode = 'unit';
     const pairs: [string, string][] = [
       ['Tier', `${TIER_NAME[u.tier - 1]} ${TIER_PIPS[u.tier - 1]}`.trim()],
-      ['HP', `${u.hp} / ${u.maxHp}`],
+      ['HP', `${u.hp} / ${u.maxHp}${u.shield ? ` + ${u.shield} shield` : ''}`],
       ...(t.healAmount > 0
         ? [['Heals', `${t.healAmount} HP / ${t.healTicks / state.rules.tickRate}s · ${t.healTargets} target${t.healTargets > 1 ? 's' : ''} · range ${t.range}`] as [string, string]]
+        : state.rules.burst && def.tags.includes('burst')
+        ? [['Burst', `${Math.round(t.damage)} through any armor within ${t.splashRadius} tiles, then a spore cloud`] as [string, string]]
         : [
           ['Damage', `${Math.round(t.damage * 10) / 10} ${def.damageType} / ${t.attackTicks / state.rules.tickRate}s`] as [string, string],
           ['Hits hard', `strong vs ${strongVs(state, def.damageType)} · weak vs ${weakVs(state, def.damageType)}`] as [string, string],
         ]),
       ['Armor', `${def.armor} (fears ${vulnerableTo(state, def.armor)})`],
     ];
+    const fly = state.rules.flying;
+    if (u.flying) pairs.push(['Flying', `only big units, archers, turrets and other flyers can hit it${fly!.holdsGround ? '' : '; holds no ground'}`]);
+    else if (fly && t.healAmount === 0) pairs.push(['Flyers', reachesAir(state, u) ? 'can hit them' : "can't reach them"]);
     if (t.slayerMult !== 1) pairs.push(['Slayer', `×${t.slayerMult} vs Bloomed & Elder`]);
     if (u.tier > 1) pairs.push(['Perk', perkText(this.content, u.unitId, u.tier)]);
-    if (u.knit) pairs.push(['Status', `merging · ${TIER_NAME[u.tier === 1 ? 1 : 2]} in ${(Math.max(0, u.knit.untilTick - state.tick) / state.rules.tickRate).toFixed(1)}s`]);
+    if (u.burrowed) pairs.push(['Status', 'tunnelling: can\'t be hit, surfaces beside an archer (else a spawner) out of turret range']);
+    else if (u.knit) pairs.push(['Status', `merging · ${TIER_NAME[u.tier === 1 ? 1 : 2]} in ${(Math.max(0, u.knit.untilTick - state.tick) / state.rules.tickRate).toFixed(1)}s`]);
     else if (state.config.flags.merging && u.tier < 3) pairs.push(['Merge', u.mergeOn ? 'on' : 'off (its building)']);
     pairs.push(['Damage / s', this.log.dps(state, u.id).toFixed(1)], ['Kills', String(this.log.kills.get(u.id) ?? 0)]);
     this.buttons.hidden = true;
@@ -153,6 +159,7 @@ export class InspectPanel {
       const ticks = b.holding ? 0 : Math.ceil(b.timer / (slowed ? state.rules.besiegedHalfTicks : state.rules.normalHalfTicks));
       pairs.push(['Next spawn', b.holding ? 'waiting for supply ⬢!' : `${(ticks / state.rules.tickRate).toFixed(1)}s${slowed ? ' (½ speed)' : ''}`]);
       pairs.push(['Living units', String(state.units.filter((x) => x.sourceBuildingId === b.id).length)]);
+      if (state.rules.waves) pairs.push(['Waiting inside', `${b.stored ?? 0} (out with the next wave)`]);
     }
     if (cb.attack) pairs.push(['Attack', `${cb.attack.damageType} ${cb.attack.damage} · range ${cb.attack.minRange}–${cb.attack.range}`]);
     pairs.push(['Damage dealt', String(state.stats[b.side].damageByBuilding[String(b.id)] ?? 0)]);

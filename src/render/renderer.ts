@@ -20,6 +20,8 @@ export const TILE = 16;
 const STRIP = 2; // Heartcap strip width in tiles on each side
 /** Sprite scale per merge tier (SPEC §10.4: "a slightly larger sprite"). */
 const TIER_SCALE = [1, 1.25, 1.5];
+/** Combat rework `flyers`: how far a flyer's sprite floats above its shadow, in pixels (half a tile). */
+export const FLY_LIFT = 8;
 /** "Big hits only" shows damage numbers from this amount up. */
 export const BIG_HIT = 30;
 export type DamageNumbers = 'off' | 'big' | 'all';
@@ -126,6 +128,8 @@ export class Renderer {
   damageNumbers: DamageNumbers = 'off';
   /** A bar under each of your spawners, filling toward its next spawn (the settings screen). */
   spawnTimers = true;
+  /** Ambient motion holds still (`?test=1`, set by the battle view): flyers don't bob. */
+  still = false;
   private assist = false;
   private sorted: UnitState[] = [];
   private eligible: UnitState[] = [];
@@ -251,6 +255,7 @@ export class Renderer {
         const pulse = state.compiled[e.side].triggers.find((t) => t.on === 'heartcapBreach' && t.at === e.at)?.do.find((a) => 'explode' in a);
         if (pulse && 'explode' in pulse) this.effects.add(12, e.x, e.y, now, e.side === 'player' ? 0 : 1, pulse.explode.radius);
       }
+      else if (e.t === 'burst') this.effects.add(13, e.x, e.y, now, e.side === 'player' ? 0 : 1, e.radius); // combat rework Burster
       else if (e.t === 'spawned') {
         const u = state.units.find((x) => x.id === e.id);
         if (u) this.effects.add(7, u.x, u.y, now, 0);
@@ -301,6 +306,8 @@ export class Renderer {
       if (b.hp < b.maxHp) this.bar(x + 2, y + 1, def.w * TILE - 4, b.hp / b.maxHp, b.side);
       if (besieged) this.glyph('½', x + def.w * TILE - 7, y + 10, '#ffb4a8');
       if (b.holding) this.glyph('⬢!', x + 2, y + 10, '#f0c85a');
+      // combat rework `waves`: the units waiting inside for the next wave
+      if (b.stored) this.glyph(`+${b.stored}`, x + 2, y + def.h * TILE - 3, this.mat(b.side).glow);
       if (def.spawn && !b.mergeOn) this.knotOff(x + def.w * TILE - 9, y + def.h * TILE - 9, this.mat(b.side).glow);
       if (this.spawnTimers && def.spawn && b.side === 'player') this.spawnTimer(state, b, def, x, y);
     }
@@ -323,36 +330,21 @@ export class Renderer {
       }
     }
 
+    if (state.clouds?.length) this.drawClouds(state, t);
     this.drawMergeLinks(state, alpha, t);
 
-    // units, sorted by y then id; merged units are drawn larger, with tier pips
+    // units, sorted by y then id; merged units are drawn larger, with tier pips; flyers (combat rework
+    // `flyers`) go last, over every ground unit, raised above their shadows
     const us = this.sorted;
     us.length = 0;
     for (const u of state.units) us.push(u);
     us.sort((a, b) => a.y - b.y || a.id - b.id);
+    let flyers = false;
     for (const u of us) {
-      const x = u.px + (u.x - u.px) * alpha;
-      const y = u.py + (u.y - u.py) * alpha;
-      const sprite = this.content.units[u.unitId]!.sprite;
-      const moving = u.x !== u.px || u.y !== u.py;
-      const attacking = state.tick - u.lastAttackTick < 6 && u.lastAttackTick >= 0;
-      const frame = attacking ? 2 : moving ? Math.floor(t / 250 + u.id) % 2 : 0;
-      const flip = u.side === 'enemy';
-      const r = this.atlas.get(sprite, factionOf(u.side), frame, flip);
-      if (!r) continue;
-      const scale = TIER_SCALE[u.tier - 1]!;
-      const w = Math.round(r.w * scale), hgt = Math.round(r.h * scale);
-      const dx = Math.round(this.sx(x) - r.ax * scale), dy = Math.round(y * TILE - r.ay * scale);
-      if (u.tier === 3) this.elderAura(this.sx(x), y * TILE, w, this.mat(u.side).glow, t + u.id * 37);
-      if (this.assist) teamMark(g, Math.round(this.sx(x)), Math.round(y * TILE), w, u.side);
-      g.drawImage(this.atlas.canvas as CanvasImageSource, r.x, r.y, r.w, r.h, dx, dy, w, hgt);
-      if (u.id === view.selected) {
-        g.strokeStyle = '#ffe9a8';
-        g.strokeRect(dx - 0.5, dy - 0.5, w + 1, hgt + 1);
-      }
-      if (u.tier > 1) this.pips(Math.round(this.sx(x)), dy - (u.hp < u.maxHp ? 7 : 4), u.tier - 1);
-      if (u.hp < u.maxHp) this.bar(dx + 1, dy - 3, w - 2, u.hp / u.maxHp, u.side);
+      if (u.flying) flyers = true;
+      else this.drawUnit(state, view, u, alpha, t);
     }
+    if (flyers) for (const u of us) if (u.flying) this.drawUnit(state, view, u, alpha, t);
     this.drawKnits(state, alpha, t);
 
     // projectiles
@@ -433,9 +425,125 @@ export class Renderer {
     }
   }
 
-  /** Prototype E1: a marching dashed rally line, topped by a pennant, in every lane a side holds. */
+  /**
+   * Combat rework `sporeCloud`: each cloud is a soft spore haze in its owner's glow, clipped to its
+   * lane, with spores drifting in it; it thins over its last quarter.
+   */
+  private drawClouds(state: BattleState, t: number): void {
+    const g = this.ctx;
+    for (const cl of state.clouds!) {
+      const L = state.lanes[cl.lane]!;
+      const fade = Math.min(1, (4 * (cl.untilTick - state.tick)) / Math.max(1, cl.untilTick - cl.fromTick));
+      const cx = this.sx(cl.x), cy = cl.y * TILE, r = cl.radius * TILE;
+      g.save();
+      g.beginPath();
+      g.rect(0, L.rowStart * TILE, this.width, (L.rowEnd + 1 - L.rowStart) * TILE);
+      g.clip();
+      g.fillStyle = this.mat(cl.side).glow;
+      g.globalAlpha = 0.14 * fade;
+      g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.fill();
+      g.globalAlpha = 0.22 * fade;
+      g.beginPath(); g.arc(cx, cy, r * 0.62, 0, Math.PI * 2); g.fill();
+      g.globalAlpha = 0.85 * fade;
+      g.fillStyle = '#fbf6ff'; // spore-white: spores are the one particle
+      for (let i = 0; i < 10; i++) {
+        const a = i * 2.39996 + cl.id + t * 0.0007 * (i % 2 ? 1 : -1);
+        const d = r * (0.2 + (0.75 * ((i * 37 + cl.id * 13) % 10)) / 10);
+        g.fillRect(Math.round(cx + Math.cos(a) * d), Math.round(cy + Math.sin(a) * d * 0.8), 1, 1);
+      }
+      g.restore();
+    }
+  }
+
+  /**
+   * One unit: its sprite at its foot point (merged units larger, with tier pips), shield ring, HP bar
+   * and selection box. A tunnelling Rhizomorph is a mound; a flyer floats `FLY_LIFT` px above a shadow
+   * on the ground, bobbing a pixel unless ambient motion holds still.
+   */
+  private drawUnit(state: BattleState, view: View, u: UnitState, alpha: number, t: number): void {
+    const g = this.ctx;
+    const x = u.px + (u.x - u.px) * alpha;
+    const y = u.py + (u.y - u.py) * alpha;
+    if (u.burrowed) { this.mound(this.sx(x), y * TILE, u, t, view.selected === u.id); return; }
+    const sprite = this.content.units[u.unitId]!.sprite;
+    const moving = u.x !== u.px || u.y !== u.py;
+    const attacking = state.tick - u.lastAttackTick < 6 && u.lastAttackTick >= 0;
+    const frame = attacking ? 2 : moving ? Math.floor(t / 250 + u.id) % 2 : 0;
+    const flip = u.side === 'enemy';
+    const r = this.atlas.get(sprite, factionOf(u.side), frame, flip);
+    if (!r) return;
+    const scale = TIER_SCALE[u.tier - 1]!;
+    const w = Math.round(r.w * scale), hgt = Math.round(r.h * scale);
+    const lift = u.flying ? FLY_LIFT + (this.calm() ? 0 : Math.floor(t / 320 + u.id) % 2) : 0;
+    const dx = Math.round(this.sx(x) - r.ax * scale), dy = Math.round(y * TILE - r.ay * scale) - lift;
+    if (this.assist) teamMark(g, Math.round(this.sx(x)), Math.round(y * TILE), w, u.side);
+    if (u.flying) this.flyerShadow(this.sx(x), y * TILE, w);
+    if (u.tier === 3) this.elderAura(this.sx(x), y * TILE - lift, w, this.mat(u.side).glow, t + u.id * 37);
+    g.drawImage(this.atlas.canvas as CanvasImageSource, r.x, r.y, r.w, r.h, dx, dy, w, hgt);
+    if (u.shield) this.shieldRing(this.sx(x), dy + hgt / 2, w, hgt, u.shield / Math.max(1, u.maxHp * (state.rules.mixed?.shieldFrac ?? 1)));
+    if (u.id === view.selected) {
+      g.strokeStyle = '#ffe9a8';
+      g.strokeRect(dx - 0.5, dy - 0.5, w + 1, hgt + 1);
+    }
+    if (u.tier > 1) this.pips(Math.round(this.sx(x)), dy - (u.hp < u.maxHp ? 7 : 4), u.tier - 1);
+    if (u.hp < u.maxHp) this.bar(dx + 1, dy - 3, w - 2, u.hp / u.maxHp, u.side);
+  }
+
+  /** Ambient motion holds still: `?test=1` (set by the battle view) or reduced motion. */
+  private calm(): boolean {
+    return this.still || (typeof document !== 'undefined' && document.documentElement.classList.contains('reduce-motion'));
+  }
+
+  /** Combat rework `flyers`: a soft dark oval on the ground under a flyer, where it really stands. */
+  private flyerShadow(cx: number, footY: number, w: number): void {
+    const g = this.ctx;
+    const x = Math.round(cx), y = Math.round(footY);
+    const half = Math.max(3, Math.round(w * 0.3));
+    g.fillStyle = 'rgba(18, 10, 22, 0.4)';
+    g.fillRect(x - half, y - 1, half * 2, 2);
+    g.fillRect(x - half + 2, y - 2, half * 2 - 4, 1);
+    g.fillRect(x - half + 2, y + 1, half * 2 - 4, 1);
+  }
+
+  /** Combat rework (the Rhizomorph): a tunnelling unit is a mound of earth on the move, kicking up crumbs behind it. */
+  private mound(cx: number, footY: number, u: UnitState, t: number, selected: boolean): void {
+    const g = this.ctx;
+    const x = Math.round(cx), y = Math.round(footY);
+    // a dark outline, the earth, a lit crest and a glowing seam where the hyphae break the surface
+    g.fillStyle = INK_DEEP;
+    g.fillRect(x - 8, y - 3, 16, 4);
+    g.fillRect(x - 6, y - 5, 12, 2);
+    g.fillRect(x - 3, y - 6, 6, 1);
+    g.fillStyle = '#5c4330';
+    g.fillRect(x - 7, y - 3, 14, 3);
+    g.fillRect(x - 5, y - 5, 10, 2);
+    g.fillStyle = '#7a5236';
+    g.fillRect(x - 4, y - 5, 6, 1);
+    g.fillRect(x - 2, y - 6, 3, 1);
+    g.fillStyle = this.mat(u.side).glow;
+    g.fillRect(x - 3, y - 2, 1, 1);
+    g.fillRect(x + 1, y - 3, 1, 1);
+    g.fillRect(x + 4, y - 2, 1, 1);
+    // crumbs thrown up behind it as it goes
+    const back = u.side === 'player' ? -1 : 1;
+    g.fillStyle = '#7a5236';
+    for (let i = 0; i < 4; i++) {
+      const k = (Math.floor(t / 110) + u.id + i) % 5;
+      g.fillRect(x + back * (8 + 2 * k), y - 2 - (k % 3), 1, 1);
+    }
+    if (selected) {
+      g.strokeStyle = '#ffe9a8';
+      g.strokeRect(x - 9.5, y - 7.5, 19, 10);
+    }
+  }
+
+  /**
+   * Prototype E1: a marching dashed rally line, topped by a pennant, in every lane a side holds. Under
+   * the combat rework's waves a hold keeps the wave in its buildings, so only the pennant shows.
+   */
   private drawRally(state: BattleState, t: number): void {
     const g = this.ctx;
+    const waves = !!state.rules.waves;
     for (const side of ['player', 'enemy'] as Side[]) {
       for (let li = 0; li < state.lanes.length; li++) {
         if (!holdsLane(state, side, li)) continue;
@@ -446,10 +554,10 @@ export class Renderer {
         const shift = Math.floor(t / 120) % 6;
         g.globalAlpha = 0.55;
         g.fillStyle = '#120a16'; // a dark backing stripe keeps the line readable on the side's own mat
-        g.fillRect(x - 1, top, 3, bottom - top);
+        g.fillRect(x - 1, top, 3, waves ? 7 : bottom - top);
         g.globalAlpha = 0.95;
         g.fillStyle = glow;
-        for (let y = top + 6 + shift; y < bottom; y += 6) g.fillRect(x, y, 1, 3);
+        if (!waves) for (let y = top + 6 + shift; y < bottom; y += 6) g.fillRect(x, y, 1, 3);
         g.fillRect(x, top, 1, 6);
         const dir = side === 'player' ? -1 : 1; // the pennant flies back toward home
         for (let i = 0; i < 4; i++) g.fillRect(dir < 0 ? x - 1 - i : x + 1, top + i / 2, i + 1, 4 - i);
@@ -578,6 +686,25 @@ export class Renderer {
     g.fillStyle = color;
     g.beginPath();
     g.ellipse(cx, footY - 1, w * 0.55, 3.5, 0, 0, Math.PI * 2);
+    g.fill();
+    g.globalAlpha = 1;
+  }
+
+  /**
+   * Combat rework `mixedWave`: a pale bubble round a shielded unit, fading as the shield wears down
+   * (`frac`: what is left of the shield it set out with).
+   */
+  private shieldRing(cx: number, cy: number, w: number, h: number, frac: number): void {
+    const g = this.ctx;
+    const k = Math.max(0, Math.min(1, frac));
+    g.globalAlpha = 0.2 + 0.5 * k;
+    g.strokeStyle = '#cfe8ff';
+    g.lineWidth = 1;
+    g.beginPath();
+    g.ellipse(Math.round(cx) + 0.5, Math.round(cy) + 0.5, w * 0.62 + 1, h * 0.58 + 1, 0, 0, Math.PI * 2);
+    g.stroke();
+    g.globalAlpha = 0.08 + 0.1 * k;
+    g.fillStyle = '#cfe8ff';
     g.fill();
     g.globalAlpha = 1;
   }

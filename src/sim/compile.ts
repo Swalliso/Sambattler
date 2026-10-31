@@ -79,6 +79,29 @@ export function compileRules(b: BalanceDef, config: BattleConfig): Rules {
     } : {}),
     ...(b.hotStart?.deployDraft ? { deployDraft: { ...b.hotStart.deployDraft } } : {}),
     ...(b.bigDrafts ? { bigDrafts: { picks: b.bigDrafts.picks ?? 1, rareBonus: b.bigDrafts.rareBonus ?? 0 } } : {}),
+    ...(b.pinned ? { pin: { radius: b.pinned.radius, permille: Math.round(b.pinned.rateMult * 1000) } } : {}),
+    ...(b.callForHelp ? { help: { radius: b.callForHelp.radius } } : {}),
+    ...(b.waves ? { waves: { rangedGap: b.waves.rangedGap ?? 1, matchPace: b.waves.matchPace ?? true } } : {}),
+    ...(b.waves && b.mixedWave ? { mixed: { minTypes: b.mixedWave.minTypes, shieldFrac: b.mixedWave.shieldFrac } } : {}),
+    ...(b.cleave ? { cleave: { units: [...b.cleave.units] } } : {}),
+    ...(b.waves && b.stormWaves ? { stormWaves: { perStack: b.stormWaves.perStack } } : {}),
+    ...(b.flying ? { flying: { ...b.flying } } : {}),
+    ...(b.burst ? {
+      burst: {
+        cloud: {
+          radius: b.burst.cloud.radius, ticks: secToTicks(b.burst.cloud.seconds, tr), pulseTicks: secToTicks(1, tr),
+          damage: Math.max(1, Math.round(b.burst.cloud.damagePerSecond)),
+        },
+      },
+    } : {}),
+    ...(b.sporeCloud ? {
+      cloud: {
+        buildings: [...b.sporeCloud.buildings], radius: b.sporeCloud.radius, ticks: secToTicks(b.sporeCloud.seconds, tr),
+        pulseTicks: Math.max(1, secToTicks(b.sporeCloud.pulseSeconds ?? 1, tr)),
+        damage: Math.max(1, Math.round(b.sporeCloud.damagePerSecond * (b.sporeCloud.pulseSeconds ?? 1))),
+        aiCover: b.sporeCloud.aiCover ?? 1,
+      },
+    } : {}),
     timeLimitTicks: secToTicks(test.timeLimitSeconds ?? b.timeLimitSeconds, tr),
     captureStep: 100,
     captureThreshold: Math.round(b.captureSeconds * tr * 100),
@@ -137,6 +160,7 @@ export function compileRules(b: BalanceDef, config: BattleConfig): Rules {
         freeSlots: b.ai.counter.freeSlots,
         maxSells: b.ai.counter.maxSells,
         ...(b.ai.counter.counterFloorWeight ? { floorWeight: b.ai.counter.counterFloorWeight } : {}),
+        ...(b.ai.counter.swarmMaxSupply ? { swarmMaxSupply: b.ai.counter.swarmMaxSupply } : {}),
       },
       score: { ...b.ai.score },
     },
@@ -261,11 +285,13 @@ export function compileBuilding(lib: Library, id: string, mods: readonly Modifie
     if (interval.positional) out.spawn.positional = interval.positional;
   }
   if (b.attack) {
+    // combat rework `sporeCloud`: the cloud towers' base range
+    const cloud = bal.sporeCloud?.range !== undefined && bal.sporeCloud.buildings.includes(b.id) ? bal.sporeCloud.range : undefined;
     out.attack = {
       damage: stat('tower.damage', b.attack.damage).value,
       damageType: b.attack.damageType,
       intervalTicks: Math.max(1, secToTicks(b.attack.interval, tr)),
-      range: stat('tower.range', b.attack.range).value,
+      range: stat('tower.range', cloud ?? b.attack.range).value,
       minRange: b.attack.minRange ?? 0,
       splashRadius: stat('tower.splashRadius', b.attack.splashRadius ?? 0).value,
       projectileSpeed: b.attack.projectileSpeed,
@@ -322,6 +348,11 @@ export function compileSide(lib: Library, lo: Loadout, mods: readonly ModifierDe
   // absent at ×1, so sides without a cooldown relic compile (and hash) as before powers existed
   const powerCooldown = m('side.powerCooldown', 1);
   if (powerCooldown !== 1) out.powerCooldownMult = powerCooldown;
+  // combat rework `waves`: the side's beat and wave size, hooks for relics and perks
+  if (bal.waves) {
+    out.waveBeatTicks = Math.max(1, secToTicks(m('side.waveBeat', bal.waves.beatSeconds), bal.tickRate));
+    out.waveSize = Math.max(0, m('side.waveSize', 1));
+  }
   return out;
 }
 

@@ -1,11 +1,15 @@
 // Attacks, projectiles, damage and deaths (SPEC §5.3, §4.5 turrets).
 import { fireBreaches, fireTriggers, runAction } from '../effects.ts';
 import { insertHit } from '../hits.ts';
+import { addCloud, burstUnit } from './clouds.ts';
+import { releaseStored } from './spawning.ts';
 import { HEARTCAP_ID, POWER_SOURCE_ID, SIDES, other } from '../state.ts';
 import type { Armor, BattleState, DamageType, Effectiveness, PendingHit, Side, UnitState } from '../state.ts';
 import { nearBuffer, queryNear } from '../spatial.ts';
 import { MAX_RADIUS, edgeDistance, tp } from '../targets.ts';
-import { buildingDef, findBuilding, findUnit, heartcapEdgeX, rectDistance, supplyCapOf, tierDef, unitDef, unitRadius } from '../world.ts';
+import {
+  buildingDef, findBuilding, findUnit, heartcapEdgeX, reachesAir, rectDistance, soakShield, supplyCapOf, tierDef, towerReachesAir, unitDef, unitRadius,
+} from '../world.ts';
 
 const EPS = 1e-6;
 
@@ -33,15 +37,17 @@ function stormMult(state: BattleState): number {
 function fire(
   state: BattleState, side: Side, sourceId: number, fromX: number, fromY: number, lane: number, targetId: number,
   distance: number, damage: number, damageType: DamageType, projectileSpeed: number, splashRadius: number,
-  siegeMult: number, slayerMult: number, sourceBuildingId: number, sourceType: string,
+  siegeMult: number, slayerMult: number, sourceBuildingId: number, sourceType: string, noAir = false,
 ): void {
   const ranged = projectileSpeed > 0;
   const delay = ranged ? Math.ceil((distance / projectileSpeed) * state.rules.tickRate) : 0;
-  insertHit(state, {
+  const hit: PendingHit = {
     tick: state.tick + delay, sourceId, seq: state.nextHitSeq++, side, targetId,
     x: tp.cx, y: tp.cy, fromX, fromY, fireTick: state.tick, lane,
     damage, damageType, splashRadius, siegeMult, slayerMult, sourceBuildingId, sourceType, ranged,
-  });
+  };
+  if (noAir) hit.noAir = true; // combat rework `flyers`: its splash skips flyers
+  insertHit(state, hit);
 }
 
 /**
@@ -91,7 +97,7 @@ function spawnerDefense(state: BattleState, storm: number): void {
     const near = nearBuffer();
     for (let k = 0; k < n; k++) {
       const v = state.units[near[k]!]!;
-      if (v.side !== enemy || v.lane !== b.lane || v.hp <= 0) continue;
+      if (v.side !== enemy || v.lane !== b.lane || v.hp <= 0 || v.burrowed) continue;
       let d = rectDistance(v.x, v.y, b.col, b.row, def.w, def.h) - unitRadius(state, v);
       if (d < 0) d = 0;
       if (d <= sd.range && (d < bestD || (d === bestD && v.id < best))) { best = v.id; bestD = d; }
@@ -104,24 +110,55 @@ function spawnerDefense(state: BattleState, storm: number): void {
   }
 }
 
+/** Combat rework `pinned`: does an enemy unit stand within `radius` tiles (edge distance) of `u`? */
+export function isPinned(state: BattleState, u: UnitState, radius: number): boolean {
+  const r = unitRadius(state, u);
+  const n = queryNear(u.x, u.y, radius + r + MAX_RADIUS + 1);
+  const near = nearBuffer();
+  for (let k = 0; k < n; k++) {
+    const v = state.units[near[k]!]!;
+    if (v.side === u.side || v.lane !== u.lane || v.hp <= 0 || v.burrowed) continue;
+    const dx = v.x - u.x, dy = v.y - u.y;
+    const reach = radius + r + unitRadius(state, v);
+    if (dx * dx + dy * dy <= reach * reach) return true;
+  }
+  return false;
+}
+
+/**
+ * Combat rework `pinned` (balance `pinned`): a pinned ranged unit's attack cooldown runs on only
+ * `permille` ticks in 1000, spread evenly (phased by unit id), so it attacks at that share of its
+ * rate. True on the ticks its cooldown skips.
+ */
+function pinSkips(state: BattleState, u: UnitState, pin: NonNullable<BattleState['rules']['pin']>): boolean {
+  if (((state.tick + u.id) * pin.permille) % 1000 < pin.permille) return false;
+  return unitDef(state, u).tags.includes('ranged') && isPinned(state, u, pin.radius);
+}
+
 const turretScratch = { x: 0, y: 0, lane: 0 };
 
 export function attackSystem(state: BattleState): void {
   const tick = state.tick;
   const storm = stormMult(state);
+  const pin = state.rules.pin;
+  const bursts = !!state.rules.burst;
+  const fly = !!state.rules.flying;
   for (const u of state.units) {
-    if (u.cooldown > 0) u.cooldown--;
+    if (bursts && u.hp <= 0) continue; // combat rework `burster`: struck down by a burst earlier this tick
+    if (u.cooldown > 0 && !(pin && pinSkips(state, u, pin))) u.cooldown--;
     if (u.cooldown > 0 || u.targetId === 0) continue;
     const def = unitDef(state, u);
     if (def.support) continue; // healers hold at range and never attack
     const t = def.tiers[u.tier - 1]!;
     const d = edgeDistance(state, u.x, u.y, t.radius, u.targetId, other(u.side), u.lane);
     if (d < 0 || d > t.range + EPS) continue;
+    // combat rework `burster`: a burst unit that reaches its target bursts on it instead of attacking
+    if (bursts && def.tags.includes('burst')) { burstUnit(state, u, tp.cx, tp.cy); continue; }
     u.cooldown = t.attackTicks;
     u.lastAttackTick = tick;
     const crowd = state.rules.congestion && def.projectileSpeed > 0 ? congestionMult(state, u, tp.cx, tp.cy) : 1;
     fire(state, u.side, u.id, u.x, u.y, u.lane, u.targetId, d, t.damage * storm * crowd,
-      def.damageType, def.projectileSpeed, t.splashRadius, t.siegeMult, t.slayerMult, u.sourceBuildingId, u.unitId);
+      def.damageType, def.projectileSpeed, t.splashRadius, t.siegeMult, t.slayerMult, u.sourceBuildingId, u.unitId, fly && !reachesAir(state, u));
   }
   for (const b of state.buildings) {
     const def = buildingDef(state, b);
@@ -136,7 +173,7 @@ export function attackSystem(state: BattleState): void {
     b.lastAttackTick = tick;
     b.hasProduced = true;
     fire(state, b.side, b.id, cx, cy, b.lane, b.targetId, d, a.damage * storm, a.damageType, a.projectileSpeed,
-      a.splashRadius, 1, 1, b.id, b.buildingId);
+      a.splashRadius, 1, 1, b.id, b.buildingId, fly && !towerReachesAir(def));
   }
   if (state.rules.spawnerDefense) spawnerDefense(state, storm);
   if (!state.rules.test.turrets) return;
@@ -156,7 +193,7 @@ export function attackSystem(state: BattleState): void {
       const near = nearBuffer();
       for (let k = 0; k < n; k++) {
         const v = state.units[near[k]!]!;
-        if (v.side !== enemy || v.lane !== lane || v.hp <= 0) continue;
+        if (v.side !== enemy || v.lane !== lane || v.hp <= 0 || v.burrowed) continue;
         const dx = v.x - x, dy = v.y - y;
         let d = Math.sqrt(dx * dx + dy * dy) - unitRadius(state, v);
         if (d < 0) d = 0;
@@ -216,6 +253,11 @@ function applyDamage(state: BattleState, h: PendingHit, targetId: number, fallof
   const heart: Side | undefined = targetId === HEARTCAP_ID.player ? 'player' : targetId === HEARTCAP_ID.enemy ? 'enemy' : undefined;
   if (u) {
     armor = unitDef(state, u).armor; tier = u.tier; resist = tierDef(state, u).resist[h.damageType];
+    // combat rework `flyers`: a ground unit's melee hit on a flyer deals × meleeMult
+    if (u.flying && r.flying!.meleeMult !== 1 && !h.ranged) {
+      const src = state.compiled[h.side].units[h.sourceType];
+      if (src && !src.tags.includes('flying')) resist *= r.flying!.meleeMult;
+    }
   } else if (b) {
     armor = 'structure';
   } else if (heart) {
@@ -229,9 +271,11 @@ function applyDamage(state: BattleState, h: PendingHit, targetId: number, fallof
   const dmg = damageFor(r, h.damage * falloff, h.damageType, h.siegeMult, h.slayerMult, armor, tier, resist * taken);
   const combined = effMult;
   let dealt = dmg;
+  if (r.help && h.sourceId > 0 && (u || b)) noteCall(h.sourceId, targetId);
   if (u) {
-    if (dealt > u.hp) dealt = u.hp;
-    u.hp -= dmg;
+    const toHp = soakShield(u, dmg); // combat rework `mixedWave`: a shield takes the blow first
+    dealt = dmg - toHp + Math.min(toHp, u.hp);
+    u.hp -= toHp;
     u.lastCombatTick = state.tick;
     if (u.knit) u.knit.hurt = true;
   } else if (b) {
@@ -257,12 +301,62 @@ function applyDamage(state: BattleState, h: PendingHit, targetId: number, fallof
   state.events.push({ t: 'hit', target: targetId, src: h.sourceId, amount: dmg, eff: classify(state, combined), x: ix, y: iy, splash: falloff !== 1 });
 }
 
+// Combat rework `callForHelp`: (attacker, victim) pairs from this tick's hits, answered once every
+// hit has resolved (splash walks the shared spatial buffer, so the call can't query it mid-loop).
+const callAttackers: number[] = [];
+const callVictims: number[] = [];
+
+function noteCall(attacker: number, victim: number): void {
+  const n = callAttackers.length;
+  if (n && callAttackers[n - 1] === attacker && callVictims[n - 1] === victim) return;
+  callAttackers.push(attacker);
+  callVictims.push(victim);
+}
+
+/**
+ * Combat rework `callForHelp` (balance `callForHelp`): for each unit or building an enemy unit or
+ * tower damaged this tick, every friendly unit in its lane within the radius of it (edge distance)
+ * that has no target, can attack and isn't knitting takes the attacker as its target, provided it
+ * is a target that unit could have (alive, in the lane). Pairs are answered in the order they were hit.
+ */
+function answerCalls(state: BattleState): void {
+  const radius = state.rules.help!.radius;
+  for (let i = 0; i < callAttackers.length; i++) {
+    const attacker = callAttackers[i]!, id = callVictims[i]!;
+    const vu = findUnit(state, id);
+    const vb = vu ? undefined : findBuilding(state, id);
+    if (!vu && !vb) continue;
+    const side = vu ? vu.side : vb!.side, lane = vu ? vu.lane : vb!.lane;
+    const bd = vb ? buildingDef(state, vb) : undefined;
+    const ext = vu ? unitRadius(state, vu) : (bd!.w + bd!.h) / 2;
+    const cx = vu ? vu.x : vb!.col + bd!.w / 2, cy = vu ? vu.y : vb!.row + bd!.h / 2;
+    const flier = findUnit(state, attacker)?.flying; // combat rework `flyers`: only friends with reach answer
+    const n = queryNear(cx, cy, radius + ext + MAX_RADIUS + 1);
+    const near = nearBuffer();
+    for (let k = 0; k < n; k++) {
+      const v = state.units[near[k]!]!;
+      if (v.side !== side || v.lane !== lane || v.hp <= 0 || v.targetId !== 0 || v.knit || v.burrowed) continue;
+      const rv = unitRadius(state, v);
+      let d: number;
+      if (vu) { const dx = v.x - vu.x, dy = v.y - vu.y; d = Math.sqrt(dx * dx + dy * dy) - rv - ext; }
+      else d = rectDistance(v.x, v.y, vb!.col, vb!.row, bd!.w, bd!.h) - rv;
+      if (d > radius || unitDef(state, v).support || (flier && !reachesAir(state, v))) continue;
+      if (edgeDistance(state, v.x, v.y, rv, attacker, other(side), lane) < 0) continue;
+      v.targetId = attacker;
+    }
+  }
+  callAttackers.length = 0;
+  callVictims.length = 0;
+}
+
 export function resolveHitsSystem(state: BattleState): void {
   const hits = state.hits;
   let n = 0;
   while (n < hits.length && hits[n]!.tick <= state.tick) n++;
   if (n === 0) return;
   const falloff = state.rules.splashFalloff;
+  const cloud = state.rules.cloud;
+  const cleave = state.rules.cleave;
   for (let i = 0; i < n; i++) {
     const h = hits[i]!;
     const enemy = other(h.side);
@@ -279,17 +373,20 @@ export function resolveHitsSystem(state: BattleState): void {
       alive = state.sides[enemy].heartcapHp > 0;
     }
     if (alive) applyDamage(state, h, h.targetId, 1, ix, iy);
+    if (cloud && cloud.buildings.includes(h.sourceType)) addCloud(state, h.side, h.lane, ix, iy, h.sourceBuildingId, cloud);
     if (h.splashRadius > 0) {
       const s = h.splashRadius;
       // splash falls off around a struck target; a ground burst (no target) hits everything at full damage
       const share = h.targetId === 0 ? 1 : falloff;
+      // combat rework `cleave`: a listed unit's swing hits the units around its target at full damage
+      const unitShare = cleave && cleave.units.includes(h.sourceType) ? 1 : share;
       const cnt = queryNear(ix, iy, s + MAX_RADIUS + 1);
       const near = nearBuffer();
       for (let k = 0; k < cnt; k++) {
         const v = state.units[near[k]!]!;
-        if (v.side !== enemy || v.lane !== h.lane || v.hp <= 0 || v.id === h.targetId) continue;
+        if (v.side !== enemy || v.lane !== h.lane || v.hp <= 0 || v.id === h.targetId || v.burrowed || (v.flying && h.noAir)) continue;
         const dx = v.x - ix, dy = v.y - iy;
-        if (Math.sqrt(dx * dx + dy * dy) - unitRadius(state, v) <= s) applyDamage(state, h, v.id, share, v.x, v.y);
+        if (Math.sqrt(dx * dx + dy * dy) - unitRadius(state, v) <= s) applyDamage(state, h, v.id, unitShare, v.x, v.y);
       }
       for (const b of state.buildings) {
         if (b.side !== enemy || b.lane !== h.lane || b.hp <= 0 || b.id === h.targetId) continue;
@@ -299,6 +396,7 @@ export function resolveHitsSystem(state: BattleState): void {
     }
   }
   hits.splice(0, n);
+  if (callAttackers.length) answerCalls(state);
 }
 
 /**
@@ -314,7 +412,7 @@ export function burstAt(state: BattleState, side: Side, x: number, y: number, ra
   };
   let n = 0;
   for (const u of state.units) {
-    if (u.side !== enemy || u.hp <= 0) continue;
+    if (u.side !== enemy || u.hp <= 0 || u.burrowed) continue;
     const dx = u.x - x, dy = u.y - y;
     if (Math.sqrt(dx * dx + dy * dy) - unitRadius(state, u) > radius) continue;
     applyDamage(state, h, u.id, 1, u.x, u.y);
@@ -331,6 +429,21 @@ export function burstAt(state: BattleState, side: Side, x: number, y: number, ra
 }
 
 /**
+ * Combat rework `burster`: each `burst` unit that fell this tick without bursting bursts where it fell.
+ * A burst can fell another, which bursts in turn, so this repeats until none is left (in id order).
+ */
+function burstFallen(state: BattleState): void {
+  for (let again = true; again;) {
+    again = false;
+    for (const u of state.units) {
+      if (u.hp > 0 || u.burst || !unitDef(state, u).tags.includes('burst')) continue;
+      burstUnit(state, u, u.x, u.y);
+      again = true;
+    }
+  }
+}
+
+/**
  * Removes dead units and buildings after all hits resolve (SPEC §5.3), then fires `unitDeath`,
  * `enemyUnitKilled` and `buildingDestroyed` triggers and units' own `onDeath` actions (explosions
  * from these land next tick, so chains resolve tick by tick). With prototype B4, units past their
@@ -339,6 +452,7 @@ export function burstAt(state: BattleState, side: Side, x: number, y: number, ra
 export function deathSystem(state: BattleState): void {
   const units = state.units;
   if (state.rules.lifespan) for (const u of units) if (u.expiresTick !== undefined && u.expiresTick <= state.tick) u.hp = 0; // prototype B4: withering
+  if (state.rules.burst) burstFallen(state);
   let w = 0;
   for (let i = 0; i < units.length; i++) {
     const u = units[i]!;
@@ -361,6 +475,7 @@ export function deathSystem(state: BattleState): void {
   for (let i = 0; i < bs.length; i++) {
     const b = bs[i]!;
     if (b.hp > 0) { bs[w++] = b; continue; }
+    if (b.stored) releaseStored(state, b); // combat rework `waves`: the units waiting inside come out
     state.stats[b.side].buildingsLost++;
     state.stats[other(b.side)].buildingsDestroyed++;
     state.events.push({ t: 'buildingDestroyed', id: b.id, side: b.side, buildingId: b.buildingId, col: b.col, row: b.row });
