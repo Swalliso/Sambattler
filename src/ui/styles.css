@@ -178,6 +178,13 @@ button { font: inherit; color: inherit; }
 .chip.beat .beatbar i { display: block; height: 100%; width: 0; background: var(--lilac); }
 .chip.beat.soon { border-color: var(--lilac); }
 .chip.beat.soon b { color: var(--lilac); }
+.chip.beat small:empty { display: none; }
+/* chips that don't fit between the Heartcaps (TopBand.fit): first they sit closer, then they drop the words their icons and
+   tips also carry, and R's keycap. A dropped word stays for screen readers */
+.chips.snug { gap: var(--space-2); }
+.chips.snug .chip { gap: 3px; padding: 0 7px 0 5px; }
+.chips.terse .chip .word { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.chips.terse .kit-chip kbd { display: none; }
 .chip.bump { animation: bump .45s ease-out; }
 @keyframes bump { 30% { transform: scale(1.1); } }
 /* the territory tug: one bar per lane, a tick per column, stripes for each side and a glowing frontier */

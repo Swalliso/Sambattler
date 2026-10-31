@@ -44,8 +44,12 @@ export function cardLine(content: Content, state: BattleState, id: string): stri
   return ROLE_LABEL[cb.kind];
 }
 
-/** The tooltip body for a tray card: role, description, what it makes or does, and the unit's matchups. */
-export function buildingTip(content: Content, atlas: Atlas, state: BattleState, id: string, hotkey: string): HTMLElement[] {
+/**
+ * The tooltip body for a tray card: role, description, what it makes or does, and the unit's matchups.
+ * `price` is the card's: above the building's own once no home plot is free (the tray's cheapest price).
+ * The payback time counts from it.
+ */
+export function buildingTip(content: Content, atlas: Atlas, state: BattleState, id: string, hotkey: string, price = content.buildings[id]!.cost): HTMLElement[] {
   const b = content.buildings[id]!;
   const cb = state.compiled.player.buildings[id]!;
   const cs = state.compiled.player;
@@ -101,14 +105,15 @@ export function buildingTip(content: Content, atlas: Atlas, state: BattleState, 
     rows.push(['Income', e.positional ? 'varies with where it stands' : `+${e.goldPerTick} gold every ${secs(every)} (${Math.round((e.goldPerTick * 60) / every)}/min)`]);
     rows.push(['Rich Loam', `+${cs.loamBonusPct}% when built on it`]);
     if (e.interestCapAdd) rows.push(['Interest cap', `+${e.interestCapAdd}`]);
-    else if (!e.positional && e.goldPerTick > 0) rows.push(['Pays for itself', `in about ${formatClock(Math.ceil((b.cost / e.goldPerTick) * every * tr), tr)}`]);
+    else if (!e.positional && e.goldPerTick > 0) rows.push(['Pays for itself', `in about ${formatClock(Math.ceil((price / e.goldPerTick) * every * tr), tr)}`]);
   }
   if (cb.utility) rows.push(['Supply cap', `+${cb.utility.supplyCapAdd} (at most ${cb.utility.maxCount} count)`]);
   rows.push(['Building HP', String(cb.hp)]);
   return [
-    h('div', { class: 'tip-head' }, h('b', null, b.name), h('span', { class: `role ${cb.kind}` }, ROLE_LABEL[cb.kind]), priceEl(atlas, b.cost)),
+    h('div', { class: 'tip-head' }, h('b', null, b.name), h('span', { class: `role ${cb.kind}` }, ROLE_LABEL[cb.kind]), priceEl(atlas, price)),
     h('div', { class: 'tip-desc' }, buildingDescription(content, id)),
     ...rows.map(([k, v]) => h('div', { class: 'row' }, h('span', { class: 'muted' }, k), h('span', null, v))),
-    h('div', { class: 'tip-foot' }, `${hotkey ? `Press ${hotkey} or click` : 'Click'}, then click the field. Building farther from home costs more.`),
+    h('div', { class: 'tip-foot' }, `${hotkey ? `Press ${hotkey} or click` : 'Click'}, then click the field. ${price > b.cost
+      ? `Your home columns are full, so it costs from ${price} (${b.cost} at home).` : 'Building farther from home costs more.'}`),
   ];
 }

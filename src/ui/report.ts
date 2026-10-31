@@ -5,6 +5,7 @@
 // it, and the report reveals in stages: the banner, then the front line, then the bars (docs/ui-ux-plan.md C4).
 // The banner's rewards (gold earned, and in a run the Spores and Amber) and the gold bars roll up (A6).
 import type { Content } from '../data/registry.ts';
+import type { TriggerDef } from '../data/schema.ts';
 import type { Atlas } from '../render/atlas.ts';
 import { spriteToCanvas } from '../render/atlas.ts';
 import { sporeLayer } from '../render/spores.ts';
@@ -146,6 +147,29 @@ function powerLine(state: BattleState): string {
   return `${uses}× · ${what}`;
 }
 
+/**
+ * A side's gold by source, in words, leaving out sources that paid nothing. Effect gold is split: the
+ * commander power's (Rhizome Tithe) is its own row, and the rest is the relics' (Spore Tithe, Rot-Eater),
+ * or with the Heartcap breach prototype, the breaches' too.
+ */
+export function goldBySource(state: BattleState, side: Side): { label: string; value: number }[] {
+  const st = state.stats[side];
+  const g = st.goldEarned;
+  const power = st.powerGold ?? 0;
+  const pays = (t: TriggerDef) => t.do.some((a) => 'gainGold' in a);
+  const relics = state.sides[side].relics.some((id) => state.library.relics[id]?.effects.triggers?.some(pays));
+  const breaches = state.compiled[side].triggers.some((t) => t.on === 'heartcapBreach' && pays(t));
+  return [
+    { label: 'Stipend', value: g.stipend },
+    { label: 'Economy', value: g.economy },
+    { label: 'Interest', value: g.interest },
+    { label: 'Comeback', value: g.comeback },
+    { label: breaches ? (relics ? 'Relics and breaches' : 'Heartcap breaches') : 'Relics', value: g.effects - power },
+    { label: powerName(state, side), value: power },
+    { label: 'Skipped drafts', value: g.drafts },
+  ].filter((r) => r.value > 0);
+}
+
 /** Damage per building type (turrets and the commander power as their own rows), largest first. */
 export function damageByType(content: Content, state: BattleState, side: Side): { label: string; value: number }[] {
   const st = state.stats[side];
@@ -248,9 +272,8 @@ export function battleReport(content: Content, state: BattleState, actions: { ag
     for (const r of damageByType(content, state, side).slice(0, 5)) damage.push({ ...r, side });
   }
   const gold: Bar[] = [];
-  const SOURCES: [keyof typeof st.player.goldEarned, string][] = [['stipend', 'Stipend'], ['economy', 'Economy'], ['interest', 'Interest'], ['comeback', 'Comeback']];
   for (const side of ['player', 'enemy'] as Side[]) {
-    for (const [k, label] of SOURCES) if (st[side].goldEarned[k] > 0) gold.push({ label, value: st[side].goldEarned[k], side });
+    for (const r of goldBySource(state, side)) gold.push({ ...r, side });
   }
   const row = (label: string, f: (s: Side) => string | number) => h('tr', null, h('td', null, label), h('td', null, String(f('player'))), h('td', null, String(f('enemy'))));
   const totals = damageTotals(state, 'player');

@@ -52,8 +52,10 @@ export function helpOverlay(content: Content, state: BattleState, onClose: () =>
         h('td', null, perkText(content, u.id, 2)), h('td', null, perkText(content, u.id, 3)))];
     }),
   );
+  // number keys reach as far as the cards they pick: the tray numbers its first nine (src/ui/hud/tray.ts)
+  const upTo = (n: number) => (n > 1 ? caps(['1', String(Math.min(9, n))], '–') : caps(['1']));
   const keys: [HTMLElement, string][] = [
-    [caps(['1', '8'], '–'), 'choose a building; Shift-click keeps placing'],
+    [upTo(state.sides.player.kit.length), 'choose a building; Shift-click keeps placing'],
     [caps(['Right-click', 'Esc']), 'cancel or deselect'],
     [caps(['Space', 'Enter']), 'begin the battle (in deploy)'],
     [caps(['Space']), 'once it has begun: pause (every command still works)'],
@@ -61,14 +63,23 @@ export function helpOverlay(content: Content, state: BattleState, onClose: () =>
     [caps(['Tab']), 'cycle your buildings'],
     [caps(['M']), 'merge toggle on the selected spawner'],
     [caps(['X', 'Delete']), 'sell (press twice)'],
-    [caps(['1', '3'], '–'), 'pick a draft card'],
-    [caps(['H']), 'this help'],
-    [caps(['S']), 'sound on or off'],
+    [upTo(state.compiled.player.draftCards), 'pick a draft card'],
   ];
-  if (r.stance) keys.push([caps(['F']), `hold every lane, or advance them all (a hold lasts up to ${r.stance.maxHoldTicks / r.tickRate} s)`]);
+  if (r.stance) {
+    // combat rework `waves`: the beat spends a hold, rather than a timer (src/sim/systems/spawning.ts)
+    const hold = r.waves ? 'a held lane keeps its next wave home for one beat; the beat after sends both' : `a hold lasts up to ${r.stance.maxHoldTicks / r.tickRate} s`;
+    keys.push([caps(['F']), `hold every lane, or advance them all (${hold})`]);
+  }
   const power = state.config.player.power ? state.library.powers?.[state.config.player.power] : undefined;
   if (power) keys.push([caps(['Q']), `aim ${power.name}, then click the field (works while paused; Esc cancels)`]);
-  keys.push([caps(['R']), 'your relics and upgrades'], [caps(['I']), 'read the top band: Tab moves along gold, supply, wave and storm']);
+  // the panels' keys sit beside Selling: in one list, a run's battle (its power adds a row) ran past 1280×720
+  const panelKeys: [HTMLElement, string][] = [
+    [caps(['H']), 'this help'],
+    [caps(['S']), 'sound on or off'],
+    [caps(['R']), 'your relics and upgrades'],
+    [caps(['I']), 'read the top band: Tab moves along gold, supply, wave and storm'],
+  ];
+  const keyTable = (list: [HTMLElement, string][], id?: string) => h('table', { class: 'keys', id }, ...list.map(([k, v]) => h('tr', null, h('td', null, k), h('td', null, v))));
   // the economy and the Sporestorm in plain words (playtest round 3: "what is interest?")
   const cs = state.compiled.player;
   const clock = (ticks: number) => formatClock(ticks, r.tickRate);
@@ -80,7 +91,12 @@ export function helpOverlay(content: Content, state: BattleState, onClose: () =>
   const forward = content.buildings.capguardHall ?? Object.values(content.buildings)[0]!;
   const fwdCols = 6;
   const fwdPrice = Math.ceil(forward.cost * (1 + b.supplyLinePerColumn * fwdCols));
+  // the combat rework's swarm read: a cheap unit's merges leave it in its armor's kind, not Elite (src/sim/ai/counter.ts)
+  const swarmRead = r.ai.counter.swarmMaxSupply;
+  const swarmElite = `units you actually merge, except ${swarmRead && swarmRead > 1 ? `units of ${swarmRead} supply or less` : '1-supply units'}: it reads those by their armor. It answers with Slayers.`;
   const st = r.storm;
+  // combat rework `stormWaves`: each stack also grows both sides' waves (src/sim/systems/spawning.ts)
+  const sw = r.stormWaves;
   const pctOf = (x: number) => `${x < 0 ? '−' : '+'}${Math.round(Math.abs(x) * 100)}%`;
   const ruleRow = (a: string | Node, v: string | Node) => h('tr', null, h('td', null, a), h('td', null, v));
   const panels: Record<Tab, HTMLElement[]> = {
@@ -114,11 +130,12 @@ export function helpOverlay(content: Content, state: BattleState, onClose: () =>
       h('div', { class: 'helpgrid' },
         h('section', null,
           h('h3', null, 'The general adapts'),
-          h('p', null, 'At 2:00 and 5:00 the general reads your spawn mix and warns which kind it will counter two waves later. Then it leans its spending toward buildings that beat that kind.'),
+          // combat rework `waves`: "two waves" counts the 1:00 waves, not the beat's
+          h('p', null, `At 2:00 and 5:00 the general reads your spawn mix and warns which kind it will counter two waves${r.waves ? ' (two minutes)' : ''} later. Then it leans its spending toward buildings that beat that kind.`),
           h('p', null, 'It remembers you across a run: each new general opens against your top kind, and the boss reads your whole run. Your intel bars on the route show what it knows.')),
         h('section', null,
           h('h3', null, 'The four kinds'),
-          h('ul', { class: 'kindlist' }, ...COUNTER_KINDS.map((k) => h('li', null, h('b', { class: 'kind-tag' }, KIND_LABEL[k]), ` ${KIND_TEXT[k]}`))))),
+          h('ul', { class: 'kindlist' }, ...COUNTER_KINDS.map((k) => h('li', null, h('b', { class: 'kind-tag' }, KIND_LABEL[k]), ` ${k === 'elite' && swarmRead ? swarmElite : KIND_TEXT[k]}`))))),
     ],
     economy: [
       h('div', { class: 'helpgrid' },
@@ -134,11 +151,12 @@ export function helpOverlay(content: Content, state: BattleState, onClose: () =>
           h('h3', null, 'The forward price'),
           h('p', null, `Building farther from home costs more: +${Math.round(b.supplyLinePerColumn * 100)}% for each column past your home columns. A ${forward.name} (${forward.cost} gold) ${fwdCols} columns out costs ${fwdPrice}. The ghost shows the price before you click. A forward building holds its column: the Gray Rot can't take it until the building falls.`)),
         h('section', null,
-          h('h3', null, 'Interest, at each new wave'),
-          h('p', null, `Every ${clock(r.waveTicks)}, as a new wave starts, you get 1 gold for every ${r.interestPer} gold you're holding, up to ${cs.interestCap}. Holding ${full} gold or more earns the full ${cs.interestCap}; spending everything earns nothing.`),
-          h('p', { class: 'muted' }, `For example, holding 145 gold as a wave starts pays +${Math.min(cs.interestCap, Math.floor(145 / r.interestPer))}.`),
+          // combat rework `waves`: a wave leaves on every beat, so interest goes by its own clock there
+          h('h3', null, r.waves ? `Interest, every ${clock(r.waveTicks)}` : 'Interest, at each new wave'),
+          h('p', null, `Every ${clock(r.waveTicks)}${r.waves ? '' : ', as a new wave starts,'} you get 1 gold for every ${r.interestPer} gold you're holding, up to ${cs.interestCap}. Holding ${full} gold or more earns the full ${cs.interestCap}; spending everything earns nothing.`),
+          h('p', { class: 'muted' }, `For example, holding 145 gold ${r.waves ? `at ${clock(r.waveTicks)}` : 'as a wave starts'} pays +${Math.min(cs.interestCap, Math.floor(145 / r.interestPer))}.`),
           exchange ? h('h3', null, `The ${exchange.name}`) : null,
-          exchange ? h('p', null, `While it stands it raises your interest cap by ${exAdd}, so a wave can pay up to ${cs.interestCap + exAdd} if you hold ${(cs.interestCap + exAdd) * r.interestPer} gold. It also pays +${exchange.economy?.goldPerTick ?? 0} gold every ${every} s. It earns most when you save.`) : null,
+          exchange ? h('p', null, `While it stands it raises your interest cap by ${exAdd}, so ${r.waves ? 'interest' : 'a wave'} can pay up to ${cs.interestCap + exAdd} if you hold ${(cs.interestCap + exAdd) * r.interestPer} gold. It also pays +${exchange.economy?.goldPerTick ?? 0} gold every ${every} s. It earns most when you save.`) : null,
           h('h3', null, 'Other gold'),
           h('p', null, `Skipping a draft pays +${cs.skipGold} gold. Gold doesn't carry from one battle to the next.`))),
     ],
@@ -148,21 +166,25 @@ export function helpOverlay(content: Content, state: BattleState, onClose: () =>
           h('h3', null, 'The Sporestorm'),
           h('p', null, `The Sporestorm ends stalemates. From ${clock(st.startTick)} it gains a stack every ${clock(st.everyTicks)}, up to ${st.maxStacks}. It hits both sides alike, so a long battle turns toward whoever can push.`),
           h('p', null, `Heartcaps take ${pctOf(st.heartcapTaken)} damage per stack, so late pushes hit hard. At ${clock(r.timeLimitTicks)}, if both Heartcaps stand, the side holding more columns wins by Decision.`),
+          sw ? h('p', null, `Each stack also makes both sides' waves ${Math.round(sw.perStack * 100)}% bigger, ×${Math.round(10 * (1 + sw.perStack * st.maxStacks)) / 10} at ${st.maxStacks} stacks. The extra units need free supply.`) : null,
           h('p', { class: 'muted' }, 'The Storm chip lights up and the spores on the field thicken with each stack. Some events move the storm earlier or later in the next battle.')),
         h('section', null,
           h('h3', null, 'Stack by stack'),
           h('table', { class: 'rules storm-table', id: 'help-storm' },
-            h('tr', null, h('th', null, 'Stack'), h('th', null, 'From'), h('th', null, 'Units, towers'), h('th', null, 'Turrets'), h('th', null, 'Heartcaps take')),
+            h('tr', null, h('th', null, 'Stack'), h('th', null, 'From'), h('th', null, 'Units, towers'), h('th', null, 'Turrets'), h('th', null, 'Heartcaps take'), sw ? h('th', null, 'Waves') : null),
             ...Array.from({ length: st.maxStacks }, (_, i) => h('tr', null,
               h('td', null, String(i + 1)), h('td', null, clock(st.startTick + i * st.everyTicks)),
-              h('td', null, `${pctOf(st.unitDamage * (i + 1))} damage`), h('td', null, pctOf(st.turretDamage * (i + 1))), h('td', null, pctOf(st.heartcapTaken * (i + 1)))))))),
+              h('td', null, `${pctOf(st.unitDamage * (i + 1))} damage`), h('td', null, pctOf(st.turretDamage * (i + 1))), h('td', null, pctOf(st.heartcapTaken * (i + 1))),
+              sw ? h('td', null, pctOf(sw.perStack * (i + 1))) : null))))),
     ],
     keys: [
       h('div', { class: 'helpgrid keys-grid' },
-        h('table', { class: 'keys', id: 'help-keys' }, ...keys.map(([k, v]) => h('tr', null, h('td', null, k), h('td', null, v)))),
+        keyTable(keys, 'help-keys'),
         h('section', null,
           h('h3', null, 'Selling'),
-          h('p', null, `Full refund during deploy, or within ${r.fullRefundTicks / r.tickRate} s of placement before the building spawns units, earns gold, or fires. After that, selling refunds ${state.compiled.player.sellRefundPct}%. Spawned units stay. A building under attack can't be sold.`))),
+          h('p', null, `Full refund during deploy, or within ${r.fullRefundTicks / r.tickRate} s of placement before the building spawns units, earns gold, or fires. After that, selling refunds ${state.compiled.player.sellRefundPct}%. Spawned units stay. A building under attack can't be sold.`),
+          h('h3', null, 'Other keys'),
+          keyTable(panelKeys))),
     ],
   };
   const tabs = new Map<Tab, HTMLButtonElement>();

@@ -218,6 +218,14 @@ export function attackSystem(state: BattleState): void {
 
 let effMult = 1;
 
+/** The tag multiplier (SPEC §5.3): the attacker's siege multiplier vs structure, times its slayer multiplier vs tier ≥ 2. */
+export function tagMult(siegeMult: number, slayerMult: number, armor: Armor, tier: number): number {
+  let tag = 1;
+  if (siegeMult !== 1 && armor === 'structure') tag *= siegeMult;
+  if (slayerMult !== 1 && tier >= 2) tag *= slayerMult;
+  return tag;
+}
+
 /**
  * The damage formula (SPEC §5.3): attacker-side damage (base × tier × upgrades × storm) times the
  * matrix, tag multipliers (the attacker's siege multiplier vs structure, its slayer multiplier vs
@@ -228,9 +236,7 @@ export function damageFor(
   r: BattleState['rules'], attackerDamage: number, type: DamageType, siegeMult: number, slayerMult: number,
   armor: Armor, tier: number, targetMult: number,
 ): number {
-  let tag = 1;
-  if (siegeMult !== 1 && armor === 'structure') tag *= siegeMult;
-  if (slayerMult !== 1 && tier >= 2) tag *= slayerMult;
+  const tag = tagMult(siegeMult, slayerMult, armor, tier);
   const matrix = r.matrix[type][armor];
   effMult = matrix * tag;
   const dmg = Math.round(attackerDamage * matrix * tag * targetMult);
@@ -239,6 +245,26 @@ export function damageFor(
 
 function classify(state: BattleState, m: number): Effectiveness {
   return m >= state.rules.strongAt ? 'strong' : m <= state.rules.weakAt ? 'weak' : 'normal';
+}
+
+/** What a hit's effectiveness class reads from a unit: its type and tier, and whether it flies. */
+export type HitUnit = Pick<UnitState, 'side' | 'unitId' | 'tier' | 'flying'>;
+
+/**
+ * Combat rework `flyers`: the effectiveness class of `attacker`'s hit on `target` when it is a ground
+ * unit's melee hit on a flyer (the test in applyDamage), else undefined. applyDamage puts the flyer's
+ * `meleeMult` into resistance, so the hit's own class, on matrix × tag alone, calls a Sporeling's slash
+ * on a Driftling strong (1.5) though it lands at 0.75. This classes matrix × tag × meleeMult, for the
+ * renderer; the sim never calls it.
+ */
+export function airMeleeEffectiveness(state: BattleState, attacker: HitUnit, target: HitUnit): Effectiveness | undefined {
+  const f = state.rules.flying;
+  if (!f || f.meleeMult === 1 || !target.flying) return undefined;
+  const a = state.compiled[attacker.side].units[attacker.unitId];
+  if (!a || a.projectileSpeed > 0 || a.tags.includes('flying')) return undefined;
+  const t = a.tiers[attacker.tier - 1]!;
+  const armor = state.compiled[target.side].units[target.unitId]!.armor;
+  return classify(state, state.rules.matrix[a.damageType][armor] * tagMult(t.siegeMult, t.slayerMult, armor, target.tier) * f.meleeMult);
 }
 
 /** Applies one hit (or its splash share) to a target. */
@@ -253,7 +279,7 @@ function applyDamage(state: BattleState, h: PendingHit, targetId: number, fallof
   const heart: Side | undefined = targetId === HEARTCAP_ID.player ? 'player' : targetId === HEARTCAP_ID.enemy ? 'enemy' : undefined;
   if (u) {
     armor = unitDef(state, u).armor; tier = u.tier; resist = tierDef(state, u).resist[h.damageType];
-    // combat rework `flyers`: a ground unit's melee hit on a flyer deals × meleeMult
+    // combat rework `flyers`: a ground unit's melee hit on a flyer deals × meleeMult (airMeleeEffectiveness mirrors this test)
     if (u.flying && r.flying!.meleeMult !== 1 && !h.ranged) {
       const src = state.compiled[h.side].units[h.sourceType];
       if (src && !src.tags.includes('flying')) resist *= r.flying!.meleeMult;

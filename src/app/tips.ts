@@ -80,14 +80,19 @@ export class TipCoach {
       this.offer(state, 'frontier', [tipWord(), 'Units claim ground past the glowing frontier line. You build only on your own columns.']);
     }
     if (r.stance && secs >= HOLD_AT && secs < HOLD_AT + WINDOW) {
-      this.offer(state, 'hold', [tipWord(), 'Press ', kbd('F'), ' to hold your units back for a bigger push; press it again to advance.']);
+      // combat rework `waves`: a hold keeps the next wave home rather than pulling units back
+      const hold = r.waves ? ' to keep your next wave home for one beat; the beat after sends both waves.' : ' to hold your units back for a bigger push; press it again to advance.';
+      this.offer(state, 'hold', [tipWord(), 'Press ', kbd('F'), hold]);
     }
     for (const e of state.events) {
       if (e.t === 'sporestorm' && e.stacks === 1) {
         const st = r.storm;
-        this.offer(state, 'storm', [tipWord(), `The Sporestorm: each stack, units hit ${pct(st.unitDamage)} harder and Heartcaps take ${pct(st.heartcapTaken)} more.`], { now: true });
+        // combat rework `stormWaves`: the storm grows both sides' waves too
+        const waves = r.stormWaves ? `waves grow ${pct(r.stormWaves.perStack)}, ` : '';
+        this.offer(state, 'storm', [tipWord(), `The Sporestorm: each stack, ${waves}units hit ${pct(st.unitDamage)} harder and Heartcaps take ${pct(st.heartcapTaken)} more.`], { now: true });
       } else if (e.t === 'interest' && e.side === 'player' && e.amount > 0) {
-        this.offer(state, 'interest', [tipWord(), `Interest +${e.amount}: each wave pays 1 gold per ${r.interestPer} you hold, up to a cap. Hover your gold.`], { now: true });
+        // named by its interval: under the combat rework's `waves` a wave also leaves on every beat
+        this.offer(state, 'interest', [tipWord(), `Interest +${e.amount}: every ${r.waveTicks / r.tickRate} s pays 1 gold per ${r.interestPer} you hold, up to a cap. Hover your gold.`], { now: true });
       }
     }
     const power = powerOf(state, 'player');
@@ -96,8 +101,11 @@ export class TipCoach {
       this.offer(state, 'power', [tipWord(), `${power.name} is ready: press `, kbd('Q'), ` or its button, ${aim}. You can aim while paused.`], { now: true });
     }
     // last, so it goes first: the draft is on screen now (it opens on the same tick as a wave's interest)
-    if (state.sides.player.draft) {
-      this.offer(state, 'draft', [tipWord(), 'Pick with ', kbd('1'), '–', kbd('3'), ': blueprints add buildings, upgrades improve them, relics last the run.'], { now: true });
+    const draft = state.sides.player.draft;
+    if (draft) {
+      // a key for each card on offer (the bigger-drafts prototype deals 4)
+      const last = Math.min(9, draft.offer.length);
+      this.offer(state, 'draft', [tipWord(), 'Pick with ', kbd('1'), ...(last > 1 ? ['–', kbd(String(last))] : []), ': blueprints add buildings, upgrades improve them, relics last the run.'], { now: true });
     }
   }
 

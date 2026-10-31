@@ -11,8 +11,11 @@ import type { Content } from '../data/registry.ts';
 import {
   canMerge, frontierBlocked, holdsLane, isSuppressed, lanePresence, rallyX, turretPos,
 } from '../sim/index.ts';
-import type { BattleState, BuildingState, Command, CompiledBuilding, Side, UnitState } from '../sim/index.ts';
+import type { BattleState, BuildingState, Command, CompiledBuilding, Effectiveness, Side, SimEvent, Tier, UnitState } from '../sim/index.ts';
 import { positionalValue } from '../sim/effects.ts';
+import { airMeleeEffectiveness } from '../sim/systems/combat.ts';
+import type { HitUnit } from '../sim/systems/combat.ts';
+import { findBuilding, findUnit } from '../sim/world.ts';
 import type { Atlas, Faction } from './atlas.ts';
 import { Effects } from './effects.ts';
 
@@ -113,6 +116,39 @@ export function teamMark(g: CanvasRenderingContext2D, cx: number, footY: number,
   }
 }
 
+/**
+ * The effectiveness a hit's spark and damage number show: the sim's class, except for a ground unit's
+ * melee hit on a flyer (combat rework `flyers`), which the sim classes before the flyer's × meleeMult,
+ * so it shows the class of what it deals (airMeleeEffectiveness). `last` holds the field's units after
+ * the tick before, by id, so a hit on or by a unit felled this tick still reads. Without flyers, the
+ * sim's class.
+ */
+export function shownEffectiveness(state: BattleState, e: Extract<SimEvent, { t: 'hit' }>, last: ReadonlyMap<number, UnitState>): Effectiveness {
+  if (!state.rules.flying || e.src <= 0 || e.target <= 0) return e.eff;
+  const target = fighter(state, e.target, last);
+  if (!target?.flying) return e.eff;
+  const src = fighter(state, e.src, last);
+  return (src && airMeleeEffectiveness(state, src, target)) ?? e.eff;
+}
+
+/**
+ * Unit `id` as it fought this tick: on the field, felled this tick (in `last`), or born and felled this
+ * tick, which its events give (a spawn is tier 1, a merge its tier). Undefined for a building.
+ */
+function fighter(state: BattleState, id: number, last: ReadonlyMap<number, UnitState>): HitUnit | undefined {
+  const u = findUnit(state, id) ?? last.get(id);
+  if (u || findBuilding(state, id)) return u;
+  let fell: Extract<SimEvent, { t: 'died' }> | undefined;
+  let tier: Tier | 0 = 0;
+  for (const e of state.events) {
+    if (e.t === 'died' && e.id === id) fell = e;
+    else if (e.t === 'spawned' && e.id === id) tier = 1;
+    else if (e.t === 'merged' && e.id === id) tier = e.tier;
+  }
+  if (!fell || !tier) return undefined;
+  return { side: fell.side, unitId: fell.unitId, tier, flying: state.compiled[fell.side].units[fell.unitId]!.tags.includes('flying') };
+}
+
 export class Renderer {
   readonly canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
@@ -125,6 +161,8 @@ export class Renderer {
   readonly labels = new Effects(256);
   /** Each economy building's gold total at the last income tick, so a coin pop shows what it just paid. */
   private goldSeen = new Map<string, number>();
+  /** Combat rework `flyers`: the field's units after the last tick, by id, for shownEffectiveness. */
+  private lastUnits = new Map<number, UnitState>();
   damageNumbers: DamageNumbers = 'off';
   /** A bar under each of your spawners, filling toward its next spawn (the settings screen). */
   spawnTimers = true;
@@ -155,6 +193,14 @@ export class Renderer {
     for (const side of ['player', 'enemy'] as Side[]) {
       for (const [id, gold] of Object.entries(state.stats[side].goldByBuilding)) this.goldSeen.set(`${side}:${id}`, gold);
     }
+    this.noteUnits(state);
+  }
+
+  /** Combat rework `flyers`: keeps the field's units, so the next tick's hits on units it fells still read. */
+  private noteUnits(state: BattleState): void {
+    if (!state.rules.flying) return;
+    this.lastUnits.clear();
+    for (const u of state.units) this.lastUnits.set(u.id, u);
   }
 
   /** Color-blind assist: team marks under units and bolder mat textures (the mats rebake when it changes). */
@@ -239,7 +285,8 @@ export class Renderer {
   onTick(state: BattleState, now: number): void {
     for (const e of state.events) {
       if (e.t === 'hit') {
-        const eff = e.eff === 'strong' ? 1 : e.eff === 'weak' ? 3 : 2;
+        const shown = shownEffectiveness(state, e, this.lastUnits);
+        const eff = shown === 'strong' ? 1 : shown === 'weak' ? 3 : 2;
         this.effects.add(eff, e.x, e.y, now, e.splash ? 1 : 0);
         if (this.damageNumbers === 'all' || (this.damageNumbers === 'big' && e.amount >= BIG_HIT)) this.labels.add(9, e.x, e.y, now, eff, e.amount);
       } else if (e.t === 'merged') this.labels.add(8, e.x, e.y, now, e.tier, e.side === 'player' ? 0 : 1);
@@ -261,6 +308,7 @@ export class Renderer {
         if (u) this.effects.add(7, u.x, u.y, now, 0);
       }
     }
+    this.noteUnits(state);
   }
 
   /** A coin pop over each of a side's economy buildings that paid out this income tick. */

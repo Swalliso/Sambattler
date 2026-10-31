@@ -103,14 +103,16 @@ export function goldTip(content: Content, atlas: Atlas, state: BattleState): Tip
       const exDef = ex ? content.buildings[ex]! : null;
       const exAdd = exDef?.economy?.interestCapAdd ?? 0;
       const exStanding = it.cap > it.base;
+      // combat rework `waves`: a wave leaves on every beat (the beat chip's "Next wave"), so interest goes by its own clock there
+      const r = state.rules, payout = r.waves ? 'payout' : 'wave';
       const out: Node[] = [
         head(atlas, 'i-gold', 'Gold', String(state.sides.player.gold), 'gold'),
         sec(`Income, paid every ${inc.everySeconds} s`),
         ...inc.rows.map((x) => row(x.label, perMin(x.gold), x.note, x.gold < 0 ? 'cost' : x.gold === 0 ? 'zero' : '')),
         row('Total', h('b', { class: 'gold' }, `${signed(inc.perMinute)}/min`), undefined, 'total'),
-        sec('Interest, paid at each new wave'),
+        sec(r.waves ? `Interest, paid every ${clock(state, r.waveTicks)}` : 'Interest, paid at each new wave'),
         para(`You get 1 gold for every ${it.per} gold you're holding, up to ${it.cap}${exStanding ? ` (${it.base}, plus ${it.cap - it.base} from your ${exDef?.name ?? 'Spore Exchange'})` : ''}. Saving gold earns more.`),
-        row(state.phase === 'deploy' ? 'First wave, 1:00 after Begin' : `Next wave, in ${clock(state, it.inTicks)}`, h('b', { class: 'gold' }, `+${it.next}`)),
+        row(state.phase === 'deploy' ? `First ${payout}, ${clock(state, r.waveTicks)} after Begin` : `Next ${payout}, in ${clock(state, it.inTicks)}`, h('b', { class: 'gold' }, `+${it.next}`)),
         h('p', { class: 'muted' }, state.sides.player.gold >= full ? `You hold enough for the full ${it.cap}.` : `Hold ${full} gold to earn the full ${it.cap}.`),
       ];
       if (exDef && (exStanding || state.sides.player.kit.includes(exDef.id))) {
@@ -137,15 +139,19 @@ export function stormTip(content: Content, atlas: Atlas, state: BattleState): Ti
         para(`The Sporestorm ends stalemates. From ${clock(state, st.startTick)} it gains a stack every ${clock(state, st.everyTicks)}, up to ${st.maxStacks}. It hits both sides alike, so battles end sooner.`),
       ];
       if (shift) out.push(h('p', { class: 'note' }, `This battle's storm starts ${clock(state, Math.abs(shift))} ${shift < 0 ? 'early' : 'late'}, from an event.`));
+      // combat rework `stormWaves`: each stack also grows both sides' waves (src/sim/systems/spawning.ts)
+      const sw = state.rules.stormWaves;
       out.push(sec('Each stack'),
         row('Units and towers', `${pct(st.unitDamage)} damage`),
         row('Heartcap turrets', `${pct(st.turretDamage)} damage`),
         row('Heartcaps', `take ${pct(st.heartcapTaken)} damage`));
+      if (sw) out.push(row('Waves', `${pct(sw.perStack)} units`, 'extra units need free supply'));
       if (n) {
         out.push(sec(`Now, at ${n} stack${n === 1 ? '' : 's'}`),
           row('Units and towers', `${pct(st.unitDamage * n)} damage`, undefined, 'lit'),
           row('Heartcap turrets', `${pct(st.turretDamage * n)} damage`, undefined, 'lit'),
           row('Heartcaps', `take ${pct(st.heartcapTaken * n)} damage`, undefined, 'lit'));
+        if (sw) out.push(row('Waves', `${pct(sw.perStack * n)} units`, undefined, 'lit'));
       }
       const nextAt = st.startTick + n * st.everyTicks;
       out.push(h('p', { class: 'muted' }, n >= st.maxStacks ? 'At full strength.'
@@ -174,7 +180,8 @@ export function supplyTip(content: Content, atlas: Atlas, state: BattleState): T
       const mult = content.balance.tierSupplyMult;
       const out: Node[] = [
         head(atlas, 'i-supply', 'Supply', `${p.supplyUsed}/${p.supplyCap}`, p.supplyUsed >= p.supplyCap ? 'bad' : ''),
-        para('Every living unit uses supply. At the cap, your spawners wait until some of your units fall, then spawn again.'),
+        // combat rework `waves`: a spawn waiting inside for its wave already counts (src/sim/systems/spawning.ts)
+        para(`Every living unit uses supply${state.rules.waves ? ', and so does each one waiting inside a spawner for its wave' : ''}. At the cap, your spawners wait until some of your units fall, then spawn again.`),
       ];
       if (units.length) out.push(sec('Supply per unit'), h('p', null, units.join(' · ')));
       if (waiting) out.push(h('p', { class: 'bad' }, `${waiting} spawner${waiting === 1 ? ' is' : 's are'} waiting for supply now.`));
@@ -202,6 +209,8 @@ export function waveTip(content: Content, atlas: Atlas, state: BattleState): Tip
         head(atlas, 'i-wave', wave ? `Wave ${wave}` : 'Deploy', clock(state, state.tick)),
         para(state.phase === 'deploy' ? `Wave 1 starts when you press Begin. A new wave starts every ${clock(state, r.waveTicks)}.`
           : `A new wave starts every ${clock(state, r.waveTicks)}. Wave ${wave + 1} in ${clock(state, inc.interest.inTicks)}.`),
+        // combat rework `waves`: the units' own waves leave on the beat chip's clock
+        ...(r.waves ? [h('p', { class: 'muted' }, `Units leave on their own ${clock(state, state.compiled.player.waveBeatTicks!)} beat, not on these waves.`)] : []),
         sec('Each new wave'),
         row('Interest pays out', h('b', { class: 'gold' }, `+${inc.interest.next} next`)),
       ];
@@ -232,9 +241,11 @@ export function territoryTip(content: Content, atlas: Atlas, state: BattleState)
       const secs = Math.round((r.captureThreshold / r.captureStep / r.tickRate) * 10) / 10;
       const inc = incomeBreakdown(content, state);
       const lanes = state.lanes.length;
+      // combat rework `flyers`: a flyer counts on neither side (src/sim/systems/territory.ts)
+      const flyers = r.flying && !r.flying.holdsGround ? ' Flyers hold no ground, so they never count.' : '';
       return [
         head(atlas, 'i-advance', 'Territory', `${pc} to ${ec}`),
-        para(`The glowing line is your frontier${lanes > 1 ? ' in each lane' : ''}. Your units claim the column just past it by standing there with at least ${r.captureRatio}× the Gray Rot's units for ${secs} s. An enemy building in that column blocks the claim until it falls.`),
+        para(`The glowing line is your frontier${lanes > 1 ? ' in each lane' : ''}. Your units claim the column just past it by standing there with at least ${r.captureRatio}× the Gray Rot's units for ${secs} s.${flyers} An enemy building in that column blocks the claim until it falls.`),
         para(`You can build only on your own columns. The farther from home, the more a building costs: +${Math.round(content.balance.supplyLinePerColumn * 100)}% per column past your home columns.`),
         para(inc.comeback.gold > 0 ? `Holding fewer columns pays comeback gold: +${inc.comeback.gold} every ${inc.everySeconds} s now.` : 'Holding fewer columns than the Gray Rot pays comeback gold.'),
         h('p', { class: 'tip-foot' }, `At ${clock(state, r.timeLimitTicks)}, if both Heartcaps stand, the side holding more columns wins by Decision.`),

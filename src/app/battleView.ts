@@ -103,11 +103,14 @@ export class BattleView {
   private ended = false;
   private nudged = false;
   private nudgeUntil = 0;
+  /** Each lane's column owners as the view last saw them (0 unclaimed, 1 yours, 2 theirs): a flip names only who took the column. */
+  private owners: number[][];
   scale = 1;
 
   /** @param still ambient motion holds still (`?test=1`), so screenshots and browser tests are stable */
   constructor(private session: Session, content: Content, private atlas: Atlas, private actions: ViewActions, debug: boolean, still = false) {
     const state = session.state;
+    this.owners = state.lanes.map((l) => l.owner.slice());
     this.canvas = h('canvas', { id: 'battlefield', 'aria-label': 'Battlefield' });
     this.renderer = new Renderer(this.canvas, content, atlas, state);
     this.renderer.still = still;
@@ -276,6 +279,22 @@ export class BattleView {
     this.callouts.push('refused', why, '', performance.now());
   }
 
+  /** `F`: holds every lane that can, or advances them all; when no lane can hold yet, a callout says when one can. */
+  toggleAllStances(): void {
+    const s = this.session, st = s.state;
+    if (!st.rules.stance || st.phase === 'ended' || s.toggleAllStances()) return;
+    sfx('illegal');
+    // the lane that isn't held and can hold soonest
+    let at = Infinity;
+    st.lanes.forEach((_, i) => { if (!s.stanceShown(i)) at = Math.min(at, st.sides.player.stance![i]!.readyAt); });
+    const beat = st.compiled.player.waveBeatTicks;
+    const toBeat = beat ? beat - (st.tick % beat) : 0;
+    const secs = (ticks: number) => Math.max(1, Math.ceil(ticks / st.rules.tickRate));
+    // combat rework `waves`: a hold the beat spent can't hold again until the next beat has sent both waves
+    const why = beat && at === st.tick + toBeat + 1 ? `Hold is ready once both waves leave, in ${secs(toBeat)} s` : `Hold is ready in ${secs(at - st.tick)} s`;
+    this.callouts.push('refused', why, '', performance.now());
+  }
+
   /** A notice pinned in the callout lane while the battle is in deploy (e.g. a save that couldn't be restored). */
   notice(id: string, text: string): void {
     this.callouts.pin(id, h('div', { class: 'callout bad notice', id, role: 'status' }, text));
@@ -306,6 +325,7 @@ export class BattleView {
     // the frame fills everything between the bands: from the top band down, past the callout lane
     this.frameArt.el.style.top = `${(this.top.el.getBoundingClientRect().bottom - r.top) / ui}px`;
     this.frameArt.layout(this.canvas.getBoundingClientRect(), this.frameArt.el.getBoundingClientRect(), ui);
+    this.top.fit();
     this.tray.fit();
   }
 
@@ -329,7 +349,12 @@ export class BattleView {
       if (e.t === 'income' && e.side === 'player') {
         this.top.bump();
       } else if (e.t === 'columnFlipped') {
-        this.callouts.push('column', e.to === 'player' ? `Column ${e.column} claimed` : `Column ${e.column} lost`, e.to === 'player' ? 'good' : 'bad', now);
+        // "lost" only for a column that was yours; the enemy taking unclaimed ground shows on the tug, not in the lane
+        const owners = this.owners[e.lane]!;
+        const was = owners[e.column];
+        owners[e.column] = e.to === 'player' ? 1 : 2;
+        if (e.to === 'player') this.callouts.push('column', `Column ${e.column} claimed`, 'good', now);
+        else if (was === 1) this.callouts.push('column', `Column ${e.column} lost`, 'bad', now);
       } else if (e.t === 'buildingDestroyed') {
         const name = this.session.content.buildings[e.buildingId]?.name ?? e.buildingId;
         this.callouts.push('buildingLost', e.side === 'player' ? `${name} lost` : `Enemy ${name} destroyed`, e.side === 'player' ? 'bad' : 'good', now);
@@ -372,6 +397,8 @@ export class BattleView {
         this.callouts.push('merge', e.side === 'player' ? `${tier} ${name}!` : `Enemy ${tier} ${name}`, e.side === 'player' ? 'good' : 'bad', now);
       }
     }
+    // back in step with the sim, also after ticks it ran without the view (a `?ticks=` fast-forward)
+    this.owners = state.lanes.map((l) => l.owner.slice());
   }
 
   /**
@@ -471,12 +498,13 @@ export class BattleView {
       const held = s.stanceShown(i);
       const secs = (ticks: number) => `${Math.max(0, Math.ceil(ticks / state.rules.tickRate))} s`;
       const beat = state.compiled.player.waveBeatTicks;
+      // combat rework `waves`: a held lane keeps its wave home until the next beat, and can't hold past it (the beat after
+      // sends both waves). Short words, so they fit beside the switch at 1280 px; the Hold button's title says it in full
       const text = held
-        ? beat ? `Keeping the wave home · ${secs(beat - (state.tick % beat))}`
+        ? beat ? `Home · ${secs(beat - (state.tick % beat))}`
           : st.hold ? `Hold · ${secs(state.rules.stance!.maxHoldTicks - (state.tick - st.since))}` : 'Holding'
         : s.canHold(i) ? 'Advancing'
-          // combat rework `waves`: a lane can't hold past the next beat (the one after a held beat sends both waves)
-          : beat && st.readyAt > state.tick + beat - (state.tick % beat) ? `Wave leaves in ${secs(beat - (state.tick % beat))}`
+          : beat && st.readyAt > state.tick + beat - (state.tick % beat) ? `Out in ${secs(beat - (state.tick % beat))}`
             : `Hold in ${secs(st.readyAt - state.tick)}`;
       this.lit(row.hold, held);
       this.lit(row.advance, !held);
