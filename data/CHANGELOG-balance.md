@@ -18,6 +18,23 @@ package for the P3 playtest.
     every 18 s, `aiWeight` 1), in both rosters, as content under the preset;
   - sprites in `data/sprites/` (display only). The Bloatcap isn't built.
 
+## Combat rework P2 measurements (2026-10-31)
+
+**Nothing adopted; no shipped number, rule or default changed.** Goldens unchanged.
+- **`rework` became P2's package:** P1d's base without the Mortar's clouds, plus `stormwaves` at 0.2 (the
+  user's answers to P1d). The swarm read and flyers joined it after P2 (above).
+- **Tools:** `npm run experiment` gains `--g4seeds n`, and its g3 check runs on `--workers` threads.
+
+Results are in [the backlog](../docs/balance-backlog.md#combat-rework-p2-2026-10-31); P2 was wrapped up early for
+the playtest:
+- **The package passes the strict counter bar and G4 at 200 games** (7:56, 12.5% Decisions, bot wins 52%), and
+  fails G3 on mono Sporeling (85 / 86) and mono Veilstalker (72 / 87).
+- **Which pieces carry it:** waves and the two-type shields carry the strict bar, the storm carries G4, pinned
+  keeps the archers down, call for help keeps G2 healthy, and the Burster and the Elder change hold the swarm
+  and the runners in G3. The Rhizomorph carries nothing measured.
+- **The adaptive general doesn't answer the swarm** under the package (G8, 100 seeds).
+- **Runs:** battle-1 losses rise from 79 to 108 of 240 (Armilla and Cordis), and waves cause it.
+
 ## Combat rework P1d prototypes (2026-10-31)
 
 **Nothing adopted; no shipped number, rule or default changed.** Goldens unchanged.

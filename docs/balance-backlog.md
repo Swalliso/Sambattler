@@ -1664,3 +1664,215 @@ Carry `rework` with both routes (`sporeCloud` off, `stormwaves` on) into P2, and
 1. **G3 under the rework:** judge it by the strict counter bar (which passes), or teach `bot:balanced` an answer to swarms?
 2. **G4:** both routes leave 18% Decisions. Push the storm (stronger, or starting before 4:00), or accept 18% for P2?
 3. **The Mortar's clouds:** drop them from `rework`? Without them Decisions fall 5 points, and they don't help G3.
+
+## Combat rework P2 (2026-10-31)
+
+P2 measured the package the user approved after P1d. **It was wrapped up early, at the user's call:** they want a stable package to playtest on the dev site, with flyers in it, rather than more measurement now. What ran and what was skipped are below. **Nothing is adopted.** Every setting stays off by default, and the goldens are unchanged.
+
+### The package
+
+P2 measured `rework` as P1d's base without the Mortar's clouds, plus the storm:
+- pinned and call for help;
+- the Rhizomorph;
+- waves on a 20 s beat, with mixed-wave shields at two unit types;
+- the Burster, whose bursts still leave spore clouds;
+- the Elder Sporeling's splash off;
+- `stormwaves` at 0.2 a stack.
+
+It's the same content as P1d's `rework,sporeCloud:null,stormwaves`, and G4 at 40 games reproduces P1d's 8:02 / 18% / 48% exactly. After P2, `rework` also gained [the general's swarm read and flyers](#after-p2-the-swarm-read-and-flyers), for the playtest; every result in the tables below is P2's package without them.
+
+**A correction to P1c:** the two-type shields made the strict bar pass, not the Burster; P1c turned both on together. The [P1c section](#combat-rework-p1c-2026-10-30) now says so, and P2 confirms it ([Which pieces carry the result](#which-pieces-carry-the-result)).
+
+### Tools
+
+- `--g4seeds n` plays G4 with n games in place of its 40 (about ±6 points on the Decision share; 200 gives about ±2.5).
+- The `g3` check plays its cells on `--workers` threads, as the counter matrix does, with the same results.
+
+### Every run
+
+G3 at 50 seeds per seat on the pool's three maps (mean / worst map); the strict counter bar (every mono build above 40% has an answer that wins ≥ 60% on every map and doesn't fail G3 itself); G4 at 200 games (median / Decisions, with the margin to 15%, about ±2.5 points / bot wins).
+
+| Run | G3 fails (mean / worst) | Strict bar | G4: median / Decisions (margin) / bot wins |
+|---|---|---|---|
+| Today | Gill Nest 88 / 100, Sporeling 74 / 77, Amanita 51 / 64 | **fails:** mono Sporeling's best answer, `d1-amanita`, wins 57 / 70 / 45 | 6:58 / 7.5% (+7.5) / 51% |
+| **The package** | Sporeling 85 / 86, Veilstalker 72 / 87 | **passes** | **7:56 / 12.5% (+2.5) / 52%: passes** |
+| − waves | Sporeling 74 / 80, Gill Nest 79 / 94, Amanita 55 / 71 | **fails:** mono Sporeling's best, Sporeling + Burster Pod, wins 72 / 68 / 47 | 8:03 / **22.5% (−7.5)** / 50% |
+| − pinned | Sporeling 83 / 85, **Gill Nest 73 / 80**, Veilstalker 72 / 90 | passes | 8:04 / 14.5% (+0.5) / 48% |
+| − call for help | Sporeling 87 / 94, Veilstalker 73 / 87 | passes | 8:03 / 12.5% (+2.5) / 48% |
+| − the Rhizomorph | Sporeling 86 / 89, Veilstalker 71 / 84 | passes | 7:57 / 8.5% (+6.5) / 44% |
+| − the shields (`mixedWave` off) | Sporeling 95 / 97, Gill Nest 66 / 75, Veilstalker 81 / 88, Morel 68 / 78 | **fails:** mono Sporeling's best, mono Capguard, wins 80 / 85 / 44 | 8:12 / 9.5% (+5.5) / 53% |
+| − the shields for pairs (three types) | Sporeling 89 / 92, Gill Nest 54 / 61, Veilstalker 77 / 84, Morel 59 / 67 | **fails:** the same, mono Capguard 80 / 85 / 44 | 7:56 / 7.0% (+8.0) / 59% |
+| − the Burster | Sporeling 87 / 90, Veilstalker 76 / 93, Morel 59 / 69 | passes | 7:46 / 8.5% (+6.5) / 48% |
+| − the Elder change (splash back) | **Sporeling 94 / 95**, Veilstalker 72 / 83 | passes | 7:46 / 7.0% (+8.0) / 48% |
+| − the storm | Sporeling 83 / 86, Veilstalker 45 / 61 | passes | 8:36 / **27.0% (−12.0)** / 46% |
+
+Each piece alone on today's rules, G4 at 200 (step 3; its G3 runs were skipped): `pinned` 7:07 / 6.5%, `callforhelp` 7:05 / 6.5%, `rhizomorph` 7:06 / 7.5%, `waves` 8:18 / **20.5%**, `burster` 7:40 / **15.5%**, the Elder change 6:54 / 5.5%. Mixed waves and the storm need waves: `waves` with shields 7:54 / 13.0%, with the storm 7:40 / 6.5%.
+
+- **The package passes the strict bar and G4, and fails G3** on mono Sporeling and mono Veilstalker, as P1d found. Its matrix and G3 reproduce P1d's "both routes" exactly.
+- **G4 at 200 games passes.** P1d's 18% was 7 of the first 40 games; over 200 the same package ends 25 in Decisions.
+- **The strict bar's answers win outright:** Sporeling + Veilstalker beats mono Sporeling 100 / 100 / 86 with 0–1% Decisions, mono Veilstalker 96 / 85 / 95, and mono Morel 100 / 100 / 100. Mono Gill Nest's best is Sporeling + Amanita, 100 / 99 / 94.
+
+### Which pieces carry the result
+
+- **Waves carry everything.** Without them the strict bar fails (mono Sporeling's best answer wins 47% on Twin Roots), G4 rises to 22.5%, and the archers return to G3 (Gill Nest 79 / 94). Waves also raise the battle-1 losses in runs ([below](#engagement-and-runs-with-commanders)).
+- **The two-type shields carry the strict bar.** Off, or at three types so that no pair gets them, mono Sporeling's best answer is mono Capguard, which wins 44% on Twin Roots. G3 gets worse too: mono Sporeling 89–95, and Gill Nest, Veilstalker and Morel fail. They cost G4 3–5 points.
+- **The storm carries G4.** Without it, 27% of G4's games end in Decisions. It costs G3 against the runners: mono Veilstalker is 45 / 61 without it and 72 / 87 with it, since it gives `bot:balanced` more merged units for Veilstalkers to slay (P1d).
+- **Pinned keeps the archers down.** Without it mono Gill Nest fails G3 again (73 / 80), and G4 sits at the line (14.5%).
+- **Call for help keeps G2 healthy.** Without it, under pinned, the Gill Archer wins no supply duel, and G2 fails. G3, the strict bar and G4 don't move.
+- **The Elder change holds mono Sporeling to 85 / 86.** With the splash back it's 94 / 95. The change costs G4 5 points: with the splash back, Decisions fall to 7%.
+- **The Burster helps G3 against the runners** (mono Veilstalker 72 / 87 with it, 76 / 93 without; Morel 53 / 60 with it, 59 / 69 without) and costs G4 4 points. The strict bar passes without it.
+- **The Rhizomorph carries nothing measured.** Without it the strict bar and G3 hold, G4 improves to 8.5%, and G5 passes (73%). Bots build Tunnels in 19–33% of games, and Rhizomorphs deal 1–4% of their side's damage.
+
+### The package's other checks
+
+| Check | Today | The package | Bar |
+|---|---|---|---|
+| G1 production duels | fails: Gill Nest wins 7 of 8 pairings | fails: Gill Nest wins 9 of 10 | ≤ 80% each |
+| G2 supply duels | passes | **passes:** a healthy graph, asserted edges held | |
+| G5, +150 gold | 75% | 78%: 3 points over (40 games, about ±7) | 55–75% |
+| G6, 6 columns behind at 3:00 | 55% | 88% | ≥ 20% |
+| G7, merging | mirror 60%; Slayers 56% (fails) | **mirror 72% (fails)**, 67 merges a game against 18; Slayers 55% (fails) | 55–70%; ≤ 50% |
+| G8, adaptation | fails | fails ([below](#g8-does-the-adaptive-general-answer-the-swarm)) | |
+| Engagement comebacks | 0 in 360 | 0 in 360 | more than step B's 2 in 360 is a bonus |
+| Runs won (of 240) | 54 | 60 | |
+| Runs ended in battle 1 | 79 | **108** | |
+
+- **G2's graph stays healthy.** The Burster beats Sporelings, archers, Scythecaps, Veilstalkers, Morel Runners and Rhizomorphs, and loses to Rootbreakers and Amanita Knights; the Rhizomorph beats only Sporelings.
+- **G7's mirror goes over:** waves bunch idle units, and merges nearly quadruple.
+- **Four of the variants got these checks before the wrap-up.** Without pinned: G5 83%, G7's mirror 69%. Without call for help: G2 fails, G5 80%, mirror 71%. Without the Rhizomorph: G5 73% (passes), mirror 70%, G2 passes. Without the shields: G5 78%, mirror 67%. G1, G7's Slayer half and G8 fail in all four, as they do today.
+
+### G8: does the adaptive general answer the swarm?
+
+**No.** G8 (30 seeds) and a 100-seed check against the Lichen Baron on Bogwater, adaptation off and on:
+
+| Mono bot | Today: mono wins, off → on | The general wins (on) | Package: off → on | The general wins (on) |
+|---|---|---|---|---|
+| Sporeling Burrow | 82 → 71 | 29% | 83 → 79 | 21% |
+| Veilstalker Hollow | 78 → 74 | 26% | 92 → 90 | 10% |
+
+- **The package makes the general worse against the swarm,** not better. Adaptation is worth 11 points against mono Sporeling today and 4 under the package.
+- **It read the swarm as Elite:** 155 of 199 reads against mono Sporeling, where today reads Swarm (158 of 179). Waves make nearly every cheap unit merge, and SPEC §7.4 reads a merging army as Elite.
+- **An Elite read does nothing for the Lichen Baron in G8.** Its kit lists the Veilstalker Hollow, so no counter blueprint is drafted, but its weights have no entry for it, so the ×3 lands on nothing. That's how today's counter cycle works too; it only shows once Elite reads become common.
+- **So G3 fails on more than `bot:balanced`'s fixed mix.** The general, which adapts, doesn't answer the swarm either. Fixing the read helps little ([After P2](#after-p2-the-swarm-read-and-flyers)), because the general's Swarm counters (Capguards, Burster Pods, Tunnels) aren't the answer the matrix found (Sporeling + Veilstalker).
+
+The full G8 (30 seeds per mono bot) fails on today's rules and under the package. Under the package `bot:balanced` wins 53% against the adaptive general (40–65% wanted), against 67% today.
+
+### Who uses each piece
+
+From 960 G3 sides, 80 G4 sides, the G8 and engagement battles, and the matrix's data bots under the package:
+
+| Piece | Who uses it in the checks |
+|---|---|
+| Burster Pods | `bot:balanced` builds one in 52% of its G3 games and 55% of its G4 games; the scripted general in 55%; the Lichen Baron in 55–66% of G8's; the battle-1 generals in 20–100% of engagement games. The matrix's data bots (`turtle`, `rush`, `greedy`, `slayer`) in 44–72%. Mono bots and the matrix's test bots never, except mono Burster Pod and the pairs that name it. Bursts and their clouds deal 12–19% of a user's damage |
+| Rhizomorph Tunnels | `bot:balanced` in 19% of its G3 games and 30% of G4's; the scripted general in 33%; generals 0–60%; data bots 6–56%. Rhizomorphs deal 1–4% of their side's damage |
+| Mixed-wave shields | 66% of `bot:balanced`'s waves in G3 (73% of its wave units), 72–75% in G4; generals 43–85%. A mono bot's waves never qualify |
+| The storm | Every game reaches 4:00. 64% of `bot:balanced`'s G3 games reach 6:00 and 26% 8:00; in G4, 95% and 53%. The supply cap holds back 3–6 storm units a side per game |
+| No Elder splash | Elder Sporelings appear in every mono Sporeling game, 64% of `bot:balanced`'s G3 games and 78–88% of G4's |
+| Waves, pinned, call for help | Rules for every side |
+
+### Engagement and runs, with commanders
+
+`--checks engagement,runs --commander <each> --power-policy auto`: `bot:balanced` with each commander, 30 seeds against each battle-1 general on Bogwater, and 80 runs per commander. Today's rows match P1's exactly.
+
+| Commander | Rules | Player wins | Decisions | Median | First flip | Supply at 5:00 | Merges |
+|---|---|---|---|---|---|---|---|
+| Vesper | today | 80 / 47 / 87 / 80% | 0 / 3 / 3 / 0% | 5:50 / 6:19 / 6:51 / 5:42 | 1:40 / 1:09 / 0:34 / 0:34 | 23 / 21 / 24 / 28 | 26 / 39 / 18 / 10 |
+| Vesper | package | 90 / 37 / 83 / 83% | 0 / 0 / 10 / 0% | 6:21 / 6:14 / 7:21 / 6:24 | 2:22 / 1:22 / 3:22 / 2:42 | 43 / 33 / 47 / 41 | 67 / 78 / 54 / 49 |
+| Armilla | today | 67 / 70 / 83 / 60% | 0 / 3 / 0 / 0% | 6:23 / 6:04 / 5:58 / 5:34 | 1:15 / 1:07 / 0:34 / 0:34 | 28 / 31 / 30 / 27 | 29 / 40 / 14 / 12 |
+| Armilla | package | 77 / 47 / 80 / 47% | 3 / 0 / 13 / 3% | 6:54 / 6:34 / 7:25 / 6:53 | 1:52 / 1:04 / 2:21 / 2:22 | 46 / 48 / 46 / 42 | 62 / 94 / 65 / 61 |
+| Cordis | today | 43 / 20 / 70 / 60% | 0 / 7 / 3 / 3% | 6:59 / 6:08 / 7:04 / 5:48 | 1:16 / 1:12 / 0:34 / 0:34 | 24 / 24 / 24 / 26 | 38 / 40 / 23 / 15 |
+| Cordis | package | 63 / 17 / 57 / 57% | 7 / 3 / 37 / 20% | 7:52 / 6:41 / 9:33 / 8:02 | 2:42 / 1:33 / 3:12 / 2:52 | 43 / 43 / 44 / 44 | 119 / 118 / 105 / 90 |
+
+Each cell is scripted / Old Mother Mold / Lichen Baron / Blightwright, 30 battles each.
+- **Still no comebacks:** 0 in 360 on either rule set. The winner's Heartcap was untouched in 360 of 360 battles under the package, and a falling Heartcap dies 5–10 s after it reaches ⅔.
+- **Decisions rise from 7 to 29 of 360,** mostly against the Lichen Baron (10–37%).
+
+**Runs** (80 per commander, power on auto), the package and each variant:
+
+| Rules | Won (of 240) | Reached the boss | Ended in battle 1: Vesper / Armilla / Cordis | In all |
+|---|---|---|---|---|
+| Today | 54 | 76 | 24 / 29 / 26 | 79 |
+| The package | 60 | 64 | 23 / 41 / 44 | **108** |
+| − waves | 71 | 81 | 22 / 22 / 24 | **68** |
+| − pinned | 57 | 61 | 22 / 41 / 42 | 105 |
+| − call for help | 55 | 63 | 17 / 38 / 35 | 90 |
+| − the Rhizomorph | 55 | 58 | 22 / 46 / 41 | 109 |
+| − the shields | 56 | 61 | 26 / 43 / 42 | 111 |
+| − the shields for pairs | 52 | 55 | 25 / 45 / 42 | 112 |
+| − the Burster | 62 | 64 | 21 / 50 / 35 | 106 |
+| − the Elder change | 58 | 58 | 27 / 47 / 39 | 113 |
+| − the storm | 62 | 69 | 21 / 39 / 32 | 92 |
+
+- **Battle 1 gets harder for Armilla and Cordis,** and waves are the cause: without them, battle-1 losses fall below today's (68 against 79). Why isn't measured. Armilla's Rhizome Tithe pays per column held, and under waves the first column flips 40 s to 3 minutes later; Cordis's Puppet Bloom merges trios, and under waves nearly everything merges anyway. Vesper's battle 1 doesn't move.
+- **Runs won rise a little** (54 → 60), all at the boss: 60 of 64 boss fights won.
+
+### What was skipped, and why
+
+The user wrapped P2 up for the playtest. In hand: step 1 in full, step 2 in full (G3, the strict bar and G4 at 200 for nine variants, plus runs with commanders), step 3's G4. Skipped:
+- **Step 3's G3 runs** (each piece alone at 50 seeds). P1 to P1d screened most pieces alone at 20 seeds; their G4 at 200 is in the table.
+- **Step 4's other checks on smaller packages.** They started on the seven variants that held G4 and stopped at the wrap-up. Duels and G5–G8 finished for four of them (without pinned, call for help, the Rhizomorph, or the shields), engagement for none.
+- **No combined smaller package** (two pieces removed at once) was measured.
+
+### The smallest package I'd take forward
+
+The pieces each carry something except the Rhizomorph: waves and the two-type shields carry the strict bar, the storm carries G4, pinned keeps the archers down, call for help keeps G2 healthy, and the Burster and the Elder change hold the swarm and the runners in G3. **The smallest package I'd take forward is the package without the Rhizomorph.** Taken out alone, it holds the strict bar and G3, and improves G4 (8.5%) and G5. It's a judgment from single removals: the smaller package itself wasn't measured with the other checks.
+
+None of it passes G3, and the G8 check says the reason isn't only `bot:balanced`'s fixed mix: the adaptive general doesn't answer the swarm either. Teaching the general the rework's answers (a Sporeling + Veilstalker core) is the user's call, as agreed.
+
+For the playtest, `rework` keeps the Rhizomorph and adds the swarm read and flyers ([After P2](#after-p2-the-swarm-read-and-flyers)). Dropping the Rhizomorph from it is a one-line change, for the user to decide.
+
+### After P2: the swarm read and flyers
+
+At the wrap-up the user asked for two more pieces in `rework`, for the playtest: a fix for the general's swarm read and flyers. Both are default-off presets that `rework` includes; the [changelog](../data/CHANGELOG-balance.md) has the details.
+
+**The swarm read** (`swarmread`, the knob `ai.counter.swarmMaxSupply`): an adaptive general reads a 1-supply unit's spawner by its armor, whether or not its units merge. It fixes the read, and the general still doesn't answer the swarm. 100 seeds against the Lichen Baron on Bogwater, adaptation on:
+
+| Mono bot | Today | P2's package | With the swarm read |
+|---|---|---|---|
+| Sporeling Burrow: reads | Swarm 158, Elite 21 | Elite 155, Swarm 44 | **Swarm 199** |
+| Sporeling Burrow: the general wins | 29% | 21% | 24% |
+| Veilstalker Hollow: reads | Swarm 192, Elite 5 | Swarm 157, Elite 43 | **Swarm 200** |
+| Veilstalker Hollow: the general wins | 26% | 10% | 11% |
+
+With the right read it builds its Swarm counters (158 Capguard Halls, 81 Burster Pods and 40 Tunnels against mono Sporeling, over 100 games), and they aren't the swarm's answer under the package.
+
+**Flyers** (`flyers`, as [docs/ideas/flyers.md](ideas/flyers.md) designs them, without the Bloatcap): the reach rule, the Driftling and the Drift Stalk, a raised draw over a shadow, and inspector and card rows. The design's open questions, settled by its recommendations:
+- **Reach:** melee units of 2+ supply, ranged units, turrets, other flyers, spore clouds and powers hit a flyer.
+- **Merging** doesn't grant reach (`mergedReach: false`).
+- **Flyers hold no ground** (`holdsGround: false`).
+- **Clouds reach flyers; the Mortar's lob doesn't.** A tower's attack reaches flyers unless it splashes.
+- **The Gray Rot mirrors the Bloom's flyers,** as it does the Tunnel and the Pod.
+- **Working names:** Driftling and Drift Stalk.
+- **Not built:** the general's Anti-Air counter kind and the towers' pressure rule from the design's AI section. A Driftling army reads as a swarm (light armor), and the general's Swarm set already holds units that reach flyers (Capguards, Scythecaps, Amanita Knights).
+
+The sanity pass on the playtest `rework` (P2's package, the swarm read and flyers):
+- **G4 at 200 games passes:** 8:06 / 12% / 52%.
+- **G2 stays healthy.** The Driftling beats Sporelings, Morel Runners, Veilstalkers and archers in duels, and loses to Capguards, Scythecaps, Rootbreakers, Hammercaps, Amanita Knights, surfaced Rhizomorphs and Bursters (their death clouds catch it).
+- **G1 still fails,** as on today's rules: Gill Nest 10 of 11 pairings, Capguard Hall 9 of 11.
+- **Who fields flyers:** `bot:balanced` builds a Drift Stalk in 22% of its G3 games and 20% of G4's; the Lichen Baron in 37–50%; Old Mother Mold never.
+
+### Judgment calls
+
+- **G3's maps:** the run pool's three, as in every round; the two-lane test maps are leads, not counted.
+- **Removing a piece:** a balance setting by `null` (`waves:null`, `pinned:null`, `callForHelp:null`, `mixedWave:null`, `stormWaves:null`). The Rhizomorph and the Burster can't be removed by a path, since their units and buildings are content, so those two variants are composed from the other presets (`pinned,callforhelp,mixedwave,burster,…`); with nothing removed that composition is the same content as `rework`.
+- **"Without waves" also switches off the shields and the storm,** which need waves.
+- **"Without the Elder change"** restores the shipped splash (`unit.sporeling.mergePerks.3.splashRadius:0.6`).
+- **The shields two ways:** off (`mixedWave:null`), and at three types (`mixedWave.minTypes:3`), where a pair never gets them.
+- **Engagement and runs** used `--commander all --power-policy auto`, split into one process per commander (the same seeds and results).
+- **After `rework` gained the swarm read and flyers,** the last five matrices ran on an explicit spelling of P2's package (`pinned,callforhelp,rhizomorph,mixedwave,burster,unit.sporeling.mergePerks.3.splashRadius:null,stormwaves`), checked to be the same content.
+
+### Surprises
+
+- **G4 at 40 games misled P1d by a game or two.** The package's 18% was 7 of 40; at 200 games it's 12.5%. Decisions are rare enough that 40 games can't place them within the 15% line.
+- **The side 6 columns behind wins G6's comeback scenario 88% of the time,** against 55% today. No single piece does it (each alone gives 55–68%); together they compound. G6 asks at least 20%, so it passes, but the engagement check still finds no comebacks.
+- **Call for help is what lets archers win duels under pinned.** Without it, G2's Gill Archer loses to everything.
+- **The Elder splash makes mono Sporeling stronger (94 / 95) but lowers G4's Decisions** (7%).
+- **The adaptive general does worse against the swarm under the package,** because the swarm reads as Elite and its Elite counter builds nothing.
+
+### Commands
+
+- `npm run experiment -- --proto <spec> --checks counters --g3seeds 50 --top 5 --workers 10`
+- `npm run experiment -- --proto <spec> --checks g4 --g4seeds 200`
+- `npm run experiment -- --proto <spec> --checks duels,g5,g6,g7,g8`
+- `npm run experiment -- --proto <spec> --checks engagement,runs --commander <id> --power-policy auto`
+- About 7–17 minutes a matrix on 10 workers, 30–90 s a G4 at 200, 1–2 minutes a commander's engagement and runs.
