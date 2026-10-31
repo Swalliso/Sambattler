@@ -28,6 +28,7 @@ The user's brief:
 - **G3 still fails on the swarm.** `bot:balanced` loses to mono Sporeling 81–85% of the time at a 20 s beat, and to mono Veilstalker too when the storm grows waves. The adaptive general doesn't answer the swarm either.
 - **G4 passes.** With the Mortar's clouds off and a Sporestorm that grows waves, 12.5% of battles end in a Decision over 200 games, against a limit of 15%.
 - **P2 found what each piece carries.** Waves carry almost everything, the two-type shields carry the strict bar, the storm keeps battles short, and pinning, call for help, the Burster and the Elder change each hold one check. The Rhizomorph carries nothing measured.
+- **Flyers answer the swarm, but a flyer army takes over G3** (mono Drift Stalk 89%). Fallbacks from [flyers.md](flyers.md) are being measured.
 - **Next: P3, a playtest** on the dev site with `?proto=rework`, which now also has flyers and a fix for the general's swarm read ([P3](#p3-playtest)).
 - **How to judge it:** two checks side by side. The counter matrix says every committed build has an answer, now with a stricter bar, since today's rules already pass the first one. G3 says a mixed army holds up against committed builds.
 - **If that fails:** move to rounds, as Mechabellum does. A wilder option, ranged power as structures, is sketched too.
@@ -448,7 +449,9 @@ P2 ran on 2026-10-31 and was cut short at the user's call, for a playtest ([Deci
   - There are still no comebacks in 360 battles, and Decisions in those battles rise from 7 to 29, mostly against the Lichen Baron.
   - Runs with commanders win a little more often (60 of 240, from 54), but more end in battle 1 (108, from 79), all with Armilla and Cordis. Waves cause it: without them, 68 end there.
 
-After P2, `rework` gained the general's swarm read and flyers, for the playtest. With both, G4 still passes (12% at 200 games), G2 stays healthy, and `bot:balanced` builds a Drift Stalk in about a fifth of its games.
+After P2, `rework` gained the general's swarm read and flyers, for the playtest. With both, G4 still passes (12% at 200 games), G2 stays healthy, and the strict bar passes. `bot:balanced` builds a Drift Stalk in about a fifth of its games, and flyers answer the swarm: Amanita + Drift Stalk beats mono Sporeling 100 / 100 / 94.
+
+**But mono Drift Stalk takes over G3,** at 93 / 96 / 78, and beats three of the four battle-1 generals; only the Lichen Baron holds. [flyers.md](flyers.md) names this risk. Its two fallbacks are being measured: rule C, where every unit reaches a flyer but ground melee deals it half damage, and a 2-supply Driftling with double stats.
 
 ## Prototype plan
 
@@ -555,6 +558,7 @@ What P2 says to watch for:
 - falling back early is a big edge;
 - there are still no comebacks;
 - the general doesn't answer a swarm;
+- an army of only flyers is too strong. To try rule C, add its settings: `?proto=rework,flying.reachSupply:1,flying.meleeMult:0.5`;
 - the Rhizomorph may not earn its place.
 
 ### P4: decide
