@@ -6,7 +6,7 @@ import type { RawContent } from './registry.ts';
 
 type Json = Record<string, unknown>;
 
-// ---- the combat rework's package (docs/ideas/combat-rework.md, P1 and P1b); `rework` turns on its five settings ----
+// ---- the combat rework's package (docs/ideas/combat-rework.md, P1 and P1b); `rework` turns on all six ----
 
 /** Pinned: a ranged unit with an enemy unit within 1 tile attacks at 0.35× its rate. */
 const PINNED: Json = { pinned: { radius: 1, rateMult: 0.35 } };
@@ -120,8 +120,8 @@ export const PROTO_PRESETS: Record<string, Json> = {
   waves: WAVES,
   /** Mixed waves on top of waves (mixedWave means nothing without them). */
   mixedwave: { ...WAVES, ...MIXED_WAVE },
-  /** All five of the combat rework's settings. */
-  rework: { ...PINNED, ...CALL_FOR_HELP, ...SPORE_CLOUD, ...RHIZOMORPH, ...WAVES },
+  /** All six of the combat rework's settings (mixed waves joined in P1b, since they helped the mixed army). */
+  rework: { ...PINNED, ...CALL_FOR_HELP, ...SPORE_CLOUD, ...RHIZOMORPH, ...WAVES, ...MIXED_WAVE },
 };
 
 /**

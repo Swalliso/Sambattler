@@ -1105,9 +1105,203 @@ The baseline reproduces the 50-seed table within noise (Gill Nest 88 / 100, Spor
 
 ### Questions for the user
 
+Answered on 2026-10-30; [P1b](#combat-rework-p1b-2026-10-30) applies the answers.
+
 1. **Waves form up at their buildings.** A wave starts staggered by building depth. Should it gather first? That would mean waiting on the field, which sank Hold. Or should deeper buildings release earlier, so the wave arrives together?
 2. **Hold under waves skips one beat,** and can be renewed every beat after its 10 s cooldown, so a player can keep a lane's wave home indefinitely. Is that the timing verb you want, or should a hold cap at one or two beats? Should the AI hold under waves (it doesn't now)?
 3. **A wave marches at its slowest unit's pace,** so a mixed wave crosses at Capguard or Rootbreaker speed while a mono swarm runs. It turned out not to cause the swarm result. Keep it?
 4. **Should the Rhizomorph avoid turret range,** or prefer ranged units over spawners? Today it surfaces beside spawners in the enemy's home and dies to the turrets.
 5. **Clouds stack,** and they hurt armored builds more than archers. Is that the intended role? Should clouds also slow, or keep units from merging?
 6. **`aiWeight` reaches every non-mono bot,** including P0's pair bots, under `rhizomorph`. Should hand-written test bots opt out?
+
+## Combat rework P1b (2026-10-30)
+
+P1b re-aims the [combat rework](ideas/combat-rework.md) at swarms and at making mixed armies viable, since P0 found that on today's rules [mono archers have answers](#counter-matrix-on-todays-rules-2026-10-30). It applies the user's answers to P1's questions and adds one setting, `mixedWave`. Built on `feature/combat-rework` after merging `develop` (the rework doc) and P0's `feature/counter-matrix`. **Nothing is adopted.** Every setting stays default-off, and the goldens are unchanged.
+
+### What changed
+
+| Setting | P1 | P1b |
+|---|---|---|
+| `waves`: forming up | Every spawner releases on the beat at its own door, so a wave starts staggered by building depth | A lane's frontmost spawner releases on the beat. Each spawner behind it releases early by its walk to that door, so the wave passes the front door together on the beat. Nothing waits on the field |
+| `waves`: Hold | Skips the lane's next beat; renewable every beat after the 10 s cooldown | Skips one beat. The beat spends the hold, and the lane can't hold again until the next beat has sent both waves. The AI still never holds |
+| `sporecloud`: aim | The Mortar fires at the nearest enemy, unit or building | The Mortar aims each shell at the enemy unit in its firing band with the most enemy units inside a cloud centred on it |
+| `rhizomorph`: surfacing | The nearest enemy ranged unit or spawner behind the front | The nearest enemy ranged unit; else a spawner behind the front. It skips any that an enemy tower or Heartcap turret covers, and falls back to the front |
+| Test bots | Every non-mono bot bought the Rhizomorph Tunnel (`aiWeight`) | A bot with `fixedWeights` buys only what it lists. The counter check sets it on every pair and hand-written answer |
+| `mixedwave` (new) | – | When a lane's wave holds 3+ unit types (a merged form counts as its base type), each of its units sets out with a shield worth 20% of its max HP. The preset includes `waves` |
+| `rework` | All five settings | All six: `mixedWave` joined because it helped the mixed army ([below](#g3-at-50-seeds-the-rework-variants)). "The five" below means `pinned,callforhelp,sporecloud,rhizomorph,waves` |
+
+The display follows: shield bubbles that fade as the shield wears down, the HP line in the inspect panel, the beat tip's next-wave unit types per lane, a "Mixed wave: shields up" callout, and hold texts for the one-beat cap.
+
+### Judgment calls
+
+- **Waves, forming up:**
+  - **The form-up point** is each lane's frontmost spawner door (per side).
+  - **The early release** is the walk from a spawner's door to that door at the wave's pace. With `matchPace`, the pace is the slowest tier-1 unit any spawner in the lane makes, even one with nothing waiting; without it, each unit's own speed. It's capped at a beat less one tick.
+  - **Units that leave early** march at that pace until the beat, then pace matching works as before.
+  - **Rhizomorph Tunnels** release on the beat and don't count for the front or the pace: their units tunnel instead of marching.
+  - **A spawner releases once per beat.** A unit that spawns after its spawner's release moment waits for the next beat, even if this beat hasn't come yet.
+- **Hold under waves:**
+  - A hold keeps home whatever hasn't left when it's placed. Units that already left early keep going.
+  - Advancing before the beat lets held units out at once, behind their wave.
+  - After a held beat, Hold reopens one tick after the next beat (`readyAt`), so at most every other wave of a lane is kept home.
+- **The Mortar's aim:**
+  - It re-aims as each shell is about to fire. Units only, counting bodies inside the cloud's radius as a cloud does. Ties go to the nearer unit, then the lower id.
+  - With no enemy unit in its band, it keeps its usual target (a building or the Heartcap). Burrowed units don't count.
+- **The Rhizomorph's cover rule:**
+  - "Covered" means inside an enemy tower's firing band (a Mortar can't hit a unit hugging it) or a Heartcap turret's 9 tiles, checked at the target's position.
+  - Ranged units come first at any depth: the turret check is what keeps it near the front.
+  - If every target is covered, it surfaces at the front rather than waiting underground.
+- **Test bots:** the data bots (`balanced`, `rush`, `turtle`, `greedy`, `slayer`, `adaptive`) still buy the Tunnel, as P1 asked for `bot:balanced`. `fixedWeights` is the one change in P0's files (`counterBots`).
+- **The mixed wave's shield:**
+  - **When:** granted on the beat, when the wave's last spawner releases. It goes to every living unit of that wave in that lane: early leavers, Rhizomorphs and units already fighting. Types are counted among the same units.
+  - **How much:** 20% of max HP, rounded.
+  - **What breaks it:** it soaks every kind of damage first (hits, splash, spore clouds and power bursts). It never decays or regrows, and healing doesn't restore it.
+  - **Merges:** a merge keeps the trio's total shield in proportion to the merged unit's max HP, as it does their HP.
+  - **No shield** for units a sold or destroyed spawner lets out.
+  - **It needs `waves`:** `mixedWave` without `waves` compiles to nothing.
+- **What the variants mean:** "each change alone" is the change on today's rules. "`pinned` stays in every variant" is read as every `rework` variant.
+
+### G3 at 50 seeds: the rework variants
+
+From the counter check's G3 (`--checks counters --g3seeds 50`), and `--checks g3 --g3seeds 50` for the pace-off columns (`waves.matchPace:false`). Mean / worst map, with Bogwater / Stumpfield / Twin Roots for Gill Nest; bold fails a limit (mean ≤ 55, worst ≤ 60). All P1b versions; `pinned` is on in every column but Today.
+
+| Mono bot | Today | The five | `rework` (the five and `mixedwave`) | The five without waves | The five, pace off | `rework`, pace off |
+|---|---|---|---|---|---|---|
+| Gill Archer Nest | **88 / 100** (100/100/63) | **68 / 79** (79/77/48) | **59 / 67** (67/66/44) | **80 / 95** (95/95/49) | **65 / 79** | **62 / 76** |
+| Sporeling Burrow | **74 / 77** | **96 / 99** | **95 / 98** | **77 / 83** | **96 / 98** | **93 / 97** |
+| Veilstalker Hollow | 41 / 51 | **54 / 76** | 51 / **75** | 38 / 45 | 52 / **73** | 48 / **68** |
+| Morel Warren | 55 / 57 | **58 / 68** | 55 / **65** | **63 / 63** | 51 / 58 | 46 / 56 |
+| Amanita Lodge | 51 / **64** | 40 / 46 | 36 / 39 | 55 / **66** | 32 / 34 | 29 / 34 |
+| Capguard Hall | 39 / 49 | 36 / 41 | 32 / 39 | 42 / 49 | 43 / 46 | 35 / 39 |
+| Rootbreaker Den | 28 / 53 | 26 / 30 | 24 / 27 | 30 / 55 | 25 / 28 | 24 / 24 |
+| Scythecap Grove | 30 / 42 | 22 / 35 | 19 / 28 | 35 / 48 | 22 / 28 | 22 / 27 |
+| Hammercap Forge | 24 / 28 | 19 / 25 | 15 / 20 | 31 / 40 | 23 / 30 | 18 / 24 |
+| Puffball Mortar | 6 / 9 | 3 / 5 | 3 / 5 | 16 / 25 | 10 / 14 | 10 / 13 |
+| Rhizomorph Tunnel | – | 10 / 19 | 9 / 17 | 4 / 6 | 5 / 7 | 5 / 8 |
+
+- **Waves make mono Sporeling unbeatable for `bot:balanced`:** 93–99% in every variant with waves, pace matching on or off.
+- **`mixedwave` helps the mixed army against slower builds:** Gill Nest 68 → 59, Veilstalker 54 → 51, Morel 58 → 55, Amanita 40 → 36. It doesn't help against the swarm (96 → 95). With G4 passing too ([below](#g4)), it joined `rework`.
+- **Pace matching barely matters:** off, Sporeling stays at 93–96 and the others move by 3–8 points.
+- **Without waves,** the package leaves Sporeling near today's 74 (77 / 83) and the archers at 80 / 95.
+- **No variant passes G3,** at 20 seeds or 50, so P2's other checks (G1–G2, G5–G8, engagement and runs) weren't run.
+
+### Each change alone
+
+G3 at 50 seeds per seat, from each change's counter check; `pinned` and `callforhelp` didn't change in P1b ([P1's table](#g3-each-setting-alone-and-all-five)). Mean / worst map.
+
+| Mono bot | Today | `waves` | `mixedwave` | `sporecloud` | `rhizomorph` |
+|---|---|---|---|---|---|
+| Gill Archer Nest | **88 / 100** | **87 / 95** | **83 / 91** | **88 / 100** | **90 / 100** |
+| Sporeling Burrow | **74 / 77** | **94 / 96** | **92 / 96** | **69 / 76** | **78 / 89** |
+| Veilstalker Hollow | 41 / 51 | 54 / **69** | 48 / **64** | 34 / 47 | 46 / 57 |
+| Morel Warren | 55 / 57 | 49 / 56 | 43 / 53 | 51 / 52 | 54 / 55 |
+| Amanita Lodge | 51 / **64** | 44 / 49 | 38 / 44 | 45 / **62** | 54 / **65** |
+| Capguard Hall | 39 / 49 | 43 / 52 | 32 / 38 | 29 / 39 | 38 / 47 |
+| Puffball Mortar | 6 / 9 | 0 / 1 | 0 / 1 | 14 / 21 | 8 / 13 |
+| Rhizomorph Tunnel | – | – | – | – | 7 / 14 |
+
+Against P1's versions (G3 at 20 seeds, both screens on the same seeds):
+- **Staggered waves help against archers, not swarms.** Mono Gill Nest 93 / 98 → 85 / 92, and Twin Roots 88 → 72. Mono Sporeling 90 / 98 → 93 / 95.
+- **The Mortar's aim doesn't move G3** (Gill Nest 87 / 100 both times): `bot:balanced` rarely builds Mortars. It shows in the counter matrix.
+- **The Rhizomorph's cover rule** takes mono Rhizomorph from 0% to 10% (7% at 50 seeds), but it is still the weakest mono build.
+
+### The counter matrix, against the strict bar
+
+`npm run experiment -- --proto <spec> --checks counters --g3seeds 50 --top 5`, with today's rules run the same way for the baseline. Strict bar: every mono build with a G3 mean above 40% needs an answer that wins ≥ 60% on every map. Each cell is the best confirmed answer by its worst map, among answers that don't fail G3 themselves (Bogwater / Stumpfield / Twin Roots, 100 games per map). A dash: the build's G3 mean is 40% or less, so it isn't tested.
+
+| Rules | Mono Sporeling | Mono Gill Nest | Mono Veilstalker | Mono Amanita | Mono Morel | Mono Capguard | Strict bar |
+|---|---|---|---|---|---|---|---|
+| Today | `d1-amanita` 57 / 70 / **45** | `counter-rush` 81 / 76 / 86 | Sporeling + Gill Nest 100 / 100 / 84 | Hammercap + Amanita 100 / 100 / 82 | Veilstalker + Amanita 98 / 100 / 95 | – | fails Sporeling |
+| The five | mono Capguard 65 / 64 / **43** | Sporeling + Amanita 100 / 97 / 90 | `turtle` 88 / 93 / 93 | – | Sporeling + Veilstalker 100 / 100 / 99 | – | fails Sporeling |
+| `rework` | mono Capguard 65 / 64 / **43** | Sporeling + Amanita 100 / 97 / 90 | `turtle` 94 / 95 / 92 | – | Sporeling + Veilstalker 100 / 100 / 99 | – | fails Sporeling |
+| The five without waves | Sporeling + Veilstalker 58 / 58 / **45** | `counter-rush` 88 / 87 / 96 | – | Amanita + Morel 96 / 95 / 82 | Veilstalker + Amanita 100 / 99 / 97 | Gill Nest + Morel 100 / 100 / 99 | fails Sporeling |
+| `waves` | mono Capguard 60 / 71 / **44** | `d1-sporeling` 96 / 95 / 79 | Gill Nest + Amanita 97 / 97 / 91 | mono Rootbreaker 100 / 100 / 100 | Sporeling + Veilstalker 100 / 100 / 99 | Gill Nest + Scythecap 100 / 100 / 98 | fails Sporeling |
+| `mixedwave` | mono Capguard 60 / 71 / **44** | `d1-sporeling` 96 / 95 / 79 | Gill Nest + Amanita 97 / 97 / 91 | – | Sporeling + Veilstalker 100 / 100 / 99 | – | fails Sporeling |
+| `sporecloud` | `d1-amanita` 57 / 70 / **45** | `counter-rush` 81 / 76 / 86 | – | Hammercap + Amanita 100 / 100 / 82 | Veilstalker + Amanita 98 / 100 / 95 | – | fails Sporeling |
+| `rhizomorph` | `d1-amanita` 57 / 70 / **45** | `counter-rush` 81 / 76 / 86 | Sporeling + Gill Nest 100 / 100 / 84 | Hammercap + Amanita 100 / 100 / 82 | Veilstalker + Amanita 98 / 100 / 95 | – | fails Sporeling |
+
+Mono Sporeling's best answer on the mean (P0's proposed rule):
+
+| Rules | Best on the mean | Bogwater / Stumpfield / Twin Roots | Mean rule |
+|---|---|---|---|
+| Today | `turtle` | 77 / 86 / 21 | ok (61) |
+| The five, `rework`, `waves`, `mixedwave` | mono Capguard | 60–65 / 64–71 / 43–44 | **fails** (57–58) |
+| The five without waves | `turtle` | 73 / 85 / 36 | ok (65) |
+| `sporecloud` | `turtle` | 85 / 91 / 38 | ok (71) |
+| `rhizomorph` | `turtle` | 77 / 79 / 22 | **fails** (59) |
+
+- **Every strong build except mono Sporeling keeps a clean answer** under every variant.
+- **Mono Sporeling fails the strict bar everywhere, today included,** and always on Twin Roots: no answer wins more than 45% there.
+- **Waves take away even the mean-rule answer.** With waves, no answer to mono Sporeling reaches 60% on the mean (best 57–58%), and the Mortar-backed `turtle` falls from 61 to 44–48.
+- **The Mortar's new aim answers the swarm on one-lane maps.** Under `sporecloud`, `turtle` beats mono Sporeling 85% and 91% there, and Mortar + Veilstalker 81% and 92%, against 77 / 86 today. On Twin Roots they win 14–38%.
+- **The test bots' opt-out works.** Under `rhizomorph` the counter bots play exactly today's games (identical cells), while `bot:balanced` and the data bots buy Tunnels.
+
+### G4
+
+`--checks g4`: `bot:balanced` against the scripted general on Bogwater, 40 seeds. Targets: median 5:30–8:30, Decisions ≤ 15%, bot wins 30–70%.
+
+| Rules | Median | Decisions | Bot wins | G4 |
+|---|---|---|---|---|
+| Today | 7:13 | 10% | 55% | pass |
+| The five | 8:42 | 23% | 40% | **fail** |
+| `rework` | 8:12 | 15% | 43% | pass |
+| The five without waves | 7:27 | 23% | 48% | **fail** |
+| The five, pace off | 9:00 | 28% | 43% | **fail** |
+| `rework`, pace off | 8:39 | 23% | 50% | **fail** |
+| `waves` | 8:13 | 18% | 38% | **fail** |
+| `mixedwave` | 7:51 | 13% | 43% | pass |
+| `sporecloud` | 7:49 | 25% | 50% | **fail** |
+| `rhizomorph` | 6:51 | 5% | 43% | pass |
+
+- **Clouds make Decisions common:** 25% alone. Waves add length.
+- **`rework` passes on the edge** (15% Decisions, the limit). The cells are ±6 points.
+
+### Two leads beyond the brief
+
+**The beat length trades archers for swarms.** `rework` (then the five) with other beats, G3 at 20 seeds (±8 points), mean / worst:
+
+| Beat | Gill Nest | Sporeling | Veilstalker | Morel | Amanita | Capguard |
+|---|---|---|---|---|---|---|
+| 10 s | **96 / 100** | 38 / 57 | 5 / 8 | 21 / 38 | – | – |
+| 13 s | **88 / 98** | 45 / 50 | 9 / 12 | 28 / 38 | 47 / 52 | 32 / 42 |
+| 15 s | **84 / 98** | 55 / **62** | 17 / 30 | 39 / 50 | 47 / 57 | 34 / 48 |
+| 17 s | **80 / 92** | **73 / 85** | 22 / 32 | 35 / 50 | 38 / 42 | 41 / 50 |
+| 20 s (P1b) | **68 / 78** | **97 / 98** | **56 / 82** | **58 / 68** | 37 / 42 | 40 / 48 |
+| 30 s | 41 / 45 | **98 / 100** | **85 / 100** | **75 / 85** | – | – |
+
+- **Short beats feed archers; long beats feed swarms and runners.** No beat passes both Gill Nest and Sporeling against `bot:balanced`. Sporeling jumps between 17 and 20 s (73 → 97).
+- A beat near 15 s is the closest to balanced in this table.
+
+**Why mixed waves can't help against the swarm.** Under `rework`, 6 seeds a map, `bot:balanced` against each mono bot:
+
+| Against | Map | `bot:balanced`'s lane waves with 3+ types |
+|---|---|---|
+| mono Sporeling | Bogwater / Stumpfield / Twin Roots | 6% / 11% / 8% |
+| mono Gill Nest | Bogwater / Stumpfield / Twin Roots | 34% / 32% / 7% |
+
+It loses to the swarm before it fields three unit types. On Twin Roots it splits its army over two lanes, so a lane's wave rarely holds three.
+
+### What it suggests
+
+- **Waves at a 20 s beat are the problem.** In every variant with them, mono Sporeling beats `bot:balanced` 92–99% and has no answer above 58% even on the mean. Without waves, the gap is today's: mono Sporeling on Twin Roots.
+- **The P1b fixes work as designed, but none of them reaches the swarm:**
+  - staggered release brings the archers down under waves;
+  - the Mortar's aim answers swarms on one-lane maps;
+  - the Rhizomorph stops diving into turrets;
+  - mixed waves help a mixed army that lives long enough to be mixed.
+- **Twin Roots is where mono Sporeling escapes every answer**, today and in every variant. That looks like a map or lane-AI question as much as a rules one: `bot:balanced` splits over the two lanes, and the answers that work on one lane (Capguards behind Mortars) don't.
+- **If waves stay, the beat is the dial to test next:** 15–17 s with the counter matrix, since G3 alone can't tell a beat that makes swarms answerable from one that just makes archers strong again.
+
+### Questions for the user
+
+1. **Waves at 20 s make mono Sporeling unanswerable.** Keep waves and test a 15–17 s beat (archers come back), or take waves out of the package?
+2. **Mono Sporeling on Twin Roots has no answer in any variant, today included.** Treat it as a map or lane-AI problem outside the rework, or keep it in the rework's bar?
+3. **Mixed waves need three unit types per lane,** which a mixed army reaches in under a tenth of its waves against a swarm. Lower it to two types, or count a side's whole wave instead of a lane's?
+4. **Clouds push G4's Decisions to 25% alone.** Accept that while clouds are tuned, or have the Mortar's aim prefer units nearer the front?
+
+### Commands
+
+- G3 screens (20 seeds): `npm run experiment -- --proto <spec> --checks g3 --g3seeds 20`.
+- Counter matrix with G3 at 50 seeds: `npm run experiment -- --proto <spec> --checks counters --g3seeds 50 --top 5`. About 5–11 minutes a variant on 10 workers.
+- G4: `npm run experiment -- --proto <spec> --checks g4`.
+- Specs: the five are `pinned,callforhelp,sporecloud,rhizomorph,waves`; without waves, `pinned,callforhelp,sporecloud,rhizomorph`; pace off adds `waves.matchPace:false`; beats add `waves.beatSeconds:<n>`.

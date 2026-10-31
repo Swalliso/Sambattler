@@ -47,7 +47,7 @@ describe('the combat rework settings are off by default', () => {
   it('the presets compile', () => {
     for (const p of ['pinned', 'callforhelp', 'sporecloud', 'rhizomorph', 'waves', 'mixedwave', 'rework']) expect(() => protoContent(p)).not.toThrow();
     const all = protoState(protoContent('rework'));
-    expect([all.rules.pin, all.rules.help, all.rules.cloud, all.rules.waves].every(Boolean)).toBe(true);
+    expect([all.rules.pin, all.rules.help, all.rules.cloud, all.rules.waves, all.rules.mixed].every(Boolean)).toBe(true);
     expect(all.compiled.player.buildings.rhizomorphTunnel).toBeDefined();
     expect(protoState(protoContent('pinned')).rules.pin).toEqual({ radius: 1, permille: 350 });
     expect(protoState(protoContent('callforhelp')).rules.help).toEqual({ radius: 5 });

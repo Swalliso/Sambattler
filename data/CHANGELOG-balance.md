@@ -3,6 +3,27 @@
 Every change from the SPEC's first-pass numbers, with the guardrail or verification result that
 motivated it. Tools: `npm run balance -- duel`, `npm run balance -- tournament`, `npm run test:slow`.
 
+## Combat rework P1b prototypes (2026-10-30)
+
+**Nothing adopted; no shipped number, rule or default changed.** P1b applies the user's answers to P1's
+questions, still as default-off presets in `src/data/proto.ts`, so goldens and hashes are unchanged:
+- `waves`: spawners behind a lane's front spawner release early, so the wave passes the front door
+  together on the beat; a hold lasts one beat, and the next beat always sends both waves.
+- `sporecloud`: the Mortar aims each shell at the densest cluster of enemy units in range.
+- `rhizomorph`: the Rhizomorph surfaces beside ranged units first and never where an enemy tower or
+  Heartcap turret covers it (it falls back to the front).
+- New `mixedwave` (with `waves`): a lane's wave of 3+ unit types sets out with shields of 20% of each
+  unit's max HP. It helped the mixed army, so `rework` now turns on all six settings.
+- The counter check's test bots carry `fixedWeights`, so the Rhizomorph's `aiWeight` skips them.
+
+Results are in [the backlog](../docs/balance-backlog.md#combat-rework-p1b-2026-10-30). G3 at 50 seeds per seat:
+- The five settings without `mixedwave`: mono Sporeling 96% mean / 99% worst, Gill Nest 68 / 79; no answer
+  to mono Sporeling reaches 60%, even on the mean. G4 fails (8:42, 23% Decisions).
+- `rework` (all six): Sporeling 95 / 98, Gill Nest 59 / 67; G4 passes (8:12, 15% Decisions, bot wins 43%).
+- Without waves: Sporeling 77 / 83, Gill Nest 80 / 95; mono Sporeling's answers fail on Twin Roots (best
+  45%), as on today's rules.
+- The beat length trades archers for swarms: at 15 s, mono Gill Nest 84 / 98 and Sporeling 55 / 62 (20 seeds).
+
 ## Combat rework P1 prototypes (2026-10-30)
 
 **Nothing adopted; no shipped number, rule or default changed.** The combat rework's five settings
