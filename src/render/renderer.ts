@@ -21,7 +21,7 @@ const STRIP = 2; // Heartcap strip width in tiles on each side
 /** Sprite scale per merge tier (SPEC §10.4: "a slightly larger sprite"). */
 const TIER_SCALE = [1, 1.25, 1.5];
 /** Combat rework `flyers`: how far a flyer's sprite floats above its shadow, in pixels (half a tile). */
-const FLY_LIFT = 8;
+export const FLY_LIFT = 8;
 /** "Big hits only" shows damage numbers from this amount up. */
 export const BIG_HIT = 30;
 export type DamageNumbers = 'off' | 'big' | 'all';

@@ -135,7 +135,7 @@ export class InspectPanel {
     ];
     const fly = state.rules.flying;
     if (u.flying) pairs.push(['Flying', `only big units, archers, turrets and other flyers can hit it${fly!.holdsGround ? '' : '; holds no ground'}`]);
-    else if (fly && t.healAmount === 0) pairs.push(['Flyers', reachesAir(state, u) ? '✦ can hit them' : "can't reach them"]);
+    else if (fly && t.healAmount === 0) pairs.push(['Flyers', reachesAir(state, u) ? 'can hit them' : "can't reach them"]);
     if (t.slayerMult !== 1) pairs.push(['Slayer', `×${t.slayerMult} vs Bloomed & Elder`]);
     if (u.tier > 1) pairs.push(['Perk', perkText(this.content, u.unitId, u.tier)]);
     if (u.burrowed) pairs.push(['Status', 'tunnelling: can\'t be hit, surfaces beside an archer (else a spawner) out of turret range']);

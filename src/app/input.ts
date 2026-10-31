@@ -1,4 +1,5 @@
 // Mouse and keyboard (SPEC §10.3). Everything becomes a Session change or a queued command.
+import { FLY_LIFT, TILE } from '../render/renderer.ts';
 import { unitRadius } from '../sim/world.ts';
 import { trayOrder } from '../ui/buildingInfo.ts';
 import type { BattleView } from './battleView.ts';
@@ -52,7 +53,8 @@ export function bindInput(session: Session, view: BattleView, hooks: InputHooks)
     let best: number | null = null, bestD = Infinity;
     for (const u of s.units) {
       const r = unitRadius(s, u) + 0.3;
-      const d = Math.hypot(u.x - x, u.y - y);
+      // a flyer (combat rework `flyers`) is picked at its raised sprite as well as at its shadow
+      const d = u.flying ? Math.min(Math.hypot(u.x - x, u.y - y), Math.hypot(u.x - x, u.y - FLY_LIFT / TILE - 0.35 - y)) : Math.hypot(u.x - x, u.y - y);
       if (d <= r && d < bestD) { best = u.id; bestD = d; }
     }
     if (best === null) {
