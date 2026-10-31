@@ -1270,7 +1270,7 @@ Mono Sporeling's best answer on the mean (P0's proposed rule):
 | 30 s | 41 / 45 | **98 / 100** | **85 / 100** | **75 / 85** | – | – |
 
 - **Short beats feed archers; long beats feed swarms and runners.** No beat passes both Gill Nest and Sporeling against `bot:balanced`. Sporeling jumps between 17 and 20 s (73 → 97).
-- A beat near 15 s is the closest to balanced in this table.
+- A beat near 15 s is the closest to balanced in this table. The next section measures 15 and 17 s properly.
 
 **Why mixed waves can't help against the swarm.** Under `rework`, 6 seeds a map, `bot:balanced` against each mono bot:
 
@@ -1281,21 +1281,64 @@ Mono Sporeling's best answer on the mean (P0's proposed rule):
 
 It loses to the swarm before it fields three unit types. On Twin Roots it splits its army over two lanes, so a lane's wave rarely holds three.
 
+### `rework` at 15 s and 17 s beats
+
+`rework` (all six) with `waves.beatSeconds:15` and `:17`, measured like the other variants: the counter matrix with G3 at 50 seeds per seat, and G4. The 20 s column is `rework` from the tables above.
+
+**G3 at 50 seeds**, mean / worst map (Bogwater / Stumpfield / Twin Roots for the two that fail everywhere); bold fails a limit:
+
+| Mono bot | Today | 15 s | 17 s | 20 s |
+|---|---|---|---|---|
+| Gill Archer Nest | **88 / 100** | **82 / 95** (91/95/61) | **75 / 89** (87/89/48) | **59 / 67** (67/66/44) |
+| Sporeling Burrow | **74 / 77** | **58 / 69** (69/56/50) | **74 / 88** (88/71/63) | **95 / 98** (96/98/90) |
+| Veilstalker Hollow | 41 / 51 | 15 / 19 | 19 / 29 | 51 / **75** |
+| Morel Warren | 55 / 57 | 36 / 48 | 35 / 53 | 55 / **65** |
+| Amanita Lodge | 51 / **64** | 40 / 48 | 37 / 41 | 36 / 39 |
+| Capguard Hall | 39 / 49 | 30 / 45 | 33 / 41 | 32 / 39 |
+| Rootbreaker Den | 28 / 53 | 51 / **75** | 33 / 45 | 24 / 27 |
+| Scythecap Grove | 30 / 42 | 23 / 34 | 22 / 30 | 19 / 28 |
+| Hammercap Forge | 24 / 28 | 23 / 32 | 18 / 25 | 15 / 20 |
+| Puffball Mortar | 6 / 9 | 16 / 18 | 5 / 8 | 3 / 5 |
+| Rhizomorph Tunnel | – | 9 / 9 | 3 / 3 | 9 / 17 |
+| Mono bots failing | 3 | 3 | **2** | 4 |
+
+**The counter matrix, strict bar.** The best confirmed answer by its worst map, among answers that don't fail G3 themselves (100 games per map):
+
+| Beat | Mono Sporeling | Mono Gill Nest | Others tested | Strict bar |
+|---|---|---|---|---|
+| 15 s | `turtle` 91 / 95 / 62 | `d1-sporeling` 72 / 78 / 76 | Rootbreaker: Gill Nest + Amanita 100 / 100 / 90. Amanita (40.3%): Rootbreaker + Amanita 100 / 100 / 99 | **passes** |
+| 17 s | mono Capguard 63 / 68 / 64 | `counter-rush` 96 / 94 / 83 | none: every other G3 mean is 40% or less | **passes** |
+| 20 s | mono Capguard 65 / 64 / **43** | Sporeling + Amanita 100 / 97 / 90 | Veilstalker, Morel: pass | fails Sporeling |
+
+**G4** (40 seeds, targets as above):
+
+| Beat | Median | Decisions | Bot wins | G4 |
+|---|---|---|---|---|
+| 15 s | 8:30 | 28% | 50% | **fail** |
+| 17 s | 8:11 | 20% | 43% | **fail** |
+| 20 s | 8:12 | 15% | 43% | pass |
+
+- **At 15 s and 17 s, `rework` is the first variant to pass the strict bar.** Every strong mono build has an answer that wins at least 60% on every map, including mono Sporeling on Twin Roots, which no answer reached today. The Twin Roots answers are close to the line (62 and 64, ±5): `bot:turtle` at 15 s, mono Capguard at 17 s.
+- **17 s fails G3 on the fewest mono bots:** only the archer–swarm pair, Gill Nest and Sporeling at 74–75 mean. Every other mono bot sits at 37% or below.
+- **G3 still fails,** because the reference mix loses to both ends of the triangle: `bot:balanced` against mono Gill Nest is 25%, against mono Sporeling 26% (17 s).
+- **Shorter beats cost G4 its Decisions:** 15% at 20 s, 20% at 17 s and 28% at 15 s. Battles between mixed armies stall more often. Clouds alone already push Decisions to 25% ([G4](#g4)).
+- **15 s brings the Rootbreaker up** (51 / 75, from 24 at 20 s) and the runners down (Veilstalker 15, Morel 36).
+
 ### What it suggests
 
-- **Waves at a 20 s beat are the problem.** In every variant with them, mono Sporeling beats `bot:balanced` 92–99% and has no answer above 58% even on the mean. Without waves, the gap is today's: mono Sporeling on Twin Roots.
+- **Waves at a 20 s beat are the problem.** In every variant with a 20 s beat, mono Sporeling beats `bot:balanced` 92–99% and has no answer above 58% even on the mean. Without waves, the gap is today's: mono Sporeling on Twin Roots.
 - **The P1b fixes work as designed, but none of them reaches the swarm:**
   - staggered release brings the archers down under waves;
   - the Mortar's aim answers swarms on one-lane maps;
   - the Rhizomorph stops diving into turrets;
   - mixed waves help a mixed army that lives long enough to be mixed.
-- **Twin Roots is where mono Sporeling escapes every answer**, today and in every variant. That looks like a map or lane-AI question as much as a rules one: `bot:balanced` splits over the two lanes, and the answers that work on one lane (Capguards behind Mortars) don't.
-- **If waves stay, the beat is the dial to test next:** 15–17 s with the counter matrix, since G3 alone can't tell a beat that makes swarms answerable from one that just makes archers strong again.
+- **Twin Roots is where mono Sporeling escapes its answers,** today and in every variant at 20 s; at 15–17 s they just clear the bar there (62–64%). That looks like a map or lane-AI question as much as a rules one: `bot:balanced` splits over the two lanes, and the answers that work on one lane (Capguards behind Mortars) mostly don't.
+- **If waves stay, 17 s is the beat to carry into P2.** It passes the strict bar, and it fails G3 only on the archer–swarm pair. Its open problems are Decisions in G4 (20%) and a reference bot that loses to both ends of the triangle.
 
 ### Questions for the user
 
-1. **Waves at 20 s make mono Sporeling unanswerable.** Keep waves and test a 15–17 s beat (archers come back), or take waves out of the package?
-2. **Mono Sporeling on Twin Roots has no answer in any variant, today included.** Treat it as a map or lane-AI problem outside the rework, or keep it in the rework's bar?
+1. **The beat:** at 20 s waves make mono Sporeling unanswerable. At 17 s the strict counter bar passes, but G3 still fails on Gill Nest and Sporeling, and G4's Decisions reach 20%. Move the `waves` preset to a 17 s beat for P2, or take waves out of the package?
+2. **Mono Sporeling on Twin Roots** has an answer only at 15–17 s beats, and only just (62–64%). Treat it as a map or lane-AI problem outside the rework, or keep it in the rework's bar?
 3. **Mixed waves need three unit types per lane,** which a mixed army reaches in under a tenth of its waves against a swarm. Lower it to two types, or count a side's whole wave instead of a lane's?
 4. **Clouds push G4's Decisions to 25% alone.** Accept that while clouds are tuned, or have the Mortar's aim prefer units nearer the front?
 

@@ -22,7 +22,9 @@ Results are in [the backlog](../docs/balance-backlog.md#combat-rework-p1b-2026-1
 - `rework` (all six): Sporeling 95 / 98, Gill Nest 59 / 67; G4 passes (8:12, 15% Decisions, bot wins 43%).
 - Without waves: Sporeling 77 / 83, Gill Nest 80 / 95; mono Sporeling's answers fail on Twin Roots (best
   45%), as on today's rules.
-- The beat length trades archers for swarms: at 15 s, mono Gill Nest 84 / 98 and Sporeling 55 / 62 (20 seeds).
+- The beat length trades archers for swarms. With 15 s and 17 s beats, `rework` is the first variant to pass the
+  strict counter bar (every strong mono build has an answer ≥ 60% on every map), but G3 still fails (Gill Nest
+  82 / 75, Sporeling 58 / 74) and G4's Decisions reach 28% / 20%.
 
 ## Combat rework P1 prototypes (2026-10-30)
 
