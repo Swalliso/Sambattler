@@ -258,7 +258,7 @@ export interface Rules {
    * radius and lifetime, the damage per pulse and the pulse cadence, and the AI's cover score per
    * tile; absent by default.
    */
-  cloud?: { buildings: string[]; radius: number; ticks: number; pulseTicks: number; damage: number; aiCover: number };
+  cloud?: CloudSpec & { buildings: string[]; aiCover: number };
   /**
    * Combat rework `waves` (balance `waves`): spawns wait in their building until their side's beat
    * (`CompiledSide.waveBeatTicks`), spawners behind a lane's front one leaving early; idle wave units
@@ -271,6 +271,10 @@ export interface Rules {
    * more unit types sets out with shields of `shieldFrac` × each unit's max HP. Absent by default.
    */
   mixed?: { minTypes: number; shieldFrac: number };
+  /** Combat rework `cleave` (balance `cleave`): units whose splash hits other units at full damage. Absent by default. */
+  cleave?: { units: string[] };
+  /** Combat rework `burster` (balance `burst`): the cloud a `burst` unit leaves where it bursts. Absent by default. */
+  burst?: { cloud: CloudSpec };
   timeLimitTicks: number;
   captureThreshold: number;
   captureStep: number;
@@ -367,6 +371,8 @@ export interface UnitState {
   wave?: number;
   /** Combat rework `mixedWave`: what is left of the shield its mixed wave set out with. Absent when it has none. */
   shield?: number;
+  /** Combat rework `burster`: true once a `burst` unit has burst (it is spent). Absent until then, and for every other unit. */
+  burst?: boolean;
 }
 
 export interface KnitState {
@@ -411,9 +417,13 @@ export interface BuildingState {
   lastWave?: number;
 }
 
+/** Combat rework: a spore cloud's size, lifetime, damage per pulse and pulse cadence. */
+export interface CloudSpec { radius: number; ticks: number; damage: number; pulseTicks: number }
+
 /**
- * Combat rework `sporeCloud`: a spore cloud left where a tower's shell landed. It damages enemy units
- * of `side`'s opponent inside it on every pulse until `untilTick`. Clouds keep the order they formed in.
+ * Combat rework `sporeCloud` and `burster`: a spore cloud left where a tower's shell landed or a
+ * Burster burst. It deals `damage` to the enemy units of `side`'s opponent inside it on each cadence
+ * tick (every `pulseTicks`) after `fromTick`, up to `untilTick`. Clouds keep the order they formed in.
  */
 export interface CloudState {
   id: number;
@@ -421,8 +431,12 @@ export interface CloudState {
   lane: number;
   x: number;
   y: number;
+  radius: number;
+  damage: number;
+  pulseTicks: number;
+  fromTick: number;
   untilTick: number;
-  /** The tower that fired it (damage-by-building stats). */
+  /** The tower that fired it, or the spawner of the unit that burst (damage-by-building stats). */
   sourceBuildingId: number;
 }
 
@@ -496,6 +510,8 @@ export type SimEvent =
    * left early (`held`: lanes it kept home; `shielded`: lanes whose mixed wave got shields).
    */
   | { t: 'release'; side: Side; units: number; held: number[]; shielded: number[] }
+  /** Combat rework `burster`: unit `id` burst at (x, y), reaching `radius` tiles. */
+  | { t: 'burst'; side: Side; id: number; x: number; y: number; radius: number }
   /** Heartcap breach prototype: a side's Heartcap fell to `at` of its max HP, firing its `heartcapBreach` triggers. */
   | { t: 'heartcapBreach'; side: Side; at: number; x: number; y: number }
   | { t: 'ended'; winner: Side; by: 'rout' | 'decision' };
@@ -645,7 +661,7 @@ export interface BattleState {
   units: UnitState[];
   buildings: BuildingState[];
   hits: PendingHit[];
-  /** Combat rework `sporeCloud`: the clouds on the field, oldest first. Absent unless `rules.cloud`. */
+  /** Combat rework `sporeCloud` and `burster`: the clouds on the field, oldest first. Absent unless `rules.cloud` or `rules.burst`. */
   clouds?: CloudState[];
   sporestorm: number;
   queue: Command[];

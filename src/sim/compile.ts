@@ -83,6 +83,15 @@ export function compileRules(b: BalanceDef, config: BattleConfig): Rules {
     ...(b.callForHelp ? { help: { radius: b.callForHelp.radius } } : {}),
     ...(b.waves ? { waves: { rangedGap: b.waves.rangedGap ?? 1, matchPace: b.waves.matchPace ?? true } } : {}),
     ...(b.waves && b.mixedWave ? { mixed: { minTypes: b.mixedWave.minTypes, shieldFrac: b.mixedWave.shieldFrac } } : {}),
+    ...(b.cleave ? { cleave: { units: [...b.cleave.units] } } : {}),
+    ...(b.burst ? {
+      burst: {
+        cloud: {
+          radius: b.burst.cloud.radius, ticks: secToTicks(b.burst.cloud.seconds, tr), pulseTicks: secToTicks(1, tr),
+          damage: Math.max(1, Math.round(b.burst.cloud.damagePerSecond)),
+        },
+      },
+    } : {}),
     ...(b.sporeCloud ? {
       cloud: {
         buildings: [...b.sporeCloud.buildings], radius: b.sporeCloud.radius, ticks: secToTicks(b.sporeCloud.seconds, tr),

@@ -1,5 +1,5 @@
-// The combat rework's settings (docs/ideas/combat-rework.md, P1 and P1b): pinned, call for help,
-// spore clouds, the Rhizomorph, waves and mixed waves. Every setting is absent from data/balance.json
+// The combat rework's settings (docs/ideas/combat-rework.md, P1 to P1c): pinned, call for help,
+// spore clouds, the Rhizomorph, waves, mixed waves, cleave and the Burster. Every setting is absent from data/balance.json
 // and its content exists only under its preset, so the shipped rules are unchanged; with a setting
 // on, it behaves as described.
 import { describe, expect, it } from 'vitest';
@@ -45,7 +45,7 @@ describe('the combat rework settings are off by default', () => {
   });
 
   it('the presets compile', () => {
-    for (const p of ['pinned', 'callforhelp', 'sporecloud', 'rhizomorph', 'waves', 'mixedwave', 'rework']) expect(() => protoContent(p)).not.toThrow();
+    for (const p of ['pinned', 'callforhelp', 'sporecloud', 'rhizomorph', 'waves', 'mixedwave', 'cleave', 'burster', 'rework']) expect(() => protoContent(p)).not.toThrow();
     const all = protoState(protoContent('rework'));
     expect([all.rules.pin, all.rules.help, all.rules.cloud, all.rules.waves, all.rules.mixed].every(Boolean)).toBe(true);
     expect(all.compiled.player.buildings.rhizomorphTunnel).toBeDefined();
@@ -154,7 +154,7 @@ describe('spore clouds (balance sporeCloud)', () => {
     const friend = unit(s, 'player', 'capguard', 9.2, 2.2);
     const cellar = building(s, 'enemy', 'truffleCellar', 9, 4);
     for (const [side, id] of [['enemy', 'amanitaKnight'], ['enemy', 'gillArcher'], ['enemy', 'sporeling'], ['player', 'capguard']] as const) freeze(s, side, id);
-    addCloud(s, 'player', 0, 10, 3, 0);
+    addCloud(s, 'player', 0, 10, 3, 0, s.rules.cloud!);
     steps(s, 200);
     expect(knight.maxHp - knight.hp).toBe(60); // heavy armor doesn't matter
     expect(archer.maxHp - archer.hp).toBe(60);
@@ -545,6 +545,9 @@ describe('mixed waves (balance mixedWave)', () => {
     const two = mixedState(['sporelingBurrow', 'gillNest']);
     steps(two, 400);
     expect(two.units.every((u) => u.shield === undefined)).toBe(true);
+    const low = mixedState(['sporelingBurrow', 'gillNest'], protoContent('mixedwave,mixedWave.minTypes:2'));
+    steps(low, 400);
+    expect(low.units.map((u) => u.shield)).toEqual([14, 14, 22]);
   });
 
   it('a shield takes damage of every kind before HP, and breaks once spent', () => {
@@ -552,7 +555,7 @@ describe('mixed waves (balance mixedWave)', () => {
     const v = unit(s, 'enemy', 'capguard', 10, 3);
     freeze(s, 'enemy', 'capguard');
     v.shield = 15;
-    addCloud(s, 'player', 0, 10, 3, 0);
+    addCloud(s, 'player', 0, 10, 3, 0, s.rules.cloud!);
     steps(s, 20); // one pulse of 10
     expect([v.shield, v.hp]).toEqual([5, v.maxHp]);
     steps(s, 20);
@@ -576,5 +579,130 @@ describe('mixed waves (balance mixedWave)', () => {
     steps(s, 10 + s.compiled.player.knitTicks);
     const m = s.units.find((u) => u.tier === 2)!;
     expect(m.shield).toBe(Math.round((m.maxHp * 88) / 660));
+  });
+});
+
+describe('cleave (preset cleave)', () => {
+  const radii = (s: BattleState) => s.compiled.player.units.scythecap!.tiers.map((t) => t.splashRadius);
+
+  it('is off by default; the preset widens the Scythecap to 1, 1.2 and 1.4 tiles at full damage', () => {
+    expect(content.balance.cleave).toBeUndefined();
+    expect(liveState().rules.cleave).toBeUndefined();
+    expect(radii(liveState())).toEqual([0.8, 1, 1.2]);
+    const s = protoState(protoContent('cleave'));
+    expect(s.rules.cleave).toEqual({ units: ['scythecap'] });
+    expect(radii(s)).toEqual([1, 1.2, 1.4]);
+  });
+
+  it("a Scythecap's swing hits the units within 1 tile of its target at full damage; buildings still take the falloff", () => {
+    const swing = (on: boolean) => {
+      const s = on ? protoState(protoContent('cleave')) : liveState({ test: NO_FIELD });
+      const scy = unit(s, 'player', 'scythecap', 9, 4);
+      freeze(s, 'player', 'scythecap');
+      scy.cooldown = 0;
+      const target = unit(s, 'enemy', 'sporeling', 9.8, 4);
+      const near = unit(s, 'enemy', 'sporeling', 10.5, 4); // 0.45 tiles from the target's edge
+      const far = unit(s, 'enemy', 'sporeling', 11.6, 4); // 1.55 tiles
+      const cellar = building(s, 'enemy', 'truffleCellar', 10, 4); // 0.2 tiles from the target
+      freeze(s, 'enemy', 'sporeling');
+      steps(s, 2);
+      return { target: target.maxHp - target.hp, near: near.maxHp - near.hp, far: far.maxHp - far.hp, cellar: cellar.maxHp - cellar.hp };
+    };
+    const on = swing(true), off = swing(false);
+    expect(on.target).toBeGreaterThan(0);
+    expect(on.near).toBe(on.target);
+    expect(off.near).toBe(Math.max(1, Math.round(off.target * 0.5)));
+    expect(on.far).toBe(0);
+    expect(on.cellar).toBe(off.cellar);
+    expect(on.cellar).toBeGreaterThan(0);
+  });
+});
+
+describe('the Burster (preset burster)', () => {
+  const bc = protoContent('burster');
+
+  it('is off by default; the preset adds the Burster, its Pod and burst clouds; bots buy the Pod, mono and test bots never', () => {
+    expect(content.units.burster).toBeUndefined();
+    expect(content.balance.burst).toBeUndefined();
+    expect(liveState().rules.burst).toBeUndefined();
+    expect(bc.units.burster).toMatchObject({ hp: 50, armor: 'light', damage: 40, speed: 1.6, supply: 1, aggroRange: 5, splashRadius: 1.5, tags: ['burst'] });
+    expect(bc.buildings.bursterPod).toMatchObject({ cost: 130, spawn: { unit: 'burster', count: 1, interval: 10 }, aiWeight: 1 });
+    const s = protoState(bc);
+    expect(s.rules.burst).toEqual({ cloud: { radius: 1.5, ticks: 80, damage: 10, pulseTicks: 20 } });
+    expect(s.rules.cloud).toBeUndefined();
+    expect(s.clouds).toEqual([]);
+    const weight = (st: BattleState) => st.sides.player.ai!.weights.find((w) => w.building === 'bursterPod')?.weight;
+    const battle = (c: Content, player: string) => createBattle(c, makeConfig(c, { seed: 1, mapId: 'bogwater-hollow', player, enemy: 'bot:balanced' }));
+    expect(weight(battle(bc, 'bot:balanced'))).toBe(1);
+    expect(weight(battle(bc, 'bot:mono:gillNest'))).toBeUndefined();
+    const tc = protoContent('burster,bot.pairtest:{"opener":["gillNest"],"weights":{"gillNest":1},"mergePolicy":"on","fixedWeights":true}');
+    expect(weight(battle(tc, 'bot:pairtest'))).toBeUndefined();
+  });
+
+  it('heads for the enemy unit in its aggro range with the most enemy units within 1.5 tiles', () => {
+    const s = protoState(bc);
+    const b = unit(s, 'player', 'burster', 5, 4);
+    unit(s, 'enemy', 'sporeling', 7.5, 4); // the nearest, alone
+    const knot = [[9.5, 2], [9.5, 2.6], [10, 2.3]].map(([x, y]) => unit(s, 'enemy', 'sporeling', x!, y!));
+    freeze(s, 'enemy', 'sporeling');
+    steps(s, 1);
+    expect(b.targetId).toBe(knot[1]!.id); // the knot's nearest member
+  });
+
+  it('bursts on reaching it: 40 damage through any armor within 1.5 tiles, then a 4 s cloud; never buildings or friends', () => {
+    const s = protoState(bc);
+    const b = unit(s, 'player', 'burster', 8, 4);
+    const knight = unit(s, 'enemy', 'amanitaKnight', 8.9, 4);
+    const capguard = unit(s, 'enemy', 'capguard', 9.9, 4.5);
+    const far = unit(s, 'enemy', 'sporeling', 12.5, 4); // past 1.5 tiles of both, so the Knight (nearer) is the knot's pick
+    const friend = unit(s, 'player', 'capguard', 9.4, 3.2);
+    const cellar = building(s, 'enemy', 'truffleCellar', 9, 5);
+    for (const [side, id] of [['enemy', 'amanitaKnight'], ['enemy', 'capguard'], ['enemy', 'sporeling'], ['player', 'capguard']] as const) freeze(s, side, id);
+    let at = -1;
+    for (let i = 0; i < 20 && at < 0; i++) { steps(s, 1); if (s.events.some((e) => e.t === 'burst')) at = s.tick; }
+    expect(at).toBeGreaterThan(0);
+    expect(s.units.includes(b)).toBe(false);
+    expect([knight.maxHp - knight.hp, capguard.maxHp - capguard.hp, far.maxHp - far.hp, friend.maxHp - friend.hp]).toEqual([40, 40, 0, 0]);
+    expect(cellar.hp).toBe(cellar.maxHp);
+    expect(s.clouds).toHaveLength(1);
+    expect(s.clouds![0]).toMatchObject({ side: 'player', radius: 1.5, damage: 10, untilTick: at + 80, x: knight.x, y: knight.y });
+    steps(s, 80);
+    expect([knight.maxHp - knight.hp, capguard.maxHp - capguard.hp, far.maxHp - far.hp]).toEqual([80, 80, 0]);
+    expect(s.clouds).toEqual([]);
+  });
+
+  it('bursts where it dies, and a burst can set off another Burster', () => {
+    const s = protoState(bc);
+    const mine = unit(s, 'player', 'burster', 10, 4);
+    const theirs = unit(s, 'enemy', 'burster', 11, 4);
+    const victim = unit(s, 'enemy', 'capguard', 10.6, 3);
+    const friend = unit(s, 'player', 'capguard', 11.8, 4.6);
+    for (const id of ['burster', 'capguard'] as const) { freeze(s, 'player', id); freeze(s, 'enemy', id); }
+    theirs.hp = 30;
+    mine.hp = 0;
+    steps(s, 1);
+    expect(s.events.filter((e) => e.t === 'burst').map((e) => (e as { id: number }).id)).toEqual([mine.id, theirs.id]);
+    expect(victim.maxHp - victim.hp).toBe(40);
+    expect(friend.maxHp - friend.hp).toBe(40); // the enemy Burster's burst
+    expect(s.units.map((u) => u.unitId)).toEqual(['capguard', 'capguard']);
+    expect(s.clouds).toHaveLength(2);
+  });
+
+  it('never merges', () => {
+    const s = protoState(bc, { noTurrets: true, noTerritory: true, noHeartcapTargets: true });
+    s.config.flags.merging = true;
+    for (const t of s.compiled.player.units.burster!.tiers) t.speedPerTick = 0;
+    for (const i of [0, 1, 2]) unit(s, 'player', 'burster', 12, 3.5 + i * 0.7);
+    steps(s, 40);
+    expect(s.units.filter((u) => u.knit)).toEqual([]);
+    expect(s.units.every((u) => u.tier === 1)).toBe(true);
+  });
+});
+
+describe('the Elder Sporeling splash check', () => {
+  it("a proto path removes the Elder Sporeling's splash perk", () => {
+    const s = protoState(protoContent('rework,unit.sporeling.mergePerks.3.splashRadius:null'));
+    expect(s.compiled.player.units.sporeling!.tiers.map((t) => t.splashRadius)).toEqual([0, 0, 0]);
+    expect(protoState(protoContent('rework')).compiled.player.units.sporeling!.tiers[2]!.splashRadius).toBe(0.6);
   });
 });

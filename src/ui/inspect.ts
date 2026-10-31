@@ -125,6 +125,8 @@ export class InspectPanel {
       ['HP', `${u.hp} / ${u.maxHp}${u.shield ? ` + ${u.shield} shield` : ''}`],
       ...(t.healAmount > 0
         ? [['Heals', `${t.healAmount} HP / ${t.healTicks / state.rules.tickRate}s · ${t.healTargets} target${t.healTargets > 1 ? 's' : ''} · range ${t.range}`] as [string, string]]
+        : state.rules.burst && def.tags.includes('burst')
+        ? [['Burst', `${Math.round(t.damage)} through any armor within ${t.splashRadius} tiles, then a spore cloud`] as [string, string]]
         : [
           ['Damage', `${Math.round(t.damage * 10) / 10} ${def.damageType} / ${t.attackTicks / state.rules.tickRate}s`] as [string, string],
           ['Hits hard', `strong vs ${strongVs(state, def.damageType)} · weak vs ${weakVs(state, def.damageType)}`] as [string, string],

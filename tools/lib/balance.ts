@@ -621,7 +621,8 @@ export function answerKind(controller: string): AnswerKind {
 /** An answer's results against one build: its wins per map and its mean over the counted maps. */
 export interface CounterResult {
   answer: string; kind: AnswerKind;
-  maps: { map: string; wins: number; games: number; rate: number }[];
+  /** Per map: the answer's wins, and the share of games that ended by Decision. */
+  maps: { map: string; wins: number; games: number; rate: number; decisions: number }[];
   wins: number; games: number; mean: number;
   /** A mono answer that fails G3 itself. */
   failsG3: boolean;
@@ -688,7 +689,7 @@ export async function evaluateCounters(content: Content, opts: CounterOptions = 
   const failsG3 = (a: string) => g3Bots.some((b) => `bot:mono:${b.id}` === a && !b.pass);
   // the build's rows are the mono side's; an answer wins every game the build loses (there are no draws)
   const result = (answer: string, cells: G3Row[]): CounterResult => {
-    const mine = cells.map((r) => ({ map: r.map, wins: r.games - r.wins, games: r.games, rate: (r.games - r.wins) / r.games }));
+    const mine = cells.map((r) => ({ map: r.map, wins: r.games - r.wins, games: r.games, rate: (r.games - r.wins) / r.games, decisions: r.decisions }));
     const inMean = mine.filter((m) => counted.includes(m.map));
     const wins = inMean.reduce((s, m) => s + m.wins, 0), games = inMean.reduce((s, m) => s + m.games, 0);
     return { answer, kind: answerKind(answer), maps: mine, wins, games, mean: wins / games, failsG3: failsG3(answer) };

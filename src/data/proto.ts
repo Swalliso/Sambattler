@@ -49,6 +49,41 @@ const WAVES: Json = { waves: { beatSeconds: 20, rangedGap: 1, matchPace: true } 
 /** Mixed waves (P1b, needs waves): a lane's wave of 3 or more unit types sets out with shields of 20% of each unit's max HP. */
 const MIXED_WAVE: Json = { mixedWave: { minTypes: 3, shieldFrac: 0.2 } };
 
+/**
+ * Cleave (P1c): a Scythecap's swing hits every enemy unit within 1 tile of its target at full damage
+ * (from 0.8 tiles at the global half). Its merge perks keep their steps, so 1.2 and 1.4 tiles.
+ */
+const CLEAVE: Json = {
+  cleave: { units: ['scythecap'] },
+  'unit.scythecap.splashRadius': 1,
+  'unit.scythecap.mergePerks.2.splashRadius': 1.2,
+  'unit.scythecap.mergePerks.3.splashRadius': 1.4,
+};
+/**
+ * The Burster (P1c; a working name): a fast 1-supply unit with no attack. It rolls at the thickest
+ * knot of enemy units in its aggro range and bursts on reaching it or on dying: 40 damage, ignoring
+ * armor, to every enemy unit within 1.5 tiles, and a spore cloud there (1.5 tiles, 4 s, 10 a second).
+ * Its Burster Pod costs 130 and makes one every 10 s. Bots and generals buy it at weight 1, as they
+ * do the Rhizomorph Tunnel; mono bots and the counter check's test bots don't.
+ */
+const BURSTER: Json = {
+  burst: { cloud: { radius: 1.5, seconds: 4, damagePerSecond: 10 } },
+  'unit.burster': {
+    name: 'Burster', sprite: 'u-burster', milestone: 5,
+    hp: 50, armor: 'light', damage: 40, damageType: 'crush', attackInterval: 1.0,
+    range: 0.3, projectileSpeed: 0, speed: 1.6, supply: 1, aggroRange: 5, radius: 0.3, splashRadius: 1.5,
+    tags: ['burst'], mergePerks: { 2: { hpMult: 1.1 }, 3: { hpMult: 1.2 } },
+  },
+  'building.bursterPod': {
+    name: 'Burster Pod', sprite: 'b-bursterPod', milestone: 5, rarity: 'uncommon',
+    description: 'Bursters roll at the thickest knot of enemy units and burst: damage through any armor, and a spore cloud.',
+    kind: 'spawner', footprint: { w: 2, h: 2 }, cost: 130, hp: 450,
+    spawn: { unit: 'burster', count: 1, interval: 10 }, aiWeight: 1,
+  },
+  'faction.velvet-bloom.buildings+': 'bursterPod',
+  'faction.gray-rot.buildings+': 'bursterPod',
+};
+
 /** Presets: the settings each prototype was measured with (see the backlog's results tables). */
 export const PROTO_PRESETS: Record<string, Json> = {
   /** B1: Sporelings sprint at enemy units they close on, then wait out a cooldown. */
@@ -120,6 +155,9 @@ export const PROTO_PRESETS: Record<string, Json> = {
   waves: WAVES,
   /** Mixed waves on top of waves (mixedWave means nothing without them). */
   mixedwave: { ...WAVES, ...MIXED_WAVE },
+  /** P1c's two area-damage counters to the swarm, measured on their own and with `rework`. */
+  cleave: CLEAVE,
+  burster: BURSTER,
   /** All six of the combat rework's settings (mixed waves joined in P1b, since they helped the mixed army). */
   rework: { ...PINNED, ...CALL_FOR_HELP, ...SPORE_CLOUD, ...RHIZOMORPH, ...WAVES, ...MIXED_WAVE },
 };

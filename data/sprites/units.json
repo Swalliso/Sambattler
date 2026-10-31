@@ -504,6 +504,48 @@
         ".k..k....k..",
         "...kk....kk."
       ]
+     ]},
+    {"id": "u-burster", "w": 12, "h": 11, "anchor": [6, 10], "factionSwap": true, "palette": {".": null, "b": "#3b2a1e", "d": "#5a2f99", "e": "#120a16", "k": "#1a1020", "l": "#c9a2ff", "n": "#5c4330", "v": "#8a4fd8", "w": "#fbf6ff"},
+     "frames": [
+      [
+        "............",
+        "....kkkk....",
+        "...kllvvk...",
+        "..kllvvvvk..",
+        "..klwvvvvk..",
+        ".klvvvvvwdk.",
+        ".kvvvvvvddk.",
+        "..kvwvvddk..",
+        "...kvdddk...",
+        "....kkkk....",
+        "............"
+      ],
+      [
+        "............",
+        "....kkkk....",
+        "...kllvvk...",
+        "..kllvwvvk..",
+        "..klvvvvvk..",
+        ".klwvvvvvdk.",
+        ".kvvvvvvddk.",
+        "..kvvvvwdk..",
+        "...kvdddk...",
+        "n...kkkk....",
+        ".n.........."
+      ],
+      [
+        "............",
+        "...kkkkkk...",
+        "..kllvvvvk..",
+        "..klvvvvvk..",
+        "..klwvvvwk..",
+        ".klvvvvvvdk.",
+        ".kvvvvvvddk.",
+        "..kvvwvddk..",
+        "..kvvvdddk..",
+        "...kkddkk...",
+        ".....kk....."
+      ]
      ]}
   ]
 }

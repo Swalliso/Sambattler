@@ -5,7 +5,7 @@ import { HEARTCAP_ID, other } from '../state.ts';
 import type { BattleState, BuildingState, UnitState } from '../state.ts';
 import { buildGrid, nearBuffer, queryNear } from '../spatial.ts';
 import { MAX_RADIUS, edgeDistance, tp } from '../targets.ts';
-import { buildingDef, findBuilding, findUnit, heartcapEdgeX, rectDistance, unitDef, unitRadius } from '../world.ts';
+import { buildingDef, findBuilding, findUnit, heartcapEdgeX, rectDistance, tierDef, unitDef, unitRadius } from '../world.ts';
 
 let bestId = 0, bestD = 0, bestPref = false;
 
@@ -44,9 +44,45 @@ export function targetingSystem(state: BattleState): void {
   }
 }
 
-// Combat rework `sporeCloud`: the enemy units near a cloud tower, copied out of the shared spatial buffer.
+// Combat rework `sporeCloud` and `burster`: the enemy units near a cloud tower or a Burster, copied out of the shared spatial buffer.
 let aimX = new Float64Array(64), aimY = new Float64Array(64), aimR = new Float64Array(64);
 let aimId = new Int32Array(64);
+
+/**
+ * Combat rework `burster`: a burst unit picks, among the enemy units of its lane in its aggro range,
+ * the one with the most enemy units whose bodies are within its splash radius of it (the Mortar's
+ * cluster rule); ties go to the nearer, then the lower id. With none in range it keeps a live target
+ * within its leash (a call for help may have given it one), else it has none and marches with its
+ * wave. It never picks a building or a Heartcap.
+ */
+function aimBurst(state: BattleState, u: UnitState, r: number, curD: number): void {
+  const aggro = unitDef(state, u).aggroRange;
+  const radius = tierDef(state, u).splashRadius;
+  const enemy = other(u.side);
+  const n = queryNear(u.x, u.y, aggro + r + radius + 2 * MAX_RADIUS);
+  const near = nearBuffer();
+  if (aimId.length < n) { aimX = new Float64Array(n); aimY = new Float64Array(n); aimR = new Float64Array(n); aimId = new Int32Array(n); }
+  let m = 0;
+  for (let k = 0; k < n; k++) {
+    const v = state.units[near[k]!]!;
+    if (v.side !== enemy || v.lane !== u.lane || v.hp <= 0 || v.burrowed) continue;
+    aimX[m] = v.x; aimY[m] = v.y; aimR[m] = unitRadius(state, v); aimId[m] = v.id; m++;
+  }
+  let best = 0, bestCount = 0, bestD = 0;
+  for (let i = 0; i < m; i++) {
+    const dx = aimX[i]! - u.x, dy = aimY[i]! - u.y;
+    const d = Math.max(0, Math.sqrt(dx * dx + dy * dy) - r - aimR[i]!);
+    if (d > aggro) continue;
+    let count = 0;
+    for (let j = 0; j < m; j++) {
+      const ex = aimX[j]! - aimX[i]!, ey = aimY[j]! - aimY[i]!, reach = radius + aimR[j]!;
+      if (ex * ex + ey * ey <= reach * reach) count++;
+    }
+    if (count > bestCount || (count === bestCount && (d < bestD || (d === bestD && aimId[i]! < best)))) { best = aimId[i]!; bestCount = count; bestD = d; }
+  }
+  if (best === 0 && u.targetId !== 0 && curD >= 0 && curD <= aggro * state.rules.leashMult) return;
+  u.targetId = best;
+}
 
 /**
  * Combat rework `sporeCloud`: points a cloud tower at the enemy unit in its firing band with the most
@@ -91,6 +127,7 @@ export function isRangedUnit(state: BattleState, id: number): boolean {
 
 function retargetUnit(state: BattleState, u: UnitState, r: number, curD: number): void {
   const def = unitDef(state, u);
+  if (state.rules.burst && def.tags.includes('burst')) { aimBurst(state, u, r, curD); return; }
   const aggro = def.aggroRange;
   const enemy = other(u.side);
   const prefBuildings = def.siege;

@@ -251,6 +251,7 @@ export class Renderer {
         const pulse = state.compiled[e.side].triggers.find((t) => t.on === 'heartcapBreach' && t.at === e.at)?.do.find((a) => 'explode' in a);
         if (pulse && 'explode' in pulse) this.effects.add(12, e.x, e.y, now, e.side === 'player' ? 0 : 1, pulse.explode.radius);
       }
+      else if (e.t === 'burst') this.effects.add(13, e.x, e.y, now, e.side === 'player' ? 0 : 1, e.radius); // combat rework Burster
       else if (e.t === 'spawned') {
         const u = state.units.find((x) => x.id === e.id);
         if (u) this.effects.add(7, u.x, u.y, now, 0);
@@ -444,11 +445,10 @@ export class Renderer {
    */
   private drawClouds(state: BattleState, t: number): void {
     const g = this.ctx;
-    const c = state.rules.cloud!;
     for (const cl of state.clouds!) {
       const L = state.lanes[cl.lane]!;
-      const fade = Math.min(1, (4 * (cl.untilTick - state.tick)) / c.ticks);
-      const cx = this.sx(cl.x), cy = cl.y * TILE, r = c.radius * TILE;
+      const fade = Math.min(1, (4 * (cl.untilTick - state.tick)) / Math.max(1, cl.untilTick - cl.fromTick));
+      const cx = this.sx(cl.x), cy = cl.y * TILE, r = cl.radius * TILE;
       g.save();
       g.beginPath();
       g.rect(0, L.rowStart * TILE, this.width, (L.rowEnd + 1 - L.rowStart) * TILE);

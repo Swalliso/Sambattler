@@ -56,8 +56,13 @@ export function buildingTip(content: Content, atlas: Atlas, state: BattleState, 
     const t = cu.tiers[0];
     rows.push(['Makes', `${cb.spawn.count} ${plural(cb.spawn.count, unit.name)} every ${secs(cb.spawn.intervalHalfTicks / 2 / tr)}${cb.spawn.positional ? ' (varies with where it stands)' : ''}`]);
     rows.push(['Each unit', `${t.hp} HP · ${t.supply} supply`]);
+    const burst = state.rules.burst && cu.tags.includes('burst') ? state.rules.burst : undefined;
     if (t.healAmount > 0) {
       rows.push(['Heals', `${t.healAmount} HP every ${secs(t.healTicks / tr)} · range ${t.range}`]);
+    } else if (burst) {
+      // the combat rework's Burster (a prototype): no attack, a burst
+      rows.push(['Bursts', `rolls at the thickest knot of enemy units within ${cu.aggroRange} tiles and bursts on reaching it, or when it dies: ${Math.round(t.damage)} damage through any armor to every enemy unit within ${t.splashRadius} tiles`]);
+      rows.push(['Spore cloud', `left where it bursts (${burst.cloud.radius} tiles, ${secs(burst.cloud.ticks / tr)}): ${Math.round((burst.cloud.damage * tr) / burst.cloud.pulseTicks)} damage a second to enemy units in it`]);
     } else {
       rows.push(['Attack', `${Math.round(t.damage * 10) / 10} ${cu.damageType} every ${secs(t.attackTicks / tr)} · ${cu.projectileSpeed > 0 ? `range ${t.range}` : 'melee'}`]);
       rows.push(['Strong vs', strongVs(state, cu.damageType)], ['Weak vs', weakVs(state, cu.damageType)]);
@@ -71,7 +76,8 @@ export function buildingTip(content: Content, atlas: Atlas, state: BattleState, 
     const mixed = state.rules.mixed;
     if (mixed) rows.push(['Mixed wave', `a lane's wave of ${mixed.minTypes} or more unit types sets out shielded: ${Math.round(mixed.shieldFrac * 100)}% of each unit's HP`]);
     if (cu.slayer) rows.push(['Slayer', `×${t.slayerMult} vs Bloomed and Elder units`]);
-    if (state.config.flags.merging) rows.push(['Bloomed', perkText(content, unit.id, 2)], ['Elder', perkText(content, unit.id, 3)]);
+    if (state.rules.cleave?.units.includes(cb.spawn.unit)) rows.push(['Cleave', `its swing hits every enemy unit within ${t.splashRadius} tiles of its target at full damage`]);
+    if (state.config.flags.merging) rows.push(...(burst ? [['Merge', 'never: a Burster is spent whole'] as [string, string]] : [['Bloomed', perkText(content, unit.id, 2)], ['Elder', perkText(content, unit.id, 3)]] as [string, string][]));
   }
   if (cb.attack) {
     const a = cb.attack;

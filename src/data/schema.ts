@@ -12,7 +12,7 @@ export const ArmorType = z.enum(['light', 'medium', 'heavy', 'structure']);
  * `burrow` (combat rework, the Rhizomorph's preset): the unit spawns underground and tunnels at its
  * speed until it surfaces beside an enemy ranged unit or spawner behind the enemy front.
  */
-export const Tag = z.enum(['siege', 'slayer', 'ranged', 'swarm', 'support', 'burrow']);
+export const Tag = z.enum(['siege', 'slayer', 'ranged', 'swarm', 'support', 'burrow', 'burst']);
 export const Rarity = z.enum(['common', 'uncommon', 'rare']);
 const Seconds = z.number().nonnegative();
 /** A unit id, optionally at a merge tier: `capguard` or `capguard@2`. */
@@ -254,6 +254,21 @@ export const BalanceSchema = z.object({
    * trio's shields in proportion, as it does their HP.
    */
   mixedWave: z.object({ minTypes: z.number().int().min(2), shieldFrac: z.number().gt(0).max(1) }).strict().optional(),
+  /**
+   * Combat rework `cleave` (P1c), absent by default: a listed unit's splash (the Scythecap's swing)
+   * hits every enemy unit within its splash radius of its target at full damage, instead of at
+   * `splashFalloff`; buildings in it still take the falloff share. The `cleave` preset also widens
+   * the Scythecap's splash to 1, 1.2 and 1.4 tiles by tier.
+   */
+  cleave: z.object({ units: z.array(z.string()).min(1) }).strict().optional(),
+  /**
+   * Combat rework `burster` (P1c), absent by default: a `burst` unit has no normal attack. It heads for
+   * the enemy unit in its aggro range with the most enemy units within its splash radius, and when it
+   * reaches that unit, or when it dies, it bursts: its damage, ignoring armor, to every enemy unit within
+   * its splash radius, and a spore cloud of `cloud.radius` tiles for `cloud.seconds` that deals
+   * `cloud.damagePerSecond` (each second) to the enemy units inside it. Never buildings or friends.
+   */
+  burst: z.object({ cloud: z.object({ radius: Pos, seconds: Pos, damagePerSecond: Pos }).strict() }).strict().optional(),
   firstSpawnFraction: z.number().min(0).max(1),
   timeLimitSeconds: Pos,
   heartcapPlayerHp: z.number().int().positive(),

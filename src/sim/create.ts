@@ -280,7 +280,7 @@ export function createBattle(content: Content, config: BattleConfig): BattleStat
     stats: { player: emptyStats(), enemy: emptyStats() },
     frontLine: lanes.map((l) => [[0, l.pBorder, l.eBorder]]),
   };
-  if (rules.cloud) state.clouds = [];
+  if (rules.cloud || rules.burst) state.clouds = [];
   for (const s of SIDES) {
     if (!state.library.powers?.[config[s].power ?? '']) continue;
     Object.assign(state.stats[s], { powerUses: 0, powerDamage: 0, powerCaptures: 0, powerMerges: 0, powerGold: 0 });

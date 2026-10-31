@@ -7,6 +7,7 @@ import { addUnit } from '../create.ts';
 import { fireTriggers } from '../effects.ts';
 import { SIDES } from '../state.ts';
 import type { BattleState, Side, Tier, UnitState } from '../state.ts';
+import { unitDef } from '../world.ts';
 
 // Reused scratch (no allocation in the hot loop once warm). `eligible` may hold stale entries past
 // the count in use; they are overwritten on the next pass.
@@ -24,7 +25,8 @@ export function mergingSystem(state: BattleState): void {
 
 /** True if `u` may join a new trio now (SPEC §5.6 eligibility). */
 export function canMerge(state: BattleState, u: UnitState): boolean {
-  return u.tier < 3 && u.mergeOn && !u.knit && !u.burrowed && u.hp > 0 && state.tick - u.lastCombatTick >= state.rules.merge.cooldownTicks;
+  return u.tier < 3 && u.mergeOn && !u.knit && !u.burrowed && u.hp > 0 && state.tick - u.lastCombatTick >= state.rules.merge.cooldownTicks
+    && !(state.rules.burst && unitDef(state, u).tags.includes('burst')); // combat rework: a Burster is spent whole, never merged
 }
 
 function resolveKnits(state: BattleState): void {

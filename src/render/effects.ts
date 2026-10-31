@@ -9,11 +9,12 @@ import { SPORE_WHITE } from './spores.ts';
  * kind: 1 strong spark, 2 normal spark, 3 weak spark, 4/5 death puff (player/enemy), 6 rubble,
  * 7 spawn puff, 8 merge pop (flag = tier, value = 0 player / 1 enemy), 9 damage number
  * (flag = 1 strong / 2 normal / 3 weak, value = amount), 10 heal plus, 11 coin pop (flag = 0 player /
- * 1 enemy, value = gold), 12 commander power ring (value = radius in tiles)
+ * 1 enemy, value = gold), 12 commander power ring (value = radius in tiles), 13 Burster burst (flag = 0
+ * player / 1 enemy, value = radius in tiles)
  */
 interface Fx { kind: number; x: number; y: number; t0: number; flag: number; value: number }
 
-const LIFE = [0, 220, 160, 140, 420, 420, 600, 320, 1100, 650, 450, 1000, 520];
+const LIFE = [0, 220, 160, 140, 420, 420, 600, 320, 1100, 650, 450, 1000, 520, 480];
 const NUMBER_COLOR = ['', '#f0c85a', '#ffffff', '#a39cab'];
 /** Spore puffs: each mote's drift over its life (native px, mirrored for every other puff) and its size. */
 const DEATH_MOTES: readonly (readonly [number, number, number])[] = [
@@ -86,6 +87,26 @@ export class Effects {
           for (let i = 0; i < 12; i++) {
             const a = (i / 12) * Math.PI * 2;
             g.fillRect(Math.round(x + Math.cos(a) * r), Math.round(y + Math.sin(a) * r), 1, 1);
+          }
+          g.globalAlpha = 1;
+          break;
+        }
+        case 13: { // combat rework Burster: a pale puff swelling to the burst's radius, spores flung past its rim
+          const r = Math.max(2, Math.round(e.value * tile * (0.3 + 0.7 * Math.sqrt(k))));
+          g.globalAlpha = 0.5 * (1 - k);
+          g.fillStyle = e.flag ? '#b8c4a8' : '#e6d6ff';
+          g.beginPath();
+          g.arc(x, y, r, 0, Math.PI * 2);
+          g.fill();
+          g.globalAlpha = 1 - k;
+          g.strokeStyle = SPORE_WHITE;
+          g.beginPath();
+          g.arc(x, y, r, 0, Math.PI * 2);
+          g.stroke();
+          g.fillStyle = SPORE_WHITE;
+          for (let i = 0; i < 14; i++) {
+            const a = i * 2.39996, d = r * (1 + 0.45 * k * (1 + (i % 3)) / 3);
+            g.fillRect(Math.round(x + Math.cos(a) * d), Math.round(y + Math.sin(a) * d * 0.85), 1, 1);
           }
           g.globalAlpha = 1;
           break;

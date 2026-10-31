@@ -1,7 +1,7 @@
 // Attacks, projectiles, damage and deaths (SPEC §5.3, §4.5 turrets).
 import { fireBreaches, fireTriggers, runAction } from '../effects.ts';
 import { insertHit } from '../hits.ts';
-import { addCloud } from './clouds.ts';
+import { addCloud, burstUnit } from './clouds.ts';
 import { releaseStored } from './spawning.ts';
 import { HEARTCAP_ID, POWER_SOURCE_ID, SIDES, other } from '../state.ts';
 import type { Armor, BattleState, DamageType, Effectiveness, PendingHit, Side, UnitState } from '../state.ts';
@@ -137,7 +137,9 @@ export function attackSystem(state: BattleState): void {
   const tick = state.tick;
   const storm = stormMult(state);
   const pin = state.rules.pin;
+  const bursts = !!state.rules.burst;
   for (const u of state.units) {
+    if (u.hp <= 0) continue; // struck down by a burst earlier this tick
     if (u.cooldown > 0 && !(pin && pinSkips(state, u, pin))) u.cooldown--;
     if (u.cooldown > 0 || u.targetId === 0) continue;
     const def = unitDef(state, u);
@@ -145,6 +147,8 @@ export function attackSystem(state: BattleState): void {
     const t = def.tiers[u.tier - 1]!;
     const d = edgeDistance(state, u.x, u.y, t.radius, u.targetId, other(u.side), u.lane);
     if (d < 0 || d > t.range + EPS) continue;
+    // combat rework `burster`: a burst unit that reaches its target bursts on it instead of attacking
+    if (bursts && def.tags.includes('burst')) { burstUnit(state, u, tp.cx, tp.cy); continue; }
     u.cooldown = t.attackTicks;
     u.lastAttackTick = tick;
     const crowd = state.rules.congestion && def.projectileSpeed > 0 ? congestionMult(state, u, tp.cx, tp.cy) : 1;
@@ -341,6 +345,7 @@ export function resolveHitsSystem(state: BattleState): void {
   if (n === 0) return;
   const falloff = state.rules.splashFalloff;
   const cloud = state.rules.cloud;
+  const cleave = state.rules.cleave;
   for (let i = 0; i < n; i++) {
     const h = hits[i]!;
     const enemy = other(h.side);
@@ -357,18 +362,20 @@ export function resolveHitsSystem(state: BattleState): void {
       alive = state.sides[enemy].heartcapHp > 0;
     }
     if (alive) applyDamage(state, h, h.targetId, 1, ix, iy);
-    if (cloud && cloud.buildings.includes(h.sourceType)) addCloud(state, h.side, h.lane, ix, iy, h.sourceBuildingId);
+    if (cloud && cloud.buildings.includes(h.sourceType)) addCloud(state, h.side, h.lane, ix, iy, h.sourceBuildingId, cloud);
     if (h.splashRadius > 0) {
       const s = h.splashRadius;
       // splash falls off around a struck target; a ground burst (no target) hits everything at full damage
       const share = h.targetId === 0 ? 1 : falloff;
+      // combat rework `cleave`: a listed unit's swing hits the units around its target at full damage
+      const unitShare = cleave && cleave.units.includes(h.sourceType) ? 1 : share;
       const cnt = queryNear(ix, iy, s + MAX_RADIUS + 1);
       const near = nearBuffer();
       for (let k = 0; k < cnt; k++) {
         const v = state.units[near[k]!]!;
         if (v.side !== enemy || v.lane !== h.lane || v.hp <= 0 || v.id === h.targetId || v.burrowed) continue;
         const dx = v.x - ix, dy = v.y - iy;
-        if (Math.sqrt(dx * dx + dy * dy) - unitRadius(state, v) <= s) applyDamage(state, h, v.id, share, v.x, v.y);
+        if (Math.sqrt(dx * dx + dy * dy) - unitRadius(state, v) <= s) applyDamage(state, h, v.id, unitShare, v.x, v.y);
       }
       for (const b of state.buildings) {
         if (b.side !== enemy || b.lane !== h.lane || b.hp <= 0 || b.id === h.targetId) continue;
@@ -411,6 +418,21 @@ export function burstAt(state: BattleState, side: Side, x: number, y: number, ra
 }
 
 /**
+ * Combat rework `burster`: each `burst` unit that fell this tick without bursting bursts where it fell.
+ * A burst can fell another, which bursts in turn, so this repeats until none is left (in id order).
+ */
+function burstFallen(state: BattleState): void {
+  for (let again = true; again;) {
+    again = false;
+    for (const u of state.units) {
+      if (u.hp > 0 || u.burst || !unitDef(state, u).tags.includes('burst')) continue;
+      burstUnit(state, u, u.x, u.y);
+      again = true;
+    }
+  }
+}
+
+/**
  * Removes dead units and buildings after all hits resolve (SPEC §5.3), then fires `unitDeath`,
  * `enemyUnitKilled` and `buildingDestroyed` triggers and units' own `onDeath` actions (explosions
  * from these land next tick, so chains resolve tick by tick). With prototype B4, units past their
@@ -419,6 +441,7 @@ export function burstAt(state: BattleState, side: Side, x: number, y: number, ra
 export function deathSystem(state: BattleState): void {
   const units = state.units;
   if (state.rules.lifespan) for (const u of units) if (u.expiresTick !== undefined && u.expiresTick <= state.tick) u.hp = 0; // prototype B4: withering
+  if (state.rules.burst) burstFallen(state);
   let w = 0;
   for (let i = 0; i < units.length; i++) {
     const u = units[i]!;
