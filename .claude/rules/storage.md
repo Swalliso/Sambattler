@@ -20,5 +20,8 @@ paths:
   - `spore-sprawl.run.v1` and `spore-sprawl.battle.v1` (`src/run/resume.ts`)
   - `spore-sprawl/settings/v1` and `spore-sprawl/tips/v1` (`src/app/settings.ts`)
 - Add a new key the same way, through `storageKey()`. Never write the `dev/` prefix by hand.
+- A prototype run (`?proto=`) saves only on the dev site, under `proto=<spec>/` keys of its own
+  (`protoSpace()` in `src/app/channel.ts`, passed to `BrowserStorage`), so it never resumes or
+  overwrites the real save. The game never saves one.
 - The run layer only sees the `Storage` interface (`src/run/storage.ts`). The browser passes the
   localStorage store in `src/app/run.ts`; tests and tools use `MemoryStorage`.
