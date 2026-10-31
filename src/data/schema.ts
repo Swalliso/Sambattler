@@ -269,6 +269,12 @@ export const BalanceSchema = z.object({
    * `cloud.damagePerSecond` (each second) to the enemy units inside it. Never buildings or friends.
    */
   burst: z.object({ cloud: z.object({ radius: Pos, seconds: Pos, damagePerSecond: Pos }).strict() }).strict().optional(),
+  /**
+   * Combat rework `stormWaves` (P1d), absent by default; it needs `waves`. Each Sporestorm stack makes
+   * both sides' waves `perStack` bigger: a spawner releases its waiting units × (1 + perStack × stacks),
+   * on top of `side.waveSize`, carrying the fraction to its next release. Extra units need free supply.
+   */
+  stormWaves: z.object({ perStack: Pos }).strict().optional(),
   firstSpawnFraction: z.number().min(0).max(1),
   timeLimitSeconds: Pos,
   heartcapPlayerHp: z.number().int().positive(),

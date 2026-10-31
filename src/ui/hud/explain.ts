@@ -270,7 +270,7 @@ export function nextWaveTypes(state: BattleState, side: 'player' | 'enemy', lane
 /** Combat rework `waves` (a prototype): the beat chip's tip, when the next wave leaves and how Hold works with waves. */
 export function beatTip(content: Content, atlas: Atlas, state: BattleState): TipSource {
   return {
-    key: () => `${Math.floor(state.tick / state.rules.tickRate)}|${state.phase}|${waitingUnits(state, 'player')}`,
+    key: () => `${Math.floor(state.tick / state.rules.tickRate)}|${state.phase}|${waitingUnits(state, 'player')}|${state.sporestorm}`,
     build: () => {
       const beat = state.compiled.player.waveBeatTicks!;
       const left = state.phase === 'deploy' ? beat : beat - (state.tick % beat);
@@ -286,6 +286,10 @@ export function beatTip(content: Content, atlas: Atlas, state: BattleState): Tip
           row('Next wave', h('b', null, lanes.length > 1 ? lanes.map((n, li) => `lane ${li + 1}: ${n}`).join(' · ') : kinds(lanes[0] ?? 0)),
             lanes.some((n) => n >= mixed.minTypes) ? 'mixed: it sets out shielded' : `${mixed.minTypes} types make a mixed wave`),
           para(`A lane's wave of ${mixed.minTypes} or more unit types sets out with shields worth ${Math.round(mixed.shieldFrac * 100)}% of each unit's HP. A shield takes damage first and never comes back.`),
+        ] : []),
+        ...(state.rules.stormWaves ? [
+          row('Sporestorm', h('b', null, `waves ×${(Math.round(10 * (1 + state.rules.stormWaves.perStack * state.sporestorm)) / 10).toFixed(1)}`),
+            `each storm stack adds ${Math.round(state.rules.stormWaves.perStack * 100)}% (extra units need free supply)`),
         ] : []),
         para('A wave marches at the pace of its slowest unit, with ranged units a tile behind their melee.'),
         h('p', { class: 'tip-foot' }, 'Hold a lane to keep its next wave home for one beat: the beat after sends both waves, and the lane can hold again once they have left.'),

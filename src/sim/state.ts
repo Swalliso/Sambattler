@@ -275,6 +275,8 @@ export interface Rules {
   cleave?: { units: string[] };
   /** Combat rework `burster` (balance `burst`): the cloud a `burst` unit leaves where it bursts. Absent by default. */
   burst?: { cloud: CloudSpec };
+  /** Combat rework `stormWaves` (balance `stormWaves`, only with `waves`): × (1 + perStack × storm stacks) on each wave release. Absent by default. */
+  stormWaves?: { perStack: number };
   timeLimitTicks: number;
   captureThreshold: number;
   captureStep: number;
@@ -415,6 +417,8 @@ export interface BuildingState {
   stored?: number;
   /** Combat rework `waves`: the last beat whose release this spawner made (it makes one per beat). Absent without waves. */
   lastWave?: number;
+  /** Combat rework `stormWaves`: thousandths of a unit owed to this spawner's next release. Absent until the storm grows a wave. */
+  waveCarry?: number;
 }
 
 /** Combat rework: a spore cloud's size, lifetime, damage per pulse and pulse cadence. */
@@ -510,6 +514,8 @@ export type SimEvent =
    * left early (`held`: lanes it kept home; `shielded`: lanes whose mixed wave got shields).
    */
   | { t: 'release'; side: Side; units: number; held: number[]; shielded: number[] }
+  /** Combat rework `stormWaves`: a spawner's release lost `units` extra units to the supply cap. */
+  | { t: 'waveCapped'; side: Side; units: number }
   /** Combat rework `burster`: unit `id` burst at (x, y), reaching `radius` tiles. */
   | { t: 'burst'; side: Side; id: number; x: number; y: number; radius: number }
   /** Heartcap breach prototype: a side's Heartcap fell to `at` of its max HP, firing its `heartcapBreach` triggers. */

@@ -88,6 +88,14 @@ const BURSTER: Json = {
   'faction.gray-rot.buildings+': 'bursterPod',
 };
 
+/** The Elder Sporeling's splash perk, off under `rework` (P1d): under waves it is area damage the swarm brings in numbers. */
+const NO_ELDER_SPLASH: Json = { 'unit.sporeling.mergePerks.3.splashRadius': null };
+/**
+ * A storm that grows waves (P1d, needs waves): each Sporestorm stack makes both sides' waves 20%
+ * bigger, ×2 at five stacks (8:00), like Clash Royale's double elixir.
+ */
+const STORM_WAVES: Json = { stormWaves: { perStack: 0.2 } };
+
 /** Presets: the settings each prototype was measured with (see the backlog's results tables). */
 export const PROTO_PRESETS: Record<string, Json> = {
   /** B1: Sporelings sprint at enemy units they close on, then wait out a cooldown. */
@@ -162,8 +170,17 @@ export const PROTO_PRESETS: Record<string, Json> = {
   /** P1c's two area-damage counters to the swarm, measured on their own and with `rework`. */
   cleave: CLEAVE,
   burster: BURSTER,
-  /** All six of the combat rework's settings (mixed waves joined in P1b, since they helped the mixed army). */
-  rework: { ...PINNED, ...CALL_FOR_HELP, ...SPORE_CLOUD, ...RHIZOMORPH, ...WAVES, ...MIXED_WAVE },
+  stormwaves: STORM_WAVES,
+  /**
+   * The combat rework's base (P1d): the six settings (mixed waves at two types), the Burster, and the
+   * Elder Sporeling's splash off, at a 20 s beat. Cleave stays its own preset.
+   */
+  rework: {
+    ...PINNED, ...CALL_FOR_HELP, ...SPORE_CLOUD, ...RHIZOMORPH, ...WAVES, ...MIXED_WAVE, ...BURSTER, ...NO_ELDER_SPLASH,
+    // both new spawners join both rosters (spreading the two presets keeps only the second's append)
+    'faction.velvet-bloom.buildings+': ['rhizomorphTunnel', 'bursterPod'],
+    'faction.gray-rot.buildings+': ['rhizomorphTunnel', 'bursterPod'],
+  },
 };
 
 /**

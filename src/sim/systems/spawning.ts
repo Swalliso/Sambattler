@@ -81,7 +81,8 @@ export function emerge(state: BattleState, b: BuildingState, unitId: string, cou
 /**
  * Combat rework `waves`: the units waiting in `b` come out now. On a beat they are the wave's
  * (× the side's wave size, rounded; extra units need free supply); a building sold or destroyed
- * lets its waiting units out with no wave.
+ * lets its waiting units out with no wave. With `stormWaves`, each storm stack grows the wave too,
+ * and the spawner carries the fraction to its next release (in thousandths, so it stays exact).
  */
 export function releaseStored(state: BattleState, b: BuildingState, wave?: number): number {
   const n = b.stored ?? 0;
@@ -93,9 +94,19 @@ export function releaseStored(state: BattleState, b: BuildingState, wave?: numbe
   ss.supplyUsed -= n * supply; // emerge counts them again as units
   let count = n;
   const size = wave === undefined ? 1 : state.compiled[b.side].waveSize ?? 1;
-  if (size !== 1) {
-    count = Math.max(0, Math.round(n * size));
+  const storm = wave !== undefined && state.rules.stormWaves && state.sporestorm > 0 ? 1 + state.rules.stormWaves.perStack * state.sporestorm : 1;
+  if (size !== 1 || storm !== 1) {
+    let want: number;
+    if (storm !== 1) {
+      const owed = n * Math.round(size * storm * 1000) + (b.waveCarry ?? 0);
+      want = Math.floor(owed / 1000);
+      b.waveCarry = owed % 1000;
+    } else {
+      want = Math.round(n * size);
+    }
+    count = Math.max(0, want);
     while (count > n && ss.supplyUsed + count * supply > ss.supplyCap) count--;
+    if (storm !== 1 && count < want) state.events.push({ t: 'waveCapped', side: b.side, units: want - count });
   }
   if (count > 0) emerge(state, b, sp.unit, count, wave);
   return count;

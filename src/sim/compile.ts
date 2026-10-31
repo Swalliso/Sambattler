@@ -84,6 +84,7 @@ export function compileRules(b: BalanceDef, config: BattleConfig): Rules {
     ...(b.waves ? { waves: { rangedGap: b.waves.rangedGap ?? 1, matchPace: b.waves.matchPace ?? true } } : {}),
     ...(b.waves && b.mixedWave ? { mixed: { minTypes: b.mixedWave.minTypes, shieldFrac: b.mixedWave.shieldFrac } } : {}),
     ...(b.cleave ? { cleave: { units: [...b.cleave.units] } } : {}),
+    ...(b.waves && b.stormWaves ? { stormWaves: { perStack: b.stormWaves.perStack } } : {}),
     ...(b.burst ? {
       burst: {
         cloud: {

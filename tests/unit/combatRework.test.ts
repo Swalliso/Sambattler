@@ -55,9 +55,9 @@ describe('the combat rework settings are off by default', () => {
   });
 
   it('the presets compile', () => {
-    for (const p of ['pinned', 'callforhelp', 'sporecloud', 'rhizomorph', 'waves', 'mixedwave', 'cleave', 'burster', 'rework']) expect(() => protoContent(p)).not.toThrow();
+    for (const p of ['pinned', 'callforhelp', 'sporecloud', 'rhizomorph', 'waves', 'mixedwave', 'cleave', 'burster', 'stormwaves', 'rework']) expect(() => protoContent(p)).not.toThrow();
     const all = protoState(protoContent('rework'));
-    expect([all.rules.pin, all.rules.help, all.rules.cloud, all.rules.waves, all.rules.mixed].every(Boolean)).toBe(true);
+    expect([all.rules.pin, all.rules.help, all.rules.cloud, all.rules.waves, all.rules.mixed, all.rules.burst].every(Boolean)).toBe(true);
     expect(all.compiled.player.buildings.rhizomorphTunnel).toBeDefined();
     expect(protoState(protoContent('pinned')).rules.pin).toEqual({ radius: 1, permille: 350 });
     expect(protoState(protoContent('callforhelp')).rules.help).toEqual({ radius: 5 });
@@ -713,10 +713,70 @@ describe('the Burster (preset burster)', () => {
   });
 });
 
+describe('the rework base (P1d)', () => {
+  it('is the six settings with mixed waves at two types, the Burster, and no Elder splash, at 20 s; cleave stays out', () => {
+    const rc = protoContent('rework');
+    const s = protoState(rc);
+    expect(s.rules.mixed).toEqual({ minTypes: 2, shieldFrac: 0.2 });
+    expect(s.compiled.player.waveBeatTicks).toBe(400);
+    expect(s.rules.burst).toBeDefined();
+    expect(s.rules.cleave).toBeUndefined();
+    expect(s.rules.stormWaves).toBeUndefined();
+    expect(s.compiled.player.units.sporeling!.tiers.map((t) => t.splashRadius)).toEqual([0, 0, 0]);
+    for (const f of ['velvet-bloom', 'gray-rot']) expect(rc.factions[f]!.buildings.slice(-2)).toEqual(['rhizomorphTunnel', 'bursterPod']);
+    // the shipped unit keeps its Elder splash
+    expect(liveState().compiled.player.units.sporeling!.tiers[2]!.splashRadius).toBe(0.6);
+  });
+});
+
+describe('a storm that grows waves (preset stormwaves)', () => {
+  const sc = protoContent('waves,stormwaves');
+
+  function stormState(stacks: number, ids: string[]): BattleState {
+    const s = createBattle(sc, makeConfig(sc, { seed: 1, mapId: 'test-flat', player: 'human', enemy: 'human', test: NO_FIELD, flags: { merging: false } }));
+    s.phase = 'live';
+    s.sporestorm = stacks;
+    ids.forEach((id, i) => addBuilding(s, 'player', id, 0, 1, i * 2, 150));
+    return s;
+  }
+
+  it('is off by default and needs waves', () => {
+    expect(content.balance.stormWaves).toBeUndefined();
+    expect(liveState().rules.stormWaves).toBeUndefined();
+    expect(protoState(protoContent('stormWaves:{"perStack":0.2}')).rules.stormWaves).toBeUndefined();
+    expect(protoState(sc).rules.stormWaves).toEqual({ perStack: 0.2 });
+  });
+
+  it('each stack makes a wave 20% bigger: twice the size at five stacks', () => {
+    const s = stormState(5, ['sporelingBurrow']);
+    steps(s, 400);
+    expect(s.units).toHaveLength(4); // 2 waiting, released ×2
+    const calm = stormState(0, ['sporelingBurrow']);
+    steps(calm, 400);
+    expect(calm.units).toHaveLength(2);
+  });
+
+  it('a spawner carries the fraction to its next release, so one stack adds a fifth over time', () => {
+    const s = stormState(1, ['gillNest']); // one archer every 15 s: 5 by 28.5 s
+    steps(s, 1600);
+    expect(s.units).toHaveLength(6); // 1, 2, 1 and 2 at the four beats: 5 × 1.2
+    expect(s.buildings[0]!.waveCarry).toBe(0);
+  });
+
+  it('extra units need free supply; the cap holds them back', () => {
+    const s = stormState(5, ['sporelingBurrow']);
+    s.sides.player.supplyCap = 3;
+    let capped = 0;
+    for (let i = 0; i < 400; i++) { steps(s, 1); for (const e of s.events) if (e.t === 'waveCapped') capped += e.units; }
+    expect(s.units).toHaveLength(3);
+    expect(capped).toBe(1);
+  });
+});
+
 describe('the Elder Sporeling splash check', () => {
   it("a proto path removes the Elder Sporeling's splash perk", () => {
-    const s = protoState(protoContent('rework,unit.sporeling.mergePerks.3.splashRadius:null'));
+    const s = protoState(protoContent('waves,unit.sporeling.mergePerks.3.splashRadius:null'));
     expect(s.compiled.player.units.sporeling!.tiers.map((t) => t.splashRadius)).toEqual([0, 0, 0]);
-    expect(protoState(protoContent('rework')).compiled.player.units.sporeling!.tiers[2]!.splashRadius).toBe(0.6);
+    expect(protoState(protoContent('waves')).compiled.player.units.sporeling!.tiers[2]!.splashRadius).toBe(0.6);
   });
 });
