@@ -1854,6 +1854,34 @@ The sanity pass on the playtest `rework` (P2's package, the swarm read and flyer
 - **G1 still fails,** as on today's rules: Gill Nest 10 of 11 pairings, Capguard Hall 9 of 11.
 - **Who fields flyers:** `bot:balanced` builds a Drift Stalk in 22% of its G3 games and 20% of G4's; the Lichen Baron in 37–50%; Old Mother Mold never.
 
+#### The flyer design's two fallbacks for mono Drift Stalk
+
+Measured on top of the playtest `rework`, which stays as built:
+- **Rule C:** everyone reaches a flyer, and melee hits from the ground deal half (`flying.reachSupply:1,flying.meleeMult:0.5`).
+- **The 2-supply Driftling with double stats:** 140 HP, 16 damage, 2 supply, and the Drift Stalk makes one every 18 s (`unit.driftling.hp:140,unit.driftling.damage:16,unit.driftling.supply:2,building.driftStalk.spawn.count:1`). Halving the count keeps the Stalk's supply rate and the design's value check (1.48 a gold) unchanged.
+
+G3 at 50 seeds with every mono bot, the strict bar and G4 at 200 games; and mono Drift Stalk against the four battle-1 generals on Bogwater, 12 games each:
+
+| | As built (reach) | Rule C | 2-supply Driftling |
+|---|---|---|---|
+| Mono Drift Stalk, G3 (Bogwater / Stumpfield / Twin Roots) | **89 / 96** (93 / 96 / 78) | **72 / 90** (90 / 85 / 40) | **95 / 98** (98 / 98 / 89) |
+| Mono Sporeling, G3 | 79 / 82 | 83 / 86 | 79 / 80 |
+| Mono Veilstalker, G3 | 60 / 71 | 69 / 80 | 60 / 71 |
+| Other mono bots | pass (Gill Nest 51 / 54, Morel 40 / 50) | pass (Morel 44 / 55) | pass (Gill Nest 52 / 57) |
+| Strict bar | passes | passes | passes |
+| G4 at 200 | 8:06 / 12% / 52% | 8:04 / 11% / 50% | 8:04 / 13% / 51% |
+| Mono Drift Stalk against scripted / Old Mother Mold / Lichen Baron / Blightwright | 11 / 12 / 0 / 7 of 12 | 11 / 1 / 8 / 6 | 11 / 12 / 1 / 6 |
+
+- **Neither fallback stops mono Drift Stalk.** Rule C cuts it most (89 → 72), mainly on Twin Roots (78 → 40); it still wins 85–90% on the one-lane maps. With both fallbacks together it's 82 / 94.
+- **The 2-supply Driftling makes it stronger.** Fewer, tougher Driftlings lose fewer bodies to `bot:balanced`'s Capguards and turrets.
+- **What hurts mono Drift Stalk, as built:** `bot:balanced`'s Heartcap turrets deal 47–49% of its damage to the Driftlings and its Capguards 19–25%, and 62–75% of the Driftlings survive. Under rule C its Sporelings deal about 40%, and losses rise to 31–49%.
+- **Rule C costs the flyer part of its job.** With the small fry hitting back, mono Sporeling and mono Veilstalker get stronger (83 / 86 and 69 / 80), and mono Sporeling's best answer goes back to Sporeling + Veilstalker. A Drift Stalk pair falls to 73% on Twin Roots.
+- **Against the generals, rule C moves who answers flyers rather than how often.** Old Mother Mold's swarm now beats mono Drift Stalk, and the Lichen Baron, whose Capguards now hit flyers at half damage, loses to it. Mono Drift Stalk wins 26 of 48 battle-1 games under rule C, against 30 of 48 as built.
+
+**Recommendation:** of the two, rule C. It's the only one that lowers the takeover, it keeps the strict bar and G4, and the small fry fighting back reads naturally on the field. But it doesn't fix the takeover, and it gives back some of the swarm. Drop the 2-supply Driftling. A real fix needs either a retune of the Driftling's numbers (its HP, damage or the Stalk's rate) or the general's Anti-Air counter from the design's AI section. Both are the user's call.
+
+**Adopted for the playtest:** the user took rule C on 2026-10-31 ("Let's go with your recommendations"). The `flyers` preset, and so `rework`, now uses it, and reach is `flying.reachSupply:2,flying.meleeMult:1`. The Driftling's retune and the Anti-Air counter stay open.
+
 ### Judgment calls
 
 - **G3's maps:** the run pool's three, as in every round; the two-lane test maps are leads, not counted.
