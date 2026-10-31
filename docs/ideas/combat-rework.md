@@ -1,6 +1,6 @@
 # Combat rework: no unit type should win alone
 
-Drafted on 2026-10-30 against `f5e70a9`. **Nothing here is adopted yet.** On 2026-10-30 the user chose Level 2 ([Decisions](#decisions-2026-10-30)). P0 and P1 of the [prototype plan](#prototype-plan) ran the same day, and their results changed the target: see [What P0 and P1 found](#what-p0-and-p1-found). P1b and P1c followed that evening, and P1d the next morning ([What P1b, P1c and P1d found](#what-p1b-p1c-and-p1d-found)). P2 started the same day ([P2: measure](#p2-measure)). This doc replaces the step C draft (sheltered forward plots), which is parked; see [What waits](#what-waits).
+Drafted on 2026-10-30 against `f5e70a9`. **Nothing here is adopted yet.** On 2026-10-30 the user chose Level 2 ([Decisions](#decisions-2026-10-30)). P0 and P1 of the [prototype plan](#prototype-plan) ran the same day, and their results changed the target: see [What P0 and P1 found](#what-p0-and-p1-found). P1b and P1c followed that evening, and P1d the next morning ([What P1b, P1c and P1d found](#what-p1b-p1c-and-p1d-found)). P2 ran the same day and was cut short for a playtest, with flyers added ([What P2 found](#what-p2-found)). This doc replaces the step C draft (sheltered forward plots), which is parked; see [What waits](#what-waits).
 
 The user's brief:
 - Fix battles that are one-sided because one unit type dominates, even if that takes significant rework.
@@ -25,9 +25,10 @@ The user's brief:
 - **P1 built it, and the first read fell short.** The full package takes mono archers from 86% to 74%, but waves make swarms stronger still (mono Sporeling 94%), and battles run long.
 - **P1b, P1c and P1d aimed it at swarms.** P1b made each wave arrive together and aimed the tools at clusters. P1c added the Burster, a unit that bursts on clusters like StarCraft II's Banelings, and gave mixed-wave shields to any wave of two unit types. P1d went after the stalls that followed.
 - **Every strong build now has an answer on every map,** Twin Roots included, so the strict counter bar passes. The shields carry it: every two-building answer gets them and a mono build never does. Without them, mono Sporeling's best answer falls from 85% to 47%.
-- **G3 still fails on the swarm.** `bot:balanced` loses to mono Sporeling 81–85% of the time at a 20 s beat, and to mono Veilstalker too when the storm grows waves.
-- **G4 nearly passes.** Dropping the Mortar's clouds and letting the Sporestorm grow waves cut Decisions from 28% to 18%, against a limit of 15%.
-- **Next: P2 measures the package,** now without the Mortar's clouds and with the storm, removing one piece at a time to find the fewest that carry the result. G8 shows whether an adapting general answers the swarm, which settles what G3's failure means.
+- **G3 still fails on the swarm.** `bot:balanced` loses to mono Sporeling 81–85% of the time at a 20 s beat, and to mono Veilstalker too when the storm grows waves. The adaptive general doesn't answer the swarm either.
+- **G4 passes.** With the Mortar's clouds off and a Sporestorm that grows waves, 12.5% of battles end in a Decision over 200 games, against a limit of 15%.
+- **P2 found what each piece carries.** Waves carry almost everything, the two-type shields carry the strict bar, the storm keeps battles short, and pinning, call for help, the Burster and the Elder change each hold one check. The Rhizomorph carries nothing measured.
+- **Next: P3, a playtest** on the dev site with `?proto=rework`, which now also has flyers and a fix for the general's swarm read ([P3](#p3-playtest)).
 - **How to judge it:** two checks side by side. The counter matrix says every committed build has an answer, now with a stricter bar, since today's rules already pass the first one. G3 says a mixed army holds up against committed builds.
 - **If that fails:** move to rounds, as Mechabellum does. A wilder option, ranged power as structures, is sketched too.
 
@@ -259,13 +260,13 @@ How the numbers play out:
 - **Spore clouds:** a cloud kills an archer that stands in it for 11 s. A Sporeling walking through takes about 20 damage, but a swarm standing around its target takes the full rate.
 - **The Rhizomorph:** it kills an archer in 5 hits, since slash does ×1.5 against light armor.
 
-P1 built these as written. [P1b](#p1b-aim-the-package-at-swarms-and-mixed-armies-done) changes how a wave forms up, where the Mortar aims and where the Rhizomorph surfaces, and adds a sixth setting, `mixedWave`. [P1c](#p1c-area-damage-that-travels-with-the-army-done) adds two counters to the swarm, `cleave` and `burster`. For P2, `rework` drops the Mortar's clouds and adds a Sporestorm that grows waves ([P2: measure](#p2-measure)).
+P1 built these as written. [P1b](#p1b-aim-the-package-at-swarms-and-mixed-armies-done) changes how a wave forms up, where the Mortar aims and where the Rhizomorph surfaces, and adds a sixth setting, `mixedWave`. [P1c](#p1c-area-damage-that-travels-with-the-army-done) adds two counters to the swarm, `cleave` and `burster`. For P2, `rework` drops the Mortar's clouds and adds a Sporestorm that grows waves ([P2](#p2-measure-done)). For the playtest it also gains the general's swarm read and flyers ([What P2 found](#what-p2-found)).
 
-### Flyers, later
+### Flyers
 
-Flying units are approved in principle: spores on the wind, like Mechabellum's Wasps, Clash Royale's Minions or Plants vs. Zombies' Balloon Zombie. They wait until after P2, so the package's pieces can be measured cleanly.
+Flying units are approved in principle: spores on the wind, like Mechabellum's Wasps, Clash Royale's Minions or Plants vs. Zombies' Balloon Zombie. They were to wait until after P2, so the package's pieces could be measured cleanly. On 2026-10-31 the user had them built for the playtest instead, as [flyers.md](flyers.md) designs them, without the Bloatcap ([What P2 found](#what-p2-found)).
 
-The question to settle first is who can hit a flyer. If only ranged units can, a flyer is food for archers rather than an answer to them. The design is in [flyers.md](flyers.md).
+The question to settle first was who can hit a flyer. If only ranged units can, a flyer is food for archers rather than an answer to them. The design's answer is reach: ranged units, turrets, other flyers, clouds, powers and melee units of 2 or more supply can hit one.
 
 ## The counter-matrix check
 
@@ -413,6 +414,42 @@ P1d first fixed a leak in P1c's code: a dead-unit rule ran even with the Burster
   - the storm stays at 20% a stack, and 18–22% Decisions is accepted for P2;
   - the Mortar's clouds leave `rework`.
 
+## What P2 found
+
+P2 ran on 2026-10-31 and was cut short at the user's call, for a playtest ([Decisions](#decisions-2026-10-30)). The full tables are in the [backlog](../balance-backlog.md#combat-rework-p2-2026-10-31). G3 is at 50 seeds per seat, mean / worst map, and G4 at 200 games.
+
+| Run | G3 fails | Strict counter bar | G4 Decisions |
+|---|---|---|---|
+| Today | Gill Nest 88 / 100, Sporeling 74 / 77, Amanita 51 / 64 | fails | 7.5% |
+| **The package** | Sporeling 85 / 86, Veilstalker 72 / 87 | **passes** | **12.5%: passes** |
+| − waves | Sporeling 74 / 80, Gill Nest 79 / 94, Amanita 55 / 71 | fails | 22.5% |
+| − pinned | Sporeling 83 / 85, Gill Nest 73 / 80, Veilstalker 72 / 90 | passes | 14.5% |
+| − call for help | Sporeling 87 / 94, Veilstalker 73 / 87 | passes | 12.5% |
+| − the Rhizomorph | Sporeling 86 / 89, Veilstalker 71 / 84 | passes | 8.5% |
+| − the shields | Sporeling 95 / 97, Gill Nest 66 / 75, Veilstalker 81 / 88, Morel 68 / 78 | fails | 9.5% |
+| − the Burster | Sporeling 87 / 90, Veilstalker 76 / 93, Morel 59 / 69 | passes | 8.5% |
+| − the Elder change | Sporeling 94 / 95, Veilstalker 72 / 83 | passes | 7.0% |
+| − the storm | Sporeling 83 / 86, Veilstalker 45 / 61 | passes | 27.0% |
+
+- **Every piece but the Rhizomorph carries something:**
+  - waves carry almost everything: without them the strict bar fails, the archers come back, and stalls rise;
+  - the two-type shields carry the strict bar. Off, or at three types so that no pair gets them, mono Sporeling's best answer wins 44% on Twin Roots;
+  - the storm keeps battles short;
+  - pinning keeps the archers down;
+  - call for help keeps G2's counter graph healthy: without it, the Gill Archer wins no supply duel;
+  - the Burster and the Elder change hold the runners and the swarm in G3.
+- **The Rhizomorph carries nothing measured.** Without it every bar holds, and Decisions fall to 8.5%. The package without it wasn't measured as a whole.
+- **G4 passes.** P1d's 18% was 7 of 40 games. Over 200, the same package ends 12.5% of battles in a Decision.
+- **The adaptive general doesn't answer the swarm either,** so G3's failure isn't only `bot:balanced`'s fixed mix. Under the package the general read the swarm as elite units in 155 of 199 reads, because waves make nearly every Sporeling merge. A fix for the read makes it read the swarm right every time, but its counters to a swarm (Capguards, Burster Pods, Tunnels) aren't the answer the counter matrix found (Sporeling + Veilstalker). It still wins only 24% against mono Sporeling, against 29% today.
+- **The other checks:**
+  - G2 passes, and G1 fails as it does today.
+  - G5 is 3 points over (78%), and G7's mirror 2 points over (72%), since waves nearly quadruple merges.
+  - A side 6 columns behind at 3:00 wins 88%, against 55% today.
+  - There are still no comebacks in 360 battles, and Decisions in those battles rise from 7 to 29, mostly against the Lichen Baron.
+  - Runs with commanders win a little more often (60 of 240, from 54), but more end in battle 1 (108, from 79), all with Armilla and Cordis. Waves cause it: without them, 68 end there.
+
+After P2, `rework` gained the general's swarm read and flyers, for the playtest. With both, G4 still passes (12% at 200 games), G2 stays healthy, and `bot:balanced` builds a Drift Stalk in about a fifth of its games.
+
 ## Prototype plan
 
 ### P0: the counter matrix on today's rules (done)
@@ -475,9 +512,9 @@ The same session and branch, on 2026-10-31, with the user's answers to P1c's que
 
 Nothing passed G3, G4 and the strict bar together, so P2's other checks weren't run ([results](#p1d-fewer-stalls-and-the-shields-carry-the-strict-bar)).
 
-### P2: measure
+### P2: measure (done)
 
-Running in the same session and on the same branch since 2026-10-31, with the user's answers to P1d's questions ([Decisions](#decisions-2026-10-30)).
+Ran in the same session and on the same branch on 2026-10-31, with the user's answers to P1d's questions ([Decisions](#decisions-2026-10-30)). It was cut short for the playtest, so step 3's G3 runs, most of step 4's checks and any package with two pieces removed weren't run ([results](#what-p2-found)).
 
 **The package:** `rework` becomes P1d's base without the Mortar's clouds, plus `stormwaves`. That's waves at a 20 s beat, pinning, call for help, the Rhizomorph, mixed waves at two types, the Burster, the Elder Sporeling without its splash, and a Sporestorm that grows waves 20% a stack. Cleave stays out. P3 can then playtest with `?proto=rework` alone.
 
@@ -507,11 +544,18 @@ P2 measures and doesn't retune. The runs with one piece removed show which piece
 
 ### P3: playtest
 
-Play battles and full runs on the dev site with `?proto=rework`. The questions:
+Play battles and full runs on the dev site with `?proto=rework`: P2's package, plus the general's swarm read and flyers. A prototype run saves on the dev site, apart from the real save ([#34](https://github.com/Swalliso/Sambattler/pull/34)). The questions:
 - Did any battle feel decided by one unit type?
 - When the general massed something, could you answer it, and did you know how?
 - Do the waves give a battle rhythm, or make it feel less alive?
-- Do the spore clouds and Rhizomorphs read clearly?
+- Do the spore clouds, Rhizomorphs and flyers read clearly, and can you tell what can hit a flyer?
+
+What P2 says to watch for:
+- battle 1 is harder with Armilla and Cordis;
+- falling back early is a big edge;
+- there are still no comebacks;
+- the general doesn't answer a swarm;
+- the Rhizomorph may not earn its place.
 
 ### P4: decide
 
@@ -526,17 +570,17 @@ One of three outcomes:
 - §4.4: spawners feeding waves.
 - §5.2: formation, call for help, pinning and burrowing.
 - §5.3: cloud damage.
-- §11: the Rhizomorph, the Burster, the Mortar and the Scythecap.
+- §11: the Rhizomorph, the Burster, the Driftling, the Mortar and the Scythecap.
 - §12.3: G12.
-- §17 #7: burrowing now, and flying later.
-- §7: the AI, for Rhizomorph, Burster and Mortar use, and counter weights.
+- §17 #7: burrowing and flying.
+- §7: the AI, for Rhizomorph, Burster, Drift Stalk and Mortar use, counter weights, and reading a merging swarm.
 
 **Code:**
 - **Sim systems:**
   - `src/sim/systems/spawning.ts`: the wave reserve.
   - `src/sim/systems/stance.ts`: how Hold works with waves.
-  - `src/sim/systems/targeting.ts`: call for help, pinning, Rhizomorph targets, and the Mortar's and the Burster's aim at the densest cluster.
-  - `src/sim/systems/movement.ts`: moving underground, and formation.
+  - `src/sim/systems/targeting.ts`: call for help, pinning, Rhizomorph targets, the Mortar's and the Burster's aim at the densest cluster, and who can reach a flyer.
+  - `src/sim/systems/movement.ts`: moving underground, flying over ground units, and formation.
   - `src/sim/systems/combat.ts`: the pinned attack rate, the mixed-wave shield, cleave, and the Burster's burst.
   - `src/sim/systems/clouds.ts`: spore clouds, from the Mortar's shells and the Burster's bursts.
 - **State and settings:**
@@ -657,3 +701,10 @@ On 2026-10-31, after P1d reported, the user approved P2, with these answers to P
 - **The Mortar's clouds leave `rework`.** Spore clouds stay in the game through the Burster.
 - **`rework` becomes P2's package:** P1d's base without the Mortar's clouds, plus the storm.
 - **P2 measures only.** A number that looks wrong, such as the shield's size, comes back to the user with the evidence.
+
+On 2026-10-31, with P2's first results in, the user chose to playtest before measuring further. Missing pieces such as flyers will move the balance anyway, so the combat should reach a stable, playable state first:
+- **Wrap up P2** with the results in hand.
+- **Build flyers before the playtest,** into `rework`, as [flyers.md](flyers.md) designs them.
+- **Fix the general's swarm read** under `rework`.
+- **Save prototype runs on the dev site** ([#34](https://github.com/Swalliso/Sambattler/pull/34)).
+- **Merge it all into `develop`** for the playtest.
