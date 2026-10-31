@@ -20,6 +20,8 @@ export const TILE = 16;
 const STRIP = 2; // Heartcap strip width in tiles on each side
 /** Sprite scale per merge tier (SPEC §10.4: "a slightly larger sprite"). */
 const TIER_SCALE = [1, 1.25, 1.5];
+/** Combat rework `flyers`: how far a flyer's sprite floats above its shadow, in pixels (half a tile). */
+const FLY_LIFT = 8;
 /** "Big hits only" shows damage numbers from this amount up. */
 export const BIG_HIT = 30;
 export type DamageNumbers = 'off' | 'big' | 'all';
@@ -126,6 +128,8 @@ export class Renderer {
   damageNumbers: DamageNumbers = 'off';
   /** A bar under each of your spawners, filling toward its next spawn (the settings screen). */
   spawnTimers = true;
+  /** Ambient motion holds still (`?test=1`, set by the battle view): flyers don't bob. */
+  still = false;
   private assist = false;
   private sorted: UnitState[] = [];
   private eligible: UnitState[] = [];
@@ -329,36 +333,18 @@ export class Renderer {
     if (state.clouds?.length) this.drawClouds(state, t);
     this.drawMergeLinks(state, alpha, t);
 
-    // units, sorted by y then id; merged units are drawn larger, with tier pips
+    // units, sorted by y then id; merged units are drawn larger, with tier pips; flyers (combat rework
+    // `flyers`) go last, over every ground unit, raised above their shadows
     const us = this.sorted;
     us.length = 0;
     for (const u of state.units) us.push(u);
     us.sort((a, b) => a.y - b.y || a.id - b.id);
+    let flyers = false;
     for (const u of us) {
-      const x = u.px + (u.x - u.px) * alpha;
-      const y = u.py + (u.y - u.py) * alpha;
-      if (u.burrowed) { this.mound(this.sx(x), y * TILE, u, t, view.selected === u.id); continue; }
-      const sprite = this.content.units[u.unitId]!.sprite;
-      const moving = u.x !== u.px || u.y !== u.py;
-      const attacking = state.tick - u.lastAttackTick < 6 && u.lastAttackTick >= 0;
-      const frame = attacking ? 2 : moving ? Math.floor(t / 250 + u.id) % 2 : 0;
-      const flip = u.side === 'enemy';
-      const r = this.atlas.get(sprite, factionOf(u.side), frame, flip);
-      if (!r) continue;
-      const scale = TIER_SCALE[u.tier - 1]!;
-      const w = Math.round(r.w * scale), hgt = Math.round(r.h * scale);
-      const dx = Math.round(this.sx(x) - r.ax * scale), dy = Math.round(y * TILE - r.ay * scale);
-      if (u.tier === 3) this.elderAura(this.sx(x), y * TILE, w, this.mat(u.side).glow, t + u.id * 37);
-      if (this.assist) teamMark(g, Math.round(this.sx(x)), Math.round(y * TILE), w, u.side);
-      g.drawImage(this.atlas.canvas as CanvasImageSource, r.x, r.y, r.w, r.h, dx, dy, w, hgt);
-      if (u.shield) this.shieldRing(this.sx(x), dy + hgt / 2, w, hgt, u.shield / Math.max(1, u.maxHp * (state.rules.mixed?.shieldFrac ?? 1)));
-      if (u.id === view.selected) {
-        g.strokeStyle = '#ffe9a8';
-        g.strokeRect(dx - 0.5, dy - 0.5, w + 1, hgt + 1);
-      }
-      if (u.tier > 1) this.pips(Math.round(this.sx(x)), dy - (u.hp < u.maxHp ? 7 : 4), u.tier - 1);
-      if (u.hp < u.maxHp) this.bar(dx + 1, dy - 3, w - 2, u.hp / u.maxHp, u.side);
+      if (u.flying) flyers = true;
+      else this.drawUnit(state, view, u, alpha, t);
     }
+    if (flyers) for (const u of us) if (u.flying) this.drawUnit(state, view, u, alpha, t);
     this.drawKnits(state, alpha, t);
 
     // projectiles
@@ -467,6 +453,56 @@ export class Renderer {
       }
       g.restore();
     }
+  }
+
+  /**
+   * One unit: its sprite at its foot point (merged units larger, with tier pips), shield ring, HP bar
+   * and selection box. A tunnelling Rhizomorph is a mound; a flyer floats `FLY_LIFT` px above a shadow
+   * on the ground, bobbing a pixel unless ambient motion holds still.
+   */
+  private drawUnit(state: BattleState, view: View, u: UnitState, alpha: number, t: number): void {
+    const g = this.ctx;
+    const x = u.px + (u.x - u.px) * alpha;
+    const y = u.py + (u.y - u.py) * alpha;
+    if (u.burrowed) { this.mound(this.sx(x), y * TILE, u, t, view.selected === u.id); return; }
+    const sprite = this.content.units[u.unitId]!.sprite;
+    const moving = u.x !== u.px || u.y !== u.py;
+    const attacking = state.tick - u.lastAttackTick < 6 && u.lastAttackTick >= 0;
+    const frame = attacking ? 2 : moving ? Math.floor(t / 250 + u.id) % 2 : 0;
+    const flip = u.side === 'enemy';
+    const r = this.atlas.get(sprite, factionOf(u.side), frame, flip);
+    if (!r) return;
+    const scale = TIER_SCALE[u.tier - 1]!;
+    const w = Math.round(r.w * scale), hgt = Math.round(r.h * scale);
+    const lift = u.flying ? FLY_LIFT + (this.calm() ? 0 : Math.floor(t / 320 + u.id) % 2) : 0;
+    const dx = Math.round(this.sx(x) - r.ax * scale), dy = Math.round(y * TILE - r.ay * scale) - lift;
+    if (this.assist) teamMark(g, Math.round(this.sx(x)), Math.round(y * TILE), w, u.side);
+    if (u.flying) this.flyerShadow(this.sx(x), y * TILE, w);
+    if (u.tier === 3) this.elderAura(this.sx(x), y * TILE - lift, w, this.mat(u.side).glow, t + u.id * 37);
+    g.drawImage(this.atlas.canvas as CanvasImageSource, r.x, r.y, r.w, r.h, dx, dy, w, hgt);
+    if (u.shield) this.shieldRing(this.sx(x), dy + hgt / 2, w, hgt, u.shield / Math.max(1, u.maxHp * (state.rules.mixed?.shieldFrac ?? 1)));
+    if (u.id === view.selected) {
+      g.strokeStyle = '#ffe9a8';
+      g.strokeRect(dx - 0.5, dy - 0.5, w + 1, hgt + 1);
+    }
+    if (u.tier > 1) this.pips(Math.round(this.sx(x)), dy - (u.hp < u.maxHp ? 7 : 4), u.tier - 1);
+    if (u.hp < u.maxHp) this.bar(dx + 1, dy - 3, w - 2, u.hp / u.maxHp, u.side);
+  }
+
+  /** Ambient motion holds still: `?test=1` (set by the battle view) or reduced motion. */
+  private calm(): boolean {
+    return this.still || (typeof document !== 'undefined' && document.documentElement.classList.contains('reduce-motion'));
+  }
+
+  /** Combat rework `flyers`: a soft dark oval on the ground under a flyer, where it really stands. */
+  private flyerShadow(cx: number, footY: number, w: number): void {
+    const g = this.ctx;
+    const x = Math.round(cx), y = Math.round(footY);
+    const half = Math.max(3, Math.round(w * 0.3));
+    g.fillStyle = 'rgba(18, 10, 22, 0.4)';
+    g.fillRect(x - half, y - 1, half * 2, 2);
+    g.fillRect(x - half + 2, y - 2, half * 2 - 4, 1);
+    g.fillRect(x - half + 2, y + 1, half * 2 - 4, 1);
   }
 
   /** Combat rework (the Rhizomorph): a tunnelling unit is a mound of earth on the move, kicking up crumbs behind it. */

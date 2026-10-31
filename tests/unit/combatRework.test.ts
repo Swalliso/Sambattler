@@ -713,8 +713,8 @@ describe('the Burster (preset burster)', () => {
   });
 });
 
-describe('the P2 package (preset rework)', () => {
-  it("is P1d's base without the Mortar's clouds, plus the storm: mixed waves at two types, the Burster, no Elder splash, at 20 s", () => {
+describe('the package (preset rework)', () => {
+  it("is P1d's base without the Mortar's clouds, plus the storm, the swarm read and flyers: mixed waves at two types, the Burster, no Elder splash, at 20 s", () => {
     const rc = protoContent('rework');
     const s = protoState(rc);
     expect(s.rules.pin).toBeDefined();
@@ -726,7 +726,8 @@ describe('the P2 package (preset rework)', () => {
     expect(s.rules.cloud).toBeUndefined();
     expect(s.rules.cleave).toBeUndefined();
     expect(s.compiled.player.units.sporeling!.tiers.map((t) => t.splashRadius)).toEqual([0, 0, 0]);
-    for (const f of ['velvet-bloom', 'gray-rot']) expect(rc.factions[f]!.buildings.slice(-2)).toEqual(['rhizomorphTunnel', 'bursterPod']);
+    expect(s.rules.flying).toEqual({ reachSupply: 2, meleeMult: 1, mergedReach: false, cloudsReach: true, holdsGround: false });
+    for (const f of ['velvet-bloom', 'gray-rot']) expect(rc.factions[f]!.buildings.slice(-3)).toEqual(['rhizomorphTunnel', 'bursterPod', 'driftStalk']);
     // the shipped unit keeps its Elder splash
     expect(liveState().compiled.player.units.sporeling!.tiers[2]!.splashRadius).toBe(0.6);
   });
@@ -833,6 +834,159 @@ describe("the general's swarm read (preset swarmread)", () => {
     const capguards = read(rc, ['capguardHall', 'capguardHall']);
     expect(capguards.shares.elite).toBeCloseTo(7 / 8, 9);
     expect(topKind(capguards.scores)).toBe('elite');
+  });
+});
+
+describe('flyers (preset flyers)', () => {
+  const fc = protoContent('flyers');
+
+  it('is off by default; the preset adds the Driftling and its Drift Stalk, which bots buy at weight 1 and mono and test bots never', () => {
+    expect(content.units.driftling).toBeUndefined();
+    expect(content.balance.flying).toBeUndefined();
+    expect(liveState().rules.flying).toBeUndefined();
+    expect(fc.units.driftling).toMatchObject({ hp: 70, armor: 'light', damage: 8, damageType: 'slash', range: 1, speed: 1.4, supply: 1, aggroRange: 5, tags: ['flying'] });
+    expect(fc.buildings.driftStalk).toMatchObject({ cost: 160, spawn: { unit: 'driftling', count: 2, interval: 18 }, aiWeight: 1 });
+    for (const f of ['velvet-bloom', 'gray-rot']) expect(fc.factions[f]!.buildings).toContain('driftStalk');
+    const s = protoState(fc);
+    expect(s.rules.flying).toEqual({ reachSupply: 2, meleeMult: 1, mergedReach: false, cloudsReach: true, holdsGround: false });
+    expect(unit(s, 'player', 'driftling', 5, 4).flying).toBe(true);
+    expect(unit(s, 'player', 'sporeling', 6, 4).flying).toBeUndefined();
+    const weight = (st: BattleState) => st.sides.player.ai!.weights.find((w) => w.building === 'driftStalk')?.weight;
+    const battle = (c: Content, player: string) => createBattle(c, makeConfig(c, { seed: 1, mapId: 'bogwater-hollow', player, enemy: 'bot:balanced' }));
+    expect(weight(battle(fc, 'bot:balanced'))).toBe(1);
+    expect(weight(battle(fc, 'bot:mono:gillNest'))).toBeUndefined();
+  });
+
+  it('only reach targets a flyer: big melee units, archers and other flyers; never the small fry, merged or not', () => {
+    const s = protoState(fc);
+    const d = unit(s, 'enemy', 'driftling', 10, 4);
+    freeze(s, 'enemy', 'driftling');
+    const small = [unit(s, 'player', 'sporeling', 8, 2), unit(s, 'player', 'sporeling', 8, 3, 3), unit(s, 'player', 'veilstalker', 8, 5)];
+    const reach = [unit(s, 'player', 'capguard', 8, 6), unit(s, 'player', 'gillArcher', 6, 4), unit(s, 'player', 'driftling', 8, 7)];
+    steps(s, 1);
+    expect(small.map((u) => u.targetId)).toEqual([0, 0, 0]);
+    expect(reach.map((u) => u.targetId)).toEqual([d.id, d.id, d.id]);
+    // the softer variant: a merged unit's own supply counts (a Bloomed Sporeling is 2)
+    const m = protoState(protoContent('flyers,flying.mergedReach:true'));
+    const d2 = unit(m, 'enemy', 'driftling', 10, 4);
+    freeze(m, 'enemy', 'driftling');
+    const bloomed = unit(m, 'player', 'sporeling', 8, 3, 2), base = unit(m, 'player', 'sporeling', 8, 5);
+    steps(m, 1);
+    expect([bloomed.targetId, base.targetId]).toEqual([d2.id, 0]);
+  });
+
+  it("Heartcap turrets reach a flyer; the Mortar's lob neither targets one nor splashes it", () => {
+    const t = protoState(fc, { noTerritory: true, noHeartcapTargets: true });
+    const d = unit(t, 'enemy', 'driftling', 3, 4);
+    freeze(t, 'enemy', 'driftling');
+    steps(t, 40);
+    expect(d.hp).toBeLessThan(d.maxHp);
+
+    const s = protoState(fc);
+    const mortar = building(s, 'player', 'puffballMortar', 4, 2);
+    const near = unit(s, 'enemy', 'driftling', 8, 3); // nearer than the Capguard
+    const cap = unit(s, 'enemy', 'capguard', 10, 3);
+    const beside = unit(s, 'enemy', 'driftling', 10.5, 3.6); // inside the shell's splash
+    for (const id of ['driftling', 'capguard'] as const) freeze(s, 'enemy', id);
+    steps(s, 1);
+    expect(mortar.targetId).toBe(cap.id);
+    steps(s, 80);
+    expect(cap.hp).toBeLessThan(cap.maxHp);
+    expect([near.hp, beside.hp]).toEqual([near.maxHp, beside.maxHp]);
+  });
+
+  it("splash follows its attacker's reach: an Elder Sporeling's skips a flyer, a Scythecap's catches one", () => {
+    const swing = (attacker: string, tier: 1 | 3) => {
+      const s = protoState(fc);
+      const target = unit(s, 'enemy', 'capguard', 10, 4);
+      const flyer = unit(s, 'enemy', 'driftling', 10.3, 4.55);
+      const ground = unit(s, 'enemy', 'sporeling', 10.3, 3.45);
+      for (const id of ['capguard', 'driftling', 'sporeling'] as const) freeze(s, 'enemy', id);
+      unit(s, 'player', attacker, 9.3, 4, tier);
+      steps(s, 10);
+      return [target, ground, flyer].map((u) => u.maxHp - u.hp > 0);
+    };
+    expect(swing('sporeling', 3)).toEqual([true, true, false]);
+    expect(swing('scythecap', 1)).toEqual([true, true, true]);
+  });
+
+  it('spore clouds reach a flyer unless cloudsReach is off; a burst never does', () => {
+    for (const reach of [true, false]) {
+      const s = protoState(protoContent(`burster,flyers${reach ? '' : ',flying.cloudsReach:false'}`));
+      const d = unit(s, 'enemy', 'driftling', 10, 3);
+      freeze(s, 'enemy', 'driftling');
+      addCloud(s, 'player', 0, 10, 3, 0, s.rules.burst!.cloud);
+      steps(s, 100);
+      expect(d.maxHp - d.hp).toBe(reach ? 40 : 0);
+    }
+    const s = protoState(protoContent('burster,flyers'));
+    const b = unit(s, 'player', 'burster', 10, 4);
+    const flyer = unit(s, 'enemy', 'driftling', 10.6, 4);
+    const ground = unit(s, 'enemy', 'sporeling', 10, 4.8);
+    for (const id of ['driftling', 'sporeling'] as const) freeze(s, 'enemy', id);
+    freeze(s, 'player', 'burster');
+    b.hp = 0;
+    steps(s, 1);
+    expect(s.events.some((e) => e.t === 'burst')).toBe(true);
+    expect([ground.maxHp - ground.hp, flyer.maxHp - flyer.hp]).toEqual([40, 0]);
+  });
+
+  it('a flyer passes over ground units, keeps apart from other flyers, and holds no ground unless holdsGround', () => {
+    for (const holds of [false, true]) {
+      const s = protoState(protoContent(`flyers${holds ? ',flying.holdsGround:true' : ''}`));
+      const g = unit(s, 'player', 'capguard', 10.5, 4);
+      const a = unit(s, 'player', 'driftling', 10.5, 4);
+      const b = unit(s, 'player', 'driftling', 10.6, 4);
+      for (const id of ['capguard', 'driftling'] as const) freeze(s, 'player', id);
+      steps(s, 1);
+      expect([g.x, g.y]).toEqual([10.5, 4]);
+      expect(b.x - a.x).toBeGreaterThan(0.4);
+      expect(lanePresence(s, 0).player[10]).toBe(holds ? 4 : 2);
+    }
+  });
+
+  it('a call for help against a flyer brings only the friends that can hit it', () => {
+    const s = protoState(protoContent('callforhelp,flyers'));
+    const d = unit(s, 'enemy', 'driftling', 10, 4);
+    const victim = unit(s, 'player', 'sporeling', 9.4, 4);
+    const sporeling = unit(s, 'player', 'sporeling', 5, 2); // outside their aggro, inside the call
+    const capguard = unit(s, 'player', 'capguard', 5, 6);
+    for (const id of ['sporeling', 'capguard'] as const) freeze(s, 'player', id);
+    steps(s, 2);
+    expect(victim.hp).toBeLessThan(victim.maxHp);
+    expect([victim.targetId, sporeling.targetId, capguard.targetId]).toEqual([0, 0, d.id]);
+  });
+
+  it('under waves, an idle flyer hovers over its melee front and never counts as the front', () => {
+    const s = protoState(protoContent('waves,flyers'));
+    const cap = unit(s, 'player', 'capguard', 8, 3);
+    const ahead = unit(s, 'player', 'driftling', 12, 5);
+    steps(s, 20);
+    expect(ahead.x).toBe(12);
+    expect(cap.x).toBeGreaterThan(8);
+    const t = protoState(protoContent('waves,flyers'));
+    const archer = unit(t, 'player', 'gillArcher', 6, 3);
+    unit(t, 'player', 'driftling', 8, 5);
+    freeze(t, 'player', 'driftling');
+    steps(t, 40);
+    expect(archer.x).toBeGreaterThan(7); // an archer stays 1 tile behind a melee front, not behind a flyer
+  });
+
+  it("meleeMult scales a ground unit's melee hit on a flyer; an archer's shot and a flyer's cut are unchanged", () => {
+    const hit = (spec: string, attacker: string) => {
+      const s = protoState(protoContent(spec));
+      const d = unit(s, 'enemy', 'driftling', 10, 4);
+      freeze(s, 'enemy', 'driftling');
+      unit(s, 'player', attacker, attacker === 'gillArcher' ? 7 : 9.4, 4);
+      steps(s, 15);
+      return d.maxHp - d.hp;
+    };
+    for (const a of ['capguard', 'gillArcher', 'driftling']) {
+      const full = hit('flyers', a), half = hit('flyers,flying.meleeMult:0.5', a);
+      expect(full).toBeGreaterThan(0);
+      if (a === 'capguard') expect(Math.abs(half - full / 2)).toBeLessThanOrEqual(0.5);
+      else expect(half).toBe(full);
+    }
   });
 });
 

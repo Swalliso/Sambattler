@@ -57,6 +57,28 @@ export function soakShield(u: UnitState, damage: number): number {
   return damage - shield;
 }
 
+/**
+ * Combat rework `flyers`: can unit `u`'s attacks reach a flyer? Flyers, ranged units and melee types
+ * of at least `reachSupply` supply can (with `mergedReach`, a merged unit's own supply counts); the
+ * small fry can't. Always true with the setting off.
+ */
+export function reachesAir(state: BattleState, u: UnitState): boolean {
+  return typeReachesAir(state, unitDef(state, u), u.tier);
+}
+
+/** Combat rework `flyers`: can a unit type's attacks reach a flyer at `tier`? See {@link reachesAir}. */
+export function typeReachesAir(state: BattleState, def: CompiledUnit, tier = 1): boolean {
+  const f = state.rules.flying;
+  if (!f) return true;
+  if (def.tags.includes('flying') || def.tags.includes('ranged')) return true;
+  return def.tiers[f.mergedReach ? tier - 1 : 0]!.supply >= f.reachSupply;
+}
+
+/** Combat rework `flyers`: can a tower's attack reach a flyer? A shell that splashes is a lob, and can't. */
+export function towerReachesAir(def: CompiledBuilding): boolean {
+  return !(def.attack && def.attack.splashRadius > 0);
+}
+
 /** x of a side's attackable Heartcap edge. */
 export function heartcapEdgeX(state: BattleState, side: Side): number {
   return side === 'player' ? 0 : state.map.width;

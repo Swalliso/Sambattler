@@ -415,6 +415,7 @@ export function addUnit(
   };
   const life = state.rules.lifespan;
   if (life) u.expiresTick = state.tick + Math.round(life.ticks * (tier === 1 ? 1 : tier === 2 ? life.tierMult : life.tierMult * life.tierMult));
+  if (state.rules.flying && def.tags.includes('flying')) u.flying = true; // combat rework `flyers`
   clampToLane(state, u, unitRadius(state, u));
   u.px = u.x; u.py = u.y; u.spawnY = u.y;
   state.units.push(u);

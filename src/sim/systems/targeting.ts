@@ -5,7 +5,7 @@ import { HEARTCAP_ID, other } from '../state.ts';
 import type { BattleState, BuildingState, UnitState } from '../state.ts';
 import { buildGrid, nearBuffer, queryNear } from '../spatial.ts';
 import { MAX_RADIUS, edgeDistance, tp } from '../targets.ts';
-import { buildingDef, findBuilding, findUnit, heartcapEdgeX, rectDistance, tierDef, unitDef, unitRadius } from '../world.ts';
+import { buildingDef, findBuilding, findUnit, heartcapEdgeX, reachesAir, rectDistance, tierDef, towerReachesAir, unitDef, unitRadius } from '../world.ts';
 
 let bestId = 0, bestD = 0, bestPref = false;
 
@@ -65,7 +65,7 @@ function aimBurst(state: BattleState, u: UnitState, r: number, curD: number): vo
   let m = 0;
   for (let k = 0; k < n; k++) {
     const v = state.units[near[k]!]!;
-    if (v.side !== enemy || v.lane !== u.lane || v.hp <= 0 || v.burrowed) continue;
+    if (v.side !== enemy || v.lane !== u.lane || v.hp <= 0 || v.burrowed || v.flying) continue; // flyers: out of a Burster's reach
     aimX[m] = v.x; aimY[m] = v.y; aimR[m] = unitRadius(state, v); aimId[m] = v.id; m++;
   }
   let best = 0, bestCount = 0, bestD = 0;
@@ -99,7 +99,7 @@ function aimCloud(state: BattleState, b: BuildingState, radius: number): boolean
   let m = 0;
   for (let k = 0; k < n; k++) {
     const v = state.units[near[k]!]!;
-    if (v.side !== enemy || v.lane !== b.lane || v.hp <= 0 || v.burrowed) continue;
+    if (v.side !== enemy || v.lane !== b.lane || v.hp <= 0 || v.burrowed || v.flying) continue; // flyers: a lob can't reach them
     aimX[m] = v.x; aimY[m] = v.y; aimR[m] = unitRadius(state, v); aimId[m] = v.id; m++;
   }
   let best = 0, bestCount = 0, bestD = 0;
@@ -137,13 +137,14 @@ function retargetUnit(state: BattleState, u: UnitState, r: number, curD: number)
   const dive = state.rules.dive?.units.includes(u.unitId) ? state.rules.dive : undefined;
   const diver = !!dive || def.tags.includes('burrow');
   const reach = dive ? aggro + dive.aggroAdd : aggro;
+  const air = reachesAir(state, u); // combat rework `flyers`: the small fry can't reach a flyer
   bestId = 0; bestD = 0; bestPref = false;
 
   const n = queryNear(u.x, u.y, reach + r + MAX_RADIUS);
   const near = nearBuffer();
   for (let k = 0; k < n; k++) {
     const v = state.units[near[k]!]!;
-    if (v.side !== enemy || v.lane !== u.lane || v.hp <= 0 || v.burrowed) continue;
+    if (v.side !== enemy || v.lane !== u.lane || v.hp <= 0 || v.burrowed || (v.flying && !air)) continue;
     const dx = v.x - u.x, dy = v.y - u.y;
     let d = Math.sqrt(dx * dx + dy * dy) - r - unitRadius(state, v);
     if (d < 0) d = 0;
@@ -221,12 +222,13 @@ function retargetTower(state: BattleState, b: BuildingState, keep: boolean): voi
   if (keep) return; // towers stick to a target while it stays in their firing band
   const t = towerRange(state, b);
   const enemy = other(b.side);
+  const air = towerReachesAir(buildingDef(state, b)); // combat rework `flyers`: a lob can't reach a flyer
   bestId = 0; bestD = 0; bestPref = false;
   const n = queryNear(t.cx, t.cy, t.max + MAX_RADIUS);
   const near = nearBuffer();
   for (let k = 0; k < n; k++) {
     const v = state.units[near[k]!]!;
-    if (v.side !== enemy || v.lane !== b.lane || v.hp <= 0 || v.burrowed) continue;
+    if (v.side !== enemy || v.lane !== b.lane || v.hp <= 0 || v.burrowed || (v.flying && !air)) continue;
     const dx = v.x - t.cx, dy = v.y - t.cy;
     let d = Math.sqrt(dx * dx + dy * dy) - unitRadius(state, v);
     if (d < 0) d = 0;

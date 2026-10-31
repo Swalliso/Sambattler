@@ -277,6 +277,8 @@ export interface Rules {
   burst?: { cloud: CloudSpec };
   /** Combat rework `stormWaves` (balance `stormWaves`, only with `waves`): × (1 + perStack × storm stacks) on each wave release. Absent by default. */
   stormWaves?: { perStack: number };
+  /** Combat rework `flyers` (balance `flying`): who can hit a flyer, and whether flyers hold ground. Absent by default. */
+  flying?: { reachSupply: number; meleeMult: number; mergedReach: boolean; cloudsReach: boolean; holdsGround: boolean };
   timeLimitTicks: number;
   captureThreshold: number;
   captureStep: number;
@@ -377,6 +379,11 @@ export interface UnitState {
   shield?: number;
   /** Combat rework `burster`: true once a `burst` unit has burst (it is spent). Absent until then, and for every other unit. */
   burst?: boolean;
+  /**
+   * Combat rework `flyers`: true for a unit of a `flying` type while the setting is on. It passes over
+   * ground units, holds no ground, and only attacks with reach can hit it. Absent for every other unit.
+   */
+  flying?: boolean;
 }
 
 export interface KnitState {
@@ -470,6 +477,8 @@ export interface PendingHit {
   /** Unit id, tower building id or 'turret' (for damage-by-source stats). */
   sourceType: string;
   ranged: boolean;
+  /** Combat rework `flyers`: the attacker can't reach flyers, so its splash skips them. Absent otherwise. */
+  noAir?: boolean;
 }
 
 export type CommandBody =

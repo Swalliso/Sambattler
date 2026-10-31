@@ -41,6 +41,7 @@ function pulse(state: BattleState, cl: CloudState): void {
   for (let k = 0; k < n; k++) {
     const v = state.units[near[k]!]!;
     if (v.side !== enemy || v.lane !== cl.lane || v.hp <= 0 || v.burrowed || !inCloud(cl, v.x, v.y, unitRadius(state, v))) continue;
+    if (v.flying && !state.rules.flying!.cloudsReach) continue; // combat rework `flyers`
     strike(state, cl.side, v, cl.damage, cl.sourceBuildingId, 'sporeCloud', cl.sourceBuildingId);
   }
 }
@@ -72,7 +73,7 @@ export function burstUnit(state: BattleState, u: UnitState, x: number, y: number
   u.burst = true;
   if (u.hp > 0) u.hp = 0;
   for (const v of state.units) {
-    if (v.side !== enemy || v.lane !== u.lane || v.hp <= 0 || v.burrowed) continue;
+    if (v.side !== enemy || v.lane !== u.lane || v.hp <= 0 || v.burrowed || v.flying) continue; // a burst can't reach a flyer
     const dx = v.x - x, dy = v.y - y;
     if (Math.sqrt(dx * dx + dy * dy) - unitRadius(state, v) > t.splashRadius) continue;
     strike(state, u.side, v, damage, u.sourceBuildingId, u.unitId, u.id);

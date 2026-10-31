@@ -4,6 +4,7 @@
 import type { Content } from '../data/registry.ts';
 import type { Atlas } from '../render/atlas.ts';
 import { formatClock } from '../sim/index.ts';
+import { towerReachesAir, typeReachesAir } from '../sim/world.ts';
 import type { BattleState, BuildingKind } from '../sim/index.ts';
 import { h } from './h.ts';
 import { priceEl } from './icons.ts';
@@ -75,6 +76,10 @@ export function buildingTip(content: Content, atlas: Atlas, state: BattleState, 
     if (state.rules.waves) rows.push(['Waves', 'its units wait inside and leave with your next wave (early, if it stands behind your front spawner, so they join the wave as it passes)']);
     const mixed = state.rules.mixed;
     if (mixed) rows.push(['Mixed wave', `a lane's wave of ${mixed.minTypes} or more unit types sets out shielded: ${Math.round(mixed.shieldFrac * 100)}% of each unit's HP`]);
+    const fly = state.rules.flying;
+    if (fly && cu.tags.includes('flying')) {
+      rows.push(['Flying', `floats over ground units${fly.holdsGround ? '' : ' and holds no ground'}; only units of ${fly.reachSupply}+ supply, archers, turrets, other flyers${fly.cloudsReach ? ', spore clouds' : ''} and powers can hit it`]);
+    } else if (fly && t.healAmount === 0) rows.push(['Flyers', typeReachesAir(state, cu) ? 'can hit them' : "can't reach them"]);
     if (cu.slayer) rows.push(['Slayer', `×${t.slayerMult} vs Bloomed and Elder units`]);
     if (state.rules.cleave?.units.includes(cb.spawn.unit)) rows.push(['Cleave', `its swing hits every enemy unit within ${t.splashRadius} tiles of its target at full damage`]);
     if (state.config.flags.merging) rows.push(...(burst ? [['Merge', 'never: a Burster is spent whole'] as [string, string]] : [['Bloomed', perkText(content, unit.id, 2)], ['Elder', perkText(content, unit.id, 3)]] as [string, string][]));
@@ -84,6 +89,7 @@ export function buildingTip(content: Content, atlas: Atlas, state: BattleState, 
     rows.push(['Attack', `${a.damage} ${a.damageType} every ${secs(a.intervalTicks / tr)}${a.splashRadius ? ` · splash ${a.splashRadius}` : ''}`]);
     rows.push(['Range', a.minRange ? `${a.minRange}–${a.range} (can't hit units hugging it)` : String(a.range)]);
     rows.push(['Strong vs', strongVs(state, a.damageType)]);
+    if (state.rules.flying && !towerReachesAir(cb)) rows.push(['Flyers', "its lobbed shells can't hit them"]);
     const cloud = state.rules.cloud;
     if (cloud?.buildings.includes(id)) {
       rows.push(['Spore cloud', `each shell leaves a cloud (${cloud.radius} tiles, ${secs(cloud.ticks / tr)}): ${Math.round((cloud.damage * tr) / cloud.pulseTicks)} damage a second to enemy units in it, whatever their armor`]);

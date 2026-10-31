@@ -5,7 +5,7 @@
 import type { Content } from '../data/registry.ts';
 import { sellValue } from '../sim/index.ts';
 import type { BattleState } from '../sim/index.ts';
-import { findBuilding, findUnit, isBesieged, isSuppressed, tierDef } from '../sim/world.ts';
+import { findBuilding, findUnit, isBesieged, isSuppressed, reachesAir, tierDef } from '../sim/world.ts';
 import { h, setText, toggleClass } from './h.ts';
 import { strongVs, vulnerableTo, weakVs } from './matrixHints.ts';
 import { TIER_NAME, TIER_PIPS, perkText } from './mergeHints.ts';
@@ -133,6 +133,9 @@ export class InspectPanel {
         ]),
       ['Armor', `${def.armor} (fears ${vulnerableTo(state, def.armor)})`],
     ];
+    const fly = state.rules.flying;
+    if (u.flying) pairs.push(['Flying', `only big units, archers, turrets and other flyers can hit it${fly!.holdsGround ? '' : '; holds no ground'}`]);
+    else if (fly && t.healAmount === 0) pairs.push(['Flyers', reachesAir(state, u) ? '✦ can hit them' : "can't reach them"]);
     if (t.slayerMult !== 1) pairs.push(['Slayer', `×${t.slayerMult} vs Bloomed & Elder`]);
     if (u.tier > 1) pairs.push(['Perk', perkText(this.content, u.unitId, u.tier)]);
     if (u.burrowed) pairs.push(['Status', 'tunnelling: can\'t be hit, surfaces beside an archer (else a spawner) out of turret range']);

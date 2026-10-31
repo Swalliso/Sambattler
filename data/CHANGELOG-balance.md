@@ -3,6 +3,21 @@
 Every change from the SPEC's first-pass numbers, with the guardrail or verification result that
 motivated it. Tools: `npm run balance -- duel`, `npm run balance -- tournament`, `npm run test:slow`.
 
+## Combat rework: the general's swarm read and flyers (2026-10-31)
+
+**Nothing adopted; no shipped number, rule or default changed.** Goldens unchanged. Both join `rework`, the
+package for the P3 playtest.
+- **The swarm read** (preset `swarmread`): a new default-off knob, `ai.counter.swarmMaxSupply`. An adaptive
+  general reads a spawner whose unit costs at most that much supply by its armor, whether or not its units
+  merge; the preset sets 1. Under P2's package the Lichen Baron read a merging Sporeling swarm as Elite in 155
+  of 199 reads, and SPEC §7.4 means a merging swarm to read that way. With the knob, 199 of 199 read Swarm.
+- **Flyers** (preset `flyers`, docs/ideas/flyers.md):
+  - a `flying` tag and a balance setting, `flying`: units of 2+ supply, ranged units, turrets, other flyers,
+    clouds and powers reach a flyer, merging doesn't grant reach, melee ×1, and flyers hold no ground;
+  - the Driftling (70 HP, light, 8 slash a second, 1 supply, speed 1.4) and its Drift Stalk (160 gold, two
+    every 18 s, `aiWeight` 1), in both rosters, as content under the preset;
+  - sprites in `data/sprites/` (display only). The Bloatcap isn't built.
+
 ## Combat rework P1d prototypes (2026-10-31)
 
 **Nothing adopted; no shipped number, rule or default changed.** Goldens unchanged.

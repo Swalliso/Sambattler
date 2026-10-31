@@ -96,7 +96,7 @@ function prepareWaves(state: BattleState): void {
   for (const u of state.units) {
     if (u.hp <= 0 || u.burrowed) continue;
     const def = unitDef(state, u);
-    if (!def.support && !def.tags.includes('ranged')) {
+    if (!def.support && !def.tags.includes('ranged') && !u.flying) { // a flyer shields nothing, so it isn't the front
       const f = meleeFront[u.side][u.lane]!;
       if (Number.isNaN(f) || (u.side === 'player' ? u.x > f : u.x < f)) meleeFront[u.side][u.lane] = u.x;
     }
@@ -113,15 +113,17 @@ function prepareWaves(state: BattleState): void {
 /**
  * Combat rework `waves`: an idle unit's step along the lane. A unit a beat released marches at the
  * pace of its wave's slowest idle unit in the lane (with `matchPace`), and an idle ranged unit stops
- * `rangedGap` tiles behind its side's frontmost melee unit in the lane (it never walks back).
+ * `rangedGap` tiles behind its side's frontmost melee unit in the lane (it never walks back). An idle
+ * flyer (`flyers`) hovers over that front, never ahead of it.
  */
 function waveStep(state: BattleState, u: UnitState, speed: number): number {
   const w = state.rules.waves!;
   let step = speed;
   if (w.matchPace && u.wave !== undefined) step = Math.min(step, pace.get(paceKey(u)) ?? step);
-  if (unitDef(state, u).tags.includes('ranged')) {
+  const gap = u.flying ? 0 : unitDef(state, u).tags.includes('ranged') ? w.rangedGap : -1;
+  if (gap >= 0) {
     const f = meleeFront[u.side][u.lane]!;
-    if (!Number.isNaN(f)) step = Math.max(0, Math.min(step, u.side === 'player' ? f - w.rangedGap - u.x : u.x - f - w.rangedGap));
+    if (!Number.isNaN(f)) step = Math.max(0, Math.min(step, u.side === 'player' ? f - gap - u.x : u.x - f - gap));
   }
   return step;
 }
@@ -286,6 +288,7 @@ function separationSystem(state: BattleState): void {
         if (j <= i) continue;
         const b = units[j]!;
         if (b.lane !== a.lane || a.burrowed || b.burrowed) continue; // a tunnelling unit passes under everyone
+        if (!a.flying !== !b.flying) continue; // combat rework `flyers`: a flyer passes over ground units
         const minD = ra + unitRadius(state, b);
         const dx = b.x - a.x, dy = b.y - a.y;
         const d2 = dx * dx + dy * dy;

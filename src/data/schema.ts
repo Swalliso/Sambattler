@@ -12,7 +12,7 @@ export const ArmorType = z.enum(['light', 'medium', 'heavy', 'structure']);
  * `burrow` (combat rework, the Rhizomorph's preset): the unit spawns underground and tunnels at its
  * speed until it surfaces beside an enemy ranged unit or spawner behind the enemy front.
  */
-export const Tag = z.enum(['siege', 'slayer', 'ranged', 'swarm', 'support', 'burrow', 'burst']);
+export const Tag = z.enum(['siege', 'slayer', 'ranged', 'swarm', 'support', 'burrow', 'burst', 'flying']);
 export const Rarity = z.enum(['common', 'uncommon', 'rare']);
 const Seconds = z.number().nonnegative();
 /** A unit id, optionally at a merge tier: `capguard` or `capguard@2`. */
@@ -275,6 +275,16 @@ export const BalanceSchema = z.object({
    * on top of `side.waveSize`, carrying the fraction to its next release. Extra units need free supply.
    */
   stormWaves: z.object({ perStack: Pos }).strict().optional(),
+  /**
+   * Combat rework `flyers` (docs/ideas/flyers.md), absent by default: a `flying` unit passes over ground
+   * units and holds no ground (unless `holdsGround`), and only attacks with reach can hit it: ranged
+   * units, Heartcap turrets, other flyers, commander powers, spore clouds (with `cloudsReach`), towers
+   * that don't lob (the Mortar's splashing shell does), and melee unit types of at least `reachSupply`
+   * supply (a merged unit's own supply with `mergedReach`). Melee hits on a flyer deal × `meleeMult`.
+   */
+  flying: z.object({
+    reachSupply: Pos, meleeMult: z.number().nonnegative(), mergedReach: z.boolean(), cloudsReach: z.boolean(), holdsGround: z.boolean(),
+  }).strict().optional(),
   firstSpawnFraction: z.number().min(0).max(1),
   timeLimitSeconds: Pos,
   heartcapPlayerHp: z.number().int().positive(),

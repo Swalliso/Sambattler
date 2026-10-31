@@ -110,6 +110,7 @@ export class BattleView {
     const state = session.state;
     this.canvas = h('canvas', { id: 'battlefield', 'aria-label': 'Battlefield' });
     this.renderer = new Renderer(this.canvas, content, atlas, state);
+    this.renderer.still = still;
     this.frameArt = new FieldFrame(content, atlas, this.renderer.width, this.renderer.height, still);
     this.sound = new BattleSound(state, content.audio.enemyGain, sfx);
     this.top = new TopBand(content, atlas, state);

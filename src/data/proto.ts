@@ -101,6 +101,31 @@ const STORM_WAVES: Json = { stormWaves: { perStack: 0.2 } };
  * cycle read a merged Sporeling swarm as Elite in 155 of 199 reads (SPEC §7.4 means a merging swarm to).
  */
 const SWARM_READ: Json = { 'ai.counter.swarmMaxSupply': 1 };
+/**
+ * Flyers (docs/ideas/flyers.md; working names): the Driftling floats over ground units, holds no
+ * ground, and only attacks with reach can hit it: ranged units, turrets, other flyers, clouds,
+ * commander powers and melee types of 2 or more supply. The small fry (Sporelings, Veilstalkers,
+ * Morel Runners, Bursters, Tenders) can't, merged or not, and neither can the Mortar's lobbed shell.
+ * Its Drift Stalk costs 160 and makes two every 18 s. Bots and generals buy it at weight 1, as they do
+ * the Tunnel and the Pod; mono bots and the counter check's test bots don't.
+ */
+const FLYERS: Json = {
+  flying: { reachSupply: 2, meleeMult: 1, mergedReach: false, cloudsReach: true, holdsGround: false },
+  'unit.driftling': {
+    name: 'Driftling', sprite: 'u-driftling', milestone: 5,
+    hp: 70, armor: 'light', damage: 8, damageType: 'slash', attackInterval: 1.0,
+    range: 1.0, projectileSpeed: 0, speed: 1.4, supply: 1, aggroRange: 5, radius: 0.25,
+    tags: ['flying'], mergePerks: { 2: { speedMult: 1.1 }, 3: { damageMult: 1.1 } },
+  },
+  'building.driftStalk': {
+    name: 'Drift Stalk', sprite: 'b-driftStalk', milestone: 5, rarity: 'uncommon',
+    description: 'Driftlings float over the front. Only big units, archers, turrets and other flyers can hit them, and they hold no ground.',
+    kind: 'spawner', footprint: { w: 2, h: 2 }, cost: 160, hp: 450,
+    spawn: { unit: 'driftling', count: 2, interval: 18 }, aiWeight: 1,
+  },
+  'faction.velvet-bloom.buildings+': 'driftStalk',
+  'faction.gray-rot.buildings+': 'driftStalk',
+};
 
 /** Presets: the settings each prototype was measured with (see the backlog's results tables). */
 export const PROTO_PRESETS: Record<string, Json> = {
@@ -178,18 +203,20 @@ export const PROTO_PRESETS: Record<string, Json> = {
   burster: BURSTER,
   stormwaves: STORM_WAVES,
   swarmread: SWARM_READ,
+  flyers: FLYERS,
   /**
-   * The combat rework's package: P2's (P1d's base without the Mortar's clouds, plus the storm that
-   * grows waves) and the general's swarm read. Pinned, call for help, the Rhizomorph, waves on a 20 s
-   * beat with mixed waves at two types, the Burster (whose bursts still leave clouds), the Elder
-   * Sporeling's splash off, `stormwaves` and `swarmread`. The Mortar's clouds stay the `sporecloud`
-   * preset, and cleave its own.
+   * The combat rework's package for the P3 playtest: P2's (P1d's base without the Mortar's clouds,
+   * plus the storm that grows waves), the general's swarm read and flyers. Pinned, call for help, the
+   * Rhizomorph, waves on a 20 s beat with mixed waves at two types, the Burster (whose bursts still
+   * leave clouds), the Elder Sporeling's splash off, `stormwaves`, `swarmread` and `flyers`. The
+   * Mortar's clouds stay the `sporecloud` preset, and cleave its own.
    */
   rework: {
     ...PINNED, ...CALL_FOR_HELP, ...RHIZOMORPH, ...WAVES, ...MIXED_WAVE, ...BURSTER, ...NO_ELDER_SPLASH, ...STORM_WAVES, ...SWARM_READ,
-    // both new spawners join both rosters (spreading the two presets keeps only the second's append)
-    'faction.velvet-bloom.buildings+': ['rhizomorphTunnel', 'bursterPod'],
-    'faction.gray-rot.buildings+': ['rhizomorphTunnel', 'bursterPod'],
+    ...FLYERS,
+    // the new spawners join both rosters (spreading the presets keeps only the last one's append)
+    'faction.velvet-bloom.buildings+': ['rhizomorphTunnel', 'bursterPod', 'driftStalk'],
+    'faction.gray-rot.buildings+': ['rhizomorphTunnel', 'bursterPod', 'driftStalk'],
   },
 };
 
