@@ -1880,6 +1880,8 @@ G3 at 50 seeds with every mono bot, the strict bar and G4 at 200 games; and mono
 
 **Recommendation:** of the two, rule C. It's the only one that lowers the takeover, it keeps the strict bar and G4, and the small fry fighting back reads naturally on the field. But it doesn't fix the takeover, and it gives back some of the swarm. Drop the 2-supply Driftling. A real fix needs either a retune of the Driftling's numbers (its HP, damage or the Stalk's rate) or the general's Anti-Air counter from the design's AI section. Both are the user's call.
 
+**Adopted for the playtest:** the user took rule C on 2026-10-31 ("Let's go with your recommendations"). The `flyers` preset, and so `rework`, now uses it, and reach is `flying.reachSupply:2,flying.meleeMult:1`. The Driftling's retune and the Anti-Air counter stay open.
+
 ### Judgment calls
 
 - **G3's maps:** the run pool's three, as in every round; the two-lane test maps are leads, not counted.

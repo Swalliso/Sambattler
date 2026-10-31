@@ -13,6 +13,7 @@ import type { BattleState, Content, CounterState } from '../../src/sim/index.ts'
 import { addBuilding } from '../../src/sim/create.ts';
 import { addCloud } from '../../src/sim/systems/clouds.ts';
 import { lanePresence } from '../../src/sim/systems/territory.ts';
+import { flyerHitters, versusFlyers } from '../../src/ui/matrixHints.ts';
 import { protoContent, readRawContent } from '../../tools/lib/content.ts';
 import { runBattle } from '../../tools/lib/run.ts';
 import { building, content, liveState, setBorders, steps, unit } from '../helpers.ts';
@@ -714,7 +715,7 @@ describe('the Burster (preset burster)', () => {
 });
 
 describe('the package (preset rework)', () => {
-  it("is P1d's base without the Mortar's clouds, plus the storm, the swarm read and flyers: mixed waves at two types, the Burster, no Elder splash, at 20 s", () => {
+  it("is P1d's base without the Mortar's clouds, plus the storm, the swarm read and flyers under rule C: mixed waves at two types, the Burster, no Elder splash, at 20 s", () => {
     const rc = protoContent('rework');
     const s = protoState(rc);
     expect(s.rules.pin).toBeDefined();
@@ -726,7 +727,7 @@ describe('the package (preset rework)', () => {
     expect(s.rules.cloud).toBeUndefined();
     expect(s.rules.cleave).toBeUndefined();
     expect(s.compiled.player.units.sporeling!.tiers.map((t) => t.splashRadius)).toEqual([0, 0, 0]);
-    expect(s.rules.flying).toEqual({ reachSupply: 2, meleeMult: 1, mergedReach: false, cloudsReach: true, holdsGround: false });
+    expect(s.rules.flying).toEqual({ reachSupply: 1, meleeMult: 0.5, mergedReach: false, cloudsReach: true, holdsGround: false });
     for (const f of ['velvet-bloom', 'gray-rot']) expect(rc.factions[f]!.buildings.slice(-3)).toEqual(['rhizomorphTunnel', 'bursterPod', 'driftStalk']);
     // the shipped unit keeps its Elder splash
     expect(liveState().compiled.player.units.sporeling!.tiers[2]!.splashRadius).toBe(0.6);
@@ -839,6 +840,8 @@ describe("the general's swarm read (preset swarmread)", () => {
 
 describe('flyers (preset flyers)', () => {
   const fc = protoContent('flyers');
+  // the design's first pick, reach, which the preset's rule C replaced for the playtest
+  const REACH = 'flyers,flying.reachSupply:2,flying.meleeMult:1';
 
   it('is off by default; the preset adds the Driftling and its Drift Stalk, which bots buy at weight 1 and mono and test bots never', () => {
     expect(content.units.driftling).toBeUndefined();
@@ -848,7 +851,7 @@ describe('flyers (preset flyers)', () => {
     expect(fc.buildings.driftStalk).toMatchObject({ cost: 160, spawn: { unit: 'driftling', count: 2, interval: 18 }, aiWeight: 1 });
     for (const f of ['velvet-bloom', 'gray-rot']) expect(fc.factions[f]!.buildings).toContain('driftStalk');
     const s = protoState(fc);
-    expect(s.rules.flying).toEqual({ reachSupply: 2, meleeMult: 1, mergedReach: false, cloudsReach: true, holdsGround: false });
+    expect(s.rules.flying).toEqual({ reachSupply: 1, meleeMult: 0.5, mergedReach: false, cloudsReach: true, holdsGround: false });
     expect(unit(s, 'player', 'driftling', 5, 4).flying).toBe(true);
     expect(unit(s, 'player', 'sporeling', 6, 4).flying).toBeUndefined();
     const weight = (st: BattleState) => st.sides.player.ai!.weights.find((w) => w.building === 'driftStalk')?.weight;
@@ -857,8 +860,17 @@ describe('flyers (preset flyers)', () => {
     expect(weight(battle(fc, 'bot:mono:gillNest'))).toBeUndefined();
   });
 
-  it('only reach targets a flyer: big melee units, archers and other flyers; never the small fry, merged or not', () => {
+  it('under rule C every unit targets a flyer, the small fry too', () => {
     const s = protoState(fc);
+    const d = unit(s, 'enemy', 'driftling', 10, 4);
+    freeze(s, 'enemy', 'driftling');
+    const all = [unit(s, 'player', 'sporeling', 8, 2), unit(s, 'player', 'veilstalker', 8, 5), unit(s, 'player', 'capguard', 8, 6), unit(s, 'player', 'gillArcher', 6, 4)];
+    steps(s, 1);
+    expect(all.map((u) => u.targetId)).toEqual([d.id, d.id, d.id, d.id]);
+  });
+
+  it('under reach only reach targets a flyer: big melee units, archers and other flyers; never the small fry, merged or not', () => {
+    const s = protoState(protoContent(REACH));
     const d = unit(s, 'enemy', 'driftling', 10, 4);
     freeze(s, 'enemy', 'driftling');
     const small = [unit(s, 'player', 'sporeling', 8, 2), unit(s, 'player', 'sporeling', 8, 3, 3), unit(s, 'player', 'veilstalker', 8, 5)];
@@ -867,7 +879,7 @@ describe('flyers (preset flyers)', () => {
     expect(small.map((u) => u.targetId)).toEqual([0, 0, 0]);
     expect(reach.map((u) => u.targetId)).toEqual([d.id, d.id, d.id]);
     // the softer variant: a merged unit's own supply counts (a Bloomed Sporeling is 2)
-    const m = protoState(protoContent('flyers,flying.mergedReach:true'));
+    const m = protoState(protoContent(`${REACH},flying.mergedReach:true`));
     const d2 = unit(m, 'enemy', 'driftling', 10, 4);
     freeze(m, 'enemy', 'driftling');
     const bloomed = unit(m, 'player', 'sporeling', 8, 3, 2), base = unit(m, 'player', 'sporeling', 8, 5);
@@ -895,9 +907,9 @@ describe('flyers (preset flyers)', () => {
     expect([near.hp, beside.hp]).toEqual([near.maxHp, beside.maxHp]);
   });
 
-  it("splash follows its attacker's reach: an Elder Sporeling's skips a flyer, a Scythecap's catches one", () => {
+  it("splash follows its attacker's reach: under reach an Elder Sporeling's skips a flyer, a Scythecap's catches one", () => {
     const swing = (attacker: string, tier: 1 | 3) => {
-      const s = protoState(fc);
+      const s = protoState(protoContent(REACH));
       const target = unit(s, 'enemy', 'capguard', 10, 4);
       const flyer = unit(s, 'enemy', 'driftling', 10.3, 4.55);
       const ground = unit(s, 'enemy', 'sporeling', 10.3, 3.45);
@@ -945,8 +957,8 @@ describe('flyers (preset flyers)', () => {
     }
   });
 
-  it('a call for help against a flyer brings only the friends that can hit it', () => {
-    const s = protoState(protoContent('callforhelp,flyers'));
+  it('a call for help against a flyer brings only the friends that can hit it (under reach)', () => {
+    const s = protoState(protoContent(`callforhelp,${REACH}`));
     const d = unit(s, 'enemy', 'driftling', 10, 4);
     const victim = unit(s, 'player', 'sporeling', 9.4, 4);
     const sporeling = unit(s, 'player', 'sporeling', 5, 2); // outside their aggro, inside the call
@@ -972,7 +984,7 @@ describe('flyers (preset flyers)', () => {
     expect(archer.x).toBeGreaterThan(7); // an archer stays 1 tile behind a melee front, not behind a flyer
   });
 
-  it("meleeMult scales a ground unit's melee hit on a flyer; an archer's shot and a flyer's cut are unchanged", () => {
+  it("meleeMult (×0.5 under rule C) scales a ground unit's melee hit on a flyer; an archer's shot and a flyer's cut are unchanged", () => {
     const hit = (spec: string, attacker: string) => {
       const s = protoState(protoContent(spec));
       const d = unit(s, 'enemy', 'driftling', 10, 4);
@@ -981,12 +993,23 @@ describe('flyers (preset flyers)', () => {
       steps(s, 15);
       return d.maxHp - d.hp;
     };
-    for (const a of ['capguard', 'gillArcher', 'driftling']) {
-      const full = hit('flyers', a), half = hit('flyers,flying.meleeMult:0.5', a);
+    for (const a of ['capguard', 'sporeling', 'gillArcher', 'driftling']) {
+      const full = hit('flyers,flying.meleeMult:1', a), half = hit('flyers', a);
       expect(full).toBeGreaterThan(0);
-      if (a === 'capguard') expect(Math.abs(half - full / 2)).toBeLessThanOrEqual(0.5);
+      if (a === 'capguard' || a === 'sporeling') expect(Math.abs(half - full / 2)).toBeLessThanOrEqual(0.5);
       else expect(half).toBe(full);
     }
+  });
+
+  it('the cards say who can hit a flyer, under rule C or reach', () => {
+    const vs = (st: BattleState, ids: string[]) => ids.map((id) => versusFlyers(st, st.compiled.player.units[id]!));
+    const c = protoState(protoContent('burster,flyers'));
+    expect(flyerHitters(c)).toBe("melee hits it for ×0.5, and lobbed shells and bursts can't hit it");
+    expect(vs(c, ['sporeling', 'capguard', 'gillArcher', 'driftling', 'burster'])).toEqual(
+      ['hits them for ×0.5', 'hits them for ×0.5', 'can hit them', 'can hit them', "its burst can't hit them, its cloud can"]);
+    const r = protoState(protoContent(`burster,${REACH}`));
+    expect(flyerHitters(r)).toBe('only units of 2+ supply, archers, turrets, other flyers, spore clouds and powers can hit it');
+    expect(vs(r, ['sporeling', 'capguard', 'gillArcher', 'burster'])).toEqual(["can't reach them", 'can hit them', 'can hit them', "its burst can't hit them, its cloud can"]);
   });
 });
 

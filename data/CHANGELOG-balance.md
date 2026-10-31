@@ -3,6 +3,19 @@
 Every change from the SPEC's first-pass numbers, with the guardrail or verification result that
 motivated it. Tools: `npm run balance -- duel`, `npm run balance -- tournament`, `npm run test:slow`.
 
+## Combat rework: flyers take rule C (2026-10-31)
+
+**Approved by the user for the playtest** ("Let's go with your recommendations"). It's a prototype setting, so no
+shipped number, rule or default changed, and the goldens are unchanged.
+- **`flyers`, and so `rework`:** `flying.reachSupply` 2 → 1 and `flying.meleeMult` 1 → 0.5. Every unit can hit a
+  flyer, ground melee at ×0.5, and the Mortar's lobbed shell and the Burster's burst still can't. The design's
+  reach rule is `flying.reachSupply:2,flying.meleeMult:1`.
+- **Why** (backlog, "After P2"): on the playtest `rework`, mono Drift Stalk's G3 falls from 89 / 96 to 72 / 90,
+  the strict bar still passes, and G4 at 200 passes (8:04, 11%, 50%). Mono Sporeling rises from 79 / 82 to
+  83 / 86 and mono Veilstalker from 60 / 71 to 69 / 80. The other fallback, the 2-supply Driftling (95 / 98), is
+  dropped.
+- **Text:** the Drift Stalk's description and the cards' flyer rows follow the rule.
+
 ## Combat rework: the general's swarm read and flyers (2026-10-31)
 
 **Nothing adopted; no shipped number, rule or default changed.** Goldens unchanged. Both join `rework`, the

@@ -102,15 +102,17 @@ const STORM_WAVES: Json = { stormWaves: { perStack: 0.2 } };
  */
 const SWARM_READ: Json = { 'ai.counter.swarmMaxSupply': 1 };
 /**
- * Flyers (docs/ideas/flyers.md; working names): the Driftling floats over ground units, holds no
- * ground, and only attacks with reach can hit it: ranged units, turrets, other flyers, clouds,
- * commander powers and melee types of 2 or more supply. The small fry (Sporelings, Veilstalkers,
- * Morel Runners, Bursters, Tenders) can't, merged or not, and neither can the Mortar's lobbed shell.
+ * Flyers (docs/ideas/flyers.md; working names): the Driftling floats over ground units and holds no
+ * ground. Every unit can hit it, melee at ×0.5, but the Mortar's lobbed shell and the Burster's burst
+ * never can. That's the design's rule C, which the user took for the playtest on 2026-10-31 after
+ * mono Drift Stalk took over G3 under the design's first pick, reach (only ranged units, turrets,
+ * other flyers, clouds, commander powers and melee types of 2 or more supply):
+ * `flying.reachSupply:2,flying.meleeMult:1` brings reach back.
  * Its Drift Stalk costs 160 and makes two every 18 s. Bots and generals buy it at weight 1, as they do
  * the Tunnel and the Pod; mono bots and the counter check's test bots don't.
  */
 const FLYERS: Json = {
-  flying: { reachSupply: 2, meleeMult: 1, mergedReach: false, cloudsReach: true, holdsGround: false },
+  flying: { reachSupply: 1, meleeMult: 0.5, mergedReach: false, cloudsReach: true, holdsGround: false },
   'unit.driftling': {
     name: 'Driftling', sprite: 'u-driftling', milestone: 5,
     hp: 70, armor: 'light', damage: 8, damageType: 'slash', attackInterval: 1.0,
@@ -119,7 +121,7 @@ const FLYERS: Json = {
   },
   'building.driftStalk': {
     name: 'Drift Stalk', sprite: 'b-driftStalk', milestone: 5, rarity: 'uncommon',
-    description: 'Driftlings float over the front. Only big units, archers, turrets and other flyers can hit them, and they hold no ground.',
+    description: "Driftlings float over the front and hold no ground. Melee hits them for half damage, and lobbed shells and bursts can't hit them.",
     kind: 'spawner', footprint: { w: 2, h: 2 }, cost: 160, hp: 450,
     spawn: { unit: 'driftling', count: 2, interval: 18 }, aiWeight: 1,
   },

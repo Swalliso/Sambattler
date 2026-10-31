@@ -4,11 +4,11 @@
 import type { Content } from '../data/registry.ts';
 import type { Atlas } from '../render/atlas.ts';
 import { formatClock } from '../sim/index.ts';
-import { towerReachesAir, typeReachesAir } from '../sim/world.ts';
+import { towerReachesAir } from '../sim/world.ts';
 import type { BattleState, BuildingKind } from '../sim/index.ts';
 import { h } from './h.ts';
 import { priceEl } from './icons.ts';
-import { strongVs, vulnerableTo, weakVs } from './matrixHints.ts';
+import { flyerHitters, strongVs, versusFlyers, vulnerableTo, weakVs } from './matrixHints.ts';
 import { perkText } from './mergeHints.ts';
 import { buildingDescription } from './words.ts';
 
@@ -78,8 +78,8 @@ export function buildingTip(content: Content, atlas: Atlas, state: BattleState, 
     if (mixed) rows.push(['Mixed wave', `a lane's wave of ${mixed.minTypes} or more unit types sets out shielded: ${Math.round(mixed.shieldFrac * 100)}% of each unit's HP`]);
     const fly = state.rules.flying;
     if (fly && cu.tags.includes('flying')) {
-      rows.push(['Flying', `floats over ground units${fly.holdsGround ? '' : ' and holds no ground'}; only units of ${fly.reachSupply}+ supply, archers, turrets, other flyers${fly.cloudsReach ? ', spore clouds' : ''} and powers can hit it`]);
-    } else if (fly && t.healAmount === 0) rows.push(['Flyers', typeReachesAir(state, cu) ? 'can hit them' : "can't reach them"]);
+      rows.push(['Flying', `floats over ground units${fly.holdsGround ? '' : ' and holds no ground'}; ${flyerHitters(state)}`]);
+    } else if (fly && t.healAmount === 0) rows.push(['Flyers', versusFlyers(state, cu)]);
     if (cu.slayer) rows.push(['Slayer', `×${t.slayerMult} vs Bloomed and Elder units`]);
     if (state.rules.cleave?.units.includes(cb.spawn.unit)) rows.push(['Cleave', `its swing hits every enemy unit within ${t.splashRadius} tiles of its target at full damage`]);
     if (state.config.flags.merging) rows.push(...(burst ? [['Merge', 'never: a Burster is spent whole'] as [string, string]] : [['Bloomed', perkText(content, unit.id, 2)], ['Elder', perkText(content, unit.id, 3)]] as [string, string][]));
