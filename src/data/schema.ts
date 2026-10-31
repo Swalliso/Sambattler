@@ -235,14 +235,25 @@ export const BalanceSchema = z.object({
   }).strict().optional(),
   /**
    * Combat rework `waves`, absent by default: a spawner's units wait inside it (still counting toward
-   * supply) and join its side's next wave. Every `beatSeconds` both sides release their waves on the
-   * same tick. Units of one wave with no target march at the pace of the wave's slowest such unit in
-   * their lane (unless `matchPace` is false), and an idle ranged unit stays `rangedGap` tiles behind
-   * its side's frontmost melee unit in the lane (default 1). Holding a lane keeps its wave home for one
-   * more beat (the beat spends the hold), held lanes don't rally units on the field, and the AI never
-   * holds. `side.waveBeat` (seconds) and `side.waveSize` (× units released) are modifier stats.
+   * supply) and join its side's next wave. Every `beatSeconds` both sides' waves set out on the same
+   * tick: a lane's frontmost spawner releases on the beat, and each spawner behind it releases early
+   * by its walk to that spawner's door, so the wave passes it together. Units of one wave with no
+   * target march at the pace of the wave's slowest such unit in their lane (unless `matchPace` is
+   * false), and an idle ranged unit stays `rangedGap` tiles behind its side's frontmost melee unit in
+   * the lane (default 1). Holding a lane keeps its next wave home for one beat; the beat spends the
+   * hold, and the lane can't hold again until the next beat has sent both waves. Held lanes don't
+   * rally units on the field, and the AI never holds. `side.waveBeat` (seconds) and `side.waveSize`
+   * (× units released) are modifier stats.
    */
   waves: z.object({ beatSeconds: Pos, rangedGap: z.number().nonnegative().optional(), matchPace: z.boolean().optional() }).strict().optional(),
+  /**
+   * Combat rework `mixedWave`, absent by default; it needs `waves`. When a lane's wave holds
+   * `minTypes` or more unit types as it sets out (a merged form counts as its base type), each of its
+   * units gets a shield worth `shieldFrac` × its max HP. A shield soaks damage of every kind before HP
+   * until it breaks. It never regrows or decays, healing doesn't touch it, and a merge keeps the
+   * trio's shields in proportion, as it does their HP.
+   */
+  mixedWave: z.object({ minTypes: z.number().int().min(2), shieldFrac: z.number().gt(0).max(1) }).strict().optional(),
   firstSpawnFraction: z.number().min(0).max(1),
   timeLimitSeconds: Pos,
   heartcapPlayerHp: z.number().int().positive(),
@@ -570,6 +581,8 @@ export const BotSchema = z.object({
   id: Id, description: z.string().optional(), opener: z.array(Id), weights: z.record(Id, z.number().nonnegative()),
   limits: z.record(Id, Limit).optional(), mergePolicy: MergePolicy, adaptive: z.boolean().optional(),
   placement: z.object({ spawnerDepthWeight: z.number().optional() }).strict().optional(),
+  /** Buys only what `weights` lists: a prototype building's `aiWeight` skips it (the counter check's test bots). */
+  fixedWeights: z.boolean().optional(),
 }).strict();
 
 const ScenarioUnits = z.object({

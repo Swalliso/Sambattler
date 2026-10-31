@@ -45,6 +45,18 @@ export function unitRadius(state: BattleState, u: UnitState): number {
   return tierDef(state, u).radius;
 }
 
+/**
+ * Combat rework `mixedWave`: `u`'s shield soaks `damage` first, and breaks once spent. Returns the
+ * damage left for its HP.
+ */
+export function soakShield(u: UnitState, damage: number): number {
+  const shield = u.shield;
+  if (!shield) return damage;
+  if (damage < shield) { u.shield = shield - damage; return 0; }
+  u.shield = undefined;
+  return damage - shield;
+}
+
 /** x of a side's attackable Heartcap edge. */
 export function heartcapEdgeX(state: BattleState, side: Side): number {
   return side === 'player' ? 0 : state.map.width;

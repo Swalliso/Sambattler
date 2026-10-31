@@ -350,6 +350,7 @@ export class Renderer {
       if (u.tier === 3) this.elderAura(this.sx(x), y * TILE, w, this.mat(u.side).glow, t + u.id * 37);
       if (this.assist) teamMark(g, Math.round(this.sx(x)), Math.round(y * TILE), w, u.side);
       g.drawImage(this.atlas.canvas as CanvasImageSource, r.x, r.y, r.w, r.h, dx, dy, w, hgt);
+      if (u.shield) this.shieldRing(this.sx(x), dy + hgt / 2, w, hgt, u.shield / Math.max(1, u.maxHp * (state.rules.mixed?.shieldFrac ?? 1)));
       if (u.id === view.selected) {
         g.strokeStyle = '#ffe9a8';
         g.strokeRect(dx - 0.5, dy - 0.5, w + 1, hgt + 1);
@@ -649,6 +650,25 @@ export class Renderer {
     g.fillStyle = color;
     g.beginPath();
     g.ellipse(cx, footY - 1, w * 0.55, 3.5, 0, 0, Math.PI * 2);
+    g.fill();
+    g.globalAlpha = 1;
+  }
+
+  /**
+   * Combat rework `mixedWave`: a pale bubble round a shielded unit, fading as the shield wears down
+   * (`frac`: what is left of the shield it set out with).
+   */
+  private shieldRing(cx: number, cy: number, w: number, h: number, frac: number): void {
+    const g = this.ctx;
+    const k = Math.max(0, Math.min(1, frac));
+    g.globalAlpha = 0.2 + 0.5 * k;
+    g.strokeStyle = '#cfe8ff';
+    g.lineWidth = 1;
+    g.beginPath();
+    g.ellipse(Math.round(cx) + 0.5, Math.round(cy) + 0.5, w * 0.62 + 1, h * 0.58 + 1, 0, 0, Math.PI * 2);
+    g.stroke();
+    g.globalAlpha = 0.08 + 0.1 * k;
+    g.fillStyle = '#cfe8ff';
     g.fill();
     g.globalAlpha = 1;
   }

@@ -1,7 +1,7 @@
-// The combat rework's settings (docs/ideas/combat-rework.md, P1): pinned, call for help, spore
-// clouds, the Rhizomorph and waves. Every setting is absent from data/balance.json and its content
-// exists only under its preset, so the shipped rules are unchanged; with a setting on, it behaves as
-// described.
+// The combat rework's settings (docs/ideas/combat-rework.md, P1 and P1b): pinned, call for help,
+// spore clouds, the Rhizomorph, waves and mixed waves. Every setting is absent from data/balance.json
+// and its content exists only under its preset, so the shipped rules are unchanged; with a setting
+// on, it behaves as described.
 import { describe, expect, it } from 'vitest';
 import { applyProto, applyProtoToBalance } from '../../src/data/proto.ts';
 import { loadContent } from '../../src/data/registry.ts';
@@ -15,6 +15,7 @@ import { addCloud } from '../../src/sim/systems/clouds.ts';
 import { lanePresence } from '../../src/sim/systems/territory.ts';
 import { protoContent, readRawContent } from '../../tools/lib/content.ts';
 import { building, content, liveState, setBorders, steps, unit } from '../helpers.ts';
+import type { UnitState } from '../../src/sim/index.ts';
 
 const NO_FIELD = { noTurrets: true, noTerritory: true, noHeartcapTargets: true };
 
@@ -44,7 +45,7 @@ describe('the combat rework settings are off by default', () => {
   });
 
   it('the presets compile', () => {
-    for (const p of ['pinned', 'callforhelp', 'sporecloud', 'rhizomorph', 'waves', 'rework']) expect(() => protoContent(p)).not.toThrow();
+    for (const p of ['pinned', 'callforhelp', 'sporecloud', 'rhizomorph', 'waves', 'mixedwave', 'rework']) expect(() => protoContent(p)).not.toThrow();
     const all = protoState(protoContent('rework'));
     expect([all.rules.pin, all.rules.help, all.rules.cloud, all.rules.waves].every(Boolean)).toBe(true);
     expect(all.compiled.player.buildings.rhizomorphTunnel).toBeDefined();
@@ -177,6 +178,19 @@ describe('spore clouds (balance sporeCloud)', () => {
     }
   });
 
+  it('a cloud tower aims each shell at the densest cluster in range; without the setting, at the nearest unit', () => {
+    for (const on of [true, false]) {
+      const s = on ? protoState(protoContent('sporecloud')) : liveState({ test: NO_FIELD });
+      building(s, 'player', 'puffballMortar', 1, 3); // centre (2, 4)
+      const lone = unit(s, 'enemy', 'sporeling', 5, 4);
+      const pack = [[7.5, 3], [7.5, 4], [7.5, 5], [8.2, 4]].map(([x, y]) => unit(s, 'enemy', 'sporeling', x!, y!));
+      freeze(s, 'enemy', 'sporeling');
+      steps(s, 1);
+      const shell = s.hits.find((h) => h.sourceType === 'puffballMortar')!;
+      expect(shell.targetId).toBe(on ? pack[1]!.id : lone.id);
+    }
+  });
+
   it('the AI scores a cloud tower by the lane it reaches past its border', () => {
     const s = protoState(protoContent('sporecloud'));
     setBorders(s, 6, 25);
@@ -219,6 +233,9 @@ describe('the Rhizomorph (preset rhizomorph)', () => {
     expect(weight(mono, 'player')).toBeUndefined();
     const plain = createBattle(content, makeConfig(content, { seed: 1, mapId: 'bogwater-hollow', player: 'bot:balanced', enemy: 'bot:balanced' }));
     expect(weight(plain, 'player')).toBeUndefined();
+    // a test bot (the counter check's answers) keeps to its own weights
+    const tc = protoContent('rhizomorph,bot.pairtest:{"opener":["gillNest"],"weights":{"gillNest":1,"sporelingBurrow":1},"mergePolicy":"on","fixedWeights":true}');
+    expect(weight(createBattle(tc, makeConfig(tc, { seed: 1, mapId: 'bogwater-hollow', player: 'bot:pairtest', enemy: 'bot:balanced' })), 'player')).toBeUndefined();
     const run = createRun(rc, { seed: 3, commander: 'vesper' });
     for (const node of run.route.flat().filter((n) => n.general)) {
       expect(generalKit(rc, run, node, 2).kit).toContain('rhizomorphTunnel');
@@ -228,7 +245,11 @@ describe('the Rhizomorph (preset rhizomorph)', () => {
 
   /** A Rhizomorph burrowed at x 5 with frozen enemy Capguards in a wall at x 12, plus what `extra` adds. */
   function tunnelRun(extra: (s: BattleState) => void, ticks: number) {
-    const s = protoState(rc);
+    return tunnelRunWith(NO_FIELD, extra, ticks);
+  }
+
+  function tunnelRunWith(test: BattleState['config']['test'], extra: (s: BattleState) => void, ticks: number) {
+    const s = protoState(rc, test);
     const rhizo = unit(s, 'player', 'rhizomorph', 5, 4);
     rhizo.burrowed = true;
     for (const y of [1, 2.5, 4, 5.5, 7]) unit(s, 'enemy', 'capguard', 12, y);
@@ -289,6 +310,40 @@ describe('the Rhizomorph (preset rhizomorph)', () => {
     expect(s.units.filter((u) => u.side === 'enemy').every((u) => u.targetId !== rhizo.id || !rhizo.burrowed)).toBe(true);
   });
 
+  it('prefers a ranged unit to a nearer spawner', () => {
+    const { s, rhizo } = tunnelRun((st) => {
+      addBuilding(st, 'enemy', 'amanitaLodge', 0, 13, 0, 260).timer = 1e9;
+      unit(st, 'enemy', 'gillArcher', 20, 5);
+      st.compiled.enemy.units.gillArcher!.tiers[0].speedPerTick = 0;
+    }, 400);
+    expect(rhizo.burrowed).toBe(false);
+    expect(rhizo.x).toBeGreaterThan(18.5); // it came up beside the archer at x 20, not the Lodge at x 13–15
+    expect(s.units.some((u) => u.unitId === 'gillArcher')).toBe(false);
+  });
+
+  it("skips a ranged unit or spawner an enemy tower or Heartcap turret covers, and comes up at the front instead", () => {
+    // the turrets at the enemy's Heartcap (x 32) reach 9 tiles; the Mortar covers 1.5–6 tiles from (21, 5)
+    const turrets = { noTerritory: true, noHeartcapTargets: true };
+    const { rhizo, maxX } = tunnelRunWith(turrets, (st) => {
+      unit(st, 'enemy', 'gillArcher', 25, 4); // under the turrets
+      unit(st, 'enemy', 'gillArcher', 17, 4); // 4 tiles from the Mortar
+      building(st, 'enemy', 'puffballMortar', 20, 4).cooldown = 1e9;
+      addBuilding(st, 'enemy', 'amanitaLodge', 0, 28, 2, 260).timer = 1e9; // under the turrets
+      st.compiled.enemy.units.gillArcher!.tiers[0].speedPerTick = 0;
+      for (const u of st.units) if (u.unitId === 'gillArcher') u.cooldown = 1e9;
+    }, 300);
+    expect(rhizo.burrowed).toBe(false);
+    expect(maxX).toBeLessThan(12);
+    // uncovered, the same archer is its target
+    const open = tunnelRunWith(turrets, (st) => {
+      unit(st, 'enemy', 'gillArcher', 17, 4);
+      st.compiled.enemy.units.gillArcher!.tiers[0].speedPerTick = 0;
+      for (const u of st.units) if (u.unitId === 'gillArcher') u.cooldown = 1e9;
+    }, 300);
+    expect(open.rhizo.burrowed).toBe(false);
+    expect(open.maxX).toBeGreaterThan(15);
+  });
+
   it('holds no ground and merges with no one while underground', () => {
     const s = protoState(rc, { noTurrets: true, noHeartcapTargets: true });
     const r = unit(s, 'player', 'rhizomorph', 10.5, 4);
@@ -338,7 +393,7 @@ describe('waves (balance waves)', () => {
     steps(s, 1);
     expect(s.tick).toBe(400);
     expect(s.events.filter((e) => e.t === 'release')).toEqual([
-      { t: 'release', side: 'player', units: 2, held: [] }, { t: 'release', side: 'enemy', units: 1, held: [] },
+      { t: 'release', side: 'player', units: 2, held: [], shielded: [] }, { t: 'release', side: 'enemy', units: 1, held: [], shielded: [] },
     ]);
     expect(s.units.map((u) => [u.side, u.unitId, u.wave])).toEqual([['player', 'sporeling', 1], ['player', 'sporeling', 1], ['enemy', 'gillArcher', 1]]);
     expect(pb.stored).toBe(0);
@@ -353,10 +408,46 @@ describe('waves (balance waves)', () => {
     steps(s, 100);
     expect(s.units).toHaveLength(0);
     expect(s.sides.player.stance![0]!.hold).toBe(false);
-    expect(s.events.find((e) => e.t === 'release')).toEqual({ t: 'release', side: 'player', units: 0, held: [0] });
+    expect(s.events.find((e) => e.t === 'release')).toEqual({ t: 'release', side: 'player', units: 0, held: [0], shielded: [] });
     steps(s, 400);
     expect(pb.stored).toBe(0);
     expect(s.units).toHaveLength(6); // spawns at 8, 24 and 40 s, out together at 40 s
+  });
+
+  it("a hold lasts one beat: after a held beat the lane can't hold again until the next beat sends both waves", () => {
+    const s = waveState();
+    addBuilding(s, 'player', 'sporelingBurrow', 0, 1, 3, 110);
+    queueCommand(s, { tick: 301, side: 'player', type: 'stance', lane: 0, hold: true });
+    steps(s, 400); // tick 400: the held beat
+    expect(s.sides.player.stance![0]!.readyAt).toBe(801);
+    queueCommand(s, { tick: 700, side: 'player', type: 'stance', lane: 0, hold: true }); // past the 10 s cooldown
+    steps(s, 400);
+    expect(s.stats.player.rejectedCommands).toBe(1);
+    expect(s.sides.player.stance![0]!.hold).toBe(false);
+    expect(s.units).toHaveLength(6); // both waves left at 40 s
+    queueCommand(s, { tick: 801, side: 'player', type: 'stance', lane: 0, hold: true });
+    steps(s, 1);
+    expect(s.sides.player.stance![0]!.hold).toBe(true);
+  });
+
+  it('a spawner behind the front one leaves early, so its units pass the front door on the beat', () => {
+    // Burrow door at x 3.3, Capguard Hall door at x 10.3: 7 tiles apart
+    for (const matchPace of [true, false]) {
+      const s = waveState(undefined, protoContent(`waves,waves.matchPace:${matchPace}`));
+      addBuilding(s, 'player', 'sporelingBurrow', 0, 1, 3, 110);
+      addBuilding(s, 'player', 'capguardHall', 0, 8, 3, 150);
+      const lead = Math.round(7 / ((matchPace ? 0.75 : 1.5) / 20)); // at the Capguards' pace, or their own
+      steps(s, 400 - lead - 1);
+      expect(s.units).toHaveLength(0);
+      steps(s, 1);
+      expect(s.units.map((u) => [u.unitId, u.wave])).toEqual([['sporeling', 1], ['sporeling', 1]]);
+      steps(s, lead);
+      expect(s.tick).toBe(400);
+      const sporelings = s.units.filter((u) => u.unitId === 'sporeling');
+      for (const u of sporelings) expect(Math.abs(u.x - 10.3)).toBeLessThan(0.25);
+      expect(s.units.filter((u) => u.unitId === 'capguard')).toHaveLength(1);
+      expect(s.events.find((e) => e.t === 'release' && e.side === 'player')).toMatchObject({ units: 3 });
+    }
   });
 
   it('a hold under waves lasts until the beat, not 30 s', () => {
@@ -424,5 +515,66 @@ describe('waves (balance waves)', () => {
     steps(s, 200);
     expect(s.units).toHaveLength(4); // two waiting, released twice over at 10 s
     expect(s.sides.player.supplyUsed).toBe(4);
+  });
+});
+
+describe('mixed waves (balance mixedWave)', () => {
+  const mc = protoContent('mixedwave');
+
+  /** A live mixed-waves battle on the flat map with idle sides and merging off; `ids` are player spawners in lane 0. */
+  function mixedState(ids: string[], c: Content = mc): BattleState {
+    const s = createBattle(c, makeConfig(c, { seed: 1, mapId: 'test-flat', player: 'human', enemy: 'human', test: NO_FIELD, flags: { merging: false } }));
+    s.phase = 'live';
+    ids.forEach((id, i) => addBuilding(s, 'player', id, 0, 1, i * 2, 150));
+    return s;
+  }
+
+  it('is off by default and needs waves', () => {
+    expect(content.balance.mixedWave).toBeUndefined();
+    expect(liveState().rules.mixed).toBeUndefined();
+    expect(protoState(protoContent('waves')).rules.mixed).toBeUndefined();
+    expect(protoState(protoContent('mixedWave:{"minTypes":3,"shieldFrac":0.2}')).rules.mixed).toBeUndefined();
+    expect(protoState(mc).rules.mixed).toEqual({ minTypes: 3, shieldFrac: 0.2 });
+  });
+
+  it("a lane's wave of three unit types sets out with shields of 20% of each unit's max HP; two types get none", () => {
+    const s = mixedState(['sporelingBurrow', 'capguardHall', 'gillNest']);
+    steps(s, 400);
+    expect(s.units.map((u) => [u.unitId, u.shield])).toEqual([['sporeling', 14], ['sporeling', 14], ['capguard', 44], ['gillArcher', 22]]);
+    expect(s.events.find((e) => e.t === 'release' && e.side === 'player')).toMatchObject({ shielded: [0] });
+    const two = mixedState(['sporelingBurrow', 'gillNest']);
+    steps(two, 400);
+    expect(two.units.every((u) => u.shield === undefined)).toBe(true);
+  });
+
+  it('a shield takes damage of every kind before HP, and breaks once spent', () => {
+    const s = protoState(protoContent('mixedwave,sporecloud'));
+    const v = unit(s, 'enemy', 'capguard', 10, 3);
+    freeze(s, 'enemy', 'capguard');
+    v.shield = 15;
+    addCloud(s, 'player', 0, 10, 3, 0);
+    steps(s, 20); // one pulse of 10
+    expect([v.shield, v.hp]).toEqual([5, v.maxHp]);
+    steps(s, 20);
+    expect([v.shield, v.hp]).toEqual([undefined, v.maxHp - 5]);
+    const archer = unit(s, 'player', 'gillArcher', 6, 3);
+    const w = unit(s, 'enemy', 'sporeling', 9, 3);
+    freeze(s, 'enemy', 'sporeling');
+    w.shield = 100;
+    archer.cooldown = 0;
+    steps(s, 40);
+    expect(w.hp).toBe(w.maxHp);
+    expect(w.shield).toBeLessThan(100);
+  });
+
+  it("a merge keeps the trio's shields in proportion, as it does their HP", () => {
+    const s = liveState({ flags: { merging: true }, test: NO_FIELD });
+    s.rules.mixed = { minTypes: 3, shieldFrac: 0.2 };
+    for (const t of s.compiled.player.units.capguard!.tiers) t.speedPerTick = 0;
+    const trio: UnitState[] = [0, 1, 2].map((i) => unit(s, 'player', 'capguard', 12, 3.5 + i * 0.7));
+    trio[0]!.shield = 44; trio[1]!.shield = 44;
+    steps(s, 10 + s.compiled.player.knitTicks);
+    const m = s.units.find((u) => u.tier === 2)!;
+    expect(m.shield).toBe(Math.round((m.maxHp * 88) / 660));
   });
 });

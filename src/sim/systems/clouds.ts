@@ -6,7 +6,7 @@ import { nearBuffer, queryNear } from '../spatial.ts';
 import { MAX_RADIUS } from '../targets.ts';
 import { other } from '../state.ts';
 import type { BattleState, CloudState, Side } from '../state.ts';
-import { unitRadius } from '../world.ts';
+import { soakShield, unitRadius } from '../world.ts';
 
 /** A cloud where a shell from `sourceBuildingId` landed (hit resolution calls this). */
 export function addCloud(state: BattleState, side: Side, lane: number, x: number, y: number, sourceBuildingId: number): void {
@@ -43,8 +43,9 @@ function pulse(state: BattleState, cl: CloudState, radius: number, damage: numbe
   for (let k = 0; k < n; k++) {
     const v = state.units[near[k]!]!;
     if (v.side !== enemy || v.lane !== cl.lane || v.hp <= 0 || v.burrowed || !inCloud(state, cl, v.x, v.y, unitRadius(state, v))) continue;
-    const dealt = Math.min(damage, v.hp);
-    v.hp -= damage;
+    const toHp = soakShield(v, damage);
+    const dealt = damage - toHp + Math.min(toHp, v.hp);
+    v.hp -= toHp;
     v.lastCombatTick = state.tick;
     if (v.knit) v.knit.hurt = true;
     st.damageDealt += dealt;

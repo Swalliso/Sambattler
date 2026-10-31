@@ -31,14 +31,56 @@ export function targetingSystem(state: BattleState): void {
     if (curD < 0) u.targetId = 0;
     retargetUnit(state, u, r, curD);
   }
+  const cloud = state.rules.cloud;
   for (const b of state.buildings) {
     const def = buildingDef(state, b);
     if (!def.attack) continue;
+    // combat rework `sporeCloud`: a cloud tower aims each shell as it fires (attack runs after this)
+    if (cloud && b.cooldown <= 1 && cloud.buildings.includes(b.buildingId) && aimCloud(state, b, cloud.radius)) continue;
     const valid = b.targetId !== 0 && towerTargetValid(state, b);
     if (valid && (tick + b.id) % every !== 0) continue;
     if (!valid) b.targetId = 0;
     retargetTower(state, b, valid);
   }
+}
+
+// Combat rework `sporeCloud`: the enemy units near a cloud tower, copied out of the shared spatial buffer.
+let aimX = new Float64Array(64), aimY = new Float64Array(64), aimR = new Float64Array(64);
+let aimId = new Int32Array(64);
+
+/**
+ * Combat rework `sporeCloud`: points a cloud tower at the enemy unit in its firing band with the most
+ * enemy units of its lane inside a cloud centred on it (bodies inside, as a cloud counts them); ties
+ * go to the nearer, then the lower id. Returns false, leaving the tower to its usual choice, when no
+ * enemy unit stands in the band.
+ */
+function aimCloud(state: BattleState, b: BuildingState, radius: number): boolean {
+  const t = towerRange(state, b);
+  const enemy = other(b.side);
+  const n = queryNear(t.cx, t.cy, t.max + radius + 2 * MAX_RADIUS);
+  const near = nearBuffer();
+  if (aimId.length < n) { aimX = new Float64Array(n); aimY = new Float64Array(n); aimR = new Float64Array(n); aimId = new Int32Array(n); }
+  let m = 0;
+  for (let k = 0; k < n; k++) {
+    const v = state.units[near[k]!]!;
+    if (v.side !== enemy || v.lane !== b.lane || v.hp <= 0 || v.burrowed) continue;
+    aimX[m] = v.x; aimY[m] = v.y; aimR[m] = unitRadius(state, v); aimId[m] = v.id; m++;
+  }
+  let best = 0, bestCount = 0, bestD = 0;
+  for (let i = 0; i < m; i++) {
+    const dx = aimX[i]! - t.cx, dy = aimY[i]! - t.cy;
+    const d = Math.max(0, Math.sqrt(dx * dx + dy * dy) - aimR[i]!);
+    if (d < t.min || d > t.max) continue;
+    let count = 0;
+    for (let j = 0; j < m; j++) {
+      const ex = aimX[j]! - aimX[i]!, ey = aimY[j]! - aimY[i]!, reach = radius + aimR[j]!;
+      if (ex * ex + ey * ey <= reach * reach) count++;
+    }
+    if (count > bestCount || (count === bestCount && (d < bestD || (d === bestD && aimId[i]! < best)))) { best = aimId[i]!; bestCount = count; bestD = d; }
+  }
+  if (best === 0) return false;
+  b.targetId = best;
+  return true;
 }
 
 /** Diver prototype (balance `diveRanged`): is this a living enemy unit with the `ranged` tag? */

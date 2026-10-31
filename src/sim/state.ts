@@ -261,10 +261,16 @@ export interface Rules {
   cloud?: { buildings: string[]; radius: number; ticks: number; pulseTicks: number; damage: number; aiCover: number };
   /**
    * Combat rework `waves` (balance `waves`): spawns wait in their building until their side's beat
-   * (`CompiledSide.waveBeatTicks`); idle wave units march at their wave's slowest pace (`matchPace`)
-   * and ranged units keep `rangedGap` behind their melee front. Absent by default.
+   * (`CompiledSide.waveBeatTicks`), spawners behind a lane's front one leaving early; idle wave units
+   * march at their wave's slowest pace (`matchPace`) and ranged units keep `rangedGap` behind their
+   * melee front. Absent by default.
    */
   waves?: { rangedGap: number; matchPace: boolean };
+  /**
+   * Combat rework `mixedWave` (balance `mixedWave`, only with `waves`): a lane's wave of `minTypes` or
+   * more unit types sets out with shields of `shieldFrac` × each unit's max HP. Absent by default.
+   */
+  mixed?: { minTypes: number; shieldFrac: number };
   timeLimitTicks: number;
   captureThreshold: number;
   captureStep: number;
@@ -359,6 +365,8 @@ export interface UnitState {
   burrowed?: boolean;
   /** Combat rework `waves`: the beat that released this unit (beat tick ÷ beat length). Absent for units no beat released. */
   wave?: number;
+  /** Combat rework `mixedWave`: what is left of the shield its mixed wave set out with. Absent when it has none. */
+  shield?: number;
 }
 
 export interface KnitState {
@@ -399,6 +407,8 @@ export interface BuildingState {
   holding: boolean;
   /** Combat rework `waves`: units waiting inside for the side's next wave (they count toward supply). Absent until one waits. */
   stored?: number;
+  /** Combat rework `waves`: the last beat whose release this spawner made (it makes one per beat). Absent without waves. */
+  lastWave?: number;
 }
 
 /**
@@ -481,8 +491,11 @@ export type SimEvent =
   | { t: 'power'; side: Side; power: string; x?: number; y?: number; hits: number; lanes: number[]; merges: number; gold?: number }
   /** Prototype E1: a lane switched between Hold and Advance (`auto` when the hold timer ran out). */
   | { t: 'stance'; side: Side; lane: number; hold: boolean; auto: boolean }
-  /** Combat rework `waves`: a side released `units` units on its beat (`held`: lanes it kept home). */
-  | { t: 'release'; side: Side; units: number; held: number[] }
+  /**
+   * Combat rework `waves`: a side's wave set out on its beat with `units` units, counting those that
+   * left early (`held`: lanes it kept home; `shielded`: lanes whose mixed wave got shields).
+   */
+  | { t: 'release'; side: Side; units: number; held: number[]; shielded: number[] }
   /** Heartcap breach prototype: a side's Heartcap fell to `at` of its max HP, firing its `heartcapBreach` triggers. */
   | { t: 'heartcapBreach'; side: Side; at: number; x: number; y: number }
   | { t: 'ended'; winner: Side; by: 'rout' | 'decision' };

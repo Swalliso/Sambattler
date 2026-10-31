@@ -584,6 +584,8 @@ export function counterBots(content: Content): Record<string, Omit<BotDef, 'id'>
       weights: { gillNest: 3, veilstalkerHollow: 2, capguardHall: 2, puffballMortar: 1, truffleCellar: 1 }, limits: cellar, mergePolicy: 'on',
     },
   } satisfies Record<string, Omit<BotDef, 'id'>>);
+  // each answer stays what it's named: a prototype building's `aiWeight` (the combat rework's Rhizomorph) skips them
+  for (const def of Object.values(bots)) def.fixedWeights = true;
   return bots;
 }
 

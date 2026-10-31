@@ -65,9 +65,11 @@ export function buildingTip(content: Content, atlas: Atlas, state: BattleState, 
     rows.push(['Armor', `${cap(cu.armor)} · hurt most by ${vulnerableTo(state, cu.armor)}`]);
     if (cu.siege) rows.push(['Siege', `×${t.siegeMult} vs buildings and Heartcaps`]);
     // the combat rework's settings (prototypes; each line shows only while its setting is on)
-    if (cu.tags.includes('burrow')) rows.push(['Burrows', 'tunnels under the front where nothing can hit it, and surfaces beside the nearest archer or spawner behind it; then it goes for ranged units first']);
+    if (cu.tags.includes('burrow')) rows.push(['Burrows', 'tunnels under the front where nothing can hit it, and surfaces beside the nearest archer (else a spawner behind the front) that no tower or turret covers; then it goes for ranged units first']);
     if (state.rules.pin && cu.tags.includes('ranged')) rows.push(['Pinned', `attacks at ×${state.rules.pin.permille / 1000} its rate with an enemy within ${state.rules.pin.radius} tile`]);
-    if (state.rules.waves) rows.push(['Waves', 'its units wait inside and leave with your next wave']);
+    if (state.rules.waves) rows.push(['Waves', 'its units wait inside and leave with your next wave (early, if it stands behind your front spawner, so they join the wave as it passes)']);
+    const mixed = state.rules.mixed;
+    if (mixed) rows.push(['Mixed wave', `a lane's wave of ${mixed.minTypes} or more unit types sets out shielded: ${Math.round(mixed.shieldFrac * 100)}% of each unit's HP`]);
     if (cu.slayer) rows.push(['Slayer', `×${t.slayerMult} vs Bloomed and Elder units`]);
     if (state.config.flags.merging) rows.push(['Bloomed', perkText(content, unit.id, 2)], ['Elder', perkText(content, unit.id, 3)]);
   }

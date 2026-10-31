@@ -2,11 +2,13 @@
 // advance along the lane while drifting back to their spawn row; knitting trios walk to their
 // centroid (SPEC §5.6). Overlapping units are pushed apart by half their overlap each, for a fixed
 // number of passes, using the spatial hash.
-import { other } from '../state.ts';
-import type { BattleState, CompiledTier, UnitState } from '../state.ts';
+import { SIDES, other } from '../state.ts';
+import type { BattleState, CompiledTier, Side, UnitState } from '../state.ts';
 import { buildGrid, nearBuffer, queryNear } from '../spatial.ts';
 import { MAX_RADIUS, edgeDistance, tp } from '../targets.ts';
 import { buildingDef, clampToLane, rectDistance, tierDef, unitDef, unitRadius } from '../world.ts';
+import { turretPos } from './combat.ts';
+import { layWaves } from './spawning.ts';
 import { holdsLane, rallyX } from './stance.ts';
 import { isRangedUnit } from './targeting.ts';
 
@@ -72,16 +74,25 @@ export function movementSystem(state: BattleState): void {
 }
 
 // Combat rework `waves`, rebuilt each tick: the slowest idle unit's speed per (wave, lane, side), and
-// each side's frontmost melee unit's x per lane (NaN: none).
+// each side's frontmost melee unit's x per lane (NaN: none). With `matchPace`, a unit that left
+// before its wave's beat also marches at the slowest speed its lane's spawners make (`lanePace`),
+// the pace its spawner's early release was timed for.
 const pace = new Map<number, number>();
 let meleeFront = { player: new Float64Array(4), enemy: new Float64Array(4) };
+let lanePace = { player: new Float64Array(4), enemy: new Float64Array(4) };
 const paceKey = (u: UnitState): number => ((u.wave! * 4 + u.lane) * 2) + (u.side === 'player' ? 0 : 1);
 
 function prepareWaves(state: BattleState): void {
   pace.clear();
-  if (meleeFront.player.length < state.lanes.length) meleeFront = { player: new Float64Array(state.lanes.length), enemy: new Float64Array(state.lanes.length) };
+  const n = state.lanes.length;
+  if (meleeFront.player.length < n) {
+    meleeFront = { player: new Float64Array(n), enemy: new Float64Array(n) };
+    lanePace = { player: new Float64Array(n), enemy: new Float64Array(n) };
+  }
   meleeFront.player.fill(NaN);
   meleeFront.enemy.fill(NaN);
+  const matchPace = state.rules.waves!.matchPace;
+  if (matchPace) for (const side of SIDES) lanePace[side].set(layWaves(state, side).pace.subarray(0, n));
   for (const u of state.units) {
     if (u.hp <= 0 || u.burrowed) continue;
     const def = unitDef(state, u);
@@ -90,7 +101,9 @@ function prepareWaves(state: BattleState): void {
       if (Number.isNaN(f) || (u.side === 'player' ? u.x > f : u.x < f)) meleeFront[u.side][u.lane] = u.x;
     }
     if (u.wave !== undefined && u.targetId === 0 && !u.knit) {
-      const k = paceKey(u), speed = def.tiers[u.tier - 1]!.speedPerTick;
+      const k = paceKey(u);
+      let speed = def.tiers[u.tier - 1]!.speedPerTick;
+      if (matchPace && state.tick < u.wave * state.compiled[u.side].waveBeatTicks!) speed = Math.min(speed, lanePace[u.side][u.lane]!);
       const cur = pace.get(k);
       if (cur === undefined || speed < cur) pace.set(k, speed);
     }
@@ -116,8 +129,10 @@ function waveStep(state: BattleState, u: UnitState, speed: number): number {
 /**
  * Combat rework (the Rhizomorph's `burrow` tag): a burrowed unit tunnels straight at its surfacing
  * point at its speed, passing under every unit, and surfaces once its attack range reaches it. The
- * point is the nearest enemy ranged unit or spawner in the lane at or behind the enemy's frontmost
- * unit (by edge distance, ties to the lower id); else that frontmost unit; else the enemy's border.
+ * point is the nearest enemy ranged unit in the lane; else the nearest enemy spawner in the lane at
+ * or behind the enemy's frontmost unit (by edge distance, ties to the lower id). Either is skipped
+ * while an enemy tower or Heartcap turret could shoot a unit beside it (`underFire`). Else the point
+ * is that frontmost unit, under fire or not; else the enemy's border.
  */
 function tunnel(state: BattleState, u: UnitState, t: CompiledTier): void {
   const enemy = other(u.side);
@@ -134,17 +149,19 @@ function tunnel(state: BattleState, u: UnitState, t: CompiledTier): void {
     if (v.side !== enemy || v.lane !== u.lane || v.hp <= 0 || v.burrowed || !unitDef(state, v).tags.includes('ranged')) continue;
     const dx = v.x - u.x, dy = v.y - u.y;
     const d = Math.sqrt(dx * dx + dy * dy) - t.radius - unitRadius(state, v);
-    if (d < bestD || (d === bestD && v.id < best)) { best = v.id; bestD = d; px = v.x; py = v.y; }
+    if ((d < bestD || (d === bestD && v.id < best)) && !underFire(state, enemy, u.lane, v.x, v.y, t.radius)) { best = v.id; bestD = d; px = v.x; py = v.y; }
   }
-  for (const b of state.buildings) {
-    if (b.side !== enemy || b.lane !== u.lane || b.hp <= 0) continue;
-    const bd = buildingDef(state, b);
-    if (!bd.spawn || (b.col + bd.w / 2 - frontX) * dir < 0) continue;
-    const d = rectDistance(u.x, u.y, b.col, b.row, bd.w, bd.h) - t.radius;
-    if (d < bestD || (d === bestD && b.id < best)) {
-      best = b.id; bestD = d;
-      px = u.x < b.col ? b.col : u.x > b.col + bd.w ? b.col + bd.w : u.x;
-      py = u.y < b.row ? b.row : u.y > b.row + bd.h ? b.row + bd.h : u.y;
+  if (!best) {
+    for (const b of state.buildings) {
+      if (b.side !== enemy || b.lane !== u.lane || b.hp <= 0) continue;
+      const bd = buildingDef(state, b);
+      if (!bd.spawn || (b.col + bd.w / 2 - frontX) * dir < 0) continue;
+      const d = rectDistance(u.x, u.y, b.col, b.row, bd.w, bd.h) - t.radius;
+      if (d > bestD || (d === bestD && b.id > best)) continue;
+      const bx = u.x < b.col ? b.col : u.x > b.col + bd.w ? b.col + bd.w : u.x;
+      const by = u.y < b.row ? b.row : u.y > b.row + bd.h ? b.row + bd.h : u.y;
+      if (underFire(state, enemy, u.lane, bx, by, t.radius)) continue;
+      best = b.id; bestD = d; px = bx; py = by;
     }
   }
   if (!best && front) {
@@ -160,6 +177,34 @@ function tunnel(state: BattleState, u: UnitState, t: CompiledTier): void {
   if (dist > 1e-9) { u.x += (dx / dist) * step; u.y += (dy / dist) * step; }
   clampToLane(state, u, t.radius);
 }
+
+/**
+ * Combat rework (the Rhizomorph): could one of `side`'s towers or Heartcap turrets shoot a unit of
+ * radius `r` standing at (x, y) in `lane`? A tower counts within its firing band (a Mortar can't hit
+ * a unit hugging it); a turret within its range.
+ */
+function underFire(state: BattleState, side: Side, lane: number, x: number, y: number, r: number): boolean {
+  for (const b of state.buildings) {
+    if (b.side !== side || b.lane !== lane || b.hp <= 0) continue;
+    const def = buildingDef(state, b);
+    const a = def.attack;
+    if (!a) continue;
+    const dx = x - (b.col + def.w / 2), dy = y - (b.row + def.h / 2);
+    const d = Math.max(0, Math.sqrt(dx * dx + dy * dy) - r);
+    if (d >= a.minRange && d <= a.range) return true;
+  }
+  if (!state.rules.test.turrets) return false;
+  const turret = state.compiled[side].turret;
+  for (let i = 0; i < state.sides[side].turretCooldowns.length; i++) {
+    turretPos(state, side, i, turretAt);
+    if (turretAt.lane !== lane) continue;
+    const dx = x - turretAt.x, dy = y - turretAt.y;
+    if (Math.sqrt(dx * dx + dy * dy) - r <= turret.range) return true;
+  }
+  return false;
+}
+
+const turretAt = { x: 0, y: 0, lane: 0 };
 
 /**
  * Prototype B1 (balance `approachRush`): a listed unit closing on an enemy unit sprints for a few

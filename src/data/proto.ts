@@ -6,7 +6,7 @@ import type { RawContent } from './registry.ts';
 
 type Json = Record<string, unknown>;
 
-// ---- the combat rework's package (docs/ideas/combat-rework.md, P1); `rework` turns on all five ----
+// ---- the combat rework's package (docs/ideas/combat-rework.md, P1 and P1b); `rework` turns on its five settings ----
 
 /** Pinned: a ranged unit with an enemy unit within 1 tile attacks at 0.35× its rate. */
 const PINNED: Json = { pinned: { radius: 1, rateMult: 0.35 } };
@@ -40,11 +40,14 @@ const RHIZOMORPH: Json = {
 };
 
 /**
- * Waves: spawns wait inside their building and both sides release on a 20 s beat; a wave marches
- * at its slowest unit's pace with ranged units 1 tile behind their melee front. Hold keeps a lane's
- * wave home for one beat, and the AI never holds.
+ * Waves: spawns wait inside their building and both sides' waves set out on a 20 s beat, spawners
+ * behind a lane's front one leaving early so the wave passes it together; a wave marches at its
+ * slowest unit's pace with ranged units 1 tile behind their melee front. Hold keeps a lane's wave
+ * home for one beat at a time, and the AI never holds.
  */
 const WAVES: Json = { waves: { beatSeconds: 20, rangedGap: 1, matchPace: true } };
+/** Mixed waves (P1b, needs waves): a lane's wave of 3 or more unit types sets out with shields of 20% of each unit's max HP. */
+const MIXED_WAVE: Json = { mixedWave: { minTypes: 3, shieldFrac: 0.2 } };
 
 /** Presets: the settings each prototype was measured with (see the backlog's results tables). */
 export const PROTO_PRESETS: Record<string, Json> = {
@@ -115,6 +118,8 @@ export const PROTO_PRESETS: Record<string, Json> = {
   sporecloud: SPORE_CLOUD,
   rhizomorph: RHIZOMORPH,
   waves: WAVES,
+  /** Mixed waves on top of waves (mixedWave means nothing without them). */
+  mixedwave: { ...WAVES, ...MIXED_WAVE },
   /** All five of the combat rework's settings. */
   rework: { ...PINNED, ...CALL_FOR_HELP, ...SPORE_CLOUD, ...RHIZOMORPH, ...WAVES },
 };

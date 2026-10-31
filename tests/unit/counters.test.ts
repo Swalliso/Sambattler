@@ -31,7 +31,12 @@ describe('counter matrix answers', () => {
     for (const id of Object.keys(content.bots)) expect(cc.bots[id]).toEqual(content.bots[id]);
     expect(Object.keys(cc.bots)).toHaveLength(Object.keys(content.bots).length + Object.keys(counterBots(content)).length);
     const { description: _description, ...balanced } = content.bots.balanced!;
-    expect(cc.bots['d1-adaptive']).toEqual({ ...balanced, id: 'd1-adaptive', adaptive: true, description: expect.stringContaining('D1') });
+    expect(cc.bots['d1-adaptive']).toEqual({ ...balanced, id: 'd1-adaptive', adaptive: true, fixedWeights: true, description: expect.stringContaining('D1') });
+  });
+
+  it("keeps every answer bot to its own weights (a prototype building's aiWeight skips them)", () => {
+    for (const id of Object.keys(counterBots(content))) expect(cc.bots[id]!.fixedWeights).toBe(true);
+    for (const id of Object.keys(content.bots)) expect(cc.bots[id]!.fixedWeights).toBeUndefined();
   });
 
   it('tries every other mono bot, the pairs, bot:balanced, the counter bots and the other data bots', () => {

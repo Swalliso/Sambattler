@@ -174,7 +174,7 @@ export class BattleView {
     const stance = state.rules.stance ? h('div', { class: 'stance', id: 'stance' },
       ...state.lanes.map((_, i) => {
         const which = lanes > 1 ? `lane ${i + 1}` : 'the lane';
-        const holdWhat = state.rules.waves ? 'its next wave stays home, so the one after leaves twice as big' : 'units gather at the rally line';
+        const holdWhat = state.rules.waves ? 'its next wave stays home for one beat, and the beat after sends both waves' : 'units gather at the rally line';
         const hold = h('button', { class: 'btn has-ico', 'data-stance': 'hold', 'data-lane': i, 'aria-pressed': 'false', title: `Hold ${which}: ${holdWhat} (F: every lane)`, 'aria-label': `Hold ${which}`, onclick: () => { if (!session.stanceShown(i)) session.toggleStance(i); } }, uiIcon(atlas, 'i-hold'));
         const advance = h('button', { class: 'btn has-ico', 'data-stance': 'advance', 'data-lane': i, 'aria-pressed': 'true', title: `Advance ${which} (F: every lane)`, 'aria-label': `Advance ${which}`, onclick: () => { if (session.stanceShown(i)) session.toggleStance(i); } }, uiIcon(atlas, 'i-advance'));
         const status = h('span', { class: 'status' });
@@ -352,8 +352,12 @@ export class BattleView {
       } else if (e.t === 'stance' && (e.side === 'enemy' || e.auto) && !e.hold) {
         const lane = state.lanes.length > 1 ? ` in lane ${e.lane + 1}` : '';
         // combat rework `waves`: the beat spent the hold, keeping that wave home
-        const spent = state.rules.waves ? `Wave kept home${lane}: the next leaves twice as big` : `Hold time is up: advancing${lane}`;
+        const spent = state.rules.waves ? `Wave kept home${lane}: the next beat sends both waves` : `Hold time is up: advancing${lane}`;
         this.callouts.push('info', e.side === 'player' ? spent : `The Gray Rot advances${lane}`, e.side === 'player' ? '' : 'bad', now);
+      } else if (e.t === 'release' && e.side === 'player' && e.shielded.length) {
+        // combat rework `mixedWave`
+        const lanes = state.lanes.length > 1 ? ` in lane ${e.shielded.map((l) => l + 1).join(' and ')}` : '';
+        this.callouts.push('info', `Mixed wave${lanes}: shields up`, '', now);
       } else if (e.t === 'power' && e.side === 'player') {
         const def = state.library.powers?.[e.power];
         const name = def?.name ?? 'Power';
@@ -469,7 +473,10 @@ export class BattleView {
       const text = held
         ? beat ? `Keeping the wave home · ${secs(beat - (state.tick % beat))}`
           : st.hold ? `Hold · ${secs(state.rules.stance!.maxHoldTicks - (state.tick - st.since))}` : 'Holding'
-        : s.canHold(i) ? 'Advancing' : `Hold in ${secs(st.readyAt - state.tick)}`;
+        : s.canHold(i) ? 'Advancing'
+          // combat rework `waves`: a lane can't hold past the next beat (the one after a held beat sends both waves)
+          : beat && st.readyAt > state.tick + beat - (state.tick % beat) ? `Wave leaves in ${secs(beat - (state.tick % beat))}`
+            : `Hold in ${secs(st.readyAt - state.tick)}`;
       this.lit(row.hold, held);
       this.lit(row.advance, !held);
       // a hold on cooldown is unlit (src/app/session.ts refuses it); advancing back is always open

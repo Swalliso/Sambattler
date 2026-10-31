@@ -7,7 +7,7 @@ import { HEARTCAP_ID, POWER_SOURCE_ID, SIDES, other } from '../state.ts';
 import type { Armor, BattleState, DamageType, Effectiveness, PendingHit, Side, UnitState } from '../state.ts';
 import { nearBuffer, queryNear } from '../spatial.ts';
 import { MAX_RADIUS, edgeDistance, tp } from '../targets.ts';
-import { buildingDef, findBuilding, findUnit, heartcapEdgeX, rectDistance, supplyCapOf, tierDef, unitDef, unitRadius } from '../world.ts';
+import { buildingDef, findBuilding, findUnit, heartcapEdgeX, rectDistance, soakShield, supplyCapOf, tierDef, unitDef, unitRadius } from '../world.ts';
 
 const EPS = 1e-6;
 
@@ -259,8 +259,9 @@ function applyDamage(state: BattleState, h: PendingHit, targetId: number, fallof
   let dealt = dmg;
   if (r.help && h.sourceId > 0 && (u || b)) noteCall(h.sourceId, targetId);
   if (u) {
-    if (dealt > u.hp) dealt = u.hp;
-    u.hp -= dmg;
+    const toHp = soakShield(u, dmg); // combat rework `mixedWave`: a shield takes the blow first
+    dealt = dmg - toHp + Math.min(toHp, u.hp);
+    u.hp -= toHp;
     u.lastCombatTick = state.tick;
     if (u.knit) u.knit.hurt = true;
   } else if (b) {
