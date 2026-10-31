@@ -15,9 +15,14 @@ let dev: string;
 let browser: Browser | undefined;
 let page: Page;
 
-/** A Vite server for the game, or (`develop`) for the dev site, whose keys all get the `dev/` prefix. */
+/**
+ * A Vite server for the game, or (`develop`) for the dev site, whose keys all get the `dev/` prefix. The
+ * dev site's server keeps its own dependency cache: its config differs, so sharing `node_modules/.vite`
+ * would make it and the other test files' servers re-optimize under each other's pages.
+ */
 async function serve(mode?: string): Promise<string> {
-  const server = await createServer({ mode, server: { host: '127.0.0.1', port: 0, watch: null, hmr: false } });
+  const cacheDir = mode ? `node_modules/.vite-${mode}` : undefined;
+  const server = await createServer({ mode, cacheDir, server: { host: '127.0.0.1', port: 0, watch: null, hmr: false } });
   servers.push(server);
   await server.listen();
   const address = server.httpServer?.address();
