@@ -495,7 +495,7 @@ This is a real rewrite of the battle loop, the AI, the economy, the HUD and the 
 
 ## Identity
 
-The design review warned against competing head-on with Mechabellum and 9 Kings. Here's what would keep this game its own:
+The [design review](one-more-run-design-review.md#4-three-directions) warned against competing head-on with Mechabellum and 9 Kings. Here's what would keep this game its own:
 
 | | Mechabellum | 9 Kings | Spore & Sprawl with rounds |
 |---|---|---|---|

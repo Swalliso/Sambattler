@@ -31,14 +31,14 @@ Written 2026-10-31 against `develop` at `ef2e133`, the build on the dev site, to
   - G8: every mono bot loses at least 20 points against the adaptive general;
   - G11: performance.
 - **Rule C:** under `rework` every unit can hit a flyer, ground melee at ×0.5, except the Mortar's lobbed shell and the Burster's burst, which never can ([flyers.md](flyers.md)).
-- **Ledger IDs** (ER-2c, F11, …) name earlier recommendations. Each has a row in the [ledger](after-the-rework-ledger.md) with its status and evidence. The prefixes:
+- **Ledger IDs** (ER-2c, F11, …) name earlier recommendations. Each has a row in the [ledger](after-the-rework/ledger.md) with its status and evidence. The prefixes:
   - ER: the [engagement review](../engagement-review.md);
   - OMR: the [One More Run review](one-more-run-review.md);
-  - DR: the external design review (not in the repo);
+  - DR: the [external design review](one-more-run-design-review.md);
   - CS: [colony-swarm](colony-swarm.md);
   - F: [playtest feedback](../playtest-feedback.md);
   - CR: the [combat rework](combat-rework.md);
-  - CX: an uncommitted Codex note.
+  - CX: a [Codex note](fun-and-agency-research.md).
 
 ## Short answer
 
@@ -572,7 +572,7 @@ The critics' scores: impact (I) and confidence (C) from 1 to 5, and effort (E) f
 
 ## Appendix C: where the numbers come from
 
-The ledger is in the repo: [after-the-rework-ledger.md](after-the-rework-ledger.md). The other working files (the measurement scripts and tables, the playthrough reports with their screenshots, the three research reports and the 48 proposals with their critiques) were written in a temporary session folder and aren't in the repo. Ask to bring any of them into `docs/ideas/` if they should be kept.
+The ledger is in the repo: [after-the-rework/ledger.md](after-the-rework/ledger.md). The other working files (the measurement scripts and tables, the playthrough reports with their screenshots, the three research reports and the 48 proposals with their critiques) were written in a temporary session folder and aren't in the repo. Ask to bring any of them into `docs/ideas/` if they should be kept.
 
 The repo's own sources:
 - the [engagement review](../engagement-review.md);

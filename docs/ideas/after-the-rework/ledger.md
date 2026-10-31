@@ -1,11 +1,11 @@
 # Ledger of earlier fun and engagement recommendations
 
-Built 2026-10-31 against `develop` at `ef2e133` for [After the combat rework](after-the-rework.md), which cites its IDs. It lists every fun recommendation made so far and what became of it, so a session doesn't re-propose what was tried, rejected or already queued, and can see which diagnosed problems still have no answer. **Nothing here is adopted;** statuses are as of `ef2e133`.
+Built 2026-10-31 against `develop` at `ef2e133` for [After the combat rework](../after-the-rework.md), which cites its IDs. It lists every fun recommendation made so far and what became of it, so a session doesn't re-propose what was tried, rejected or already queued, and can see which diagnosed problems still have no answer. **Nothing here is adopted;** statuses are as of `ef2e133`.
 
 **Sources read** (paths are relative to the repo root):
 - `docs/engagement-review.md` (ER, 2026-10-28, incl. prototype E1)
 - `docs/ideas/one-more-run-review.md` (OMR, 2026-10-30, incl. steps A, B, second front, decisions)
-- "Spore and Sprawl: Design Review and Roadmap to One More Run" (DR, the external design review; not in the repo; written from PR descriptions only, and checked in the [One More Run review](one-more-run-review.md))
+- "Spore and Sprawl: Design Review and Roadmap to One More Run" (DR, the external design review; brought into the repo on 2026-10-31 as [`docs/ideas/one-more-run-design-review.md`](../one-more-run-design-review.md); written from PR descriptions only, and checked in the [One More Run review](../one-more-run-review.md))
 - `docs/ideas/colony-swarm.md` (CS, 2026-10-29/30)
 - `docs/playtest-feedback.md` (F1–F16)
 - `docs/status.md` (hand-over page, updated 2026-10-31)
@@ -15,7 +15,7 @@ Built 2026-10-31 against `develop` at `ef2e133` for [After the combat rework](af
 - `docs/ideas/combat-rework.md` (CR: intro, options, P3/P4, run variety, decisions), `docs/ideas/flyers.md` (FL: recommendation, general, questions)
 - SPEC §1 (pillars, §1.1, §1.2), §6.4–6.5, §7.5–7.6, §8, §9, §10.4, §11.5–11.12, §12, §13.9, §16 M6–M8, §17, §18
 - `docs/ui-ux-plan.md` (UI: Phase 1, Phase 3, clarity pass, decisions) and `docs/m5-plan.md` kickoff, for statuses of ER-7 and ER-5
-- **Extra, outside the brief:** `docs/fun-and-agency-research-2026-10-29.md` in a Codex worktree (CX), a Codex note the OMR says is still uncommitted. It is the one prior fun review whose ideas never entered the repo, so it is in the ledger (section 1.9). Treat it as unreviewed.
+- **Extra, outside the brief:** `docs/fun-and-agency-research-2026-10-29.md` in a Codex worktree (CX), a Codex note the OMR says is still uncommitted; brought into the repo on 2026-10-31 as [`docs/ideas/fun-and-agency-research.md`](../fun-and-agency-research.md). It was the one prior fun review whose ideas had never entered the repo, so it is in the ledger (section 1.9). Treat it as unreviewed.
 
 **Status keys** (one per row; qualifiers go in the evidence column):
 `adopted` · `built, off, awaiting playtest` · `in P3 playtest` (built default-off inside `?proto=rework`) · `measured and failed` · `parked` · `rejected` · `planned (M6/M7/M8)` · `never addressed`
@@ -69,7 +69,7 @@ Built 2026-10-31 against `develop` at `ef2e133` for [After the combat rework](af
 | ER-10 | Re-sequence: Gray Rot and counters (M7) before meta (M6) | ER "Proposed sequence" | never decided | ER: "Decide after the M4.5 playtest". Status: M6–M8 content waits on P4 |
 | ER-11 | Re-measure G3 under Hold before archer fixes | ER rec closing | adopted | Done (G3 65% Sporeling); later the counter matrix showed Hold gave archers answers (BB "D1 before and after Hold") |
 
-### 1.2 External design review (DR), untracked, ~2026-10-30
+### 1.2 External design review (DR), [`docs/ideas/one-more-run-design-review.md`](../one-more-run-design-review.md), ~2026-10-30
 
 | id | Recommendation | Source | Status | Evidence |
 |---|---|---|---|---|
@@ -130,7 +130,7 @@ Built 2026-10-31 against `develop` at `ef2e133` for [After the combat rework](af
 | OMR-9 | Step B follow-up: a harder boss once the early battles are gentler | BB Step B rec 4 | never addressed | See ER-3c |
 | OMR-10 | A second front for one-lane maps (more two-lane maps) | OMR step A "What this suggests" | measured and failed | Second-front test: 2×4 rows 80–85%, Twin Roots shape 62–67%, mono Amanita takeover 58–73%. "On these numbers, the recommendation is no." Still formally "the user's call" |
 | OMR-11 | One-lane options: forward buildings worth defending; flank orders (edge-row path past the front) | BB second front "Options that keep one lane" | never addressed | "Sketch, not built" |
-| OMR-12 | Bring Codex's two notes and the design review into `docs/ideas/` | OMR "Still open" | never addressed | The DR is still an untracked file outside the repo; the Codex notes are in a Codex worktree |
+| OMR-12 | Bring Codex's two notes and the design review into `docs/ideas/` | OMR "Still open" | adopted (done) | 2026-10-31, imported at the user's request: [one-more-run-design-review.md](../one-more-run-design-review.md) (DR), [fun-and-agency-research.md](../fun-and-agency-research.md) (CX) and [symbiotic-colonies-slice.md](../symbiotic-colonies-slice.md). Nothing in them is adopted |
 | OMR-13 | Rules must care about *which* neighbor (front/behind/beside, keyword pairs), not how many; transformations, not percentages; the general must play by them | OMR "The network design: rethink" 1, 3, 4 | parked | Folded into step C (parked) |
 | OMR-14 | Cut systems alongside adding them (forward price, upgrade tracks, interest/Spore Exchange, capture rule) | OMR rethink 2, citing CS cut list | never addressed | See CS-10 |
 
@@ -150,7 +150,7 @@ Built 2026-10-31 against `develop` at `ef2e133` for [After the combat rework](af
 | CS-10 | Cut list: forward price (§6.3); upgrade tracks → draft-again leveling (reverses §17 #12); interest and the Spore Exchange; the capture rule | CS "What it could simplify" | never addressed | All four unchanged in SPEC |
 | CS-11 | Placement-spread measurement (Hivemind's puzzle generator) | CS "Worth copying" | adopted (tool) | OMR-5 |
 | CS-12 | Building merges that land where the last piece drops | CS "Worth copying" | never addressed | — |
-| CS-13 | Announced upcoming offers (from the Codex slice), so leaving a slot open is a plan | CS "Worth keeping" | never addressed | — |
+| CS-13 | Announced upcoming offers (from the [Codex slice](../symbiotic-colonies-slice.md)), so leaving a slot open is a plan | CS "Worth keeping" | never addressed | — |
 | CS-14 | Splash damage as the natural answer to clumped swarms and archers | CS "Swarms" | in P3 playtest (as the Burster) | Burster bursts + clouds deal 12–19% of a user's damage (BB P2); Mortar clouds removed |
 | CS-15 | Live numbers on buildings computed by the sim's own modifiers (Hivemind's badges) | CS "What fits" | parked | — |
 
@@ -234,9 +234,9 @@ Listed so they aren't re-proposed. All are default-off presets in `src/data/prot
 | SP-7 | Pitfall "runs get repetitive once you find a dominant build": adaptive general, intel, strains, feats, blights | §1.1 | planned (M6, M7) / failing (adaptation) | G8 fails today and under the package (general wins 21–24% vs mono Sporeling) |
 | SP-8 | Pitfall "one cheap unit spammed beats everything": supply cap, matrix, Anti-Swarm doctrine, value budget | §1.1 | failing | Mono Sporeling fails G3 under every rule set measured (74–95% mean); the cap "barely binds" |
 
-### 1.9 Codex note (CX), uncommitted, `docs/fun-and-agency-research-2026-10-29.md` in a Codex worktree
+### 1.9 Codex note (CX), [`docs/ideas/fun-and-agency-research.md`](../fun-and-agency-research.md), 2026-10-29
 
-Never brought into the repo (OMR-12), never reviewed against the repo. Its first-test order: (1) optional commitments, (2) a factual turning-points report, (3) a single network interaction.
+Brought into the repo on 2026-10-31 (OMR-12), but never reviewed against the repo. Its first-test order: (1) optional commitments, (2) a factual turning-points report, (3) a single network interaction.
 
 | id | Recommendation | Status | Evidence |
 |---|---|---|---|

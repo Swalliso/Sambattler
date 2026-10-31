@@ -1,0 +1,6 @@
+[
+ {"name":"rw-mold-1m00","params":"proto=rework&scene=battle&player=bot:balanced&enemy=general:mother-mold&seed=7&ticks=1200","waitMs":500,"crops":[[0,0,576,128,2]]},
+ {"name":"rw-mold-3m00","params":"proto=rework&scene=battle&player=bot:balanced&enemy=general:mother-mold&seed=7&ticks=3600","waitMs":500,"crops":[[0,0,576,128,2],[96,0,192,128,4]]},
+ {"name":"rw-mold-5m00","params":"proto=rework&scene=battle&player=bot:balanced&enemy=general:mother-mold&seed=7&ticks=6000","waitMs":500,"crops":[[0,0,576,128,2],[192,0,192,128,4]]},
+ {"name":"rw-mold-7m00","params":"proto=rework&scene=battle&player=bot:balanced&enemy=general:mother-mold&seed=7&ticks=8400","waitMs":500,"crops":[[0,0,576,128,2],[288,0,192,128,4]]}
+]

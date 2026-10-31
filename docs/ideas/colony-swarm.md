@@ -16,7 +16,7 @@ Why consider it: the [engagement review](../engagement-review.md) found the play
 
 ## The Codex draft, and what we'd change
 
-A Codex draft, "Symbiotic Colonies: proposed playable slice" (in a Codex worktree, not in this repo), proposed:
+A Codex draft, ["Symbiotic Colonies: proposed playable slice"](symbiotic-colonies-slice.md), proposed:
 - a 9-plot trial map
 - two support buildings, the Nurse Ring and the Knitting Loom, wired by hand, that advance a spawner's timer
 - two relics that change how far connections reach

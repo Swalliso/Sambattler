@@ -1,0 +1,8 @@
+v0 rework -
+v1 rework 0.25,0.35,0.5
+v2 rework,hotstart 0.25,0.35,0.5
+v3 rework,hotstart,enemyKit.bossUpgrades:8,heartcapEnemyHp.boss:4500 0.25,0.35,0.5
+v4 rework,hotstart,enemyKit.bossUpgrades:12,enemyKit.bossBuildings:9,heartcapEnemyHp.boss:4500 0.25,0.35,0.5
+v5 rework,hotstart,general.mother-mold.appearsIn:[2,3] -
+v6 rework,hotstart -
+v7 rework,hotstart,bigdrafts,enemyKit.bossUpgrades:8,heartcapEnemyHp.boss:4500 0.25,0.35,0.5
