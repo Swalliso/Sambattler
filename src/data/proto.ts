@@ -46,8 +46,12 @@ const RHIZOMORPH: Json = {
  * home for one beat at a time, and the AI never holds.
  */
 const WAVES: Json = { waves: { beatSeconds: 20, rangedGap: 1, matchPace: true } };
-/** Mixed waves (P1b, needs waves): a lane's wave of 3 or more unit types sets out with shields of 20% of each unit's max HP. */
-const MIXED_WAVE: Json = { mixedWave: { minTypes: 3, shieldFrac: 0.2 } };
+/**
+ * Mixed waves (P1b, needs waves): a lane's wave of 2 or more unit types sets out with shields of 20% of
+ * each unit's max HP. P1b started at 3 types; P1c measured 2 against 3 and kept 2, which helped
+ * `bot:balanced` more in G3.
+ */
+const MIXED_WAVE: Json = { mixedWave: { minTypes: 2, shieldFrac: 0.2 } };
 
 /**
  * Cleave (P1c): a Scythecap's swing hits every enemy unit within 1 tile of its target at full damage

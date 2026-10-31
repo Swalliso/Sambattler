@@ -534,20 +534,24 @@ describe('mixed waves (balance mixedWave)', () => {
     expect(liveState().rules.mixed).toBeUndefined();
     expect(protoState(protoContent('waves')).rules.mixed).toBeUndefined();
     expect(protoState(protoContent('mixedWave:{"minTypes":3,"shieldFrac":0.2}')).rules.mixed).toBeUndefined();
-    expect(protoState(mc).rules.mixed).toEqual({ minTypes: 3, shieldFrac: 0.2 });
+    expect(protoState(mc).rules.mixed).toEqual({ minTypes: 2, shieldFrac: 0.2 });
   });
 
-  it("a lane's wave of three unit types sets out with shields of 20% of each unit's max HP; two types get none", () => {
-    const s = mixedState(['sporelingBurrow', 'capguardHall', 'gillNest']);
+  it("a lane's wave of enough unit types sets out with shields of 20% of each unit's max HP; fewer get none", () => {
+    const three = protoContent('mixedwave,mixedWave.minTypes:3');
+    const s = mixedState(['sporelingBurrow', 'capguardHall', 'gillNest'], three);
     steps(s, 400);
     expect(s.units.map((u) => [u.unitId, u.shield])).toEqual([['sporeling', 14], ['sporeling', 14], ['capguard', 44], ['gillArcher', 22]]);
     expect(s.events.find((e) => e.t === 'release' && e.side === 'player')).toMatchObject({ shielded: [0] });
-    const two = mixedState(['sporelingBurrow', 'gillNest']);
+    const two = mixedState(['sporelingBurrow', 'gillNest'], three);
     steps(two, 400);
     expect(two.units.every((u) => u.shield === undefined)).toBe(true);
-    const low = mixedState(['sporelingBurrow', 'gillNest'], protoContent('mixedwave,mixedWave.minTypes:2'));
-    steps(low, 400);
-    expect(low.units.map((u) => u.shield)).toEqual([14, 14, 22]);
+    const preset = mixedState(['sporelingBurrow', 'gillNest']); // the preset's 2 types
+    steps(preset, 400);
+    expect(preset.units.map((u) => u.shield)).toEqual([14, 14, 22]);
+    const one = mixedState(['sporelingBurrow']);
+    steps(one, 400);
+    expect(one.units.every((u) => u.shield === undefined)).toBe(true);
   });
 
   it('a shield takes damage of every kind before HP, and breaks once spent', () => {
