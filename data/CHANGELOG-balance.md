@@ -3,6 +3,29 @@
 Every change from the SPEC's first-pass numbers, with the guardrail or verification result that
 motivated it. Tools: `npm run balance -- duel`, `npm run balance -- tournament`, `npm run test:slow`.
 
+## Combat rework P1d prototypes (2026-10-31)
+
+**Nothing adopted; no shipped number, rule or default changed.** Goldens unchanged.
+- **Fix:** P1c's dead-unit skip in the attack loop now runs only with `burster` on. Before, a unit that
+  Vesper's Spore Burst killed lost that tick's attack in every battle. 72 commander battles now match develop.
+- **`rework` is the user's new base:**
+  - the six settings, with mixed waves at two types;
+  - the Burster;
+  - the Elder Sporeling's splash off, as a preset path (the shipped unit keeps it);
+  - a 20 s beat. Cleave stays its own preset.
+- **New `stormwaves` setting:** each Sporestorm stack makes both sides' waves 20% bigger, ×2 at five stacks
+  (8:00). Extra units need free supply, but the cap barely binds.
+
+Results are in [the backlog](../docs/balance-backlog.md#combat-rework-p1d-2026-10-31), G3 at 50 seeds:
+- **The base:** only mono Sporeling fails G3 (81 / 84), and the strict counter bar passes. G4 fails at 28%
+  Decisions.
+- **Without the Mortar's clouds:** G4 has 23% Decisions; mono Sporeling 83 / 86 and Veilstalker's worst
+  map (61) fail G3.
+- **Both stall routes:** G4 has 18% Decisions (7 of 40 games, where 6 is the limit), and G3's Decisions are
+  back to today's 7%. The strict bar passes with answers that win outright. Mono Sporeling (85 / 86) and
+  mono Veilstalker (72 / 87) fail G3.
+- Nothing passes G3, G4 and the strict bar, so P2's other checks weren't run.
+
 ## Combat rework P1c prototypes (2026-10-30)
 
 **Nothing adopted; no shipped number, rule or default changed.** Two new default-off presets in

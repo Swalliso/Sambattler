@@ -1546,3 +1546,121 @@ Many of the answers to the swarm win by holding more columns at 10:00, not by ta
 - Confirms: `npm run experiment -- --proto <spec> --checks counters --g3seeds 50 --top 5`, and `--checks g4`. About 6–11 minutes a variant on 10 workers.
 - Specs: `rework,cleave,burster`, `rework,burster`; beats add `waves.beatSeconds:<n>`; the Elder check adds `unit.sporeling.mergePerks.3.splashRadius:null`; three-type mixed waves add `mixedWave.minTypes:3`.
 - Decisions per matchup: the counter check's report now has `decisions` for each map of each answer, beside G3's rows.
+
+## Combat rework P1d (2026-10-31)
+
+P1d fixes a leak P1c introduced, sets the new base the user chose, and measures two routes out of the stalls as settings. **Nothing is adopted.** Every setting stays off by default, and the goldens are unchanged.
+
+### The leak
+
+- **What:** P1c's `if (u.hp <= 0) continue;` in `attackSystem` ran in every battle. Vesper's Spore Burst resolves during commands, before attacks, and on develop a unit it kills still gets that tick's attack. So one Vesper battle's hash moved: seed 24 on Bogwater, `d1d1102d0bb7c0d6` against develop's `c22ff682dd1bf0a8`.
+- **The fix:** the skip runs only with `burster` on.
+- **The check:** a unit test pins that battle's hash. 72 commander battles (three commanders, two maps, 12 seeds, powers on) now match develop exactly.
+- **What it touched:** nothing measured so far. G3, G4 and the counter matrix use no powers.
+
+### The new base
+
+`rework` is now:
+- the six settings, with mixed waves at two types;
+- the Burster;
+- the Elder Sporeling's splash off (a preset path; the shipped unit keeps it);
+- at a 20 s beat.
+
+Cleave stays its own preset. Spreading the Rhizomorph and Burster presets into one object kept only the second's roster append, so `rework` lists both appends itself.
+
+### A storm that grows waves
+
+`stormwaves` (balance `stormWaves.perStack`, default off, needs `waves`): each Sporestorm stack makes both sides' waves 20% bigger, so ×2 at five stacks (8:00).
+
+**How it's built:** on the wave release, on top of `side.waveSize`. A spawner releases its waiting units × (1 + 0.2 × stacks). It carries the fraction to its next release, in thousandths, so a spawner that releases one unit a beat still grows by a fifth over time. Extra units need free supply, and a `waveCapped` event records the ones the cap holds back. The beat tip shows the storm's multiplier.
+
+**Why the release rather than faster production:**
+- it is what the setting says (bigger waves), at the one place waves exist;
+- the release already had the `side.waveSize` hook, and its supply check for extra units;
+- faster production would need fractional spawn timers, beside the besieged half-speed and the positional intervals.
+
+The cost: a spawner's "+N waiting" badge shows what it made, not what the storm will add.
+
+**The supply cap barely binds.** Under `rework,stormwaves` (mono Sporeling, Gill Nest and Veilstalker against `bot:balanced`, 4 seeds on two maps each), sides sat at the cap at most 4% of the storm's time. Per four games, the cap held back 0–19 extra units, against 81–523 the storm added.
+
+**It strengthens the runners.** Under the storm, `bot:balanced` merges a third more (711 → 952 merges in 16 games against mono Veilstalker). Veilstalkers deal ×3 to merged units, and they took the Heartcap in 13 of 16 games, against 4 of 16 without the storm.
+
+### Screens: G3 at 20 seeds, and G4
+
+G3 at 20 seeds per seat (mean / worst map; bold fails a limit), and G4 (40 games: median / Decisions / bot wins).
+
+| Mono bot | `rework` (the base) | without the Mortar's clouds | with `stormwaves` | both |
+|---|---|---|---|---|
+| Gill Archer Nest | 50 / 55 | 52 / 60 | 43 / 50 | 48 / 52 |
+| Sporeling Burrow | **77 / 78** | **81 / 88** | **82 / 85** | **84 / 85** |
+| Veilstalker Hollow | 34 / 50 | 37 / 55 | **68 / 78** | **68 / 78** |
+| Morel Warren | 40 / 50 | 42 / 55 | 55 / 57 | **57 / 62** |
+| Amanita Lodge | 32 / 42 | 32 / 40 | 34 / 40 | 35 / 45 |
+| Capguard Hall | 29 / 32 | 36 / 38 | 34 / 42 | 40 / 50 |
+| G4 | **8:43 / 28%** / 38% | 8:27 / **23%** / 45% | 8:20 / **20%** / 50% | 8:02 / **18%** / 48% |
+
+**Both routes cut Decisions, and neither reaches 15%.** Each costs G3: dropping the Mortar's clouds helps the swarm (Sporeling 77 → 81), and the storm helps the runners (Veilstalker 34 → 68, Morel 40 → 55).
+
+### Confirmed: G3 at 50 seeds, the strict matrix and G4
+
+The base, the base without the Mortar's clouds, and both routes (`rework,sporeCloud:null,stormwaves`). `--checks counters --g3seeds 50 --top 5`.
+
+**G3 at 50 seeds** (Bogwater / Stumpfield / Twin Roots for the first two rows):
+
+| Mono bot | Today | `rework` (the base) | without the Mortar's clouds | both routes |
+|---|---|---|---|---|
+| Gill Archer Nest | **88 / 100** (100/100/63) | 48 / 55 (49/55/41) | 50 / 59 (51/59/41) | 47 / 52 (47/52/41) |
+| Sporeling Burrow | **74 / 77** (75/70/77) | **81 / 84** (78/84/81) | **83 / 86** (81/83/86) | **85 / 86** (85/85/86) |
+| Veilstalker Hollow | 41 / 51 | 43 / 59 | 45 / **61** | **72 / 87** |
+| Morel Warren | 55 / 57 | 37 / 46 | 41 / 52 | 53 / 60 |
+| Amanita Lodge | 51 / **64** | 31 / 38 | 33 / 40 | 36 / 41 |
+| Capguard Hall | 39 / 49 | 31 / 38 | 35 / 40 | 35 / 39 |
+| Mono bots failing | 3 | **1** | 2 | 2 |
+| G3 games ending in Decisions | 7% | 18% | 15% | **7%** |
+
+**G4** (from the screens; targets 5:30–8:30, ≤ 15%, 30–70%): the base 8:43 / 28% / 38%, without the Mortar's clouds 8:27 / 23% / 45%, both routes 8:02 / 18% / 48%. **All three fail on Decisions.** Both routes miss by 3 points: 7 of 40 games, where the limit allows 6.
+
+**The strict counter bar passes for all three.** The swarm's passing answers, with their wins and their Decision share per map (Bogwater / Stumpfield / Twin Roots):
+
+| Build | Variant | Answer | Wins | Decisions |
+|---|---|---|---|---|
+| Mono Sporeling | the base, and without clouds | Sporeling + Veilstalker | 93 / 91 / 71 | 10 / 11 / 11 |
+| | | `d1-amanita` | 73 / 80 / 71 | 23 / 34 / 4 |
+| | both routes | Sporeling + Veilstalker | 100 / 100 / 86 | 0 / 0 / 1 |
+| Mono Veilstalker | the base | `turtle` | 92 / 98 / 93 | 67 / 64 / 28 |
+| | | Sporeling + Veilstalker | 97 / 81 / 97 | 6 / 23 / 3 |
+| | without clouds | Capguard + Veilstalker | 84 / 93 / 82 | 73 / 52 / 18 |
+| | | Sporeling + Veilstalker | 97 / 81 / 97 | 6 / 23 / 3 |
+| | both routes | Sporeling + Veilstalker | 96 / 85 / 95 | 6 / 24 / 3 |
+| | | Sporeling + Burster Pod | 87 / 84 / 73 | 4 / 26 / 0 |
+| Mono Morel | both routes | Sporeling + Veilstalker | 100 / 100 / 100 | 0 / 0 / 0 |
+
+- **The swarm's best answers win outright,** so fixing the stalls doesn't reopen the gap. Sporeling + Veilstalker answers mono Sporeling with 10–11% Decisions in the base, and 0–1% with both routes, where it wins 86–100%.
+- **The answers that won by holding lose ground as the stalls go.** In the base, `turtle` beats mono Veilstalker with 64–67% Decisions on the one-lane maps, and mono Capguard beats mono Sporeling with 74–76%. With both routes, neither is among the confirmed answers.
+
+**Matchups that end in Decisions:**
+- **The base:** Veilstalker against Scythecap + Veilstalker 86–90%, against Capguard + Veilstalker 73%, against `turtle` 67%; Sporeling against mono Capguard 74–76%, against Capguard + Scythecap 65%.
+- **Without the Mortar's clouds:** the same pairs, and Veilstalker against mono Sporeling 75–81%.
+- **Both routes:** Veilstalker against the Burster Pod pairs (Scythecap + Pod 62–78%, Capguard + Pod 68–71%), and mono Burster Pod against `bot:balanced` 48–53%. G3's overall share is back to today's 7%.
+
+### What it suggests
+
+**Nothing passes G3, G4 and the strict bar together, so P2's other checks weren't run.**
+- **Both routes come closest.**
+  - **G4:** it misses Decisions by one game in 40.
+  - **The strict bar:** every strong build has answers that win at least 60% on every map, mostly outright.
+  - **G3:** Decisions are back to today's 7%, but mono Sporeling (85 / 86) and mono Veilstalker (72 / 87) fail.
+- **Those G3 failures are the reference bot's.** Each failing build has answers that win 85–100% on every map (Sporeling + Veilstalker beats both). `bot:balanced` loses to cheap 1-supply units in bigger waves, as P0 found it loses to committed builds on today's rules. The storm feeds the runners in particular: it gives `bot:balanced` more merged units for Veilstalkers to slay.
+- **The base passes G3 on all but mono Sporeling** (81 / 84), but stalls (28% Decisions in G4).
+
+### Recommendation
+
+Carry `rework` with both routes (`sporeCloud` off, `stormwaves` on) into P2, and settle two things first:
+1. **G3's reference.** Under the rework every strong build has a counter on every map, so G3 fails on what `bot:balanced` builds. Either judge the rework by the strict counter bar, or give the reference bot a core that answers swarms (Sporeling + Veilstalker is the answer that keeps showing up). That is a guardrail and AI decision for the user.
+2. **G4's last points.** The storm is the knob: a stronger or earlier storm should take G4 under 15%. Measure it with G3 too, since the storm also feeds the runners.
+
+### Questions for the user
+
+1. **G3 under the rework:** judge it by the strict counter bar (which passes), or teach `bot:balanced` an answer to swarms?
+2. **G4:** both routes leave 18% Decisions. Push the storm (stronger, or starting before 4:00), or accept 18% for P2?
+3. **The Mortar's clouds:** drop them from `rework`? Without them Decisions fall 5 points, and they don't help G3.
