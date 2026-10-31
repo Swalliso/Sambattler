@@ -17,6 +17,8 @@ package for the P3 playtest.
   - the Driftling (70 HP, light, 8 slash a second, 1 supply, speed 1.4) and its Drift Stalk (160 gold, two
     every 18 s, `aiWeight` 1), in both rosters, as content under the preset;
   - sprites in `data/sprites/` (display only). The Bloatcap isn't built.
+- **The sanity pass on `rework` with both** (backlog, "After P2"): G4 at 200 passes (8:06, 12%, 52%), the strict
+  bar passes with flyers answering the swarm, and **mono Drift Stalk takes over G3 (89 / 96)**. Not retuned.
 
 ## Combat rework P2 measurements (2026-10-31)
 

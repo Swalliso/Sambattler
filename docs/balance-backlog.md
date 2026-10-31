@@ -1846,6 +1846,9 @@ With the right read it builds its Swarm counters (158 Capguard Halls, 81 Burster
 - **Not built:** the general's Anti-Air counter kind and the towers' pressure rule from the design's AI section. A Driftling army reads as a swarm (light armor), and the general's Swarm set already holds units that reach flyers (Capguards, Scythecaps, Amanita Knights).
 
 The sanity pass on the playtest `rework` (P2's package, the swarm read and flyers):
+- **Mono Drift Stalk takes over G3: 89 / 96** (93 / 96 / 78 on Bogwater / Stumpfield / Twin Roots). It's the takeover the design warned of: `bot:balanced` is mostly small fry, which can't reach a flyer. Against the battle-1 generals on Bogwater (12 seeds) it wins 11 of 12 against the scripted general, 12 of 12 against Old Mother Mold and 7 of 12 against the Blightwright, and none against the Capguard-heavy Lichen Baron. Not retuned: the design's fallbacks are a 2-supply Driftling with double stats, or rule C (`flying.reachSupply:1,flying.meleeMult:0.5`), for the user to choose.
+- **The strict bar passes, and flyers answer the swarm:** Amanita + Drift Stalk beats mono Sporeling 100 / 100 / 94 and Sporeling + Drift Stalk beats mono Veilstalker 100 / 100 / 99, with no Decisions. Mono Capguard beats mono Drift Stalk 100 / 100 / 100.
+- **G3 otherwise improves:** mono Sporeling 79 / 82 (from 85 / 86) and mono Veilstalker 60 / 71 (from 72 / 87) still fail; Gill Nest 51 / 54 and Morel 40 / 50 pass. 7% of G3's games end in Decisions.
 - **G4 at 200 games passes:** 8:06 / 12% / 52%.
 - **G2 stays healthy.** The Driftling beats Sporelings, Morel Runners, Veilstalkers and archers in duels, and loses to Capguards, Scythecaps, Rootbreakers, Hammercaps, Amanita Knights, surfaced Rhizomorphs and Bursters (their death clouds catch it).
 - **G1 still fails,** as on today's rules: Gill Nest 10 of 11 pairings, Capguard Hall 9 of 11.
