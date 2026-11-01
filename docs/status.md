@@ -27,12 +27,14 @@ Updated 2026-11-01, on `feature/r1-plan` (R1 S0, a docs PR into `develop`). This
 
   [docs/tasks/README.md](tasks/README.md) has the full order and every milestone's sessions.
 
-## Next session: R1 S1 and S2
+## Next session: R1 S4
 
-- **Work from** [docs/tasks/r1-clash-check.md](tasks/r1-clash-check.md) and follow [docs/tasks/README.md](tasks/README.md#running-a-session). Both start once R1 S0's PR (`feature/r1-plan`) has merged, and they can run side by side:
-  - **S1** (`feature/r1-formation`, T003–T006): built, in its PR. `src/sim/formation.ts` holds the slot layout (`formationBox`, `slotPositions`, `emplacementPosition`, `overflows`, `slotGrid`) and the muster's knitting (`findTrios`, `musterKnits`), as pure functions that R2 reuses. A test checks that the muster agrees with the sim's merging. Verify green, no golden moved;
-  - **S2** (`feature/r1-armies`, T007–T012): built, in its PR. The two tool-only switches (`noBuildingPreference`, `idleSeek`, in `config.test`) and the army builder in `tools/lib/clash.ts`; verify green, no golden moved.
-- **Then** S3 (`feature/r1-clash-runner`) once both have merged, and S4–S8 in the order of the task list's Sessions table.
+- **Work from** [docs/tasks/r1-clash-check.md](tasks/r1-clash-check.md) and follow [docs/tasks/README.md](tasks/README.md#running-a-session). So far:
+  - **S1** (`feature/r1-formation`, T003–T006): merged ([#46](https://github.com/Swalliso/Sambattler/pull/46)). `src/sim/formation.ts` holds the slot layout (`formationBox`, `slotPositions`, `emplacementPosition`, `overflows`, `slotGrid`) and the muster's knitting (`findTrios`, `musterKnits`), as pure functions that R2 reuses. A test checks that the muster agrees with the sim's merging;
+  - **S2** (`feature/r1-armies`, T007–T012): merged ([#45](https://github.com/Swalliso/Sambattler/pull/45)). The two tool-only switches (`noBuildingPreference`, `idleSeek`, in `config.test`) and the army builder in `tools/lib/clash.ts`;
+  - **S3** (`feature/r1-clash-runner`, T013–T019): built, in its PR. `tools/lib/clash.ts` plays one clash: the fields (`clashField`), formation by role (`lineOf`, `assignSlots`), the arrival (`placeArmy`), the muster, §6.7's lane ends and scoring in both cap readings, R1-Q3's winner, and the record (`playClash`). `npm run experiment -- --checks clash --pair a,b` plays one matchup. Verify green, no golden moved.
+  - **S3 found** that the muster's ties follow floating-point rounding, which differs between the two sides' mirrored positions. So 15 of 310 armies muster differently by seat, mono Sporeling among them. T053 (new) makes the ties exact, as §5.6 says, before S7's runs.
+- **Next: S4** (`feature/r1-clash-bars`, T053 and T020–T024), once S3's PR has merged: the muster's exact ties, then the clash jobs on the pool, clash G3, G12 and G13, and `--checks clash` with its report. Then S5–S8 in the order of the task list's Sessions table.
 - **R1's calls, agreed 2026-11-01:** every recommendation. They're dated in [clarify.md](tasks/clarify.md) and written into SPEC §16 R1 and §12.2.
   - R1-Q1, where squads stand: §7.3's tags set the line, files fill centre-out, and on Twin Roots each building goes to the lane with fewer of its line.
   - R1-Q2, spending: economy and utility cards are filtered out, a pick that doesn't fit is skipped, and each army has its own stream.
