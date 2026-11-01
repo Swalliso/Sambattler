@@ -1,0 +1,74 @@
+{
+  "sheet": "marks",
+  "sprites": [
+    {"id": "m-blade", "w": 5, "h": 5, "anchor": [0, 0], "palette": {".": null, "k": "#1a1020", "w": "#fbf6ff"},
+     "frames": [
+      [
+        "...k.",
+        "..kwk",
+        ".kwwk",
+        "kwwk.",
+        ".kk.."
+      ]
+     ]},
+    {"id": "m-arrow", "w": 5, "h": 5, "anchor": [0, 0], "palette": {".": null, "k": "#1a1020", "w": "#fbf6ff"},
+     "frames": [
+      [
+        ".kk..",
+        "kwwk.",
+        ".kwwk",
+        "kwwk.",
+        ".kk.."
+      ]
+     ]},
+    {"id": "m-spike", "w": 5, "h": 5, "anchor": [0, 0], "palette": {".": null, "k": "#1a1020", "w": "#fbf6ff"},
+     "frames": [
+      [
+        ".kk..",
+        "kwwk.",
+        "kwwwk",
+        "kwwk.",
+        ".kk.."
+      ]
+     ]},
+    {"id": "m-hammer", "w": 5, "h": 5, "anchor": [0, 0], "palette": {".": null, "k": "#1a1020", "w": "#fbf6ff"},
+     "frames": [
+      [
+        ".kkk.",
+        "kwwwk",
+        "kwwwk",
+        ".kwk.",
+        "..k.."
+      ]
+     ]},
+    {"id": "m-area", "w": 5, "h": 5, "anchor": [0, 0], "palette": {".": null, "k": "#1a1020", "w": "#fbf6ff"},
+     "frames": [
+      [
+        ".kkk.",
+        "kwkwk",
+        "kkwkk",
+        "kwkwk",
+        ".kkk."
+      ]
+     ]},
+    {"id": "m-heal", "w": 5, "h": 5, "anchor": [0, 0], "palette": {".": null, "k": "#1a1020", "w": "#fbf6ff"},
+     "frames": [
+      [
+        ".kkk.",
+        "kkwkk",
+        "kwwwk",
+        "kkwkk",
+        ".kkk."
+      ]
+     ]},
+    {"id": "m-splash", "w": 5, "h": 4, "anchor": [0, 0], "palette": {".": null, "k": "#1a1020", "w": "#fbf6ff"},
+     "frames": [
+      [
+        ".k.k.",
+        "kwkwk",
+        "kwwwk",
+        ".kkk."
+      ]
+     ]}
+  ]
+}

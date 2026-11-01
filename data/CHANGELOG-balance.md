@@ -8,6 +8,24 @@ replaces. None of it is open work, including headings that say "Open:". From mil
 entries measure or tune v2's round battle (SPEC §11, §12). "The backlog" in the entries below means
 v1's, now [archived](../docs/archive/v1/balance-backlog.md).
 
+## R4a-S2: the mark glyphs (2026-11-01)
+
+**Display only, no golden moved.** It rests on R4a's plan, agreed by the user on 2026-11-01 (R4/T007,
+`docs/r4a-plan.md`), and on R4-Q2 and §18.2 #55's answers: shared glyphs, the heal mark for the Tender. No number
+or rule changed: sprites aren't battle state, and no unit sprite declares a shape yet, so no frame the game draws
+changed.
+- **The glyphs** (R4/T021): `data/sprites/marks.json` (new), sheet `marks`, with no faction swap: `m-blade` (a
+  diagonal blade), `m-arrow` (an open arrowhead), `m-spike` (a solid point), `m-hammer` (a head on a haft),
+  `m-area` (an ×) and `m-heal` (a +), each 5 × 5, and the accent `m-splash` (5 × 4). Each has a spore-white
+  `#fbf6ff` core inside a dark `#1a1020` outline, so it reads on both sides' bodies. The arrow and the spike both
+  point to the front, so they read as one family (SPEC §5.8, §14.3).
+- **How they're used:** the atlas bakes `m-<mark>` onto a unit's frame at its sprite's `shape.markAt[frame]`, and the
+  accent at `shape.accentAt[frame]`, once R4a-S3 and S4 give the unit sprites their shape blocks. The registry checks
+  each shape against its unit and the sheet's bands.
+- **For the sheet review (R4/T026):** in 5 × 5 with an outline all round, a glyph's core is at most 3 × 3. So the
+  hammer's haft, the + and the × have 1-px strokes, short of §14.3's "every stroke at least 2 native px wide". If
+  they don't read at Twin Roots' 1.78×, the fix is a bigger glyph, which changes §14.3's 5 × 5.
+
 ## R4a-S1: the lineups and the pip (2026-11-01)
 
 **Display only, no golden moved.** It rests on R4a's plan, agreed by the user on 2026-11-01 (R4/T007,

@@ -156,8 +156,8 @@ describe('the pip and the rim', () => {
       const s = content.sprites[id]!;
       for (let f = 0; f < s.frames.length; f++) {
         for (const flip of [false, true]) {
-          const body = rows(framePixels(s, f, { flip }));
-          const rim = rows(rimPixels(s, f, flip));
+          const body = rows(framePixels(s, f, { flip, glyphs: content.sprites }));
+          const rim = rows(rimPixels(s, f, flip, content.sprites));
           const inBody = (x: number, y: number) => body[y - 1]?.[x - 1] === '#';
           for (let y = 0; y < s.h + 2; y++) {
             for (let x = 0; x < s.w + 2; x++) {
