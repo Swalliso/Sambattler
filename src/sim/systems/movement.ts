@@ -2,12 +2,13 @@
 // Movement and separation (SPEC §5.2). No pathfinding: units walk straight at their target, or
 // advance along the lane while drifting back to their spawn row; knitting trios walk to their
 // centroid (SPEC §5.6). Overlapping units are pushed apart by half their overlap each, for a fixed
-// number of passes, using the spatial hash.
+// number of passes, using the spatial hash. R1's tool-only `idleSeek` sends a unit with no target
+// at the nearest enemy it could target instead, as v2's rule has it.
 import { SIDES, other } from '../state.ts';
 import type { BattleState, CompiledTier, Side, UnitState } from '../state.ts';
 import { buildGrid, nearBuffer, queryNear } from '../spatial.ts';
 import { MAX_RADIUS, edgeDistance, tp } from '../targets.ts';
-import { buildingDef, clampToLane, rectDistance, tierDef, unitDef, unitRadius } from '../world.ts';
+import { buildingDef, clampToLane, reachesAir, rectDistance, tierDef, unitDef, unitRadius } from '../world.ts';
 import { turretPos } from './combat.ts';
 import { layWaves } from './spawning.ts';
 import { holdsLane, rallyX } from './stance.ts';
@@ -16,6 +17,7 @@ import { isRangedUnit } from './targeting.ts';
 export function movementSystem(state: BattleState): void {
   const r = state.rules;
   if (r.waves) prepareWaves(state);
+  if (r.test.idleSeek) prepareSeek(state);
   for (const u of state.units) {
     const t = tierDef(state, u);
     const rad = t.radius;
@@ -64,6 +66,18 @@ export function movementSystem(state: BattleState): void {
       u.x += dx > speed ? speed : dx < -speed ? -speed : dx;
     } else {
       const step = r.waves ? waveStep(state, u, speed) : speed;
+      if (r.test.idleSeek && seekPoint(state, u, rad)) {
+        // R1's tool-only idle seek (SPEC §5.2): step at the enemy instead of along the lane, capped as the advance is
+        const dx = seekAt.x - u.x, dy = seekAt.y - u.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist > 1e-9) {
+          const s = Math.min(step, dist);
+          u.x += (dx / dist) * s;
+          u.y += (dy / dist) * s;
+        }
+        clampToLane(state, u, rad);
+        continue;
+      }
       u.x += u.side === 'player' ? step : -step;
     }
     const dy = u.spawnY - u.y;
@@ -127,6 +141,62 @@ function waveStep(state: BattleState, u: UnitState, speed: number): number {
     if (!Number.isNaN(f)) step = Math.max(0, Math.min(step, u.side === 'player' ? f - gap - u.x : u.x - f - gap));
   }
   return step;
+}
+
+// R1's tool-only `idleSeek` (SPEC §5.2), rebuilt each tick: per side and lane, the indices in
+// `state.units` of the living units that aren't burrowed, and in `state.buildings` of the living
+// towers. Positions are read as units move, as a target's are.
+const seekUnits: Record<Side, number[][]> = { player: [], enemy: [] };
+const seekTowers: Record<Side, number[][]> = { player: [], enemy: [] };
+const seekAt = { x: 0, y: 0 };
+
+function prepareSeek(state: BattleState): void {
+  for (const side of SIDES) {
+    for (let li = 0; li < state.lanes.length; li++) {
+      (seekUnits[side][li] ??= []).length = 0;
+      (seekTowers[side][li] ??= []).length = 0;
+    }
+  }
+  for (let i = 0; i < state.units.length; i++) {
+    const v = state.units[i]!;
+    if (v.hp > 0 && !v.burrowed) seekUnits[v.side][v.lane]!.push(i);
+  }
+  for (let i = 0; i < state.buildings.length; i++) {
+    const b = state.buildings[i]!;
+    if (b.hp > 0 && buildingDef(state, b).kind === 'tower') seekTowers[b.side][b.lane]!.push(i);
+  }
+}
+
+/**
+ * R1's tool-only `idleSeek` (SPEC §5.2): is there an enemy in `u`'s lane that it could target? If so,
+ * `seekAt` is the nearest one's centre, by edge distance, ties to the lower id. The candidates are
+ * living units (not burrowed; a flyer only for a unit that can reach one) and living towers. A
+ * support unit seeks nothing, and a burst unit (combat rework `burster`) only the units it aims at:
+ * no flyer and no tower.
+ */
+function seekPoint(state: BattleState, u: UnitState, r: number): boolean {
+  const def = unitDef(state, u);
+  if (def.support) return false;
+  const enemy = other(u.side);
+  const burst = !!state.rules.burst && def.tags.includes('burst');
+  const air = !burst && reachesAir(state, u);
+  let best = 0, bestD = Infinity;
+  for (const i of seekUnits[enemy][u.lane]!) {
+    const v = state.units[i]!;
+    if (v.flying && !air) continue;
+    const dx = v.x - u.x, dy = v.y - u.y;
+    const d = Math.max(0, Math.sqrt(dx * dx + dy * dy) - r - unitRadius(state, v));
+    if (d < bestD || (d === bestD && v.id < best)) { best = v.id; bestD = d; seekAt.x = v.x; seekAt.y = v.y; }
+  }
+  if (!burst) {
+    for (const i of seekTowers[enemy][u.lane]!) {
+      const b = state.buildings[i]!;
+      const bd = buildingDef(state, b);
+      const d = Math.max(0, rectDistance(u.x, u.y, b.col, b.row, bd.w, bd.h) - r);
+      if (d < bestD || (d === bestD && b.id < best)) { best = b.id; bestD = d; seekAt.x = b.col + bd.w / 2; seekAt.y = b.row + bd.h / 2; }
+    }
+  }
+  return best !== 0;
 }
 
 /**
