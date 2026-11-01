@@ -155,8 +155,8 @@ describe('battle setup and rewards (SPEC §6.1, §6.5, §8.5–8.6)', () => {
   });
 
   it('the boss actually places its added Scythecap Grove during ordinary AI play', () => {
-    // it's one choice among many (about 1 battle in 10 by 3:00), so look across seeds
-    const placed = Array.from({ length: 10 }, (_, i) => {
+    // it's one choice among many (about 1 battle in 8 by 3:00 since M5's commander passive), so look across seeds
+    const placed = Array.from({ length: 30 }, (_, i) => {
       const run = createRun(content, { seed: i + 1, player: 'bot:balanced' });
       run.battles = Array.from({ length: 3 }, (_, j) => ({ index: j + 1 }) as RunState['battles'][number]);
       const state = createBattle(content, battleConfig(content, run, { kind: 'boss', map: 'stumpfield', general: 'scripted' }));

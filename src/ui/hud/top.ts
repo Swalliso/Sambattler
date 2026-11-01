@@ -14,7 +14,7 @@ import { uiIcon } from '../icons.ts';
 import { KIND_HINT, KIND_ICON, KIND_LABEL, intentOf, wavesText } from '../doctrine.ts';
 import type { Intent } from '../doctrine.ts';
 import { AnchoredTip } from '../tooltip.ts';
-import { goldTip, stormTip, supplyTip, territoryTip, waveTip } from './explain.ts';
+import { beatTip, goldTip, stormTip, supplyTip, territoryTip, waitingUnits, waveTip } from './explain.ts';
 import { KitView } from './kit.ts';
 
 /** A Heartcap's block: its cap, HP and a bar that drains toward the field's centre. */
@@ -50,6 +50,13 @@ class HeartBar {
     toggleClass(this.el, 'low', pct < 34);
   }
 }
+
+/**
+ * How tightly the chips sit when they don't fit between the Heartcaps (a 1280-wide window, most of all
+ * with the combat rework's beat chip): closer together, then also without the words their icons and
+ * tips carry ("supply", "Storm") and R's keycap. Each step is a class on the row.
+ */
+const TIGHT = ['', 'snug', 'terse'] as const;
 
 /** One lane's territory: your striped columns, the unclaimed ones, theirs, and the frontier between. */
 class LaneTug {
@@ -87,6 +94,15 @@ export class TopBand {
   private clock = h('small', { id: 'hud-clock' });
   private storm = h('b', { id: 'hud-storm' });
   private stormStat: HTMLElement;
+  /** Combat rework `waves`: seconds to the next beat, the units waiting for it, and a bar filling toward it. */
+  private beat = h('b', { id: 'hud-beat' });
+  private beatWaiting = h('small', { id: 'hud-beat-waiting' });
+  private beatFill = h('i');
+  private beatStat: HTMLElement | null = null;
+  private chips: HTMLElement;
+  /** The step of TIGHT the chips sit at, and their text's length when last measured (they're measured again only once it grows). */
+  private tight = 0;
+  private chipsLen = -1;
   private colsP = h('span', { class: 'p' });
   private colsE = h('span', { class: 'e' });
   private hearts: HeartBar[];
@@ -113,8 +129,8 @@ export class TopBand {
     ];
     this.lanes = state.lanes.map((_, i) => new LaneTug(i, state.map.width));
     this.goldStat = h('span', { class: 'chip gold', id: 'chip-gold' }, uiIcon(atlas, 'i-gold'), this.gold, this.income);
-    this.stormStat = h('span', { class: 'chip storm', id: 'chip-storm' }, uiIcon(atlas, 'i-storm'), h('small', null, 'Storm'), this.storm);
-    const supplyStat = h('span', { class: 'chip', id: 'chip-supply' }, uiIcon(atlas, 'i-supply'), this.supply, h('small', null, 'supply'));
+    this.stormStat = h('span', { class: 'chip storm', id: 'chip-storm' }, uiIcon(atlas, 'i-storm'), h('small', { class: 'word' }, 'Storm'), this.storm);
+    const supplyStat = h('span', { class: 'chip', id: 'chip-supply' }, uiIcon(atlas, 'i-supply'), this.supply, h('small', { class: 'word' }, 'supply'));
     const waveStat = h('span', { class: 'chip', id: 'chip-wave' }, uiIcon(atlas, 'i-wave'), h('small', null, 'Wave'), this.wave, this.clock);
     this.kit = new KitView(content, atlas, state);
     const lanes = state.lanes.length;
@@ -123,11 +139,18 @@ export class TopBand {
     this.tip.attach(supplyStat, supplyTip(content, atlas, state));
     this.tip.attach(waveStat, waveTip(content, atlas, state));
     this.tip.attach(this.stormStat, stormTip(content, atlas, state));
+    if (state.rules.waves) {
+      // the wave sets out (Advance's chevrons), not Hold's shield: the beat is when a lane that isn't held advances
+      this.beatStat = h('span', { class: 'chip beat', id: 'chip-beat', 'aria-label': 'Next wave' }, uiIcon(atlas, 'i-advance'), this.beat, this.beatWaiting,
+        h('span', { class: 'beatbar', 'aria-hidden': 'true' }, this.beatFill));
+      this.tip.attach(this.beatStat, beatTip(content, atlas, state));
+    }
     this.tip.attach(tug, territoryTip(content, atlas, state));
+    this.chips = h('div', { class: 'chips', 'data-native-tab': '' }, this.goldStat, supplyStat, waveStat, this.beatStat, this.stormStat, this.kit.chip);
     this.el = h('header', { class: 'top' },
       this.hearts[0]!.el,
       h('div', { class: 'mid' },
-        h('div', { class: 'chips', 'data-native-tab': '' }, this.goldStat, supplyStat, waveStat, this.stormStat, this.kit.chip),
+        this.chips,
         tug,
         h('div', { class: 'tug-label', id: 'hud-columns' }, this.colsP, h('span', { class: 'muted' }, 'territory'), this.colsE),
       ),
@@ -191,6 +214,15 @@ export class TopBand {
     setText(this.wave, String(state.phase === 'deploy' ? 0 : wave));
     setText(this.clock, formatClock(state.tick, state.rules.tickRate));
     setText(this.storm, String(state.sporestorm));
+    if (this.beatStat) {
+      const beat = state.compiled.player.waveBeatTicks!;
+      const left = state.phase === 'deploy' ? beat : beat - (state.tick % beat);
+      setText(this.beat, `${Math.ceil(left / state.rules.tickRate)}s`);
+      const waiting = waitingUnits(state, 'player');
+      setText(this.beatWaiting, waiting ? `+${waiting}` : '');
+      this.beatFill.style.width = `${Math.round((100 * (beat - left)) / beat)}%`;
+      toggleClass(this.beatStat, 'soon', left <= 3 * state.rules.tickRate);
+    }
     toggleClass(this.stormStat, 'on', state.sporestorm > 0);
     for (const b of this.hearts) b.update(state);
     for (const l of this.lanes) l.update(state);
@@ -200,6 +232,31 @@ export class TopBand {
     this.renderIntent(intentOf(state));
     this.tip.refresh();
     this.kit.update(state);
+    this.fitChips();
+  }
+
+  /** Lays the chips out afresh (a resize, or the fonts arriving): as designed, and tighter only if they don't fit. */
+  fit(): void {
+    this.tight = 0;
+    this.chips.classList.remove(...TIGHT.filter(Boolean));
+    this.chipsLen = -1;
+    this.fitChips();
+  }
+
+  /**
+   * Tightens the chips a step at a time until the row fits between the Heartcaps. Their numbers grow
+   * during a battle (four-digit gold, two-digit relics), so the row is measured whenever its text gets
+   * longer; it never loosens until the next fit(), so the chips don't flicker as a count crosses a digit.
+   */
+  private fitChips(): void {
+    if (this.tight === TIGHT.length - 1 || !this.chips.isConnected) return;
+    const len = this.chips.textContent!.length;
+    if (len <= this.chipsLen) return;
+    this.chipsLen = len;
+    while (this.tight < TIGHT.length - 1 && this.chips.scrollWidth > this.chips.clientWidth) {
+      this.tight++;
+      this.chips.classList.add(TIGHT[this.tight]!);
+    }
   }
 
   /** Puts keyboard focus on the gold chip (its tip opens); Tab then moves along the band's chips. */

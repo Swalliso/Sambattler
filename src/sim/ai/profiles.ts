@@ -32,6 +32,7 @@ export function resolveAiProfile(
   let limits: Record<string, { maxOwned?: number; afterSeconds?: number }> = {};
   let spawnerDepthWeight = rules.ai.score.spawnerDepth;
   let mergePolicy: MergePolicy = 'on';
+  let fixed = false;
   const mono = ctl.kind === 'bot' ? ctl.id.match(/^mono:(.+)$/) : null;
   if (ctl.kind === 'general') {
     const g = content.generals[ctl.id];
@@ -50,9 +51,18 @@ export function resolveAiProfile(
     if (!bot) throw new Error(`unknown bot ${ctl.id}`);
     opener = bot.opener; weights = bot.weights; limits = bot.limits ?? {};
     mergePolicy = bot.mergePolicy;
+    fixed = !!bot.fixedWeights;
     if (bot.placement?.spawnerDepthWeight !== undefined) spawnerDepthWeight = bot.placement.spawnerDepthWeight;
   }
   if (side.aiWeights) weights = { ...weights, ...side.aiWeights };
+  // prototype content (the combat rework's Rhizomorph): a building with an `aiWeight` joins every
+  // profile that doesn't list it, except a mono bot's and a test bot's (`fixedWeights`)
+  if (!mono && !fixed) {
+    for (const id of content.buildingOrder) {
+      const w = content.buildings[id]!.aiWeight;
+      if (w !== undefined && weights[id] === undefined) weights = { ...weights, [id]: w };
+    }
+  }
   const list: AiWeight[] = [];
   for (const id of content.buildingOrder) {
     const w = weights[id];
@@ -65,6 +75,9 @@ export function resolveAiProfile(
       afterTick: Math.round((lim.afterSeconds ?? 0) * rules.tickRate),
     });
   }
+  // a bot playing a run's kit (a commander's starter, SPEC §11.10) skips opener buildings it doesn't own;
+  // a general's opener must fit its kit
+  if (ctl.kind === 'bot') opener = opener.filter((id) => side.kit.includes(id));
   for (const id of opener) if (!side.kit.includes(id)) throw new Error(`${ctl.kind}:${ctl.id} opener uses ${id}, which is not in its kit`);
   const ai: AiState = {
     profileId: `${ctl.kind}:${ctl.id}`,

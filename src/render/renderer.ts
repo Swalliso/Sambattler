@@ -11,8 +11,11 @@ import type { Content } from '../data/registry.ts';
 import {
   canMerge, frontierBlocked, holdsLane, isSuppressed, lanePresence, rallyX, turretPos,
 } from '../sim/index.ts';
-import type { BattleState, BuildingState, Command, CompiledBuilding, Side, UnitState } from '../sim/index.ts';
+import type { BattleState, BuildingState, Command, CompiledBuilding, Effectiveness, Side, SimEvent, Tier, UnitState } from '../sim/index.ts';
 import { positionalValue } from '../sim/effects.ts';
+import { airMeleeEffectiveness } from '../sim/systems/combat.ts';
+import type { HitUnit } from '../sim/systems/combat.ts';
+import { findBuilding, findUnit } from '../sim/world.ts';
 import type { Atlas, Faction } from './atlas.ts';
 import { Effects } from './effects.ts';
 
@@ -20,11 +23,16 @@ export const TILE = 16;
 const STRIP = 2; // Heartcap strip width in tiles on each side
 /** Sprite scale per merge tier (SPEC §10.4: "a slightly larger sprite"). */
 const TIER_SCALE = [1, 1.25, 1.5];
+/** Combat rework `flyers`: how far a flyer's sprite floats above its shadow, in pixels (half a tile). */
+export const FLY_LIFT = 8;
 /** "Big hits only" shows damage numbers from this amount up. */
 export const BIG_HIT = 30;
 export type DamageNumbers = 'off' | 'big' | 'all';
 
 export interface Ghost { buildingId: string; col: number; row: number; legal: boolean }
+/** The commander power's aim while targeting: a point and radius, or the lanes a global power would take. */
+export interface Reticle { x: number; y: number; radius: number; valid: boolean }
+export interface PowerAim { reticle: Reticle | null; lanes: number[] | null; pending: { x: number; y: number; radius: number }[] }
 export interface View {
   ghost: Ghost | null;
   /** While placing: 1 per map tile (row-major) where the building could go, drawn as a soft lilac grid. */
@@ -33,6 +41,8 @@ export interface View {
   pending: Command[];
   debug: boolean;
   timeMs: number;
+  /** The power's reticle or lane highlights while targeting, and power uses queued but not yet run. */
+  power?: PowerAim | null;
 }
 
 export const factionOf = (side: Side): Faction => (side === 'player' ? 'velvet-bloom' : 'gray-rot');
@@ -106,6 +116,39 @@ export function teamMark(g: CanvasRenderingContext2D, cx: number, footY: number,
   }
 }
 
+/**
+ * The effectiveness a hit's spark and damage number show: the sim's class, except for a ground unit's
+ * melee hit on a flyer (combat rework `flyers`), which the sim classes before the flyer's × meleeMult,
+ * so it shows the class of what it deals (airMeleeEffectiveness). `last` holds the field's units after
+ * the tick before, by id, so a hit on or by a unit felled this tick still reads. Without flyers, the
+ * sim's class.
+ */
+export function shownEffectiveness(state: BattleState, e: Extract<SimEvent, { t: 'hit' }>, last: ReadonlyMap<number, UnitState>): Effectiveness {
+  if (!state.rules.flying || e.src <= 0 || e.target <= 0) return e.eff;
+  const target = fighter(state, e.target, last);
+  if (!target?.flying) return e.eff;
+  const src = fighter(state, e.src, last);
+  return (src && airMeleeEffectiveness(state, src, target)) ?? e.eff;
+}
+
+/**
+ * Unit `id` as it fought this tick: on the field, felled this tick (in `last`), or born and felled this
+ * tick, which its events give (a spawn is tier 1, a merge its tier). Undefined for a building.
+ */
+function fighter(state: BattleState, id: number, last: ReadonlyMap<number, UnitState>): HitUnit | undefined {
+  const u = findUnit(state, id) ?? last.get(id);
+  if (u || findBuilding(state, id)) return u;
+  let fell: Extract<SimEvent, { t: 'died' }> | undefined;
+  let tier: Tier | 0 = 0;
+  for (const e of state.events) {
+    if (e.t === 'died' && e.id === id) fell = e;
+    else if (e.t === 'spawned' && e.id === id) tier = 1;
+    else if (e.t === 'merged' && e.id === id) tier = e.tier;
+  }
+  if (!fell || !tier) return undefined;
+  return { side: fell.side, unitId: fell.unitId, tier, flying: state.compiled[fell.side].units[fell.unitId]!.tags.includes('flying') };
+}
+
 export class Renderer {
   readonly canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
@@ -118,9 +161,13 @@ export class Renderer {
   readonly labels = new Effects(256);
   /** Each economy building's gold total at the last income tick, so a coin pop shows what it just paid. */
   private goldSeen = new Map<string, number>();
+  /** Combat rework `flyers`: the field's units after the last tick, by id, for shownEffectiveness. */
+  private lastUnits = new Map<number, UnitState>();
   damageNumbers: DamageNumbers = 'off';
   /** A bar under each of your spawners, filling toward its next spawn (the settings screen). */
   spawnTimers = true;
+  /** Ambient motion holds still (`?test=1`, set by the battle view): flyers don't bob. */
+  still = false;
   private assist = false;
   private sorted: UnitState[] = [];
   private eligible: UnitState[] = [];
@@ -146,6 +193,14 @@ export class Renderer {
     for (const side of ['player', 'enemy'] as Side[]) {
       for (const [id, gold] of Object.entries(state.stats[side].goldByBuilding)) this.goldSeen.set(`${side}:${id}`, gold);
     }
+    this.noteUnits(state);
+  }
+
+  /** Combat rework `flyers`: keeps the field's units, so the next tick's hits on units it fells still read. */
+  private noteUnits(state: BattleState): void {
+    if (!state.rules.flying) return;
+    this.lastUnits.clear();
+    for (const u of state.units) this.lastUnits.set(u.id, u);
   }
 
   /** Color-blind assist: team marks under units and bolder mat textures (the mats rebake when it changes). */
@@ -230,7 +285,8 @@ export class Renderer {
   onTick(state: BattleState, now: number): void {
     for (const e of state.events) {
       if (e.t === 'hit') {
-        const eff = e.eff === 'strong' ? 1 : e.eff === 'weak' ? 3 : 2;
+        const shown = shownEffectiveness(state, e, this.lastUnits);
+        const eff = shown === 'strong' ? 1 : shown === 'weak' ? 3 : 2;
         this.effects.add(eff, e.x, e.y, now, e.splash ? 1 : 0);
         if (this.damageNumbers === 'all' || (this.damageNumbers === 'big' && e.amount >= BIG_HIT)) this.labels.add(9, e.x, e.y, now, eff, e.amount);
       } else if (e.t === 'merged') this.labels.add(8, e.x, e.y, now, e.tier, e.side === 'player' ? 0 : 1);
@@ -238,11 +294,21 @@ export class Renderer {
       else if (e.t === 'healed') this.effects.add(10, e.x, e.y, now, 0);
       else if (e.t === 'buildingDestroyed') this.effects.add(6, e.col + 1, e.row + 1, now, 0);
       else if (e.t === 'income') this.coinPops(state, e.side, now);
+      else if (e.t === 'power' && e.x !== undefined && e.y !== undefined) {
+        const def = state.library.powers?.[e.power];
+        this.effects.add(12, e.x, e.y, now, e.side === 'player' ? 0 : 1, def && def.target === 'point' ? def.radius : 2);
+      } else if (e.t === 'heartcapBreach') {
+        // Heartcap breach prototype: a ring the size of the breach's pulse, when it has one
+        const pulse = state.compiled[e.side].triggers.find((t) => t.on === 'heartcapBreach' && t.at === e.at)?.do.find((a) => 'explode' in a);
+        if (pulse && 'explode' in pulse) this.effects.add(12, e.x, e.y, now, e.side === 'player' ? 0 : 1, pulse.explode.radius);
+      }
+      else if (e.t === 'burst') this.effects.add(13, e.x, e.y, now, e.side === 'player' ? 0 : 1, e.radius); // combat rework Burster
       else if (e.t === 'spawned') {
         const u = state.units.find((x) => x.id === e.id);
         if (u) this.effects.add(7, u.x, u.y, now, 0);
       }
     }
+    this.noteUnits(state);
   }
 
   /** A coin pop over each of a side's economy buildings that paid out this income tick. */
@@ -288,6 +354,8 @@ export class Renderer {
       if (b.hp < b.maxHp) this.bar(x + 2, y + 1, def.w * TILE - 4, b.hp / b.maxHp, b.side);
       if (besieged) this.glyph('½', x + def.w * TILE - 7, y + 10, '#ffb4a8');
       if (b.holding) this.glyph('⬢!', x + 2, y + 10, '#f0c85a');
+      // combat rework `waves`: the units waiting inside for the next wave
+      if (b.stored) this.glyph(`+${b.stored}`, x + 2, y + def.h * TILE - 3, this.mat(b.side).glow);
       if (def.spawn && !b.mergeOn) this.knotOff(x + def.w * TILE - 9, y + def.h * TILE - 9, this.mat(b.side).glow);
       if (this.spawnTimers && def.spawn && b.side === 'player') this.spawnTimer(state, b, def, x, y);
     }
@@ -310,36 +378,21 @@ export class Renderer {
       }
     }
 
+    if (state.clouds?.length) this.drawClouds(state, t);
     this.drawMergeLinks(state, alpha, t);
 
-    // units, sorted by y then id; merged units are drawn larger, with tier pips
+    // units, sorted by y then id; merged units are drawn larger, with tier pips; flyers (combat rework
+    // `flyers`) go last, over every ground unit, raised above their shadows
     const us = this.sorted;
     us.length = 0;
     for (const u of state.units) us.push(u);
     us.sort((a, b) => a.y - b.y || a.id - b.id);
+    let flyers = false;
     for (const u of us) {
-      const x = u.px + (u.x - u.px) * alpha;
-      const y = u.py + (u.y - u.py) * alpha;
-      const sprite = this.content.units[u.unitId]!.sprite;
-      const moving = u.x !== u.px || u.y !== u.py;
-      const attacking = state.tick - u.lastAttackTick < 6 && u.lastAttackTick >= 0;
-      const frame = attacking ? 2 : moving ? Math.floor(t / 250 + u.id) % 2 : 0;
-      const flip = u.side === 'enemy';
-      const r = this.atlas.get(sprite, factionOf(u.side), frame, flip);
-      if (!r) continue;
-      const scale = TIER_SCALE[u.tier - 1]!;
-      const w = Math.round(r.w * scale), hgt = Math.round(r.h * scale);
-      const dx = Math.round(this.sx(x) - r.ax * scale), dy = Math.round(y * TILE - r.ay * scale);
-      if (u.tier === 3) this.elderAura(this.sx(x), y * TILE, w, this.mat(u.side).glow, t + u.id * 37);
-      if (this.assist) teamMark(g, Math.round(this.sx(x)), Math.round(y * TILE), w, u.side);
-      g.drawImage(this.atlas.canvas as CanvasImageSource, r.x, r.y, r.w, r.h, dx, dy, w, hgt);
-      if (u.id === view.selected) {
-        g.strokeStyle = '#ffe9a8';
-        g.strokeRect(dx - 0.5, dy - 0.5, w + 1, hgt + 1);
-      }
-      if (u.tier > 1) this.pips(Math.round(this.sx(x)), dy - (u.hp < u.maxHp ? 7 : 4), u.tier - 1);
-      if (u.hp < u.maxHp) this.bar(dx + 1, dy - 3, w - 2, u.hp / u.maxHp, u.side);
+      if (u.flying) flyers = true;
+      else this.drawUnit(state, view, u, alpha, t);
     }
+    if (flyers) for (const u of us) if (u.flying) this.drawUnit(state, view, u, alpha, t);
     this.drawKnits(state, alpha, t);
 
     // projectiles
@@ -380,6 +433,7 @@ export class Renderer {
     }
 
     if (view.ghost) this.drawGhost(view.ghost, state);
+    if (view.power) this.drawPowerAim(view.power, state, t);
     if (view.debug) this.drawDebug(state, view);
   }
 
@@ -419,9 +473,125 @@ export class Renderer {
     }
   }
 
-  /** Prototype E1: a marching dashed rally line, topped by a pennant, in every lane a side holds. */
+  /**
+   * Combat rework `sporeCloud`: each cloud is a soft spore haze in its owner's glow, clipped to its
+   * lane, with spores drifting in it; it thins over its last quarter.
+   */
+  private drawClouds(state: BattleState, t: number): void {
+    const g = this.ctx;
+    for (const cl of state.clouds!) {
+      const L = state.lanes[cl.lane]!;
+      const fade = Math.min(1, (4 * (cl.untilTick - state.tick)) / Math.max(1, cl.untilTick - cl.fromTick));
+      const cx = this.sx(cl.x), cy = cl.y * TILE, r = cl.radius * TILE;
+      g.save();
+      g.beginPath();
+      g.rect(0, L.rowStart * TILE, this.width, (L.rowEnd + 1 - L.rowStart) * TILE);
+      g.clip();
+      g.fillStyle = this.mat(cl.side).glow;
+      g.globalAlpha = 0.14 * fade;
+      g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.fill();
+      g.globalAlpha = 0.22 * fade;
+      g.beginPath(); g.arc(cx, cy, r * 0.62, 0, Math.PI * 2); g.fill();
+      g.globalAlpha = 0.85 * fade;
+      g.fillStyle = '#fbf6ff'; // spore-white: spores are the one particle
+      for (let i = 0; i < 10; i++) {
+        const a = i * 2.39996 + cl.id + t * 0.0007 * (i % 2 ? 1 : -1);
+        const d = r * (0.2 + (0.75 * ((i * 37 + cl.id * 13) % 10)) / 10);
+        g.fillRect(Math.round(cx + Math.cos(a) * d), Math.round(cy + Math.sin(a) * d * 0.8), 1, 1);
+      }
+      g.restore();
+    }
+  }
+
+  /**
+   * One unit: its sprite at its foot point (merged units larger, with tier pips), shield ring, HP bar
+   * and selection box. A tunnelling Rhizomorph is a mound; a flyer floats `FLY_LIFT` px above a shadow
+   * on the ground, bobbing a pixel unless ambient motion holds still.
+   */
+  private drawUnit(state: BattleState, view: View, u: UnitState, alpha: number, t: number): void {
+    const g = this.ctx;
+    const x = u.px + (u.x - u.px) * alpha;
+    const y = u.py + (u.y - u.py) * alpha;
+    if (u.burrowed) { this.mound(this.sx(x), y * TILE, u, t, view.selected === u.id); return; }
+    const sprite = this.content.units[u.unitId]!.sprite;
+    const moving = u.x !== u.px || u.y !== u.py;
+    const attacking = state.tick - u.lastAttackTick < 6 && u.lastAttackTick >= 0;
+    const frame = attacking ? 2 : moving ? Math.floor(t / 250 + u.id) % 2 : 0;
+    const flip = u.side === 'enemy';
+    const r = this.atlas.get(sprite, factionOf(u.side), frame, flip);
+    if (!r) return;
+    const scale = TIER_SCALE[u.tier - 1]!;
+    const w = Math.round(r.w * scale), hgt = Math.round(r.h * scale);
+    const lift = u.flying ? FLY_LIFT + (this.calm() ? 0 : Math.floor(t / 320 + u.id) % 2) : 0;
+    const dx = Math.round(this.sx(x) - r.ax * scale), dy = Math.round(y * TILE - r.ay * scale) - lift;
+    if (this.assist) teamMark(g, Math.round(this.sx(x)), Math.round(y * TILE), w, u.side);
+    if (u.flying) this.flyerShadow(this.sx(x), y * TILE, w);
+    if (u.tier === 3) this.elderAura(this.sx(x), y * TILE - lift, w, this.mat(u.side).glow, t + u.id * 37);
+    g.drawImage(this.atlas.canvas as CanvasImageSource, r.x, r.y, r.w, r.h, dx, dy, w, hgt);
+    if (u.shield) this.shieldRing(this.sx(x), dy + hgt / 2, w, hgt, u.shield / Math.max(1, u.maxHp * (state.rules.mixed?.shieldFrac ?? 1)));
+    if (u.id === view.selected) {
+      g.strokeStyle = '#ffe9a8';
+      g.strokeRect(dx - 0.5, dy - 0.5, w + 1, hgt + 1);
+    }
+    if (u.tier > 1) this.pips(Math.round(this.sx(x)), dy - (u.hp < u.maxHp ? 7 : 4), u.tier - 1);
+    if (u.hp < u.maxHp) this.bar(dx + 1, dy - 3, w - 2, u.hp / u.maxHp, u.side);
+  }
+
+  /** Ambient motion holds still: `?test=1` (set by the battle view) or reduced motion. */
+  private calm(): boolean {
+    return this.still || (typeof document !== 'undefined' && document.documentElement.classList.contains('reduce-motion'));
+  }
+
+  /** Combat rework `flyers`: a soft dark oval on the ground under a flyer, where it really stands. */
+  private flyerShadow(cx: number, footY: number, w: number): void {
+    const g = this.ctx;
+    const x = Math.round(cx), y = Math.round(footY);
+    const half = Math.max(3, Math.round(w * 0.3));
+    g.fillStyle = 'rgba(18, 10, 22, 0.4)';
+    g.fillRect(x - half, y - 1, half * 2, 2);
+    g.fillRect(x - half + 2, y - 2, half * 2 - 4, 1);
+    g.fillRect(x - half + 2, y + 1, half * 2 - 4, 1);
+  }
+
+  /** Combat rework (the Rhizomorph): a tunnelling unit is a mound of earth on the move, kicking up crumbs behind it. */
+  private mound(cx: number, footY: number, u: UnitState, t: number, selected: boolean): void {
+    const g = this.ctx;
+    const x = Math.round(cx), y = Math.round(footY);
+    // a dark outline, the earth, a lit crest and a glowing seam where the hyphae break the surface
+    g.fillStyle = INK_DEEP;
+    g.fillRect(x - 8, y - 3, 16, 4);
+    g.fillRect(x - 6, y - 5, 12, 2);
+    g.fillRect(x - 3, y - 6, 6, 1);
+    g.fillStyle = '#5c4330';
+    g.fillRect(x - 7, y - 3, 14, 3);
+    g.fillRect(x - 5, y - 5, 10, 2);
+    g.fillStyle = '#7a5236';
+    g.fillRect(x - 4, y - 5, 6, 1);
+    g.fillRect(x - 2, y - 6, 3, 1);
+    g.fillStyle = this.mat(u.side).glow;
+    g.fillRect(x - 3, y - 2, 1, 1);
+    g.fillRect(x + 1, y - 3, 1, 1);
+    g.fillRect(x + 4, y - 2, 1, 1);
+    // crumbs thrown up behind it as it goes
+    const back = u.side === 'player' ? -1 : 1;
+    g.fillStyle = '#7a5236';
+    for (let i = 0; i < 4; i++) {
+      const k = (Math.floor(t / 110) + u.id + i) % 5;
+      g.fillRect(x + back * (8 + 2 * k), y - 2 - (k % 3), 1, 1);
+    }
+    if (selected) {
+      g.strokeStyle = '#ffe9a8';
+      g.strokeRect(x - 9.5, y - 7.5, 19, 10);
+    }
+  }
+
+  /**
+   * Prototype E1: a marching dashed rally line, topped by a pennant, in every lane a side holds. Under
+   * the combat rework's waves a hold keeps the wave in its buildings, so only the pennant shows.
+   */
   private drawRally(state: BattleState, t: number): void {
     const g = this.ctx;
+    const waves = !!state.rules.waves;
     for (const side of ['player', 'enemy'] as Side[]) {
       for (let li = 0; li < state.lanes.length; li++) {
         if (!holdsLane(state, side, li)) continue;
@@ -432,10 +602,10 @@ export class Renderer {
         const shift = Math.floor(t / 120) % 6;
         g.globalAlpha = 0.55;
         g.fillStyle = '#120a16'; // a dark backing stripe keeps the line readable on the side's own mat
-        g.fillRect(x - 1, top, 3, bottom - top);
+        g.fillRect(x - 1, top, 3, waves ? 7 : bottom - top);
         g.globalAlpha = 0.95;
         g.fillStyle = glow;
-        for (let y = top + 6 + shift; y < bottom; y += 6) g.fillRect(x, y, 1, 3);
+        if (!waves) for (let y = top + 6 + shift; y < bottom; y += 6) g.fillRect(x, y, 1, 3);
         g.fillRect(x, top, 1, 6);
         const dir = side === 'player' ? -1 : 1; // the pennant flies back toward home
         for (let i = 0; i < 4; i++) g.fillRect(dir < 0 ? x - 1 - i : x + 1, top + i / 2, i + 1, 4 - i);
@@ -568,6 +738,25 @@ export class Renderer {
     g.globalAlpha = 1;
   }
 
+  /**
+   * Combat rework `mixedWave`: a pale bubble round a shielded unit, fading as the shield wears down
+   * (`frac`: what is left of the shield it set out with).
+   */
+  private shieldRing(cx: number, cy: number, w: number, h: number, frac: number): void {
+    const g = this.ctx;
+    const k = Math.max(0, Math.min(1, frac));
+    g.globalAlpha = 0.2 + 0.5 * k;
+    g.strokeStyle = '#cfe8ff';
+    g.lineWidth = 1;
+    g.beginPath();
+    g.ellipse(Math.round(cx) + 0.5, Math.round(cy) + 0.5, w * 0.62 + 1, h * 0.58 + 1, 0, 0, Math.PI * 2);
+    g.stroke();
+    g.globalAlpha = 0.08 + 0.1 * k;
+    g.fillStyle = '#cfe8ff';
+    g.fill();
+    g.globalAlpha = 1;
+  }
+
   /** "Merge off" status glyph: a knot struck through. */
   private knotOff(x: number, y: number, color: string): void {
     const g = this.ctx;
@@ -660,6 +849,65 @@ export class Renderer {
     g.strokeRect(x + 0.5, y + 0.5, def.w * TILE - 1, def.h * TILE - 1);
     const a = def.attack;
     if (a) this.ring(gh.col + def.w / 2, gh.row + def.h / 2, a.range, '#c9a2ff');
+  }
+
+  /**
+   * The commander power while aiming (SPEC §10.3): a reticle (crosshair and the radius ring, pulsing
+   * lilac, red where it can't fire) at the cursor, or for a global power a wash over each frontier column
+   * it would take; and a dashed ring on each use queued while paused.
+   */
+  private drawPowerAim(aim: PowerAim, state: BattleState, t: number): void {
+    const g = this.ctx;
+    if (aim.lanes) {
+      g.fillStyle = '#c9a2ff';
+      for (const li of aim.lanes) {
+        const L = state.lanes[li]!;
+        const top = L.rowStart * TILE, h = (L.rowEnd + 1 - L.rowStart) * TILE;
+        const x = this.sx(L.pBorder + 1);
+        g.globalAlpha = 0.18 + 0.1 * Math.sin(t / 160);
+        g.fillRect(x, top, TILE, h);
+        g.globalAlpha = 0.9;
+        g.fillRect(x, top, 1, h);
+        g.fillRect(x + TILE - 1, top, 1, h);
+      }
+      g.globalAlpha = 1;
+    }
+    const r = aim.reticle;
+    if (r) {
+      const color = r.valid ? '#c9a2ff' : '#e0645a';
+      const cx = Math.round(this.sx(r.x)), cy = Math.round(r.y * TILE), rad = r.radius * TILE;
+      // a soft wash that breathes, inside a steady 2 px ring with a dark edge so it reads on any ground
+      g.fillStyle = color;
+      g.globalAlpha = 0.1 + 0.05 * Math.sin(t / 140);
+      g.beginPath();
+      g.arc(cx, cy, rad, 0, Math.PI * 2);
+      g.fill();
+      g.globalAlpha = 0.7;
+      g.strokeStyle = '#120a16';
+      g.lineWidth = 4;
+      g.beginPath();
+      g.arc(cx, cy, rad, 0, Math.PI * 2);
+      g.stroke();
+      g.globalAlpha = 1;
+      g.strokeStyle = color;
+      g.lineWidth = 2;
+      g.stroke();
+      g.lineWidth = 1;
+      // the crosshair: four ticks around a centre dot
+      g.fillRect(cx, cy, 1, 1);
+      g.fillRect(cx - 6, cy, 4, 1);
+      g.fillRect(cx + 3, cy, 4, 1);
+      g.fillRect(cx, cy - 6, 1, 4);
+      g.fillRect(cx, cy + 3, 1, 4);
+    }
+    g.strokeStyle = '#c9a2ff';
+    g.setLineDash([3, 3]);
+    for (const p of aim.pending) {
+      g.beginPath();
+      g.arc(Math.round(this.sx(p.x)) + 0.5, Math.round(p.y * TILE) + 0.5, p.radius * TILE, 0, Math.PI * 2);
+      g.stroke();
+    }
+    g.setLineDash([]);
   }
 
   ring(cx: number, cy: number, r: number, color: string): void {

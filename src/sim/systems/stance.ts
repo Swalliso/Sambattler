@@ -1,4 +1,5 @@
-// Prototype E1 (balance `laneStance`, docs/engagement-review.md): a per-lane Hold / Advance command.
+// Retired in SPEC v2 (Appendix A): rounds field whole armies, so R2 removes Hold. Fix bugs only.
+// Prototype E1 (balance `laneStance`, docs/archive/v1/engagement-review.md): a per-lane Hold / Advance command.
 // A held lane's idle units gather at a rally line just inside the side's border column, so spawns
 // mass into a wave instead of trickling out; Advance releases them together. The hold times out on
 // its own, and a lane that advances can't hold again until its cooldown ends.
@@ -25,10 +26,10 @@ export function setStance(state: BattleState, side: Side, lane: number, hold: bo
   state.events.push({ t: 'stance', side, lane, hold, auto });
 }
 
-/** Releases every hold that has run for `maxHoldTicks`. */
+/** Releases every hold that has run for `maxHoldTicks` (under the combat rework's waves, the beat spends holds instead). */
 export function stanceSystem(state: BattleState): void {
   const rules = state.rules.stance;
-  if (!rules) return;
+  if (!rules || state.rules.waves) return;
   for (const side of ['player', 'enemy'] as const) {
     const lanes = state.sides[side].stance!;
     for (let li = 0; li < lanes.length; li++) {

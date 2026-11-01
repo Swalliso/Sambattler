@@ -10,3 +10,9 @@ export const BUILD_SHA = String(import.meta.env.VITE_COMMIT ?? '').slice(0, 7);
 
 /** A localStorage key for this build. The game's keys must never change, or players lose their saves. */
 export const storageKey = (key: string): string => (DEV_SITE ? `dev/${key}` : key);
+
+/**
+ * Where a prototype run (`?proto=`) saves: on the dev site, under keys of its own for each spec, so it
+ * never resumes or overwrites the real save or another prototype's run. The game never saves one (null).
+ */
+export const protoSpace = (proto: string): string | null => (DEV_SITE ? `proto=${proto}/` : null);

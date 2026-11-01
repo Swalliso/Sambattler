@@ -1,8 +1,9 @@
-// The battle HUD (docs/ui-ux-plan.md, Phase 1b): both Heartcaps frame the top band, Begin and its hint
+// The battle HUD (docs/archive/v1/ui-ux-plan.md, Phase 1b): both Heartcaps frame the top band, its chips stay clear
+// of their labels (also with the combat rework's beat chip), Begin and its hint
 // stay off the field, the tray never clips or scrolls sideways (two compact rows when 14 cards don't fit
 // one row), unaffordable cards are unlit rather than faded, legal tiles light up while placing, the
 // ghost tip stays beside its footprint inside the field, the cog opens the settings screen (and pauses),
-// and battle 1's economy tip still fires.
+// F says when Hold is ready if no lane can hold yet, and battle 1's economy tip still fires.
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { chromium } from 'playwright';
 import type { Browser, Page } from 'playwright';
@@ -58,6 +59,36 @@ describe('the top band', () => {
     // nothing is pinned to the field's corners any more
     expect(await page.locator('.fieldwrap .hp').count()).toBe(0);
   });
+
+  // the combat rework's beat chip ran the row over "GRAY ROT HEARTCAP" at 1280 px (docs/archive/v1/ideas/after-the-rework.md);
+  // a battle 2:00 in, with a run's late numbers: four-digit gold, two-digit relics and upgrade levels
+  const RELICS = ['thickCaps', 'fruitingSeason', 'rotWard', 'quickRoots', 'freshSpores', 'hardySpores', 'rootStipend', 'deepCellars', 'sporeTithe', 'forwardSpores'];
+  for (const [width, height] of [[1280, 720], [1366, 650]] as const) {
+    for (const proto of ['', 'rework']) {
+      it(`keeps the chips clear of both Heartcaps' labels at ${width}×${height}${proto ? ' with the rework' : ''}`, async () => {
+        page = await open(`/?map=bogwater-hollow&enemy=general:mother-mold&player=bot:balanced&seed=1&test=1&ticks=2400&paused=1${proto ? `&proto=${proto}` : ''}`, width, height);
+        await page.evaluate((relics) => {
+          const p = window.__GAME__!.battle()!.sides.player;
+          p.gold = 1888;
+          p.relics.push(...relics);
+          p.upgrades = { sporelingBurrow: 3, capguardHall: 3, gillNest: 3, truffleCellar: 3 };
+        }, RELICS);
+        await expect.poll(() => page!.locator('#kit-btn').getAttribute('aria-label')).toContain('10 relics, 12 upgrade levels');
+        expect(await page.locator('#chip-beat').count()).toBe(proto ? 1 : 0);
+        const [mid, mine, theirs] = await Promise.all(['.top .mid', '#hud-hp-player .heart-label', '#hud-hp-enemy .heart-label'].map((s) => page!.locator(s).boundingBox()));
+        const chips = await page.locator('.top .chips > .chip').evaluateAll((cs) => cs.map((c) => {
+          const b = c.getBoundingClientRect();
+          return { id: c.id, box: { x: b.x, y: b.y, width: b.width, height: b.height } };
+        }));
+        expect(chips.length).toBe(proto ? 6 : 5);
+        for (const c of chips) {
+          expect(overlap(c.box, mine!), c.id).toBe(false);
+          expect(overlap(c.box, theirs!), c.id).toBe(false);
+          expect(inside(c.box, mid!), c.id).toBe(true);
+        }
+      });
+    }
+  }
 });
 
 describe('the tray', () => {
@@ -222,6 +253,21 @@ describe('controls', () => {
     expect(text).toContain('Click a building or unit');
     expect(text).not.toContain('Tab cycle');
   });
+
+  // F with no lane able to hold says when one can, instead of doing nothing: the cooldown in today's game, the next
+  // beat under the combat rework's waves (a hold the beat spent waits for that beat to send both waves)
+  for (const [proto, says] of [['', 'Hold is ready in 6 s'], ['rework', 'Hold is ready once both waves leave, in 20 s']] as const) {
+    it(`says when Hold is ready if F finds every lane on its cooldown${proto ? ', under the rework' : ''}`, async () => {
+      page = await open(`/?map=bogwater-hollow&enemy=general:mother-mold&seed=1&test=1&ticks=401&paused=1${proto ? `&proto=${proto}` : ''}`);
+      await page.evaluate(() => {
+        const s = window.__GAME__!.battle()!, beat = s.compiled.player.waveBeatTicks;
+        s.sides.player.stance![0]!.readyAt = beat ? s.tick + beat - (s.tick % beat) + 1 : s.tick + 120;
+      });
+      await page.keyboard.press('f');
+      await expect.poll(() => page!.locator('#callouts .callout.refused').textContent()).toBe(says);
+      expect(await page.evaluate(() => window.__GAME__!.battle()!.queue.some((c) => c.type === 'stance'))).toBe(false);
+    });
+  }
 });
 
 describe('battle 1', () => {

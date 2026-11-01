@@ -1,4 +1,4 @@
-// The field's frame (docs/ui-ux-plan.md, Phase 1a): the roots ceiling and soil bed fill the void between
+// The field's frame (docs/archive/v1/ui-ux-plan.md, Phase 1a): the roots ceiling and soil bed fill the void between
 // the bands at any window, line up with the field's pixels, take no input and, under ?test=1, hold still.
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { chromium } from 'playwright';

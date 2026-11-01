@@ -136,8 +136,8 @@ async function main(): Promise<number> {
     let node: BattleState | null;
     let nodeHash: string;
     let runBrief: unknown = null;
-    if (scene === 'title') {
-      // the title holds no run or battle yet: the bridge's hash is empty
+    if (scene === 'title' || scene === 'underroot') {
+      // the title and the Underroot hold no run or battle yet: the bridge's hash is empty
       node = null;
       nodeHash = '';
     } else if (RUN_SCENES.includes(scene)) {
@@ -268,6 +268,80 @@ async function main(): Promise<number> {
       if (!d.title) failures.push('the summary has no title');
       if (d.battles.length !== n) failures.push(`summary lists ${d.battles.length} battles, the run has ${n}`);
       for (const r of d.battles) if (!/^(Won|Lost) by (Rout|Decision)$/.test(r)) failures.push(`summary row without a result: "${r}"`);
+    }
+
+    // 4e. the Underroot (SPEC §16 M5): three commander cards, each with its passive, power and starter kit
+    if (scene === 'underroot') {
+      const u = await page.evaluate(() => ({
+        tab: document.querySelector('.uc-tabs .btn.on')?.getAttribute('data-tab') ?? null,
+        cards: [...document.querySelectorAll<HTMLElement>('.commander-card')].map((c) => ({
+          id: c.dataset.commander ?? '', on: c.classList.contains('on'), visible: c.offsetParent !== null,
+          passive: c.querySelector('.uc-passive .uc-text')?.textContent ?? '',
+          power: c.querySelector('.uc-power')?.textContent ?? '',
+          starter: [...c.querySelectorAll<HTMLElement>('.uc-starter [data-building]')].map((b) => b.dataset.building ?? ''),
+        })),
+        bans: [...document.querySelectorAll<HTMLButtonElement>('.ban')].map((b) => ({ id: b.dataset.ban ?? '', disabled: b.disabled, core: b.classList.contains('core') })),
+        begin: !!document.getElementById('underroot-begin'),
+      }));
+      dom = { ...(dom ?? {}), underroot: u };
+      const want = q.get('tab') === 'bans' ? 'bans' : 'commanders';
+      if (u.tab !== want) failures.push(`the Underroot opened on tab ${u.tab}, expected ${want}`);
+      if (!u.begin) failures.push('the Underroot has no Begin run button');
+      const ids = Object.keys(content.commanders);
+      if (u.cards.length !== ids.length) failures.push(`the Underroot shows ${u.cards.length} commander cards (expected ${ids.length})`);
+      if (u.cards.filter((c) => c.on).length !== 1) failures.push('exactly one commander card should be selected');
+      for (const id of ids) {
+        const c = content.commanders[id]!;
+        const card = u.cards.find((x) => x.id === id);
+        if (!card) { failures.push(`no card for ${c.name}`); continue; }
+        if (want === 'commanders' && !card.visible) failures.push(`${c.name}'s card is not visible`);
+        if (card.passive !== c.passive.text) failures.push(`${c.name}'s card shows passive "${card.passive}"`);
+        if (!card.power.includes(c.power.name) || !card.power.includes(c.power.text)) failures.push(`${c.name}'s card doesn't show ${c.power.name} and its text`);
+        if (card.starter.join() !== c.starter.join()) failures.push(`${c.name}'s card shows starter kit ${card.starter.join()} (expected ${c.starter.join()})`);
+      }
+      const chosen = content.commanders[u.cards.find((c) => c.on)?.id ?? '']!;
+      const roster = content.factions['velvet-bloom']!.buildings;
+      if (u.bans.length !== roster.length) failures.push(`the bans tab lists ${u.bans.length} buildings (expected ${roster.length})`);
+      for (const b of u.bans) if (chosen && chosen.core.includes(b.id) !== b.core) failures.push(`ban ${b.id}: core marking is wrong for ${chosen.name}`);
+    }
+
+    // 4f. power targeting (SPEC §16 M5, `targeting=1`): the power button is aiming and the reticle with its radius is on the field
+    if (q.get('targeting') === '1' && node) {
+      const def = node.config.player.power ? content.commanders[node.config.player.commander!]!.power : null;
+      const aim = await page.evaluate(() => ({
+        pressed: document.getElementById('power-btn')?.getAttribute('aria-pressed') ?? null,
+        state: document.getElementById('power-btn')?.dataset.state ?? null,
+        reticle: document.getElementById('battlefield')?.dataset.reticle ?? null,
+        callout: document.getElementById('aim-callout')?.textContent ?? null,
+        paused: !!document.getElementById('paused-callout')?.isConnected,
+      }));
+      dom = { ...(dom ?? {}), aim };
+      if (!def) failures.push('targeting=1 but the player has no commander power');
+      else {
+        if (aim.pressed !== 'true' || aim.state !== 'aiming') failures.push(`the power button is not aiming (pressed ${aim.pressed}, state ${aim.state})`);
+        if (!aim.callout?.includes(def.name)) failures.push(`the aim callout doesn't name ${def.name}: "${aim.callout}"`);
+        if (def.target === 'point') {
+          const r = aim.reticle?.split(',').map(Number);
+          if (!r || r.length !== 3) failures.push('no reticle on the field');
+          else {
+            if (r[2] !== def.radius) failures.push(`reticle radius ${r[2]} != ${def.name}'s ${def.radius}`);
+            // the ring itself: lilac pixels on the circle around the aim point
+            const hits = await page.evaluate(`(() => {
+              const c = document.getElementById('battlefield'), g = c.getContext('2d');
+              const T = 16, cx = Math.round((${r[0]} + 2) * T), cy = Math.round(${r[1]} * T), rad = ${r[2]} * T;
+              let n = 0;
+              for (let i = 0; i < 48; i++) {
+                const a = (i / 48) * Math.PI * 2;
+                const d = g.getImageData(Math.round(cx + Math.cos(a) * rad), Math.round(cy + Math.sin(a) * rad), 1, 1).data;
+                if (d[2] > 150 && d[0] > 120 && d[2] > d[1] + 30) n++;
+              }
+              return n;
+            })()`) as number;
+            dom = { ...(dom ?? {}), aim: { ...aim, ringPixels: hits } };
+            if (hits < 24) failures.push(`the reticle ring is hard to see: ${hits}/48 sampled points are lilac`);
+          }
+        }
+      }
     }
 
     // 4c. intel bars (SPEC §7.6) on the route and the summary: four kinds with the run's dots once a battle has been read

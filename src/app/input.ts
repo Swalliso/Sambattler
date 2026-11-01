@@ -1,4 +1,5 @@
 // Mouse and keyboard (SPEC §10.3). Everything becomes a Session change or a queued command.
+import { FLY_LIFT, TILE } from '../render/renderer.ts';
 import { unitRadius } from '../sim/world.ts';
 import { trayOrder } from '../ui/buildingInfo.ts';
 import type { BattleView } from './battleView.ts';
@@ -16,9 +17,10 @@ export function bindInput(session: Session, view: BattleView, hooks: InputHooks)
   canvas.addEventListener('mousemove', (ev) => {
     const t = view.tileAt(ev);
     session.hover = { col: t.col, row: t.row };
+    session.aim = { x: t.x, y: t.y };
     session.shift = ev.shiftKey;
   });
-  canvas.addEventListener('mouseleave', () => { session.hover = null; });
+  canvas.addEventListener('mouseleave', () => { session.hover = null; session.aim = null; });
   canvas.addEventListener('contextmenu', (ev) => {
     ev.preventDefault();
     cancel();
@@ -27,6 +29,11 @@ export function bindInput(session: Session, view: BattleView, hooks: InputHooks)
     session.shift = ev.shiftKey;
     const t = view.tileAt(ev);
     session.hover = { col: t.col, row: t.row };
+    if (session.targeting) {
+      session.aim = { x: t.x, y: t.y };
+      if (!session.firePower()) sfx('illegal');
+      return;
+    }
     if (session.placing) {
       if (!session.placeAtGhost()) sfx('illegal');
       return;
@@ -35,7 +42,8 @@ export function bindInput(session: Session, view: BattleView, hooks: InputHooks)
   });
 
   function cancel(): void {
-    if (session.placing) session.placing = null;
+    if (session.targeting) session.targeting = false;
+    else if (session.placing) session.placing = null;
     else session.selected = null;
     view.inspect.resetConfirm();
   }
@@ -45,7 +53,8 @@ export function bindInput(session: Session, view: BattleView, hooks: InputHooks)
     let best: number | null = null, bestD = Infinity;
     for (const u of s.units) {
       const r = unitRadius(s, u) + 0.3;
-      const d = Math.hypot(u.x - x, u.y - y);
+      // a flyer (combat rework `flyers`) is picked at its raised sprite as well as at its shadow
+      const d = u.flying ? Math.min(Math.hypot(u.x - x, u.y - y), Math.hypot(u.x - x, u.y - FLY_LIFT / TILE - 0.35 - y)) : Math.hypot(u.x - x, u.y - y);
       if (d <= r && d < bestD) { best = u.id; bestD = d; }
     }
     if (best === null) {
@@ -110,7 +119,8 @@ export function bindInput(session: Session, view: BattleView, hooks: InputHooks)
       case 'm': case 'M':
         if (session.selected !== null) session.toggleMerge(session.selected);
         break;
-      case 'f': case 'F': session.toggleAllStances(); break;
+      case 'f': case 'F': view.toggleAllStances(); break;
+      case 'q': case 'Q': view.togglePower(); break;
       case 'h': case 'H': view.toggleHelp(); break;
       case 'r': case 'R': view.top.kit.toggle(); break;
       case 'i': case 'I': view.top.focusChips(); break;

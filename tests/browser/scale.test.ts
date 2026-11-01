@@ -1,4 +1,4 @@
-// UI scale (docs/ui-ux-plan.md, D1): a window under 1280×720 lays the page out at 1280×720 or more and
+// UI scale (docs/archive/v1/ui-ux-plan.md, D1): a window under 1280×720 lays the page out at 1280×720 or more and
 // scales it down to fit. Nothing is clipped, and the mouse still lands on the tile under it.
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { chromium } from 'playwright';

@@ -1,3 +1,4 @@
+// v1 code: SPEC v2 milestone R2 rewrites endings as the Heartcap race and Decision after round 9 (SPEC §13.4).
 // Endings (SPEC §6.5): Rout when a Heartcap falls (simultaneous → the player loses), or a
 // Decision at the time limit: more columns, then higher Heartcap HP fraction, else the general.
 import type { BattleState, Side } from '../state.ts';

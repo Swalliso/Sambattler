@@ -4,8 +4,8 @@
 // `meta`, seeded with battle index 0); battles seed their streams from the same run seed with their
 // battle index, so a run is reproducible from its seed and its decisions.
 import type { RunEffect } from '../data/schema.ts';
-import { hashValue, seedStream } from '../sim/index.ts';
-import type { BattleConfig, Content, CounterKind, DraftCard, DraftPolicy, Flags, IntelProfile, Rng4, Side } from '../sim/index.ts';
+import { DEFAULT_COMMANDER, MAX_BANS, hashValue, seedStream } from '../sim/index.ts';
+import type { BattleConfig, Content, CounterKind, DraftCard, DraftPolicy, Flags, IntelProfile, PowerPolicy, Rng4, Side } from '../sim/index.ts';
 import { generateRoute } from './route.ts';
 import type { RouteNode } from './route.ts';
 
@@ -90,11 +90,15 @@ export interface RunState {
   v: typeof RUN_VERSION;
   seed: number;
   commander: string;
+  /** Shared-pool buildings banned for this run (SPEC §8.1): never offered in drafts, spoils or events. */
+  bans: string[];
   faction: string;
   /** Controller for the player's side in battles: `human` or `bot:<id>`. */
   player: string;
   /** In-battle draft policy when the player side is a bot (`none` leaves drafts to the UI). */
   autoDraft: DraftPolicy;
+  /** Power policy when the player side is a bot (absent: the bot never uses the power). */
+  powerPolicy?: PowerPolicy;
   flags: Flags;
   route: RouteNode[][];
   /** The node chosen in each row so far; its length is the current row. */
@@ -128,17 +132,41 @@ export interface RunOptions {
   player?: string;
   autoDraft?: DraftPolicy;
   commander?: string;
+  /** Up to 3 shared-pool buildings to ban (SPEC §8.1). */
+  bans?: string[];
+  powerPolicy?: PowerPolicy;
   /** Feature flags for the run's battles (drafts stay on: they are part of the run loop). */
   flags?: Partial<Flags>;
 }
 
-export const RUN_FLAGS: Flags = { merging: true, drafts: true, adaptiveGeneral: true, powers: false };
+export const RUN_FLAGS: Flags = { merging: true, drafts: true, adaptiveGeneral: true, powers: true };
+
+/**
+ * Why a ban list isn't allowed for a commander, or null: at most 3 distinct buildings, each in the
+ * faction's roster and outside the commander's core pool (SPEC §8.1).
+ */
+export function banProblem(content: Content, commander: string, faction: string, bans: readonly string[]): string | null {
+  const cmd = content.commanders[commander];
+  if (!cmd) return `unknown commander ${commander}`;
+  if (bans.length > MAX_BANS) return `at most ${MAX_BANS} bans`;
+  if (new Set(bans).size !== bans.length) return 'a building is banned twice';
+  const roster = content.factions[faction]?.buildings ?? [];
+  for (const id of bans) {
+    if (!roster.includes(id)) return `${id} is not in the shared pool`;
+    if (cmd.core.includes(id)) return `${content.buildings[id]?.name ?? id} is in ${cmd.name}'s core pool and can't be banned`;
+  }
+  return null;
+}
 
 export function createRun(content: Content, opts: RunOptions): RunState {
   const seed = opts.seed >>> 0;
-  const commander = opts.commander ?? 'vesper';
+  const commander = opts.commander ?? DEFAULT_COMMANDER;
   const cmd = content.commanders[commander];
   if (!cmd) throw new Error(`unknown commander ${commander}`);
+  const faction = 'velvet-bloom';
+  const bans = [...(opts.bans ?? [])];
+  const problem = banProblem(content, commander, faction, bans);
+  if (problem) throw new Error(`bans: ${problem}`);
   const rng = {
     route: seedStream(seed, 'route', 0),
     events: seedStream(seed, 'events', 0),
@@ -150,9 +178,11 @@ export function createRun(content: Content, opts: RunOptions): RunState {
     v: RUN_VERSION,
     seed,
     commander,
-    faction: 'velvet-bloom',
+    bans,
+    faction,
     player: opts.player ?? 'human',
     autoDraft: opts.autoDraft ?? (opts.player && opts.player !== 'human' ? 'greedy' : 'none'),
+    ...(opts.powerPolicy && opts.powerPolicy !== 'none' ? { powerPolicy: opts.powerPolicy } : {}),
     flags: { ...RUN_FLAGS, ...opts.flags, drafts: true },
     route: generateRoute(content, rng.route),
     path: [],

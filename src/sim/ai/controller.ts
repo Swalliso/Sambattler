@@ -1,10 +1,11 @@
 // The shared AI framework for the generals and the strategy bots (SPEC §7.2–7.3, §7.9). It acts
-// only by queueing ordinary commands for the next tick (placements, merge toggles and, during a
-// doctrine change, sales), and draws randomness only from the `ai` stream. The counter cycle lives in
-// counter.ts; here its doctrine scales the purchase weights.
+// only by queueing ordinary commands for the next tick (placements, merge toggles, the commander power
+// under the auto policy and, during a doctrine change, sales), and draws randomness only from the `ai`
+// stream. The counter cycle lives in counter.ts; here its doctrine scales the purchase weights.
 import { counterFloor, doctrineMult } from './counter.ts';
 import { queueCommand } from '../commands.ts';
 import { legalPlacements } from '../placement.ts';
+import { autoPowerTarget } from '../powers.ts';
 import { nextFloat, nextSigned } from '../rng.ts';
 import { other } from '../state.ts';
 import type { AiState, BattleState, Side } from '../state.ts';
@@ -36,6 +37,7 @@ export function aiThink(state: BattleState, side: Side): void {
   if (!ai) return;
   applyMergePolicy(state, side, ai);
   applyStancePolicy(state, side, ai);
+  applyPowerPolicy(state, side);
   const pressure = assessPressure(state, side);
   if (ai.target && state.tick - ai.targetSince >= state.rules.ai.stickyTicks) ai.target = null;
   if (!ai.target) {
@@ -70,6 +72,14 @@ export function slayerSpawnShare(state: BattleState, side: Side): number {
   return all > 0 ? slayer / all : 0;
 }
 
+/** With `powerPolicy: auto`, uses a ready commander power on the best target it sees (src/sim/powers.ts). */
+function applyPowerPolicy(state: BattleState, side: Side): void {
+  if (state.config[side].powerPolicy !== 'auto') return;
+  if (state.queue.some((c) => c.side === side && c.type === 'power')) return;
+  const target = autoPowerTarget(state, side);
+  if (target) queueCommand(state, { tick: state.tick + 1, side, type: 'power', ...target });
+}
+
 /** Sets each spawner's merge toggle per the side's policy, through ordinary toggleMerge commands. */
 function applyMergePolicy(state: BattleState, side: Side, ai: AiState): void {
   if (!state.config.flags.merging) return;
@@ -95,7 +105,7 @@ function applyMergePolicy(state: BattleState, side: Side, ai: AiState): void {
 function applyStancePolicy(state: BattleState, side: Side, ai: AiState): void {
   const policy = state.rules.stance?.ai;
   const lanes = state.sides[side].stance;
-  if (!policy || !lanes) return;
+  if (!policy || !lanes || state.rules.waves) return; // combat rework `waves`: the AI never holds
   if (policy.profiles && !policy.profiles.some((p) => ai.profileId.startsWith(p))) return;
   for (let li = 0; li < lanes.length; li++) {
     const st = lanes[li]!;
@@ -180,6 +190,12 @@ export function weakestOpponentLane(state: BattleState, side: Side): number {
   return best;
 }
 
+/** Combat rework `sporeCloud`: tiles of `lane` past `side`'s border that a tower centred at `cx` reaches. */
+export function laneCover(state: BattleState, side: Side, lane: number, cx: number, range: number): number {
+  const L = state.lanes[lane]!;
+  return Math.max(0, side === 'player' ? cx + range - (L.pBorder + 1) : L.eBorder - (cx - range));
+}
+
 /** Best-scoring legal position (SPEC §7.3), or null if none. */
 export function choosePlacement(
   state: BattleState, side: Side, buildingId: string, planned: Plan[], pressure: Pressure,
@@ -229,6 +245,8 @@ export function choosePlacement(
       const front = p.lane === pressure.mostLane &&
         (side === 'player' ? p.col + def.w - 1 >= L.pBorder - 1 : p.col <= L.eBorder + 1);
       score = (front ? sc.towerFront : 0) - sc.towerThreat * threat;
+      // combat rework `sporeCloud`: a cloud tower values the lane it reaches past the border
+      if (r.cloud && def.attack && r.cloud.buildings.includes(buildingId)) score += r.cloud.aiCover * laneCover(state, side, p.lane, cx, def.attack.range);
     } else {
       score = -sc.economyDepth * p.depth - sc.towerThreat * threat;
     }

@@ -73,10 +73,12 @@ export function mergedFraction(state: BattleState, track: CounterState | undefin
 /**
  * The spawn-mix analysis of `observed` (SPEC §7.4): supply rates of its standing spawners turned
  * into armor, ranged and real-merging shares, and the four kinds' scores. `track` is the observer's
- * counter state (spawn and merge counts); without it the Elite share is 0.
+ * counter state (spawn and merge counts); without it the Elite share is 0. With the combat rework's
+ * swarm read (`swarmMaxSupply`), a cheap unit's merges leave its spawner out of the Elite share.
  */
 export function analyzeMix(state: BattleState, observed: Side, track?: CounterState): MixAnalysis {
   const cr = state.rules.ai.counter;
+  const swarmMax = cr.swarmMaxSupply;
   let total = 0, light = 0, medium = 0, heavy = 0, ranged = 0, elite = 0;
   for (const b of state.buildings) {
     if (b.side !== observed || b.hp <= 0) continue;
@@ -87,7 +89,7 @@ export function analyzeMix(state: BattleState, observed: Side, track?: CounterSt
     total += rate;
     if (u.armor === 'light') light += rate; else if (u.armor === 'medium') medium += rate; else heavy += rate;
     if (u.tags.includes('ranged')) ranged += rate;
-    if (b.mergeOn) elite += rate * mergedFraction(state, track, b.id);
+    if (b.mergeOn && !(swarmMax && u.tiers[0].supply <= swarmMax)) elite += rate * mergedFraction(state, track, b.id);
   }
   const share = (x: number) => (total > 0 ? x / total : 0);
   const shares = { light: share(light), medium: share(medium), heavy: share(heavy), ranged: share(ranged), elite: share(elite) };

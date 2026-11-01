@@ -1,4 +1,4 @@
-// UI scale (docs/ui-ux-plan.md, D1): a window smaller than 1280×720 lays the page out at 1280×720 or
+// UI scale (docs/archive/v1/ui-ux-plan.md, D1): a window smaller than 1280×720 lays the page out at 1280×720 or
 // more and scales the body down to fit, instead of clipping the bottom band. The settings screen can
 // also fix a larger step for big screens (125% to 200%); a step never lays the page out below
 // 1280×720, so a window too small for it gets the largest scale that fits. getBoundingClientRect and

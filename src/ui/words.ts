@@ -4,6 +4,7 @@
 // wording lives here, keyed by id, and every screen reads relics, upgrade levels and building
 // descriptions through it. tests/unit/words.test.ts checks that each rewording keeps the data's numbers.
 import type { Content } from '../data/registry.ts';
+import type { PowerDef } from '../data/schema.ts';
 import { h } from './h.ts';
 
 const RELICS: Record<string, string> = {
@@ -57,6 +58,18 @@ export function upgradeText(content: Content, id: string, level: number): string
 /** A building's description in plain words. */
 export function buildingDescription(content: Content, id: string): string {
   return BUILDINGS[id] ?? content.buildings[id]?.description ?? '';
+}
+
+/** How a commander power is aimed, in plain words ("Aim at a point: 2-tile radius"). */
+export function powerAim(p: PowerDef): string {
+  return p.target === 'point' ? `Aim at a point: ${p.radius}-tile radius`
+    : p.kind === 'tithe' ? 'No aim: pays for all your ground' : 'No aim: every lane at once';
+}
+
+/** A power's timing in plain words ("Ready at 0:45, then every 75 s"). */
+export function powerTiming(p: PowerDef, cooldownMult = 1): string {
+  const first = Math.round(p.firstReady);
+  return `Ready at ${Math.floor(first / 60)}:${String(first % 60).padStart(2, '0')}, then every ${Math.round(p.cooldown * cooldownMult)} s`;
 }
 
 /** The plain rewordings, for the test that keeps their numbers in step with the data. */

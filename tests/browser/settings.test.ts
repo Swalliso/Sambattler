@@ -1,4 +1,4 @@
-// The settings screen (SPEC §10.5, docs/ui-ux-plan.md Phase 3) in a real browser: it opens from the title,
+// The settings screen (SPEC §10.5, docs/archive/v1/ui-ux-plan.md Phase 3) in a real browser: it opens from the title,
 // the battle's cog and the run bar; every setting saves into spore-sprawl/settings/v1 and survives a
 // reload; records saved before Phase 3 (and before sound) still load; Esc closes it; and each setting
 // does what it says (UI scale, reduced motion, color-blind assist, default speed). Also the motion that
@@ -214,8 +214,13 @@ describe('what each setting does', () => {
 
 describe('motion', () => {
   it('a spore wipe covers a screen change, then clears; ?test=1 changes at once', async () => {
+    // New run goes through the Underroot (commander and bans), then Begin run opens the route
     const p = await open('/?debug=1&seed=5');
     await p.locator('#title-new').click();
+    expect(await p.locator('.spore-wipe').count()).toBe(1);
+    await expect.poll(() => p.locator('.spore-wipe').count(), { timeout: 2000 }).toBe(0);
+    expect(await p.locator('#underroot').count()).toBe(1);
+    await p.locator('#underroot-begin').click();
     expect(await p.locator('.spore-wipe').count()).toBe(1);
     await expect.poll(() => p.locator('.spore-wipe').count(), { timeout: 2000 }).toBe(0);
     expect(await p.locator('#route').count()).toBe(1);
@@ -223,12 +228,15 @@ describe('motion', () => {
     const q = await open('/?test=1&seed=5');
     await q.locator('#title-new').click();
     expect(await q.locator('.spore-wipe').count()).toBe(0);
+    await q.locator('#underroot-begin').click();
     expect(await q.locator('#route').count()).toBe(1);
   });
 
   it('under reduced motion there is no wipe, only a short fade', async () => {
     const p = await open('/?debug=1&seed=5', { reduced: true });
     await p.locator('#title-new').click();
+    expect(await p.locator('.spore-wipe').count()).toBe(0);
+    await p.locator('#underroot-begin').click();
     expect(await p.locator('.spore-wipe').count()).toBe(0);
     expect(await p.locator('#route').count()).toBe(1);
     expect(await p.evaluate(() => document.getElementById('app')!.classList.contains('fade-in'))).toBe(true);

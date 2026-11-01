@@ -1,4 +1,4 @@
-// The battlefield's frame (docs/ui-ux-plan.md, Phase 1a: clean field, rich frame). The void around the
+// The battlefield's frame (docs/archive/v1/ui-ux-plan.md, Phase 1a: clean field, rich frame). The void around the
 // field becomes the earth it sits in: a roots ceiling, a soil bed with each side's buried threads, roots
 // at the sides and each Heartcap's crown rising into the ceiling. All of it is text sprites
 // (data/sprites/frame.json), baked once per layout on a canvas at the field's own pixel scale and lined up

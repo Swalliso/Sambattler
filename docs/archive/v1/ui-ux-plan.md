@@ -1,5 +1,7 @@
 # UI/UX review and plan
 
+> **Archived: v1 era.** Written before [SPEC v2](../../../SPEC.md) (2026-10-31), for a battle v2 retires. Read it as history and evidence, not as current rules, numbers or plans ([the archive](../README.md)).
+
 Review date 2026-10-28, against `main` at 96f2c4f (M4 plus PR #10). I went through every screen at 1280×720 (SPEC's minimum) and 1920×1080 with Playwright: route, deploy, battle at 2:00 and 5:00, two lanes, placing, card tooltip, help, draft, report, event, Grove and run summary. I also read `src/ui`, `src/render`, `styles.css`, the sprite data and the playtest notes. The visual language this plan proposes lives in the [Spore & Sprawl design system](https://claude.ai/artifact/F43BuArPBRt8QueTz9zUCU) (tokens, type, ten components, all 45 sprites). It's private until shared from the page's Share menu.
 
 Nothing here touches `src/sim`, so none of it changes golden hashes or balance.
@@ -190,7 +192,7 @@ Done 2026-10-29, after Phase 3. `npm run screenshot` gained `--size`, `--click` 
 
 ### Clarity pass (playtest round 3)
 
-Built 2026-10-29 (branch `feature/clarity-pass`), after two playtesters said there's too much to learn and the game doesn't explain itself ([round 3](playtest-feedback.md)). UI only: nothing under `src/sim`, no `src/run` logic, goldens unchanged. Rough tooltips, the relics view and a tip were approved from screenshots the same day. No new sprites: the adjacency diagram and spawn timers are drawn in code.
+Built 2026-10-29 (branch `feature/clarity-pass`), after two playtesters said there's too much to learn and the game doesn't explain itself ([round 3](../../playtest-feedback.md)). UI only: nothing under `src/sim`, no `src/run` logic, goldens unchanged. Rough tooltips, the relics view and a tip were approved from screenshots the same day. No new sprites: the adjacency diagram and spawn timers are drawn in code.
 
 - **Space in deploy.** Space begins the battle as Enter does, and Begin always clears a pause (`Session.begin()`), so none carries into the live battle. The Begin keycap shows Space.
 - **Chip tooltips** (`src/ui/tooltip.ts`, `src/ui/hud/explain.ts`). One anchored tip serves the gold, supply, wave and storm chips and the territory tug, on hover or keyboard focus, closed by leaving or Esc; `I` steps into the band and Tab moves along it. Gold breaks income down by source per minute and explains interest and the Spore Exchange; the rest explain the storm, supply, a wave boundary and territory. Computed from render-side state, mirroring the sim's rules.

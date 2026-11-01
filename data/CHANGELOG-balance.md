@@ -3,6 +3,234 @@
 Every change from the SPEC's first-pass numbers, with the guardrail or verification result that
 motivated it. Tools: `npm run balance -- duel`, `npm run balance -- tournament`, `npm run test:slow`.
 
+Every entry below this note, through the 2026-10-31 ones, tunes the v1 battle, which [SPEC v2](../SPEC.md)
+replaces. None of it is open work, including headings that say "Open:". From milestone R1, new
+entries measure or tune v2's round battle (SPEC §11, §12). "The backlog" in the entries below means
+v1's, now [archived](../docs/archive/v1/balance-backlog.md).
+
+## Combat rework: flyers take rule C (2026-10-31)
+
+**Approved by the user for the playtest** ("Let's go with your recommendations"). It's a prototype setting, so no
+shipped number, rule or default changed, and the goldens are unchanged.
+- **`flyers`, and so `rework`:** `flying.reachSupply` 2 → 1 and `flying.meleeMult` 1 → 0.5. Every unit can hit a
+  flyer, ground melee at ×0.5, and the Mortar's lobbed shell and the Burster's burst still can't. The design's
+  reach rule is `flying.reachSupply:2,flying.meleeMult:1`.
+- **Why** (backlog, "After P2"): on the playtest `rework`, mono Drift Stalk's G3 falls from 89 / 96 to 72 / 90,
+  the strict bar still passes, and G4 at 200 passes (8:04, 11%, 50%). Mono Sporeling rises from 79 / 82 to
+  83 / 86 and mono Veilstalker from 60 / 71 to 69 / 80. The other fallback, the 2-supply Driftling (95 / 98), is
+  dropped.
+- **Text:** the Drift Stalk's description and the cards' flyer rows follow the rule.
+
+## Combat rework: the general's swarm read and flyers (2026-10-31)
+
+**Nothing adopted; no shipped number, rule or default changed.** Goldens unchanged. Both join `rework`, the
+package for the P3 playtest.
+- **The swarm read** (preset `swarmread`): a new default-off knob, `ai.counter.swarmMaxSupply`. An adaptive
+  general reads a spawner whose unit costs at most that much supply by its armor, whether or not its units
+  merge; the preset sets 1. Under P2's package the Lichen Baron read a merging Sporeling swarm as Elite in 155
+  of 199 reads, and SPEC §7.4 means a merging swarm to read that way. With the knob, 199 of 199 read Swarm.
+- **Flyers** (preset `flyers`, docs/archive/v1/ideas/flyers.md):
+  - a `flying` tag and a balance setting, `flying`: units of 2+ supply, ranged units, turrets, other flyers,
+    clouds and powers reach a flyer, merging doesn't grant reach, melee ×1, and flyers hold no ground;
+  - the Driftling (70 HP, light, 8 slash a second, 1 supply, speed 1.4) and its Drift Stalk (160 gold, two
+    every 18 s, `aiWeight` 1), in both rosters, as content under the preset;
+  - sprites in `data/sprites/` (display only). The Bloatcap isn't built.
+- **The sanity pass on `rework` with both** (backlog, "After P2"): G4 at 200 passes (8:06, 12%, 52%), the strict
+  bar passes with flyers answering the swarm, and **mono Drift Stalk takes over G3 (89 / 96)**. Not retuned.
+
+## Combat rework P2 measurements (2026-10-31)
+
+**Nothing adopted; no shipped number, rule or default changed.** Goldens unchanged.
+- **`rework` became P2's package:** P1d's base without the Mortar's clouds, plus `stormwaves` at 0.2 (the
+  user's answers to P1d). The swarm read and flyers joined it after P2 (above).
+- **Tools:** `npm run experiment` gains `--g4seeds n`, and its g3 check runs on `--workers` threads.
+
+Results are in [the backlog](../docs/archive/v1/balance-backlog.md#combat-rework-p2-2026-10-31); P2 was wrapped up early for
+the playtest:
+- **The package passes the strict counter bar and G4 at 200 games** (7:56, 12.5% Decisions, bot wins 52%), and
+  fails G3 on mono Sporeling (85 / 86) and mono Veilstalker (72 / 87).
+- **Which pieces carry it:** waves and the two-type shields carry the strict bar, the storm carries G4, pinned
+  keeps the archers down, call for help keeps G2 healthy, and the Burster and the Elder change hold the swarm
+  and the runners in G3. The Rhizomorph carries nothing measured.
+- **The adaptive general doesn't answer the swarm** under the package (G8, 100 seeds).
+- **Runs:** battle-1 losses rise from 79 to 108 of 240 (Armilla and Cordis), and waves cause it.
+
+## Combat rework P1d prototypes (2026-10-31)
+
+**Nothing adopted; no shipped number, rule or default changed.** Goldens unchanged.
+- **Fix:** P1c's dead-unit skip in the attack loop now runs only with `burster` on. Before, a unit that
+  Vesper's Spore Burst killed lost that tick's attack in every battle. 72 commander battles now match develop.
+- **`rework` is the user's new base:**
+  - the six settings, with mixed waves at two types;
+  - the Burster;
+  - the Elder Sporeling's splash off, as a preset path (the shipped unit keeps it);
+  - a 20 s beat. Cleave stays its own preset.
+- **New `stormwaves` setting:** each Sporestorm stack makes both sides' waves 20% bigger, ×2 at five stacks
+  (8:00). Extra units need free supply, but the cap barely binds.
+
+Results are in [the backlog](../docs/archive/v1/balance-backlog.md#combat-rework-p1d-2026-10-31), G3 at 50 seeds:
+- **The base:** only mono Sporeling fails G3 (81 / 84), and the strict counter bar passes. G4 fails at 28%
+  Decisions.
+- **Without the Mortar's clouds:** G4 has 23% Decisions; mono Sporeling 83 / 86 and Veilstalker's worst
+  map (61) fail G3.
+- **Both stall routes:** G4 has 18% Decisions (7 of 40 games, where 6 is the limit), and G3's Decisions are
+  back to today's 7%. The strict bar passes with answers that win outright. Mono Sporeling (85 / 86) and
+  mono Veilstalker (72 / 87) fail G3.
+- Nothing passes G3, G4 and the strict bar, so P2's other checks weren't run.
+
+## Combat rework P1c prototypes (2026-10-30)
+
+**Nothing adopted; no shipped number, rule or default changed.** Two new default-off presets in
+`src/data/proto.ts`, so goldens and hashes are unchanged:
+- `cleave`: a Scythecap's swing hits every enemy unit within 1 tile of its target at full damage (1.2
+  and 1.4 tiles by tier).
+- `burster`: a new unit and spawner, the Burster and its Burster Pod (working names), which exist only
+  under the preset. A Burster rolls at the thickest knot of enemy units and bursts on reaching it or on
+  dying: 40 damage through any armor within 1.5 tiles, and a spore cloud (1.5 tiles, 4 s, 10 a second).
+- The one data change is their sprites in `data/sprites/` (display only, never in battle state).
+- `mixedwave` (and so `rework`) now needs 2 unit types, not 3: measured against 3, it helped `bot:balanced`
+  more in G3 at 20 s and 17 s, the user's rule for choosing.
+
+Results are in [the backlog](../docs/archive/v1/balance-backlog.md#combat-rework-p1c-2026-10-30):
+- With the Burster on two-type `rework`, the strict counter bar passes at 15, 17 and 20 s on every map,
+  Twin Roots included.
+- G3 still fails at every beat: mono Sporeling 89% at 20 s, Gill Nest and Sporeling 63–68% at 17 s, Gill
+  Nest 78% and the Rootbreaker on Twin Roots at 15 s.
+- G4 fails at every beat on Decisions (30–48%). The Burster's burst and the Mortar's clouds are the main
+  stallers.
+- Removing the Elder Sporeling's splash lowers mono Sporeling by 9–18 points under waves.
+
+## Combat rework P1b prototypes (2026-10-30)
+
+**Nothing adopted; no shipped number, rule or default changed.** P1b applies the user's answers to P1's
+questions, still as default-off presets in `src/data/proto.ts`, so goldens and hashes are unchanged:
+- `waves`: spawners behind a lane's front spawner release early, so the wave passes the front door
+  together on the beat; a hold lasts one beat, and the next beat always sends both waves.
+- `sporecloud`: the Mortar aims each shell at the densest cluster of enemy units in range.
+- `rhizomorph`: the Rhizomorph surfaces beside ranged units first and never where an enemy tower or
+  Heartcap turret covers it (it falls back to the front).
+- New `mixedwave` (with `waves`): a lane's wave of 3+ unit types sets out with shields of 20% of each
+  unit's max HP. It helped the mixed army, so `rework` now turns on all six settings.
+- The counter check's test bots carry `fixedWeights`, so the Rhizomorph's `aiWeight` skips them.
+
+Results are in [the backlog](../docs/archive/v1/balance-backlog.md#combat-rework-p1b-2026-10-30). G3 at 50 seeds per seat:
+- The five settings without `mixedwave`: mono Sporeling 96% mean / 99% worst, Gill Nest 68 / 79; no answer
+  to mono Sporeling reaches 60%, even on the mean. G4 fails (8:42, 23% Decisions).
+- `rework` (all six): Sporeling 95 / 98, Gill Nest 59 / 67; G4 passes (8:12, 15% Decisions, bot wins 43%).
+- Without waves: Sporeling 77 / 83, Gill Nest 80 / 95; mono Sporeling's answers fail on Twin Roots (best
+  45%), as on today's rules.
+- The beat length trades archers for swarms. With 15 s and 17 s beats, `rework` is the first variant to pass the
+  strict counter bar (every strong mono build has an answer ≥ 60% on every map), but G3 still fails (Gill Nest
+  82 / 75, Sporeling 58 / 74) and G4's Decisions reach 28% / 20%.
+
+## Combat rework P1 prototypes (2026-10-30)
+
+**Nothing adopted; no shipped number, rule or default changed.** The combat rework's five settings
+(`pinned`, `callforhelp`, `sporecloud`, `rhizomorph`, `waves`, and `rework` for all five) are presets in
+`src/data/proto.ts`, absent from `balance.json`, so goldens and hashes are unchanged. The Rhizomorph and
+its Rhizomorph Tunnel exist only under the `rhizomorph` preset; the one data change is their two sprites
+in `data/sprites/` (display only, never in battle state). First numbers (G3 at 20 seeds per seat) are in
+[the backlog](../docs/archive/v1/balance-backlog.md#combat-rework-p1-2026-10-30):
+- `rework`: mono Gill Nest 74% mean / 83% worst (from 86 / 100), but mono Sporeling 94 / 98 and mono
+  Veilstalker 63 / 90; G4 fails (8:51 median, 33% Decisions, bot wins 20%).
+- `waves` alone makes swarms dominant (Sporeling 90 / 98); `pinned` is the only piece that moves the
+  archers alone (75 / 93).
+
+## Second-front test maps (2026-10-30)
+
+**Nothing adopted; no shipped number, rule, map or default changed.** Four test-only maps in
+`data/maps/` split the one-lane maps into two lanes, to measure whether a second front fixes G3 (mono
+Gill Nest): `test-bogwater-2lane`, `test-stumpfield-2lane` and their `-tall` versions. They're
+`testOnly`, so runs never draw them, and goldens and hashes are unchanged. Results are in
+[the backlog](../docs/archive/v1/balance-backlog.md#second-front-two-lane-test-maps-2026-10-30).
+- Two 4-row lanes, same plots: mono Gill Nest 80% / 85% (Bogwater / Stumpfield), from 100%.
+- Two 6-row lanes (Twin Roots' shape): 62% / 67%, Twin Roots' own 63%.
+- Every two-lane version: mono Amanita 58–73%, and mono Sporeling still 67–82%.
+
+## G3 measures every map in the run pool (2026-10-30)
+
+**Guardrail change, approved by the user** ("Keep G3 as proposed: mean ≤ 55%, worst map ≤ 60%, 50 seeds per seat."). **No content changed,
+so no battle or golden changes.** `balance-targets.json` G3 goes from `seeds` 20 and `maxMonoWinRate` 0.55
+(Bogwater Hollow only, 40 games) to `seeds` 50, `maxMeanWinRate` 0.55 and `maxMapWinRate` 0.60. Every
+mono bot now plays `bot:balanced` on every run-pool map, 100 games per map, and must keep its mean
+≤ 55% and its worst map ≤ 60% (SPEC §12.3).
+
+Why: step A found the 40-game Bogwater check read mono Sporeling at 65% (75% over 100 games) and
+missed every failure on other maps ([backlog](../docs/archive/v1/balance-backlog.md#g3-on-every-map-the-rewrite-2026-10-30)).
+
+Result (`npm run test:slow`): **G3 fails for mono Gill Nest** (mean 88%, worst 100%), **mono Sporeling**
+(74%, 77%) and **mono Amanita** (worst 64%, Twin Roots). Mono Morel passes exactly on the mean limit
+(55%, worst 57%). Nothing was tuned to pass.
+
+## Milestone 5: Armilla reworked, Rhizome Surge → Rhizome Tithe (2026-10-30)
+
+**Content change, approved by the user** ("rework Armilla's content … and rerun the tournament").
+Armilla's power was Rhizome Surge (take the frontier column in every lane, cooldown 100 s, first ready
+1:30). It is now **Rhizome Tithe: +30 gold for every column held past home, cooldown 75 s, first ready
+1:00.** Her core pool, starter kit and passive (capture +25%) are unchanged; the passive now feeds the
+tithe. Rhizome Surge stays in the code as a power kind (tested on a test-only commander), so it can
+come back as an alternate power (SPEC §9.5, mastery 3).
+
+What was tried (whole runs, seeds 1–30, `bot:balanced`, power policy auto; Vesper and Cordis win 10/30):
+
+| Armilla variant | Runs won | Battles won |
+|---|---|---|
+| As first specced (Surge) | 0/30 | 11/43 |
+| Second spawner in the starter kit (Hammercap, Rootbreaker or Sporeling Burrow for the Mortar), power off | 0–1/30 | 13–20/44–50 |
+| Surge + 40–80 gold per column taken | 1/30 | 14–16/45–46 |
+| Second spawner + Surge + 40–80 gold per column | 0–2/30 | 16–23/44–51 |
+| Tithe 20 / 30 / 40 per held column, Surge's timing | 4 / 3 / 6 of 30 | 40/69 · 35/62 · 54/78 |
+| **Tithe 30, cooldown 75 s, first ready 1:00 (adopted)** | **7/30** | **54/77** |
+| Tithe 30 or 40 that also takes the frontier (cooldown 75 s) | 7–8/60 | 87–88/143–144 |
+
+On seeds 1–60 the adopted tithe wins 14/60 (23%), against Vesper 16/60 (27%) and Cordis 13/60 (22%).
+A second spawner never helped: the Puffball Mortar is worth more to this bot than another army
+building. Any version that still captures costs about 10 points.
+
+Tournament (`npm run balance -- tournament --commanders all --seeds 30`): Vesper 10/30 (33%), Armilla
+7/30 (23%), Cordis 10/30 (33%). **Spread 10 points, inside the 15-point target.** Battle 1 alone
+(40 seeds): Armilla 30% without her power, 70% with it, the largest power swing of the three (Vesper
+53% → 75%, Cordis 58% → 75%); worth watching in human playtests.
+
+Goldens: `m5-armilla-power-s3` changes behavior; `m3-run-s7` and the other two M5 replays are
+hash-only (the new `powerGold` counter). The §16 assert for Armilla is now `stats.player.powerGold>=1`.
+
+## Milestone 5: commanders and powers (2026-10-29)
+
+**New content at the SPEC's first-pass numbers; no existing number or rule changed.** Vesper, Armilla
+and Cordis ship with the passives, powers, cooldowns and first-ready times of SPEC §11.10, unchanged:
+no tuning in this entry moved the commander tournament inside its target, so none was kept (the
+measurements are below and in [docs/archive/v1/m5-plan.md](../docs/archive/v1/m5-plan.md)).
+
+Two harness changes affect what bots do, both only where they used to crash or never applied:
+
+- **A bot's opener skips buildings missing from its kit.** Armilla's starter kit has no Sporeling
+  Burrow, and `bot:balanced` opens with one; that used to throw. Generals keep the strict check.
+  Single battles always field the whole roster, so no guardrail battle changes.
+- **A bot player in a run gets weight 1 on its commander's core buildings that its profile never
+  buys** (`botCoreWeights`, the same rule the run already uses for a general's run-only kit
+  entries). `bot:balanced` never drafted or built Armilla's Hammercap Forge and Rhizome Vault or
+  Cordis's Tender's Ring. Runs only; Vesper's core is all inside `bot:balanced`, so it is unchanged.
+
+Run-golden change: `m3-run-s7` now plays with Vesper's passive and the powers flag on (the bot's power
+policy stays `none` in that replay). The M1–M4 single-battle replays are hash-identical; three M5
+replays pin each power under the auto policy.
+
+Commander tournament (`npm run balance -- tournament --commanders all --seeds 30`, `bot:balanced`,
+greedy drafts, random route, power policy auto):
+
+| Commander | Runs won | Boss reached | Battles won | Power uses |
+|---|---|---|---|---|
+| Vesper | 10/30 (33%) | 12/30 | 62/82 | 355 (162,216 damage) |
+| Armilla | 0/30 (0%) | 2/30 | 11/43 | 100 (129 columns) |
+| Cordis | 10/30 (33%) | 11/30 | 59/80 | 273 (306 trios) |
+
+Target: no commander more than 15 points above another. **Fails by 33 points** (Armilla; fixed by the
+rework in the entry above). Within the
+allowed levers (power and passive numbers), Armilla's best was 3/30 with her power and passive both
+effectively off: in this sim, taking ground faster or instantly costs the bot battles. The fix needs a
+content or rule decision; see [docs/archive/v1/m5-plan.md](../docs/archive/v1/m5-plan.md#the-commander-tournament).
+
 ## Adopted: E1 Hold / Advance (2026-10-28)
 
 **Rule change, approved by the user.** The user asked for the prototypes that helped to go into the game,
@@ -37,7 +265,7 @@ in 1–2 of 10 seeds with or without Hold). `--proto nohold` restores the old ru
 
 **Nothing adopted; no number, rule or default changed.** A per-lane Hold / Advance command (`laneStance`,
 preset `hold`) with an AI muster policy, from recommendation 1 of the
-[engagement review](../docs/engagement-review.md#prototype-e1-hold--advance-per-lane-2026-10-28). It is
+[engagement review](../docs/archive/v1/engagement-review.md#prototype-e1-hold--advance-per-lane-2026-10-28). It is
 absent from `balance.json`, so goldens and hashes are unchanged. `npm run experiment` gains two opt-in
 checks, `engagement` and `runs`.
 - **Opening:** the first column flip moves from 2:16–4:14 to 0:34–1:29, and battles with no flip
@@ -54,7 +282,7 @@ checks, `engagement` and `runs`.
 interval (15 → 17–28 s, alone and with B1 or B3) and three new default-off prototypes for the
 archers' opening tempo and the defender's trickle: T1 (`rangedFirstSpawnFraction`), T2 (`fallBack`,
 a conditional variant of mustering) and T3 (`spawnerDefense`). Goldens and hashes are unchanged.
-Results are in [the backlog](../docs/balance-backlog.md#round-2-results-2026-10-27).
+Results are in [the backlog](../docs/archive/v1/balance-backlog.md#round-2-results-2026-10-27).
 - **Interval alone** never brings mono Gill Nest below 85%; at 28 s it is 90% and mono Sporeling and
   Amanita cross 55%. M1's "28 s reaches 50%" no longer holds on M4 content. G1 fails at every
   interval (Capguard Hall wins 7/8 pairings from 17 s on).
@@ -73,7 +301,7 @@ Results are in [the backlog](../docs/balance-backlog.md#round-2-results-2026-10-
 congestion), B4 (unit lifespan), A2 (counter floor weight) and A3 (an earlier first counter cycle)
 were each prototyped behind a `balance.json` setting that is absent by default (A3 is the existing
 `ai.counter.cycles`), and measured with the new `npm run experiment -- --proto <spec>`. Goldens and
-hashes are unchanged. Results are in [the backlog](../docs/balance-backlog.md#prototype-results-2026-10-27).
+hashes are unchanged. Results are in [the backlog](../docs/archive/v1/balance-backlog.md#prototype-results-2026-10-27).
 - **G3:** mono Gill Nest stays at 98–100% under every candidate and combination, including B1 with
   `besiegedBy: melee`. B3 halves the archers' 60-supply margins, but these battles are decided
   before either army reaches that size.
@@ -126,7 +354,7 @@ spawns, merges, gold, damage, fronts), and the content commit left single battle
   in M3; the three new spawners field Medium or Heavy units and all lose the production duel to
   massed archers (Lodge 0/6, Forge 0/6, Warren 0/6). Only the Sporeling Burrow beats it. Same root
   cause as G3, so it waits on the same decision.
-- **G8 fails.** See `docs/m4-plan.md` (As built) for the table and the diagnosis.
+- **G8 fails.** See `docs/archive/v1/m4-plan.md` (As built) for the table and the diagnosis.
 
 ## Review fixes (2026-10-27)
 
@@ -145,7 +373,7 @@ spawns, merges, gold, damage, fronts), and the content commit left single battle
   behavior: its first three battles retain their outcomes and lengths, but the boss now wins by
   Rout at tick 8102, where it previously lost at tick 6757. This difficulty change is the intended
   consequence of fixing the unusable boss kit; it is not an archer rebalance.
-- Archer-balance candidates are recorded in [the solutions backlog](../docs/balance-backlog.md).
+- Archer-balance candidates are recorded in [the solutions backlog](../docs/archive/v1/balance-backlog.md).
   No candidate is implemented by these fixes.
 
 ## Milestone 3 (2026-10-26)

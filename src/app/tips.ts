@@ -2,10 +2,11 @@
 // first two battles of a run, each tip shows once, ever: the frontier and territory a few seconds after
 // Begin, Hold / Advance a little later, the first draft as it opens, the Sporestorm as it starts and
 // interest the first time it pays. They go through the callout lane, one at a time and never over the
-// field, and each names its key. Which tips were shown is remembered (spore-sprawl/tips/v1, through
+// field, and each names its key. The commander power's tip comes the first time it is ready. Which tips were shown is remembered (spore-sprawl/tips/v1, through
 // storageKey()); the settings screen turns tips off or shows them all again. Battle 1's economy tip
 // (playtest 2026-10-28) goes through the same queue, but it isn't remembered: it fires whenever battle 1
 // reaches 0:30 without an economy building.
+import { powerOf } from '../sim/index.ts';
 import type { BattleState } from '../sim/index.ts';
 import type { Callouts } from '../ui/callouts.ts';
 import { h } from '../ui/h.ts';
@@ -20,7 +21,7 @@ const WINDOW = 30;
 /** Tips show in a run's first two battles (and in single battles numbered 1 or 2). */
 const LAST_BATTLE = 2;
 
-export type TipId = 'frontier' | 'hold' | 'draft' | 'storm' | 'interest' | 'economy';
+export type TipId = 'frontier' | 'hold' | 'draft' | 'storm' | 'interest' | 'economy' | 'power';
 
 interface Pending { id: TipId; parts: (string | Node)[]; remember: boolean; onShow?: (now: number) => void }
 
@@ -79,19 +80,32 @@ export class TipCoach {
       this.offer(state, 'frontier', [tipWord(), 'Units claim ground past the glowing frontier line. You build only on your own columns.']);
     }
     if (r.stance && secs >= HOLD_AT && secs < HOLD_AT + WINDOW) {
-      this.offer(state, 'hold', [tipWord(), 'Press ', kbd('F'), ' to hold your units back for a bigger push; press it again to advance.']);
+      // combat rework `waves`: a hold keeps the next wave home rather than pulling units back
+      const hold = r.waves ? ' to keep your next wave home for one beat; the beat after sends both waves.' : ' to hold your units back for a bigger push; press it again to advance.';
+      this.offer(state, 'hold', [tipWord(), 'Press ', kbd('F'), hold]);
     }
     for (const e of state.events) {
       if (e.t === 'sporestorm' && e.stacks === 1) {
         const st = r.storm;
-        this.offer(state, 'storm', [tipWord(), `The Sporestorm: each stack, units hit ${pct(st.unitDamage)} harder and Heartcaps take ${pct(st.heartcapTaken)} more.`], { now: true });
+        // combat rework `stormWaves`: the storm grows both sides' waves too
+        const waves = r.stormWaves ? `waves grow ${pct(r.stormWaves.perStack)}, ` : '';
+        this.offer(state, 'storm', [tipWord(), `The Sporestorm: each stack, ${waves}units hit ${pct(st.unitDamage)} harder and Heartcaps take ${pct(st.heartcapTaken)} more.`], { now: true });
       } else if (e.t === 'interest' && e.side === 'player' && e.amount > 0) {
-        this.offer(state, 'interest', [tipWord(), `Interest +${e.amount}: each wave pays 1 gold per ${r.interestPer} you hold, up to a cap. Hover your gold.`], { now: true });
+        // named by its interval: under the combat rework's `waves` a wave also leaves on every beat
+        this.offer(state, 'interest', [tipWord(), `Interest +${e.amount}: every ${r.waveTicks / r.tickRate} s pays 1 gold per ${r.interestPer} you hold, up to a cap. Hover your gold.`], { now: true });
       }
     }
+    const power = powerOf(state, 'player');
+    if (power && state.sides.player.powerCooldown === 0) {
+      const aim = power.target === 'point' ? 'then click where it should land' : 'then click the field';
+      this.offer(state, 'power', [tipWord(), `${power.name} is ready: press `, kbd('Q'), ` or its button, ${aim}. You can aim while paused.`], { now: true });
+    }
     // last, so it goes first: the draft is on screen now (it opens on the same tick as a wave's interest)
-    if (state.sides.player.draft) {
-      this.offer(state, 'draft', [tipWord(), 'Pick with ', kbd('1'), '–', kbd('3'), ': blueprints add buildings, upgrades improve them, relics last the run.'], { now: true });
+    const draft = state.sides.player.draft;
+    if (draft) {
+      // a key for each card on offer (the bigger-drafts prototype deals 4)
+      const last = Math.min(9, draft.offer.length);
+      this.offer(state, 'draft', [tipWord(), 'Pick with ', kbd('1'), ...(last > 1 ? ['–', kbd(String(last))] : []), ': blueprints add buildings, upgrades improve them, relics last the run.'], { now: true });
     }
   }
 

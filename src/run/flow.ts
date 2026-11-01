@@ -4,8 +4,8 @@
 // the run's streams. Battles themselves run in the sim; the run only sees their final state.
 import type { RunEffect } from '../data/schema.ts';
 import {
-  RARITIES, applyCard, buildLibrary, counterSets, draftPool, generalPassives, generateOffer, hashState, nextFloat, nextInt, parseCard,
-  parseController, seedStream, topKinds,
+  POWER_SOURCE_ID, RARITIES, applyCard, buildLibrary, counterSets, draftPool, generateOffer, hashState, nextFloat, nextInt, parseCard,
+  parseController, seedStream, setCommander, sideModifiers, topKinds,
 } from '../sim/index.ts';
 import type {
   BattleConfig, BattleModifier, BattleState, Content, DraftPool, IntelProfile, Library, Loadout, Rarity, SideConfig,
@@ -20,7 +20,7 @@ import type { BattleRecord, Prompt, RunState, SpoilsPick } from './runState.ts';
 // ---- pools and loadouts ----
 
 export function runPool(content: Content, run: RunState): DraftPool {
-  return draftPool(content, run.faction, run.commander, run.flags);
+  return draftPool(content, run.faction, run.commander, run.flags, run.bans);
 }
 
 /** A library covering the run's kit and everything its pool can offer (for spoils offers). */
@@ -84,6 +84,12 @@ export function battleConfig(content: Content, run: RunState, node: RouteNode): 
     draft: runPool(content, run),
   };
   if (run.player !== 'human') player.autoDraft = run.autoDraft;
+  setCommander(content, player, run.commander);
+  if (run.player !== 'human') {
+    if (run.powerPolicy) player.powerPolicy = run.powerPolicy;
+    const extra = botCoreWeights(content, run);
+    if (Object.keys(extra).length) player.aiWeights = extra;
+  }
   const enemy: SideConfig = {
     faction: enemyFaction,
     controller: { kind: 'general', id: node.general ?? 'scripted' },
@@ -97,12 +103,16 @@ export function battleConfig(content: Content, run: RunState, node: RouteNode): 
   // Run progression may introduce buildings the historical single-battle profile never bought.
   // Give only those kit entries a purchase path, leaving the base profile and its replays intact.
   const generalWeights = content.generals[node.general ?? 'scripted']!.weights;
-  const extraWeights = Object.fromEntries(enemyKit.filter((id) => !(generalWeights[id]! > 0)).map((id) => [id, 1]));
+  const extraWeights = Object.fromEntries(enemyKit.filter((id) => !(generalWeights[id]! > 0)).map((id) => [id, content.buildings[id]!.aiWeight ?? 1]));
   if (Object.keys(extraWeights).length) enemy.aiWeights = extraWeights;
   if (Object.keys(enemyUpgrades).length) enemy.upgrades = enemyUpgrades;
-  const modifiers: BattleModifier[] = generalPassives(content, { player, enemy });
+  const modifiers: BattleModifier[] = sideModifiers(content, { player, enemy });
   const elite = node.elite ? content.elites[node.elite] : undefined;
   if (elite?.effects) modifiers.push({ side: 'enemy', source: `elite:${elite.id}`, effects: elite.effects });
+  // hot-start prototype (absent by default): effects for the run's first battles, such as a gentler battle 1
+  const hot = bal.hotStart?.battles?.[index - 1];
+  if (hot?.player) modifiers.push({ side: 'player', source: 'proto:hotStart', effects: hot.player });
+  if (hot?.enemy) modifiers.push({ side: 'enemy', source: 'proto:hotStart', effects: hot.enemy });
   if (run.next.sporestormShiftSeconds) {
     modifiers.push({ side: 'both', source: 'event:next-battle', effects: { modifiers: [{ stat: 'battle.sporestormStart', op: 'add', value: run.next.sporestormShiftSeconds }] } });
   }
@@ -111,6 +121,18 @@ export function battleConfig(content: Content, run: RunState, node: RouteNode): 
   };
   if (modifiers.length) config.modifiers = modifiers;
   return config;
+}
+
+/**
+ * A bot player's purchase weights for its commander's core buildings that its profile never buys
+ * (weight 1), so it drafts and builds them as a general does its run-only kit entries. Empty for a
+ * human player.
+ */
+export function botCoreWeights(content: Content, run: RunState): Record<string, number> {
+  const bot = run.player.startsWith('bot:') ? run.player.slice(4) : '';
+  if (!bot || bot.startsWith('mono:')) return {};
+  const weights = content.bots[bot]?.weights ?? {};
+  return Object.fromEntries(content.commanders[run.commander]!.core.filter((id) => !(weights[id]! > 0)).map((id) => [id, 1]));
 }
 
 /**
@@ -144,6 +166,8 @@ export function generalKit(content: Content, run: RunState, node: RouteNode, ind
       if (kit.length >= size) break;
       if (!kit.includes(id) && roster.includes(id)) kit.push(id);
     }
+    // prototype content (the combat rework's Rhizomorph): roster buildings with an `aiWeight` join every kit
+    for (const id of roster) if (content.buildings[id]!.aiWeight !== undefined && !kit.includes(id)) kit.push(id);
   }
   const upgrades: Record<string, number> = {};
   const tracks = () => kit.filter((id) => content.buildings[id]!.spawn && content.upgrades[id] && (upgrades[id] ?? 0) < 3);
@@ -222,7 +246,7 @@ export function finishBattle(content: Content, run: RunState, state: BattleState
   run.next = { startingGold: 0, sporestormShiftSeconds: 0 };
   const damage: Record<string, number> = {};
   for (const [id, dmg] of Object.entries(state.stats.player.damageByBuilding)) {
-    const type = id === '0' ? 'turret' : state.stats.player.buildingTypes[id] ?? 'unknown';
+    const type = id === '0' ? 'turret' : id === String(POWER_SOURCE_ID) ? 'power' : state.stats.player.buildingTypes[id] ?? 'unknown';
     damage[type] = (damage[type] ?? 0) + dmg;
   }
   const map = content.maps[state.config.mapId]!;

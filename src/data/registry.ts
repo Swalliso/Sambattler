@@ -218,7 +218,11 @@ export function loadContent(raw: RawContent): Content {
   for (const c of Object.values(commanders)) {
     for (const id of c.core) buildingRef(`commander ${c.id} core`, id);
     if (new Set(c.core).size !== c.core.length) problems.push(`commander ${c.id}: duplicate core building`);
+    effectRefs(`commander ${c.id} passive`, c.passive.effects);
+    spriteRef(`commander ${c.id}`, c.sprite);
   }
+  const powerIds = Object.values(commanders).map((c) => c.power.id);
+  if (new Set(powerIds).size !== powerIds.length) problems.push('commanders: two powers share an id');
   for (const map of Object.values(maps)) {
     const W = map.width, H = map.height;
     for (let r = 0; r < H; r++) {
@@ -234,6 +238,7 @@ export function loadContent(raw: RawContent): Content {
     for (const side of [s.sides.player, s.sides.enemy]) {
       for (const b of side.buildings ?? []) buildingRef(`scenario ${s.id}`, b.building);
       for (const id of side.kit ?? []) buildingRef(`scenario ${s.id} kit`, id);
+      if (side.commander && !(side.commander in commanders)) problems.push(`scenario ${s.id}: commander "${side.commander}" does not exist`);
       for (const u of side.units ?? []) if (!(u.unit in units)) problems.push(`scenario ${s.id}: unit "${u.unit}" does not exist`);
     }
   }

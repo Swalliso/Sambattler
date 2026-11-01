@@ -1,7 +1,8 @@
 // The battle screen (SPEC §10.2): the top band (both Heartcaps, the territory tug, stat chips and the
 // General's Intent), the callout lane, the pixel-scaled battlefield inside its frame of roots and soil,
-// and the bottom band (Begin in deploy, then speed and pause; Hold / Advance; sound, settings and help;
-// the building tray; the inspect panel). The cog opens the settings screen and pauses the battle while
+// and the bottom band (Begin in deploy, then speed and pause; the commander power; Hold / Advance;
+// sound, settings and help; the building tray; the inspect panel). The power button shows its cooldown
+// as a ring; `Q` or a click aims it (also while paused) and a click on the field fires it next tick. The cog opens the settings screen and pauses the battle while
 // it is open; settings that touch the field (damage numbers, color-blind assist, screen shake) apply live.
 import type { Content } from '../data/registry.ts';
 import { Renderer, TILE } from '../render/renderer.ts';
@@ -19,6 +20,9 @@ import type { ReportRewards } from '../ui/report.ts';
 import { activeText, generalName, intentOf, rememberText, warningText } from '../ui/doctrine.ts';
 import { DraftOverlay } from '../ui/draftOverlay.ts';
 import { TopBand } from '../ui/hud/top.ts';
+import { AnchoredTip } from '../ui/tooltip.ts';
+import { powerAim, powerTiming } from '../ui/words.ts';
+import { powerCooldownTicks, powerFirstReadyTicks } from '../sim/index.ts';
 import { Tray } from '../ui/hud/tray.ts';
 import { trayOrder } from '../ui/buildingInfo.ts';
 import { CombatLog, InspectPanel } from '../ui/inspect.ts';
@@ -81,6 +85,11 @@ export class BattleView {
   private speedBtns: HTMLButtonElement[] = [];
   private stanceRows: { hold: HTMLButtonElement; advance: HTMLButtonElement; status: HTMLElement }[] = [];
   private pauseBtn: HTMLButtonElement;
+  /** The commander power (absent in battles without one). */
+  private powerBtn: HTMLButtonElement | null = null;
+  private powerState = h('small', { class: 'power-state', id: 'power-state' });
+  private powerTip = new AnchoredTip('power-tip', 'above');
+  private aimCallout = h('div', { class: 'callout aim', id: 'aim-callout', role: 'status' });
   private settingsBtn: HTMLButtonElement;
   private settingsShown = false;
   private pausedBeforeSettings = false;
@@ -94,13 +103,17 @@ export class BattleView {
   private ended = false;
   private nudged = false;
   private nudgeUntil = 0;
+  /** Each lane's column owners as the view last saw them (0 unclaimed, 1 yours, 2 theirs): a flip names only who took the column. */
+  private owners: number[][];
   scale = 1;
 
   /** @param still ambient motion holds still (`?test=1`), so screenshots and browser tests are stable */
   constructor(private session: Session, content: Content, private atlas: Atlas, private actions: ViewActions, debug: boolean, still = false) {
     const state = session.state;
+    this.owners = state.lanes.map((l) => l.owner.slice());
     this.canvas = h('canvas', { id: 'battlefield', 'aria-label': 'Battlefield' });
     this.renderer = new Renderer(this.canvas, content, atlas, state);
+    this.renderer.still = still;
     this.frameArt = new FieldFrame(content, atlas, this.renderer.width, this.renderer.height, still);
     this.sound = new BattleSound(state, content.audio.enemyGain, sfx);
     this.top = new TopBand(content, atlas, state);
@@ -130,6 +143,24 @@ export class BattleView {
       class: 'btn has-ico', id: 'pause-btn', title: 'Pause (Space)', 'aria-label': 'Pause', 'aria-pressed': 'false', onclick: () => { session.paused = !session.paused; },
     }, uiIcon(atlas, 'i-pause'));
     this.speedSeg = h('div', { class: 'seg speed', role: 'group', 'aria-label': 'Speed and pause' }, ...this.speedBtns, this.pauseBtn);
+    const power = session.power();
+    if (power) {
+      this.powerBtn = h('button', {
+        class: 'btn power-btn', id: 'power-btn', 'aria-pressed': 'false', 'aria-label': `${power.name} (Q)`, onclick: () => this.togglePower(),
+      },
+        h('span', { class: 'power-ring', 'aria-hidden': 'true' }, uiIcon(atlas, 'i-power')),
+        h('span', { class: 'power-label' }, h('b', null, power.name), this.powerState),
+        h('kbd', null, 'Q'));
+      this.powerTip.attach(this.powerBtn, {
+        key: () => `${this.powerState.textContent}|${session.state.compiled.player.powerCooldownMult ?? 1}`,
+        build: () => [
+          h('div', { class: 'tip-head' }, h('b', null, power.name), h('span', { class: 'tip-num lit' }, this.powerState.textContent ?? '')),
+          h('span', null, power.text),
+          h('span', { class: 'muted' }, `${powerAim(power)}. ${powerTiming(power, session.state.compiled.player.powerCooldownMult ?? 1)}.`),
+          h('span', { class: 'muted' }, 'Press Q or click here, then click the field. You can aim while paused; it goes off on the next tick.'),
+        ],
+      });
+    }
     const settings = loadSettings();
     this.renderer.damageNumbers = settings.damageNumbers;
     this.renderer.colorAssist = settings.colorAssist;
@@ -147,7 +178,8 @@ export class BattleView {
     const stance = state.rules.stance ? h('div', { class: 'stance', id: 'stance' },
       ...state.lanes.map((_, i) => {
         const which = lanes > 1 ? `lane ${i + 1}` : 'the lane';
-        const hold = h('button', { class: 'btn has-ico', 'data-stance': 'hold', 'data-lane': i, 'aria-pressed': 'false', title: `Hold ${which}: units gather at the rally line (F: every lane)`, 'aria-label': `Hold ${which}`, onclick: () => { if (!session.stanceShown(i)) session.toggleStance(i); } }, uiIcon(atlas, 'i-hold'));
+        const holdWhat = state.rules.waves ? 'its next wave stays home for one beat, and the beat after sends both waves' : 'units gather at the rally line';
+        const hold = h('button', { class: 'btn has-ico', 'data-stance': 'hold', 'data-lane': i, 'aria-pressed': 'false', title: `Hold ${which}: ${holdWhat} (F: every lane)`, 'aria-label': `Hold ${which}`, onclick: () => { if (!session.stanceShown(i)) session.toggleStance(i); } }, uiIcon(atlas, 'i-hold'));
         const advance = h('button', { class: 'btn has-ico', 'data-stance': 'advance', 'data-lane': i, 'aria-pressed': 'true', title: `Advance ${which} (F: every lane)`, 'aria-label': `Advance ${which}`, onclick: () => { if (session.stanceShown(i)) session.toggleStance(i); } }, uiIcon(atlas, 'i-advance'));
         const status = h('span', { class: 'status' });
         this.stanceRows.push({ hold, advance, status });
@@ -159,6 +191,7 @@ export class BattleView {
     const controls = h('div', { class: 'controls' },
       this.beginBox,
       this.speedSeg,
+      this.powerBtn,
       stance,
       h('div', { class: 'row' },
         soundToggle(atlas, 'up'),
@@ -173,6 +206,7 @@ export class BattleView {
       this.field,
       h('footer', { class: 'bottom' }, controls, this.tray.el, this.inspect.el),
       this.draft.el,
+      this.powerTip.el,
     );
     window.addEventListener('resize', this.onResize);
     // the self-hosted fonts change the bands' heights when they swap in
@@ -185,6 +219,7 @@ export class BattleView {
     window.removeEventListener('resize', this.onResize);
     this.unsubscribe();
     this.top.dispose();
+    this.powerTip.dispose();
     this.coach.dispose();
     if (this.settingsShown) closeSettings();
     soundSpeed(1);
@@ -229,6 +264,37 @@ export class BattleView {
 
   get helpOpen(): boolean { return this.help !== null; }
 
+  /** `Q` or the power button: start or stop aiming the commander power (refused, with a callout, while it recharges). */
+  togglePower(): void {
+    const s = this.session;
+    const def = s.power();
+    if (!def || s.state.phase === 'ended') return;
+    // a global power also waits for a click on the field, so a stray Q never fires it
+    if (s.toggleTargeting()) return;
+    sfx('illegal');
+    const st = s.state;
+    const why = st.phase !== 'live' ? `${def.name} works once the battle begins`
+      : s.powerPending() ? `${def.name} goes off on the next tick`
+        : `${def.name} is ready in ${Math.ceil(st.sides.player.powerCooldown / st.rules.tickRate)} s`;
+    this.callouts.push('refused', why, '', performance.now());
+  }
+
+  /** `F`: holds every lane that can, or advances them all; when no lane can hold yet, a callout says when one can. */
+  toggleAllStances(): void {
+    const s = this.session, st = s.state;
+    if (!st.rules.stance || st.phase === 'ended' || s.toggleAllStances()) return;
+    sfx('illegal');
+    // the lane that isn't held and can hold soonest
+    let at = Infinity;
+    st.lanes.forEach((_, i) => { if (!s.stanceShown(i)) at = Math.min(at, st.sides.player.stance![i]!.readyAt); });
+    const beat = st.compiled.player.waveBeatTicks;
+    const toBeat = beat ? beat - (st.tick % beat) : 0;
+    const secs = (ticks: number) => Math.max(1, Math.ceil(ticks / st.rules.tickRate));
+    // combat rework `waves`: a hold the beat spent can't hold again until the next beat has sent both waves
+    const why = beat && at === st.tick + toBeat + 1 ? `Hold is ready once both waves leave, in ${secs(toBeat)} s` : `Hold is ready in ${secs(at - st.tick)} s`;
+    this.callouts.push('refused', why, '', performance.now());
+  }
+
   /** A notice pinned in the callout lane while the battle is in deploy (e.g. a save that couldn't be restored). */
   notice(id: string, text: string): void {
     this.callouts.pin(id, h('div', { class: 'callout bad notice', id, role: 'status' }, text));
@@ -238,6 +304,7 @@ export class BattleView {
     if (this.session.state.phase === 'ended') return;
     this.session.placing = this.session.placing === id ? null : id;
     this.session.selected = null;
+    this.session.targeting = false;
   }
 
   /**
@@ -258,6 +325,7 @@ export class BattleView {
     // the frame fills everything between the bands: from the top band down, past the callout lane
     this.frameArt.el.style.top = `${(this.top.el.getBoundingClientRect().bottom - r.top) / ui}px`;
     this.frameArt.layout(this.canvas.getBoundingClientRect(), this.frameArt.el.getBoundingClientRect(), ui);
+    this.top.fit();
     this.tray.fit();
   }
 
@@ -281,7 +349,12 @@ export class BattleView {
       if (e.t === 'income' && e.side === 'player') {
         this.top.bump();
       } else if (e.t === 'columnFlipped') {
-        this.callouts.push('column', e.to === 'player' ? `Column ${e.column} claimed` : `Column ${e.column} lost`, e.to === 'player' ? 'good' : 'bad', now);
+        // "lost" only for a column that was yours; the enemy taking unclaimed ground shows on the tug, not in the lane
+        const owners = this.owners[e.lane]!;
+        const was = owners[e.column];
+        owners[e.column] = e.to === 'player' ? 1 : 2;
+        if (e.to === 'player') this.callouts.push('column', `Column ${e.column} claimed`, 'good', now);
+        else if (was === 1) this.callouts.push('column', `Column ${e.column} lost`, 'bad', now);
       } else if (e.t === 'buildingDestroyed') {
         const name = this.session.content.buildings[e.buildingId]?.name ?? e.buildingId;
         this.callouts.push('buildingLost', e.side === 'player' ? `${name} lost` : `Enemy ${name} destroyed`, e.side === 'player' ? 'bad' : 'good', now);
@@ -290,6 +363,9 @@ export class BattleView {
         this.shakeOn(e.target, e.amount, now);
       } else if (e.t === 'sporestorm') {
         this.callouts.push('info', `The Sporestorm thickens (${e.stacks})`, '', now);
+      } else if (e.t === 'heartcapBreach') {
+        const pct = Math.round(e.at * 100);
+        this.callouts.push('counter', e.side === 'player' ? `Your Heartcap is breached (${pct}%)!` : `Enemy Heartcap breached (${pct}%)!`, e.side === 'player' ? 'bad' : 'good', now);
       } else if (e.t === 'begin') {
         this.callouts.push('info', 'The battle begins', '', now);
         const opening = intentOf(state).opening;
@@ -301,13 +377,28 @@ export class BattleView {
         this.callouts.push('counter', activeText(generalName(this.session.content, state), e.kind), 'bad', now);
       } else if (e.t === 'stance' && (e.side === 'enemy' || e.auto) && !e.hold) {
         const lane = state.lanes.length > 1 ? ` in lane ${e.lane + 1}` : '';
-        this.callouts.push('info', e.side === 'player' ? `Hold time is up: advancing${lane}` : `The Gray Rot advances${lane}`, e.side === 'player' ? '' : 'bad', now);
+        // combat rework `waves`: the beat spent the hold, keeping that wave home
+        const spent = state.rules.waves ? `Wave kept home${lane}: the next beat sends both waves` : `Hold time is up: advancing${lane}`;
+        this.callouts.push('info', e.side === 'player' ? spent : `The Gray Rot advances${lane}`, e.side === 'player' ? '' : 'bad', now);
+      } else if (e.t === 'release' && e.side === 'player' && e.shielded.length) {
+        // combat rework `mixedWave`
+        const lanes = state.lanes.length > 1 ? ` in lane ${e.shielded.map((l) => l + 1).join(' and ')}` : '';
+        this.callouts.push('info', `Mixed wave${lanes}: shields up`, '', now);
+      } else if (e.t === 'power' && e.side === 'player') {
+        const def = state.library.powers?.[e.power];
+        const name = def?.name ?? 'Power';
+        const what = def?.kind === 'tithe' ? `paid ${e.gold ?? 0} gold`
+          : def?.kind === 'surge' ? `took ${e.lanes.length} column${e.lanes.length === 1 ? '' : 's'}`
+          : def?.kind === 'bloom' ? `merged ${e.merges} trio${e.merges === 1 ? '' : 's'}` : `hit ${e.hits} target${e.hits === 1 ? '' : 's'}`;
+        this.callouts.push('merge', `${name} ${what}!`, 'good', now);
       } else if (e.t === 'merged' && (e.side === 'player' || e.tier === 3)) {
         const name = this.session.content.units[e.unitId]?.name ?? e.unitId;
         const tier = e.tier === 3 ? 'Elder' : 'Bloomed';
         this.callouts.push('merge', e.side === 'player' ? `${tier} ${name}!` : `Enemy ${tier} ${name}`, e.side === 'player' ? 'good' : 'bad', now);
       }
     }
+    // back in step with the sim, also after ticks it ran without the view (a `?ticks=` fast-forward)
+    this.owners = state.lanes.map((l) => l.owner.slice());
   }
 
   /**
@@ -359,14 +450,28 @@ export class BattleView {
   frame(state: BattleState, alpha: number, now: number, debugOverlay: boolean): void {
     const s = this.session;
     const ghost = s.ghost();
+    const def = s.power();
+    if (s.targeting && !s.powerReady()) s.targeting = false; // the battle ended, or the use is already queued
+    const preview = s.targeting ? s.powerPreview() : null;
+    const pending = s.pending();
+    const powerView = def ? {
+      reticle: preview && def.target === 'point' && s.aim ? { x: s.aim.x, y: s.aim.y, radius: def.radius, valid: preview.valid } : null,
+      lanes: preview?.lanes ?? null,
+      pending: pending.flatMap((c) => (c.type === 'power' && c.x !== undefined && c.y !== undefined && def.target === 'point' ? [{ x: c.x, y: c.y, radius: def.radius }] : [])),
+    } : null;
     this.renderer.draw(state, alpha, {
       ghost: ghost ? { buildingId: ghost.buildingId, col: ghost.col, row: ghost.row, legal: ghost.legal } : null,
       selected: s.selected,
-      pending: s.pending(),
+      pending,
       placeable: s.legalTiles(),
       debug: debugOverlay,
       timeMs: now,
+      power: powerView,
     });
+    this.canvas.classList.toggle('aiming', s.targeting);
+    if (powerView?.reticle) this.canvas.dataset.reticle = `${powerView.reticle.x.toFixed(2)},${powerView.reticle.y.toFixed(2)},${powerView.reticle.radius}`;
+    else delete this.canvas.dataset.reticle;
+    this.updatePower(state, preview);
     // spores drift at the game's speed, and stop while it is paused, held for a draft or over
     const running = state.phase === 'deploy' || (state.phase === 'live' && !s.paused && !state.held);
     this.frameArt.frame(state.sporestorm, now, running ? (state.phase === 'live' ? s.speed : 1) : 0);
@@ -392,9 +497,15 @@ export class BattleView {
       const st = state.sides.player.stance![i]!;
       const held = s.stanceShown(i);
       const secs = (ticks: number) => `${Math.max(0, Math.ceil(ticks / state.rules.tickRate))} s`;
+      const beat = state.compiled.player.waveBeatTicks;
+      // combat rework `waves`: a held lane keeps its wave home until the next beat, and can't hold past it (the beat after
+      // sends both waves). Short words, so they fit beside the switch at 1280 px; the Hold button's title says it in full
       const text = held
-        ? st.hold ? `Hold · ${secs(state.rules.stance!.maxHoldTicks - (state.tick - st.since))}` : 'Holding'
-        : s.canHold(i) ? 'Advancing' : `Hold in ${secs(st.readyAt - state.tick)}`;
+        ? beat ? `Home · ${secs(beat - (state.tick % beat))}`
+          : st.hold ? `Hold · ${secs(state.rules.stance!.maxHoldTicks - (state.tick - st.since))}` : 'Holding'
+        : s.canHold(i) ? 'Advancing'
+          : beat && st.readyAt > state.tick + beat - (state.tick % beat) ? `Out in ${secs(beat - (state.tick % beat))}`
+            : `Hold in ${secs(st.readyAt - state.tick)}`;
       this.lit(row.hold, held);
       this.lit(row.advance, !held);
       // a hold on cooldown is unlit (src/app/session.ts refuses it); advancing back is always open
@@ -414,8 +525,8 @@ export class BattleView {
     if (ghost && s.hover) {
       this.tip.hidden = false;
       const name = s.content.buildings[ghost.buildingId]!.name;
-      // the forward price in plain words: how far from home, and what that adds
-      const surcharge = ghost.depth > 0 ? ` (+${Math.round(ghost.depth * s.content.balance.supplyLinePerColumn * 100)}%: ${ghost.depth} column${ghost.depth === 1 ? '' : 's'} from home)` : ' (home ground)';
+      // the forward price in plain words: how far from home, and what that adds (your own rate, so Forward Spores shows)
+      const surcharge = ghost.depth > 0 ? ` (+${Math.round((ghost.depth * state.compiled.player.supplyLineBp) / 100)}%: ${ghost.depth} column${ghost.depth === 1 ? '' : 's'} from home)` : ' (home ground)';
       const def = s.content.buildings[ghost.buildingId]!;
       const loam = def.economy && ghost.loam ? ` · Rich Loam +${Math.round(s.content.balance.loamBonus * 100)}%` : '';
       this.tip.replaceChildren(
@@ -438,6 +549,36 @@ export class BattleView {
       this.report = report;
       // the report is a new screen: it arrives behind a spore wipe
       sporeWipe(() => { if (!this.disposed) document.body.append(report); });
+    }
+  }
+
+  /** The power button (its cooldown ring and state) and, while aiming, the callout that says what a click does. */
+  private updatePower(state: BattleState, preview: ReturnType<Session['powerPreview']> | null): void {
+    const s = this.session;
+    const def = s.power();
+    const btn = this.powerBtn;
+    if (!def || !btn) return;
+    const cd = state.sides.player.powerCooldown;
+    const total = (state.stats.player.powerUses ?? 0) > 0 ? powerCooldownTicks(state, 'player', def) : powerFirstReadyTicks(state, def);
+    const k = state.phase === 'deploy' ? 0 : cd <= 0 ? 1 : Math.max(0, Math.min(1, 1 - cd / Math.max(1, total)));
+    btn.style.setProperty('--charge', k.toFixed(3));
+    const label = state.phase === 'deploy' ? `Ready at ${Math.floor(def.firstReady / 60)}:${String(Math.round(def.firstReady) % 60).padStart(2, '0')}`
+      : s.powerPending() ? 'Next tick' : s.targeting ? 'Aiming' : cd > 0 ? `${Math.ceil(cd / state.rules.tickRate)} s` : 'Ready';
+    setText(this.powerState, label);
+    btn.dataset.state = s.targeting ? 'aiming' : s.powerPending() ? 'pending' : cd > 0 || state.phase !== 'live' ? 'charging' : 'ready';
+    this.lit(btn, s.targeting);
+    this.powerTip.refresh();
+    if (preview) {
+      const what = def.kind === 'burst' ? `${preview.count} target${preview.count === 1 ? '' : 's'} in range`
+        : def.kind === 'bloom' ? `${preview.count} trio${preview.count === 1 ? '' : 's'} to merge`
+          : def.kind === 'tithe' ? `${preview.count} column${preview.count === 1 ? '' : 's'} held · +${def.goldPerColumn * preview.count} gold`
+          : `${preview.count} column${preview.count === 1 ? '' : 's'} to take`;
+      const act = def.target === 'point' ? (s.aim ? (preview.valid ? 'click to fire' : preview.reason ?? '') : 'move over the field') : (preview.valid ? 'click the field to fire' : preview.reason ?? '');
+      this.aimCallout.replaceChildren(uiIcon(this.atlas, 'i-power'), h('b', null, def.name), `${s.aim || def.target === 'global' ? `${what} · ` : ''}${act}`, h('kbd', null, 'Esc'));
+      toggleClass(this.aimCallout, 'bad', !preview.valid && (def.target === 'global' || !!s.aim));
+      this.callouts.pin('aim', this.aimCallout);
+    } else {
+      this.callouts.unpin('aim');
     }
   }
 

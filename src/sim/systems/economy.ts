@@ -1,3 +1,4 @@
+// v1 code: SPEC v2 milestone R2 rewrites this as income per round (SPEC §13.4); the clock, waves and timed storm retire.
 // Clock, waves, Sporestorm (SPEC §4.2, §6.4) and income, interest, comeback (SPEC §6.2).
 import { aiDraft } from '../ai/draftPolicy.ts';
 import { openDraft } from '../draft.ts';

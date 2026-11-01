@@ -1,4 +1,4 @@
-// URL parameters (SPEC §15.6), Milestone 3 subset. Later scenes and flags are recognised and refused
+// URL parameters (SPEC §15.6), Milestone 5 subset. Later scenes and flags are recognised and refused
 // with a visible message rather than ignored silently.
 import { parseFlags } from '../sim/index.ts';
 import type { Flags } from '../sim/index.ts';
@@ -24,6 +24,10 @@ export interface Params {
   proto: string | null;
   /** `run` (play a whole run with bots) or `battles:<n>` (the first n battles), for route and summary screens. */
   autoplay: { battles: number | 'all' } | null;
+  /** The Underroot's open tab (`scene=underroot&tab=commanders|bans`). */
+  tab: 'commanders' | 'bans';
+  /** Battles: open with the commander power's targeting on (`targeting=1`, for screenshots). */
+  targeting: boolean;
 }
 
 /** Battle-only parameters: with any of them and no `scene`, the page opens a single battle (as in M1–M2). */
@@ -60,5 +64,7 @@ export function parseParams(search: string): Params {
     sound: q.get('sound') === '1',
     proto: q.get('proto') || null,
     autoplay: auto === 'run' ? { battles: 'all' } : am ? { battles: Number(am[1]) } : null,
+    tab: q.get('tab') === 'bans' ? 'bans' : 'commanders',
+    targeting: q.get('targeting') === '1',
   };
 }

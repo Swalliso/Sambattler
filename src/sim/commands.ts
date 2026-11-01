@@ -1,9 +1,12 @@
 // The command queue and log (SPEC §14.5). Commands are validated when they execute, so an
 // illegal command becomes a deterministic `commandRejected` event on replay too.
 import { noteBuilt } from './ai/counter.ts';
+import { aiDraft } from './ai/draftPolicy.ts';
 import { addBuilding } from './create.ts';
 import { executeDraftCommand } from './draft.ts';
 import { placementProblem, priceAt } from './placement.ts';
+import { powerProblem, usePower } from './powers.ts';
+import { releaseStored } from './systems/spawning.ts';
 import { setStance } from './systems/stance.ts';
 import { buildingDef, findBuilding, isBesieged, supplyCapOf } from './world.ts';
 import type { BattleState, Command, CommandBody, Side } from './state.ts';
@@ -113,6 +116,7 @@ function execute(state: BattleState, cmd: Command): boolean {
       if (isBesieged(state, b)) { reject(state, cmd, 'cannot sell while besieged'); return false; }
       const refund = sellValue(state, b.id);
       ss.gold += refund;
+      if (b.stored) releaseStored(state, b); // combat rework `waves`: the units waiting inside come out
       const utility = !!buildingDef(state, b).utility;
       state.buildings.splice(state.buildings.indexOf(b), 1);
       if (utility) ss.supplyCap = supplyCapOf(state, side);
@@ -136,15 +140,24 @@ function execute(state: BattleState, cmd: Command): boolean {
       setStance(state, side, cmd.lane, cmd.hold, false);
       return false;
     }
+    case 'power': {
+      const problem = powerProblem(state, side, cmd);
+      if (problem) { reject(state, cmd, problem); return false; }
+      usePower(state, side, cmd);
+      return false;
+    }
     case 'draftPick':
     case 'draftReroll':
     case 'draftSkip': {
       const problem = executeDraftCommand(state, side, cmd);
       if (problem) reject(state, cmd, problem);
+      // bigger drafts: an AI side takes its next card from an offer still open after a pick
+      else if (cmd.type === 'draftPick' && ss.draft) aiDraft(state, side);
       return false;
     }
     default:
-      reject(state, cmd, `${cmd.type} is not available in this milestone`);
+      // every command type is handled above; a malformed replay is rejected, not crashed on
+      reject(state, cmd as Command, `${(cmd as Command).type} is not a command`);
       return false;
   }
 }

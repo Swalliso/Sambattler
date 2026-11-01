@@ -10,7 +10,7 @@
     ],
     "assertedEdges": [["hammercap", "amanitaKnight"], ["amanitaKnight", "gillArcher"]]
   },
-  "G3": { "seeds": 20, "maxMonoWinRate": 0.55 },
+  "G3": { "seeds": 50, "maxMeanWinRate": 0.55, "maxMapWinRate": 0.60 },
   "G4": { "seeds": 40, "medianMinSeconds": 330, "medianMaxSeconds": 510, "maxDecisionShare": 0.15, "botWinMin": 0.3, "botWinMax": 0.7 },
   "G5": { "seeds": 20, "bonusGold": 150, "minWinRate": 0.55, "maxWinRate": 0.75 },
   "G6": { "seeds": 40, "scenario": "comeback-6", "minBehindWinRate": 0.2 },

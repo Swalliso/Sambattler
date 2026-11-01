@@ -1,5 +1,7 @@
 # Engagement review: where the fun is missing
 
+> **Archived: v1 era.** Written before [SPEC v2](../../../SPEC.md) (2026-10-31), for a battle v2 retires. Read it as history and evidence, not as current rules, numbers or plans ([the archive](../README.md)).
+
 Written 2026-10-28 against `main` at `a4841a2` (M1–M4 merged, balance prototypes recorded, nothing adopted). It answers two questions: what makes the current build less fun than it should be beyond archer balance, and whether the remaining milestones (M5–M8) fix that. **Nothing here is adopted.** Every rule change below needs your OK, as the balance backlog does.
 
 Evidence comes from one human-style run in the browser (battle 1 against the Lichen Baron on Stumpfield), 120 headless single battles (`bot:balanced` against the scripted general, Old Mother Mold, the Lichen Baron and the Blightwright, seeds 1–30 each, Bogwater Hollow) and 80 headless runs (`bot:balanced`, greedy drafts, random route). Bots aren't people, so the battle numbers describe pacing, not skill.

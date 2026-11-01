@@ -17,7 +17,7 @@ function assertVerdict(v: Verdict): void {
 describe('guardrails', () => {
   it('G1 production duels', () => assertVerdict(evaluateG1(content).verdict));
   it('G2 supply duels form a healthy counter graph, with the M4 edges', () => assertVerdict(evaluateG2(content).verdict));
-  it('G3 no mono bot beats bot:balanced more than 55%', () => assertVerdict(evaluateG3(content)));
+  it('G3 no mono bot beats bot:balanced on the run\'s maps: mean ≤55%, worst map ≤60%', () => assertVerdict(evaluateG3(content)));
   it('G4 balanced vs scripted: length band and Decision share', () => assertVerdict(evaluateG4(content)));
   it('G5 snowball: +150 starting gold wins 55–75%', () => assertVerdict(evaluateG5(content)));
   it('G6 comeback: 6 columns behind at 3:00 still wins ≥20%', () => assertVerdict(evaluateG6(content)));

@@ -1,5 +1,7 @@
 # Milestone 4 plan: adaptive general and intel
 
+> **Archived: v1 era.** Written before [SPEC v2](../../../SPEC.md) (2026-10-31), for a battle v2 retires. Read it as history and evidence, not as current rules, numbers or plans ([the archive](../README.md)).
+
 Written 2026-10-27 against `main` at `6eff1f2`. Scope and verification come from SPEC §16 "Milestone 4", plus §7.2–7.8, §11.2–11.3, §11.6, §11.11, §12.3 (G2, G8), §14 and §15.
 
 ## Kickoff decisions (agreed with the user before the work started)

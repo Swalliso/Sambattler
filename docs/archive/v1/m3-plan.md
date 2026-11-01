@@ -1,5 +1,7 @@
 # Milestone 3 plan: run loop, drafts, relics, carryover
 
+> **Archived: v1 era.** Written before [SPEC v2](../../../SPEC.md) (2026-10-31), for a battle v2 retires. Read it as history and evidence, not as current rules, numbers or plans ([the archive](../README.md)).
+
 Written 2026-10-26 against `main` at `2ca882e`. Scope and verification come from SPEC §16 "Milestone 3", plus §6.5, §8.2–8.9, §11.6, §11.7, §11.9, §13.8, §14 and §15.
 
 ## Kickoff decisions (agreed with the user)

@@ -6,7 +6,7 @@ import type { RunEffect } from '../data/schema.ts';
 import {
   choosePick, createBattle, hashState, queueCommand, runHeadless, seedStream, nextInt,
 } from '../sim/index.ts';
-import type { BattleState, Content, Rng4 } from '../sim/index.ts';
+import type { BattleState, Content, PowerPolicy, Rng4 } from '../sim/index.ts';
 import {
   chooseNode, eventChoose, finishBattle, groveChoose, outcomeAvailable, promptAnswer, spoilsPick, upgradeable,
 } from './flow.ts';
@@ -21,6 +21,8 @@ export interface AutoPolicies {
   draft: DraftAutoPolicy;
   /** Player controller for battles, e.g. `bot:balanced`. */
   player: string;
+  /** How the bot uses the commander power (default none). */
+  power?: PowerPolicy;
 }
 
 export interface AutoContext {
@@ -30,10 +32,12 @@ export interface AutoContext {
   weightOf: (building: string) => number;
 }
 
-export function autoContext(content: Content, seed: number, policies: AutoPolicies): AutoContext {
+export function autoContext(content: Content, seed: number, policies: AutoPolicies, commander?: string): AutoContext {
   const bot = policies.player.startsWith('bot:') ? policies.player.slice(4) : '';
   const mono = bot.match(/^mono:(.+)$/);
-  const weights: Record<string, number> = mono ? { [mono[1]!]: 1 } : content.bots[bot]?.weights ?? {};
+  const weights: Record<string, number> = mono ? { [mono[1]!]: 1 } : { ...content.bots[bot]?.weights };
+  // the commander's core buildings the profile never buys count at weight 1 (as in battle, flow.ts botCoreWeights)
+  if (!mono && commander) for (const id of content.commanders[commander]?.core ?? []) if (!(weights[id]! > 0)) weights[id] = 1;
   return { content, policies, rng: seedStream(seed, 'meta', 999), weightOf: (b) => weights[b] ?? 0 };
 }
 
@@ -147,8 +151,9 @@ export interface SimulateOptions extends Partial<RunOptions> {
 export function simulateRun(content: Content, seed: number, policies: AutoPolicies, opts: SimulateOptions = {}): RunResult {
   const run = createRun(content, {
     seed, player: policies.player, autoDraft: policies.draft, ...(opts.commander ? { commander: opts.commander } : {}), ...(opts.flags ? { flags: opts.flags } : {}),
+    ...(opts.bans ? { bans: opts.bans } : {}), ...(policies.power ? { powerPolicy: policies.power } : {}),
   });
-  const ctx = autoContext(content, seed, policies);
+  const ctx = autoContext(content, seed, policies, run.commander);
   const hashes: Record<string, string>[] = [];
   for (let guard = 0; !run.outcome && guard < 200; guard++) {
     if (run.screen.kind === 'battle') {

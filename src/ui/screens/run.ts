@@ -44,7 +44,19 @@ export function relicBadge(content: Content, atlas: Atlas, id: string): HTMLElem
 /** The strip at the top of every run screen: Heartcap, Spores, Amber, battles won, the kit and the relics. */
 export function runBar(content: Content, atlas: Atlas, run: RunState): HTMLElement {
   const pct = run.heartcap.hp / run.heartcap.max;
+  const cmd = content.commanders[run.commander];
+  const portrait = cmd ? spriteToCanvas(atlas, cmd.sprite, 'velvet-bloom') : null;
+  if (portrait) portrait.className = 'portrait';
+  // the commander, with its passive, power and bans in a tooltip (hover or focus)
+  const commander = cmd ? h('div', { class: 'rb-commander relic', tabindex: 0, id: 'run-commander', 'aria-label': `${cmd.name}: ${cmd.passive.text} ${cmd.power.name}: ${cmd.power.text}` },
+    portrait, h('span', null, h('b', null, cmd.name.split(' ')[0]!), h('small', null, cmd.power.name)),
+    h('span', { class: 'relic-tip', role: 'tooltip' },
+      h('span', { class: 'tip-head' }, h('b', null, cmd.name)),
+      h('span', null, h('b', null, 'Passive: '), cmd.passive.text),
+      h('span', null, h('b', null, `${cmd.power.name} (Q): `), cmd.power.text),
+      h('span', { class: 'muted' }, run.bans.length ? `Banned: ${run.bans.map((b) => content.buildings[b]?.name ?? b).join(', ')}` : 'No bans'))) : null;
   return h('header', { class: 'runbar', id: 'runbar' },
+    commander,
     h('div', { class: `rb-heart${pct < 1 / 3 ? ' low' : ''}`, title: 'Your Heartcap: it carries its damage from battle to battle' },
       uiIcon(atlas, 'i-heart'),
       h('div', { class: 'rb-hp' },
@@ -144,7 +156,7 @@ export function intelBars(atlas: Atlas, run: RunState): HTMLElement {
 const SVG = 'http://www.w3.org/2000/svg';
 
 /**
- * The hyphae between the pods (docs/ui-ux-plan.md C1): a thread from every node to every node in the next
+ * The hyphae between the pods (docs/archive/v1/ui-ux-plan.md C1): a thread from every node to every node in the next
  * row, and from the colony's start to the first row. The path you walked glows violet, the threads you can
  * take now glow lilac, the rest stay dim; hovering or focusing a pod lights its own threads. Threads are
  * drawn after layout, from the pods' centres, and again whenever the map changes size.
@@ -317,7 +329,7 @@ function choiceCard(atlas: Atlas, label: string, text: string, chips: Chip[], on
     h('kbd', { class: 'choice-key', 'aria-label': `Key ${key}` }, String(key)));
 }
 
-/** The event and Grove layout (docs/ui-ux-plan.md C2): a framed 4× scene, the story on stalk cream, the choices as cards. */
+/** The event and Grove layout (docs/archive/v1/ui-ux-plan.md C2): a framed 4× scene, the story on stalk cream, the choices as cards. */
 function vignette(content: Content, atlas: Atlas, run: RunState, id: string, art: string, eyebrow: string, title: string, text: string, choices: HTMLButtonElement[], foot: string): HTMLElement {
   const scene = spriteToCanvas(atlas, art, 'velvet-bloom');
   scene.className = 'scene';
