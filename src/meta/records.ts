@@ -54,6 +54,7 @@ function setupOf(x: unknown): SetupRecord | undefined {
   return { ...x, commander: x.commander, bans } as SetupRecord;
 }
 
+/** The record as this build reads it, and whether a newer build wrote it. */
 function read(storage: Storage): { rec: ProfileV1; readOnly: boolean } {
   const text = storage.get(PROFILE_KEY);
   if (text === null) return { rec: { v: PROFILE_VERSION }, readOnly: false };
