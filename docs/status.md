@@ -1,6 +1,6 @@
 # Where things stand
 
-Updated 2026-11-01, on `feature/r1-plan` (R1 S0, a docs PR into `develop`). This is the hand-over page. It covers what we're working on, what's waiting on the user's decision, and where each piece lives. Update it when work lands or the user decides something. Keep the detail in the docs it links to.
+Updated 2026-11-01, on `docs/r2a-rough-playtest` (a docs PR into `develop`). This is the hand-over page. It covers what we're working on, what's waiting on the user's decision, and where each piece lives. Update it when work lands or the user decides something. Keep the detail in the docs it links to.
 
 ## In short
 
@@ -20,7 +20,7 @@ Updated 2026-11-01, on `feature/r1-plan` (R1 S0, a docs PR into `develop`). This
 - **The spec is broken into task lists** in [docs/tasks/](tasks/README.md) ([#40](https://github.com/Swalliso/Sambattler/pull/40), on `develop`), spec-kit style: one list per milestone, one session per row of its Sessions table. The decisions each milestone needs from the user are in [clarify.md](tasks/clarify.md), and the problems the breakdown found in SPEC v2 are in [spec-analysis.md](tasks/spec-analysis.md). Lists after R1's are drafts, refreshed when each milestone's plan is agreed.
 - **Now: milestone R1, the clash check** ([SPEC §16](../SPEC.md#16-milestone-plan)). It's a headless tool that fights whole armies at equal gold, with no rule change. It sets squad sizes and checks that every strong army has an answer before the round loop is built. Its plan, [docs/r1-plan.md](r1-plan.md), was agreed on 2026-11-01 (R1 S0), with every recommendation taken.
 - **Then:**
-  - R2: rounds, the general plans first, lives, and the planning screen. R2 starts only once R1's results are in `docs/balance-backlog.md` and the user has agreed them. A session asked to start R2 before that stops and asks. The task lists split it in two (X1): R2a, a single battle in rounds, then R2b, the run in rounds;
+  - R2: rounds, the general plans first, lives, and the planning screen. R2 starts only once R1's results are in `docs/balance-backlog.md` and the user has agreed them. A session asked to start R2 before that stops and asks. The task lists split it in two (X1): R2a, a single battle in rounds, then R2b, the run in rounds. R2a gets a rough playtest after S14, as soon as a battle in rounds is properly playable and before its counter cycle and powers (R2-Q25, agreed 2026-11-01), and S21's playtest stays the gate;
   - R3: the kit, the six archetypes, augments, combos and run packs;
   - R4: readable armies and the card-text pass, in two parts (X3, agreed 2026-11-01): R4a, the shapes on the field, now beside R1 (below), and R4b, the cards, after R3;
   - then M6–M8, rewritten for v2.
@@ -62,8 +62,8 @@ Updated 2026-11-01, on `feature/r1-plan` (R1 S0, a docs PR into `develop`). This
     - **R2a's playtest waits for R4a's review gate** (R4/T039).
   - **Run it back** ([run-it-back.md](tasks/run-it-back.md)): X10 was agreed on 2026-11-01, and records S0 agreed its plan, [run-it-back-plan.md](run-it-back-plan.md), with RB-Q1 and RB-Q2 as recommended ([#44](https://github.com/Swalliso/Sambattler/pull/44)). records-1 builds only the remembered setup and Run it back, and records no runs, so no v1 run is ever recorded. Run records start in records-2, after R2b.
     - **records S1** (`feature/records-1-run-it-back`, T003–T012): merged ([#48](https://github.com/Swalliso/Sambattler/pull/48)). The profile store, `src/meta/records.ts`, keeps the last setup under `spore-sprawl/profile/v1`, and every write goes through `updateRecords()`. On the summary, Run it back (`Enter` or `R`) starts the same commander and bans on a new seed, straight on the route.
-    - **records S2** (`feature/records-1-setup`, T013–T014, T020–T022): built, in its PR. The Underroot opens on the setup last begun, after a reload too, and both Begin run and Run it back remember it. Seeded, test and prototype pages neither read nor write the profile. Verify green, 94 browser tests pass, no golden moved, and the `rb/summary` and `rb/underroot` screenshots pass. records-1 is built: see the plan's [As built](run-it-back-plan.md#as-built).
-    - **Next: your check on the dev site** (T023), once S2's PR has merged and `develop` has deployed: finish a run, press Run it back, then reload and choose New run. The Underroot should open on that commander and those bans. records-2 starts after R2b (S3, `feature/records-2-base`).
+    - **records S2** (`feature/records-1-setup`, T013–T014, T020–T022): merged ([#51](https://github.com/Swalliso/Sambattler/pull/51)). The Underroot opens on the setup last begun, after a reload too, and both Begin run and Run it back remember it. Seeded, test and prototype pages neither read nor write the profile. Verify green, 94 browser tests pass, no golden moved, and the `rb/summary` and `rb/underroot` screenshots pass. records-1 is built: see the plan's [As built](run-it-back-plan.md#as-built).
+    - **Next: your check on the dev site** (T023), now that S2 has merged and deployed: finish a run, press Run it back, then reload and choose New run. The Underroot should open on that commander and those bans. records-2 starts after R2b (S3, `feature/records-2-base`).
 
   These touch different files.
 - **No rule changes:** R1 changes no rule or data, so no golden hash moves.
@@ -71,7 +71,9 @@ Updated 2026-11-01, on `feature/r1-plan` (R1 S0, a docs PR into `develop`). This
 
 ## Waiting on the user
 
-1. **Review and merge R1 S0's PR** (`feature/r1-plan` into `develop`): the agreed plan and R1's calls in SPEC. R1 S1 and S2 wait on it.
+1. **Two checks, now:**
+   - records-1's check on the dev site (T023): the steps are in the Run it back bullet above;
+   - R4a-S2b's silhouette sheet (R4/T026), when its session shows it. R4a-S3 redraws the game's sprites only after your approval.
 2. **The decisions that shape the milestones**, X1–X10 in [clarify.md](tasks/clarify.md#index). Each has a recommendation. The task lists assume them and say what changes otherwise.
    - Needed now: X1 (split R2 into R2a and R2b) and X2 (build R2a beside v1 on `develop`; R2b's switch-over on an integration branch until a whole run plays). X3 (split R4, the field's shapes first) and X10 (Run it back in two parts) were agreed on 2026-11-01.
    - At R1's review gate: X4 (copies before R3, if the swarm fails) and X5 (the scoring curve). R1 measures both, as agreed on 2026-11-01.
@@ -99,12 +101,17 @@ Updated 2026-11-01, on `feature/r1-plan` (R1 S0, a docs PR into `develop`). This
 
 | Work | Where | State |
 |---|---|---|
-| Run it back plan agreed (2026-11-01) | [run-it-back-plan.md](run-it-back-plan.md), [run-it-back.md](tasks/run-it-back.md), [clarify.md](tasks/clarify.md) (X10, RB-Q1, RB-Q2), SPEC §9.7, §13.8 and §16 M6, the `feature/records-plan` PR | Recommendations taken; records-1 records no runs, so run recording moved into records-2. records S1 next |
-| R1 S1: the formation and the muster (2026-11-01) | [src/sim/formation.ts](../src/sim/formation.ts), [tests/unit/formation.test.ts](../tests/unit/formation.test.ts), the `feature/r1-formation` PR | Verify green, no golden moved. With S2 merged ([#45](https://github.com/Swalliso/Sambattler/pull/45)), S3 can start once this merges |
-| R1 S2: the switches and the army builder (2026-11-01) | `src/sim/systems/targeting.ts`, `movement.ts`, [tools/lib/clash.ts](../tools/lib/clash.ts), the `feature/r1-armies` PR | Verify green, no golden moved. S3 waits on S1 and S2 |
-| R4a-S1: one unit drawer, pips and the Elder rim (2026-11-01) | [src/render/unitSprite.ts](../src/render/unitSprite.ts), `compose.ts`, `i-pip`, the lineups, the `feature/r4a-unit-drawer` PR | Verify green, no golden moved. Merged units keep their size. R4a-S2 next |
-| R4a plan agreed (2026-11-01) | [r4a-plan.md](r4a-plan.md), [clarify.md](tasks/clarify.md) (X3, R4-Q1 to R4-Q5, #52, #53, #55), SPEC §2, §5.6, §5.8, §10, §11.1, §11.3, §13.6, §14.2, §14.3, §16 R4 and M7, and §18.2, the `feature/r4a-plan` PR | Every recommendation taken but two: only Elders get a rim, and the merged radius goes ×1.0 in R2a. R4a-S1 next |
-| R1 plan agreed (2026-11-01) | [r1-plan.md](r1-plan.md), [clarify.md](tasks/clarify.md) (R1-Q1 to R1-Q9), SPEC §16 R1, §12.2 and §13.7, the `feature/r1-plan` PR | Every recommendation taken. The full-colony budget is now 150 live units a side. R1 S1 and S2 next |
+| R2a's rough playtest added (2026-11-01) | [r2a-battle-in-rounds.md](tasks/r2a-battle-in-rounds.md) S14b (T145, T146), [clarify.md](tasks/clarify.md) R2-Q25, SPEC §16 R2 step 10 | Agreed: after S14 you play a battle in rounds, before S15 and S16 start. S21 stays the gate |
+| records-1 S2: the remembered setup (2026-11-01) | [#51](https://github.com/Swalliso/Sambattler/pull/51), `src/app/main.ts` | Merged. records-1 is built; your dev-site check (T023) is next |
+| R1 S3: one clash recorded (2026-11-01) | [#50](https://github.com/Swalliso/Sambattler/pull/50), [tools/lib/clash.ts](../tools/lib/clash.ts), `--checks clash --pair` | Merged. It found T053, the muster's seat-dependent ties, which S4 fixes first |
+| R4a-S2: the shape checks (2026-11-01) | [#49](https://github.com/Swalliso/Sambattler/pull/49), `src/data/shapes.ts`, `data/sprites/marks.json`, `npm run sprite-sheet` | Merged. The silhouette sheet (R4a-S2b) is next |
+| records-1 S1: the profile store and Run it back (2026-11-01) | [#48](https://github.com/Swalliso/Sambattler/pull/48), `src/meta/records.ts` | Merged |
+| R4a-S1: one unit drawer, pips and the Elder rim (2026-11-01) | [#47](https://github.com/Swalliso/Sambattler/pull/47), [src/render/unitSprite.ts](../src/render/unitSprite.ts), `compose.ts`, `i-pip`, the lineups | Merged. Merged units keep their size |
+| R1 S1: the formation and the muster (2026-11-01) | [#46](https://github.com/Swalliso/Sambattler/pull/46), [src/sim/formation.ts](../src/sim/formation.ts) | Merged |
+| R1 S2: the switches and the army builder (2026-11-01) | [#45](https://github.com/Swalliso/Sambattler/pull/45), `src/sim/systems/targeting.ts`, `movement.ts`, [tools/lib/clash.ts](../tools/lib/clash.ts) | Merged |
+| Run it back plan agreed (2026-11-01) | [#44](https://github.com/Swalliso/Sambattler/pull/44), [run-it-back-plan.md](run-it-back-plan.md), [clarify.md](tasks/clarify.md) (X10, RB-Q1, RB-Q2), SPEC §9.7, §13.8 and §16 M6 | Merged. Recommendations taken; records-1 records no runs, so run recording moved into records-2 |
+| R4a plan agreed (2026-11-01) | [#43](https://github.com/Swalliso/Sambattler/pull/43), [r4a-plan.md](r4a-plan.md), [clarify.md](tasks/clarify.md) (X3, R4-Q1 to R4-Q5, #52, #53, #55) and SPEC | Merged. Every recommendation taken but two: only Elders get a rim, and the merged radius goes ×1.0 in R2a |
+| R1 plan agreed (2026-11-01) | [#42](https://github.com/Swalliso/Sambattler/pull/42), [r1-plan.md](r1-plan.md), [clarify.md](tasks/clarify.md) (R1-Q1 to R1-Q9), SPEC §16 R1, §12.2 and §13.7 | Merged. Every recommendation taken. The full-colony budget is now 150 live units a side |
 | SPEC v2 broken into tasks (2026-11-01) | [tasks/](tasks/README.md), [#40](https://github.com/Swalliso/Sambattler/pull/40) | On `develop`. R1's list is being worked; the rest are refreshed at each milestone's plan |
 | Archive of the v1-era notes (2026-10-31) | [archive/](archive/README.md), [research/](research/README.md), the `feature/spec-v2` PR | v1 notes moved, links kept, rules updated so sessions don't pick up v1 as current |
 | SPEC v2 (2026-10-31) | [SPEC.md](../SPEC.md), [#39](https://github.com/Swalliso/Sambattler/pull/39) | On `develop`; nothing built |
