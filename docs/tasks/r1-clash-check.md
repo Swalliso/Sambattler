@@ -70,7 +70,7 @@ R1 builds a headless check that fights whole armies at equal gold, in formation,
 
 ## Technical context
 
-- **New files:** `src/sim/formation.ts`, `tools/lib/clash.ts`, `tools/lib/roundRace.ts`, `tests/unit/formation.test.ts`, `tests/unit/clash.test.ts`, `tests/unit/roundRace.test.ts`.
+- **New files:** `src/sim/formation.ts`, `tools/lib/clash.ts`, `tools/lib/roundRace.ts`, `tests/unit/formation.test.ts`, `tests/unit/clash.test.ts`, `tests/unit/roundRace.test.ts`; and `tools/lib/roster.ts` (added at S4: `rosterIds`, which `balance.ts` and `clash.ts` both import).
 - **Extended:**
   - the two switches: `src/sim/state.ts`, `src/sim/compile.ts`, `src/sim/systems/targeting.ts`, `src/sim/systems/movement.ts`;
   - four presets: `src/data/proto.ts`;
@@ -259,25 +259,39 @@ The armies (T011–T012) need nothing from `formation.ts` or the switches, so S2
 
 **Goal:** the full check: G3 and G13 on clashes, the strict counter bar (G12) and the clash matrix, per budget beside the pooled result, on the worker pool. **Independent test:** the small run in the Stories table finishes in about a minute, and `--workers 1` gives the same JSON apart from `options.workers` and `timing`.
 
-- [ ] T020 [US2] Write the bar tests in `tests/unit/counters.test.ts` (§12.2, §12.3) ⛔ R1-Q3
+- [x] T020 [US2] Write the bar tests in `tests/unit/counters.test.ts` (§12.2, §12.3) ⛔ R1-Q3
   - The pool, without worker threads (no unit test starts one today, and `tools/lib/pool.ts` loads itself as a `.ts` worker): `inProcessClashes` returns one record per job, in job order, and the worker's dispatch function, called directly on a `{ kind: 'clash' }` message, returns the same record as `playClash`. Pooled-equals-in-process is checked by the Checkpoint's CLI comparison. A worker case, if one is kept, skips itself when a worker can't load.
   - Clash G3 on a tiny set (2 monos, 1 budget, 2 seeds, both fields): the mean is (2 × one-lane + Twin Roots) / 3; the worst field is the highest; a draw counts half a win.
   - The clash counter matrix (2 builds, 3 answers, 1 budget, 2 screen seeds, 2 confirm seeds): screens rank by the worst field, then the mean; confirmations play fresh seeds; G12 passes on the best confirmed answer's worst field among answers that pass clash G3; a mono answer that fails G3 is flagged and doesn't count; a pair, counter-bot or data-bot answer always counts.
   - The cache: with jitter 0, two cells that field the same army pair in the same seat play one clash (count the clashes played); with jitter on, different seeds share nothing.
   - `clashG13` over a mixed set of records (G3 cells and counter-matrix cells): the bar is the share of every record whose `cap` reading capped, with G3's records' share and `capAfterMuster` beside it, and the median length in seconds.
   - The existing "counter matrix run" test still passes.
-- [ ] T021 [US2] Generalise `tools/lib/pool.ts` to job kinds, `{ kind: 'g3', … } | { kind: 'clash', job: ClashJob }`, with a dispatch in the worker; add `clashPool(spec, size)` and `inProcessClashes(content)`, and keep `rowPool` and `RowRunner` working for G3 as they do today (§12.2, §15.3)
+  - As built (S4): the rules (clash G3's draws, pooling and flags; the counter matrix's ranking, confirmation and pass) run on a scripted runner that plays nothing and names each clash's winner, so the test sets every cell's result. The pool, the cache and a tiny clash G3 run on the real sim. The cache case also checks its premise: with no jitter, another seed plays the same clash. No worker case.
+- [x] T021 [US2] Generalise `tools/lib/pool.ts` to job kinds, `{ kind: 'g3', … } | { kind: 'clash', job: ClashJob }`, with a dispatch in the worker; add `clashPool(spec, size)` and `inProcessClashes(content)`, and keep `rowPool` and `RowRunner` working for G3 as they do today (§12.2, §15.3)
   - Each worker still builds `protoContent(spec)` once. A `ClashJob` carries both armies (built in the main thread), the field, seed, seat, jitter and the tool options. Results come back in job order.
-- [ ] T022 [US2] Build clash G3 and G13 in `tools/lib/balance.ts`: `clashG13(records)`, and `evaluateClashG3(content, opts)` over the monos of `clashArmyIds` (or `--mono`) against `bot:balanced`, at each budget and field, in both seats; with the dedupe and the jitter (§12.2, §12.3) ⛔ R1-Q3
+  - As built (S4): `PoolJob` and `dispatch(content, job)`, which each worker calls on its messages; `rowPool` and `clashPool` wrap one job pool. `ClashRunner` sits beside `RowRunner` in `tools/lib/balance.ts`. The workers build the main thread's spec, counter bots included.
+- [x] T022 [US2] Build clash G3 and G13 in `tools/lib/balance.ts`: `clashG13(records)`, and `evaluateClashG3(content, opts)` over the monos of `clashArmyIds` (or `--mono`) against `bot:balanced`, at each budget and field, in both seats; with the dedupe and the jitter (§12.2, §12.3) ⛔ R1-Q3
   - Per build: the win rate (draws half) per budget and field, pooled over the budgets with each budget weighted equally; the mean over maps with the one-lane field counted twice; the worst map. Pass at `data/balance-targets.json` G3's `maxMeanWinRate` (0.55) and `maxMapWinRate` (0.60). Flag a budget whose mean is over 55% or worst field over 60% while the pool passes. A three-lane field is a lead, outside the mean.
   - G13 is `clashG13(records)`, which T024 calls on every record the run produced, each cell counted once: G3's cells and the counter matrix's screens and confirmations, and, once they land, the mirror (T030) and the G4 row (T034). It reports the share that reached the cap in the `cap` reading (bar 15%) and the median clash length in seconds against 20–40 s, per budget and field and pooled, with `capAfterMuster` and G3's clashes' share beside it (§16 R1 verification 2, §12.3 G13, plan call 15).
   - The dedupe: build every army in the main thread, fingerprint it (entries, squad sizes, `mergeOn`), and play each distinct (field, seat, both fingerprints, jitter seed, options) once; report the clashes played against the cells.
   - The jitter: ±j tiles per unit per axis, uniform, from the jitter stream (Technical context), applied after the muster's knits, clamped to the lane. Jitter 0 draws nothing. The report states the jitter (A007).
-- [ ] T023 [US2] Build the strict clash counter matrix and the clash matrix in `tools/lib/balance.ts`: `evaluateClashCounters(content, opts)` beside `evaluateCounters`, which stays as it is (§12.2, §12.3 G12, §7.4) ⛔ R1-Q3
+  - As built (S4):
+    - The dedupe is `clashCache(content, runner, { jitter, opts, keep })`, and a cell is a `Cell`: { a, b, field, budget, seed, seat }.
+      - It builds every army once and plays each distinct clash once, in batches of 2,048. A mirror's second army is built on seed 1,000 + s, as `playPair` builds it.
+      - `full(cells)` gives each cell its clash's record, with the cell's own budget, seed and controllers. `slim(cells)` gives only what the bars read (`CellRecord`), which the counter matrix keeps since it plays the most.
+      - A clash's key leaves out the seed when the jitter is 0: a clash then draws no random number, so a fixed pair of armies plays the same clash on every seed and budget.
+    - `uniqueCells` gives G13 each cell once. `CLASH_CHECK` holds the defaults: the budgets, the fields and 20 screen seeds.
+    - `rosterIds` moved to `tools/lib/roster.ts`, which `balance.ts` re-exports, so `balance.ts` imports `clash.ts` with no import cycle.
+    - The median's 20–40 s target is `CLASH.g13MedianSeconds`.
+- [x] T023 [US2] Build the strict clash counter matrix and the clash matrix in `tools/lib/balance.ts`: `evaluateClashCounters(content, opts)` beside `evaluateCounters`, which stays as it is (§12.2, §12.3 G12, §7.4) ⛔ R1-Q3
   - Builds: monos with a clash G3 mean above `COUNTERS.minBuildMean` (40%), or every mono with `matrix: 'all'`. Answers: `counterAnswers` without the economy and utility monos, built from `protoContent(spec + counterBotSpec)`.
   - Screen at `screenSeeds` (default 20) per seat, rank by the worst field pooled over the budgets (ties by the mean), and confirm the top 3 on the next `confirmSeeds` (default 50). Report per budget and pooled.
   - G12 passes when each build's best confirmed answer that passes clash G3 wins at least `COUNTERS.minAnswerRate` (60%) on its worst field. Only mono answers are G3-tested (from T022's G3); pair, counter-bot and data-bot answers always count, as in `evaluateCounters`.
   - The clash matrix for #14 and #15: each mono build's best 3 answers per budget, beside §7.4's counter sets (`counterSets(buildLibrary(…), roster)`) and the kinds each answer's buildings fall in. A line says whether `swarm` spawners (the Burrow, the Morel Warren) top the answers to mono Gill Nest at each budget.
+  - As built (S4):
+    - The confirmation takes the best `top` answers that count. A mono answer that fails clash G3 is flagged in the screen and never confirmed, so G12 always rests on `top` answers that count. This reads "the top 3" as the top 3 the bar can use.
+    - A mono answer that clash G3 didn't play (a run with `--mono`) counts, marked "clash G3 not played", as in `evaluateCounters`.
+    - The clash matrix lists 3 answers per budget (`CLASH_CHECK.matrixAnswers`), whatever `--top` is. Each answer comes with the cards its armies fielded there and their §7.4 kinds. The row gives the build's read: its army's top kind after the muster, plain and with the swarm read, from G3's record on the first field.
 - [ ] T024 [US2] Add `--checks clash` to `tools/experiment.ts` (§12.2, §15.3, §16 R1)
   - Options: `--budgets` (default 300,600,900,1200,1500), `--fields` (default `one,twin`), `--g3seeds` (default G3's 50), `--screen-seeds` (20), `--confirm-seeds` (50), `--top` (3), `--mono`, `--answers`, `--matrix all`, `--jitter` (0), `--records` (write every record), `--workers`, `--label` (default `clash`, or `clash-<proto>` with a proto spec, sanitised as today's labels are, so no run overwrites v1's `baseline` report).
   - Refuse any spec whose items include the `rework` preset (`rework`, `kept,rework` and so on) with "rework is v1's P3 package, not R1's variant (SPEC §16 R1)".

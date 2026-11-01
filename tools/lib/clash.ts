@@ -13,7 +13,7 @@ import type { BattleState, CounterKind, IntelProfile, Side } from '../../src/sim
 import { nextSigned } from '../../src/sim/rng.ts';
 import { mergeTriosNow } from '../../src/sim/systems/merging.ts';
 import { clampToLane, findUnit, unitDef, unitRadius } from '../../src/sim/world.ts';
-import { rosterIds } from './balance.ts';
+import { rosterIds } from './roster.ts';
 
 /** v2's clash numbers, until R2a puts them in the data (§4.6, §5.6, §6.7, §12.3). */
 export const CLASH = {
@@ -31,6 +31,8 @@ export const CLASH = {
   damageCap: 500,
   /** G13: at most this share of clashes reach the cap (§12.3). */
   g13StallShare: 0.15,
+  /** G13's target for the median clash length, in seconds, reported beside the bar (§12.3). */
+  g13MedianSeconds: [20, 40],
 } as const;
 
 /** One building of an army: a spawner's squad, or a tower fielded as an emplacement. */
