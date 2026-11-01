@@ -193,7 +193,7 @@ R4b's own calls (R4-Q6, #54, the structure glyph's form) come at R4b-S0.
 
 ## The approved silhouette sheet (T026, 2026-11-01)
 
-The user approved `docs/r4a-silhouettes.json` as drawn ("Approve as drawn"), on `feature/r4a-silhouettes` (R4a-S2b). It's frame 0 of all 13 unit sprites and of `e-puffballMortar`, and S3 and S4 redraw the game's sprites from it. `npm run sprite-sheet -- --sheet docs/r4a-silhouettes.json --name r4a-silhouettes` renders it, plain and with `--filter deuteranopia` or `--filter protanopia`.
+The user approved `docs/r4a-silhouettes.json` as drawn ("Approve as drawn"), on `feature/r4a-silhouettes` (R4a-S2b), merged as `dbd7f09` ([#55](https://github.com/Swalliso/Sambattler/pull/55)). T032 deletes the file once every sprite is redrawn; the approved version stays at `dbd7f09:docs/r4a-silhouettes.json`. It's frame 0 of all 13 unit sprites and of `e-puffballMortar`, and S3 and S4 redraw the game's sprites from it. `npm run sprite-sheet -- --sheet docs/r4a-silhouettes.json --name r4a-silhouettes` renders it, plain and with `--filter deuteranopia` or `--filter protanopia`.
 
 **The change the user asked for.** The first draft carried S2's mark glyphs. At its review the user dropped them (decision 9, R4/T077), and the redraw draws each weapon §11.3 names as body: the Gill Archer's bow with an arrow, the Hammercap's raised maul, the Scythecap's hooked cap and the Rootbreaker's ram.
 

@@ -1351,7 +1351,7 @@ The R4 plans settle these themselves, with no call from you: A155, A161.
 - **Question:** May a strain, chosen before the run, change a unit's body or weapon?
 - **SPEC's first guess:** no, as for augments, so *Ironcap*, *Gillguard* and *Thornpuff* need new patches (§9.3).
 - **Recommendation:** Agree. **Why:** the shape never lies (§5.8): one drawing per unit, and the matchup marks and the general's counter sets read a fixed armor and damage type.
-- **Alternatives:** yes, with the drawn body changing to match. Units carry no weapon mark since 2026-11-01 (R4-Q2), so there's no mark to change.
+- **Alternatives:** yes, with the drawn body changing to match. Units carry no weapon mark since 2026-11-01 (R4-Q2), so there's no mark to change. A strain that changes only a damage type (*Gillguard*, *Thornpuff*) would need its body redrawn to show the new weapon, or the field couldn't show the change.
 - **Blocks:** M6's strains.
 - **Decision:** _open_
 

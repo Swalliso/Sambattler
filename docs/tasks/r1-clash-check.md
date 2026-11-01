@@ -308,6 +308,14 @@ The armies (T011–T012) need nothing from `formation.ts` or the switches, so S2
     - Stdout prints the clash matrix between G12 and G13.
     - `--pair` keeps S3's mode, and the `rework` refusal covers both modes, through `specPresets` in `src/data/proto.ts`.
     - The small run plays 108 clashes for 600 cells in under a second, since with no jitter a mono's army is one clash a seat. Its `--workers 1` JSON matches `--workers 2`'s apart from `options.workers` and `timing`. So does a jittered run of every mono at 300, 900 and 1,500 gold: 7,202 clashes for 9,276 cells, 22 s on one worker and 6 s on four.
+- [ ] T054 [US2] Fix three of the bars' reports in `tools/lib/balance.ts` and `tools/experiment.ts`, test first, from the hub's review of S4 (2026-11-01, at `f9a579b`) (§12.2, §12.3 G12, G13)
+  - **G12 counts no untested mono.** With `--mono`, clash G3 plays only the named monos, so G12 can name an answer that never faced G3, marked "clash G3 not played". A build whose only 60% answer is a mono that fails G3 then passes, and nothing says so. v1's `evaluateCounters` never has this case: its `--mono` limits only the builds. Do as v1 does. When G12 runs, clash G3 plays every mono of `clashArmyIds`, and `--mono` picks only the builds. This replaces T023's "clash G3 not played" rule.
+  - **#15's line reports ties.** In a 20-seed jittered screen at 300 gold, 10 of mono Gill Nest's 71 answers tie at 100%, and the line answers "yes" from whichever ranks first. It should say how many tie and how many of them are swarm-only, and leave out answers that fail clash G3 (⚑), or label them.
+  - **G13 counts only the counted fields.** G3 and G12 drop the three-lane screen through `countedFields` (R1-Q9), but G13's share and PASS/FAIL take it in with `--fields one,twin,three`. Count the bar over the counted fields, and report `three` beside it.
+- [ ] T055 [US2] Guard the clash tools in `tools/lib/clash.ts`, `tools/lib/balance.ts` and `tools/experiment.ts`, from the same review (§12.2, §15.3)
+  - `playClash` fails loudly if a clash at jitter 0 draws a random number. The cache merges clashes on that assumption, and only one test guards it today.
+  - `--checks clash` checks its numbers: `--top`, `--screen-seeds`, `--g3seeds` and `--confirm-seeds` at least 1, and `--jitter` at least 0. Today `--top 0` fails every build, `--screen-seeds 0` ranks NaN, and a negative jitter prints "on" but applies none.
+  - The `rework` refusal runs before any check in the command, so it doesn't throw away their work.
 
 **Checkpoint:** `npm run verify` is green with no moved hash. The small run in the Stories table finishes in about a minute, and the same run with `--workers 1` writes JSON identical apart from `options.workers` and `timing` (this is the pooled-equals-in-process check).
 
@@ -342,6 +350,7 @@ The armies (T011–T012) need nothing from `formation.ts` or the switches, so S2
   - Fixed reference: when the spec holds `bot.balanced.fixedWeights:true`, the report labels G3 "reference on its data weights" and lists the appended monos and pairs apart (A023).
   - The squad table: each building's squad and value per gold (§11.4: squad × sqrt(HP × DPS) × role factor / cost, with §11.4's role factors; "–" for the Burster and the Tender) under the run's squad options (A010).
 - [ ] T031 [US3] Add the variant options to `tools/experiment.ts`: `--merging off`, `--squad-seconds S`, `--squad-scale S`, `--squad <id>=<n>[,…]`, `--copies N`, `--core6 <id>`, `--mirror`, `--fields three`, `--extra-plots 4` (applied at 1,200 and 1,500 only), `--lanes-rule general`, `--v1-movement` and `--v1-targeting`; put each in the report's options and the header comment (§12.2, §15.3)
+  - From S4's review: `clashCache` doesn't key on options, which works only while one cache holds one set of them. `--extra-plots` varies by budget, so extraPlots goes into both its army key and its clash key. Extra plots move squads even for the same army: a fifth back-line squad goes to rank 2 instead of rank 0.
 
 **Checkpoint:** `npm run verify` is green with no moved hash; the US3 run in the Stories table writes its report.
 
@@ -364,6 +373,7 @@ The armies (T011–T012) need nothing from `formation.ts` or the switches, so S2
   - Per case and alternative: the median rounds, the share reaching round 9, Routs by side and round, how often the lead changes, and the shares of general wins by Rout and by Decision.
   - The header says what it leaves out: income, comeback gold and counters; and one seed's armies at each budget stand in for a colony growing within a battle (plan call 17).
 - [ ] T034 [US4] Add the race section to the clash report in `tools/lib/balance.ts` and `tools/experiment.ts` (`--checks clash` prints it after G13), with the G4 row, the cap-binding share and the drawn share (§6.7, §12.3 G4, §16 R1)
+  - From S4's review: in `clashCache`, `full()` after `slim()` on the same key plays the clash again, and the clash then shows twice in `records()` and `played` (`balance.ts:869–879` at `f9a579b`). If the G4 row asks for both, `full()` reuses the record instead.
   - The G4 row: `evaluateClashG4Row(content, opts)` in `tools/lib/balance.ts` plays T033's G4 case on the one-lane field at every budget in `--budgets`, in both seats, at `--g4seeds n` per seat (default 50 here; the option exists for v1's `g4`, whose default stays G4's 40), on the pool with the dedupe and the jitter. `--checks clash` plays it by default, so every clash report (r1-baseline and r1-kept included, T042) carries its records; its records join G13's (T022).
   - Cap-binding (A208): per budget and field, the share of records whose loser's uncapped Heartcap damage passes 500, at storm ×1.0 and at the budget's round storm (×1.0, ×1.0, ×1.2, ×1.6, ×2.0 at 300 to 1,500).
   - Drawn share (A022): per budget and field, the share of records whose capped round result is a draw.
@@ -477,7 +487,7 @@ The armies (T011–T012) need nothing from `formation.ts` or the switches, so S2
 | S2 | T007–T012 | `feature/r1-armies` | S0 merged; may run beside S1 | A PR into `develop` with the two switches and the army builder; verify green, no golden moved |
 | S3 | T013–T019 | `feature/r1-clash-runner` | S1 and S2 merged | A PR into `develop`: one clash recorded, and `--checks clash --pair`; verify green |
 | S4 | T053, T020–T024 | `feature/r1-clash-bars` | S3 merged | A PR into `develop`: `--checks clash` with G3, G12 and G13 on the pool; the small run's output in the PR |
-| S5 | T025–T031 | `feature/r1-variants` | S4 merged | A PR into `develop`: the four presets and every variant option; verify green, no golden moved |
+| S5 | T054, T055, T025–T031 | `feature/r1-variants` | S4 merged | A PR into `develop`: the fixes from S4's review first (T054, T055), then the four presets and every variant option; verify green, no golden moved |
 | S6 | T032–T039 | `feature/r1-race-bench` | S4 merged; may run beside S5 | A PR into `develop`: the race model, the pairings, the full colony and the bench case; `npm run bench` output in the PR |
 | S7 | T040–T045, T052, T046–T048 | `feature/r1-results` | S5 and S6 merged | The runs done (about 40, in the background); a docs PR into `develop` with R1's entry in `docs/balance-backlog.md`, `docs/status.md`, the plan's As built and SPEC §15's tool docs |
 | S8 | T049–T050 | `feature/r1-gate` | S7's PR merged, and the user has read the report | The user's calls recorded in `docs/tasks/clarify.md`, SPEC and `docs/status.md`, in a PR into `develop`; R2a S0 may start |

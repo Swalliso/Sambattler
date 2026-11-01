@@ -1,6 +1,6 @@
 # Where things stand
 
-Updated 2026-11-01, on `docs/hub-after-s4-s2b` (a docs PR into `develop`). This is the hand-over page. It covers what we're working on, what's waiting on the user's decision, and where each piece lives. Update it when work lands or the user decides something. Keep the detail in the docs it links to.
+Updated 2026-11-01, on `docs/review-follow-ups` (a docs PR into `develop`). This is the hand-over page. It covers what we're working on, what's waiting on the user's decision, and where each piece lives. Update it when work lands or the user decides something. Keep the detail in the docs it links to.
 
 ## In short
 
@@ -39,7 +39,7 @@ Updated 2026-11-01, on `docs/hub-after-s4-s2b` (a docs PR into `develop`). This 
     - `npm run experiment -- --checks clash` plays clash G3, the strict counter matrix (G12) with the clash matrix for #14 and #15, and G13, each per budget beside the pooled result.
     - A clash takes about 3.3 ms, since `playClash` no longer hashes its final state. Verify green, no golden moved.
 - **Next: S5 and S6, side by side,** now that S4 has merged:
-  - S5 (`feature/r1-variants`, T025–T031): the four presets and every variant option;
+  - S5 (`feature/r1-variants`, T054, T055, T025–T031): first the fixes from S4's review (G12's untested monos, ties in #15's line, and G13's fields), then the four presets and every variant option;
   - S6 (`feature/r1-race-bench`, T032–T039): the race model, the battle-1 pairings, the full colony and the bench case.
 
   Then S7's runs and S8's review gate, in the order of the task list's Sessions table.
@@ -103,6 +103,7 @@ Updated 2026-11-01, on `docs/hub-after-s4-s2b` (a docs PR into `develop`). This 
 
 | Work | Where | State |
 |---|---|---|
+| The hub's review of #54 and #55 (2026-11-01) | SPEC §9.3, §10.2 and §11.5, [r1-clash-check.md](tasks/r1-clash-check.md) T054 and T055, [r4-readable-armies.md](tasks/r4-readable-armies.md) T024 and T062 | Both sound, with minor issues. #55 missed some weapon-mark lines, now fixed. #54's three report fixes go first in R1 S5, and none of them affects the planned runs |
 | records-1's check passed (2026-11-01) | [#53](https://github.com/Swalliso/Sambattler/pull/53), [playtest-feedback.md](playtest-feedback.md#2026-11-01-records-1s-check-on-the-dev-site-the-user), [run-it-back.md](tasks/run-it-back.md) T023 | Done. records-1 is finished; records-2 starts after R2b |
 | R4a-S2b: the approved silhouette sheet, and no weapon marks (2026-11-01) | [#55](https://github.com/Swalliso/Sambattler/pull/55), [r4a-plan.md](r4a-plan.md#the-approved-silhouette-sheet-t026-2026-11-01), `docs/r4a-silhouettes.json`, SPEC §5.8 | Merged. You approved the sheet (T026) and dropped weapon marks from units (T077). R4a-S3 redraws the core six next |
 | R1 S4: the muster's exact ties, and the clash bars (2026-11-01) | [#54](https://github.com/Swalliso/Sambattler/pull/54), [tools/lib/balance.ts](../tools/lib/balance.ts), `tools/lib/pool.ts`, `--checks clash` | Merged. Clash G3, G12 and G13 run on the worker pool, and a colony musters the same from both seats. S5 and S6 are next |
