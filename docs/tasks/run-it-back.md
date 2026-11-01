@@ -72,7 +72,7 @@ From another file, cite this file's tasks as RB/T0nn.
   interface SetupRecord { commander: string; bans: string[];
     traits?: string[]; strains?: Record<string, string>; blights?: Record<string, number> }   // M6, M7 (M6-Q7)
   interface ProfileV1 {
-    v: 1; lastSetup?: SetupRecord;                  // records-1
+    v: number; lastSetup?: SetupRecord;             // records-1. v is 1; a newer build's record loads with its own v, read-only
     // records-2 adds (a first guess, settled at T024):
     //   runs?: RunRecord[] (newest first, at most 20); tallies?: Record<string, CommanderTally>;
     //   current?: { seed: number; playMs: number } (the run in progress, US3);
@@ -108,6 +108,7 @@ From another file, cite this file's tasks as RB/T0nn.
 - **Keys:** `Enter`, `r` and `R` on the summary only, ignored on `e.repeat`, while the settings sheet is open (`settingsOpen()`) and once the screen has left the page.
   - A `left` guard, as in `eventResultScreen`'s `done()`, stops the focused button's click and the key from both starting a run.
   - `R` is free on run screens; in battle it opens the relics, which the summary doesn't have.
+  - Added in S1: a key with Ctrl, Cmd or Alt is ignored, so Ctrl+R and Cmd+R still reload the page, and `Enter` on another focused button (Title, New run, sound, settings) stays that button's.
 - **Play time** (records-2, RB-Q3's recommendation, on R2a's counter):
   - it counts while `document.visibilityState` is `visible` and a run screen or battle of a persisted run is up;
   - it stops counting 60 s after the last `pointerdown`, `pointermove` or `keydown`, and the next input resumes it. Idle time isn't added back;
@@ -158,6 +159,7 @@ From another file, cite this file's tasks as RB/T0nn.
 - [x] T005 [P] Move the served-page harness from `tests/browser/protoSaves.test.ts` into `tests/browser/serve.ts` (new), for the records cases (§13.8, §15.6)
   - `tests/browser/serve.ts` exports `serve(mode?)` (a game server, or a `develop`-mode server for the dev-site cases) and `PROTO`. `tests/browser/protoSaves.test.ts` imports both, so R2b, which retires the `hotstart` preset (§16 R2), changes one line.
   - `tests/browser/protoSaves.test.ts` passes, with no other change. T008 writes `tests/browser/records.test.ts` on the harness.
+  - As built (S1): it also exports `closeServers()`, which each file calls in its `afterAll`.
 - [x] T006 Build the profile store in `src/meta/records.ts` (new) and `src/meta/index.ts` (new) (§9.7, §13.2, §13.8) ⛔ RB-Q1
   - Exports: `PROFILE_KEY = 'spore-sprawl/profile/v1'`, `PROFILE_BACKUP_KEY = 'spore-sprawl/profile/v1.bak'`, `SetupRecord` and `ProfileV1` from Technical context, `loadRecords(storage)`, `updateRecords(storage, change)` and `setLastSetup(rec, setup)`.
   - `updateRecords` loads the key's current value, applies the pure `change` and saves, in one synchronous step. It writes nothing when the record is read-only or the change leaves it as it was.
