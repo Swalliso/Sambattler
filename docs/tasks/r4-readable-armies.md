@@ -240,12 +240,13 @@ This list was drafted on 2026-11-01 from SPEC v2 and `docs/tasks/spec-analysis.m
   - `shapeProblems(sprite, bands, glyphs)` is empty, with the bands of the sheet that holds the sprite (the registry keeps each sheet's `bands` as it parses it) and the `m-` sprite defs it has loaded. It imports only from `src/data`.
   - Each problem names the unit, the sprite and the frame.
   - As built: `Content` keeps `spriteSheet` (each sprite's sheet) and `bands` (each sheet's bands).
-- [ ] T023 [US2] Write `tools/sprite-sheet.ts` (new) and add `"sprite-sheet": "tsx tools/sprite-sheet.ts"` to `package.json` (§14.3, §15.6, §17 #20)
+- [x] T023 [US2] Write `tools/sprite-sheet.ts` (new) and add `"sprite-sheet": "tsx tools/sprite-sheet.ts"` to `package.json` (§14.3, §15.6, §17 #20)
   - It reads a sheet file (`--sheet <path>`, default `data/sprites/units.json`) and validates it with `SpriteSheetSchema`.
   - It renders through `framePixels` into a Playwright page (`page.setContent`, no server): every frame at 2× and 4×, Velvet Bloom facing right and Gray Rot facing left.
   - It overlays the band lines and each measured body box, and lists `shapeProblems` under each sprite.
   - Where an id matches a unit, it adds strips with the sprite on its squad's k × k grid at 2×, at the base squad, base + 1 and base + 2, and lists each overflow it sees (A165, #11).
   - `--filter deuteranopia|protanopia` uses `tools/lib/cvd.ts`. The PNG goes to `artifacts/sprite-sheet/<name>.png`.
+  - As built: the name defaults to the sheet's file name, and a filter adds `-d` or `-p`, so T024's three renders don't overwrite each other. A `<name>.json` report sits beside the PNG. The filter changes the art, not the annotations. The tool also lists each unit's body and mark problems (`unitShapeProblems`) and an `e-<id>` sprite's (`emplacementShapeProblems`). It reads the units, including the preset-only ones, straight from the data files rather than through `loadContent`, so a sheet the registry rejects still renders. A width overflow at the base squad or base + 1 is a problem for a sprite with a shape; base + 2's is only listed. It exits 1 on any problem.
 - [ ] T024 [US2] Draft the silhouettes in `docs/r4a-silhouettes.json` (new): a sheet in the sprite format, with frame 0 only of every unit sprite (`u-sporeling` … `u-driftling`, 13) and of `e-puffballMortar`. Each has its shape block and the sheet's bands, follows §11.3's silhouette ideas and T004's bands, and is rendered with `npm run sprite-sheet -- --sheet docs/r4a-silhouettes.json --name r4a-silhouettes`, plain and under both filters (§5.8, §11.3, §17 #20) ⛔ R4-Q1
   - Weapon-like silhouette features in §11.3 (the Gill Archer's bow, the Hammercap's raised maul, the Scythecap's hook) are body pixels: they count toward the band and stay inside it. The weapon reads from the `m-` glyph, so the body doesn't draw a second one.
 - [ ] T025 [US2] Fix every problem the sheet lists in `docs/r4a-silhouettes.json`, until `npm run sprite-sheet -- --sheet docs/r4a-silhouettes.json` reports none and each pair of silhouettes differs at a glance at 2× (§17 #20)
@@ -266,6 +267,7 @@ This list was drafted on 2026-11-01 from SPEC v2 and `docs/tasks/spec-analysis.m
   - Ids unchanged, anchors at the foot, and the swappable keys `v l d s t` for the body only.
   - Add `"bands"` to the sheet.
 - [ ] T029 [US3] Draw `e-puffballMortar` (new sprite, at most 32 × 32, one slot) in `data/sprites/buildings.json`, with `shape: { body: 'structure', mark: 'hammer', accent: 'splash', markAt, accentAt }` (T003's rule). Add the tower check to `src/data/registry.ts`, and add `emplacementSprite(content, buildingId)` to `src/render/unitSprite.ts`: `e-<id>` if it exists, else the building's sprite. v1's battle keeps drawing the Mortar as its building, and R2a's clash view draws the emplacement through this helper (§4.4, §5.8, §11.2) ⛔ R4-Q5
+  - From S2: `emplacementShapeProblems(building, sprite)` in `src/data/shapes.ts` already checks the body and the mark against `towerMarkOf`. The tower check calls it, and adds that the sprite exists and declares a shape.
 
 **Checkpoint:** `npm run verify`, `npm run golden -- verify` (unchanged) and `npm run sprite-sheet`. In the r4-lineup PNG, the core units stand in their bands with their marks, on both sides.
 
