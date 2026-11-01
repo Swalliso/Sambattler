@@ -82,7 +82,22 @@ export interface BattleConfig {
   modifiers?: BattleModifier[];
   scenario?: string;
   /** Test-harness rule switches used by balance duels; never set in play. */
-  test?: { noTurrets?: boolean; noTerritory?: boolean; noHeartcapTargets?: boolean; timeLimitSeconds?: number };
+  test?: {
+    noTurrets?: boolean; noTerritory?: boolean; noHeartcapTargets?: boolean; timeLimitSeconds?: number;
+    /**
+     * Tool-only, for R1's clash check: siege units fight the nearest enemy instead of preferring
+     * buildings, as v2's rule has it (SPEC §5.2). R2a writes the rule in its round systems
+     * (R2a/T037, T038), and R2b deletes `config.test` (R2b/T043, T158).
+     */
+    noBuildingPreference?: boolean;
+    /**
+     * Tool-only, for R1's clash check: a unit with no target walks toward the nearest enemy in its
+     * lane that it could target instead of marching to the far edge, as v2's rule has it (SPEC §5.2).
+     * R2a writes the rule in its round systems (R2a/T037, T038), and R2b deletes `config.test`
+     * (R2b/T043, T158).
+     */
+    idleSeek?: boolean;
+  };
 }
 
 /**
@@ -316,7 +331,11 @@ export interface Rules {
     score: { spawnerDepth: number; spawnerThreat: number; spawnerSurcharge: number; economyLoam: number;
       economyDepth: number; economyThreat: number; towerFront: number; towerThreat: number };
   };
-  test: { turrets: boolean; territory: boolean; heartcapTargets: boolean };
+  /**
+   * `noBuildingPreference` and `idleSeek` are R1's tool-only switches (`BattleConfig.test`), present
+   * only when set, so no battle carries them.
+   */
+  test: { turrets: boolean; territory: boolean; heartcapTargets: boolean; noBuildingPreference?: true; idleSeek?: true };
 }
 
 export interface MapState {
