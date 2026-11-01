@@ -193,7 +193,7 @@ This list was drafted on 2026-11-01 from SPEC v2 and `docs/tasks/spec-analysis.m
 
 **Goal:** size means armor and nothing else, while tiers stay easy to spot. **Independent test:** see Stories.
 
-- [ ] T012 [US1] Write `tests/unit/unitSprite.test.ts` (new) and a case in `tests/browser/inspect.test.ts` (§5.8, §10.4, §13.6) ⛔ R4-Q3
+- [x] T012 [US1] Write `tests/unit/unitSprite.test.ts` (new) and a case in `tests/browser/inspect.test.ts` (§5.8, §10.4, §13.6) ⛔ R4-Q3
   - A pure `unitLayout(region, footX, footY, tier, opts)`: a Bloomed and an Elder unit get the tier-1 box. One pip for Bloomed and two for Elder, centred over the sprite, above the HP bar when the unit is damaged, and touching neither. A flyer's box is lifted by `FLY_LIFT`.
   - `i-pip` in `data/sprites/ui.json` has a gold core of at least 3×3 native px inside its 1-px outline (A158, A162).
   - `rimPixels(sprite, frame, flip)` gives the 1-px outline of the opaque mask in a (w + 2) × (h + 2) box, with the anchor shifted by (+1, +1).
