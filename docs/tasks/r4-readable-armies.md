@@ -176,7 +176,7 @@ This list was drafted on 2026-11-01 from SPEC v2 and `docs/tasks/spec-analysis.m
   - `unit-lineup-twin`: the same on Twin Roots, split between its two lanes, so the fractional scale is checked (A158, A077).
   - The preset-only units can't be named here, since the registry rejects unknown units (`src/data/registry.ts:242`). T043 adds them once R2a has made them default data.
   - R2a/T048 copies both in clash form, and R2b/T048 ports them before it drops `test.noTurrets` (Handoffs).
-- [ ] T010 [P] Move the atlas's bake into pure functions in `src/render/compose.ts` (new), which touch no DOM, and have `bakeAtlas` in `src/render/atlas.ts` use them, behaviour unchanged (§13.6, §14.3)
+- [x] T010 [P] Move the atlas's bake into pure functions in `src/render/compose.ts` (new), which touch no DOM, and have `bakeAtlas` in `src/render/atlas.ts` use them, behaviour unchanged (§13.6, §14.3)
   - `framePixels(sprite, frame, { swap, flip })` returns `{ w, h, px: Uint8ClampedArray }`: the per-pixel loop at :59-76. `bakeAtlas` copies its output into the `ImageData`.
   - `atlasLayout(content)` returns the job list and the shelf-packed regions, keyed as today (`id|faction|frame|flip`), so a unit test can read the layout without a canvas.
 - [ ] T011 [P] Move unit drawing out of `src/render/renderer.ts` into `src/render/unitSprite.ts` (new), behaviour unchanged for now. Then `drawUnit` (:511) calls it, and `src/render/assistPreview.ts` imports `teamMark` from it (§13.6, §10.4)
