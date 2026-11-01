@@ -96,7 +96,7 @@ This list is a draft of 2026-11-01, made from SPEC v2 and `docs/tasks/spec-analy
 
 **The profile key's layout** (a spec gap, A172):
 - The key stays `spore-sprawl/profile/v1` for good, and the record carries its version (§13.8).
-- M6 writes `v: 2`: records-1's v1 fields, plus `{ spores, amber, unlocks: string[], feats: Record<id, { at: number }>, traitsOwned: string[], rootCapacity /* 3–12 */, strainRanks: Record<strainId, 0|1|2|3>, strainChoice: Record<buildingId, strainId>, commanderXp: Record<id, number>, bestDecay: Record<id, number> /* M7 */ }`. `lastSetup` gains `traits` and `strains` (M6-Q7).
+- M6 writes `v: 2`: the v1 fields (records-1's `lastSetup`, and records-2's run records and codex if it has landed), plus `{ spores, amber, unlocks: string[], feats: Record<id, { at: number }>, traitsOwned: string[], rootCapacity /* 3–12 */, strainRanks: Record<strainId, 0|1|2|3>, strainChoice: Record<buildingId, strainId>, commanderXp: Record<id, number>, bestDecay: Record<id, number> /* M7 */ }`. `lastSetup` gains `traits` and `strains` (M6-Q7).
 - Settings, tips and the run keep their own keys.
 - `migrations.ts` is an ordered list of v→v+1 functions, starting with v1→v2. Every later format adds one. No key at all loads a fresh v2 record.
 - The export string is base64 of `{ export: 1, profile, settings, tips }`, with its own version. Import validates and migrates before replacing anything.
@@ -139,7 +139,7 @@ This list is a draft of 2026-11-01, made from SPEC v2 and `docs/tasks/spec-analy
 **Calls this list makes** (each reversible):
 - **The Underroot's tabs** (A186): Commanders (with each commander's mastery), Traits, Strains, Bans, Blights (M7), and Collection (feats, the codex and locked cards). §16 M6 step 4's `tab=feats` and `tab=mastery` open the Collection tab's sections. `src/app/urlParams.ts` gains `traits` (T029), `strains` (T034), and `collection`, `feats` and `mastery` (T024).
 - **Profile fixtures** load through a screenshot option, `--profile <file>`, which writes the key before boot as `--settings` does. A `profile=fixture:<name>` URL param would ship `tests/fixtures/` in the game (A187). Under `test=1` the page reads the key read-only (T011). S0 updates §15.6 and §16 M6 step 4.
-- **Banking** happens in records-1's `recordRun` write, so it's idempotent on the run key (without records-1, on the same key):
+- **Banking** happens in records-2's `recordRun` write (RB/T043), so it's idempotent on the run key (without records-2, on the same key):
   - Spores × (1 + 0.10 × Decay), with Decay 0 until M7;
   - Amber;
   - XP to the run's commander: the Spores before the multiplier, + 25 per battle won (§8.6).
@@ -201,7 +201,7 @@ This list is a draft of 2026-11-01, made from SPEC v2 and `docs/tasks/spec-analy
 
 ## Phase 2: Foundational (blocks every story)
 
-- [ ] T005 [P] Write `tests/unit/meta.test.ts` (new) and `tests/fixtures/profile-v1.json` (new), a records-1 record with 3 runs and a `lastSetup`, for the profile cases (§9.7, §16 M6 step 1)
+- [ ] T005 [P] Write `tests/unit/meta.test.ts` (new) and `tests/fixtures/profile-v1.json` (new), a v1 record with a `lastSetup` (records-1) and 3 runs (records-2), for the profile cases (§9.7, §16 M6 step 1)
   - `profile-v1.json` migrates to v2 with every new field defaulted and the records kept.
   - No key at all loads a fresh v2 record.
   - A garbage string is copied to the backup key and raises `corrupt`.
@@ -217,7 +217,7 @@ This list is a draft of 2026-11-01, made from SPEC v2 and `docs/tasks/spec-analy
   - `createRun({ seed })` without `meta` hashes as it does today.
   - A run created with a snapshot keeps it through `saveRun` and `loadRun`, after the profile changes.
 - [ ] T008 Build `src/meta/profile.ts` (new) and `src/meta/migrations.ts` (new): `loadProfile`, `saveProfile`, a v1→v2 migration that keeps records-1's fields and starts every currency at 0, and the corrupt flag (§9.7, §13.2) ⛔ M6-Q6
-  - The migration handles both cases: no key gives a fresh v2 record, and a records-1 v1 record migrates (`tests/fixtures/profile-v1.json`).
+  - The migration handles both cases: no key gives a fresh v2 record, and a v1 record migrates (`tests/fixtures/profile-v1.json`).
   - If records-1 hasn't landed, also add `src/meta` to the pure layers in `eslint.config.js` and `tests/unit/purity.test.ts` (RB/T004).
 - [ ] T009 Add `FeatDef`, `Condition`, `TraitDef`, `StrainDef` (with `effects`), `MasteryDef` and the `unlockedBy` syntax to `src/data/schema.ts`, and make `data/relics.json` pass it (§14.1, §14.2, §9.2)
   - Add `unlockedBy?: Id` to the strict `CommanderSchema`, since T021 writes it into `data/commanders.json`.
@@ -246,7 +246,7 @@ This list is a draft of 2026-11-01, made from SPEC v2 and `docs/tasks/spec-analy
   - Browser (`tests/browser/meta.test.ts`): a reload on the summary leaves the profile's Spores unchanged; Run it back keeps the commander and bans and passes the profile's snapshot. T052 covers the rest of the loadout (M6-Q7).
   - Browser (`tests/browser/meta.test.ts`, on a `develop`-mode server from `serve('develop')` in `tests/browser/serve.ts`, RB/T005, or `tests/browser/protoSaves.test.ts`'s harness without records-1): banking writes `dev/spore-sprawl/profile/v1` and nothing under `spore-sprawl/profile/v1`.
   - Browser (`tests/browser/settings.test.ts`): the settings sheet shows Export, Import and Reset, and still fits 1280×720.
-- [ ] T013 [US1] Add `bankRun` to `src/meta/profile.ts`, called in the same write as records-1's `recordRun` from `src/app/run.ts` (or on RB's run key without records-1) (§8.6, §9.1)
+- [ ] T013 [US1] Add `bankRun` to `src/meta/profile.ts`, called in the same write as records-2's `recordRun` from `src/app/run.ts` (RB/T043; or on RB's run key without records-2) (§8.6, §9.1)
 - [ ] T014 [US1] Fill the summary's Earned table in `src/ui/screens/run.ts`: the run's Spores, Amber and XP beside the profile's totals; Feats from US2; Decay 0 until M7 (§8.8)
 - [ ] T015 [US1] Add Export, Import and Reset to `src/ui/settingsScreen.ts`, replacing its "arrives with the profile in M6" note, on `exportProfile` and `importProfile` in `src/meta/profile.ts`. Reset confirms twice (§9.7, §10.5)
 
@@ -407,7 +407,7 @@ This list is a draft of 2026-11-01, made from SPEC v2 and `docs/tasks/spec-analy
   - S5 (traits) and S6 (strains) may run side by side, and beside S3 and S4. S5 and S6 both edit `src/sim/state.ts`, `src/app/urlParams.ts` and `src/ui/screens/underroot.ts`, so merge one and rebase the other.
   - S0 may start as soon as R3 (R3 S15) and R4b (R4b-S7) are merged; S1 follows S0.
 - **Handoffs in:**
-  - `docs/tasks/run-it-back.md`, if records-1 has landed: RB/T006's v1 record (T008), RB/T007's store (T011), RB/T009's `runItBackSetup` and RB/T011's `runItBack()` (T011, T012, T053); records-2's Collection tab, RB/T033 and RB/T037 (T024).
+  - `docs/tasks/run-it-back.md`, if records-1 has landed: RB/T006's v1 record (T008), RB/T007's store (T011), RB/T009's `runItBackSetup` and RB/T011's `runItBack()` (T011, T012, T053); records-2's `recordRun` write, RB/T043 (T013), and its Collection tab, RB/T033 and RB/T037 (T024).
   - `docs/tasks/r2a-battle-in-rounds.md`: R2a/T057's per-round stats with M6-Q1's feat stats (T019); R2a's emplacement compile and planning executors (T051).
   - `docs/tasks/r3-kit.md`: R3/T008 (`squadAdd`, `BuildingDef.archetype`), R3/T044 (`dealPacks`), R3/T046 (`draftPool`), and augments in the compile (T017, T022, T032, T036); R3/T073, the general's kit sources under #48 (T018).
   - `docs/tasks/r4-readable-armies.md`: R4/T032 (the shape block required on every unit sprite) for T036, and R4b's text home for T034.
