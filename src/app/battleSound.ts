@@ -10,9 +10,12 @@ const PAN_WIDTH = 0.6;
 
 export class BattleSound {
   private sold: number;
+  /** Each lane's column owners as last heard (0 unclaimed, 1 yours, 2 theirs): a flip names only who took the column. */
+  private owners: number[][];
 
   constructor(state: BattleState, private enemyGain: number, private play: (id: string, opts?: PlayOptions) => void) {
     this.sold = state.stats.player.buildingsSold;
+    this.owners = state.lanes.map((l) => l.owner.slice());
   }
 
   /** Pan for a world x (tile columns; the Heartcap strips sit at −2 and width + 2). */
@@ -50,9 +53,14 @@ export class BattleSound {
         case 'income':
           if (e.side === 'player') this.play('income');
           break;
-        case 'columnFlipped':
-          this.play(e.to === 'player' ? 'column-gained' : 'column-lost', { pan: this.pan(state, e.column + 0.5) });
+        case 'columnFlipped': {
+          // "lost" only for a column that was yours, as the callout does; the enemy taking unclaimed ground is quiet
+          const owners = this.owners[e.lane]!;
+          const was = owners[e.column];
+          owners[e.column] = e.to === 'player' ? 1 : 2;
+          if (e.to === 'player' || was === 1) this.play(e.to === 'player' ? 'column-gained' : 'column-lost', { pan: this.pan(state, e.column + 0.5) });
           break;
+        }
         case 'buildingDestroyed':
           this.play(e.side === 'player' ? 'building-lost' : 'building-razed', { pan: this.pan(state, e.col + 1) });
           break;
@@ -97,6 +105,8 @@ export class BattleSound {
           break;
       }
     }
+    // back in step with the sim, also after ticks it ran unheard (a `?ticks=` fast-forward)
+    this.owners = state.lanes.map((l) => l.owner.slice());
   }
 }
 

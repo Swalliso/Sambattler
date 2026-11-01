@@ -290,7 +290,7 @@ export function beatTip(content: Content, atlas: Atlas, state: BattleState): Tip
       const lanes = state.lanes.map((_, li) => nextWaveTypes(state, 'player', li));
       const kinds = (n: number) => `${n} unit type${n === 1 ? '' : 's'}`;
       return [
-        head(atlas, 'i-wave', 'Next wave', clock(state, left)),
+        head(atlas, 'i-advance', 'Next wave', clock(state, left)),
         para(`Your spawners keep their units inside until the next wave. Every ${clock(state, beat)}, both sides send their waves out at once; a spawner behind your front one lets its units out early, so they join the wave as it passes.`),
         row('Waiting inside', h('b', null, `${waiting} unit${waiting === 1 ? '' : 's'}`), 'they count toward supply'),
         ...(mixed ? [

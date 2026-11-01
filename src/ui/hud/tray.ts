@@ -3,8 +3,9 @@
 // one-line summary. A card you can't afford is unlit: the sprite desaturates, the price turns red and a
 // "need N" bar fills toward the price. The price is the cheapest you can build it for right now: once
 // no home plot is free, the nearest forward plot's (the supply line, SPEC §6.3), and the summary reads
-// "from N, home full", so a lit card never fails on gold. When the cards don't fit one row at full size
-// (a big kit at 1280 px), the tray turns compact: two rows of smaller cards, never a sideways scroll.
+// "home full, from N", so a lit card never fails on gold. When the cards don't fit one row at full size
+// (a big kit at 1280 px), the tray turns compact: two rows of smaller cards, never a sideways scroll; the
+// narrowest drop the price chip's coin so the price stays readable (styles.css).
 // Hovering or focusing a card shows a tooltip with the full stats and matchups.
 import type { Content } from '../../data/registry.ts';
 import { legalPlacements } from '../../sim/index.ts';
@@ -145,7 +146,8 @@ export class Tray {
       if (c.price !== c.shown) {
         c.shown = c.price;
         c.amount.textContent = String(c.price);
-        setText(c.out, forward ? `from\u00a0${c.price}, home\u00a0full` : c.line);
+        // the reason first: on a narrow card the line cuts off, and the price chip already says the number
+        setText(c.out, forward ? `home\u00a0full, from\u00a0${c.price}` : c.line);
         c.poor = null;
         c.short = -1;
       }

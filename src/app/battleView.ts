@@ -525,8 +525,8 @@ export class BattleView {
     if (ghost && s.hover) {
       this.tip.hidden = false;
       const name = s.content.buildings[ghost.buildingId]!.name;
-      // the forward price in plain words: how far from home, and what that adds
-      const surcharge = ghost.depth > 0 ? ` (+${Math.round(ghost.depth * s.content.balance.supplyLinePerColumn * 100)}%: ${ghost.depth} column${ghost.depth === 1 ? '' : 's'} from home)` : ' (home ground)';
+      // the forward price in plain words: how far from home, and what that adds (your own rate, so Forward Spores shows)
+      const surcharge = ghost.depth > 0 ? ` (+${Math.round((ghost.depth * state.compiled.player.supplyLineBp) / 100)}%: ${ghost.depth} column${ghost.depth === 1 ? '' : 's'} from home)` : ' (home ground)';
       const def = s.content.buildings[ghost.buildingId]!;
       const loam = def.economy && ghost.loam ? ` · Rich Loam +${Math.round(s.content.balance.loamBonus * 100)}%` : '';
       this.tip.replaceChildren(

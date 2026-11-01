@@ -1,6 +1,6 @@
 // Callout lane (SPEC §10.2): at most 3 banners at once, each for 2.5 s (tips 6 s or as long as they ask),
 // in priority order: counter warnings > building lost > Heartcap under attack > a refused key (the power
-// recharging) > tips > column flipped > merges. Pinned callouts (the deploy hint, "Paused", a save-recovery notice) stay until unpinned and come
+// recharging, or Hold not ready) > tips > a column claimed or lost > merges. Pinned callouts (the deploy hint, "Paused", a save-recovery notice) stay until unpinned and come
 // first, so the field itself stays clear. A callout's text may hold keycaps.
 import { h } from './h.ts';
 
