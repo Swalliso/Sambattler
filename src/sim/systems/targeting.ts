@@ -131,7 +131,8 @@ function retargetUnit(state: BattleState, u: UnitState, r: number, curD: number)
   if (state.rules.burst && def.tags.includes('burst')) { aimBurst(state, u, r, curD); return; }
   const aggro = def.aggroRange;
   const enemy = other(u.side);
-  const prefBuildings = def.siege;
+  // R1's tool-only `noBuildingPreference`: siege units fight the nearest enemy, as v2's rule has it (SPEC §5.2)
+  const prefBuildings = def.siege && !state.rules.test.noBuildingPreference;
   const prefElite = def.slayer;
   // diver prototype: prefers ranged units, and sees them from farther; the combat rework's burrowers
   // (surfaced Rhizomorphs) prefer them too
