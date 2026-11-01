@@ -35,6 +35,20 @@
 // Truffle Cellar, Puffball Mortar) goes on every legal plot, played on for `--spread-horizon`
 // seconds (default 90) over `--futures n` reseeded futures (default 8). `--relics a,b` gives the
 // player relics from the start (e.g. mycorrhizalLink); `--plots` keeps every plot's scores.
+//
+// The clash check (clash, SPEC §12.2 and §16 R1, tools/lib/clash.ts, opt-in): R1's whole armies at equal
+// gold, meeting at once in formation on v1's sim with v2's targeting and movement switched on. For now
+// it plays one matchup: `--checks clash --pair a,b` (any bot the counter check knows, or a general)
+// builds both armies at each of `--budgets` (default 300,600,900,1200,1500) on each of `--fields`
+// (default one,twin; `three` is the three-lane screen) for seeds 1 to `--seeds n` (default 3), and plays
+// them with `a` in each seat. A mirror (a = b) builds its second army on seed 1,000 + s. `--jitter j`
+// moves each unit up to ±j tiles per axis after the muster (default 0, no jitter). It prints one line
+// per clash in the cap reading (the muster counted): each lane's winner, how it ended, the surviving
+// supply a–b and when; each Heartcap's damage, capped and uncapped; the length, and the reading with the
+// cap after the muster when it was capped; the clash winner (R1-Q3) and §6.7's round result; and the
+// merges at the muster (to Bloomed + to Elder). Then a's score per field and budget, draws worth half.
+// Every record goes in the report, whose label defaults to `clash-pair-<a>-<b>`, with `-<proto>` when
+// `--proto` is set. The full check, with G3, G12 and G13, is R1 S4's (T024).
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { protoContent, ROOT } from './lib/content.ts';
@@ -44,6 +58,8 @@ import {
 } from './lib/balance.ts';
 import type { G3Verdict, Verdict } from './lib/balance.ts';
 import { runBench } from './lib/bench.ts';
+import { pairLine, pairScore, playPair } from './lib/clash.ts';
+import type { FieldId } from './lib/clash.ts';
 import { defaultWorkers, rowPool } from './lib/pool.ts';
 import { engagement, engagementLines, runEndingLines, runEndings } from './lib/engagement.ts';
 import { laneLines, laneSummary } from './lib/lanes.ts';
@@ -56,11 +72,14 @@ import type { PowerPolicy } from '../src/sim/index.ts';
 const args = process.argv.slice(2);
 const opt = (k: string): string | undefined => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : undefined; };
 const proto = opt('--proto') ?? '';
-const label = opt('--label') ?? (proto || 'baseline').replace(/[^a-zA-Z0-9.=-]+/g, '_');
-/** G3's opponent: `bot:balanced` (the guardrail), or a one-off diagnostic bot added with `--proto bot.<id>:{…}`. */
-const defender = opt('--defender') ?? 'bot:balanced';
 const ALL = ['duels', 'g3', 'g4', 'g5', 'g6', 'g7', 'g8', 'g11', 'boss'];
 const checks = new Set((opt('--checks') ?? ALL.join(',')).split(','));
+/** The clash check's one matchup (`--pair a,b`). */
+const pair = opt('--pair')?.split(',');
+const defaultLabel = checks.has('clash') && pair ? `clash-pair-${pair.join('-')}${proto ? `-${proto}` : ''}` : proto || 'baseline';
+const label = opt('--label') ?? defaultLabel.replace(/[^a-zA-Z0-9.=-]+/g, '_');
+/** G3's opponent: `bot:balanced` (the guardrail), or a one-off diagnostic bot added with `--proto bot.<id>:{…}`. */
+const defender = opt('--defender') ?? 'bot:balanced';
 const mapsOpt = opt('--maps')?.split(',');
 /** Maps for the lanes, spread and g4 checks (default Bogwater Hollow). */
 const maps = mapsOpt ?? ['bogwater-hollow'];
@@ -280,6 +299,35 @@ if (checks.has('spread')) {
     rows.push({ options: sp, summary: all, cases });
   }
   out.spread = rows;
+}
+
+if (checks.has('clash')) {
+  // R1's clash check (SPEC §16 R1): one matchup for now; the full check with its bars is R1 S4's (T024)
+  if (!pair || pair.length !== 2 || !pair[0] || !pair[1]) throw new Error('--checks clash needs --pair a,b (the full check comes with R1 S4)');
+  const [a, b] = pair as [string, string];
+  const budgets = (opt('--budgets') ?? '300,600,900,1200,1500').split(',').map(Number);
+  if (budgets.some((n) => !Number.isFinite(n) || n <= 0)) throw new Error(`--budgets must be gold amounts, not ${opt('--budgets')}`);
+  const fields = (opt('--fields') ?? 'one,twin').split(',') as FieldId[];
+  for (const f of fields) if (!['one', 'twin', 'three'].includes(f)) throw new Error(`--fields takes one, twin and three, not ${f}`);
+  const seeds = Number(opt('--seeds') ?? 3);
+  const jitter = Number(opt('--jitter') ?? 0);
+  // the counter check's pair and counter bots join the content, so any answer it knows can play
+  const cc = protoContent([proto, counterBotSpec(content)].filter(Boolean).join(','));
+  const t0 = Date.now();
+  const records = playPair(cc, { a, b, budgets, fields, seeds, jitter });
+  const ms = Date.now() - t0;
+  lines.push(`clash: a = ${a}, b = ${b}; ${seeds} seed${seeds > 1 ? 's' : ''} a seat, jitter ${jitter ? `±${jitter}` : 'off'}; the cap reading (the muster counted)`);
+  lines.push(...records.map(pairLine));
+  const summary = [];
+  for (const field of fields) {
+    for (const budget of budgets) {
+      const s = pairScore(records.filter((r) => r.field === field && r.budget === budget));
+      summary.push({ field, budget, ...s });
+      lines.push(`clash ${field} ${budget}: a won ${s.wins}, drew ${s.draws}, lost ${s.losses} (a's score ${pct(s.score)}); capped ${s.capped}`);
+    }
+  }
+  lines.push(`clash: ${records.length} clashes in ${(ms / 1000).toFixed(1)} s`);
+  out.clash = { pair: { a, b }, options: { budgets, fields, seeds, jitter }, summary, timing: { ms, clashes: records.length }, records };
 }
 
 const dir = join(ROOT, 'reports', 'experiments');
