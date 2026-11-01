@@ -11,7 +11,7 @@ SPEC v2, broken into task lists that later sessions work through one row of a Se
 | 1 | **R1 S1 and S2** in [r1-clash-check.md](r1-clash-check.md), side by side: `src/sim/formation.ts`; the two tool-only switches and the army builder | R1 S0 merged (`feature/r1-plan`: the plan agreed on 2026-11-01, and R1's calls in SPEC) |
 | 2 | **R1 S3**: one clash recorded, and `--checks clash --pair` | R1 S1 and S2 merged |
 | 3 | **R4a-S0** in [r4-readable-armies.md](r4-readable-armies.md): the shape-language plan | These task lists on `develop`; S0's first [USER] task (R4/T002) puts X3 (split R4) to the user |
-| 4 | **records S0** in [run-it-back.md](run-it-back.md): the Run it back plan | These task lists on `develop`; S0's first [USER] task (RB/T001) puts X10 (Run it back in two parts) to the user |
+| 4 | **records S1** in [run-it-back.md](run-it-back.md): the profile store and Run it back (`feature/records-1-run-it-back`) | records S0 merged (`feature/records-plan`: the plan agreed on 2026-11-01, with X10, RB-Q1 and RB-Q2) |
 
 R1, R4a and records-1 touch different code files and can run at the same time. Their doc edits fall in different sections of `SPEC.md`, `clarify.md` and `docs/status.md`, so whichever PR merges second rebases ([r1-plan.md](../r1-plan.md), "Beside R1"). Everything else waits for R1's review gate.
 
@@ -25,7 +25,7 @@ R1, R4a and records-1 touch different code files and can run at the same time. T
 | R3, the kit | [r3-kit.md](r3-kit.md) | S0–S15 | After R2b | One PR per session into `develop` |
 | R4a, shapes on the field | [r4-readable-armies.md](r4-readable-armies.md), part 1 | R4a-S0–S5 (with S2b) | Now, beside R1 (X3). Lands before R2a's playtest | One PR per session into `develop` |
 | R4b, readable cards | [r4-readable-armies.md](r4-readable-armies.md), part 2 | R4b-S0–S7 | After R3 | One PR per session into `develop` |
-| Run it back, records-1 and records-2 | [run-it-back.md](run-it-back.md) | S0–S2, then S3–S5 | records-1 now (X10); records-2 after R2b | One PR per session into `develop` |
+| Run it back, records-1 and records-2 | [run-it-back.md](run-it-back.md), plan [run-it-back-plan.md](../run-it-back-plan.md) | S0–S2, then S3–S5 (with S3b) | records-1 now (X10, agreed 2026-11-01); records-2 after R2b | One PR per session into `develop` |
 | M6, meta-progression | [m6-meta-progression.md](m6-meta-progression.md) | S0–S9 | After R3 and R4b, in SPEC §16's order (records-1 if it has landed) | One PR per session into `develop` |
 | M7, the Gray Rot and content | [m7-gray-rot-and-content.md](m7-gray-rot-and-content.md) | S0–S7 | After M6 | One PR per session into `develop` |
 | M8, release | [m8-release.md](m8-release.md) | S0–S7 | After M7 | S7 is the release PR into `main`, only when the user asks |
@@ -38,7 +38,7 @@ R4a ─────────────────────────�
 records-1 ─────────────────────────────────────► records-2 (after R2b)
 ```
 
-The R2 and R4 splits (X1, X3), building R2 beside v1 (X2) and the two parts of Run it back (X10) are recommendations the user hasn't agreed yet. Each list says in one line what changes if the user picks the alternative.
+The R2 and R4 splits (X1, X3) and building R2 beside v1 (X2) are recommendations the user hasn't agreed yet. The two parts of Run it back (X10) were agreed on 2026-11-01. Each list says in one line what changes if the user picks the alternative.
 
 ## How this folder works
 

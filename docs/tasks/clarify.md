@@ -13,7 +13,7 @@ This is the clarify step for SPEC v2. SPEC.md is the spec, `docs/<milestone>-pla
 
 **How to read a block**
 
-- **Needed by** (in the index) names the milestone and the session. S0 is the milestone's plan session, which writes `docs/<milestone>-plan.md` and agrees it with the user before any code. "Gate" is the milestone's review or playtest gate. records-1 and records-2 are X10's two parts, both in `docs/tasks/run-it-back.md`: records-1 is its S0–S2 (its S0 plans both parts), records-2 its S3–S5. records-2 has no S0; its S3 updates the plan (RB/T024).
+- **Needed by** (in the index) names the milestone and the session. S0 is the milestone's plan session, which writes `docs/<milestone>-plan.md` and agrees it with the user before any code. "Gate" is the milestone's review or playtest gate. records-1 and records-2 are X10's two parts, both in `docs/tasks/run-it-back.md`: records-1 is its S0–S2 (its S0 plans both parts), records-2 its S3–S5 (with S3b). records-2 has no S0; its S3 updates the plan (RB/T024).
 - Session names follow each task file's Sessions table: R4's rows are "R4a-S0", "R4b-S0" and so on.
 - Findings are cited by A-ID (A001–A209), the review's numbering. `docs/tasks/spec-analysis.md` lists them. Each block quotes the evidence it rests on, so it reads on its own.
 - A recommendation that disagrees with SPEC's first guess says so and why. Where the evidence doesn't warrant a challenge, the block agrees plainly.
@@ -259,7 +259,7 @@ These ten calls set how the work after R1 is cut. The task files assume each rec
 - **Recommendation:** Yes. records-1 now, beside R1: the records store (RB-Q1), the last commander and bans, and Run it back. records-2 after R2b, reading RoundResult: truthful summary lines, the grudge line, play time, the records views and the codex. **Why:** Run it back barely touches R2 if play time stays out of the hashed run state (A185). The summary lines read battle records that R2b rewrites (A073).
 - **Alternatives:** all of it after R2b.
 - **Blocks:** records-1 S0; records-2's S3 (RB/T024); R2a S19's play clock (R2a/T126, T128).
-- **Decision:** _open_
+- **Decision:** 2026-11-01, asked in the hub session that started records S0, and recorded there: the recommendation, with one change made when the user agreed the plan. records-1 now, beside R1: the profile store holding the last commander and bans, the remembered setup, and Run it back. It records no runs, so no v1 run is ever recorded: the user wants work toward v2 only. records-2 after R2b, reading R2b's run: the run records, the truthful summary lines, the grudge line, play time, the records views and the codex. Play time stays in records-2, on R2a's play clock. In SPEC §16 M6 and `docs/run-it-back-plan.md`.
 
 ## R1: calls the R1 plan makes
 
@@ -1455,7 +1455,7 @@ X10 splits this into records-1 (now) and records-2 (after R2b).
 - **Recommendation:** The profile key, `spore-sprawl/profile/v1` through `storageKey()`, as profile version 1, holding meta only: the last setup, the records (each run tagged with its rules) and the codex. Settings, tips and the run keep their own keys, which never change (`.claude/rules/storage.md`) (A179, A172). M6 migrates it. **Why:** records-1 may ship before M6, which fixes the key once it ships, and §9.7's contents contradict the fixed keys (A172).
 - **Alternatives:** a key of its own, merged into the profile in M6.
 - **Blocks:** records-1; M6's profile.
-- **Decision:** _open_
+- **Decision:** 2026-11-01 (records S0): the recommendation. The profile key `spore-sprawl/profile/v1`, through `storageKey()`, as profile version 1 and meta only: the last setup (records-1), then the run records and the codex (records-2, from R2b's run; no v1 run is recorded, X10). Settings, tips and the run keep their own keys, so the profile drops §9.7's `settings` and `runInProgress`, and §9.7's `bans` becomes `lastSetup`. A corrupt record is copied to `spore-sprawl/profile/v1.bak`. M6 migrates the record to a later version under the same key. In SPEC §9.7, §13.8 and §16 M6.
 
 ### RB-Q2 · Prototype runs and records
 
@@ -1464,7 +1464,7 @@ X10 splits this into records-1 (now) and records-2 (after R2b).
 - **Recommendation:** No; only real runs record. **Why:** prototype runs save under storage of their own, so their records would split off, and R2 retires most presets anyway.
 - **Alternatives:** record them, tagged by preset.
 - **Blocks:** records-1.
-- **Decision:** _open_
+- **Decision:** 2026-11-01 (records S0): the recommendation. A prototype run writes no records and no remembered setup. Run it back still works in one, from the run that ended. In SPEC §9.7, §13.8 and §16 M6.
 
 ### RB-Q3 · What "active play time" is
 

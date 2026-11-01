@@ -61,5 +61,5 @@ Both sites share the swalliso.github.io origin, so every localStorage key goes t
 | File | Loads with | Covers |
 | --- | --- | --- |
 | `balance.md` | `data/`, `src/data/`, the balance, experiment and golden tools, `tools/lib/`, `tests/slow/`, `tests/golden/`, `docs/balance-backlog.md` | the approval rule, prototypes, changelog entries, goldens, guardrails, sweeps |
-| `storage.md` | `src/app/channel.ts`, `settings.ts`, `run.ts`, `tips.ts`, `src/run/storage.ts`, `resume.ts`, `runState.ts`, `flow.ts` | the storage keys, `storageKey()`, the `Storage` interface |
+| `storage.md` | `src/app/channel.ts`, `settings.ts`, `run.ts`, `tips.ts`, `src/run/storage.ts`, `resume.ts`, `runState.ts`, `flow.ts`, `src/meta/` | the storage keys, `storageKey()`, the `Storage` interface, the profile |
 | `v1-code.md` | `src/`, `tests/`, `tools/` | the code still runs v1's battle until R2: don't extend retired systems, and new work follows SPEC v2 |
