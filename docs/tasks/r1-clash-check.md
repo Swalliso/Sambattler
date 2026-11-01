@@ -128,7 +128,7 @@ R1 builds a headless check that fights whole armies at equal gold, in formation,
     - The old "about 100 supply" also stood in §1.1, §4.6, §5.4, §11.1, §12.2, D33 and §18.2 #7's first guess, so S0 changed those too and SPEC states one budget (added at S0: the task named only §13.7, §15.4 and §16 R1).
   - Leave A013 (§12.2's cost) and A017 (§15.3's options) to T040, which writes them as built.
   - Write the answer the user gave at T001, not the recommendation, where they differ.
-- [ ] T002 Update `docs/status.md` (R1 started, its branches, the agreed calls in one line each, and "Next session" naming S1 and S2) and the R1 rows of `docs/tasks/README.md`'s "Where to start" (§16 R1)
+- [x] T002 Update `docs/status.md` (R1 started, its branches, the agreed calls in one line each, and "Next session" naming S1 and S2) and the R1 rows of `docs/tasks/README.md`'s "Where to start" (§16 R1)
 
 **Checkpoint:** the plan says "agreed"; `docs/tasks/clarify.md` has a dated Decision line for each R1-Q and an "R1 measures" line under X4, X5 and R2-Q3; §16 R1 and §12.2 no longer give "files in order from file 1", "alternating" or formation "by plot" as R1's rule; `npm run verify` is green (S0 is docs only).
 
