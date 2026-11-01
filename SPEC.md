@@ -1557,11 +1557,16 @@ Each feat is a data record: `id`, `name`, `description`, `scope` (`battle` or `r
 
 ### 9.7 Profile save
 
-- **Storage:** localStorage key `spore-sprawl/profile/v1`.
-- **Contents:** `{ version, spores, amber, unlocks[], feats{}, traitsOwned[], rootCapacity, strainRanks{}, strainChoice{}, commanderXp{}, bestDecay{}, bans[], settings, runInProgress? }`
-- **Versioning:** each schema version comes with a migration function.
+- **Storage:** localStorage key `spore-sprawl/profile/v1`, through `storageKey()` like every key (§13.8). The key never changes, and the record carries its version in `v`. Run it back's first part, records-1, writes it first, as version 1 (§16 M6, RB-Q1). M6 adds its fields as a later version, with a migration.
+- **Contents:** meta only. Settings, tips and the run in progress keep their own keys (§13.8).
+  - **Version 1:** `{ v, lastSetup?, runs?, tallies?, codex? }`.
+    - `lastSetup` is the commander and bans of the last run begun, with room for M6's traits and strains and M7's blights. records-1 writes it.
+    - `runs` holds the last 20 runs, newest first, with how far each got, what beat it and its play time. `tallies` keeps each commander's runs, wins and bests, and `codex` the cards seen. records-2 adds them, from R2b's run on, so the version stays 1. No v1 run is ever recorded.
+  - **M6 adds:** `spores, amber, unlocks[], feats{}, traitsOwned[], rootCapacity, strainRanks{}, strainChoice{}, commanderXp{}, bestDecay{}`.
+- **Who writes it:** normal play. Seeded and test pages, and prototype runs (`?proto=`), never write it (RB-Q2).
+- **Versioning:** each schema version comes with a migration function. A record whose `v` is newer than the build's loads read-only and is never overwritten.
 - **Export/import:** a base64 JSON string on the Settings screen. There's no backend, so this is the backup.
-- **Corruption handling:** a corrupt or unparseable save is copied to a backup key, then the player is asked whether to reset.
+- **Corruption handling:** a corrupt or unparseable save is copied to `spore-sprawl/profile/v1.bak`, and defaults load. From M6, the player is then asked whether to reset.
 
 ### 9.8 Pacing targets
 
@@ -2689,9 +2694,10 @@ The tick and full-battle budgets are G11's in `data/balance-targets.json` today.
 - **Storage:** a `Storage` interface (`src/run/storage.ts`) with a localStorage implementation in the browser (`BrowserStorage` in `src/app/run.ts`) and an in-memory one (`MemoryStorage`) in tests and tools. Profile format in §9.7, run resume in §8.9.
 - **Keys never change,** or players lose their saves:
   - `spore-sprawl.run.v1` and `spore-sprawl.battle.v1` (`src/run/resume.ts`);
-  - `spore-sprawl/settings/v1` and `spore-sprawl/tips/v1` (`src/app/settings.ts`).
+  - `spore-sprawl/settings/v1` and `spore-sprawl/tips/v1` (`src/app/settings.ts`);
+  - `spore-sprawl/profile/v1` and its backup `spore-sprawl/profile/v1.bak` (`src/meta/records.ts`, from Run it back's records-1): the profile (§9.7).
 
-  Every key goes through `storageKey()` (`src/app/channel.ts`), which adds the `dev/` prefix on dev-site builds. A new key is added the same way, and the `dev/` prefix is never written by hand. When a record's format changes, the record carries its own version (its `v` field); the key stays. A prototype run (`?proto=`) saves only on the dev site, under `proto=<spec>/` keys of its own (`protoSpace()`), and the game never saves one.
+  Every key goes through `storageKey()` (`src/app/channel.ts`), which adds the `dev/` prefix on dev-site builds. A new key is added the same way, and the `dev/` prefix is never written by hand. When a record's format changes, the record carries its own version (its `v` field); the key stays. A prototype run (`?proto=`) saves only on the dev site, under `proto=<spec>/` keys of its own (`protoSpace()`), and the game never saves one. A prototype run never writes the profile: no records and no remembered setup (RB-Q2).
 - **Saves between rounds:** §8.9 owns when a battle saves, what a save holds and where resume returns to. In short, a battle saves at the start of each planning phase, once the general has planned, and at Begin, and resume returns to the latest save (a clash replays from its Begin save). This section adds only the storage side:
   - Planning commands execute when they're queued, so a save in planning holds every plant and sale made before it.
   - Resume replays from round 1's planning and checks the hash. A battle is at most 8,100 clash ticks (§13.7), so the replay is faster than v1's.
@@ -3922,6 +3928,15 @@ Elsewhere in this spec, "R4" means both parts, and a part is named where its tim
 - summary lines that tell the truth: how far you got, what beat you, and active play time;
 - per-commander records, the last 20 runs, and a codex of cards seen;
 - a grudge line naming the general that ended the run.
+
+It comes in two parts (X10, 2026-11-01). The plan is `docs/run-it-back-plan.md`, and the tasks are in `docs/tasks/run-it-back.md`.
+- **records-1, beside R1:** remember the last commander and bans, and Run it back. They read only the ended run's commander and bans, which R2b's run keeps, so they carry over to rounds unchanged. records-1 records no runs, so no v1 run is ever recorded (2026-11-01).
+- **records-2, after R2b:** the run records (per-commander records and the last 20 runs), the truthful summary lines, active play time, the grudge line, the records views and the codex, all from R2b's run. It waits for R2b because R2b rewrites the battle records the summary reads (lives, and each battle's rounds).
+
+Where it lives (RB-Q1, RB-Q2):
+- The records live in the profile, `spore-sprawl/profile/v1` (§9.7), as its version 1, which M6 migrates in place.
+- Play time and what beat you live in the records. `src/app` and `src/meta` work them out, and they never enter `RunState` or a battle's state, so no hash moves (§13.3 rule 6, §15.6).
+- Prototype runs write no records and no remembered setup. Run it back still works in one, from the run that ended.
 
 **Verification:**
 

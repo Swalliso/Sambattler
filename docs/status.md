@@ -48,7 +48,9 @@ Updated 2026-11-01, on `feature/r1-plan` (R1 S0, a docs PR into `develop`). This
     - **Its plan,** [docs/r4a-plan.md](r4a-plan.md), was agreed on 2026-11-01 (R4a-S0). Every recommendation was taken but two: only Elders get a rim (R4-Q3), and the merged radius goes ×1.0, which R2a writes (#53).
     - **Next: R4a-S1** (`feature/r4a-unit-drawer`, R4/T008–T016), once S0's PR (`feature/r4a-plan`) has merged. It builds the one unit drawer, the pips and the Elder rim, and the lineups. Then S2 to S5 follow in the order of [the task list](tasks/r4-readable-armies.md)'s Sessions table, still beside R1.
     - **R2a's playtest waits for R4a's review gate** (R4/T039).
-  - Run it back's S0 ([run-it-back.md](tasks/run-it-back.md)), if the user agrees X10.
+  - Run it back ([run-it-back.md](tasks/run-it-back.md)): X10 was agreed on 2026-11-01, and records S0 (`feature/records-plan`) agreed its plan, [run-it-back-plan.md](run-it-back-plan.md), with RB-Q1 and RB-Q2 as recommended. records-1 builds only the remembered setup and Run it back, and records no runs, so no v1 run is ever recorded. Run records start in records-2, after R2b. Once S0 has merged:
+    - records S1 (`feature/records-1-run-it-back`, T003–T012) builds the profile store and Run it back;
+    - then S2 (`feature/records-1-setup`) builds the remembered setup and ends with your check on the dev site.
 
   These touch different files.
 - **No rule changes:** R1 changes no rule or data, so no golden hash moves.
@@ -58,7 +60,7 @@ Updated 2026-11-01, on `feature/r1-plan` (R1 S0, a docs PR into `develop`). This
 
 1. **Review and merge R1 S0's PR** (`feature/r1-plan` into `develop`): the agreed plan and R1's calls in SPEC. R1 S1 and S2 wait on it.
 2. **The decisions that shape the milestones**, X1–X10 in [clarify.md](tasks/clarify.md#index). Each has a recommendation. The task lists assume them and say what changes otherwise.
-   - Needed now: X1 (split R2 into R2a and R2b), X2 (build R2a beside v1 on `develop`; R2b's switch-over on an integration branch until a whole run plays), X3 (split R4, the field's shapes first) and X10 (Run it back in two parts).
+   - Needed now: X1 (split R2 into R2a and R2b) and X2 (build R2a beside v1 on `develop`; R2b's switch-over on an integration branch until a whole run plays). X3 (split R4, the field's shapes first) and X10 (Run it back in two parts) were agreed on 2026-11-01.
    - At R1's review gate: X4 (copies before R3, if the swarm fails) and X5 (the scoring curve). R1 measures both, as agreed on 2026-11-01.
    - Later: X6 (run length), X7 (an "answer what you see" bot), X8 (measuring the general), X9 (flyers out of the first release).
 3. **The six core archetypes** are a first cut the user wants to discuss further. The sixth slot is open: the Burster Pod, or the Puffball Mortar ([§11.2](../SPEC.md#112-velvet-bloom-buildings)). It's §18.2 #36 in clarify.md: R1 measures both, and the call comes at R3's plan.
@@ -84,6 +86,7 @@ Updated 2026-11-01, on `feature/r1-plan` (R1 S0, a docs PR into `develop`). This
 
 | Work | Where | State |
 |---|---|---|
+| Run it back plan agreed (2026-11-01) | [run-it-back-plan.md](run-it-back-plan.md), [run-it-back.md](tasks/run-it-back.md), [clarify.md](tasks/clarify.md) (X10, RB-Q1, RB-Q2), SPEC §9.7, §13.8 and §16 M6, the `feature/records-plan` PR | Recommendations taken; records-1 records no runs, so run recording moved into records-2. records S1 next |
 | R1 S1: the formation and the muster (2026-11-01) | [src/sim/formation.ts](../src/sim/formation.ts), [tests/unit/formation.test.ts](../tests/unit/formation.test.ts), the `feature/r1-formation` PR | Verify green, no golden moved. With S2 merged ([#45](https://github.com/Swalliso/Sambattler/pull/45)), S3 can start once this merges |
 | R1 S2: the switches and the army builder (2026-11-01) | `src/sim/systems/targeting.ts`, `movement.ts`, [tools/lib/clash.ts](../tools/lib/clash.ts), the `feature/r1-armies` PR | Verify green, no golden moved. S3 waits on S1 and S2 |
 | R4a plan agreed (2026-11-01) | [r4a-plan.md](r4a-plan.md), [clarify.md](tasks/clarify.md) (X3, R4-Q1 to R4-Q5, #52, #53, #55), SPEC §2, §5.6, §5.8, §10, §11.1, §11.3, §13.6, §14.2, §14.3, §16 R4 and M7, and §18.2, the `feature/r4a-plan` PR | Every recommendation taken but two: only Elders get a rim, and the merged radius goes ×1.0 in R2a. R4a-S1 next |
