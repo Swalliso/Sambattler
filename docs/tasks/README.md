@@ -8,7 +8,7 @@ SPEC v2, broken into task lists that later sessions work through one row of a Se
 
 | Now | Session | Waits on |
 |---|---|---|
-| 1 | **R1 S5 and S6**, side by side, in [r1-clash-check.md](r1-clash-check.md): S5 the four presets and every variant option (T025–T031); S6 the race model, the battle-1 pairings, the full colony and the bench case (T032–T039) | R1 S4 merged (`feature/r1-clash-bars`: the clash bars on the pool, and `--checks clash`) |
+| 1 | **R1 S5 and S6**, side by side, in [r1-clash-check.md](r1-clash-check.md): S5 the fixes from S4's review (T054, T055), then the four presets and every variant option (T025–T031); S6 the race model, the battle-1 pairings, the full colony and the bench case (T032–T039) | R1 S4 merged (`feature/r1-clash-bars`: the clash bars on the pool, and `--checks clash`) |
 | 2 | **R4a-S3** in [r4-readable-armies.md](r4-readable-armies.md): the core six and the Mortar's emplacement redrawn from the approved sheet (T027–T029) | R4a-S2b merged (`feature/r4a-silhouettes`: the approved sheet, and no weapon marks), with T026 approved |
 | 3 | **R1 S7**: R1's runs, about 40 in the background, then R1's entry in `docs/balance-backlog.md` (T040–T048, T052) | R1 S5 and S6 merged |
 
