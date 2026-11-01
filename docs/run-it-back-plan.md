@@ -1,6 +1,6 @@
 # Run it back plan: records-1 and records-2
 
-**Status: agreed with the user on 2026-11-01 (records S0).** The user took the recommendations for X10, RB-Q1 and RB-Q2, and asked that records-1 build only v2 work, so no run is recorded before records-2. records-2's part stays a first guess until its S3 updates this plan against R2b as built (T024).
+**Status: agreed with the user on 2026-11-01 (records S0). records-1 is built, and passed the user's check the same day ([As built](#as-built)).** The user took the recommendations for X10, RB-Q1 and RB-Q2, and asked that records-1 build only v2 work, so no run is recorded before records-2. records-2's part stays a first guess until its S3 updates this plan against R2b as built (T024).
 
 Written 2026-11-01 against `develop` at `778a564` (R1 S0 merged). The scope is SPEC §16 M6's block "Independent of M6: Run it back, and records", and the sections it touches: §8.1, §8.8, §8.9, §9.7, §10.3, §10.5, §13.2, §13.3, §13.8, §14.4 and §15.6. The calls come from the review of SPEC v2 (A172, A179, A185, A186, A073 and A203 in `docs/tasks/spec-analysis.md`) and the user's decisions in `docs/tasks/clarify.md` (X10, RB-Q1 to RB-Q4). The tasks are in `docs/tasks/run-it-back.md`, cited as RB/T0nn.
 
@@ -136,7 +136,7 @@ Each is reversible. The record's types are in the task list's Technical context.
 
 ## As built
 
-**records-1,** built on 2026-11-01 in S1 ([#48](https://github.com/Swalliso/Sambattler/pull/48), T003–T012) and S2 (`feature/records-1-setup`, T013–T014 and T020–T022). It went as planned: calls 1–5 hold, and no rule, data or golden changed. Only the user's check (T023) is left. records-2 adds its part here at T040.
+**records-1,** built on 2026-11-01 in S1 ([#48](https://github.com/Swalliso/Sambattler/pull/48), T003–T012) and S2 (`feature/records-1-setup`, T013–T014 and T020–T022). It went as planned: calls 1–5 hold, and no rule, data or golden changed. The user's check on the dev site (T023) passed the same day. records-2 adds its part here at T040.
 
 - **The profile store** (S1): `src/meta/records.ts` and `src/meta/index.ts`, a pure layer in `eslint.config.js` and `tests/unit/purity.test.ts`.
   - They export `PROFILE_KEY`, `PROFILE_BACKUP_KEY`, `SetupRecord`, `ProfileV1`, `loadRecords()`, `updateRecords()`, `setLastSetup()` and `runItBackSetup()`.
@@ -160,4 +160,4 @@ Each is reversible. The record's types are in the task list's Technical context.
   4. The screenshots pass their assertions at 1280×720.
      - `rb/summary`: the browser's run hash matches Node's, `35aa71db199a496f`, which is the `m3-run-s7` golden's. Run it back is the primary button with its keycaps, and the footer and the banner fit.
      - `rb/underroot`: a test page, so it opens on Vesper as before.
-  5. The user's check on the dev site (T023) waits on S2's merge.
+  5. The user's check on the dev site (T023) passed on 2026-11-01, with S2 deployed: finish a run, press Run it back, then reload and choose New run. "It worked," with no other notes ([playtest-feedback.md](playtest-feedback.md#2026-11-01-records-1s-check-on-the-dev-site-the-user)).

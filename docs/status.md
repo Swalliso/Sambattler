@@ -1,6 +1,6 @@
 # Where things stand
 
-Updated 2026-11-01, on `docs/r2a-rough-playtest` (a docs PR into `develop`). This is the hand-over page. It covers what we're working on, what's waiting on the user's decision, and where each piece lives. Update it when work lands or the user decides something. Keep the detail in the docs it links to.
+Updated 2026-11-01, on `docs/records-1-check` (a docs PR into `develop`). This is the hand-over page. It covers what we're working on, what's waiting on the user's decision, and where each piece lives. Update it when work lands or the user decides something. Keep the detail in the docs it links to.
 
 ## In short
 
@@ -55,7 +55,8 @@ Updated 2026-11-01, on `docs/r2a-rough-playtest` (a docs PR into `develop`). Thi
   - **Run it back** ([run-it-back.md](tasks/run-it-back.md)): X10 was agreed on 2026-11-01, and records S0 agreed its plan, [run-it-back-plan.md](run-it-back-plan.md), with RB-Q1 and RB-Q2 as recommended ([#44](https://github.com/Swalliso/Sambattler/pull/44)). records-1 builds only the remembered setup and Run it back, and records no runs, so no v1 run is ever recorded. Run records start in records-2, after R2b.
     - **records S1** (`feature/records-1-run-it-back`, T003–T012): merged ([#48](https://github.com/Swalliso/Sambattler/pull/48)). The profile store, `src/meta/records.ts`, keeps the last setup under `spore-sprawl/profile/v1`, and every write goes through `updateRecords()`. On the summary, Run it back (`Enter` or `R`) starts the same commander and bans on a new seed, straight on the route.
     - **records S2** (`feature/records-1-setup`, T013–T014, T020–T022): merged ([#51](https://github.com/Swalliso/Sambattler/pull/51)). The Underroot opens on the setup last begun, after a reload too, and both Begin run and Run it back remember it. Seeded, test and prototype pages neither read nor write the profile. Verify green, 94 browser tests pass, no golden moved, and the `rb/summary` and `rb/underroot` screenshots pass. records-1 is built: see the plan's [As built](run-it-back-plan.md#as-built).
-    - **Next: your check on the dev site** (T023), now that S2 has merged and deployed: finish a run, press Run it back, then reload and choose New run. The Underroot should open on that commander and those bans. records-2 starts after R2b (S3, `feature/records-2-base`).
+    - **Your check on the dev site** (T023) passed on 2026-11-01: you finished a run, pressed Run it back, then reloaded and chose New run, and "it worked" ([playtest-feedback.md](playtest-feedback.md#2026-11-01-records-1s-check-on-the-dev-site-the-user)). records-1 is done.
+    - **Next: records-2,** after R2b (S3, `feature/records-2-base`).
 
   These touch different files.
 - **No rule changes:** R1 changes no rule or data, so no golden hash moves.
@@ -63,16 +64,13 @@ Updated 2026-11-01, on `docs/r2a-rough-playtest` (a docs PR into `develop`). Thi
 
 ## Waiting on the user
 
-1. **Two checks, now:**
-   - records-1's check on the dev site (T023): the steps are in the Run it back bullet above;
-   - R4a-S2b's silhouette sheet (R4/T026), when its session shows it. R4a-S3 redraws the game's sprites only after your approval.
-2. **The decisions that shape the milestones**, X1–X10 in [clarify.md](tasks/clarify.md#index). Each has a recommendation. The task lists assume them and say what changes otherwise.
+1. **The decisions that shape the milestones**, X1–X10 in [clarify.md](tasks/clarify.md#index). Each has a recommendation. The task lists assume them and say what changes otherwise.
    - Needed now: X1 (split R2 into R2a and R2b) and X2 (build R2a beside v1 on `develop`; R2b's switch-over on an integration branch until a whole run plays). X3 (split R4, the field's shapes first) and X10 (Run it back in two parts) were agreed on 2026-11-01.
    - At R1's review gate: X4 (copies before R3, if the swarm fails) and X5 (the scoring curve). R1 measures both, as agreed on 2026-11-01.
    - Later: X6 (run length), X7 (an "answer what you see" bot), X8 (measuring the general), X9 (flyers out of the first release).
-3. **The six core archetypes** are a first cut the user wants to discuss further. The sixth slot is open: the Burster Pod, or the Puffball Mortar ([§11.2](../SPEC.md#112-velvet-bloom-buildings)). It's §18.2 #36 in clarify.md: R1 measures both, and the call comes at R3's plan.
-4. **The open rules in §18.2** now each have a block in [clarify.md](tasks/clarify.md) with a recommendation, filed under the milestone that needs them. Some recommendations disagree with SPEC's first guess and say why. The rows R2 needs (#16–#35) include #32: what happens to runs saved before R2.
-5. **A release to `main`:** only when the user asks.
+2. **The six core archetypes** are a first cut the user wants to discuss further. The sixth slot is open: the Burster Pod, or the Puffball Mortar ([§11.2](../SPEC.md#112-velvet-bloom-buildings)). It's §18.2 #36 in clarify.md: R1 measures both, and the call comes at R3's plan.
+3. **The open rules in §18.2** now each have a block in [clarify.md](tasks/clarify.md) with a recommendation, filed under the milestone that needs them. Some recommendations disagree with SPEC's first guess and say why. The rows R2 needs (#16–#35) include #32: what happens to runs saved before R2.
+4. **A release to `main`:** only when the user asks.
 
 ## Where things live
 
@@ -93,8 +91,9 @@ Updated 2026-11-01, on `docs/r2a-rough-playtest` (a docs PR into `develop`). Thi
 
 | Work | Where | State |
 |---|---|---|
-| R2a's rough playtest added (2026-11-01) | [r2a-battle-in-rounds.md](tasks/r2a-battle-in-rounds.md) S14b (T145, T146), [clarify.md](tasks/clarify.md) R2-Q25, SPEC §16 R2 step 10 | Agreed: after S14 you play a battle in rounds, before S15 and S16 start. S21 stays the gate |
-| records-1 S2: the remembered setup (2026-11-01) | [#51](https://github.com/Swalliso/Sambattler/pull/51), `src/app/main.ts` | Merged. records-1 is built; your dev-site check (T023) is next |
+| records-1's check passed (2026-11-01) | [playtest-feedback.md](playtest-feedback.md#2026-11-01-records-1s-check-on-the-dev-site-the-user), [run-it-back.md](tasks/run-it-back.md) T023 | Done. records-1 is finished; records-2 starts after R2b |
+| R2a's rough playtest added (2026-11-01) | [#52](https://github.com/Swalliso/Sambattler/pull/52), [r2a-battle-in-rounds.md](tasks/r2a-battle-in-rounds.md) S14b (T145, T146), [clarify.md](tasks/clarify.md) R2-Q25, SPEC §16 R2 step 10 | Merged. After S14 you play a battle in rounds, before S15 and S16 start. S21 stays the gate |
+| records-1 S2: the remembered setup (2026-11-01) | [#51](https://github.com/Swalliso/Sambattler/pull/51), `src/app/main.ts` | Merged. records-1 is built |
 | R1 S3: one clash recorded (2026-11-01) | [#50](https://github.com/Swalliso/Sambattler/pull/50), [tools/lib/clash.ts](../tools/lib/clash.ts), `--checks clash --pair` | Merged. It found T053, the muster's seat-dependent ties, which S4 fixes first |
 | R4a-S2: the shape checks (2026-11-01) | [#49](https://github.com/Swalliso/Sambattler/pull/49), `src/data/shapes.ts`, `data/sprites/marks.json`, `npm run sprite-sheet` | Merged. The silhouette sheet (R4a-S2b) is next |
 | records-1 S1: the profile store and Run it back (2026-11-01) | [#48](https://github.com/Swalliso/Sambattler/pull/48), `src/meta/records.ts` | Merged |
