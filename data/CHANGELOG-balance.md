@@ -8,6 +8,14 @@ replaces. None of it is open work, including headings that say "Open:". From mil
 entries measure or tune v2's round battle (SPEC §11, §12). "The backlog" in the entries below means
 v1's, now [archived](../docs/archive/v1/balance-backlog.md).
 
+## R4a-S1: the lineups (2026-11-01)
+
+**Display only, no golden moved.** It rests on R4a's plan, agreed by the user on 2026-11-01 (R4/T007,
+`docs/r4a-plan.md`). No number or rule changed, and no golden replays these scenarios.
+- **The lineups** (R4/T009): `data/scenarios/unit-lineup.json` on Bogwater Hollow and `unit-lineup-twin.json` on
+  Twin Roots place every default-data unit at tiers 1, 2 and 3 on both sides, for R4a's screenshots (SPEC §16 R4
+  step 2). They replace `elder-showcase.json`, which is deleted.
+
 ## Combat rework: flyers take rule C (2026-10-31)
 
 **Approved by the user for the playtest** ("Let's go with your recommendations"). It's a prototype setting, so no
