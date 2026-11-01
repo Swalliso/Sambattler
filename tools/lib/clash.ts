@@ -6,10 +6,10 @@
 // in the data yet are named here (plan call 19); R2a moves them into balance.json (§11.1).
 import type { Content } from '../../src/data/registry.ts';
 import { addBuilding, addUnit } from '../../src/sim/create.ts';
-import { formationBox, musterKnits, slotPositions } from '../../src/sim/formation.ts';
+import { formationBox, musterKnits, overflows, slotGrid, slotPositions } from '../../src/sim/formation.ts';
 import type { FieldGeom, MusterUnit, Slot } from '../../src/sim/formation.ts';
-import { SIDES, createBattle, hash32, makeConfig, nextFloat, other, runHeadless, seedStream } from '../../src/sim/index.ts';
-import type { BattleState, Side } from '../../src/sim/index.ts';
+import { SIDES, bloomTrios, createBattle, hash32, makeConfig, nextFloat, other, runHeadless, seedStream, topKind } from '../../src/sim/index.ts';
+import type { BattleState, CounterKind, IntelProfile, Side } from '../../src/sim/index.ts';
 import { nextSigned } from '../../src/sim/rng.ts';
 import { mergeTriosNow } from '../../src/sim/systems/merging.ts';
 import { clampToLane, findUnit, unitDef, unitRadius } from '../../src/sim/world.ts';
@@ -456,13 +456,50 @@ export interface Merges {
   '3': number;
 }
 
-/** What one side fielded and did in a clash. */
+/** §7.4's four counter kinds' scores, with no noise, and the top kind (ties Elite, Armor, Line, Swarm). */
+export interface KindRead {
+  scores: IntelProfile;
+  top: CounterKind;
+}
+
+/** A squad too big to stand apart in its slot (§4.6, #11): its units are wider than its grid's spacing. */
+export interface Overflow {
+  buildingId: string;
+  n: number;
+  k: number;
+  spacing: number;
+  /** A unit's width, twice its radius. */
+  width: number;
+}
+
+/** What one side fielded and did in a clash (§16 R1, "Records"). */
 export interface ArmyRecord {
   controller: string;
-  /** Merges at the muster, and on the field after it. */
-  merges: { muster: Merges; field: Merges };
+  entries: ArmyEntry[];
+  spent: number;
+  buildings: number;
+  /** Its units at the arrival, and their supply. */
+  arrival: { units: number; supply: number };
   /** Its units after the muster, by tier, and their supply. */
   mustered: { units: number; supply: number; base: number; bloomed: number; elders: number };
+  /** Merges at the muster, and on the field after it. */
+  merges: { muster: Merges; field: Merges };
+  /**
+   * After the muster, the share of its units' supply that merged, each unit at its parts' base supply (a
+   * Bloomed unit its 3 parts' tier-1 supply, an Elder its 9; R2-Q3, A014): plain; with the swarm read,
+   * which leaves out units of at most `ai.counter.swarmMaxSupply` (1 where the data leaves it unset);
+   * and Elders alone.
+   */
+  eliteShare: { plain: number; swarmRead: number; elderOnly: number };
+  /** The armor classes' and ranged units' shares, by the same measure. */
+  shares: { light: number; medium: number; heavy: number; ranged: number };
+  /** §7.4's kinds under each eliteShare reading (A041). */
+  kinds: Record<keyof ArmyRecord['eliteShare'], KindRead>;
+  overflow: Overflow[];
+  /** The most trios Puppet Bloom's circle finds centred on any of its units at tick 20 (A057, R2-Q7). */
+  bloomTrios: number;
+  /** Its units within 0.5 tiles of the far edge when their lane locked in the `cap` reading (A021). */
+  parked: number;
 }
 
 /** One clash's record (§16 R1, "Records"). */
@@ -482,7 +519,6 @@ export interface ClashRecord {
 
 /** The tick each reading's cap falls on: 45 s of the clash clock, or 45 s after the muster. */
 const CAP_TICK: Record<Reading, number> = { cap: CLASH.capTicks, capAfterMuster: CLASH.capTicks + CLASH.musterTicks };
-const READINGS: readonly Reading[] = ['cap', 'capAfterMuster'];
 
 /** A job's options with v2's first guesses filled in. */
 export function clashOpts(opts: ClashOpts = {}): Required<ClashOpts> {
@@ -519,18 +555,28 @@ export function playClash(content: Content, job: ClashJob, hooks: ClashHooks = {
   for (const side of SIDES) placeArmy(state, side, assignSlots(content, armies[side], field, { lanesRule: opts.lanesRule }));
   hooks.stage?.(state);
 
+  const arrival = { player: fielded(state, 'player'), enemy: fielded(state, 'enemy') };
+
   const atMuster = muster(state);
   jitter(state, job);
   state.tick = CLASH.musterTicks;
   const mustered = { player: fielded(state, 'player'), enemy: fielded(state, 'enemy') };
+  const reads = { player: mixOf(state, 'player'), enemy: mixOf(state, 'enemy') };
+  const bloom = { player: mostBloomTrios(content, state, 'player'), enemy: mostBloomTrios(content, state, 'enemy') };
   hooks.mustered?.(state);
 
   const lanes = state.lanes.map(() => ({} as Partial<Record<Reading, LaneReading>> & { held?: boolean }));
+  const parked = { player: 0, enemy: 0 };
+  const lockCap = (s: BattleState, l: number, r: LaneReading): void => {
+    lanes[l]!.cap = r;
+    for (const side of SIDES) parked[side] += parkedIn(s, side, l);
+  };
   // E1 and E2: decided by what each side fields, before anyone moves
   tally(state).forEach((t, l) => {
     if (t.player.alive && t.enemy.alive) return;
     const r = t.player.alive || t.enemy.alive ? ended(t, 0, 'E1') : ended(t, 0, 'E2');
-    for (const reading of READINGS) lanes[l]![reading] = r;
+    lockCap(state, l, r);
+    lanes[l]!.capAfterMuster = r;
   });
   const open = () => lanes.some((l) => !l.cap || !l.capAfterMuster);
   if (open()) {
@@ -540,14 +586,11 @@ export function playClash(content: Content, job: ClashJob, hooks: ClashHooks = {
         tally(s).forEach((t, l) => {
           const lane = lanes[l]!;
           const end = !t.player.alive || !t.enemy.alive ? ended(t, s.tick) : undefined;
-          for (const reading of READINGS) {
-            if (lane[reading]) continue;
-            if (end) lane[reading] = end;
-            else if (s.tick >= CAP_TICK[reading]) {
-              lane[reading] = capped(t, s.tick);
-              if (reading === 'cap') lane.held = t.player.units === 0 || t.enemy.units === 0;
-            }
+          if (!lane.cap && (end || s.tick >= CAP_TICK.cap)) {
+            lockCap(s, l, end ?? capped(t, s.tick));
+            if (!end) lane.held = t.player.units === 0 || t.enemy.units === 0;
           }
+          if (!lane.capAfterMuster && (end || s.tick >= CAP_TICK.capAfterMuster)) lane.capAfterMuster = end ?? capped(t, s.tick);
         });
         if (!open()) s.phase = 'ended';
       },
@@ -555,9 +598,13 @@ export function playClash(content: Content, job: ClashJob, hooks: ClashHooks = {
   }
   const laneRecords = lanes.map((l, lane): LaneRecord => ({ lane, cap: l.cap!, capAfterMuster: l.capAfterMuster!, emplacementsHeld: l.held ?? false }));
   const armyRecord = (side: Side): ArmyRecord => {
-    const all = state.stats[side].merges;
-    const m = atMuster[side];
-    return { controller: armies[side].controller, merges: { muster: m, field: { '2': all['2'] - m['2'], '3': all['3'] - m['3'] } }, mustered: mustered[side] };
+    const army = armies[side], all = state.stats[side].merges, m = atMuster[side];
+    return {
+      controller: army.controller, entries: army.entries, spent: army.spent, buildings: army.entries.length,
+      arrival: { units: arrival[side].units, supply: arrival[side].supply }, mustered: mustered[side],
+      merges: { muster: m, field: { '2': all['2'] - m['2'], '3': all['3'] - m['3'] } },
+      ...reads[side], overflow: overflowsOf(state, side, army), bloomTrios: bloom[side], parked: parked[side],
+    };
   };
   return {
     field: job.field, budget: job.armies[0].budget, seed: job.seed, seat: job.seat, jitter: job.jitter ?? 0, opts,
@@ -622,6 +669,79 @@ function fielded(state: BattleState, side: Side): ArmyRecord['mustered'] {
     if (u.tier === 1) out.base++; else if (u.tier === 2) out.bloomed++; else out.elders++;
   }
   return out;
+}
+
+/** A merged unit's parts, by tier: a Bloomed unit knit 3 base units, an Elder 9. */
+const PARTS = [1, 3, 9] as const;
+
+/**
+ * A side's mix after the muster (§7.4, R2-Q3): each unit at its parts' base supply, the eliteShare
+ * readings, the armor and ranged shares, and the four kinds' scores from `ai.counter`, with no noise.
+ */
+function mixOf(state: BattleState, side: Side): Pick<ArmyRecord, 'eliteShare' | 'shares' | 'kinds'> {
+  const cr = state.rules.ai.counter;
+  const swarmMax = cr.swarmMaxSupply ?? 1;
+  let total = 0, light = 0, medium = 0, heavy = 0, ranged = 0, merged = 0, swarmRead = 0, elders = 0;
+  for (const u of state.units) {
+    if (u.side !== side) continue;
+    const def = unitDef(state, u);
+    const base = def.tiers[0].supply;
+    const parts = PARTS[u.tier - 1]! * base;
+    total += parts;
+    if (def.armor === 'light') light += parts; else if (def.armor === 'medium') medium += parts; else heavy += parts;
+    if (def.tags.includes('ranged')) ranged += parts;
+    if (u.tier === 1) continue;
+    merged += parts;
+    if (base > swarmMax) swarmRead += parts;
+    if (u.tier === 3) elders += parts;
+  }
+  const share = (x: number) => (total > 0 ? x / total : 0);
+  const eliteShare = { plain: share(merged), swarmRead: share(swarmRead), elderOnly: share(elders) };
+  const shares = { light: share(light), medium: share(medium), heavy: share(heavy), ranged: share(ranged) };
+  const read = (elite: number): KindRead => {
+    const scores: IntelProfile = { swarm: shares.light * (1 - cr.swarmEliteDiscount * elite), line: shares.medium, armor: shares.heavy, elite: cr.eliteScoreMult * elite };
+    return { scores, top: topKind(scores) };
+  };
+  return { eliteShare, shares, kinds: { plain: read(eliteShare.plain), swarmRead: read(eliteShare.swarmRead), elderOnly: read(eliteShare.elderOnly) } };
+}
+
+/** The army's squads that overflow their slots (§4.6, #11), each building and squad size once. */
+function overflowsOf(state: BattleState, side: Side, army: Army): Overflow[] {
+  const out: Overflow[] = [];
+  for (const e of army.entries) {
+    if (e.kind !== 'squad' || out.some((o) => o.buildingId === e.buildingId && o.n === e.count)) continue;
+    const radius = state.compiled[side].units[e.unitId!]!.tiers[0].radius;
+    if (!overflows(e.count, radius)) continue;
+    const { k, spacing } = slotGrid(e.count);
+    out.push({ buildingId: e.buildingId, n: e.count, k, spacing, width: 2 * radius });
+  }
+  return out;
+}
+
+/** Puppet Bloom's circle (§11.10), from its data. */
+function bloomRadius(content: Content): number {
+  const power = Object.values(content.commanders).map((c) => c.power).find((p) => p.kind === 'bloom');
+  if (!power || !('radius' in power)) throw new Error('playClash: no Puppet Bloom in the data');
+  return power.radius;
+}
+
+/** The most trios `bloomTrios` finds in Puppet Bloom's circle centred on any of a side's units (A057). */
+function mostBloomTrios(content: Content, state: BattleState, side: Side): number {
+  const radius = bloomRadius(content);
+  let most = 0;
+  for (const u of state.units) if (u.side === side) most = Math.max(most, bloomTrios(state, side, u.x, u.y, radius).trios.length);
+  return most;
+}
+
+/** A side's units in a lane whose bodies stand within 0.5 tiles of the far edge (A021). */
+function parkedIn(state: BattleState, side: Side, lane: number): number {
+  let n = 0;
+  for (const u of state.units) {
+    if (u.side !== side || u.lane !== lane) continue;
+    const r = unitRadius(state, u);
+    if ((side === 'player' ? state.map.width - (u.x + r) : u.x - r) <= 0.5) n++;
+  }
+  return n;
 }
 
 /** What one side has in a lane: living units and emplacements, its surviving supply and its damage supply. */

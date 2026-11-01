@@ -470,3 +470,78 @@ describe('one clash: the muster, the lane ends and the clock (SPEC §5.6, §6.7,
     ]);
   });
 });
+
+describe("one clash's record: what each army fielded and how it reads (SPEC §5.7, §7.4, §16 R1; R2-Q3)", () => {
+  const one = 'one' as const;
+  const record = (a: Army, opts: ClashOpts = {}, b: Army = none()) => playClash(content, job(one, a, b, opts));
+
+  it("eliteShare after the muster counts each merged unit at its parts' base supply: plain, with the swarm read, and Elders only (A014, A041)", () => {
+    // one Burrow: 2 Bloomed + 2 base Sporelings, 6 of 8 parts merged; a Sporeling's 1 supply falls to the swarm read
+    expect(record(army(['sporelingBurrow'])).armies.player.eliteShare).toEqual({ plain: 0.75, swarmRead: 0, elderOnly: 0 });
+    // one Hall: 1 Bloomed + 1 base Capguard, and a Capguard's supply is 2, so the swarm read keeps it
+    expect(record(army(['capguardHall'])).armies.player.eliteShare).toEqual({ plain: 0.75, swarmRead: 0.75, elderOnly: 0 });
+    // two Burrows side by side: an Elder's 9 parts, 2 Bloomed's 6 and 1 base, of 16
+    expect(record(army(['sporelingBurrow', 'sporelingBurrow'])).armies.player.eliteShare).toEqual({ plain: 15 / 16, swarmRead: 0, elderOnly: 9 / 16 });
+    // merging off: nothing merged
+    expect(record(army(['capguardHall']), { merging: false }).armies.player.eliteShare).toEqual({ plain: 0, swarmRead: 0, elderOnly: 0 });
+    // the swarm read follows the data's swarmMaxSupply where it's set (the swarmread preset sets 1)
+    const sr = protoContent('swarmread');
+    expect(playClash(sr, job(one, army(['sporelingBurrow'], sr), none())).armies.player.eliteShare).toEqual({ plain: 0.75, swarmRead: 0, elderOnly: 0 });
+  });
+
+  it("the armor and ranged shares by the same measure, and §7.4's four kinds' scores with no noise, with the top kind, under each reading", () => {
+    // 8 Sporelings, 4 Capguards, 4 Gill Archers and 2 Amanita Knights: 8 + 8 + 8 + 6 = 30 parts' supply
+    const r = record(army(['sporelingBurrow', 'capguardHall', 'gillNest', 'amanitaLodge'])).armies.player;
+    expect(r.mustered).toMatchObject({ base: 6, bloomed: 4, elders: 0 });
+    expect(r.shares).toEqual({ light: 16 / 30, medium: 8 / 30, heavy: 6 / 30, ranged: 8 / 30 });
+    expect(r.eliteShare).toEqual({ plain: 18 / 30, swarmRead: 12 / 30, elderOnly: 0 });
+    const { swarmEliteDiscount: d, eliteScoreMult: m } = content.balance.ai.counter;
+    const scores = (elite: number) => ({ swarm: (16 / 30) * (1 - d * elite), line: 8 / 30, armor: 6 / 30, elite: m * elite });
+    expect(r.kinds.plain).toEqual({ scores: scores(18 / 30), top: 'elite' });
+    expect(r.kinds.swarmRead).toEqual({ scores: scores(12 / 30), top: 'elite' });
+    expect(r.kinds.elderOnly).toEqual({ scores: scores(0), top: 'swarm' });
+  });
+
+  it("the overflow list: each squad whose units are wider than its grid's spacing (#11)", () => {
+    expect(record(army(['sporelingBurrow', 'capguardHall', 'amanitaLodge'])).armies.player.overflow).toEqual([]);
+    const five = army(['capguardHall', 'sporelingBurrow', 'capguardHall']);
+    for (const i of [0, 2]) five.entries[i] = { ...five.entries[i]!, count: 5 };
+    expect(record(five).armies.player.overflow).toEqual([{ buildingId: 'capguardHall', n: 5, k: 3, spacing: 2 / 3, width: 0.7 }]);
+  });
+
+  it("Puppet Bloom's trios: the most a 3-tile circle finds at any of a side's units right after the muster (A057)", () => {
+    // a Burrow knits all it can at the muster; two Lodges' 4 Knights stand too far apart to knit, but one circle holds them all
+    expect(record(army(['sporelingBurrow'])).armies.player.bloomTrios).toBe(0);
+    expect(record(army(['amanitaLodge', 'amanitaLodge'])).armies.player).toMatchObject({ bloomTrios: 1, merges: { muster: { '2': 0, '3': 0 } } });
+    expect(record(army(['amanitaLodge', 'amanitaLodge', 'amanitaLodge'])).armies.player.bloomTrios).toBe(2);
+  });
+
+  it('units parked within 0.5 tiles of the far edge when their lane ended: none with the idle seek, the unopposed with v1 movement (A021)', () => {
+    // a Sporeling and a Tender 7 rows apart: neither ever comes within the other's reach without seeking
+    const stage = stageUnits({ side: 'player', unitId: 'sporeling', x: 12, y: 0.5 }, { side: 'enemy', unitId: 'tender', x: 20, y: 7.5 });
+    const v1 = playClash(content, job(one, none(), none(), { v1Movement: true }), { stage });
+    expect(lane0(v1).cap).toMatchObject({ case: 'E3', capped: true });
+    expect([v1.armies.player.parked, v1.armies.enemy.parked]).toEqual([1, 1]);
+    const v2 = playClash(content, job(one, none(), none()), { stage });
+    expect(lane0(v2).cap).toMatchObject({ case: 'wipe', winner: 'player' });
+    expect([v2.armies.player.parked, v2.armies.enemy.parked]).toEqual([0, 0]);
+  });
+
+  it('gold spent, buildings, units and supply at the arrival and after the muster; merges at the muster and on the field after it', () => {
+    const a = armyFromBot(content, 'bot:mono:sporelingBurrow', 600, 1, 8);
+    const r = record(a).armies.player;
+    expect(r).toMatchObject({ controller: 'bot:mono:sporelingBurrow', entries: a.entries, spent: 550, buildings: 5, arrival: { units: 40, supply: 40 } });
+    const { base, bloomed, elders } = r.mustered;
+    expect(base + 3 * bloomed + 9 * elders).toBe(40); // every part is still there
+    expect(r.mustered.supply).toBe(base + 2 * bloomed + 4 * elders);
+    expect(r.merges.muster['2']).toBe(bloomed + 3 * elders);
+    expect(r.merges.muster['3']).toBe(elders);
+
+    // a trio that stands together only after the muster knits on the field, by v1's rule
+    const late = playClash(content, job(one, none(), none()), {
+      stage: stageUnits({ side: 'enemy', unitId: 'tender', x: 30, y: 4 }),
+      mustered: stageUnits({ side: 'player', unitId: 'sporeling', x: 10, y: 3.5 }, { side: 'player', unitId: 'sporeling', x: 10, y: 4.5 }, { side: 'player', unitId: 'sporeling', x: 10.5, y: 4 }),
+    });
+    expect(late.armies.player.merges).toEqual({ muster: { '2': 0, '3': 0 }, field: { '2': 1, '3': 0 } });
+  });
+});
