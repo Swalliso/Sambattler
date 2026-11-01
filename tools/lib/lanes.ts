@@ -1,4 +1,4 @@
-// Per-lane battle traces (step A of docs/ideas/one-more-run-review.md): where each side builds,
+// Per-lane battle traces (step A of docs/archive/v1/ideas/one-more-run-review.md): where each side builds,
 // how much supply it fields in each lane, which lane breaks first and whether its other lanes keep
 // producing. Used by `npm run experiment -- --checks lanes --maps twin-roots`.
 import type { Content } from '../../src/data/registry.ts';

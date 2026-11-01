@@ -1,118 +1,110 @@
 # Where things stand
 
-Updated 2026-10-31, at `develop` `ef2e133`. This is the hand-over page. It covers what we're working on, what's waiting on the user's decision, and where each piece lives. Update it when work lands or the user decides something. Keep the detail in the docs it links to.
+Updated 2026-10-31, on `feature/spec-v2` (a PR into `develop`). This is the hand-over page. It covers what we're working on, what's waiting on the user's decision, and where each piece lives. Update it when work lands or the user decides something. Keep the detail in the docs it links to.
 
 ## In short
 
-- **The game:** Milestones 1–5 are built.
+- **The game on `develop`:** Milestones 1–5 are built, plus the combat rework behind `?proto=rework`.
   - `main` has M1–M4 and the UI work.
-  - M5 (commanders and powers) is only on `develop` ([#22](https://github.com/Swalliso/Sambattler/pull/22)), along with everything below.
-- **Since 2026-10-30 the focus is how battles feel,** not new milestones.
-  - The [engagement review](engagement-review.md) and the [One More Run review](ideas/one-more-run-review.md) found that one unit type decides too many battles: an army built from one building beats a mixed one (G3).
-  - That led to the [combat rework](ideas/combat-rework.md).
-- **Now: the rework's playtest (P3),** on the dev site with `?proto=rework`.
-  - All of it is on `develop` behind prototype settings that are off by default, so without `?proto=` the dev site plays like M5.
-- **Next: P4.** The user decides what to adopt from the playtest and the measurements.
-  - M6–M8's content waits on that, since it will be written for the combat model that's adopted.
-- **Beyond the rework:** [after-the-rework.md](ideas/after-the-rework.md) (2026-10-31) lists what still stands between the game and fun, and what to do before, during and after the playtest. Nothing in it is adopted.
-  - Its evidence is in [ideas/after-the-rework/](ideas/after-the-rework/README.md).
-  - Its pre-playtest UI fixes are in the same PR. They're render and UI only, and the goldens are unchanged.
+  - M5 (commanders and powers) is only on `develop` ([#22](https://github.com/Swalliso/Sambattler/pull/22)).
+- **The design changed on 2026-10-31.** After the rework's playtest (P3), the user moved the game to **SPEC v2**:
+  - battles become rounds: you plan with the clock stopped, then both whole armies clash;
+  - the general plans first, and you see its whole army before you plan;
+  - each battle is a race between two Heartcaps, and the run has lives, so a won battle never costs anything;
+  - the column fight is gone, your colony is your formation, and the colony grows plots over a run;
+  - a kit of building cards with copies;
+  - six core archetypes, with augments and combos.
 
-## The playtest (P3)
+  See [SPEC §0.1](../SPEC.md#01-what-changed-in-v2), [§1.3](../SPEC.md#13-v2-decisions-2026-10-31) and the [P3 notes](playtest-feedback.md#2026-10-31-p3-the-combat-rework-the-user).
+- **Nothing in v2 is built yet.** Until milestone R2 lands, the code follows v1: the M5 battle, with the rework's pieces behind `?proto=rework` on the dev site.
+- **Next: milestone R1, the clash check** ([SPEC §16](../SPEC.md#16-milestone-plan)). It's a headless tool that fights whole armies at equal gold, with no rule change. It sets squad sizes and checks that every strong army has an answer before the round loop is built.
+- **Then:**
+  - R2: rounds, the general plans first, lives, and the planning screen. R2 starts only once R1's results are in `docs/balance-backlog.md` and the user has agreed them. A session asked to start R2 before that stops and asks;
+  - R3: the kit, the six archetypes, augments, combos and run packs;
+  - R4: readable armies and the card-text pass;
+  - then M6–M8, rewritten for v2.
 
-- **Play** at https://swalliso.github.io/Sambattler/dev/?proto=rework.
-  - A prototype run saves on the dev site under its own keys ([#34](https://github.com/Swalliso/Sambattler/pull/34)), apart from the real save, so closing the tab doesn't lose it.
-- **What `rework` turns on** (`src/data/proto.ts`; each piece also has a preset of its own):
-  - **waves:** units leave together on a 20 s beat, and a lane's wave of two or more unit types gets a shield worth 20% of each unit's HP;
-  - **pinning:** a ranged unit with an enemy beside it attacks at ×0.35;
-  - **call for help:** nearby idle units turn on whatever attacks a friend;
-  - **two new units:**
-    - the Rhizomorph tunnels under the front;
-    - the Burster rolls into a clump of enemies and bursts into a spore cloud;
-  - **the Elder Sporeling** loses its splash;
-  - **the Sporestorm** grows waves 20% a stack;
-  - **the general's swarm read:** the adaptive general now reads a merging swarm as a swarm;
-  - **flyers:** the Driftling and its Drift Stalk. Under rule C every unit can hit a flyer, but ground melee deals ×0.5. The Mortar's shells and Burster bursts can't hit one, and flyers hold no ground.
-- **The playtest questions** are in [P3](ideas/combat-rework.md#p3-playtest).
-- **Known issues going in:**
-  - battle 1 is harder with Armilla and Cordis;
-  - falling back early is a big edge;
-  - there are still no comebacks;
-  - the general doesn't answer a swarm;
-  - an army of only flyers is still strong;
-  - the Rhizomorph may not earn its place.
-- **Where the package measures** (backlog, [After P2](balance-backlog.md#after-p2-the-swarm-read-and-flyers)):
-  - **the strict counter bar passes:** every strong one-building army has an answer that wins at least 60% on every map;
-  - **battle length (G4) passes:** median 8:04, with 11% of battles ending in a Decision;
-  - **the mono-build check (G3) fails** on three armies, each built from one building, against `bot:balanced` (mean / worst map, limit 55 / 60):
+## Next session: milestone R1
 
-    | Army | G3 |
-    |---|---|
-    | Sporeling | 83 / 86 |
-    | Drift Stalk | 72 / 90 |
-    | Veilstalker | 69 / 80 |
-- **Playtest notes go in** [playtest-feedback.md](playtest-feedback.md), newest first, linked to the guardrail or setting they touch.
+- **Branch** `feature/r1-clash-check` from `develop`, after the SPEC v2 PR ([#39](https://github.com/Swalliso/Sambattler/pull/39)) is merged.
+- **Read first:**
+  - SPEC [§16, Milestone R1](../SPEC.md#milestone-r1--the-clash-check);
+  - the rules it measures: §4.6 (plots and formation), §5.6 (the muster), §6.7 (how a lane ends) and §11.2 (squads);
+  - the pieces v2 keeps (§1.3 #11) and the intended counter graph (§11.4);
+  - the bars and tools in §12.2–§12.3 and §15.3–§15.4, and the performance budget in §13.7;
+  - the §18.2 rows "Settled by R1", with §5.2 and §7.4 for the rows about formation and counters.
+
+  The spec is enough to plan R1. The archive is background only.
+- **Write** `docs/r1-plan.md` and agree it with the user before building, as each milestone does.
+- **Reuse:** the supply duel (`supplyDuel` in `tools/lib/balance.ts`), the counter check and the worker pool in `tools/experiment.ts` and `tools/lib/`.
+- **No rule changes:** R1 changes no rule or data, so no golden hash moves.
+- **Results go in** [docs/balance-backlog.md](balance-backlog.md), v2's backlog.
 
 ## Waiting on the user
 
-1. **P4, after the playtest:** adopt the pieces that carry the result, iterate on the numbers, or move to Level 3.
-   - Each adopted piece is a SPEC change with a golden refresh.
-   - Level 3 is [rounds](ideas/rounds.md), a paper design that isn't built.
-2. **The flyer army:** an army of only Drift Stalks still beats `bot:balanced` 72% under rule C.
-   - The two fixes are a Driftling retune, or an Anti-Air counter for the general ([flyers.md](ideas/flyers.md)).
-3. **The general against a swarm:** it now reads the swarm right, but its counters to a swarm aren't the swarm's answer.
-   - It builds Capguards, Burster Pods and Tunnels; the answer the counter matrix found is Sporeling + Veilstalker.
-   - It beats mono Sporeling 24% of the time.
-   - Teaching it the answer is undecided. Don't start it unasked.
-4. **The Rhizomorph** carries nothing measured. Whether it stays is P4's call.
-5. **Step B's battle-feel prototypes** (`hotstart`, `bigdrafts`, `breach`) are built and off by default.
-   - They wait on a playtest of their own ([backlog](balance-backlog.md#step-b-battle-feel-prototypes-2026-10-30)).
-6. **The colony-swarm direction** and Step C's network test are parked behind the rework.
-   - See [colony-swarm.md](ideas/colony-swarm.md) and the One More Run review's [suggested path](ideas/one-more-run-review.md#suggested-path).
-7. **The open playtest items F1–F16** in [playtest-feedback.md](playtest-feedback.md). Most wait on the user.
-8. **A release to `main`:** M5 and whatever P4 adopts, only when the user asks.
-9. **The after-the-rework proposals** ([after-the-rework.md](ideas/after-the-rework.md)):
-   - which Tier 1 sessions to start while the playtest runs (tools, lives, the battle-1 package, comeback gold by army, read the enemy, honest prices, run it back);
-   - after P4: what territory is for, and whether merging becomes a choice again.
+1. **Review and merge SPEC v2** ([#39](https://github.com/Swalliso/Sambattler/pull/39)).
+   - The decisions are the user's.
+   - The first-guess numbers and the open questions in [§18.2](../SPEC.md#182-open-questions-for-playtesting) are for review.
+2. **The six core archetypes** are a first cut the user wants to discuss further. The sixth slot is open: the Burster Pod, or the Puffball Mortar ([§11.2](../SPEC.md#112-velvet-bloom-buildings)).
+3. **Open rules** in §18.2, among them:
+   - a bonus for a clean win;
+   - what losing the boss does;
+   - how the colony gains plots;
+   - whether planted buildings carry between battles;
+   - whether an augment attaches to a building type or to one card.
 
-## Recent work and where it lives
+   The rows "Settled by R2" (§18.2 #16–#35) need the user's call before R2 builds. That includes #32: what happens to runs saved before R2.
+4. **Run it back and records** was proposed as a separate session. It doesn't depend on the battle. The idea comes from the archived review's [Tier 1, item 7](archive/v1/ideas/after-the-rework.md#tier-1-now-while-you-playtest).
+5. **A release to `main`:** only when the user asks.
+
+## Where things live
+
+| What | Where |
+|---|---|
+| The design: rules, milestones, open questions | [SPEC.md](../SPEC.md) (v2). Start with §0.1 and §1.3 |
+| Human playtest notes | [playtest-feedback.md](playtest-feedback.md), newest first. Older items carry a v2 status |
+| v2's balance work | [balance-backlog.md](balance-backlog.md) and `data/CHANGELOG-balance.md` |
+| Ideas written against v2 | [ideas/](ideas/README.md) |
+| Research on other games | [research/](research/README.md) |
+| Everything written for the v1 battle | [archive/](archive/README.md). It's history and evidence, not design input |
+
+## Recent work
 
 | Work | Where | State |
 |---|---|---|
-| Engagement review (2026-10-28) | [engagement-review.md](engagement-review.md) | Diagnosis. Hold / Advance came out of it, the only prototype adopted so far |
-| One More Run review (2026-10-30) | [ideas/one-more-run-review.md](ideas/one-more-run-review.md) | Set steps A to C |
-| Step A: G3 per map, the diver, commander runs, placement spread | [backlog](balance-backlog.md#step-a-measurement-before-m6-2026-10-30), [#26](https://github.com/Swalliso/Sambattler/pull/26) | Done; the tools stay |
-| Step B: hot start, Heartcap breach, bigger drafts | [backlog](balance-backlog.md#step-b-battle-feel-prototypes-2026-10-30), [#27](https://github.com/Swalliso/Sambattler/pull/27) | Built, off by default, waits on a playtest |
-| G3 on every map | [backlog](balance-backlog.md#g3-on-every-map-the-rewrite-2026-10-30), SPEC §12.3, [#28](https://github.com/Swalliso/Sambattler/pull/28) | Adopted as the guardrail |
-| Second front: two-lane test maps | [backlog](balance-backlog.md#second-front-two-lane-test-maps-2026-10-30), [#29](https://github.com/Swalliso/Sambattler/pull/29) | Measured on test maps only |
-| Counter matrix (the rework's P0) | [backlog](balance-backlog.md#counter-matrix-on-todays-rules-2026-10-30), [#31](https://github.com/Swalliso/Sambattler/pull/31) | A check in the experiment tool |
-| Combat rework P1 to P2 | [ideas/combat-rework.md](ideas/combat-rework.md), the backlog's P1 to P2 sections, [#35](https://github.com/Swalliso/Sambattler/pull/35) | In playtest |
-| Flyers | [ideas/flyers.md](ideas/flyers.md), [#35](https://github.com/Swalliso/Sambattler/pull/35), [#36](https://github.com/Swalliso/Sambattler/pull/36) | In `rework`, under rule C |
-| Rounds (Level 3) | [ideas/rounds.md](ideas/rounds.md), [#33](https://github.com/Swalliso/Sambattler/pull/33) | Paper design, the fallback |
-| Colony and swarm direction | [ideas/colony-swarm.md](ideas/colony-swarm.md), [#23](https://github.com/Swalliso/Sambattler/pull/23), [#25](https://github.com/Swalliso/Sambattler/pull/25) | Notes only, parked |
-| Prototype saves on the dev site | `.claude/rules/storage.md`, [#34](https://github.com/Swalliso/Sambattler/pull/34) | On `develop` |
-| After-the-rework review (2026-10-31) | [ideas/after-the-rework.md](ideas/after-the-rework.md), evidence in [ideas/after-the-rework/](ideas/after-the-rework/README.md) | Proposals, waiting on the user |
-| Pre-playtest UI fixes (2026-10-31) | [after-the-rework.md](ideas/after-the-rework.md#fixes-made-before-the-playtest), SPEC §10 | In the same PR |
-| Outside notes brought in (2026-10-31) | [the design review](ideas/one-more-run-design-review.md), [fun and agency](ideas/fun-and-agency-research.md), [symbiotic colonies](ideas/symbiotic-colonies-slice.md) | Records, nothing adopted; closes OMR-12 |
+| Archive of the v1-era notes (2026-10-31) | [archive/](archive/README.md), [research/](research/README.md), the `feature/spec-v2` PR | v1 notes moved, links kept, rules updated so sessions don't pick up v1 as current |
+| SPEC v2 (2026-10-31) | [SPEC.md](../SPEC.md), [#39](https://github.com/Swalliso/Sambattler/pull/39) | Draft for the user's review; nothing built |
+| P3 playtest (2026-10-31) | [playtest-feedback.md](playtest-feedback.md#2026-10-31-p3-the-combat-rework-the-user) | Done. The notes moved the game to v2 (F17–F22) |
+| Pre-playtest UI fixes (2026-10-31) | [#38](https://github.com/Swalliso/Sambattler/pull/38) | On `develop` |
 
-## Measuring the package
+**Before v2:**
+- **Archived:** the reviews, the combat rework, rounds as a paper design, flyers, the measurement steps and the prototypes. The [archive's README](archive/README.md) lists them.
+- **Still in code and tools:** the tools they built, for engagement, runs, spread, counters and lanes. The rework stays behind `?proto=rework` until R2.
 
-These commands come from `tools/experiment.ts`, whose header comment documents every option:
-- **G3 and battle length:**
+## The rework on the dev site, until R2
+
+- **Play** at https://swalliso.github.io/Sambattler/dev/?proto=rework. Without `?proto=`, the dev site plays like M5.
+  - A prototype run saves under its own keys ([#34](https://github.com/Swalliso/Sambattler/pull/34)).
+- **What `rework` turns on** (`src/data/proto.ts`):
+  - waves on a 20 s beat, with mixed-wave shields;
+  - pinning and call for help;
+  - the Rhizomorph and the Burster;
+  - the Elder Sporeling without splash;
+  - storm-grown waves;
+  - the general's swarm read;
+  - flyers under rule C.
+- **Measuring it:** `tools/experiment.ts`'s header documents every option. For example:
 
   ```bash
   npm run experiment -- --proto rework --checks g3,g4 --g4seeds 200 --workers 8
   ```
 
-- **The strict counter bar:** `--checks counters`.
-- **Variants:**
-  - add `path:value` overrides, such as `--proto rework,flying.reachSupply:2,flying.meleeMult:1` for the flyers' reach rule;
-  - `null` removes a setting, as in `rework,pinned:null`;
-  - removing waves also removes the shields and the storm, which need them.
-- **Where results go:** the backlog, with data changes in `data/CHANGELOG-balance.md` (CLAUDE.md).
+  Add `--checks counters` for the strict counter bar, and `path:value` overrides for variants. These measure the v1 battle. Don't tune it unless the user asks; v2's measurements start with R1.
 
 ## Starting a session
 
-- Branch from `develop` (CLAUDE.md). Read this page, then the design doc for your thread.
+- Branch from `develop` (CLAUDE.md). Read this page, then SPEC §0.1 and the sections for your milestone.
+- `docs/archive/` is history. Don't take rules, numbers or plans from it, or use it as design input, unless the user points you there.
 - Rule changes and retunes across several units wait for the user's OK (`.claude/rules/balance.md`).
+- Tests follow the spec: when v2 retires a system, its tests, goldens and guardrails go with it (CLAUDE.md).
 - When your work lands or the user decides something, update this page.

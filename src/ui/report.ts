@@ -2,7 +2,7 @@
 // (columns owned over time, one band per lane), damage by building, gold by source, and units
 // spawned and merged. Shown when a battle ends and for `scene=report`. The outcome is a banner (on a
 // win the Heartcap blooms in lilac spores, on a loss the cap wilts to ash) with the MVP building beside
-// it, and the report reveals in stages: the banner, then the front line, then the bars (docs/ui-ux-plan.md C4).
+// it, and the report reveals in stages: the banner, then the front line, then the bars (docs/archive/v1/ui-ux-plan.md C4).
 // The banner's rewards (gold earned, and in a run the Spores and Amber) and the gold bars roll up (A6).
 import type { Content } from '../data/registry.ts';
 import type { TriggerDef } from '../data/schema.ts';

@@ -1,3 +1,4 @@
+// Retired in SPEC v2 (Appendix A): milestone R2 replaces column capture with rounds. Fix bugs only.
 // Column tug-of-war (SPEC §4.3): each side can only capture its frontier column; forts block it;
 // presence is the summed supply of living units whose centre lies in the column.
 import { SIDES, other } from '../state.ts';

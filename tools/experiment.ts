@@ -1,9 +1,9 @@
 // npm run experiment -- --proto <spec> [--label name] [--checks duels,g3,g3gill,g4,g5,g6,g7,g8,g11,boss] [--defender bot:<id>]
 // Measures a balance-backlog prototype (src/data/proto.ts) against the guardrails and the archer
-// checks in docs/balance-backlog.md: G1–G8 and G11, G3 mono Gill Nest per seat, the Sporeling →
+// checks in docs/archive/v1/balance-backlog.md: G1–G8 and G11, G3 mono Gill Nest per seat, the Sporeling →
 // Gill Archer → Capguard → Sporeling edges at 12, 30 and 60 supply and under sustained production,
 // and boss reach over 80 runs. Without --proto it measures the shipped rules. Opt-in checks:
-// `engagement` (pacing numbers from docs/engagement-review.md, `--seeds n`), `runs` (how runs
+// `engagement` (pacing numbers from docs/archive/v1/engagement-review.md, `--seeds n`), `runs` (how runs
 // end), `lanes` (per-lane traces), `spread` (placement spread) and `counters` (the counter matrix). Writes
 // reports/experiments/<label>.json and prints a summary.
 //
@@ -228,7 +228,7 @@ if (checks.has('boss')) {
 }
 
 if (checks.has('engagement')) {
-  // bot:balanced against the scripted general and each battle-1 general, as in docs/engagement-review.md
+  // bot:balanced against the scripted general and each battle-1 general, as in docs/archive/v1/engagement-review.md
   const seeds = Array.from({ length: Number(opt('--seeds') ?? 30) }, (_, i) => i + 1);
   const rows = [];
   for (const commander of commanders) {

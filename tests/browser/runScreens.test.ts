@@ -1,4 +1,4 @@
-// The run screens (docs/ui-ux-plan.md, Phase 2): the title opens with no scene and offers Continue only
+// The run screens (docs/archive/v1/ui-ux-plan.md, Phase 2): the title opens with no scene and offers Continue only
 // with a saved run; the route draws a hypha from every node to every node in the next row and lights a
 // pod's threads on hover; spoils take keys 1–3; event choices carry outcome chips with a real minus for
 // costs; Help's six tabs fit at 1280×720; and no run screen clips at 1280×720 or 1366×650.

@@ -1,4 +1,4 @@
-// Balance-backlog prototypes (docs/balance-backlog.md): each knob is absent from data/balance.json,
+// Balance-backlog prototypes (docs/archive/v1/balance-backlog.md): each knob is absent from data/balance.json,
 // so the shipped rules are unchanged; with the knob set, the prototype behaves as described. The
 // `proto` spec (tools `--proto`, browser `?proto=`) applies presets and overrides to balance.json.
 import { describe, expect, it } from 'vitest';

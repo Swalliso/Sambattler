@@ -1,4 +1,4 @@
-// The title screen (SPEC §10.5, docs/ui-ux-plan.md A4): the wordmark over the Heartcap's silhouette, lit
+// The title screen (SPEC §10.5, docs/archive/v1/ui-ux-plan.md A4): the wordmark over the Heartcap's silhouette, lit
 // from below, with spores drifting through the dark. Continue (only with a saved run), New run, How to
 // play (Help) and Settings (the settings screen, src/ui/settingsScreen.ts).
 import type { Atlas } from '../../render/atlas.ts';

@@ -1,3 +1,4 @@
+// Retired in SPEC v2 (Appendix A): milestone R2 replaces spawn timers with squads. Fix bugs only.
 // Building timers and spawns (SPEC §4.4): first spawn at half the interval, holding at the supply
 // cap, and half-speed timers while besieged. Timers count in half-ticks. With the combat rework's
 // `waves`, a spawn waits inside its building for its side's next wave instead of walking out.

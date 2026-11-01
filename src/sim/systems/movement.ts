@@ -1,3 +1,4 @@
+// v1 code: R2 removes Hold, waves, rush, fall-back and dive and keeps the rest (SPEC §13.4).
 // Movement and separation (SPEC §5.2). No pathfinding: units walk straight at their target, or
 // advance along the lane while drifting back to their spawn row; knitting trios walk to their
 // centroid (SPEC §5.6). Overlapping units are pushed apart by half their overlap each, for a fixed

@@ -502,7 +502,7 @@ export function evaluateG8(content: Content): Verdict & { rows: G8Row[] } {
 // ---------------------------------------------------------------- the counter matrix
 
 /**
- * The counter check (docs/ideas/combat-rework.md): a strong mono build is a strategy if something beats
+ * The counter check (docs/archive/v1/ideas/combat-rework.md): a strong mono build is a strategy if something beats
  * it, and the bug if nothing does. Defaults, and the proposed pass rule: some answer wins ≥ 60%.
  */
 export const COUNTERS = { screenSeeds: 10, confirmSeeds: 50, top: 3, minBuildMean: 0.4, minAnswerRate: 0.6 };

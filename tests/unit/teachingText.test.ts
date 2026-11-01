@@ -1,5 +1,5 @@
 // What Help, the first-time tips and the top band's tooltips teach, with and without the combat rework
-// (docs/ideas/after-the-rework.md, "Fixes worth making first"): the number keys reach as far as the tray
+// (docs/archive/v1/ideas/after-the-rework.md, "Fixes worth making first"): the number keys reach as far as the tray
 // and the draft do, a hold is a timer in today's game but one beat under `waves`, interest goes by its
 // own 60 s clock where a wave also leaves on every beat, the Sporestorm's wave growth (`stormWaves`) is
 // said wherever the storm is, and the rework's other rules they touch (waiting units' supply, flyers'

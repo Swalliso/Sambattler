@@ -1,4 +1,5 @@
-// Prototype E1 (balance `laneStance`, docs/engagement-review.md): a per-lane Hold / Advance command.
+// Retired in SPEC v2 (Appendix A): rounds field whole armies, so R2 removes Hold. Fix bugs only.
+// Prototype E1 (balance `laneStance`, docs/archive/v1/engagement-review.md): a per-lane Hold / Advance command.
 // A held lane's idle units gather at a rally line just inside the side's border column, so spawns
 // mass into a wave instead of trickling out; Advance releases them together. The hold times out on
 // its own, and a lane that advances can't hold again until its cooldown ends.

@@ -1,4 +1,4 @@
-// Engagement numbers (docs/engagement-review.md): how a battle is paced rather than who wins it.
+// Engagement numbers (docs/archive/v1/engagement-review.md): how a battle is paced rather than who wins it.
 // The guardrails ask "is it degenerate?"; these ask when the front first moves, how many units are
 // on the field, how fast a beaten Heartcap falls, how often a side issues a command, and how a run
 // ends, per commander and power policy when asked. Used by `npm run experiment -- --checks engagement,runs`.

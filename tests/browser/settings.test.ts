@@ -1,4 +1,4 @@
-// The settings screen (SPEC §10.5, docs/ui-ux-plan.md Phase 3) in a real browser: it opens from the title,
+// The settings screen (SPEC §10.5, docs/archive/v1/ui-ux-plan.md Phase 3) in a real browser: it opens from the title,
 // the battle's cog and the run bar; every setting saves into spore-sprawl/settings/v1 and survives a
 // reload; records saved before Phase 3 (and before sound) still load; Esc closes it; and each setting
 // does what it says (UI scale, reduced motion, color-blind assist, default speed). Also the motion that

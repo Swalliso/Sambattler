@@ -1,4 +1,4 @@
-// Combat rework `sporeCloud` (balance `sporeCloud`, docs/ideas/combat-rework.md): a listed tower's
+// Combat rework `sporeCloud` (balance `sporeCloud`, docs/archive/v1/ideas/combat-rework.md): a listed tower's
 // shell leaves a spore cloud where it lands, and with `burster` (balance `burst`) so does a Burster's
 // burst. Clouds live in `state.clouds` in the order they formed. On every pulse tick (a fixed cadence
 // on the battle clock) each cloud deals its damage, ignoring armor, to every enemy unit whose body is

@@ -1,4 +1,4 @@
-// Placement spread (step A of docs/ideas/one-more-run-review.md): colony-swarm's version of
+// Placement spread (step A of docs/archive/v1/ideas/one-more-run-review.md): colony-swarm's version of
 // Hivemind's puzzle generator. Does *where* a building goes matter? From a set of paused bot
 // battles, place one building at every legal plot, play each on for a fixed horizon over several
 // futures, and compare the best plot with the median one. A narrow spread means placement doesn't

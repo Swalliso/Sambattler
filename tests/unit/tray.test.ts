@@ -1,4 +1,4 @@
-// The tray's price (docs/ideas/after-the-rework.md, "The tray's price"): each card shows the cheapest
+// The tray's price (docs/archive/v1/ideas/after-the-rework.md, "The tray's price"): each card shows the cheapest
 // price you can build it for right now, so a lit card never fails on gold. Once no home plot is free
 // that's the nearest forward plot's, with the supply line (SPEC §6.3).
 import { describe, expect, it } from 'vitest';

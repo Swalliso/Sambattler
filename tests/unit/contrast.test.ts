@@ -1,4 +1,4 @@
-// Contrast (docs/ui-ux-plan.md Phase 4, the design system's Accessibility section): text at 4.5:1 or
+// Contrast (docs/archive/v1/ui-ux-plan.md Phase 4, the design system's Accessibility section): text at 4.5:1 or
 // better on its ground, and control edges and the focus ring at 3:1 or better. The colors are read from
 // the tokens in src/ui/styles.css, so a token change that breaks a pair fails here. Each pair names where
 // it is used; translucent grounds (the tooltip) are composited over the void first.

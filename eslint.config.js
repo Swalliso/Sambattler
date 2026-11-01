@@ -35,8 +35,8 @@ export default tseslint.config(
   {
     ignores: [
       'dist/**', 'node_modules/**', 'artifacts/**', 'reports/**',
-      // Reference copies of a review's one-off scripts, kept as they ran and not maintained (see the README there).
-      'docs/ideas/after-the-rework/scripts/**',
+      // Archived reference copies of one-off review scripts, kept as they ran and not maintained.
+      'docs/archive/**/scripts/**',
     ],
   },
   js.configs.recommended,

@@ -1,6 +1,6 @@
 // Player settings (src/app/settings.ts): one key, spore-sprawl/settings/v1, that older saves keep
 // loading from as fields are added (sound arrived with SPEC §13.9, the settings screen's fields with
-// docs/ui-ux-plan.md Phase 3, tips and spawn timers with the clarity pass). The first-time tips already
+// docs/archive/v1/ui-ux-plan.md Phase 3, tips and spawn timers with the clarity pass). The first-time tips already
 // shown live apart, under spore-sprawl/tips/v1.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_SETTINGS, loadSettings, markTipShown, onSettings, resetTips, saveSettings, tipsShown } from '../../src/app/settings.ts';
