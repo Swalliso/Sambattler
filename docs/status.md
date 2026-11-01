@@ -1,6 +1,6 @@
 # Where things stand
 
-Updated 2026-11-01, on `docs/records-1-check` (a docs PR into `develop`). This is the hand-over page. It covers what we're working on, what's waiting on the user's decision, and where each piece lives. Update it when work lands or the user decides something. Keep the detail in the docs it links to.
+Updated 2026-11-01, on `docs/hub-after-s4-s2b` (a docs PR into `develop`). This is the hand-over page. It covers what we're working on, what's waiting on the user's decision, and where each piece lives. Update it when work lands or the user decides something. Keep the detail in the docs it links to.
 
 ## In short
 
@@ -27,18 +27,18 @@ Updated 2026-11-01, on `docs/records-1-check` (a docs PR into `develop`). This i
 
   [docs/tasks/README.md](tasks/README.md) has the full order and every milestone's sessions.
 
-## Next session: R1 S4
+## Next session: R1 S5 and S6
 
 - **Work from** [docs/tasks/r1-clash-check.md](tasks/r1-clash-check.md) and follow [docs/tasks/README.md](tasks/README.md#running-a-session). So far:
   - **S1** (`feature/r1-formation`, T003–T006): merged ([#46](https://github.com/Swalliso/Sambattler/pull/46)). `src/sim/formation.ts` holds the slot layout (`formationBox`, `slotPositions`, `emplacementPosition`, `overflows`, `slotGrid`) and the muster's knitting (`findTrios`, `musterKnits`), as pure functions that R2 reuses. A test checks that the muster agrees with the sim's merging;
   - **S2** (`feature/r1-armies`, T007–T012): merged ([#45](https://github.com/Swalliso/Sambattler/pull/45)). The two tool-only switches (`noBuildingPreference`, `idleSeek`, in `config.test`) and the army builder in `tools/lib/clash.ts`;
   - **S3** (`feature/r1-clash-runner`, T013–T019): merged ([#50](https://github.com/Swalliso/Sambattler/pull/50)). `tools/lib/clash.ts` plays one clash: the fields (`clashField`), formation by role (`lineOf`, `assignSlots`), the arrival (`placeArmy`), the muster, §6.7's lane ends and scoring in both cap readings, R1-Q3's winner, and the record (`playClash`). `npm run experiment -- --checks clash --pair a,b` plays one matchup;
-  - **S4** (`feature/r1-clash-bars`, T053, T020–T024): built, in its PR.
+  - **S4** (`feature/r1-clash-bars`, T053, T020–T024): merged ([#54](https://github.com/Swalliso/Sambattler/pull/54)).
     - T053 makes the muster's ties exact, so a colony musters the same from both seats. S3 had found 15 of 310 armies mustering differently by seat, mono Sporeling among them.
     - The clash jobs run on the worker pool, and each distinct clash plays once (`clashCache`).
     - `npm run experiment -- --checks clash` plays clash G3, the strict counter matrix (G12) with the clash matrix for #14 and #15, and G13, each per budget beside the pooled result.
     - A clash takes about 3.3 ms, since `playClash` no longer hashes its final state. Verify green, no golden moved.
-- **Next: S5 and S6, side by side,** once S4's PR has merged:
+- **Next: S5 and S6, side by side,** now that S4 has merged:
   - S5 (`feature/r1-variants`, T025–T031): the four presets and every variant option;
   - S6 (`feature/r1-race-bench`, T032–T039): the race model, the battle-1 pairings, the full colony and the bench case.
 
@@ -58,11 +58,11 @@ Updated 2026-11-01, on `docs/records-1-check` (a docs PR into `develop`). This i
     - **Its plan,** [docs/r4a-plan.md](r4a-plan.md), was agreed on 2026-11-01 (R4a-S0). Every recommendation was taken but two: only Elders get a rim (R4-Q3), and the merged radius goes ×1.0, which R2a writes (#53).
     - **R4a-S1** (`feature/r4a-unit-drawer`, R4/T008–T016): merged ([#47](https://github.com/Swalliso/Sambattler/pull/47)). One unit drawer, `src/render/unitSprite.ts`, for v1's renderer and R2a's views. `TIER_SCALE` is gone, so merged units keep their body. `i-pip` marks the tier on the field and in the inspect panel, and Elders get a gold rim. It also adds the `unit-lineup` and `unit-lineup-twin` scenarios.
     - **R4a-S2** (`feature/r4a-shape-checks`, R4/T017–T023): merged ([#49](https://github.com/Swalliso/Sambattler/pull/49)). A sprite's `shape` block and a sheet's `bands` in the schema, the pure checks in `src/data/shapes.ts`, which the registry runs on every sprite with a shape, and `npm run sprite-sheet`, which renders a sheet with its measurements, squad strips and problems. Its mark glyphs went in S2b.
-    - **R4a-S2b** (`feature/r4a-silhouettes`, R4/T024–T026, T077): built, in its PR.
+    - **R4a-S2b** (`feature/r4a-silhouettes`, R4/T024–T026, T077): merged ([#55](https://github.com/Swalliso/Sambattler/pull/55)).
       - **No weapon marks on units** (the user, 2026-11-01, at the sheet's review; SPEC §5.8): no unit or emplacement carries one, now or later. `data/sprites/marks.json` and the shape block's mark fields are gone, and a block that names a mark fails to load. A unit's damage type shows in its silhouette, the hit sparks, the matchup marks on cards and the planning screen, and the inspect panel.
       - **The silhouette sheet,** `docs/r4a-silhouettes.json`, was redrawn without marks and **approved by the user as drawn** (T026). The record is in [r4a-plan.md](r4a-plan.md#the-approved-silhouette-sheet-t026-2026-11-01).
       - Verify green, no golden moved.
-    - **Next: R4a-S3** (`feature/r4a-core-sprites`, R4/T027–T029), once S2b's PR has merged: the core six and the Mortar's emplacement redrawn from the approved sheet. Then S4 and S5 follow in the order of [the task list](tasks/r4-readable-armies.md)'s Sessions table, still beside R1.
+    - **Next: R4a-S3** (`feature/r4a-core-sprites`, R4/T027–T029), now that S2b has merged: the core six and the Mortar's emplacement redrawn from the approved sheet. Then S4 and S5 follow in the order of [the task list](tasks/r4-readable-armies.md)'s Sessions table, still beside R1.
     - **R2a's playtest waits for R4a's review gate** (R4/T039).
   - **Run it back** ([run-it-back.md](tasks/run-it-back.md)): X10 was agreed on 2026-11-01, and records S0 agreed its plan, [run-it-back-plan.md](run-it-back-plan.md), with RB-Q1 and RB-Q2 as recommended ([#44](https://github.com/Swalliso/Sambattler/pull/44)). records-1 builds only the remembered setup and Run it back, and records no runs, so no v1 run is ever recorded. Run records start in records-2, after R2b.
     - **records S1** (`feature/records-1-run-it-back`, T003–T012): merged ([#48](https://github.com/Swalliso/Sambattler/pull/48)). The profile store, `src/meta/records.ts`, keeps the last setup under `spore-sprawl/profile/v1`, and every write goes through `updateRecords()`. On the summary, Run it back (`Enter` or `R`) starts the same commander and bans on a new seed, straight on the route.
@@ -103,11 +103,13 @@ Updated 2026-11-01, on `docs/records-1-check` (a docs PR into `develop`). This i
 
 | Work | Where | State |
 |---|---|---|
-| records-1's check passed (2026-11-01) | [playtest-feedback.md](playtest-feedback.md#2026-11-01-records-1s-check-on-the-dev-site-the-user), [run-it-back.md](tasks/run-it-back.md) T023 | Done. records-1 is finished; records-2 starts after R2b |
+| records-1's check passed (2026-11-01) | [#53](https://github.com/Swalliso/Sambattler/pull/53), [playtest-feedback.md](playtest-feedback.md#2026-11-01-records-1s-check-on-the-dev-site-the-user), [run-it-back.md](tasks/run-it-back.md) T023 | Done. records-1 is finished; records-2 starts after R2b |
+| R4a-S2b: the approved silhouette sheet, and no weapon marks (2026-11-01) | [#55](https://github.com/Swalliso/Sambattler/pull/55), [r4a-plan.md](r4a-plan.md#the-approved-silhouette-sheet-t026-2026-11-01), `docs/r4a-silhouettes.json`, SPEC §5.8 | Merged. You approved the sheet (T026) and dropped weapon marks from units (T077). R4a-S3 redraws the core six next |
+| R1 S4: the muster's exact ties, and the clash bars (2026-11-01) | [#54](https://github.com/Swalliso/Sambattler/pull/54), [tools/lib/balance.ts](../tools/lib/balance.ts), `tools/lib/pool.ts`, `--checks clash` | Merged. Clash G3, G12 and G13 run on the worker pool, and a colony musters the same from both seats. S5 and S6 are next |
 | R2a's rough playtest added (2026-11-01) | [#52](https://github.com/Swalliso/Sambattler/pull/52), [r2a-battle-in-rounds.md](tasks/r2a-battle-in-rounds.md) S14b (T145, T146), [clarify.md](tasks/clarify.md) R2-Q25, SPEC §16 R2 step 10 | Merged. After S14 you play a battle in rounds, before S15 and S16 start. S21 stays the gate |
 | records-1 S2: the remembered setup (2026-11-01) | [#51](https://github.com/Swalliso/Sambattler/pull/51), `src/app/main.ts` | Merged. records-1 is built |
-| R1 S3: one clash recorded (2026-11-01) | [#50](https://github.com/Swalliso/Sambattler/pull/50), [tools/lib/clash.ts](../tools/lib/clash.ts), `--checks clash --pair` | Merged. It found T053, the muster's seat-dependent ties, which S4 fixes first |
-| R4a-S2: the shape checks (2026-11-01) | [#49](https://github.com/Swalliso/Sambattler/pull/49), `src/data/shapes.ts`, `data/sprites/marks.json`, `npm run sprite-sheet` | Merged. The silhouette sheet (R4a-S2b) is next |
+| R1 S3: one clash recorded (2026-11-01) | [#50](https://github.com/Swalliso/Sambattler/pull/50), [tools/lib/clash.ts](../tools/lib/clash.ts), `--checks clash --pair` | Merged. It found T053, the muster's seat-dependent ties, which S4 fixed |
+| R4a-S2: the shape checks (2026-11-01) | [#49](https://github.com/Swalliso/Sambattler/pull/49), `src/data/shapes.ts`, `data/sprites/marks.json`, `npm run sprite-sheet` | Merged. Its mark glyphs were retired in #55 |
 | records-1 S1: the profile store and Run it back (2026-11-01) | [#48](https://github.com/Swalliso/Sambattler/pull/48), `src/meta/records.ts` | Merged |
 | R4a-S1: one unit drawer, pips and the Elder rim (2026-11-01) | [#47](https://github.com/Swalliso/Sambattler/pull/47), [src/render/unitSprite.ts](../src/render/unitSprite.ts), `compose.ts`, `i-pip`, the lineups | Merged. Merged units keep their size |
 | R1 S1: the formation and the muster (2026-11-01) | [#46](https://github.com/Swalliso/Sambattler/pull/46), [src/sim/formation.ts](../src/sim/formation.ts) | Merged |

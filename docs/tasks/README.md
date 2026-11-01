@@ -8,9 +8,9 @@ SPEC v2, broken into task lists that later sessions work through one row of a Se
 
 | Now | Session | Waits on |
 |---|---|---|
-| 1 | **R1 S4** in [r1-clash-check.md](r1-clash-check.md): T053 (the muster's exact ties), then the clash jobs on the pool, G3, G12 and G13 on clashes, and `--checks clash` | R1 S3 merged (`feature/r1-clash-runner`: one clash recorded, and `--checks clash --pair`) |
-| 2 | **R1 S5 and S6**, side by side: the variants; the race model, the pairings, the full colony and the bench case | R1 S4 merged |
-| 3 | **R4a-S2b** in [r4-readable-armies.md](r4-readable-armies.md): the draft silhouette sheet, which the user approves (T026) | R4a-S2 merged (`feature/r4a-shape-checks`: the shape schema, `marks.json`, the shape checks and the sprite-sheet tool) |
+| 1 | **R1 S5 and S6**, side by side, in [r1-clash-check.md](r1-clash-check.md): S5 the four presets and every variant option (T025–T031); S6 the race model, the battle-1 pairings, the full colony and the bench case (T032–T039) | R1 S4 merged (`feature/r1-clash-bars`: the clash bars on the pool, and `--checks clash`) |
+| 2 | **R4a-S3** in [r4-readable-armies.md](r4-readable-armies.md): the core six and the Mortar's emplacement redrawn from the approved sheet (T027–T029) | R4a-S2b merged (`feature/r4a-silhouettes`: the approved sheet, and no weapon marks), with T026 approved |
+| 3 | **R1 S7**: R1's runs, about 40 in the background, then R1's entry in `docs/balance-backlog.md` (T040–T048, T052) | R1 S5 and S6 merged |
 
 R1 and R4a touch different code files and can run at the same time; records-1, which ran beside them, is done. Their doc edits fall in different sections of `SPEC.md`, `clarify.md` and `docs/status.md`, so whichever PR merges second rebases ([r1-plan.md](../r1-plan.md), "Beside R1"). Everything else waits for R1's review gate.
 
