@@ -136,4 +136,28 @@ Each is reversible. The record's types are in the task list's Technical context.
 
 ## As built
 
-_Empty until records-1 lands (T022). records-2 adds its part (T040)._
+**records-1,** built on 2026-11-01 in S1 ([#48](https://github.com/Swalliso/Sambattler/pull/48), T003–T012) and S2 (`feature/records-1-setup`, T013–T014 and T020–T022). It went as planned: calls 1–5 hold, and no rule, data or golden changed. Only the user's check (T023) is left. records-2 adds its part here at T040.
+
+- **The profile store** (S1): `src/meta/records.ts` and `src/meta/index.ts`, a pure layer in `eslint.config.js` and `tests/unit/purity.test.ts`.
+  - They export `PROFILE_KEY`, `PROFILE_BACKUP_KEY`, `SetupRecord`, `ProfileV1`, `loadRecords()`, `updateRecords()`, `setLastSetup()` and `runItBackSetup()`.
+  - The record holds only `v` and `lastSetup`.
+- **Who writes** (call 5): `runStorage()` in `src/app/main.ts` gives normal play `new BrowserStorage('')`, so the dev site keeps its own `dev/spore-sprawl/profile/v1`. Seeded, test and prototype pages get `null`: they neither read nor write the profile.
+- **Run it back** (S1): `RunController.runItBack()` and the summary's footer. The footer reads Title (when the run was opened from the title), New run, and Run it back (`#run-it-back`, primary and focused, with `Enter` and `R` keycaps).
+- **The remembered setup** (S2):
+  - `openSetup` in `src/app/main.ts` opens the Underroot on `runItBackSetup(content, loadRecords(records).lastSetup)`.
+  - Begin run saves `lastSetup` through `updateRecords()` before the run starts, and Run it back saves it too.
+  - So New run, from the title or the summary, opens on the setup last begun, after a reload too.
+  - A remembered commander that no longer exists falls back to Vesper, and bans the commander can't take drop.
+- **Calls made while building** (also in the task list's Technical context):
+  - `ProfileV1.v` is typed `number`, so a newer build's record loads with its own `v`, read-only;
+  - the summary ignores a key pressed with Ctrl, Cmd or Alt, so Ctrl+R and Cmd+R still reload the page;
+  - `Enter` on another focused button stays that button's;
+  - `tests/browser/serve.ts` also exports `closeServers()`.
+- **Verification** (records-1's list above):
+  1. `npm run verify` is green. `npm run golden -- verify` passes 8 of 8 with no hash moved.
+  2. `tests/unit/records.test.ts` and `tests/unit/purity.test.ts` pass, among verify's 581 unit tests.
+  3. `npm run test:browser` passes 94 tests in 12 files. `tests/browser/records.test.ts` has 10 of them: 5 for Run it back (S1), and 5 for the remembered setup (S2), whose reload case runs on both the game and the dev site.
+  4. The screenshots pass their assertions at 1280×720.
+     - `rb/summary`: the browser's run hash matches Node's, `35aa71db199a496f`, which is the `m3-run-s7` golden's. Run it back is the primary button with its keycaps, and the footer and the banner fit.
+     - `rb/underroot`: a test page, so it opens on Vesper as before.
+  5. The user's check on the dev site (T023) waits on S2's merge.
