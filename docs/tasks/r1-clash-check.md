@@ -134,7 +134,7 @@ R1 builds a headless check that fights whole armies at equal gold, in formation,
 
 ## Phase 2: Foundational (blocks every story)
 
-- [ ] T003 [P] Write the slot-layout tests in `tests/unit/formation.test.ts` (new) (§4.6, §15.7)
+- [x] T003 [P] Write the slot-layout tests in `tests/unit/formation.test.ts` (new) (§4.6, §15.7)
   - `formationBox` on `test-flat`'s geometry (width 32, one lane of rows 0–7, gap 6): the player's front rank at column 11 and back rank at column 9, the general's front at 19 and back at 21 (§4.1's Bogwater columns 9–12 and 19–22); files 1–4 at rows 0, 2, 4, 6 on both sides; with 3 ranks, the third at columns 7 and 23.
   - Twin Roots (lanes 0–5 and 7–12): 3 files a lane, at rows 0, 2, 4 and 7, 9, 11. `test-3lane` (width 30, lanes of 5 rows): 2 files a lane, no slot on the leftover row, fronts at columns 10 and 18.
   - Slots come ordered by lane, then rank, then file (§13.3 rule 4).
@@ -142,10 +142,11 @@ R1 builds a headless check that fights whole armies at equal gold, in formation,
   - `emplacementPosition(slot)` is the slot's centre.
   - `overflows(n, radius)` is true when 2 × radius > 2/k: false for every §11.2 squad at 60 s (8 Sporelings: 0.5 < 0.667; 2 Amanita Knights: 0.9 < 1.0; 3 Rootbreakers: 0.9 < 1.0), true for 5 Capguards (0.7 > 0.667), false for 12 Sporelings (0.5 = 0.5, exactly fits).
   - The same input gives the same output, with no stream drawn.
-- [ ] T004 Build the slot layout in `src/sim/formation.ts` (new): `formationBox(geom, side, ranks)`, `slotPositions(n, slot, side)`, `emplacementPosition(slot)` and `overflows(n, radius)`, with the types `FieldGeom` ({ width, lanes: { rowStart, rowEnd }[], gapTiles }), `Slot` ({ lane, rank, file, col, row }, rank 0 the front) and `Point` (§4.6, §13.3, §14.6)
+- [x] T004 Build the slot layout in `src/sim/formation.ts` (new): `formationBox(geom, side, ranks)`, `slotPositions(n, slot, side)`, `emplacementPosition(slot)` and `overflows(n, radius)`, with the types `FieldGeom` ({ width, lanes: { rowStart, rowEnd }[], gapTiles }), `Slot` ({ lane, rank, file, col, row }, rank 0 the front) and `Point` (§4.6, §13.3, §14.6)
   - Pure: no state, no stream, only `Math.sqrt`, `ceil` and `floor`. `tests/unit/purity.test.ts` scans it.
   - The gap is a parameter; the clash tool passes 6 (plan call 19). The header comment says R2a's `formationOf` maps plots to these slots and calls these functions unchanged.
-- [ ] T005 Add the muster's tests to `tests/unit/formation.test.ts` (§5.6, §15.7)
+  - Added at S1: `slotGrid(n)` → { k, spacing }, the grid `slotPositions` and `overflows` share, so T017's overflow list reads k and the spacing from the same rule. `formationBox` throws when the width less the gap is odd (the box can't centre) or the ranks don't fit the field.
+- [x] T005 Add the muster's tests to `tests/unit/formation.test.ts` (§5.6, §15.7)
   - Values from the review's simulation of §4.6's layout under merging's rule. If the function gives otherwise, check the geometry by hand before changing an expectation; §5.6 says the preview shows what the geometry gives.
   - One Burrow (8 Sporelings, merging on) in a front slot → 2 Bloomed + 2 base.
   - Two Burrows side by side (files 2 and 3 of the front rank) → 1 Elder + 2 Bloomed + 1 base, in 2 passes (§5.6's example).
@@ -155,7 +156,7 @@ R1 builds a headless check that fights whole armies at equal gold, in formation,
   - The fixed point terminates, and running `musterKnits` on its own output finds no pass. Ties go to the lower key. A merged unit's key is above every existing key, and its `source` and `mergeOn` come from its lowest-key parent. A merged unit near a lane's edge is clamped by its merged radius: top + r ≤ y ≤ bottom + 1 − r and r ≤ x ≤ width − r.
   - Key order: a unit skipped in the walk (key 0 has one match only) is later taken into another unit's trio ({0, 5, 6}, after {1, 2, 3} formed). For example, 0, 5 and 6 in a row, 0.9 r apart, so 6 is beyond 0's radius but within 5's, and {1, 2, 3} out of 0's reach. `passes` lists the trios as {0, 5, 6}, then {1, 2, 3}, each sorted ascending, and the new keys follow that order from `opts.firstKey`.
   - Agreement with the sim: put the same positions in with `addUnit` and run `mergingSystem` on a tick where tick % 10 === 0; the knits it starts equal `findTrios`'s first pass. Applying each pass with `mergeTriosNow` in `passes`'s order leaves the same units (unitId, tier, x, y) as `musterKnits`'s final list, and each new unit's id equals its key (the key-order case included).
-- [ ] T006 Build the muster's knitting in `src/sim/formation.ts`: `findTrios(units, radius)` and `musterKnits(units, opts)` on plain `MusterUnit` records ({ key, side, lane, unitId, tier, x, y, mergeOn, eligible, source }), returning `{ passes, units }` (§5.6, §14.6)
+- [x] T006 Build the muster's knitting in `src/sim/formation.ts`: `findTrios(units, radius)` and `musterKnits(units, opts)` on plain `MusterUnit` records ({ key, side, lane, unitId, tier, x, y, mergeOn, eligible, source }), returning `{ passes, units }` (§5.6, §14.6)
   - `findTrios` is one pass of `detectTrios`'s rule (`src/sim/systems/merging.ts`). Per side, walk eligible units in key order. For each unreserved unit, find unreserved units of the same unitId, tier and lane within the radius (squared centre distance ≤ r²). Take the two nearest, with strict < so ties go to the lower key, and reserve all three.
   - `musterKnits` runs on one side's units a call, with `opts = { firstKey, mergeRadius, radiusOf(unitId, tier), lanes: { top, bottom }[], width }`. `mergeRadius` is that side's (a merge-radius bonus widens it, §5.6). The caller passes `firstKey = state.nextId`, and each lane's `top` and `bottom` rows and the map's width, as `clampToLane` reads them (`src/sim/world.ts`).
   - It repeats passes until none forms. Within a pass, it sorts each trio's keys ascending and the trios by their lowest key, the order `resolveKnits` completes knits in, and `passes` returns them in that order. Each trio becomes one unit at its centroid, at tier + 1, clamped by `radiusOf(unitId, tier + 1)` to top + r ≤ y ≤ bottom + 1 − r and r ≤ x ≤ width − r, as `clampToLane` does. New keys are given in that order, from `firstKey`, so they equal the ids `mergeTriosNow` gives.

@@ -30,7 +30,7 @@ Updated 2026-11-01, on `feature/r1-plan` (R1 S0, a docs PR into `develop`). This
 ## Next session: R1 S1 and S2
 
 - **Work from** [docs/tasks/r1-clash-check.md](tasks/r1-clash-check.md) and follow [docs/tasks/README.md](tasks/README.md#running-a-session). Both start once R1 S0's PR (`feature/r1-plan`) has merged, and they can run side by side:
-  - **S1** (`feature/r1-formation`, T003–T006) builds `src/sim/formation.ts`: the slot layout and the muster's knitting, as pure functions that R2 reuses;
+  - **S1** (`feature/r1-formation`, T003–T006): built, in its PR. `src/sim/formation.ts` holds the slot layout (`formationBox`, `slotPositions`, `emplacementPosition`, `overflows`, `slotGrid`) and the muster's knitting (`findTrios`, `musterKnits`), as pure functions that R2 reuses. A test checks that the muster agrees with the sim's merging. Verify green, no golden moved;
   - **S2** (`feature/r1-armies`, T007–T012): built, in its PR. The two tool-only switches (`noBuildingPreference`, `idleSeek`, in `config.test`) and the army builder in `tools/lib/clash.ts`; verify green, no golden moved.
 - **Then** S3 (`feature/r1-clash-runner`) once both have merged, and S4–S8 in the order of the task list's Sessions table.
 - **R1's calls, agreed 2026-11-01:** every recommendation. They're dated in [clarify.md](tasks/clarify.md) and written into SPEC §16 R1 and §12.2.
@@ -84,6 +84,7 @@ Updated 2026-11-01, on `feature/r1-plan` (R1 S0, a docs PR into `develop`). This
 
 | Work | Where | State |
 |---|---|---|
+| R1 S1: the formation and the muster (2026-11-01) | [src/sim/formation.ts](../src/sim/formation.ts), [tests/unit/formation.test.ts](../tests/unit/formation.test.ts), the `feature/r1-formation` PR | Verify green, no golden moved. With S2 merged ([#45](https://github.com/Swalliso/Sambattler/pull/45)), S3 can start once this merges |
 | R1 S2: the switches and the army builder (2026-11-01) | `src/sim/systems/targeting.ts`, `movement.ts`, [tools/lib/clash.ts](../tools/lib/clash.ts), the `feature/r1-armies` PR | Verify green, no golden moved. S3 waits on S1 and S2 |
 | R4a plan agreed (2026-11-01) | [r4a-plan.md](r4a-plan.md), [clarify.md](tasks/clarify.md) (X3, R4-Q1 to R4-Q5, #52, #53, #55), SPEC §2, §5.6, §5.8, §10, §11.1, §11.3, §13.6, §14.2, §14.3, §16 R4 and M7, and §18.2, the `feature/r4a-plan` PR | Every recommendation taken but two: only Elders get a rim, and the merged radius goes ×1.0 in R2a. R4a-S1 next |
 | R1 plan agreed (2026-11-01) | [r1-plan.md](r1-plan.md), [clarify.md](tasks/clarify.md) (R1-Q1 to R1-Q9), SPEC §16 R1, §12.2 and §13.7, the `feature/r1-plan` PR | Every recommendation taken. The full-colony budget is now 150 live units a side. R1 S1 and S2 next |
