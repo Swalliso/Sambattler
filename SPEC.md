@@ -118,7 +118,7 @@ v1's pillars *Territory is build space* and *Three become one* no longer break t
 |---|---|
 | Runs get repetitive once you find a dominant build | The general answers what you fielded, in the open (§7.4, §7.5), and its intel file carries across the run (§7.6); its kit grows each battle, with augments (§7.8); a campaign of different maps and generals (§8); each run deals the commander's core, an always-in set and 4 of 10 random themed packs, plus bans (§8.4, §11.15); builds made from augments, combos and relics (§11.7, §11.13, §11.14); strains, feats and the unlock ladder (§9); blights (§9.6) |
 | One cheap unit spammed beats everything | Copies: each kit card has only so many, so massing the cheapest spawner is impossible by construction (§8.10); scarce plots (§4.6); 3×3 damage/armor matrix plus Splash/Slayer/Siege tags (§5.3); area damage, spore clouds and cleave punish an army that starts packed (§5.3); the always-in set holds an answer to the swarm (§8.4); general's Anti-Swarm doctrine (§7.4); value budget per supply (§11.4) |
-| Hundreds of units tank the frame rate | No supply cap, so plots and copies bound the army: squad sizes and the most plots a colony can hold MUST keep a full colony inside the budget, about 100 supply a side, checked on the bench (§4.4, §13.7); merging removes entities; spatial hash plus staggered retargeting; 20 Hz sim with render interpolation, ticking only during a clash; atlas rendering; a benchmark gate in every milestone (§13.7, §15) |
+| Hundreds of units tank the frame rate | No supply cap, so plots and copies bound the army: squad sizes and the most plots a colony can hold MUST keep a full colony inside the budget, at most 150 live units a side when the armies arrive, checked on the bench (§4.4, §13.7); merging removes entities; spatial hash plus staggered retargeting; 20 Hz sim with render interpolation, ticking only during a clash; atlas rendering; a benchmark gate in every milestone (§13.7, §15) |
 | *Seen in v1:* the opener is a guess (will the general rush, or build economy?) | The general plans first, and you see its whole colony and the army it will field before you plan: squad types, formation, merges and augments (§7.2, §7.5); planning has no time limit (§4.2); copies are fixed, not a random hand, so the answer you own is always there to plant (§8.10); a general's kit can show on its route node (§7.5) |
 | *Seen in v1:* placement doesn't matter | The colony is the formation: a plot's rank sets front or back, and its file sets the place across the lane (§4.6); plots are scarce, and economy buildings leave holes in the line (§4.6); combos reward placing in front of, behind and beside (§11.14); loam and stump plots shape each map's colony (§4.1, §11.9) |
 | *Seen in v1:* armies can't be read without a wall of text | The shape language: body size shows armor, a weapon mark shows damage type, pips mark merges and icons mark augments, on both sides (§5.8, §10.4); cards and the planning screen show matchups as marks, not paragraphs (§10.2, §10.4); six core archetypes with distinct silhouettes, and the rest unlocked a few at a time (§11.2, §9); a build may flip a matchup, but the shape never lies (§5.8) |
@@ -418,7 +418,7 @@ Common fields: footprint (every building is 2×2 and fills one plot), cost, and 
 
 **Buildings stay out of the clash.** They can't be hit, don't block units and aren't lost between rounds. Colony ground takes no part in play; where units may move is in §5.2.
 
-**The budget.** There's no supply cap: plots and copies bound the army. Squad sizes and the most plots a colony can hold MUST keep a full colony of both sides inside the performance budget, about 100 supply a side at most (first guess), checked on the bench (§13.7, §15).
+**The budget.** There's no supply cap: plots and copies bound the army. Squad sizes and the most plots a colony can hold MUST keep a full colony of both sides inside the performance budget, at most 150 live units a side when the armies arrive, checked on the bench (§13.7, §15).
 
 ### 4.7 A round, step by step
 
@@ -654,7 +654,7 @@ Merge-perk resistances don't count, as in v1. Damage that ignores armor (clouds,
   - **Heartcap damage:** the winner's surviving supply in the lane sets it, with siege units counting double for damage only (§6.7).
   - **The general's reads** of the squads you fielded (§7.4).
   - **The value check** per supply (§11.4).
-- **The performance budget:** squad sizes and the most plots a colony can hold MUST keep a full colony inside the budget (§13.7). The first guess is about 100 supply a side at most, checked on the bench.
+- **The performance budget:** squad sizes and the most plots a colony can hold MUST keep a full colony inside the budget (§13.7): at most 150 live units a side when the armies arrive, checked on the bench. It counts units, not supply, since a tick's cost follows live units.
 - **The HUD** has no supply chip. In a clash, the lane tug shows each side's surviving supply per lane (§10.2).
 
 ### 5.5 Supply of merged units
@@ -1854,7 +1854,7 @@ Key names for new constants are first guesses; §14.2 fixes them.
 | `sellRefund` | 0.6 once a building has fielded; 1.0 in the planning phase it was planted (replaces `fullRefundSeconds`) | §4.4 |
 | Plots | Per map: 8 on one-lane maps, 6 per lane on Twin Roots (§11.9) | §4.6 |
 | `plotGrowth` | +1 plot per battle won, up to 4 more. **Open:** the exact growth (§1.3 #4); this is the first guess | §4.6 |
-| Supply budget | About 100 supply a side at most, checked on the bench | §13.7 |
+| Full-colony budget | At most 150 live units a side when the armies arrive, checked on the bench | §13.7 |
 
 **Merging and combat** (kept from v1):
 
@@ -2336,29 +2336,32 @@ These are defined in §15. Every tool is headless, deterministic and seeded, and
 
 **The clash check (milestone R1).** `npm run experiment -- --checks clash`, defined here and in §16's R1. It began as the clash prototype in the archived [rounds.md](docs/archive/v1/ideas/rounds.md) ("The smallest clash prototype"), which is background only (§0). It changes no rule. It fights single clashes on today's sim and sets squad sizes before the round loop is built (§16).
 - **Armies from build lists:**
-  - **The build list:** any bot spec the counter matrix uses (mono bots, the even pairs, `bot:balanced` and the hand-written answers). The army takes the bot's opener, then its weighted picks from the seed's AI stream, until a gold budget is spent.
-  - **The budget** counts army buildings only, since one clash can't value economy. Economy picks are skipped.
+  - **The build list:** any bot spec the counter matrix uses (mono bots, the even pairs, `bot:balanced` and the hand-written answers). The army takes the bot's opener, then its weighted picks from its own stream, keyed by the seed and the bot, so an army is the same in either seat. A pick that doesn't fit the gold left is skipped and drawing goes on, until no card the bot can pick fits or the plots are full.
+  - **The budget** counts army buildings only, since one clash can't value economy. Economy and utility cards are filtered out before any draw, so the mono builds are the army buildings, the Tender's Ring and the Puffball Mortar included.
   - **The army:** each spawner adds its squad (§4.4), starting from §11.2's Squad column, and `--squad-seconds` sets how many seconds of v1 production a squad is worth. A Puffball Mortar adds itself as an emplacement.
-  - **Limits:** no more buildings than the colony holds: 8 plots on the one-lane maps and 6 per lane on Twin Roots, plus up to 4 more at the top budgets, as sprawl allows (§4.6). v2 has no supply cap (§5.4), so the report gives each army's supply, to check the full-colony budget of about 100 supply a side (§13.7).
-- **Formation:** by role first. Melee squads take front-rank slots, and ranged squads and emplacements take back-rank slots, 2 tiles behind, files in order. Formation by plot (§4.6) is a later variant, once formation by role reads clearly. Either way units stand at §4.6's slot layout, which R1 builds as a pure function in `src/sim` for R2's `formationOf` to reuse (§16).
-- **The fight:** both armies appear on the same tick, front ranks 6 tiles apart, on a flat field with the map's lanes and merging on. The clash opens with §5.6's muster: for 1 s nobody moves or attacks, and squads with merging on knit in place to a fixed point. The clash clock includes the muster. A lane's clash runs until it ends by §6.7's rule: one side has no units and no emplacements left in it, or 45 s pass.
-- **Records:** each lane's winner, surviving supply, the Heartcap damage §6.7 would deal, clash length (the muster included), whether it hit the 45 s cap, and merges.
-- **Maps reduce to two fields.** Units ignore stumps, so Bogwater Hollow and Stumpfield give the same clash: one lane of 8 rows. Twin Roots is two lanes of 6 rows, with each side's buildings split between them by a lane rule (alternating, to start). Means over maps still average the three run maps, so the one-lane field counts twice.
+  - **Limits:** no more buildings than the colony holds: 8 plots on the one-lane maps and 6 per lane on Twin Roots, at every budget. A separate late-run reading adds the 4 plots sprawl can open, at 1,200 and 1,500 gold (§4.6). v2 has no supply cap (§5.4), so the report gives each army's supply and units, to check the full-colony budget of at most 150 live units a side (§13.7).
+- **Formation:** by role, by §7.3's tags. A spawner whose unit has the `ranged`, `support` or `burst` tag, and every tower, takes a back-rank slot, 2 tiles behind; every other spawner takes a front-rank slot. Files fill centre-out, as §7.3 centres a partial army. Formation by plot needs §7.3's placement rule, so it's R2's, and G16 measures it. Units stand at §4.6's slot layout, which R1 builds as a pure function in `src/sim` for R2's `formationOf` to reuse (§16).
+- **The fight:** both armies appear on the same tick, front ranks 6 tiles apart, on a flat field with the map's lanes and merging on. The clash opens with §5.6's muster: for 1 s nobody moves or attacks, and squads with merging on knit in place to a fixed point. The clash clock includes the muster. A lane's clash runs until it ends by §6.7's rule: one side has no units and no emplacements left in it, or 45 s pass. Two tool-only flags, absent in every battle, give the check §5.2's targeting and movement: siege units with no preference for buildings, and the idle seek toward the nearest enemy in the lane (§16).
+- **Records:** each lane's winner, surviving supply, the Heartcap damage §6.7 would deal, clash length (the muster included), whether it hit the 45 s cap, and merges. Each army's `eliteShare` after the muster counts a merged unit at its parts' base supply, with and without the swarm read (§16).
+- **The winner,** for G3 and G12: the side that won more lanes, then the side that dealt more uncapped Heartcap damage, else a draw worth half a win to each side. §6.7's capped round result and the share of drawn rounds are reported beside it.
+- **Maps reduce to two fields.** Units ignore stumps, so Bogwater Hollow and Stumpfield give the same clash: one lane of 8 rows. Twin Roots is two lanes of 6 rows. Each building goes to the lane with fewer buildings of its line, and §7.3's round-1 rule runs as a variant (§16). Means over maps still average the three run maps, so the one-lane field counts twice. A three-lane screen runs outside the bars.
 - **Budgets** (`--budgets`): 300, 600, 900, 1,200 and 1,500 gold of army, about rounds 1, 3, 5, 7 and 9. The report shows each budget beside the pooled result, so a build that dominates only early or only late shows up.
-- **Seeds** vary the bots' picks: 20 per seat for screens, and 50 for any number quoted, as G3 uses.
-- **Jitter is a measurement option, not a game rule.** The game's formation has no randomness (§4.6), and by default the clash check's formation has none either. It MAY add a seeded jitter to where units stand, to see whether a result hangs on exact positions. The report says when jitter is on.
+- **Seeds** vary the bots' picks and the jitter: 20 per seat for screens, and 50 for any number quoted, as G3 uses.
+- **Jitter is a measurement option, not a game rule.** The game's formation has no randomness (§4.6), and by default the clash check's formation has none either. It MAY add a seeded jitter to where units stand, to see whether a result hangs on exact positions. The report says when jitter is on. Numbers are quoted at ±0.2 tiles, with the jitter-free run beside them.
 - **Bars:** the strict counter bar (G12), G3 and clash stalls (G13), all on clashes.
 - **Variants:**
-  - today's combat alone (the baseline);
+  - today's combat with the two flags on (the baseline);
   - merging off, then only the Elder Sporeling's splash off;
   - squad sizes: squads worth 45, 60 and 75 s of production, and the Burrow's squad at 6 and 7;
-  - the rework's kept pieces from `src/data/proto.ts`, alone and together: pinning, spore clouds, the Burster, cleave and the Rhizomorph (§1.3 #11). Alone they're the presets `pinned`, `sporecloud`, `burster`, `cleave` and `rhizomorph`; together they're `kept`, a preset R1 adds (§16);
-  - the sixth archetype's candidates: the Burster Pod, and the Puffball Mortar as an emplacement (§11.2);
+  - the rework's kept pieces from `src/data/proto.ts`, alone and together: pinning, spore clouds, the Burster, cleave and the Rhizomorph (§1.3 #11). Alone they're the presets `pinned`, `sporecloud`, `burster`, `cleave` and `rhizomorph`; together they're `kept`, a preset R1 adds (§16). The ones that append spawners run G3 twice, with `bot:balanced` buying them and on its data weights;
+  - the sixth archetype's candidates: the Burster Pod, and the Puffball Mortar as an emplacement (§11.2), each in a core-six check (§16);
+  - copies: every card capped at 2, 3 and 4 buildings, beside unlimited (§8.10, §16);
   - a pace variant: each lane's army keeps its formation on the approach, at its slowest idle unit's pace (§5.2, §18.2 #12);
   - last, the rework's mixed-wave shield, to see whether mixed armies need it. At the arrival, each lane's army of at least `mixedWave.minTypes` unit types gives each of its units a shield of `shieldFrac` × its max HP. R1 lifts the requirement that `mixedWave` comes with `waves`, for the clash check (§16).
+- **The race model:** a section of the report chains the clash records into battles of rounds, to show how long battles would last under §6.7's cap and its alternatives (§16). It informs the scoring-curve call at R1's review and isn't a guardrail.
 - **Not `rework`.** `?proto=rework` is v1's P3 package: waves with `matchPace`, mixed-wave shields, call for help, storm-grown waves, flyers, the swarm read and the Elder's splash off, without spore clouds or cleave. It isn't R1's variant.
 - **Expected cost:** one clash takes about 10–30 ms. The full check at five budgets is about 155,000 clashes: about 10 minutes on 6 workers (`tools/lib/pool.ts`'s worker pool, which today plays G3 rows), or under an hour on one thread.
-- **What it settles:** squad sizes, whether mixed armies need the shield, the Elder Sporeling's splash, how an emplacement counts, and the most supply a full colony fields, with a measure for each other §18.2 row settled by R1 (#11–#15, listed in §16). A bench case, one clash of two full colonies, comes with it (§15.4). **Open:** each of those is R1's result, and the user decides what to adopt (§16).
+- **What it settles:** squad sizes, whether mixed armies need the shield, the Elder Sporeling's splash, how an emplacement counts, and the most a full colony fields, with a measure for each other §18.2 row settled by R1 (#11–#15, listed in §16), and the evidence for two calls at its review: copies before R3 (§8.10) and the scoring curve (§6.7). A bench case, one clash of two full colonies, comes with it (§15.4). **Open:** each of those is R1's result, and the user decides what to adopt (§16).
 
 **The round loop.** The clash check can't judge the economy, the general's planning or the counter cycle. Those need whole battles of rounds.
 - [rounds.md](docs/archive/v1/ideas/rounds.md) suggests chaining clashes in the same tool next, with gold by round and one of two planning policies: fixed weights, or "buy the answer to what you saw". In v2 the round loop is R2's work instead (§16), so the clash check stays a check of single clashes.
@@ -2635,7 +2638,7 @@ v2 has no supply cap, so plots (and copies, from R3) bound a clash: its size is 
 
 | Metric | Budget |
 |---|---|
-| A full colony | at most about **100 supply a side**: every plot planted with the biggest squad its kit allows, augments that add units included. Every unit has at least 1 supply, so a clash starts with at most about 200 units |
+| A full colony | at most **150 live units a side** when the armies arrive, before the muster's knits: every plot planted with the biggest squad its kit allows, augments that add units included. A clash then starts with at most 300 units, `bench-300`'s size. The budget counts units, not supply, since a tick's cost follows live units |
 | Sim tick, bench clash with 300 live units | mean ≤ 1.0 ms, p99 ≤ 2.5 ms (Node, this machine) |
 | The clash's first tick (both armies arrive) | ≤ 5 ms (Node) |
 | One full battle, headless, bots on both sides | ≤ 3 s wall time |
@@ -2645,11 +2648,11 @@ v2 has no supply cap, so plots (and copies, from R3) bound a clash: its size is 
 | Hot-loop allocations | none: pooled objects and reused arrays |
 | Shipped JS + data | ≤ 300 KB gzipped (the first release) |
 
-The tick and full-battle budgets are G11's in `data/balance-targets.json` today. The full colony, the arrival, the planning command and the general's turn are new in v2: R2's bench measures them and adds them to G11 (§12.3, §15.4).
+The tick and full-battle budgets are G11's in `data/balance-targets.json` today. The full colony, the arrival, the planning command and the general's turn are new in v2. From R1 the bench plays a clash of two full colonies and reports it without failing on it (§15.4). R2's bench measures all four and adds them to G11 (§12.3).
 
 **Techniques:**
 
-- **A bounded clash.** The bench covers 300 live units, 1.5× two full colonies. A change to squad sizes, to the most plots a colony can hold, or an augment or combo that adds units MUST be checked against it with `npm run bench`. R2 rewrites the `bench-300` scenario as a clash: both armies in formation, merging off so all 300 stay live.
+- **A bounded clash.** The bench covers 300 live units: two full colonies at the budget. A change to squad sizes, to the most plots a colony can hold, or an augment or combo that adds units MUST be checked against it with `npm run bench`. R2 rewrites the `bench-300` scenario as a clash: both armies in formation, merging off so all 300 stay live.
 - **Ticks only in a clash.** Planning and the aftermath cost only rendering, and a clash ends within 45 s (900 ticks), so a battle is at most 9 × 900 = 8,100 ticks.
 - **Merging removes entities.**
 - A uniform-grid spatial hash with 2-tile cells, rebuilt every tick.
@@ -3387,7 +3390,7 @@ Single-battle JSON output:
 ### 15.4 Benchmark: `npm run bench [-- --quick]`
 
 - **Scenario `bench-300`:** the 3-lane test map with 150 units per side placed mid-field and 20 buildings per side, with merging off so all 300 units stay live. R2 rewrites it as a clash: both armies in formation, merging still off (§13.7).
-- **The full-colony clash (from R1):** one clash of two full colonies, at the most plots a colony can hold (§4.6) and the biggest squads. It checks the rule that a full colony fits the performance budget, about 100 supply a side (§1.3 #4, §13.7).
+- **The full-colony clash (from R1):** one whole clash, to its end, of two full colonies at the true worst case: every plot a colony can hold (12 on one lane, 16 on Twin Roots, §4.6), each with the biggest squad (today the Burrow's upgraded 12 Sporelings), merging off. It times the arrival and every tick, and checks that a full colony fits the performance budget, at most 150 live units a side when the armies arrive (§1.3 #4, §13.7). If one doesn't fit, the report names the lever that brings it inside: squads, the upgrade's +1 per batch, or plots. Until R2 adds it to G11 it's report-only: it doesn't change the exit code, and `--quick` skips it.
 - **The full battle:** one headless battle, timed against §13.7's wall-time budget. From R2 it's a battle of rounds, bots on both sides.
 - **Run length:** 2,000 ticks (400 with `--quick`).
 - **Output:** mean, p95 and p99 ms per tick, peak unit count, and heap growth. From R2 it also times a clash's first tick, when both armies arrive, and the general's planning turn (§13.7).
@@ -3553,52 +3556,64 @@ Its goldens are `m1-balanced-vs-scripted-s1` and `m1-turtle-vs-scripted-s2`. Its
 
 ### Milestone R1 — The clash check
 
-**Goal:** before the round loop is built, find out whether whole armies that meet at once, in formation, give every strong army an answer, and set squad sizes. R1 changes no rule in the game. Its design is this section and §12.2's clash check. It began as the clash prototype in the archived `docs/archive/v1/ideas/rounds.md`, which is background only (§0): that prototype keeps the supply cap of 60 and knits squads on the approach, and v2 drops both.
+**Goal:** before the round loop is built, find out whether whole armies that meet at once, in formation, give every strong army an answer, and set squad sizes. R1 changes no rule in the game. Its design is this section and §12.2's clash check, and its plan, `docs/r1-plan.md`, was agreed with the user on 2026-11-01. It began as the clash prototype in the archived `docs/archive/v1/ideas/rounds.md`, which is background only (§0): that prototype keeps the supply cap of 60 and knits squads on the approach, and v2 drops both.
 
 **Scope:**
 
 - **The tool:** a headless check, `npm run experiment -- --checks clash`, plus a clash row in `tools/lib/balance.ts`, built on `createBattle`, `addUnit`, `addBuilding` and `runHeadless` as the supply duels are. The full check runs on `tools/lib/pool.ts`'s worker pool; §12.2 gives its expected cost.
 - **Armies from build lists:**
-  - Any bot spec the counter check uses (mono bots, the pairs, `bot:balanced`, the hand-written answers) gives its opener, then its weighted picks on the seed's AI stream, until a gold budget is spent.
-  - The budget counts army buildings only, since one clash can't value economy. Economy picks are skipped.
+  - Any bot spec the counter check uses (mono bots, the pairs, `bot:balanced`, the hand-written answers) gives its opener, then its weighted picks, until no card it can pick fits the gold left or the plots are full.
+  - The budget counts army buildings only, since one clash can't value economy. Economy and utility cards (the Truffle Cellar, the Spore Exchange and the Rhizome Vault) are filtered out of the opener and the weights before any draw.
+  - A pick that doesn't fit the gold left is skipped, and drawing goes on. `maxOwned` holds, and `afterSeconds` is ignored.
+  - Each army draws from its own stream, keyed by the seed and the bot, so an army is the same in both seats and against every opponent.
+  - The mono builds (G3's monos, the counter matrix's builds and its mono answers) are the army buildings: every spawner, the Tender's Ring included, and the Puffball Mortar.
   - Each spawner adds its squad, from §11.2's Squad column: one minute of today's spawns in whole batches, halves rounded up. `--squad-seconds` changes the minute. A Puffball Mortar adds itself as an emplacement, under §6.7's first-guess rules for emplacements.
-  - **Limits:** no supply cap (§1.3 #4). The plots are the limit: 8 on a one-lane field and 6 per lane on Twin Roots, plus up to 4 more at the top budgets, as sprawl allows (§4.6).
-- **Formation:** by role first, then by plot (§4.6) once by role reads clearly.
-  - **By role** puts melee squads in front-rank slots, and ranged squads and emplacements in back-rank slots, 2 tiles behind. Each rank fills its files in order from file 1, in build-list order; a squad whose rank is full takes the nearest free slot in another rank.
+  - **Limits:** no supply cap (§1.3 #4). The plots are the limit: 8 on a one-lane field and 6 per lane on Twin Roots, and every budget is measured at these base plots. A separate "late-run colony" reading adds all 4 plots sprawl can open at 1,200 and 1,500 gold, opened in §18.2 #19's first-guess order (§4.6).
+- **Formation, by role:**
+  - **The line** follows §7.3's tags. A spawner whose unit has the `ranged`, `support` or `burst` tag, and every tower, stands in the back rank, 2 tiles behind. Every other spawner stands in the front rank.
+  - **Files** fill centre-out, in build-list order: 2, 3, 1, 4 on one lane, and 2, 1, 3 in each Twin Roots lane, as §7.3 centres a partial army. A squad whose rank is full takes the first free slot of the nearest other rank: a front-line squad the back rank, then the third; a back-line squad the third rank, then the front.
+  - **Formation by plot isn't R1's.** Placing a build list on plots needs §7.3's placement rule, so it's R2's, and G16 measures it.
   - **The slot layout:** R1 builds §4.6's layout (the formation box, its slots and each unit's place in its slot) as a pure function in `src/sim`, with no random draw. R2's `formationOf` reuses it (§14.6), so the check's squads stand where the game's will.
   - This adds code but no rule, so no golden hash moves.
-- **Jitter, as a measurement option only:** the check MAY add a seeded jitter to where units stand at the start, to see how much a result depends on exact positions. It's the tool's own variation, not a game rule: the game's formation stays deterministic (§4.6).
+- **Jitter, as a measurement option only:** the check MAY add a seeded jitter to where units stand at the start, to see how much a result depends on exact positions. It's the tool's own variation, not a game rule: the game's formation stays deterministic (§4.6). The jitter moves units after the muster's knits, so the muster gives what the game's preview would. Numbers are quoted at a jitter of ±0.2 tiles, with the jitter-free run beside them.
 - **The clash:** both armies appear on the same tick at their slot positions, front ranks 6 tiles apart, on a flat field with the map's lanes, with merging on.
   - **It opens with §5.6's muster:** for 1 s nobody moves or attacks, and squads with merging on knit in place, by merging's rule, to a fixed point. The knits land on the clash's first tick (§5.6's first guess; R1 has no powers, so the timing inside the muster changes nothing). After the muster, v1's rule applies on the field. The archived prototype's knitting on the approach isn't R1's rule.
   - R1 builds the muster's knitting as a pure function in `src/sim`, beside the slot layout, and R2's `mergePreview` reuses it (§14.6). Like the layout, it adds code but no rule.
   - **The clash clock includes the muster** (§18.2 #13). The clash runs until one side is gone in every lane, or 45 s pass (§6.7).
-- **Records:** each lane's winner, surviving supply, the Heartcap damage §6.7 would deal, clash length (the muster included), whether the clash hit the 45 s cap, and merges, at the muster and after it. For the swarm read (§7.4, §11.1), each army's `eliteShare` after the muster, as §7.4's analysis would read it, with and without `ai.counter.swarmMaxSupply`.
+  - **v2's targeting and movement:** the check turns on two tool-only flags. They live in `config.test` and are absent in every battle, so no golden moves. With `noBuildingPreference`, siege units fight the nearest enemy, as §5.2 says for rounds, rather than going for buildings first. With `idleSeek`, a unit with no target walks toward the nearest enemy in its lane that it could target, enemy towers included, rather than marching to the far edge (§5.2). Each can be turned off for a diagnostic screen, and R2 writes both as the rule.
+- **The clash winner,** for G3 and G12: the side that won more lanes; then the side that dealt more uncapped Heartcap damage (storm ×1.0); else a draw, worth half a win to each side. §6.7's capped round result and the share of drawn rounds are reported beside it.
+- **Records:** each lane's winner, surviving supply, the Heartcap damage §6.7 would deal, clash length (the muster included), whether the clash hit the 45 s cap, and merges, at the muster and after it. For the swarm read (§7.4, §11.1), each army's `eliteShare` after the muster, with each merged unit counted at its parts' base supply (a Bloomed unit its 3 parts' tier-1 supply, an Elder its 9), with and without `ai.counter.swarmMaxSupply`, plus the share of Elders alone and the four counter kinds' scores. §7.4's own reading of merged units is settled in R2.
 - **The other §18.2 rows R1 settles** (#11–#15), each with a recorded measure or a variant:
   - **Overflow** (#11, §4.6): the report lists each squad that overflows its slot (units wider than its grid's spacing) at each squad size measured. The check fields such a squad by the first guess, packed tighter.
   - **Keeping formation on the approach** (#12, §5.2): a pace variant. Each lane's army marches at its slowest idle unit's pace, with idle ranged units 1 tile behind their side's frontmost melee unit, as the rework's waves did (`waves.matchPace` and `rangedGap`). The baseline is the first guess: each unit at its own speed.
   - **The muster and the 45 s cap** (#13, §5.6, §6.7): the report gives the stall share (G13) and the median clash length with the muster counted, as the first guess has it, and with the cap starting after the muster.
   - **An Anti-Ranged kind, and counter sets from the clash matrix** (#14, #15, §7.4): the report gives the clash matrix, each mono build's best answers at each budget, beside §7.4's counter sets by damage type and tag. It says whether `swarm` spawners are the best answers to mono Gill Archers.
-- **Fields:** one lane of 8 rows (Bogwater Hollow and Stumpfield give the same clash, since units ignore stumps) and Twin Roots' two lanes of 6 rows, with buildings split between lanes by alternating to start. The one-lane field counts twice in any mean over the run's maps.
+- **Fields:** one lane of 8 rows (Bogwater Hollow and Stumpfield give the same clash, since units ignore stumps) and Twin Roots' two lanes of 6 rows. The one-lane field counts twice in any mean over the run's maps.
+  - **The lane rule on Twin Roots:** in build-list order, each building goes to the lane with fewer buildings of its line (front or back). Ties go to the lane with fewer buildings in all, then the top lane, and a full lane falls back to the other. §7.3's round-1 rule (the lane with less planned supply, then the lower lane) runs as a variant.
+  - **A three-lane screen:** `data/maps/test-3lane.json`, read as 3 lanes of 2 files and 2 ranks with no map edit, at 20 seeds, outside the bars.
 - **Budgets:** 300, 600, 900, 1,200 and 1,500 gold of army, about rounds 1, 3, 5, 7 and 9. The report shows each budget beside the pooled result.
-- **Variants,** each against the baseline of today's combat alone:
+- **Variants,** each against the baseline of today's combat with the two flags on:
   - merging off, then only the Elder Sporeling's splash off;
   - squad minutes of 45, 60 and 75 s, and the Sporeling Burrow's squad at 6 and 7;
   - the rework's kept pieces (§1.3 #11), alone and together: pinning, spore clouds through the Mortar's emplacement, the Burster, cleave and the Rhizomorph.
     - Alone, each is a preset in `src/data/proto.ts` today: `pinned`, `sporecloud`, `burster`, `cleave` and `rhizomorph`.
     - Together, they're a new preset that R1 adds there, `kept`: those five, with both new spawners (the Burster Pod and the Rhizomorph Tunnel) appended to both rosters as `rework` does, since spreading presets keeps only the last one's append.
+    - The variants that append spawners (`burster`, `rhizomorph` and `kept`) run G3 twice: with `bot:balanced` as the data has it, which buys the new spawners, and on its data weights. Their monos and pairs are listed apart.
     - Not `rework`: that's v1's P3 package (waves on a 20 s beat with `matchPace` on, mixed-wave shields, call for help, storm-grown waves, flyers, the swarm read and the Elder's splash off), and it has neither spore clouds nor cleave. It isn't R1's variant.
-  - the sixth archetype's candidates (§11.2): the Burster Pod, and the Puffball Mortar as an emplacement;
+  - the sixth archetype's candidates (§11.2), the Burster Pod and the Puffball Mortar, each in a core-six check: builds and answers limited to the five core spawners plus the candidate, against a reference that weighs the six evenly, read against §11.4's intended graph;
+  - copies (§8.10): every card capped at 2, 3 and then 4 buildings, beside unlimited. A mono holds that many of its card and spends the rest of its gold and plots by `bot:balanced`'s weights, a provisional rule for §18.2 #51. It's evidence for whether copies come before R3, which the review gate decides;
   - the pace variant (§18.2 #12, above);
   - last, the rework's mixed-wave shields, to see whether mixed armies need them. In a clash, at the arrival, each lane's army of at least `mixedWave.minTypes` unit types (2; a merged form counts as its base type) gives each of its units a shield of `shieldFrac` (0.2) × its max HP. A shield soaks damage first and never comes back, and a unit knit at the muster keeps its parts' shields in proportion, as today's merging does. Today `src/sim/compile.ts` compiles `mixedWave` only with `waves`; R1 lifts that requirement for the clash check.
-- **The bench case:** one clash of two full colonies (the most plots, the biggest squads) for `npm run bench` (§13.7, §15.4).
+- **The race model,** for the scoring curve (§6.4, §6.5, §6.7): `tools/lib/roundRace.ts` chains clash records into battles of up to 9 rounds. Its first case is G4's pairing (`bot:balanced` against the scripted general on the one-lane field), and G3's pairs follow. It reports rounds to fall, the share of battles reaching round 9, Routs and how often the lead changes, under the 500 cap and its alternatives (a cap at a share of the loser's max HP, the storm raising the cap, equal Heartcaps), with the share of clashes whose damage passes 500. It's crude, with no income, comeback gold or counters, and isn't a guardrail.
+- **The bench case:** one whole clash of two full colonies at the true worst case (every plot a colony can hold, the biggest squads, merging off) for `npm run bench`. It's reported against §13.7's budget and doesn't change the exit code until R2 adds it to G11 (§13.7, §15.4).
 
-**Not in R1:** the round loop, income, the general's planning, drafts, any UI, and any change to the game's rules or data. The knobs R1 adds to `src/data/proto.ts` (the `kept` preset, the pace variant, the shield at the arrival) are default-off, so without a spec the rules don't change (§12.4).
+**Not in R1:** the round loop, income, the general's planning, drafts, any UI, and any change to the game's rules or data. The knobs R1 adds to `src/data/proto.ts` (the `kept` preset, the pace variant, the shield at the arrival) are default-off, so without a spec the rules don't change (§12.4). The two flags for v2's targeting and movement are tool-only and absent in every battle.
 
 **Done when:**
 
 - the squad sizes are chosen and recorded as R2's starting data;
 - a set of pieces is found that passes the bars below, and the report says whether that set needs the mixed-wave shields and the Elder Sporeling's splash (§18.2);
-- the most supply a full colony fields is known, and it fits the §13.7 budget (first guess: about 100 a side);
+- the most a full colony fields is known, in live units and supply, against §13.7's budget of at most 150 live units a side when the armies arrive; if it's over, the report names the lever that brings it inside (squads, the upgrade's +1 per batch, or plots);
 - §6.7's first-guess rules for emplacements are confirmed or changed;
 - every §18.2 row settled by R1 (#7–#15) has its measure in the report and a recommendation;
 - the results are in `docs/balance-backlog.md` and `docs/status.md`, and the user has seen them before R2 starts.
@@ -3609,20 +3624,20 @@ Its goldens are `m1-balanced-vs-scripted-s1` and `m1-turtle-vs-scripted-s2`. Its
 2. The clash check on today's combat, then on the kept pieces together:
 
    ```bash
-   npm run experiment -- --checks clash --budgets 300,600,900,1200,1500 --workers 8
-   npm run experiment -- --proto kept --checks clash --budgets 300,600,900,1200,1500 --workers 8
+   npm run experiment -- --checks clash --budgets 300,600,900,1200,1500 --jitter 0.2 --workers 8
+   npm run experiment -- --proto kept --checks clash --budgets 300,600,900,1200,1500 --jitter 0.2 --workers 8
    ```
 
-   The other variants run the same way, each with its own `--proto` spec or option (`--proto pinned`, `--squad-seconds 45` and so on). `--proto rework` isn't one of them.
+   Numbers are quoted at jitter ±0.2, with the baseline's jitter-free run (`--jitter 0`) beside them. The other variants run the same way, each with its own `--proto` spec or option (`--proto pinned`, `--squad-seconds 45` and so on). `--proto rework` isn't one of them.
 
-   Seeds vary the bots' picks, and the positions' jitter when it's switched on: 20 per seat for screens, and 50 for any number quoted. Bars, pooled over the budgets:
-   - **The strict counter bar** (G12): every mono build with a clash G3 mean above 40% has an answer that wins at least 60% on every field.
+   Seeds vary the bots' picks and the positions' jitter: 20 per seat for screens, and 50 for any number quoted. A draw counts half a win. Bars, pooled over the budgets:
+   - **The strict counter bar** (G12): every mono build with a clash G3 mean above 40% has an answer that wins at least 60% on every field, among answers that pass G3.
    - **G3 on clashes:** each mono army against `bot:balanced`'s, at the same budget, has a mean over the maps of at most 55% and a worst map of at most 60%.
-   - **Stalls** (G13): at most 15% of clashes reach the 45 s cap.
+   - **Stalls** (G13): at most 15% of the clashes the check played reach the 45 s cap.
 
    A build that dominates only early or only late shows in the per-budget columns, and the report flags it.
-3. `npm run bench` with the bench case: inside the §13.7 budget.
-4. **Review gate (human):** the user reads the report, agrees the squad sizes and the set of pieces R2 starts from, and settles the other §18.2 rows R1 measured (#8–#15).
+3. `npm run bench` prints the bench case beside `bench-300`: units and supply a side, the arrival's time against 5 ms, and the tick mean and p99 against G11's. If a full colony is over §13.7's budget, the report names the lever.
+4. **Review gate (human):** the user reads the report, agrees the squad sizes and the set of pieces R2 starts from, and settles the other §18.2 rows R1 measured (#8–#15), with the calls on copies before R3 and on the scoring curve.
 
 ### Milestone R2 — Rounds
 
@@ -3993,7 +4008,7 @@ Each default is deliberate and easy to change. D1–D24 are v1's, from the desig
 | D30 | The run has 3 lives, a first-guess number tuned like any other. Losing the boss battle ends the run (**Open:** §18.2 #16) | 9 Kings uses three. A lost battle becomes a setback, not the end |
 | D31 | One-lane colonies hold 8 plots, 2 ranks × 4 files; on Twin Roots each lane's colony holds 6, 2 ranks × 3 files | The home zone of 4 columns × 8 rows (v1's D6) divides into 2×2 plots that way |
 | D32 | The colony gains 1 plot for each battle won, up to 4 more, as a third rank behind (**Open:** §18.2 #18, #19) | Sprawl you can see: each plot gained is another squad and another place in the formation |
-| D33 | A full colony fields about 100 supply a side at most, checked on the bench (§18.2 #7) | No supply cap, so squad sizes and the most plots MUST keep the biggest clash inside the §13.7 budget |
+| D33 | A full colony fields at most 150 live units a side when the armies arrive, checked on the bench (§18.2 #7). Until 2026-11-01 it read about 100 supply a side, which the spec's own first guesses already passed (144 supply from 12 upgraded Burrows) | No supply cap, so squad sizes and the most plots MUST keep the biggest clash inside the §13.7 budget. A tick's cost follows live units, so the budget counts them |
 | D34 | From R3, the starting kit is the commander's 3 starter buildings, 2 copies each. A blueprint adds a card with 1 copy, and drafting a card you own adds 1 copy | Enough copies to field a real army in round 1, and few enough that answers have to be drafted |
 | D35 | Selling refunds 100% in the planning phase a building was planted, and 60% once it has fielded. From R3 the copy returns to the kit | Forgiving for misclicks; changing course after a clash has a real cost |
 | D36 | Income each round: the Heartcap stipend of 100, +50 per Truffle Cellar (+50% on loam), interest of 1 per 20 gold banked at the end of planning up to 10 (Deep Cellars and the Spore Exchange add 10 to the cap, and the Exchange's trickle becomes +12 a round), and +40 to the last round's loser | `docs/archive/v1/ideas/rounds.md`'s numbers, close to v1's per-minute rates. About one new spawner a round after the opener |
@@ -4056,7 +4071,7 @@ Items from 7 on are v2's, one row per question: each is a rule the user hasn't d
 
 | # | Question | First guess | Section | Settled by |
 |---|---|---|---|---|
-| 7 | Squad sizes: what each building fields a round, and the most supply a full colony fields | §11.2's Squad column (8 Sporelings for a Burrow, 4 Capguards for a Hall); about 100 supply a side at most (D33) | §11.2, §12.2 | R1 |
+| 7 | Squad sizes: what each building fields a round, and the most a full colony fields | §11.2's Squad column (8 Sporelings for a Burrow, 4 Capguards for a Hall); at most 150 live units a side when the armies arrive (D33) | §11.2, §12.2 | R1 |
 | 8 | Do mixed armies need the rework's mixed-wave shields (20% of max HP for an army of 2 or more unit types) to pass the strict counter bar in clashes? | Not adopted | §12.2 | R1 |
 | 9 | Does the Elder Sporeling keep its splash perk (0.6 tiles), which the rework turned off? | It keeps it, as today's data does outside `?proto=rework` | §5.6, §12.2 | R1 |
 | 10 | How an emplacement counts in a clash | A unit that never moves and can be killed (Structure armor); it keeps its side alive in its lane; 0 supply toward Heartcap damage and the 45 s comparison; only emplacements left at 45 s is a draw (E5); powers hit it as a unit (D50) | §6.7 (§11.2 points there) | R1 |

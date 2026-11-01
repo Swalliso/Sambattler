@@ -1,6 +1,6 @@
 # Milestone R1 plan: the clash check
 
-**Status: draft, not yet agreed with the user.** Session S0 of [the task list](tasks/r1-clash-check.md), a docs-only session, starts by agreeing it (T001) and writes the agreed calls into SPEC (T051) before any code.
+**Status: agreed with the user on 2026-11-01** (S0 of [the task list](tasks/r1-clash-check.md), T001). The user took every call below as proposed, including the twelve with a clarify ref, whose answers are dated in `docs/tasks/clarify.md`. S0 wrote them into SPEC (T051) before any code.
 
 Written 2026-11-01 against `develop` at `270081f` ([#39](https://github.com/Swalliso/Sambattler/pull/39), SPEC v2, merged). Scope and verification come from SPEC §16 "Milestone R1 — The clash check" and the sections it cites: §4.6, §5.2, §5.6, §6.7, §7.3, §7.4, §11.2, §11.4, §12.2, §12.3, §13.7, §15.3, §15.4, §15.7 and §18.2 #7–#15. The calls below come from the review of SPEC v2: its findings, cited by A-ID (`docs/tasks/spec-analysis.md`), and the calls the user makes (`docs/tasks/clarify.md`, R1-Q1 to R1-Q9). The tasks are in `docs/tasks/r1-clash-check.md`.
 
@@ -39,31 +39,31 @@ It gives the user's review gate numbers for:
 
 ## Calls this plan makes where the spec is ambiguous
 
-Each is easy to reverse; say so if you want one changed. A call with a clarify ref is yours to agree at T001. The others the plan settles itself, as `docs/tasks/clarify.md` says ("The R1 plan settles these itself").
+Each is easy to reverse. A call with a clarify ref was the user's to agree at T001, and on 2026-11-01 the user agreed each one as written. The others the plan settles itself, as `docs/tasks/clarify.md` says ("The R1 plan settles these itself").
 
-1. **Where squads stand** (R1-Q1; A006, A012, A002, A019).
+1. **Where squads stand** (R1-Q1, agreed 2026-11-01; A006, A012, A002, A019).
    - The line follows §7.3's tags. A spawner whose unit has the `ranged`, `support` or `burst` tag, and every tower, is back line. Every other spawner is front line. §16 names only melee, ranged and emplacements, which leaves the Tender and the Burster nowhere.
    - Each rank fills its files centre-out, in build-list order: 2, 3, 1, 4 on one lane, and 2, 1, 3 in each Twin Roots lane, as §7.3's `offCentre` and §4.6's sprawl order do. §16 says "from file 1".
    - A squad whose rank is full takes the first free slot of the nearest other rank: a front-line squad the back rank, then the third; a back-line squad the third rank, then the front.
    - On Twin Roots, in build-list order, each building goes to the lane with fewer buildings of its line. Ties go to the lane with fewer buildings in all, then the top lane. A full lane falls back to the other. §16's "alternating" splits a pair by type (A002). "Ties to the top lane" alone would put a two-building army in one lane and give the other away by E1, so the emptier lane comes first. §7.3's round-1 rule runs as a variant (`--lanes-rule general`).
    - Formation by plot is R2a's (above).
-2. **Spending a budget** (R1-Q2; A003, A016).
+2. **Spending a budget** (R1-Q2, agreed 2026-11-01; A003, A016).
    - Economy and utility cards are filtered out of the opener and the weights first.
    - A pick that doesn't fit the gold left is skipped and drawing goes on, until no pickable card fits or the plots are full. `maxOwned` holds; `afterSeconds` is ignored.
    - Each army draws from its own stream, keyed by the seed and the bot, so an army is the same in both seats and against every opponent.
    - The monos are the army buildings, the Tender's Ring and the Puffball Mortar included.
-3. **Extra plots** (R1-Q4; A005). Every budget is measured at the map's base plots (8, or 6 a lane). A separate "late-run colony" reading adds all 4 plots at 1,200 and 1,500 gold, opened in #19's first-guess order.
-4. **What counts as a win** (R1-Q3; A001, A022).
+3. **Extra plots** (R1-Q4, agreed 2026-11-01; A005). Every budget is measured at the map's base plots (8, or 6 a lane). A separate "late-run colony" reading adds all 4 plots at 1,200 and 1,500 gold, opened in #19's first-guess order.
+4. **What counts as a win** (R1-Q3, agreed 2026-11-01; A001, A022).
    - The side that won more lanes wins the clash. Then the side that dealt more uncapped Heartcap damage (storm ×1.0). Else it's a draw, worth half a win to each side.
    - §6.7's capped round result and the share of drawn rounds are reported beside it. Under the 500 cap most split Twin Roots clashes would draw, which would pull answers toward 50% on the map where the strict bar failed (A022).
    - G12 passes on the best confirmed answer's worst field, among answers that pass G3. Today's `evaluateCounters` passes on the mean and has no draws, so the clash bars are new functions beside it; `evaluateCounters` stays as it is.
-5. **Jitter and identical clashes** (R1-Q3; A007).
+5. **Jitter and identical clashes** (R1-Q3, agreed 2026-11-01; A007).
    - Numbers are quoted with a jitter of ±0.2 tiles, and the jitter-free run is reported beside them.
    - The jitter moves each unit after the muster's knits, so the muster gives exactly what the game's preview would. A jittered leftover trio can still knit on the field, by v1's rule.
    - With jitter 0, a clash of two fixed armies is deterministic, so a mono-against-mono cell would replay one clash 100 times. Each distinct clash is played once and its result reused.
 6. **The muster in today's sim.** `musterKnits` runs on the units as they stand after the arrival. The tool applies its passes at tick 0 with `mergeTriosNow`, then sets the clock to tick 20. Within a pass, each trio's keys are sorted and the trios go in order of their lowest key, the order `resolveKnits` completes knits in, so each merged unit's id equals its key and the pure muster's tie-breaks match the sim's (A024, A032). Lanes where one side or neither fields anything lock at tick 0 (E1, E2), before the first step. Nothing is lost: in the muster nobody moves or attacks, and R1 has no powers, so #25's first guess (the knits land on the first tick) gives the same clash.
 7. **Both cap readings from one clash** (#13). A lane still fighting at tick 900 locks there for the first guess (the muster counted). The clash runs on to tick 920 for the other reading (the cap starting after the muster). Lanes that ended before tick 900 read the same both ways.
-8. **v2's targeting and movement in the check** (R1-Q7, R1-Q8; A008, A021).
+8. **v2's targeting and movement in the check** (R1-Q7 and R1-Q8, agreed 2026-11-01; A008, A021).
    - Two `config.test` flags, `noBuildingPreference` and `idleSeek`, absent unless set, so no battle and no hash changes. The clash check turns both on.
    - Without the first, siege units prefer the Mortar's building, so #10's reading would measure v1.
    - With `idleSeek`, a unit with no target walks toward the nearest enemy in its lane that it could target, enemy towers included, since they stand in for emplacements. With none, it advances as before. Without it, unopposed squads walk past the enemy and park at the far edge, which inflates G13's stalls and decides lanes at 45 s by supply rather than by combat.
@@ -71,19 +71,19 @@ Each is easy to reverse; say so if you want one changed. A call with a clarify r
 9. **The pace variant** (A009). `clashpace` sets v1's `waves` (`matchPace` on, `rangedGap` 1), and the tool stamps every arriving unit with wave 0, which `addUnit` doesn't set. Wave 0 never trips the beat timing, and merged units copy it. This reads the retired waves code for a measurement only. If #12 is adopted, R2a writes the rule with its own key (A109).
 10. **The arrival shield** (§16 R1). `clashshield` sets `mixedWave` alone. The clash check reads `content.balance.mixedWave` itself and shields each lane army of 2 or more unit types at the arrival, before the muster; merging carries shields in proportion, as it does today. §16 says R1 lifts compile.ts's waves requirement "for the clash check". Reading the setting in the tool does that without touching `src/sim/compile.ts`, so no battle, UI text or hash changes. To reverse it: drop `b.waves &&` at `src/sim/compile.ts:85` and guard the two UI readers of `rules.mixed`.
 11. **Squad variants** (#7; A010). `--squad-seconds S` follows §16 (whole batches, halves up). Whole-batch rounding moves some squads by 25–50% at 45 and 75 s and leaves others alone, so `--squad-scale S` (round(squad × S / 60)) runs beside it. `--squad <id>=<n>` sets one building's squad, for the Burrow at 6 and 7. Every run prints each building's squad and its value per gold (§11.4).
-12. **The sixth archetype and the appended spawners** (R1-Q6; A011, A023).
+12. **The sixth archetype and the appended spawners** (R1-Q6, agreed 2026-11-01; A011, A023).
     - As written, the Mortar candidate equals the baseline and the Burster Pod candidate equals `--proto burster`. So the candidate variant is a core-six check instead: builds and answers limited to the five core spawners plus the candidate, against a `core6` reference that weighs the six evenly, read against §11.4's intended graph. It runs once with the Burster Pod and once with the Mortar.
     - The variants that append buildings (`burster`, `rhizomorph`, `kept`) run G3 twice: with `bot:balanced` as the data has it (it buys appended spawners at weight 1), and on its data weights (`bot.balanced.fixedWeights:true`). Appended monos and pairs are listed apart.
-13. **The full colony and the bench case** (R1-Q5; A004, A018, A200).
+13. **The full colony and the bench case** (R1-Q5, agreed 2026-11-01; A004, A018, A200).
     - §13.7's budget is read in live units at the arrival: at most 150 a side, so two colonies fit `bench-300`. SPEC's own first guesses already give 144 supply a side (12 plots of the Burrow's upgraded 12), against "about 100".
     - The full colony is the true worst case: 12 plots on one lane and 16 on Twin Roots, the biggest squads (the Burrow's level-3 squad of 12), merging off.
     - The bench case plays one whole clash, to its end. It prints its verdict as a report only: R2 adds the arrival to G11 (§13.7), so it doesn't change `npm run bench`'s exit code, and `--quick` skips it, so `npm run verify` is unchanged.
     - R1 names the lever that keeps a colony inside: squads, the upgrade's +1 per batch, or plots.
     - Sensitivity rows show SPEC's other unit-adding first guesses: the Rhizome Vault's +1 beside, the Velvet Shrine's +2 in front, and Old Mother Mold's +10% on `swarm` squads (§7.7, §11.2).
-14. **eliteShare** (R2-Q3; A014, A041). Merged units count at their parts' base supply: a Bloomed unit counts its 3 parts, an Elder its 9. R1 records it after the muster with and without the swarm read, plus the Elder-only share and the four kinds' scores, so R2a can recalibrate the Elite read.
+14. **eliteShare** (R2-Q3's R1 part, agreed 2026-11-01; A014, A041). Merged units count at their parts' base supply: a Bloomed unit counts its 3 parts, an Elder its 9. R1 records it after the muster with and without the swarm read, plus the Elder-only share and the four kinds' scores, so R2a can recalibrate the Elite read.
 15. **G13's bar** reads every clash record the check produced, as §16 R1 verification 2 and §12.3 G13 say: G3's cells, the counter matrix's, the mirror's and the G4 row's. The share over G3's clashes alone is reported beside it.
-16. **Copies** (X4; A196). `--copies N` caps every card at N buildings. A mono holds N of its card, and its other plots and gold go by `bot:balanced`'s weights. That's #51's recommendation, used provisionally. R1 measures 2, 3 and 4 beside unlimited, so squad sizes aren't bent to tame a build R3's copies remove.
-17. **The race model** (X5; A193, A197, A208, A022).
+16. **Copies** (X4's R1 part, agreed 2026-11-01; A196). `--copies N` caps every card at N buildings. A mono holds N of its card, and its other plots and gold go by `bot:balanced`'s weights. That's #51's recommendation, used provisionally. R1 measures 2, 3 and 4 beside unlimited, so squad sizes aren't bent to tame a build R3's copies remove.
+17. **The race model** (X5's R1 part, agreed 2026-11-01; A193, A197, A208, A022).
     - `tools/lib/roundRace.ts` chains clashes into battles of up to 9 rounds. Round r of battle i uses the clash at the measured budget nearest below 300 + 75 × (i − 1) + 150 × (r − 1), at most 1,500.
     - Its first case is G4's pairing (§12.3): `bot:balanced` against `general:scripted` on the one-lane field at every budget, 50 seeds per seat, with `bot:balanced` against itself on fresh seeds beside it. `--checks clash` plays this G4 row by default. These are the even battles A193's claim (most reach round 9) and G4's band (≤ 15% reach round 9, median 6–8) are about, so X5's section quotes them first.
     - G3's pairs (each mono against `bot:balanced`) follow, as the lopsided case: they rout early and understate the round-9 share.
@@ -92,7 +92,7 @@ Each is easy to reverse; say so if you want one changed. A call with a clarify r
     - It does so under the first guess and the alternatives: a cap of 25% of the loser's max HP, the storm applied to the cap, equal Heartcaps, and a Decision by share of max HP lost.
     - Beside it, the clash report gives the share of clashes whose damage passes 500 at each budget (A208), and the drawn-round share (A022).
     - It's crude: no income, comeback gold or counters, and one seed's armies at each budget stand in for a colony that grows within a battle. It's for the X5 call, not a guardrail.
-18. **A three-lane screen** (R1-Q9). `--fields three` reads `data/maps/test-3lane.json` as 3 lanes of 2 files and 2 ranks: 4 plots a lane, and the leftover row holds none. The map file isn't edited. A 20-seed screen, outside the bars.
+18. **A three-lane screen** (R1-Q9, agreed 2026-11-01). `--fields three` reads `data/maps/test-3lane.json` as 3 lanes of 2 files and 2 ranks: 4 plots a lane, and the leftover row holds none. The map file isn't edited. A 20-seed screen, outside the bars.
 19. **v2's constants in a tool.** The 6-tile gap, the 1 s muster, the 45 s cap, 25 per supply, siege ×2 for damage, the 500 cap and G13's 15% are named constants in `tools/lib/clash.ts`. Putting them in `data/balance.json` would move every golden. R2a moves them into the data (§11.1).
 20. **How units arrive** (A024). Units are created in slot order (lane, rank, file), then by j within a squad, never in build-list order, so the muster's result depends only on the colony, as R2a's arrival will. They arrive with `sourceBuildingId` 0, and the tool keeps the map from each unit to its squad: real ids would collide with the Mortars' ids, and negative ids belong to the Heartcaps and turrets.
 21. **Puppet Bloom's trios** (A057, R2-Q7). Each record counts the most trios Cordis's power (a 3-tile circle) could knit right after the muster, so R2a can tell whether the power has anything left to do.
@@ -157,7 +157,7 @@ Also, outside §16's steps: `npm run test:slow` gives the same v1 verdicts as `d
 
 ## Open questions for the user
 
-**At T001 (S0), to agree before building** (each with a recommendation in `docs/tasks/clarify.md`):
+**At T001 (S0): answered 2026-11-01,** each as recommended (the Decision and "R1 measures" lines in `docs/tasks/clarify.md`):
 - R1-Q1: where squads stand (call 1).
 - R1-Q2: spending a budget (call 2).
 - R1-Q3: what counts as a clash win, and quoting with jitter (calls 4 and 5).

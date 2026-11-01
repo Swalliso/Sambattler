@@ -8,8 +8,8 @@ SPEC v2, broken into task lists that later sessions work through one row of a Se
 
 | Now | Session | Waits on |
 |---|---|---|
-| 1 | **R1 S0** in [r1-clash-check.md](r1-clash-check.md): agree [docs/r1-plan.md](../r1-plan.md) with the user and write R1's calls into SPEC. Docs only | These task lists on `develop` (the `feature/v2-tasks` PR). S0's first task is the user agreeing the plan |
-| 2 | **R1 S1 and S2**, side by side: `src/sim/formation.ts`; the two tool-only switches and the army builder | R1 S0 merged |
+| 1 | **R1 S1 and S2** in [r1-clash-check.md](r1-clash-check.md), side by side: `src/sim/formation.ts`; the two tool-only switches and the army builder | R1 S0 merged (`feature/r1-plan`: the plan agreed on 2026-11-01, and R1's calls in SPEC) |
+| 2 | **R1 S3**: one clash recorded, and `--checks clash --pair` | R1 S1 and S2 merged |
 | 3 | **R4a-S0** in [r4-readable-armies.md](r4-readable-armies.md): the shape-language plan | These task lists on `develop`; S0's first [USER] task (R4/T002) puts X3 (split R4) to the user |
 | 4 | **records S0** in [run-it-back.md](run-it-back.md): the Run it back plan | These task lists on `develop`; S0's first [USER] task (RB/T001) puts X10 (Run it back in two parts) to the user |
 

@@ -1,6 +1,6 @@
 # Where things stand
 
-Updated 2026-11-01, on `feature/v2-tasks` (a PR into `develop`). This is the hand-over page. It covers what we're working on, what's waiting on the user's decision, and where each piece lives. Update it when work lands or the user decides something. Keep the detail in the docs it links to.
+Updated 2026-11-01, on `feature/r1-plan` (R1 S0, a docs PR into `develop`). This is the hand-over page. It covers what we're working on, what's waiting on the user's decision, and where each piece lives. Update it when work lands or the user decides something. Keep the detail in the docs it links to.
 
 ## In short
 
@@ -17,8 +17,8 @@ Updated 2026-11-01, on `feature/v2-tasks` (a PR into `develop`). This is the han
 
   See [SPEC §0.1](../SPEC.md#01-what-changed-in-v2), [§1.3](../SPEC.md#13-v2-decisions-2026-10-31) and the [P3 notes](playtest-feedback.md#2026-10-31-p3-the-combat-rework-the-user).
 - **SPEC v2 is on `develop`** ([#39](https://github.com/Swalliso/Sambattler/pull/39)). **Nothing in v2 is built yet.** Until milestone R2 lands, the code follows v1: the M5 battle, with the rework's pieces behind `?proto=rework` on the dev site.
-- **The spec is broken into task lists** in [docs/tasks/](tasks/README.md), spec-kit style: one list per milestone, one session per row of its Sessions table. The decisions each milestone needs from the user are in [clarify.md](tasks/clarify.md), and the problems the breakdown found in SPEC v2 are in [spec-analysis.md](tasks/spec-analysis.md). Lists after R1's are drafts, refreshed when each milestone's plan is agreed.
-- **Next: milestone R1, the clash check** ([SPEC §16](../SPEC.md#16-milestone-plan)). It's a headless tool that fights whole armies at equal gold, with no rule change. It sets squad sizes and checks that every strong army has an answer before the round loop is built. Its plan is drafted in [docs/r1-plan.md](r1-plan.md).
+- **The spec is broken into task lists** in [docs/tasks/](tasks/README.md) ([#40](https://github.com/Swalliso/Sambattler/pull/40), on `develop`), spec-kit style: one list per milestone, one session per row of its Sessions table. The decisions each milestone needs from the user are in [clarify.md](tasks/clarify.md), and the problems the breakdown found in SPEC v2 are in [spec-analysis.md](tasks/spec-analysis.md). Lists after R1's are drafts, refreshed when each milestone's plan is agreed.
+- **Now: milestone R1, the clash check** ([SPEC §16](../SPEC.md#16-milestone-plan)). It's a headless tool that fights whole armies at equal gold, with no rule change. It sets squad sizes and checks that every strong army has an answer before the round loop is built. Its plan, [docs/r1-plan.md](r1-plan.md), was agreed on 2026-11-01 (R1 S0), with every recommendation taken.
 - **Then:**
   - R2: rounds, the general plans first, lives, and the planning screen. R2 starts only once R1's results are in `docs/balance-backlog.md` and the user has agreed them. A session asked to start R2 before that stops and asks. The task lists split it in two (X1): R2a, a single battle in rounds, then R2b, the run in rounds;
   - R3: the kit, the six archetypes, augments, combos and run packs;
@@ -27,13 +27,22 @@ Updated 2026-11-01, on `feature/v2-tasks` (a PR into `develop`). This is the han
 
   [docs/tasks/README.md](tasks/README.md) has the full order and every milestone's sessions.
 
-## Next session: R1 S0
+## Next session: R1 S1 and S2
 
-- **Work from** [docs/tasks/r1-clash-check.md](tasks/r1-clash-check.md), session S0, and follow [docs/tasks/README.md](tasks/README.md#running-a-session). Branch `feature/r1-plan` from `develop`, once the task lists are merged.
-- **S0 is with the user, and docs only:** agreeing [docs/r1-plan.md](r1-plan.md), including the measurement calls R1-Q1 to R1-Q9 in [clarify.md](tasks/clarify.md), then writing the agreed calls into SPEC §16 R1, §12.2, §13.7 and §15.4.
-- **Then, side by side, once S0 has merged:**
-  - R1 S1 builds `src/sim/formation.ts`, the slot layout and the muster's knitting as pure functions that R2 reuses;
-  - R1 S2 builds the tool-only switches and the army builder.
+- **Work from** [docs/tasks/r1-clash-check.md](tasks/r1-clash-check.md) and follow [docs/tasks/README.md](tasks/README.md#running-a-session). Both start once R1 S0's PR (`feature/r1-plan`) has merged, and they can run side by side:
+  - **S1** (`feature/r1-formation`, T003–T006) builds `src/sim/formation.ts`: the slot layout and the muster's knitting, as pure functions that R2 reuses;
+  - **S2** (`feature/r1-armies`, T007–T012) builds the two tool-only switches and the army builder in `tools/lib/clash.ts`.
+- **Then** S3 (`feature/r1-clash-runner`) once both have merged, and S4–S8 in the order of the task list's Sessions table.
+- **R1's calls, agreed 2026-11-01:** every recommendation. They're dated in [clarify.md](tasks/clarify.md) and written into SPEC §16 R1 and §12.2.
+  - R1-Q1, where squads stand: §7.3's tags set the line, files fill centre-out, and on Twin Roots each building goes to the lane with fewer of its line.
+  - R1-Q2, spending: economy and utility cards are filtered out, a pick that doesn't fit is skipped, and each army has its own stream.
+  - R1-Q3, a clash win: more lanes, then more uncapped damage, else a draw worth half. Numbers are quoted at jitter ±0.2.
+  - R1-Q4, plots: the base plots at every budget, plus a late-run reading with 4 more at 1,200 and 1,500 gold.
+  - R1-Q5, the full colony: §13.7's budget is now at most 150 live units a side at the arrival, not about 100 supply. The bench case is the true worst case, report-only until R2.
+  - R1-Q6, the sixth archetype: a core-six check per candidate, and G3 twice for the variants that append spawners.
+  - R1-Q7 and R1-Q8: the tool-only flags `noBuildingPreference` and `idleSeek`, on in the check and absent in every battle.
+  - R1-Q9: a three-lane screen, outside the bars.
+  - For later calls, R1 also records eliteShare by parts' base supply (R2-Q3), measures copies at 2, 3 and 4 (X4), and builds the race model (X5). Those calls stay open.
 - **Alongside R1:**
   - R4a-S0, the shape-language plan, if the user agrees X3;
   - Run it back's S0 ([run-it-back.md](tasks/run-it-back.md)), if the user agrees X10.
@@ -44,15 +53,14 @@ Updated 2026-11-01, on `feature/v2-tasks` (a PR into `develop`). This is the han
 
 ## Waiting on the user
 
-1. **Review and merge the task lists** (the `feature/v2-tasks` PR into `develop`).
-2. **Agree the R1 plan** ([docs/r1-plan.md](r1-plan.md)): R1 S0 asks for it.
-3. **The decisions that shape the milestones**, X1–X10 in [clarify.md](tasks/clarify.md#index). Each has a recommendation. The task lists assume them and say what changes otherwise.
+1. **Review and merge R1 S0's PR** (`feature/r1-plan` into `develop`): the agreed plan and R1's calls in SPEC. R1 S1 and S2 wait on it.
+2. **The decisions that shape the milestones**, X1–X10 in [clarify.md](tasks/clarify.md#index). Each has a recommendation. The task lists assume them and say what changes otherwise.
    - Needed now: X1 (split R2 into R2a and R2b), X2 (build R2a beside v1 on `develop`; R2b's switch-over on an integration branch until a whole run plays), X3 (split R4, the field's shapes first) and X10 (Run it back in two parts).
-   - At R1's review gate: X4 (copies before R3, if the swarm fails) and X5 (the scoring curve).
+   - At R1's review gate: X4 (copies before R3, if the swarm fails) and X5 (the scoring curve). R1 measures both, as agreed on 2026-11-01.
    - Later: X6 (run length), X7 (an "answer what you see" bot), X8 (measuring the general), X9 (flyers out of the first release).
-4. **The six core archetypes** are a first cut the user wants to discuss further. The sixth slot is open: the Burster Pod, or the Puffball Mortar ([§11.2](../SPEC.md#112-velvet-bloom-buildings)). It's §18.2 #36 in clarify.md: R1 measures both, and the call comes at R3's plan.
-5. **The open rules in §18.2** now each have a block in [clarify.md](tasks/clarify.md) with a recommendation, filed under the milestone that needs them. Some recommendations disagree with SPEC's first guess and say why. The rows R2 needs (#16–#35) include #32: what happens to runs saved before R2.
-6. **A release to `main`:** only when the user asks.
+3. **The six core archetypes** are a first cut the user wants to discuss further. The sixth slot is open: the Burster Pod, or the Puffball Mortar ([§11.2](../SPEC.md#112-velvet-bloom-buildings)). It's §18.2 #36 in clarify.md: R1 measures both, and the call comes at R3's plan.
+4. **The open rules in §18.2** now each have a block in [clarify.md](tasks/clarify.md) with a recommendation, filed under the milestone that needs them. Some recommendations disagree with SPEC's first guess and say why. The rows R2 needs (#16–#35) include #32: what happens to runs saved before R2.
+5. **A release to `main`:** only when the user asks.
 
 ## Where things live
 
@@ -73,7 +81,8 @@ Updated 2026-11-01, on `feature/v2-tasks` (a PR into `develop`). This is the han
 
 | Work | Where | State |
 |---|---|---|
-| SPEC v2 broken into tasks (2026-11-01) | [tasks/](tasks/README.md), [r1-plan.md](r1-plan.md), the `feature/v2-tasks` PR | Drafts for the user's review: R1's list is ready to work, the rest are refreshed at each milestone's plan |
+| R1 plan agreed (2026-11-01) | [r1-plan.md](r1-plan.md), [clarify.md](tasks/clarify.md) (R1-Q1 to R1-Q9), SPEC §16 R1, §12.2 and §13.7, the `feature/r1-plan` PR | Every recommendation taken. The full-colony budget is now 150 live units a side. R1 S1 and S2 next |
+| SPEC v2 broken into tasks (2026-11-01) | [tasks/](tasks/README.md), [#40](https://github.com/Swalliso/Sambattler/pull/40) | On `develop`. R1's list is being worked; the rest are refreshed at each milestone's plan |
 | Archive of the v1-era notes (2026-10-31) | [archive/](archive/README.md), [research/](research/README.md), the `feature/spec-v2` PR | v1 notes moved, links kept, rules updated so sessions don't pick up v1 as current |
 | SPEC v2 (2026-10-31) | [SPEC.md](../SPEC.md), [#39](https://github.com/Swalliso/Sambattler/pull/39) | On `develop`; nothing built |
 | P3 playtest (2026-10-31) | [playtest-feedback.md](playtest-feedback.md#2026-10-31-p3-the-combat-rework-the-user) | Done. The notes moved the game to v2 (F17–F22) |

@@ -201,6 +201,7 @@ These ten calls set how the work after R1 is cut. The task files assume each rec
 - **Alternatives:** keep D45 and risk a swarm flood in R2a's playtest; or a flat 3 per card for both sides (A196). If no, `plant` has no copy refusal and #51 stays R3's.
 - **Blocks:** R1 S0 (the variants); R1 gate; R2a S0; R2-Q23.
 - **Decision:** _open_
+- **R1 measures:** agreed 2026-11-01 (R1 S0). G3 and G12 at 2, 3 and 4 copies beside unlimited (`--copies N`). A mono holds N copies of its card, and its other plots and gold go by `bot:balanced`'s weights: #51's recommendation, used provisionally. The call stays open for R1's gate (R1/T049).
 
 ### X5 · The scoring curve
 
@@ -213,6 +214,7 @@ These ten calls set how the work after R1 is cut. The task files assume each rec
 - **Alternatives:** keep 500 and accept Decision-heavy late battles (G4's miss is then reported, not tuned away); equal Heartcaps (A193); the storm raising the cap (A208).
 - **Blocks:** R1 S0; R1 gate; R2a's scoring; #35; R2-Q14.
 - **Decision:** _open_
+- **R1 measures:** agreed 2026-11-01 (R1 S0). The race model (`tools/lib/roundRace.ts`), G4's even pairing first, then G3's pairs. It reports rounds to fall per battle index (1–5, a Fortified elite, the boss), the share reaching round 9, Routs and lead changes, under the 500 cap and the alternatives, with the cap-binding and drawn shares per budget. The call stays open for R1's gate (R1/T049).
 
 ### X6 · Is the 25–35 minute run binding?
 
@@ -270,7 +272,7 @@ These are measurement calls, not rules. `docs/r1-plan.md` proposes them and you 
 - **Recommendation:** Use §7.3's tags for the line (A006). Fill centre-out: files 2, 3, 1, 4, or 2, 1, 3 per Twin Roots lane (A012). On Twin Roots, each building goes to the lane with fewer of its line, ties to the top, with §7.3's round-1 rule as a variant (A002). By-plot formation is R2's (A019). This disagrees with the first guess. **Why:** alternating splits a pair, so each lane fights mono on the map where mono Sporeling escaped (A002).
 - **Alternatives:** §16 as written; the numbers then transfer less well to R2.
 - **Blocks:** R1's fields and formation.
-- **Decision:** _open_
+- **Decision:** 2026-11-01 (R1 S0): the recommendation. The line follows §7.3's tags. Files fill centre-out: 2, 3, 1, 4, or 2, 1, 3 per Twin Roots lane. On Twin Roots each building goes to the lane with fewer buildings of its line, ties to the lane with fewer in all, then the top lane, and §7.3's round-1 rule runs as a variant. Formation by plot is R2's. In SPEC §16 R1 and §12.2.
 
 ### R1-Q2 · Spending a budget
 
@@ -279,7 +281,7 @@ These are measurement calls, not rules. `docs/r1-plan.md` proposes them and you 
 - **Recommendation:** Filter economy and utility cards out first. Skip a pick that doesn't fit and keep drawing until nothing fits or the plots are full. Ignore `afterSeconds`. Give each army its own stream, keyed by seed and bot (A003). Monos are army buildings, the Tender included (A016). **Why:** stopping at the first miss can leave an army at a third of its budget (A003).
 - **Alternatives:** map `afterSeconds` to rounds (A003).
 - **Blocks:** R1's army builder.
-- **Decision:** _open_
+- **Decision:** 2026-11-01 (R1 S0): the recommendation. Economy and utility cards are filtered out first. A pick that doesn't fit is skipped and drawing goes on until nothing fits or the plots are full. `maxOwned` holds and `afterSeconds` is ignored. Each army has its own stream, keyed by seed and bot. The monos are the army buildings, the Tender's Ring and the Puffball Mortar included. In SPEC §16 R1 and §12.2.
 
 ### R1-Q3 · What counts as a clash win
 
@@ -288,7 +290,7 @@ These are measurement calls, not rules. `docs/r1-plan.md` proposes them and you 
 - **Recommendation:** More lanes won, then more uncapped damage (storm ×1.0), else a draw worth half a win each. Report §6.7's capped result and the share of drawn rounds beside it. G12 passes on the best confirmed answer's worst field, among answers that pass G3 (A001). Quote mono-against-mono cells with jitter on (A007). **Why:** today's counter code passes on the mean and has no draws (A001), and under the 500 cap most split Twin Roots clashes draw, pulling answers toward 50% (A022). Reviewers split: A001 used the capped result, but this rule doesn't hang on X5.
 - **Alternatives:** §6.7's capped round result (A001).
 - **Blocks:** R1's clash rows and bars.
-- **Decision:** _open_
+- **Decision:** 2026-11-01 (R1 S0): the recommendation. More lanes won, then more uncapped Heartcap damage (storm ×1.0), else a draw worth half a win to each side, with §6.7's capped result and the drawn share beside it. G12 passes on each build's best confirmed answer's worst field, among answers that pass G3. Numbers are quoted at jitter ±0.2, with the jitter-free run beside them. In SPEC §16 R1 and §12.2.
 
 ### R1-Q4 · The extra plots at the top budgets
 
@@ -297,7 +299,7 @@ These are measurement calls, not rules. `docs/r1-plan.md` proposes them and you 
 - **Recommendation:** Every budget at the map's base plots (8, or 6 a lane), plus one "late-run colony" reading with all 4 extra plots at 1,200 and 1,500 gold, placed by #19's order (A005). **Why:** it decides whether cheap builds are plot-capped late, and it caps the two fields differently (A005).
 - **Alternatives:** extra plots at 1,500 only.
 - **Blocks:** R1's army builder; R1-Q5.
-- **Decision:** _open_
+- **Decision:** 2026-11-01 (R1 S0): the recommendation. Every budget is measured at the base plots (8, or 6 a lane), plus one late-run colony reading with all 4 extra plots at 1,200 and 1,500 gold, opened in #19's first-guess order. In SPEC §16 R1 and §12.2.
 
 ### R1-Q5 · The full colony and the bench case
 
@@ -306,7 +308,7 @@ These are measurement calls, not rules. `docs/r1-plan.md` proposes them and you 
 - **Recommendation:** At most 150 live units a side at the arrival, so two colonies fit `bench-300`, which stays a stress case of placed units (A112, A119). The bench case is the worst case: 12 plots on one lane, 16 on Twin Roots, the biggest squads, merging off (A004, A018). R1 names the lever that keeps a colony inside. This disagrees with "about 100 supply". **Why:** SPEC's own guesses already give 144 supply (A004, A200), and a tick's cost follows live units.
 - **Alternatives:** keep 100 supply and cut sprawl or squads; a budget per lane (A200).
 - **Blocks:** R1's bench case; #7, #18, #50.
-- **Decision:** _open_
+- **Decision:** 2026-11-01 (R1 S0): the recommendation. §13.7's budget becomes at most 150 live units a side when the armies arrive, in place of about 100 supply. The bench case is the true worst case: 12 plots on one lane, 16 on Twin Roots, the biggest squads, merging off. It plays one whole clash and is report-only until R2 adds it to G11. R1 names the lever that keeps a colony inside. In SPEC §1.1, §4.6, §5.4, §11.1, §12.2, §13.7, §15.4, §16 R1, D33 and §18.2 #7's first guess.
 
 ### R1-Q6 · Variants that add buildings
 
@@ -315,7 +317,7 @@ These are measurement calls, not rules. `docs/r1-plan.md` proposes them and you 
 - **Recommendation:** A core-six check for each candidate: builds and answers limited to the five core spawners plus it, `bot:balanced` reweighted, read against §11.4's intended graph (A011). For appended spawners, run G3 twice: `bot:balanced` on its data weights, and buying them at weight 1 (A023). **Why:** as written, the Mortar variant equals the baseline and the Burster variant equals `--proto burster` (A011), and appended buildings change the reference army (A023).
 - **Alternatives:** the variants as written.
 - **Blocks:** R1's variant runs; #36.
-- **Decision:** _open_
+- **Decision:** 2026-11-01 (R1 S0): the recommendation. A core-six check for each candidate (the Burster Pod, then the Puffball Mortar), read against §11.4's intended graph. The variants that append spawners run G3 twice: with `bot:balanced` as the data has it, and on its data weights. In SPEC §16 R1 and §12.2.
 
 ### R1-Q7 · v2 targeting in the check
 
@@ -324,7 +326,7 @@ These are measurement calls, not rules. `docs/r1-plan.md` proposes them and you 
 - **Recommendation:** Add the flag, off in battles and on in the clash check. **Why:** today siege units go for the Mortar first and every unit targets it as a 2×2 rectangle (A008), so #10's reading would measure v1. Off by default, it moves no golden.
 - **Alternatives:** no flag; mark those cells as v1 behaviour (A008).
 - **Blocks:** R1's sim knobs; #10.
-- **Decision:** _open_
+- **Decision:** 2026-11-01 (R1 S0): the recommendation. A tool-only `noBuildingPreference` flag, absent in every battle and on in the clash check. In SPEC §16 R1 and §12.2.
 
 ### R1-Q8 · v2 movement in the check
 
@@ -333,7 +335,7 @@ These are measurement calls, not rules. `docs/r1-plan.md` proposes them and you 
 - **Recommendation:** The idle seek, as a default-off knob that the clash check turns on. R2 builds it anyway. **Why:** today unopposed squads walk past the enemy and park at the far edge. That inflates G13's stalls, decides lanes at 45 s by supply instead of by combat, and blunts the square law R1 measures (A021).
 - **Alternatives:** today's movement, plus a count of far-edge idlers (A021).
 - **Blocks:** R1's sim knobs; G13.
-- **Decision:** _open_
+- **Decision:** 2026-11-01 (R1 S0): the recommendation. A tool-only `idleSeek` flag, absent in every battle and on in the clash check. In SPEC §16 R1 and §12.2.
 
 ### R1-Q9 · A three-lane field
 
@@ -342,7 +344,7 @@ These are measurement calls, not rules. `docs/r1-plan.md` proposes them and you 
 - **Recommendation:** Yes, as a 20-seed screen outside the bars. **Why:** v1's 3-lane map had the worst mono results, and Three Hollows joins G3 and G12 only at M7 (A184).
 - **Alternatives:** wait for M7.
 - **Blocks:** #62.
-- **Decision:** _open_
+- **Decision:** 2026-11-01 (R1 S0): the recommendation. A 20-seed screen of `test-3lane` read as 3 lanes of 4 plots, outside the bars, with no map edit. In SPEC §16 R1 and §12.2.
 
 The R1 plan settles these itself, with no call from you: A009 (the pace variant stamps `u.wave = 0`), A013 (the run time estimate), A017 (named tool options).
 
@@ -470,6 +472,7 @@ R1 reports a measure for each row, and you settle it at R1's review gate (§16 R
 - **Alternatives:** the swarm read alone.
 - **Blocks:** R1 S0 (what R1 records); R2a's counter cycle.
 - **Decision:** _open_
+- **R1 measures:** agreed 2026-11-01 (R1 S0). R1 records eliteShare after the muster with merged units at their parts' base supply (a Bloomed unit counts its 3 parts' tier-1 supply, an Elder its 9), with and without the swarm read, plus the Elder-only share and the four kinds' scores. The rule for §7.4 stays open for R2a S0.
 
 ### R2-Q4 · The single battle's general kit
 
