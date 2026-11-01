@@ -487,8 +487,8 @@ export interface ArmyRecord {
   /**
    * After the muster, the share of its units' supply that merged, each unit at its parts' base supply (a
    * Bloomed unit its 3 parts' tier-1 supply, an Elder its 9; R2-Q3, A014): plain; with the swarm read,
-   * which leaves out units of at most `ai.counter.swarmMaxSupply` (1 where the data leaves it unset);
-   * and Elders alone.
+   * which leaves out units whose base supply is at most `ai.counter.swarmMaxSupply` (1 where the data
+   * leaves it unset); and Elders alone.
    */
   eliteShare: { plain: number; swarmRead: number; elderOnly: number };
   /** The armor classes' and ranged units' shares, by the same measure. */
@@ -622,8 +622,7 @@ export function playClash(content: Content, job: ClashJob, hooks: ClashHooks = {
  */
 function muster(state: BattleState): Record<Side, Merges> {
   const lanes = state.lanes.map((l) => ({ top: l.rowStart, bottom: l.rowEnd }));
-  for (const side of SIDES) {
-    if (!state.config.flags.merging) break;
+  for (const side of state.config.flags.merging ? SIDES : []) {
     const firstKey = state.nextId;
     const res = musterKnits(state.units.filter((u) => u.side === side).map((u): MusterUnit => ({
       key: u.id, side, lane: u.lane, unitId: u.unitId, tier: u.tier, x: u.x, y: u.y, mergeOn: u.mergeOn, source: u.sourceBuildingId,
