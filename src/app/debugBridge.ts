@@ -9,6 +9,7 @@ import type { BattleState, BattleSummary } from '../sim/index.ts';
 
 export interface RunBrief {
   screen: RunState['screen']['kind'];
+  seed: number;
   row: number;
   battles: { index: number; kind: string; map: string; winner: string; by: string }[];
   heartcap: RunState['heartcap'];
@@ -57,7 +58,7 @@ export function installBridge(src: BridgeSources, errors: string[]): GameBridge 
       const r = src.run();
       if (!r) return null;
       return {
-        screen: r.screen.kind, row: r.path.length, heartcap: { ...r.heartcap }, outcome: r.outcome ?? null,
+        screen: r.screen.kind, seed: r.seed, row: r.path.length, heartcap: { ...r.heartcap }, outcome: r.outcome ?? null,
         commander: r.commander, bans: [...r.bans], kit: [...r.kit],
         battles: r.battles.map((b) => ({ index: b.index, kind: b.kind, map: b.map, winner: b.winner, by: b.by })),
       };

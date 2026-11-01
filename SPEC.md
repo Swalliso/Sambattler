@@ -2492,7 +2492,7 @@ tools (Node CLIs) ──► run, meta, sim, data
 ```
 
 - **`src/sim`** is pure. It MUST NOT import from `render`, `ui`, `app`, `run` or `meta`. It MUST NOT touch `window`, `document`, timers, `Math.random`, `Date`, `performance` or async APIs.
-- **`src/run` and `src/meta`** are pure too. Persistence is injected through a `Storage` interface. `src/meta` arrives with the profile in M6 (§9.7).
+- **`src/run` and `src/meta`** are pure too. Persistence is injected through a `Storage` interface. `src/meta` starts with Run it back's records-1, whose `records.ts` keeps the profile record (§9.7, §16 M6), and M6 adds the rest of the profile.
 - **`src/render` and `src/ui`** read sim state but never mutate it. They consume per-tick events, and in planning the events of each command.
 - **One rule, one place.** Whatever the planning screen shows about the coming clash comes from the sim's own functions, never from a copy of the rule in `render` or `ui`. The formation preview calls the same formation function the clash's arrival uses (§13.4, §14.6), and prices, refunds, copies, merge previews and combos come from the sim too.
 - **`src/audio`** uses `Math.random` and WebAudio, so it sits outside the pure layers and imports nothing but data types (§13.9).
@@ -2560,7 +2560,8 @@ The tree is the code as built under v1 (Milestones 1–5 and the combat rework's
 │  │               profiles.ts  draftPolicy.ts
 │  ├─ run/         flow.ts  runState.ts  route.ts  rewards.ts  intel.ts  resume.ts  storage.ts  auto.ts  scenes.ts  index.ts
 │  │               packs.ts                                                       (new in R3)
-│  ├─ meta/        profile.ts  feats.ts  traits.ts  strains.ts  mastery.ts  blights.ts  migrations.ts   (M6)
+│  ├─ meta/        records.ts  index.ts                                           (new in records-1)
+│  │               profile.ts  feats.ts  traits.ts  strains.ts  mastery.ts  blights.ts  migrations.ts   (M6)
 │  ├─ render/      atlas.ts (bake text sprites)  renderer.ts  effects.ts  frame.ts  spores.ts  pixelText.ts  assistPreview.ts
 │  ├─ audio/       engine.ts (WebAudio graph, ambient bed)  synth.ts (layers to nodes)  limits.ts (voice cap, cooldowns)
 │  ├─ ui/          h.ts  hud/{top,tray,kit,explain}.ts  screens/{title,run,underroot}.ts  callouts.ts  inspect.ts
