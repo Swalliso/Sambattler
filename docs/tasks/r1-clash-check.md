@@ -134,7 +134,7 @@ R1 builds a headless check that fights whole armies at equal gold, in formation,
 
 ## Phase 2: Foundational (blocks every story)
 
-- [ ] T003 [P] Write the slot-layout tests in `tests/unit/formation.test.ts` (new) (§4.6, §15.7)
+- [x] T003 [P] Write the slot-layout tests in `tests/unit/formation.test.ts` (new) (§4.6, §15.7)
   - `formationBox` on `test-flat`'s geometry (width 32, one lane of rows 0–7, gap 6): the player's front rank at column 11 and back rank at column 9, the general's front at 19 and back at 21 (§4.1's Bogwater columns 9–12 and 19–22); files 1–4 at rows 0, 2, 4, 6 on both sides; with 3 ranks, the third at columns 7 and 23.
   - Twin Roots (lanes 0–5 and 7–12): 3 files a lane, at rows 0, 2, 4 and 7, 9, 11. `test-3lane` (width 30, lanes of 5 rows): 2 files a lane, no slot on the leftover row, fronts at columns 10 and 18.
   - Slots come ordered by lane, then rank, then file (§13.3 rule 4).
@@ -142,9 +142,10 @@ R1 builds a headless check that fights whole armies at equal gold, in formation,
   - `emplacementPosition(slot)` is the slot's centre.
   - `overflows(n, radius)` is true when 2 × radius > 2/k: false for every §11.2 squad at 60 s (8 Sporelings: 0.5 < 0.667; 2 Amanita Knights: 0.9 < 1.0; 3 Rootbreakers: 0.9 < 1.0), true for 5 Capguards (0.7 > 0.667), false for 12 Sporelings (0.5 = 0.5, exactly fits).
   - The same input gives the same output, with no stream drawn.
-- [ ] T004 Build the slot layout in `src/sim/formation.ts` (new): `formationBox(geom, side, ranks)`, `slotPositions(n, slot, side)`, `emplacementPosition(slot)` and `overflows(n, radius)`, with the types `FieldGeom` ({ width, lanes: { rowStart, rowEnd }[], gapTiles }), `Slot` ({ lane, rank, file, col, row }, rank 0 the front) and `Point` (§4.6, §13.3, §14.6)
+- [x] T004 Build the slot layout in `src/sim/formation.ts` (new): `formationBox(geom, side, ranks)`, `slotPositions(n, slot, side)`, `emplacementPosition(slot)` and `overflows(n, radius)`, with the types `FieldGeom` ({ width, lanes: { rowStart, rowEnd }[], gapTiles }), `Slot` ({ lane, rank, file, col, row }, rank 0 the front) and `Point` (§4.6, §13.3, §14.6)
   - Pure: no state, no stream, only `Math.sqrt`, `ceil` and `floor`. `tests/unit/purity.test.ts` scans it.
   - The gap is a parameter; the clash tool passes 6 (plan call 19). The header comment says R2a's `formationOf` maps plots to these slots and calls these functions unchanged.
+  - Added at S1: `slotGrid(n)` → { k, spacing }, the grid `slotPositions` and `overflows` share, so T017's overflow list reads k and the spacing from the same rule. `formationBox` throws when the width less the gap is odd (the box can't centre) or the ranks don't fit the field.
 - [ ] T005 Add the muster's tests to `tests/unit/formation.test.ts` (§5.6, §15.7)
   - Values from the review's simulation of §4.6's layout under merging's rule. If the function gives otherwise, check the geometry by hand before changing an expectation; §5.6 says the preview shows what the geometry gives.
   - One Burrow (8 Sporelings, merging on) in a front slot → 2 Bloomed + 2 base.
