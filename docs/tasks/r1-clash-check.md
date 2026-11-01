@@ -179,7 +179,7 @@ R1 builds a headless check that fights whole armies at equal gold, in formation,
 
 The armies (T011–T012) need nothing from `formation.ts` or the switches, so S2 builds them beside S1.
 
-- [ ] T011 [P] Write the army tests in `tests/unit/clash.test.ts` (new) (§11.2, §12.2, §16 R1) ⛔ R1-Q2
+- [x] T011 [P] Write the army tests in `tests/unit/clash.test.ts` (new) (§11.2, §12.2, §16 R1) ⛔ R1-Q2
   - `squadSize` at 60 s reproduces §11.2's Squad column: Burrow 8, Hall 4, Nest 4, Lodge 2, Forge 4, Den 3, Grove 3, Hollow 6, Warren 6, Ring 3; the Burster Pod 6 under `protoContent('burster')` and the Rhizomorph Tunnel 3 under `protoContent('rhizomorph')`.
   - `clashArmyIds` is the roster without the Truffle Cellar, the Spore Exchange and the Rhizome Vault; the Tender's Ring and the Puffball Mortar are in (A016).
   - `armyFromBot`: mono Burrow spends 220 at 300 (2 Burrows) and holds 8 Burrows at 1,500 on the one-lane field (the plot cap, 880 spent); mono Lodge holds 1 at 300.
@@ -187,7 +187,7 @@ The armies (T011–T012) need nothing from `formation.ts` or the switches, so S2
   - The same (bot, budget, seed) gives the same army in both seats and against every opponent. At 900, seeds 1–10 give at least two distinct `bot:balanced` armies.
   - `general:scripted` builds an army too: its opener's Cellar is skipped and its squads have merging on (`mergePolicy` "auto").
   - `bot:pair-capguardHall-gillNest` (from `counterBotSpec`) at 300 is [capguardHall, gillNest]. `bot:balanced-nomerge`'s squads have merging off.
-- [ ] T012 Build squads and armies in `tools/lib/clash.ts` (new): `squadSize(content, buildingId, seconds = 60)`, `clashArmyIds(content)` and `armyFromBot(content, controller, budget, seed, plots)` → `Army` (§11.2, §12.2, §16 R1) ⛔ R1-Q2, R1-Q4
+- [x] T012 Build squads and armies in `tools/lib/clash.ts` (new): `squadSize(content, buildingId, seconds = 60)`, `clashArmyIds(content)` and `armyFromBot(content, controller, budget, seed, plots)` → `Army` (§11.2, §12.2, §16 R1) ⛔ R1-Q2, R1-Q4
   - `squadSize`: `spawn.count × round(seconds / spawn.interval)`, halves rounded up.
   - `armyFromBot` reads the opener, the weights and `maxOwned` from the `AiState` that `createBattle` resolves for the controller on a throwaway state, which it then drops.
   - It filters economy and utility cards out first, takes the opener (skipping what doesn't fit), then weighted picks from the army's own stream (Technical context). A pick that doesn't fit is skipped and drawing goes on. It stops when no pickable card fits or the plots are full. It honours `maxOwned` and ignores `afterSeconds`.
