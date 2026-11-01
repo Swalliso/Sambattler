@@ -8,8 +8,8 @@ SPEC v2, broken into task lists that later sessions work through one row of a Se
 
 | Now | Session | Waits on |
 |---|---|---|
-| 1 | **R1 S1 and S2** in [r1-clash-check.md](r1-clash-check.md), side by side: `src/sim/formation.ts`; the two tool-only switches and the army builder | R1 S0 merged (`feature/r1-plan`: the plan agreed on 2026-11-01, and R1's calls in SPEC) |
-| 2 | **R1 S3**: one clash recorded, and `--checks clash --pair` | R1 S1 and S2 merged |
+| 1 | **R1 S4** in [r1-clash-check.md](r1-clash-check.md): T053 (the muster's exact ties), then the clash jobs on the pool, G3, G12 and G13 on clashes, and `--checks clash` | R1 S3 merged (`feature/r1-clash-runner`: one clash recorded, and `--checks clash --pair`) |
+| 2 | **R1 S5 and S6**, side by side: the variants; the race model, the pairings, the full colony and the bench case | R1 S4 merged |
 | 3 | **R4a-S2b** in [r4-readable-armies.md](r4-readable-armies.md): the draft silhouette sheet, which the user approves (T026) | R4a-S2 merged (`feature/r4a-shape-checks`: the shape schema, `marks.json`, the shape checks and the sprite-sheet tool) |
 | 4 | **records S2** in [run-it-back.md](run-it-back.md): the Underroot remembers the setup, records-1's checks, and the user's check on the dev site (`feature/records-1-setup`) | records S1 merged (`feature/records-1-run-it-back`: the profile store and Run it back) |
 
