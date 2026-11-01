@@ -20,6 +20,7 @@ This list is a draft of 2026-11-01, made from SPEC v2 and `docs/tasks/spec-analy
 
 - **X1** (R2a and R2b) and **X2** (beside v1) block S0 and every session. If X1 is no: this file and R2b's merge into one list and the playtest task (T137) moves to the end of R2. If X2 is no: every branch here targets `feature/r2-rounds` instead of `develop`, T075's dev-only entry is dropped, and the playtest runs from a local build.
 - **X3** (R4a first), agreed 2026-11-01: R4a merges before R2a's playtest, so T137 and S21 wait for R4a's review gate (R4/T039).
+- **R2-Q25** (a rough playtest after S14), agreed 2026-11-01: S14b (T145, T146) has the user play the battle as S14 leaves it, before S15 and S16 start. T137 and S21 stay the gate.
 - **X4** (copies before R3) blocks T009 (squad sizes measured with copies), T032, T033 (the kit and mono bots) and T093 (the copy count), with **#51** (what "mono" means) and **#43** (a cap on copies of one card, first guess 4), which then block T032 and T033 too, and **R3-Q8** (a count, not pips), which then blocks T093. If no, `plant` has no copy refusal and #43, #51 and R3-Q8 stay R3's.
 - **X5** (the scoring curve) blocks T008, T050–T052 and T119. If the user keeps the flat 500, nothing in code changes (the cap is data) and G4's miss is reported, not tuned.
 - **X6** and **RB-Q3** (play time) block T126 and T128. If X6 sets a hard target now, T128 is the same and T137 reads against it.
@@ -660,6 +661,15 @@ S1 to S4: the data, the colony, the round state machine and the planning command
 
 **Checkpoint:** `npm run test:browser` is green, v1's suite and `tests/browser/rounds/` alike; on `npm run dev`, `/?scene=rounds&seed=1` plays a battle from round 1's planning to the report; `npm run verify` is green.
 
+**S14b: the rough playtest** (the user, on the dev site, once S14's PR is merged and deployed; R2-Q25, agreed 2026-11-01)
+
+- [ ] T145 [USER] The rough playtest. The user plays two or three battles at `https://swalliso.github.io/Sambattler/dev/?scene=rounds`, as S14 leaves them, and answers §16 R2 gate questions 1, 2, 3 and 6 in rough form, plus one more: is anything about the loop wrong enough to change S15–S20? It tests the core bet, planning with the general's army in view and then watching both whole armies clash, before the counter cycle, the power, the round tools and the polish are built (§16 R2 step 10, R2-Q25)
+  - Tell the user first what isn't in yet: the general doesn't adapt (S15), there's no commander power (S16), Twin Roots has no replays and the bench isn't in round form (S17), there are no round guardrails (S18), and there's no "last fielded" view (S19). Help still describes v1, and the preview plays no battle sounds.
+  - It isn't a gate on numbers. A balance miss is written down for S18 and S21, not tuned here.
+- [ ] T146 Write the rough playtest down: the answers in `docs/playtest-feedback.md`, newest first, and one line in `docs/status.md`. Agree with the user what, if anything, changes in S15–S20, and edit those tasks in this file in the same PR (R2-Q25, CLAUDE.md "Where things get written down")
+
+**Checkpoint:** the notes are in `docs/playtest-feedback.md`, and the user has said S15 and S16 may start, as planned or with the changes T146 wrote in.
+
 ## Phase 6: US4 — The general adapts by rounds (P2)
 
 **Goal:** the counter cycle runs at rounds 4 and 7 (the boss also at 3), reads only the fielded record, and lands as buildings you see before you plan. **Independent test:** `npm run sim -- --rounds --seeds 4..5 --player bot:mono:sporelingBurrow --enemy general:mother-mold --flags merging,adaptive --summary --assert counters[0].round=4`.
@@ -836,11 +846,11 @@ S1 to S4: the data, the colony, the round state machine and the planning command
 
 ## Dependencies and parallel work
 
-- **Phase order:** Setup → Foundational → US1 → US2 → US3 → US4 and US5 in parallel → US6 → US7 → Polish. US1 needs the whole Foundational phase, and US2 needs US1. US3 needs US2 (a whole battle to play). US4's and US5's sim tasks need only US2, but their UI tasks (T102, T109) need US3's S13 and S14, so their sessions start after S14. US6 needs US4 and US5 (the power replays, G8 on the adaptive general). US7 needs US3: T127 draws on its preview layer and T128 on its report. Polish needs US6 and US7 (S20 after S18 and S19), and the playtest (S21) needs S20 on the dev site.
+- **Phase order:** Setup → Foundational → US1 → US2 → US3 → S14b's rough playtest (R2-Q25) → US4 and US5 in parallel → US6 → US7 → Polish. US1 needs the whole Foundational phase, and US2 needs US1. US3 needs US2 (a whole battle to play). US4's and US5's sim tasks need only US2, but their UI tasks (T102, T109) need US3's S13 and S14, so their sessions start after S14. US6 needs US4 and US5 (the power replays, G8 on the adaptive general). US7 needs US3: T127 draws on its preview layer and T128 on its report. Polish needs US6 and US7 (S20 after S18 and S19), and the playtest (S21) needs S20 on the dev site.
 - **Sessions in parallel:**
   - S1 and S2 (both edit `src/data/schema.ts`, in different schemas; the later merge rebases).
   - S12 and S13. S12 owns `src/render/rounds/**`, `src/sim/rounds/matchups.ts` with its export line in `src/sim/rounds/index.ts`, and `src/app/rounds/phases/aftermath.ts`'s hook for the aftermath view; it doesn't edit `src/app/rounds/battleView.ts`. S13 owns `src/ui/rounds/hud/top.ts`, `tally.ts`, `explain.ts`, `src/ui/rounds/doctrine.ts` and its mount lines in `src/app/rounds/battleView.ts` (T077's mounts).
-  - S15 and S16, after S14: S15 owns `src/sim/rounds/ai/**`, `src/ui/rounds/doctrine.ts` and `src/app/rounds/phases/planning.ts`; S16 owns `src/sim/rounds/powers.ts`, `step.ts`'s power calls and `src/app/rounds/phases/clash.ts`. Both add a line to `tools/verify.ts`, so the later merge rebases.
+  - S15 and S16, after S14 and its rough playtest (S14b): S15 owns `src/sim/rounds/ai/**`, `src/ui/rounds/doctrine.ts` and `src/app/rounds/phases/planning.ts`; S16 owns `src/sim/rounds/powers.ts`, `step.ts`'s power calls and `src/app/rounds/phases/clash.ts`. Both add a line to `tools/verify.ts`, so the later merge rebases.
   - Everything else is in order.
 - **From R1:**
   - R1/T004 and R1/T006 (`formationBox`, `slotPositions`, `emplacementPosition`, `overflows`, `findTrios`, `musterKnits` in `src/sim/formation.ts`) → T020 and T043.
@@ -882,8 +892,9 @@ Each session is about a day, ends in one PR into `develop` (opened when the user
 | S12 | T082, T083, T142, T084–T086 | `feature/r2a-ui-field` | S11 merged; R2-Q12 decided | The formation and merge previews, `matchupClass` and its marks, the aftermath, the field's details |
 | S13 | T087–T091 | `feature/r2a-ui-bands` | S11 merged | Both Heartcaps, chips, tally, lane tug, tooltips, the Intent panel, each in its mount |
 | S14 | T092–T097, T143 | `feature/r2a-ui-panels` | S12 and S13 merged; X4 and R2-Q12 decided | Tray, inspect, the planning and clash chrome, the report by round, assertion 4 (US3 done) |
-| S15 | T098–T103 | `feature/r2a-counters` | S14 merged; R2-Q3, #14, #15, #31, X8 decided | The counter cycle in rounds; X8's readouts and knobs; the adaptive smoke (US4 done) |
-| S16 | T104–T111 | `feature/r2a-powers` | S14 merged; #25 and R2-Q7 decided | The power once per clash, its controls, its smokes and replays (US5 done) |
+| S14b | T145, T146 | `feature/r2a-rough-playtest` | S14 merged and deployed to the dev site | The user's rough-playtest notes in `docs/playtest-feedback.md`, and any change to S15–S20 written into this list (docs only); S15 and S16 may start |
+| S15 | T098–T103 | `feature/r2a-counters` | S14b done; R2-Q3, #14, #15, #31, X8 decided | The counter cycle in rounds; X8's readouts and knobs; the adaptive smoke (US4 done) |
+| S16 | T104–T111 | `feature/r2a-powers` | S14b done; #25 and R2-Q7 decided | The power once per clash, its controls, its smokes and replays (US5 done) |
 | S17 | T112–T118 | `feature/r2a-tools` | S15 and S16 merged | Twin Roots and merge-mirror replays, the round bench and frame check, balance and experiment in rounds with `playRoundClash` |
 | S18 | T119–T125 | `feature/r2a-guardrails` | S17 merged; X5, X7, R2-Q9, R2-Q10 decided; #35's approach agreed in T004 (its battle-level bands are set in T124–T125) | The round guardrails in `tests/slow/rounds/`, the answer bot, the bands agreed (US6 done) |
 | S19 | T126–T128 | `feature/r2a-measures` | S18 merged; R2-Q1, X6, X10 and RB-Q3 decided | The "last fielded" view and planning seconds per round on the report (US7 done) |
@@ -934,6 +945,7 @@ Each session is about a day, ends in one PR into `develop` (opened when the user
 | Verification 8: `npm run bench` | T113, T114, T115, T134 |
 | Verification 9: browser checks (§15.6's automatic assertions) and the visual checklist | T080, T141 (assertions 1–3, 5), T143 (assertion 4), T135 (the captures and the Read); the route capture and lives: R2b |
 | Verification 10: the playtest gate | T137, T144 (questions 1, 2, 3, 6, 7); R2b |
+| Verification 10: the rough playtest before it (R2-Q25, added 2026-11-01) | T145, T146 (questions 1, 2, 3 and 6 in rough form, and whether S15–S20 change) |
 
 **Table 2: findings.** Every high and medium A-ID for R2a, then the lows.
 

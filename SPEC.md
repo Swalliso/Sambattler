@@ -3790,6 +3790,8 @@ Its goldens are `m1-balanced-vs-scripted-s1` and `m1-turtle-vs-scripted-s2`. Its
 
     Tune the data before starting R3. The answers go in `docs/playtest-feedback.md`.
 
+    **A rough playtest comes first** (agreed 2026-11-01). Once a single battle in rounds is properly playable on the dev site, with the planning screen, the clash chrome and the report, and before the counter cycle and the commander power land, the user plays it rough and answers questions 1, 2, 3 and 6. Its notes steer the rest of R2, and this gate stays.
+
 ### Milestone R3 — The kit
 
 **Goal:** runs built from a few archetypes, differently each time. The kit's copies make "mass the cheapest spawner" impossible by construction, and augments, combos and run packs make the builds.

@@ -73,6 +73,7 @@ This is the clarify step for SPEC v2. SPEC.md is the spec, `docs/<milestone>-pla
 | R2-Q10 | G16 over role-split pairs | R2a S0 | Yes |
 | R2-Q11 | Clash-rule details | R2a S0 | Yes to the set |
 | R2-Q12 | Planning-screen details | R2a S0 | Yes to the set |
+| R2-Q25 | A rough playtest after S14 | R2a (decided 2026-11-01) | Yes, before S15 and S16 |
 | #19 | The third rank's tiles and order | R2a S0 | First guess, plus a `startRanks` field |
 | #22 | The margin with siege units | R2a S0 | First guess |
 | #23 | Edge cases E1–E8 | R2a S0 | First guess |
@@ -567,6 +568,15 @@ R1 reports a measure for each row, and you settle it at R1's review gate (§16 R
 - **Alternatives:** settle each one apart.
 - **Blocks:** R2a's battle UI.
 - **Decision:** _open_
+
+### R2-Q25 · A rough playtest after S14
+
+- **Question:** Should R2a get a rough playtest as soon as a battle in rounds is properly playable, after S14 (the tray, inspect, the planning and clash chrome, and the report by round), before the counter cycle, the power, the round tools and the polish (S15–S20)?
+- **SPEC's first guess:** one playtest, at R2a's end (S21; §16 R2 step 10).
+- **Recommendation:** Yes. The user plays two or three battles on the dev site's dev-only entry and answers step 10's questions 1, 2, 3 and 6 in rough form, plus whether anything should change in S15–S20. S15 and S16 start after it. **Why:** v2 rests on one bet, that planning with the general's army in view and then watching whole armies clash is fun. S14 is the first point that bet can be played, and seven sessions follow it before S21. It's X1's reason for splitting R2, applied once more.
+- **Alternatives:** the playtest at S21 only.
+- **Blocks:** S15 and S16 (T145, T146).
+- **Decision:** 2026-11-01: yes (the user, in the hub session). S14b (T145, T146) in `docs/tasks/r2a-battle-in-rounds.md`, and SPEC §16 R2 step 10.
 
 ### #19 · The third rank's tiles and the order its plots open
 

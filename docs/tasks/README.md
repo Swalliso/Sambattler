@@ -101,6 +101,7 @@ Sessions are sized at about a day of focused work. Two small adjacent rows can s
 - **Parallel only where the lists allow it.** Now that's R1, R4a and records-1. Later, it's the rows whose Gate says "may run beside".
 - **Batch the decisions.** Plan sessions and gates go faster with `/clarify` and "take the recommendations except …".
 - **Merging.** A session merges its own PR into `develop` only if the user said so when starting it, for example "merge when green". Small neighbouring rows can share a PR. Nothing touches `main` until the user asks for a release.
+- **When a hub runs the sessions** (since 2026-11-01): the hub reviews each PR against its tasks and merges it once CI is green, as the user agreed. Each session edits only its own lines in `docs/status.md`. The hub keeps the "Recent work" table and "Where to start", since parallel PRs collide there.
 - **Ultracode and workflows where breadth or an adversarial check pays:**
   - a skeptic pass on each plan before the user agrees it;
   - R1 S7's analysis of its measurement runs;
