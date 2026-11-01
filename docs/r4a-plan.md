@@ -1,6 +1,6 @@
 # Milestone R4a plan: the shape language on the field
 
-**Status: agreed with the user on 2026-11-01** (S0 of [the task list](tasks/r4-readable-armies.md), T007). The user settled the decisions below the same day, then agreed the plan as written, call 10 included. The answers are dated in `docs/tasks/clarify.md`, and S0 wrote them into SPEC before any code. Later that day, at T026's review of the silhouette sheet, the user dropped weapon marks from units (decision 9). That superseded decision 2 and calls 1 and 10, and reworded call 9.
+**Status: agreed with the user on 2026-11-01** (S0 of [the task list](tasks/r4-readable-armies.md), T007). The user settled the decisions below the same day, then agreed the plan as written, call 10 included. The answers are dated in `docs/tasks/clarify.md`, and S0 wrote them into SPEC before any code. Later that day, at T026's review of the silhouette sheet, the user dropped weapon marks from units (decision 9). That superseded decision 2 and calls 1 and 10, and reworded call 9. The user then approved the sheet redrawn without marks (T026, "The approved silhouette sheet" below).
 
 Written 2026-11-01 against `develop` at `778a564` ([#42](https://github.com/Swalliso/Sambattler/pull/42), R1's plan, merged). R4a is the first part of SPEC §16 "Milestone R4 — Readable armies", split by X3. Its scope comes from that milestone and the sections it cites: §2, §4.6, §5.6, §5.8, §10.1, §10.4, §11.2, §11.3, §13.2, §13.6, §14.2, §14.3, §15.6 and §17 #20. The calls below come from the review of SPEC v2: its findings, cited by A-ID (`docs/tasks/spec-analysis.md`), and the user's answers to X3, R4-Q1 to R4-Q5, #52, #53 and #55 (`docs/tasks/clarify.md`). The tasks are Part 1 of `docs/tasks/r4-readable-armies.md`, T001–T039.
 
@@ -183,13 +183,37 @@ SPEC §16 R4's R4a part:
 - #53: ×1.0, made in R2a (decision 8).
 
 **Later:**
-- **T026 (S2b):** approve the silhouette sheet before any game sprite is redrawn. At its first review the user dropped weapon marks (decision 9), so the sheet comes back redrawn without them.
+- **T026 (S2b): approved 2026-11-01.** At its first review the user dropped weapon marks (decision 9), and then approved the sheet redrawn without them, as drawn. The record is below, in "The approved silhouette sheet".
 - **T039 (the gate):** agree that R2a's playtest can run on R4a's sprites.
 - **#52:** a first reading at R2a's playtest, and the call at R4b's fresh-tester gate (T075, T076).
 - **R1's squad sizes (#7):** they set the width bound. If R1 makes a 4-unit squad bigger, its bound may drop from 16 px to 10, and the sprite is narrowed in a follow-up PR.
 - **The Bloomed cue:** if R2a's playtest finds Bloomed units hard to tell from base ones, add the spore-white tier-2 rim (R4-Q3's other option).
 
 R4b's own calls (R4-Q6, #54, the structure glyph's form) come at R4b-S0.
+
+## The approved silhouette sheet (T026, 2026-11-01)
+
+The user approved `docs/r4a-silhouettes.json` as drawn ("Approve as drawn"), on `feature/r4a-silhouettes` (R4a-S2b). It's frame 0 of all 13 unit sprites and of `e-puffballMortar`, and S3 and S4 redraw the game's sprites from it. `npm run sprite-sheet -- --sheet docs/r4a-silhouettes.json --name r4a-silhouettes` renders it, plain and with `--filter deuteranopia` or `--filter protanopia`.
+
+**The change the user asked for.** The first draft carried S2's mark glyphs. At its review the user dropped them (decision 9, R4/T077), and the redraw draws each weapon §11.3 names as body: the Gill Archer's bow with an arrow, the Hammercap's raised maul, the Scythecap's hooked cap and the Rootbreaker's ram.
+
+**What the approval covers**, for S3 and S4 to follow:
+- **Heights:** small bodies are 8 px (the Sporeling and the Burster) or 9 (the Gill Archer, the Tender, the Veilstalker and the Driftling). Every medium body is 12, and the Amanita Knight is 16.
+- **The Rootbreaker** is a capped root beast carrying a knotted root log forward, its head curled like a ram's horn. That's how this sheet draws §11.3's "ram's head of knotted root".
+- **The Amanita Knight's** dome stays red and cream on both sides, as today. Its side shows in its gill band, its ring and which way it faces.
+- **The Driftling** draws no shadow, since `flyerShadow` draws one under every flyer.
+- **The Mortar's emplacement** is 24 × 22, anchored at its centre, since an emplacement stands at its slot's centre (`emplacementPosition`). S3 may resize it within 32 × 32 (T029).
+- **Soil and roots** (the Rhizomorph's mound, the Mortar's base and the Rootbreaker's log) use unswapped browns, so the ground looks the same under both sides.
+
+**The checks when it was approved:**
+- The tool listed no problem in any of the three renders. It listed 4 overflows, all at base + 2 (the Velvet Shrine's): the Tender, the Scythecap, the Rootbreaker and the Rhizomorph.
+- Every pair of the 13 units passes T030's distinctness rule, with an IoU of at most 0.69.
+- `npm run verify` passed, and no golden moved.
+
+**For S3 and S4:**
+- The sheet has frame 0 only. T028 and T031 add the two walk frames and the attack frame.
+- Under deuteranopia, the Rootbreaker's brown log turns olive like the soil, and only its outline keeps it apart. Watch it in T036's captures.
+- T032 deletes this sheet once S4 has drawn the roster.
 
 ## As built
 
