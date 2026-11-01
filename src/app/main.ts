@@ -123,13 +123,14 @@ function boot(): void {
 }
 
 /**
- * Where a run is kept: normal play saves, and seeded and test runs never touch storage. A prototype run
- * saves only on the dev site, apart from the real save (`protoSpace`).
+ * Where a run and the profile are kept: normal play saves both, and seeded and test runs never touch
+ * storage. A prototype run saves only on the dev site, apart from the real save (`protoSpace`), and never
+ * writes the profile (RB-Q2).
  */
-function runStorage(params: Params): { persist: boolean; storage: BrowserStorage | MemoryStorage } {
+function runStorage(params: Params): { persist: boolean; storage: BrowserStorage | MemoryStorage; records: BrowserStorage | null } {
   const space = params.proto ? protoSpace(params.proto) : '';
-  if (params.seed !== null || params.test || space === null) return { persist: false, storage: new MemoryStorage() };
-  return { persist: true, storage: new BrowserStorage(space) };
+  if (params.seed !== null || params.test || space === null) return { persist: false, storage: new MemoryStorage(), records: null };
+  return { persist: true, storage: new BrowserStorage(space), records: params.proto ? null : new BrowserStorage('') };
 }
 
 /** A rules-only battle for Help outside a battle (the title): the default map, kit and rules. */
@@ -145,7 +146,7 @@ function rulesState(content: Content): BattleState {
  * here, behind a spore wipe.
  */
 function openTitle(content: Content, atlas: ReturnType<typeof bakeAtlas>, params: Params): void {
-  const { persist, storage } = runStorage(params);
+  const { persist, storage, records } = runStorage(params);
   let ctl: RunController | null = null;
   let where = params.scene === UNDERROOT ? UNDERROOT : TITLE;
   const bridge = params.debug || params.test
@@ -156,7 +157,9 @@ function openTitle(content: Content, atlas: ReturnType<typeof bakeAtlas>, params
   const play = (run: RunState, fresh = false) => {
     closeHelp();
     ctl?.stop();
-    ctl = new RunController({ content, atlas, storage, persist, debug: params.debug, still: params.test, newSeed: randomSeed, toTitle: show, setup: () => openSetup() }, run);
+    ctl = new RunController({
+      content, atlas, storage, persist, records, debug: params.debug, still: params.test, newSeed: randomSeed, toTitle: show, setup: () => openSetup(),
+    }, run);
     ctl.onFrame = ready;
     ctl.pendingTicks = params.ticks;
     if (fresh) ctl.start(run);
@@ -235,10 +238,10 @@ function openTitle(content: Content, atlas: ReturnType<typeof bakeAtlas>, params
  * run saves only on the dev site, apart from the real save.
  */
 function startRun(content: Content, atlas: ReturnType<typeof bakeAtlas>, params: Params): void {
-  const { persist, storage } = runStorage(params);
+  const { persist, storage, records } = runStorage(params);
   const seed = params.seed ?? randomSeed();
   const run = (persist ? loadRun(storage) : null) ?? runForScene(content, { scene: params.scene, seed, player: params.player, autoplay: params.autoplay });
-  const ctl = new RunController({ content, atlas, storage, persist, debug: params.debug, still: params.test, newSeed: randomSeed }, run);
+  const ctl = new RunController({ content, atlas, storage, persist, records, debug: params.debug, still: params.test, newSeed: randomSeed }, run);
   if (params.debug || params.test) {
     const bridge = installBridge({ scene: params.scene, battle: () => ctl.battleState, run: () => ctl.run }, errors);
     ctl.onFrame = () => { bridge.ready = true; };

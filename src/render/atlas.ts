@@ -1,8 +1,8 @@
 // Bakes every text sprite (SPEC §14.3) into one atlas with a simple shelf packer (SPEC §13.6).
-// Sprites marked `factionSwap` get a Gray Rot variant baked from the faction palette, and unit
-// sprites also get mirrored variants so enemy units face left, and an Elder's gold rim for each
-// frame. The layout and each region's pixels come from the pure functions in compose.ts; this
-// file paints them onto the canvas.
+// Sprites marked `factionSwap` get a Gray Rot variant baked from the faction palette, a sprite with a
+// shape gets its mark's glyph from data/sprites/marks.json baked on, and unit sprites also get
+// mirrored variants so enemy units face left, and an Elder's gold rim for each frame. The layout and
+// each region's pixels come from the pure functions in compose.ts; this file paints them onto the canvas.
 import type { Content } from '../data/registry.ts';
 import { atlasLayout, framePixels, regionKey, rimKey, rimPixels } from './compose.ts';
 import type { Faction, Region } from './compose.ts';
@@ -32,7 +32,9 @@ export function bakeAtlas(content: Content): Atlas {
   const img = ctx.createImageData(W, H);
   for (const j of jobs) {
     const r = regions.get(j.key)!;
-    const f = j.rim ? rimPixels(j.sprite, j.frame, j.flip) : framePixels(j.sprite, j.frame, { swap: j.faction === 'gray-rot' ? gray : undefined, flip: j.flip });
+    const f = j.rim
+      ? rimPixels(j.sprite, j.frame, j.flip, content.sprites)
+      : framePixels(j.sprite, j.frame, { swap: j.faction === 'gray-rot' ? gray : undefined, flip: j.flip, glyphs: content.sprites });
     for (let py = 0; py < f.h; py++) img.data.set(f.px.subarray(py * f.w * 4, (py + 1) * f.w * 4), ((r.y + py) * W + r.x) * 4);
   }
   ctx.putImageData(img, 0, 0);

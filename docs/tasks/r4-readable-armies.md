@@ -214,7 +214,7 @@ This list was drafted on 2026-11-01 from SPEC v2 and `docs/tasks/spec-analysis.m
 
 **Goal:** a measurable shape rule that the data checks, a tool, and the user can all see. **Independent test:** see Stories.
 
-- [ ] T017 [P] [US2] Write `tests/unit/shapes.test.ts` (new) for `src/data/shapes.ts` and `src/render/compose.ts` (§5.8, §11.3, §14.3)
+- [x] T017 [P] [US2] Write `tests/unit/shapes.test.ts` (new) for `src/data/shapes.ts` and `src/render/compose.ts` (§5.8, §11.3, §14.3)
   - `bodyOf`: light → small, medium → medium, heavy → big.
   - `markOf` from the content: Burster → area (via `protoContent('rework')`), Tender → heal, Gill Archer → arrow, Veilstalker and Morel Runner → spike, Scythecap → blade (A150), Hammercap and Rootbreaker → hammer.
   - `towerMarkOf(puffballMortar)` → hammer with a splash accent (A151).
@@ -222,26 +222,31 @@ This list was drafted on 2026-11-01 from SPEC v2 and `docs/tasks/spec-analysis.m
   - `shapeProblems` rejects: `markAt` with a different length from `frames`; no `markAt` when the mark isn't `none`; no `accentAt` when an accent is set; a glyph that leaves the w × h box; a mark in the back half (A165); a glyph whose rows reach above the body's top row or below its bottom row in that frame (call 10).
   - `composedBox(sprite, frame, glyphs, flip)` unites the body's opaque box with the glyph's own opaque box at `markAt[frame]`, mirrored with `flip`.
   - `framePixels` with a mark: the glyph's pixels sit at `markAt`, mirror with `flip`, and fill exactly the box `composedBox` gives. The Gray Rot swap doesn't touch them.
-- [ ] T018 [P] [US2] Add cases to `tests/unit/data.test.ts` (§15.7 Data row, §16 R4 step 1)
+- [x] T018 [P] [US2] Add cases to `tests/unit/data.test.ts` (§15.7 Data row, §16 R4 step 1)
   - Through `loadContent` with a patched raw sprite: "rejects a heavy unit drawn small", "rejects a crush unit with a blade" and "rejects a shape mark with no `m-` glyph".
   - "Every sprite that declares a shape passes", over the default content and over `protoContent('rework')`, so `?proto=rework` keeps loading.
-- [ ] T019 [US2] Write `src/data/shapes.ts` (new), pure, with no DOM: `bodyOf(armor)`, `markOf(unit)` and `towerMarkOf(building)` by T003's rule; `bodyBox(sprite, frame)` (the opaque bounding box); `glyphBox(glyph)`; `composedBox(sprite, frame, glyphs, flip)`; and `shapeProblems(sprite, bands, glyphs)` (§5.8, §13.2, §14.3) ⛔ R4-Q1, R4-Q2, §18.2 #55
+- [x] T019 [US2] Write `src/data/shapes.ts` (new), pure, with no DOM: `bodyOf(armor)`, `markOf(unit)` and `towerMarkOf(building)` by T003's rule; `bodyBox(sprite, frame)` (the opaque bounding box); `glyphBox(glyph)`; `composedBox(sprite, frame, glyphs, flip)`; and `shapeProblems(sprite, bands, glyphs)` (§5.8, §13.2, §14.3) ⛔ R4-Q1, R4-Q2, §18.2 #55
   - `src/data/shapes.ts` imports nothing from `src/render` (`tests/unit/purity.test.ts`, the `src/data` block of `eslint.config.js`). It computes the composed box arithmetically, from the sprite rows and the `m-` glyph's rows. `src/render/compose.ts` may import `shapes.ts`, never the reverse.
-- [ ] T020 [US2] Extend `SpriteSchema` and `SpriteSheetSchema` in `src/data/schema.ts:494-511` (§14.2, §14.3) ⛔ R4-Q1, R4-Q2
+  - As built: it also exports `placedGlyphs` (the glyphs a frame bakes, which `framePixels` uses), `shapeBlockProblems` (the point-per-frame checks, which `SpriteSchema`'s `superRefine` runs too, so the two can't drift), `unitShapeProblems` (T022's body and mark check) and `emplacementShapeProblems` (T029's), and `baseSquad` and `widthBound` (T030's n and bound). A unit's mark may stand anywhere but the body's back half; an emplacement's anywhere on it, since it has no front.
+- [x] T020 [US2] Extend `SpriteSchema` and `SpriteSheetSchema` in `src/data/schema.ts:494-511` (§14.2, §14.3) ⛔ R4-Q1, R4-Q2
   - `shape?: { body: 'small' | 'medium' | 'big' | 'structure'; mark: 'blade' | 'arrow' | 'spike' | 'hammer' | 'area' | 'heal' | 'none'; accent?: 'splash'; markAt?: [int, int][]; accentAt?: [int, int][] }`. `markAt` is required unless the mark is `none`, and `accentAt` when an accent is set. The `superRefine` checks one entry per frame in each.
   - `bands?: { small: [min, max]; medium: [min, max]; big: [min, max] }` on the sheet. The schema only parses it: bands are checked once, in T022's `shapeProblems`. `structure` has no band.
   - The bands stay out of `data/balance.json`, which the battle hashes. R4a-S0 wrote the same field into §14.2's `SpriteDef` (`SpriteShape`) and the bands into §14.3 (T003, T004).
-- [ ] T021 [US2] Write `data/sprites/marks.json` (new), sheet `marks`, with no `factionSwap`: `m-blade`, `m-arrow`, `m-spike`, `m-hammer`, `m-area`, `m-heal` and the accent `m-splash`. Each is at most 5×5, its strokes at least 2 native px wide (A158), with a light core and a dark `k` outline so it reads on both sides' bodies. Then teach `framePixels` in `src/render/compose.ts` to composite `m-<mark>` at `shape.markAt[frame]` and the accent at `shape.accentAt[frame]` before mirroring (§5.8, §13.6, §14.3) ⛔ R4-Q2
-- [ ] T022 [US2] Cross-check units against their sprites in `src/data/registry.ts`, beside the sprite checks at :172-188 (§5.8, §14.3)
+  - As built: `SpriteShapeSchema` and `SpriteBandsSchema`, with the types `SpriteShape` and `SpriteBands`. A band must be [min, max].
+- [x] T021 [US2] Write `data/sprites/marks.json` (new), sheet `marks`, with no `factionSwap`: `m-blade`, `m-arrow`, `m-spike`, `m-hammer`, `m-area`, `m-heal` and the accent `m-splash`. Each is at most 5×5, its strokes at least 2 native px wide (A158), with a light core and a dark `k` outline so it reads on both sides' bodies. Then teach `framePixels` in `src/render/compose.ts` to composite `m-<mark>` at `shape.markAt[frame]` and the accent at `shape.accentAt[frame]` before mirroring (§5.8, §13.6, §14.3) ⛔ R4-Q2
+  - As built: a spore-white `#fbf6ff` core in a `#1a1020` outline. With an outline all round, a 5×5 glyph's core is at most 3×3, so the hammer's haft, the heal + and the area × have 1-px strokes; the user judges them at T026 (`data/CHANGELOG-balance.md`). `framePixels` takes the glyphs as `opts.glyphs` and throws if a shape's glyph is missing. `rimPixels` takes them too, so an Elder's rim outlines the mark, and `bakeAtlas` passes `content.sprites` to both.
+- [x] T022 [US2] Cross-check units against their sprites in `src/data/registry.ts`, beside the sprite checks at :172-188 (§5.8, §14.3)
   - For every unit whose sprite declares a shape: `shape.body === bodyOf(unit.armor)`, `shape.mark === markOf(unit)`, and `m-<mark>` exists.
   - `shapeProblems(sprite, bands, glyphs)` is empty, with the bands of the sheet that holds the sprite (the registry keeps each sheet's `bands` as it parses it) and the `m-` sprite defs it has loaded. It imports only from `src/data`.
   - Each problem names the unit, the sprite and the frame.
-- [ ] T023 [US2] Write `tools/sprite-sheet.ts` (new) and add `"sprite-sheet": "tsx tools/sprite-sheet.ts"` to `package.json` (§14.3, §15.6, §17 #20)
+  - As built: `Content` keeps `spriteSheet` (each sprite's sheet) and `bands` (each sheet's bands).
+- [x] T023 [US2] Write `tools/sprite-sheet.ts` (new) and add `"sprite-sheet": "tsx tools/sprite-sheet.ts"` to `package.json` (§14.3, §15.6, §17 #20)
   - It reads a sheet file (`--sheet <path>`, default `data/sprites/units.json`) and validates it with `SpriteSheetSchema`.
   - It renders through `framePixels` into a Playwright page (`page.setContent`, no server): every frame at 2× and 4×, Velvet Bloom facing right and Gray Rot facing left.
   - It overlays the band lines and each measured body box, and lists `shapeProblems` under each sprite.
   - Where an id matches a unit, it adds strips with the sprite on its squad's k × k grid at 2×, at the base squad, base + 1 and base + 2, and lists each overflow it sees (A165, #11).
   - `--filter deuteranopia|protanopia` uses `tools/lib/cvd.ts`. The PNG goes to `artifacts/sprite-sheet/<name>.png`.
+  - As built: the name defaults to the sheet's file name, and a filter adds `-d` or `-p`, so T024's three renders don't overwrite each other. A `<name>.json` report sits beside the PNG. The filter changes the art, not the annotations. The tool also lists each unit's body and mark problems (`unitShapeProblems`) and an `e-<id>` sprite's (`emplacementShapeProblems`). It reads the units, including the preset-only ones, straight from the data files rather than through `loadContent`, so a sheet the registry rejects still renders. A width overflow at the base squad or base + 1 is a problem for a sprite with a shape; base + 2's is only listed. It exits 1 on any problem.
 - [ ] T024 [US2] Draft the silhouettes in `docs/r4a-silhouettes.json` (new): a sheet in the sprite format, with frame 0 only of every unit sprite (`u-sporeling` … `u-driftling`, 13) and of `e-puffballMortar`. Each has its shape block and the sheet's bands, follows §11.3's silhouette ideas and T004's bands, and is rendered with `npm run sprite-sheet -- --sheet docs/r4a-silhouettes.json --name r4a-silhouettes`, plain and under both filters (§5.8, §11.3, §17 #20) ⛔ R4-Q1
   - Weapon-like silhouette features in §11.3 (the Gill Archer's bow, the Hammercap's raised maul, the Scythecap's hook) are body pixels: they count toward the band and stay inside it. The weapon reads from the `m-` glyph, so the body doesn't draw a second one.
 - [ ] T025 [US2] Fix every problem the sheet lists in `docs/r4a-silhouettes.json`, until `npm run sprite-sheet -- --sheet docs/r4a-silhouettes.json` reports none and each pair of silhouettes differs at a glance at 2× (§17 #20)
@@ -262,6 +267,7 @@ This list was drafted on 2026-11-01 from SPEC v2 and `docs/tasks/spec-analysis.m
   - Ids unchanged, anchors at the foot, and the swappable keys `v l d s t` for the body only.
   - Add `"bands"` to the sheet.
 - [ ] T029 [US3] Draw `e-puffballMortar` (new sprite, at most 32 × 32, one slot) in `data/sprites/buildings.json`, with `shape: { body: 'structure', mark: 'hammer', accent: 'splash', markAt, accentAt }` (T003's rule). Add the tower check to `src/data/registry.ts`, and add `emplacementSprite(content, buildingId)` to `src/render/unitSprite.ts`: `e-<id>` if it exists, else the building's sprite. v1's battle keeps drawing the Mortar as its building, and R2a's clash view draws the emplacement through this helper (§4.4, §5.8, §11.2) ⛔ R4-Q5
+  - From S2: `emplacementShapeProblems(building, sprite)` in `src/data/shapes.ts` already checks the body and the mark against `towerMarkOf`. The tower check calls it, and adds that the sprite exists and declares a shape.
 
 **Checkpoint:** `npm run verify`, `npm run golden -- verify` (unchanged) and `npm run sprite-sheet`. In the r4-lineup PNG, the core units stand in their bands with their marks, on both sides.
 
