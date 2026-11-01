@@ -144,7 +144,7 @@ From another file, cite this file's tasks as RB/T0nn.
 
 ## Phase 2: Foundational (blocks every story)
 
-- [ ] T003 [P] Write `tests/unit/records.test.ts` (new) against `src/meta/records.ts` (new in T006), on `MemoryStorage` (§9.7, §13.8) ⛔ RB-Q1
+- [x] T003 [P] Write `tests/unit/records.test.ts` (new) against `src/meta/records.ts` (new in T006), on `MemoryStorage` (§9.7, §13.8) ⛔ RB-Q1
   - Empty storage loads `{ v: 1 }`.
   - `updateRecords` with `setLastSetup` saves the setup, and the next load returns it.
   - A garbage string at `spore-sprawl/profile/v1` is copied to `spore-sprawl/profile/v1.bak`, and defaults load.
@@ -158,7 +158,7 @@ From another file, cite this file's tasks as RB/T0nn.
 - [x] T005 [P] Move the served-page harness from `tests/browser/protoSaves.test.ts` into `tests/browser/serve.ts` (new), for the records cases (§13.8, §15.6)
   - `tests/browser/serve.ts` exports `serve(mode?)` (a game server, or a `develop`-mode server for the dev-site cases) and `PROTO`. `tests/browser/protoSaves.test.ts` imports both, so R2b, which retires the `hotstart` preset (§16 R2), changes one line.
   - `tests/browser/protoSaves.test.ts` passes, with no other change. T008 writes `tests/browser/records.test.ts` on the harness.
-- [ ] T006 Build the profile store in `src/meta/records.ts` (new) and `src/meta/index.ts` (new) (§9.7, §13.2, §13.8) ⛔ RB-Q1
+- [x] T006 Build the profile store in `src/meta/records.ts` (new) and `src/meta/index.ts` (new) (§9.7, §13.2, §13.8) ⛔ RB-Q1
   - Exports: `PROFILE_KEY = 'spore-sprawl/profile/v1'`, `PROFILE_BACKUP_KEY = 'spore-sprawl/profile/v1.bak'`, `SetupRecord` and `ProfileV1` from Technical context, `loadRecords(storage)`, `updateRecords(storage, change)` and `setLastSetup(rec, setup)`.
   - `updateRecords` loads the key's current value, applies the pure `change` and saves, in one synchronous step. It writes nothing when the record is read-only or the change leaves it as it was.
   - The load is as forgiving as `loadSettings()`: it keeps unknown fields and fills missing ones with defaults.
