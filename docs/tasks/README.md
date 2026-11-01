@@ -10,7 +10,7 @@ SPEC v2, broken into task lists that later sessions work through one row of a Se
 |---|---|---|
 | 1 | **R1 S1 and S2** in [r1-clash-check.md](r1-clash-check.md), side by side: `src/sim/formation.ts`; the two tool-only switches and the army builder | R1 S0 merged (`feature/r1-plan`: the plan agreed on 2026-11-01, and R1's calls in SPEC) |
 | 2 | **R1 S3**: one clash recorded, and `--checks clash --pair` | R1 S1 and S2 merged |
-| 3 | **R4a-S0** in [r4-readable-armies.md](r4-readable-armies.md): the shape-language plan | These task lists on `develop`; S0's first [USER] task (R4/T002) puts X3 (split R4) to the user |
+| 3 | **R4a-S1** in [r4-readable-armies.md](r4-readable-armies.md): the one unit drawer, pips and the Elder rim, and the lineups | R4a-S0 merged (`feature/r4a-plan`: X3 and the plan agreed on 2026-11-01, and R4a's decisions in SPEC) |
 | 4 | **records S1** in [run-it-back.md](run-it-back.md): the profile store and Run it back (`feature/records-1-run-it-back`) | records S0 merged (`feature/records-plan`: the plan agreed on 2026-11-01, with X10, RB-Q1 and RB-Q2) |
 
 R1, R4a and records-1 touch different code files and can run at the same time. Their doc edits fall in different sections of `SPEC.md`, `clarify.md` and `docs/status.md`, so whichever PR merges second rebases ([r1-plan.md](../r1-plan.md), "Beside R1"). Everything else waits for R1's review gate.
@@ -38,7 +38,7 @@ R4a ─────────────────────────�
 records-1 ─────────────────────────────────────► records-2 (after R2b)
 ```
 
-The R2 and R4 splits (X1, X3) and building R2 beside v1 (X2) are recommendations the user hasn't agreed yet. The two parts of Run it back (X10) were agreed on 2026-11-01. Each list says in one line what changes if the user picks the alternative.
+The R2 split (X1) and building R2 beside v1 (X2) are recommendations the user hasn't agreed yet, and X4 and X5 wait for R1's review gate. The R4 split (X3) and the two parts of Run it back (X10) were agreed on 2026-11-01. Each list says in one line what changes if the user picks the alternative.
 
 ## How this folder works
 

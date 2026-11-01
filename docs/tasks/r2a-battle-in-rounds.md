@@ -19,7 +19,7 @@ This list is a draft of 2026-11-01, made from SPEC v2 and `docs/tasks/spec-analy
 **Decisions** (refs in `docs/tasks/clarify.md`; this file assumes each recommendation):
 
 - **X1** (R2a and R2b) and **X2** (beside v1) block S0 and every session. If X1 is no: this file and R2b's merge into one list and the playtest task (T137) moves to the end of R2. If X2 is no: every branch here targets `feature/r2-rounds` instead of `develop`, T075's dev-only entry is dropped, and the playtest runs from a local build.
-- **X3** (R4a first) blocks T137 and S21: R4a merges before R2a's playtest. If no, the playtest reads armies on v1 sprites and T137 loses its ⛔.
+- **X3** (R4a first), agreed 2026-11-01: R4a merges before R2a's playtest, so T137 and S21 wait for R4a's review gate (R4/T039).
 - **X4** (copies before R3) blocks T009 (squad sizes measured with copies), T032, T033 (the kit and mono bots) and T093 (the copy count), with **#51** (what "mono" means) and **#43** (a cap on copies of one card, first guess 4), which then block T032 and T033 too, and **R3-Q8** (a count, not pips), which then blocks T093. If no, `plant` has no copy refusal and #43, #51 and R3-Q8 stay R3's.
 - **X5** (the scoring curve) blocks T008, T050–T052 and T119. If the user keeps the flat 500, nothing in code changes (the cap is data) and G4's miss is reported, not tuned.
 - **X6** and **RB-Q3** (play time) block T126 and T128. If X6 sets a hard target now, T128 is the same and T137 reads against it.
@@ -37,7 +37,7 @@ This list is a draft of 2026-11-01, made from SPEC v2 and `docs/tasks/spec-analy
 - **R2-Q9** (test:slow runtime) and **R2-Q10** (G16 pairs) block T119, T122 and T123. **#35** (bands): S0 agrees its approach (T004); its battle-level bands are measured in T124 and set in T125, which wait on it.
 - **R2-Q11** (clash-rule details) blocks T019, T020, T042–T044 and T046.
 - **R2-Q12** (planning-screen details) blocks T078, T084 and T097.
-- **#7–#13** (R1's gate) block T009 and T011 (#7–#9), T040 (#8), T041 (#10), T019 (#11), and T038 and T044 (#12, #13). **#19** blocks T015–T018. **#22** and **#23** block T047, T048 and T050. **#53** blocks T011 only if the user changes `tierRadiusMult`.
+- **#7–#13** (R1's gate) block T009 and T011 (#7–#9), T040 (#8), T041 (#10), T019 (#11), and T038 and T044 (#12, #13). **#19** blocks T015–T018. **#22** and **#23** block T047, T048 and T050. **#53** was decided at R4a-S0 (2026-11-01): `tierRadiusMult` becomes 1.0, in T011.
 - **M6-Q1** (feat stats) blocks T056 and T057. **M7-Q1** (the Gray Rot trait) blocks T025 only if the trait stays.
 
 **Results it needs** (from R1, in `docs/balance-backlog.md`, agreed by the user at R1's gate):
@@ -261,7 +261,7 @@ S1 to S4: the data, the colony, the round state machine and the planning command
     - `burst {cloud {radius 1.5, seconds 4, damagePerSecond 10}}`.
   - Units and buildings: the Burster, Burster Pod, Rhizomorph and Rhizomorph Tunnel into `data/factions/velvet-bloom/units.json` and `data/factions/velvet-bloom/buildings.json`, with R1's squads (§11.2's first guess: 6 Bursters, 3 Rhizomorphs). Add both ids to `data/factions/velvet-bloom/faction.json` and `data/factions/gray-rot/faction.json`.
   - Mixed-wave shields and the Elder Sporeling's splash follow #8 and #9. A knob that R1's gate adopted becomes data here, and one it kept default-off stays in `src/data/proto.ts`. Deleting the rest is R2b/T059's (A109).
-  - If the user changed `tierRadiusMult` under #53, change it here, inside S1's one golden refresh.
+  - Set `tierRadiusMult` to 1.0 in `data/balance.json` (#53, decided 2026-11-01 at R4a-S0), inside S1's one golden refresh, so a merged unit's collision radius no longer grows. Log it in `data/CHANGELOG-balance.md` with the decision it rests on.
 - [ ] T012 Write R2-Q5's weights into `data/bots.json` and `data/generals.json` and retire `aiWeight` (§11.11, §16 R2) ⛔ R2-Q5 (A048, A118)
   - Weight 1 for each adopted building in `bot:balanced`, rush, turtle and greedy in `data/bots.json`, and in each general's `weights` in `data/generals.json`.
   - Remove `aiWeight` from `src/data/schema.ts` (`:459`), the kit append in `src/run/flow.ts` (`:169-170`) and the weight join in `src/sim/ai/profiles.ts` (`:58-64`). Replace `content.buildings[id]!.aiWeight ?? 1` with `1` at `src/run/flow.ts:106`.
@@ -826,7 +826,7 @@ S1 to S4: the data, the colony, the round state machine and the planning command
 
 - [ ] T137 [USER] The playtest gate. X3: R4a has merged first and passed its review (R4/T039). The user plays battles on the dev site, at least one on Twin Roots and one with `reveal=last` (R2-Q1's A/B), and answers §16 R2 gate questions 1, 2, 3, 6 and 7 (§16 R2 gate, §18.2 #52) ⛔ X3 (A202)
   - The links: `https://swalliso.github.io/Sambattler/dev/?scene=rounds` (the title's preview button opens the same: Old Mother Mold, adaptive, with powers, Call 28), `…/dev/?scene=rounds&map=twin-roots&enemy=general:lichen-baron`, and `…/dev/?scene=rounds&reveal=last`.
-  - Under X3 (R4/T039) it also asks "Could you spot the Elders?" (A162) and takes #52's first reading on Twin Roots: does the shape language read at its scale (about 1.78× in a 1280×720 window, A077)?
+  - Under X3 (R4/T039) it also asks "Could you spot the Elders, and tell a Bloomed unit from a base one?" (A162; R4-Q3 gave only Elders a rim) and takes #52's first reading on Twin Roots: does the shape language read at its scale (about 1.78× in a 1280×720 window, A077)?
   - Planning seconds per round are read off the report (X6).
   - Tell the user first: Help still describes v1 until R2b, and the preview plays no battle sounds (R2b/T038).
 - [ ] T144 Write the playtest down: the answers in `docs/playtest-feedback.md`, newest first; the gate's result and the planning seconds per round in `docs/r2a-plan.md`'s As built; and in `docs/status.md`, R2a's gate answered and what R2b's S0 needs (§16 R2 gate, CLAUDE.md "Where things get written down")

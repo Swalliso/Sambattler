@@ -174,7 +174,7 @@ The user made these decisions on 2026-10-31, after the P3 playtest (§0.1). They
 | 7 | Augments and combos | Augments are draft cards that change how a building's units play, not flat numbers. They replace v1's upgrade tracks in R3, and every augment shows on its squad and its card, the general's included. Combos are a few rules about position (in front of, behind, beside), shown while placing, each changing what happens rather than adding a small percentage. A unit's body and weapon never change, but a build may tilt a matchup far enough to flip it, at a real cost and in plain view. The user: "the right build or set of items should possibly allow for a unit to beat a unit it usually doesn't." §17 #11 is removed. **Open:** whether an augment attaches to a building type or to one card (first guess: the type, for the run). | §5.8, §11.6, §11.13, §11.14, §17 |
 | 8 | Run variety | Each run's draft pool deals from the commander's core, an always-in set that includes an answer to the swarm (§8.4 says what it holds), and 4 of 10 random themed packs (one building and two relics each). Bans stay (§8.4). Most variety comes from builds: augments, combos and relics. | §8.4, §11.15 |
 | 9 | Merging stays for now | v1's rule applies. Squads set to merge knit as the clash opens (§5.6), the merge toggle is a planning choice that the planning screen previews ("fields as 2 Bloomed + 2"), and neighbors can make Elders. Pips mark merge tiers instead of a bigger sprite, so size can mean armor. Slayers stay the counter. | §5.5, §5.6, §5.8 |
-| 10 | The shape language | Body size shows armor, a weapon mark shows damage type, team color stays violet against gray, pips mark merge tiers and icons mark augments. Cards and the planning screen show matchups as marks, not paragraphs. Text-defined sprites stay, but each archetype MUST have a distinct silhouette. The art and the card-text pass are milestone R4. | §5.8, §10.4, §17 #20 |
+| 10 | The shape language | Body size shows armor, a weapon mark shows damage type, team color stays violet against gray, pips mark merge tiers and icons mark augments. Cards and the planning screen show matchups as marks, not paragraphs. Text-defined sprites stay, but each archetype MUST have a distinct silhouette. The art and the card-text pass are milestone R4, in two parts (X3, agreed 2026-11-01): R4a, the shapes on the field, runs beside R1 and lands before R2's first playtest; R4b, matchup marks in full, augment icons and the card-text pass, follows R3 (§16). | §5.8, §10.4, §17 #20 |
 | 11 | The rework's pieces | Kept: pinning, spore clouds, cleave, the Burster (the area candidate) and the Rhizomorph (an unlockable tunneler). Retired: waves, Hold and call for help. Measured in R1: whether mixed armies need the mixed-wave shields, and the Elder Sporeling's splash. Later: flyers, as an unlockable, starting from the rework's rule that melee hits them for half damage and lobbed shells and bursts can't hit them. The general reads the squads you actually fielded. | §5.3, §7.4, §11.2, §11.3, §16 |
 | 12 | The economy per round | Each round: the Heartcap stipend of 100, +50 per Truffle Cellar (+50% on loam), interest of 1 per 20 gold banked at the end of planning (up to 10), and +40 to the last round's loser. Starting gold stays 300 + 75 per battle. Drafts come after rounds 2, 4 and 6, three a battle, opening in the next planning phase once the general has planned (§4.7), plus spoils after a won battle; rerolls and skips stay as in v1. | §6.1, §6.2, §8.3 |
 | 13 | How the work is done, and the tests | Rounds are the new battle, built on feature branches and merged into `develop` as the default, not as a `?proto=` knob. Tests follow the spec: goldens regenerate, and the tests and guardrails of retired systems go with them. Playtests decide what's fun, and bots catch degenerate builds; the main bar is the counter matrix's: "A strong build isn't the bug. A build with no answer is." Milestones R1–R4 (the clash check, rounds, the kit, readable armies) come before M6–M8, which are rewritten for v2. | §12, §15, §16 |
@@ -234,7 +234,16 @@ In rules text, lives are called "lives". **Open:** an in-world name for them; *R
 
 The unit and building roster is in §11.2–11.3, and §11.2 marks the six core archetypes.
 
-**Palette direction.** Velvet Bloom: violet and lilac (#8a4fd8, #c9a2ff) with cream stalks. Gray Rot: ash, moss and bone (#7d8a7a, #b8c4a8). Soil: dark brown. Rich Loam: near-black with gold flecks. Both team colors MUST stay distinguishable under deuteranopia and protanopia simulation, which violet-vs-gray does; check it in M7. Color is never the only cue: body size, weapon marks, pips and icons carry the rest (§5.8, §10.4).
+**Palette direction.** Velvet Bloom: violet and lilac (#8a4fd8, #c9a2ff) with cream stalks. Gray Rot: ash, moss and bone, with pale bone-gray bodies (first guess #b0bcab, #eaf0e2 and a dark #808b7c, from milestone R4a; until then the data's #7d8a7a and #b8c4a8). Soil: dark brown. Rich Loam: near-black with gold flecks.
+
+Both team colors MUST stay distinguishable under deuteranopia and protanopia simulation, in lightness as well as hue (R4-Q4, agreed 2026-11-01). A unit test checks it from R4a on, with three cases:
+- under both filters, the two sides' body tones differ by at least 1.5:1 in luminance;
+- each side's body tones stand at least 1.75:1 off every soil tone, plain and under both filters, so neither army sinks into the clash ground;
+- each side's dark tone stands at least 1.5:1 off the dark outline.
+
+Violet against the first ash tones differs by only 1.00–1.10:1 under the filters, a hue difference with almost no lightness difference (A159). So R4a lightens the Gray Rot's bodies. A darker body would sink into the soil. M7 checks the Gray Rot's own sprites the same way (§16).
+
+Color is never the only cue: body size, weapon marks, pips and icons carry the rest (§5.8, §10.4).
 
 ---
 
@@ -701,14 +710,14 @@ v1's rule applies under rounds (§1.3 #9). What changes is when it happens: ever
 - the same `unitId`, at `tier + 1`
 - max HP and damage per §5.5
 - current HP = `round(newMaxHp × ΣcurrentHp / ΣmaxHp)` (no free heal)
-- radius × 1.25 per tier (`tierRadiusMult`, for collision and range math only: the sprite keeps its size, §5.8); speed, range and attack interval unchanged
+- radius unchanged by tier, as the sprite keeps its size (§5.8): `tierRadiusMult` is 1.0 (§18.2 #53). v1's data grows it ×1.25 per tier until R2 changes it; speed, range and attack interval unchanged
 - the tier's `mergePerks` applied
 - `sourceBuildingId` and `mergeOn` taken from the lowest-id parent. A unit knit from two squads' units therefore credits all its damage to that parent's building (§5.7)
 - `lastCombatTick` set to the latest of its parents' values, so an idle trio of Bloomed units can knit again right away
 
 With no supply cap, nothing waits on supply. A merged unit counts its own supply (§5.5).
 
-**Open:** whether a merged unit's body radius should still grow ×1.25 per tier now that its sprite doesn't. An Elder Capguard's radius (about 0.65 tiles, with its `radiusAdd` perk) is then bigger than an Amanita Knight's (0.45). First guess: yes, as today's data (`tierRadiusMult` 1.25).
+**The radius doesn't grow** (§18.2 #53, decided 2026-11-01). A merged unit keeps its parts' collision radius, now that its sprite doesn't grow either. Under v1's ×1.25 an Elder Capguard's radius (about 0.65 tiles, with its `radiusAdd` perk) was bigger than an Amanita Knight's (0.45); at ×1.0 it's 0.45. The change moves the golden hashes, so R2 makes it in its first golden refresh. R4a, which moves no golden, leaves the data alone.
 
 **The muster: squads knit in place.** This section owns the rule; it's a first guess that milestone R1's clash check settles (§16).
 
@@ -749,7 +758,7 @@ With no supply cap, nothing waits on supply. A merged unit counts its own supply
 - faint tethers between candidate trios
 - a glow while units knit
 - a "Bloomed!" or "Elder!" pop
-- tier **pips** on the merged unit (one for Bloomed, two for Elder), on a sprite of the unit's own size. v1 drew merged units bigger (×1.25 and ×1.5, `TIER_SCALE` in `src/render/renderer.ts`). R4 drops that, so size can mean armor (§5.8)
+- tier **pips** on the merged unit (one for Bloomed, two for Elder), on a sprite of the unit's own size, and a gold rim on an Elder. v1 drew merged units bigger (×1.25 and ×1.5, `TIER_SCALE` in `src/render/renderer.ts`). R4a drops that, so size can mean armor (§5.8)
 
 ### 5.7 Statistics per round and per battle
 
@@ -774,18 +783,27 @@ A unit's job reads from its shape, not from a paragraph (pillar 1). The rules be
 
 | Cue | Shows | Rule |
 |---|---|---|
-| **Body size** | Armor (`armor`) | Light units are small, medium units are medium, heavy units are big. Size means armor and nothing else |
-| **Weapon mark** | Damage type (`damageType`) | A blade for slash, an arrow or spike for pierce, a hammer for crush. Area damage has its own mark |
+| **Body size** | Armor (`armor`) | Light units are small, medium units are medium, heavy units are big, in three height bands (§14.3). Size means armor and nothing else |
+| **Weapon mark** | Damage type (`damageType`) | A blade for slash; for pierce, an arrow on a unit that shoots and a spike on one that doesn't; a hammer for crush. Armor-ignoring area damage has its own mark, and a healer with no weapon carries the heal mark |
 | **Silhouette** | Archetype (`archetype`) | Each archetype MUST have a distinct silhouette |
 | **Team color** | Side | Violet against gray (§2) |
-| **Pips** | Merge tier | One for Bloomed, two for Elder. A merged unit keeps its body size |
+| **Pips** | Merge tier | One for Bloomed, two for Elder, and a gold rim on an Elder. A merged unit keeps its body size |
 | **Icons** | Augments | On the squad and its card, the general's included (§10.4, §11.13) |
 
-- **The area mark:** units whose role is area damage carry it in place of their damage type's mark: `burst` units, and emplacements whose shells splash. A splash perk or cleave doesn't change a unit's mark.
+- **Which mark a unit carries** (R4-Q2 and §18.2 #55, agreed 2026-11-01):
+  - **The area mark** is for damage that ignores armor. `burst` units carry it in place of their damage type's mark.
+  - **A healer that deals no damage,** such as the Tender, carries the heal mark.
+  - **Every other unit** carries its damage type's mark.
+  - **A splash or cleave that goes through the matrix keeps its type's mark.** A splash perk or cleave doesn't change a unit's mark, so the Scythecap carries the blade. The Puffball Mortar's shells hit as crush, so it carries the hammer with a small splash accent. The area mark there would break "the shape tells the base matchup" (A151).
+- **How marks are drawn:** each mark is one shared glyph, the same for every unit and on both sides, baked onto each frame on the body's front edge (§14.3). Every blade looks the same, and the data checks compare the mark a sprite declares with the one this rule gives its unit (§16 R4).
+- **Emplacements** stand in their slot on a sprite of their own, carrying their weapon's mark (the Rootgate, with no attack, carries none). Structure armor has no body band (R4-Q5, agreed 2026-11-01; §14.3).
 - **Flyers and tunnelers:** a flyer floats over its shadow, and a burrowed tunneler shows as a moving mound.
 - **Color is never the only cue:** body size, weapon marks, pips and icons carry the rest (§2, §10.4).
 - **Sprites stay text-defined** (§17 #20).
-- **Who does what:** milestone R4 draws the shape language and does the card-text pass. R2's planning screen needs basic matchup marks to be playtestable (§16).
+- **Who does what** (X3, agreed 2026-11-01):
+  - R4a draws the shape language on the field before R2's first playtest: bodies, marks, pips and silhouettes.
+  - R2's planning screen needs basic matchup marks to be playtestable.
+  - R4b draws matchup marks in full and augment icons, and does the card-text pass, after R3 (§16).
 
 **The matrix, in shapes.** A matchup mark (§10.4) shows the class of one shape's hits on another (§5.3). From the matrix and tags alone:
 
@@ -1566,6 +1584,7 @@ Each feat is a data record: `id`, `name`, `description`, `scope` (`battle` or `r
 - **Battlefield canvas:**
   - It renders at native pixel resolution: `(W + 4) × 16` by `H × 16`. Bogwater Hollow is 576 × 128.
   - It's scaled by the **largest integer factor** that fits its area. If integer scaling would waste more than 30% of that area, it falls back to a fractional scale with `image-rendering: pixelated`.
+  - **At 1280×720:** the one-lane maps draw at 2×. Twin Roots, at 576 × 208, gets about 370 px of height and draws at about 1.78×, a fractional scale (A077). The shape language is checked at both, with Twin Roots as the worst case (§10.4, §16 R4).
 - **HUD, menus and overlays** are **DOM** elements around and over the canvas. That keeps text crisp, makes the UI accessible, and lets Playwright query it.
 
 ### 10.2 Battle screen layout
@@ -1635,7 +1654,7 @@ A battle is a series of rounds (§4.7), and the battle screen keeps one layout t
     - the round escalation, as round 5's planning opens;
     - interest, the first time it pays.
 
-    Each is shown once, ever, and remembered under `spore-sprawl/tips/v1` (through `storageKey()`); the settings screen turns tips off or shows them all again. The ids of v1's retired tips (the frontier, Hold) stay in old records and are ignored. The economy tip waits in the same queue but isn't remembered. A tip is cream on its panel with a lilac "Tip" word and names its key with a keycap; tips never use gold, which means money. R4 rewrites their words (§16).
+    Each is shown once, ever, and remembered under `spore-sprawl/tips/v1` (through `storageKey()`); the settings screen turns tips off or shows them all again. The ids of v1's retired tips (the frontier, Hold) stay in old records and are ignored. The economy tip waits in the same queue but isn't remembered. A tip is cream on its panel with a lilac "Tip" word and names its key with a keycap; tips never use gold, which means money. R4b rewrites their words (§16).
   - **Pinned callouts** come before the timed ones and stay until they no longer apply: the planning hint, the empty-lane warning at Begin (see the planning view), "Paused" while a clash is paused, the commander power's aim while aiming, and a notice when a saved battle couldn't be restored. Nothing else sits on the field.
 - **Field frame** (docs/archive/v1/ui-ux-plan.md, Phase 1a): the void between the bands, above, below and beside the battlefield, is drawn as the earth the field sits in.
   - What it shows: a roots ceiling, a soil bed with each side's buried threads (lilac under your half, ash under theirs), roots down each side, and each Heartcap's crown rising into the ceiling.
@@ -1644,7 +1663,7 @@ A battle is a series of rounds (§4.7), and the battle screen keeps one layout t
 - **Bottom band:**
   - **Controls** (left): the commander power, lit only in a clash, from its first tick (§6.6); **Begin** in planning, then, in a clash, one segmented control for 1×, 2×, 3× and pause; then the speaker (§13.9), the **settings** cog, which opens the settings screen (§10.5), and Help.
   - **The kit tray** (centre): your kit's cards (§8.10), grouped by role: economy first, then army, defense and utility, each group in kit order. The `1`–`9` hotkeys follow this order.
-    - **Each card shows** a cap-shaped band across its top in its role's colour, its hotkey, its price as a gold chip, its **copies** (one pip per copy, lit while the copy is free and dim once it's planted), the building at 2× (64 px), its name and its role word (§11.2). An army card also shows its squad: the unit's shape and weapon mark (§5.8), the squad's size ("×8") and matchup marks for the shapes it's strong and weak against (§10.4). An economy card shows what it earns a round. Every other detail goes in the tooltip, so a card carries no sentences. The art and the words are milestone R4's card-text pass (§16); this list is the rule they follow.
+    - **Each card shows** a cap-shaped band across its top in its role's colour, its hotkey, its price as a gold chip, its **copies** (one pip per copy, lit while the copy is free and dim once it's planted), the building at 2× (64 px), its name and its role word (§11.2). An army card also shows its squad: the unit's shape and weapon mark (§5.8), the squad's size ("×8") and matchup marks for the shapes it's strong and weak against (§10.4). An economy card shows what it earns a round. Every other detail goes in the tooltip, so a card carries no sentences. The art and the words are milestone R4b's card-text pass (§16); this list is the rule they follow.
     - A card you can't afford is **unlit**: the sprite desaturates, the price turns danger red, and the line under the name becomes a bar filling toward the price and "need N". A card with no copy left is unlit the same way and says "all planted". The name stays readable; nothing fades.
     - In a clash the tray takes no clicks, since planting is a planning action (§4.4), but it stays readable and its tooltips still open.
     - Cards keep a card's width (88–108 px) however few there are. When they don't fit one row (14 cards at 1280 px), the tray turns **compact**: two rows of smaller cards with the sprite at 1× beside the hotkey and price, then the name, the role and the marks. The tray never clips a card or scrolls sideways.
@@ -1689,7 +1708,9 @@ A battle is a series of rounds (§4.7), and the battle screen keeps one layout t
 - **By milestone** (§16):
   - **R2** builds the three views, the formation and merge previews, the round tally and the lane tug, lives, and basic matchup marks (the class against each enemy squad), on today's sprites.
   - **R3** adds copies, augments and combos to the cards, the formation preview and the ghost, with placeholder icons.
-  - **R4** draws the shape language (silhouettes, weapon marks, pips without the bigger sprite, augment icons), does the card-text pass, and rewrites Help and the tooltips.
+  - **R4** comes in two parts (X3, agreed 2026-11-01):
+    - **R4a**, before R2's first playtest, draws the shape language on the field: silhouettes, body sizes, weapon marks, and pips and the Elder's rim without the bigger sprite.
+    - **R4b**, after R3, draws matchup marks in full and augment icons, does the card-text pass, and rewrites Help and the tooltips.
 
 ### 10.3 Controls
 
@@ -1722,19 +1743,21 @@ A battle is a series of rounds (§4.7), and the battle screen keeps one layout t
 
 - **Plain words** (playtest round 3): player-facing text avoids jargon ("touching on a side, not just a corner", "half as much extra", "while it is hit"). Data text is copied into every battle's state, so rewording it moves the golden hashes; until the next golden refresh the plain wording lives in `src/ui/words.ts`, and a unit test keeps its numbers in step with the data. R2 regenerates the goldens (§15.5), so the plain wording SHOULD move into `data/*.json` then. A layout rule gets a small picture: every combo shows its positions (in front of, behind, beside) as one (§11.14).
 - **The shape language** (§5.8): a unit's look says its job, so the field teaches matchups without text. This answers the P3 playtest's "a wall of text" (docs/playtest-feedback.md, F17).
-  - *Body size shows armor:* light units are small, medium are medium and heavy are big. Size means armor and nothing else, so a merged unit keeps its body. v1 drew Bloomed units at ×1.25 and Elders at ×1.5 (`TIER_SCALE` in `src/render/renderer.ts`); R4 drops that.
-  - *A weapon mark shows damage type:* a blade for slash, an arrow or spike for pierce, a hammer for crush, and a mark of its own for area damage. It's part of the sprite and MUST read at the field's 2× scale in a 1280×720 window.
+  - *Body size shows armor:* light units are small, medium are medium and heavy are big, in three height bands (§14.3). Size means armor and nothing else, so a merged unit keeps its body. v1 drew Bloomed units at ×1.25 and Elders at ×1.5 (`TIER_SCALE` in `src/render/renderer.ts`); R4a drops that.
+  - *A weapon mark shows damage type:* a blade for slash, an arrow (a unit that shoots) or a spike (one that doesn't) for pierce, and a hammer for crush. Armor-ignoring area damage has a mark of its own, and a healer with no weapon carries the heal mark (§5.8). The mark is a shared glyph baked into each frame, with every stroke at least 2 native px wide. It MUST read at the field's scale in a 1280×720 window: 2× on one-lane maps, about 1.78× on Twin Roots (§10.1).
   - *Team color stays:* violet against gray (§2).
-  - *Pips* mark merge tiers (one for Bloomed, two for Elder), and *icons* mark augments.
+  - *Pips* mark merge tiers: one for Bloomed and two for Elder, each a gold core at least 3×3 native px in a dark outline. An Elder also carries a 1-px gold rim and its aura (R4-Q3, agreed 2026-11-01). Bloomed units get no rim: a rim makes a unit look 2 px bigger, which would blur the 2–3 px between the bands, and Bloomed units are about half of a merging army. *Icons* mark augments.
   - Each archetype MUST have a distinct silhouette. Sprites stay text-defined (§17 #20).
   - *The shape never lies* (§5.8): augments and combos never change a unit's body or weapon. The shape always tells the base matchup, and a build that beats it shows its icon.
-  - **Open:** whether the shape language reads at the field's 2× scale in a 1280×720 window (units are 24–28 screen px there), or a clash needs a closer view. First guess: it reads at 2×, with no closer view. §13.6 keeps the whole map in view, with no camera.
+  - **Open:** whether the shape language reads at the field's scale in a 1280×720 window, or a clash needs a closer view. First guess: it reads, with no closer view. §13.6 keeps the whole map in view, with no camera.
+    - The sizes: at 2× the bodies are 16–18, 22–24 and 30–32 screen px tall. Twin Roots, at about 1.78× (§10.1), is the worst case, at 14–16, 20–21 and 27–28.
+    - The plan (agreed 2026-11-01): R4a adds a Twin Roots lineup capture beside the one-lane one, and draws marks and pips at least 2 native px wide. R2's first playtest takes a first reading, and R4b's fresh-tester gate decides (§16 R4, §18.2 #52).
 - **Matchup marks:** cards and the planning screen show matchups as marks, not paragraphs.
   - A mark is a shape (a body size, or pips for Bloomed and Elder targets) in a class: *strong* (the hits do ×1.5 or more, §5.3) or *weak* (×0.75 or less). It's drawn like that class's hit spark, so the marks and the field teach the same thing. A normal matchup has no mark. A mark's class shows in its size and outline as well as its tint.
   - Marks show the matrix and the tags (§5.3), which the shapes always tell. An augment or combo that changes a matchup adds its icon to the mark, and the tooltip gives the changed number.
   - **On a card:** the shapes its unit is strong against and weak against. In planning, a mark lights while the general's army fields that shape, so a card that answers its army stands out at a glance.
   - **On the planning screen:** while a card is chosen or one of your squads is hovered, each enemy squad shows the class of your hits on it. Hovering an enemy squad shows the class of its hits on your squads and cards.
-  - R2's planning screen needs basic marks to be playtestable; R4 draws them (§16).
+  - R2's planning screen needs basic marks to be playtestable; R4b draws them in full (§16).
 - **Augment icons:** an augment shows on its card and on its squad in the formation preview, the general's included (§11.13). In a clash a unit carries no augment icon. An augment shows its icon where and when it acts (spores bursting from a dying Sporeling, a shield stopping an arrow), and inspecting the unit lists its augments.
 - **Combo highlights:** while placing, the ghost lights each neighbor it would link with and shows the combo's icon. In planning, linked buildings are joined by a hypha with the combo's icon at its middle ("mycelium connects", docs/archive/v1/ui-ux-plan.md). In a clash, a combo shows its icon when it acts, as an augment does.
 - **Damage numbers:** none by default. The setting offers *off*, *big hits only* (30 or more) and *all*. It lives on the settings screen (§10.5), which the cog in the battle's bottom band opens, and is saved with the other settings.
@@ -1745,7 +1768,7 @@ A battle is a series of rounds (§4.7), and the battle screen keeps one layout t
   - *weak:* a small, dull gray spark
 
   This is how players learn the matrix without numbers, and the matchup marks use the same classes. A hit whose damage another rule changes after the matrix (a ground unit's melee on a flyer) shows the class of what it deals.
-- **Merging:** faint tethers between candidate trios, a glow while units knit (at the muster, and later wherever v1's rule finds a trio, §5.6), a pop label, and tier pips (one for Bloomed, two for Elder) on a sprite of the unit's own size. The pop label shows for your merges and for every Elder. An enemy Bloomed merge shows its glow and pips only, so a round's knitting doesn't crowd the field.
+- **Merging:** faint tethers between candidate trios, a glow while units knit (at the muster, and later wherever v1's rule finds a trio, §5.6), a pop label, and tier pips (one for Bloomed, two for Elder) on a sprite of the unit's own size, with an Elder's gold rim. The pop label shows for your merges and for every Elder. An enemy Bloomed merge shows its glow and pips only, so a round's knitting doesn't crowd the field.
 - **The colonies** (v1's territory is retired, Appendix A): each colony's ground carries its side's mycelium, and the arena between them is bare soil that nobody owns. In planning, plots show as a faint grid, with loam and stump plots drawn as themselves (§10.2).
 - **Kept combat rules show on the field** (§5.3):
   - a pinned ranged unit SHOULD carry a small knot over its head while it's pinned;
@@ -1870,7 +1893,7 @@ Key names for new constants are first guesses; §14.2 fixes them.
 | `mergeCombatCooldownSeconds` / `mergeKnitSeconds` / `mergeCheckEveryTicks` | 2.0 / 1.0 / 10 |
 | `tierStatMult` | 2.8 per tier (v1's table said 2.5; the data was tuned to 2.8) |
 | `tierSupplyMult` | [1, 2, 4] |
-| `tierRadiusMult` | 1.25 per tier (the collision radius; the drawn body no longer grows, §5.8) |
+| `tierRadiusMult` | 1.0: a merged unit's collision radius doesn't grow, nor does its drawn body (§5.6, §5.8, §18.2 #53). v1's data has 1.25 until R2 changes it |
 | `retargetEveryTicks` / `leashMult` | 5 / 1.25 |
 | `splashFalloff` | 0.5 |
 | `matrix` | §5.3 (the Structure column now applies only to emplacements, §11.2) |
@@ -1971,9 +1994,9 @@ All buildings have a 2×2 footprint and fill one plot (§4.6). Buildings aren't 
 | R1 | `rhizomorph` | Rhizomorph | medium | slash | 140 | 16 / 1.0 | 0.5 | 0 | 1.2 | 2 | 4 | 0.3 | burrow: tunnels and surfaces by §5.2 |
 | later | `driftling` | Driftling | light | slash | 70 | 8 / 1.0 | 1.0 | 0 | 1.4 | 1 | 5 | 0.25 | flying, under rule C (§11.1) |
 
-**The shape each implies** (§5.8). Body size shows armor (light small, medium medium, heavy big) and nothing else: the collision radius above is a separate number, so the Rootbreaker is drawn at a medium body. A weapon mark shows damage type: a blade for slash, an arrow or spike for pierce, a hammer for crush, and the area mark for area damage. Each core archetype MUST have a distinct silhouette. The silhouettes are ideas for R4, which draws them.
+**The shape each implies** (§5.8). Body size shows armor (light small, medium medium, heavy big) and nothing else: the collision radius above is a separate number, so the Rootbreaker is drawn at a medium body. A weapon mark shows damage type by §5.8's rule: a blade for slash, an arrow (a unit that shoots) or a spike (one that doesn't) for pierce, a hammer for crush, the area mark for armor-ignoring area damage (`burst`), and the heal mark for a healer with no weapon. Each core archetype MUST have a distinct silhouette. The silhouettes are ideas for R4a, which draws them. The mark's glyph is a unit's one weapon mark. A silhouette feature that suggests a weapon is body, counted in the band, and doesn't repeat the glyph: the Gill Archer's bow carries its arrow glyph, the Hammercap's raised arm holds its hammer glyph, and the Scythecap's hooked cap edge sits beside its blade (`docs/r4a-plan.md`, call 9).
 
-| Unit | Body | Weapon mark | Silhouette idea (R4) |
+| Unit | Body | Weapon mark | Silhouette idea (R4a) |
 |---|---|---|---|
 | Sporeling ★ | small | blade | a round puff on stubby legs |
 | Capguard ★ | medium | blade | a broad flat cap held forward like a shield |
@@ -1981,9 +2004,9 @@ All buildings have a 2×2 footprint and fill one plot (§4.6). Buildings aren't 
 | Amanita Knight ★ | big | blade | a spotted red-and-cream dome over a heavy stem |
 | Hammercap ★ | medium | hammer | a squat cap with a maul raised over it |
 | Burster ★ | small | area | a swollen spore sac that rolls |
-| Tender | small | heal mark (**Open:** a mark for no weapon; the heal mark is the first guess) | a ring-shaped cap with a lantern glow |
+| Tender | small | heal mark (§18.2 #55, agreed 2026-11-01) | a ring-shaped cap with a lantern glow |
 | Veilstalker | small | spike | a hooded, veiled stalk, leaning forward |
-| Scythecap | medium | blade with the area mark | a hooked cap edge like a scythe |
+| Scythecap | medium | blade (cleave goes through the matrix as slash, so it doesn't change the mark, §5.8) | a hooked cap edge like a scythe |
 | Morel Runner | medium | spike | a ridged, honeycombed morel on long legs |
 | Rootbreaker | medium | hammer | a ram's head of knotted root |
 | Rhizomorph | medium | blade | a root cord with a mouth, half in the soil |
@@ -2621,9 +2644,9 @@ Headless tools call `step()` in a tight loop with no rendering. A bot playing th
 
   v1's territory tint and capture progress layer is retired with territory (Appendix A).
 - **The shape language** (§5.8, §10.4) is drawn from data, so the renderer holds no per-unit art rules:
-  - **Body size shows armor.** A unit's sprite is drawn at its own size whatever its merge tier. v1's `TIER_SCALE` in `src/render/renderer.ts` (×1.25 for Bloomed, ×1.5 for Elder) goes in R4, so size means armor and nothing else.
-  - **The weapon mark** is part of each unit's text sprite (§14.3), so it needs no draw call of its own.
-  - **Pips** mark merge tiers: one for Bloomed, two for Elder, drawn over the unit from the `ui` sheet.
+  - **Body size shows armor.** A unit's sprite is drawn at its own size whatever its merge tier. v1's `TIER_SCALE` in `src/render/renderer.ts` (×1.25 for Bloomed, ×1.5 for Elder) goes in R4a, so size means armor and nothing else.
+  - **The weapon mark** is a shared glyph that the atlas bakes onto each unit frame (§14.3), so it needs no draw call of its own.
+  - **Pips** mark merge tiers: one for Bloomed, two for Elder, drawn over the unit from the `ui` sheet. An Elder's gold rim is a region of its own, baked per frame and drawn under the sprite.
   - **Augment icons** come from the `ui` sheet by the augment's `icon` (§14.2). They show on a squad's slot in the formation preview, the general's included, and flash where an augment acts in a clash. A unit in a clash carries no standing icon (§10.4).
   - **Combo highlights:** while placing, the ghost lights each neighbor it would link with, with the combo's icon. In planning, linked buildings are joined by a hypha with the icon at its middle. In a clash, a combo shows its icon when it acts.
   - Team color, hit-spark tints and the color-blind assist's team marks stay as they are (§10.4).
@@ -2970,7 +2993,15 @@ interface MapDef { id: Id; name: string; width: number; height: number; mileston
 interface SpriteDef { id: Id; w: number; h: number; anchor: [number, number];
                       palette: Record<string, string | null>;   // char → #rrggbb, null = transparent
                       frames: string[][];                        // frames × h rows × w chars
-                      factionSwap?: boolean }                    // bake a gray-rot variant
+                      factionSwap?: boolean;                     // bake a gray-rot variant
+                      shape?: SpriteShape }                      // a unit's or an emplacement's shape (§5.8, §14.3; R4a)
+interface SpriteShape { body: 'small' | 'medium' | 'big' | 'structure';
+                        mark: 'blade' | 'arrow' | 'spike' | 'hammer' | 'area' | 'heal' | 'none';
+                        accent?: 'splash';
+                        markAt?: [number, number][];             // the glyph's top-left, per frame; required unless mark is 'none'
+                        accentAt?: [number, number][] }          // per frame; required with an accent
+// A sprite sheet is { sheet, sprites: SpriteDef[], bands? }. bands gives each body class its
+// [min, max] height in native px (§14.3); it's display data, kept out of data/balance.json.
 ```
 
 - **Squads.** A spawner's `squad` is what it fields each round. R1's clash check sets the counts (§1.3 #11, §16); §11.2's Squad column has the starting table, such as 8 Sporelings for a Sporeling Burrow and 4 Capguards for a Capguard Hall.
@@ -2983,16 +3014,26 @@ interface SpriteDef { id: Id; w: number; h: number; anchor: [number, number];
 
 ### 14.3 Text-defined sprites
 
-- Units are about 10–14 px; buildings are 32 × 32 px (2 × 2 tiles, one plot); a Heartcap is drawn from a cap, a stalk and a base, stretched to its lane's height.
+- Unit bodies are 8–16 px tall, in three bands by armor (below); buildings are 32 × 32 px (2 × 2 tiles, one plot); a Heartcap is drawn from a cap, a stalk and a base, stretched to its lane's height.
 - A sprite is a palette plus rows of characters. `null` means transparent. Every row in a frame MUST have exactly `w` characters; the schema enforces it.
 - A unit sprite has three frames: two walk frames and an attack frame (§13.6).
-- **The shape language** (§5.8) is drawn into the sprites (R4):
-  - a unit's size follows its armor class: light units are the smallest and heavy units the biggest, and each class keeps one size band across the roster;
-  - its weapon mark (a blade, an arrow or spike, a hammer, or the area mark) is part of every frame;
-  - each archetype MUST have a distinct silhouette;
-  - pips and augment icons are `ui` sprites drawn over a unit or a squad's slot, never part of a unit's sprite.
+- **The shape language** (§5.8) is drawn into the sprites (R4a; R4-Q1, R4-Q2, R4-Q3 and R4-Q5, agreed 2026-11-01). A unit's sprite declares its `shape` (§14.2): its body, its mark by §5.8's rule, the mark's place in each frame, and an optional accent. The data checks hold every frame to it.
+  - **Body bands.** A body's height is the height of its frame's own opaque pixels, with the mark and the Elder's rim left out:
+    - small (light): 8–9 native px;
+    - medium: 11–12;
+    - big (heavy): 15–16.
+
+    The sheet holds the bands (`bands`).
+  - **Body width.** A body's width, mark included, is at most floor(32 / k) native px. k = ceil(sqrt(n)), and n is its building's squad plus 1, for a Rhizome Vault beside it (§4.6, §11.2). So the squad stands apart in its slot. A bigger squad, such as the Velvet Shrine's +2, overflows by §4.6's rule, and the sprite-sheet tool lists it.
+  - **The weapon mark** is a shared glyph from `data/sprites/marks.json`, with no faction swap: `m-blade`, `m-arrow`, `m-spike`, `m-hammer`, `m-area`, `m-heal`, and the accent `m-splash`.
+    - A glyph is at most 5 × 5, with every stroke at least 2 native px wide, a light core and a dark outline, so it reads on both sides' bodies.
+    - The atlas bakes it onto each frame at the sprite's `shape.markAt[frame]`, so the baked frame holds the mark.
+    - It sits on the body's front edge and within the body's rows. It may stand out to the front, never above or below the body, so it never makes a unit look taller than its band.
+  - Each archetype MUST have a distinct silhouette.
+  - **Pips and rims.** Pips (`i-pip`, a 3 × 3 gold core in a 1-px dark outline) and augment icons are `ui` sprites drawn over a unit or a squad's slot, never part of a unit's sprite. An Elder's 1-px gold rim is baked per frame as a region of its own, outside the outline, and drawn under the sprite.
+  - **An emplacement** has a sprite of its own, `e-<buildingId>`, at most 32 × 32, drawn at its slot's centre. It carries its weapon's mark (body `structure`, which has no band). Without one, the building's own sprite stands in.
 - Velvet Bloom sprites use palette keys that the faction swap maps to Gray Rot colors at bake time, so one drawing serves both factions until M7 adds distinct Gray Rot art.
-- Example: the Sporeling, as shown in the interview:
+- Example: v1's Sporeling, as shown in the interview, before R4a redraws it to the bands:
 
 ```json
 { "id": "sporeling", "w": 12, "h": 10, "anchor": [6, 9], "factionSwap": true,
@@ -3506,7 +3547,7 @@ Claude then **opens the PNG with the Read tool** and checks the milestone's visu
 
 ## 16. Milestone plan
 
-**The first release = Milestones 1–5, R1–R4 and 6–8,** in that order. Milestones 1–5 were built under v1. R1–R4 rebuild the battle for v2 (§1.3), and Milestones 6–8 keep their numbers and are rewritten for v2.
+**The first release = Milestones 1–5, R1–R4 and 6–8,** in that order. Milestones 1–5 were built under v1. R1–R4 rebuild the battle for v2 (§1.3), and Milestones 6–8 keep their numbers and are rewritten for v2. R4 comes in two parts: R4a runs beside R1 and lands before R2's first playtest, and R4b follows R3 (X3, Milestone R4 below).
 
 Every milestone:
 
@@ -3807,51 +3848,66 @@ Its goldens are `m1-balanced-vs-scripted-s1` and `m1-turtle-vs-scripted-s2`. Its
 
 **Goal:** you can tell the units apart and see what counters what without reading a paragraph (F17), and cards stop being walls of words (F21).
 
-**Scope:**
+**In two parts** (X3, agreed 2026-11-01). Sprites aren't battle state, so the field's shapes can land early. R2's first playtest asks whether seeing the general's army helped, and today a sprite's size shows its merge tier rather than its armor, which would confound the answer (A202).
+- **R4a, the shape language on the field,** runs beside R1 and lands before R2's first playtest. Its plan is `docs/r4a-plan.md`.
+- **R4b, matchups and words,** follows R3, since it draws R3's augments and combos. Its plan is `docs/r4b-plan.md`.
+
+Elsewhere in this spec, "R4" means both parts, and a part is named where its timing matters. The tasks are in `docs/tasks/r4-readable-armies.md`.
+
+**Scope, R4a:**
 
 - **The shape language** (§5.8, §10.4) on both sides:
-  - body size by armor class (light small, medium medium, heavy big);
-  - a weapon mark for each damage type, and one for area damage;
-  - pips for merge tiers, with the bigger Bloomed and Elder sprites (`TIER_SCALE` in `src/render/renderer.ts`) dropped;
-  - an icon for each augment;
-  - a distinct silhouette for every archetype, and for every unlockable unit. Sprites stay text-defined (§17 #20).
-- **Matchup marks** drawn in full on cards and on the planning screen (§10.4).
+  - body size by armor class, in measured height bands (light small, medium medium, heavy big; §14.3);
+  - a weapon mark for each damage type, one for armor-ignoring area damage and the heal mark, as shared glyphs baked onto each frame (§5.8, §14.3);
+  - pips for merge tiers and a gold rim on Elders, with the bigger Bloomed and Elder sprites (`TIER_SCALE` in `src/render/renderer.ts`) dropped;
+  - a distinct silhouette for every archetype and every unlockable unit, and the Puffball Mortar's emplacement sprite. Sprites stay text-defined (§17 #20).
+- One unit drawer that v1's renderer and R2's views share, so the change lands once for both (§13.6).
+- The shape checks, a sprite-sheet tool, the lineup scenarios and their captures, and the team-contrast check under colour-vision filters, moved here from M7 (§2).
+
+**Scope, R4b:**
+
+- An icon for each augment and each combo (§11.13, §11.14).
+- **Matchup marks** drawn in full on cards and on the planning screen, with a glyph for Structure targets (§10.4).
 - **The card-text pass:** no sentences on a card face; the tooltip holds the detail (§10.2). Player-facing words move from `src/ui/words.ts` into the data, since R2 already regenerated the goldens (§10.4).
 - **Help and tooltips** rewritten for rounds, and the first-time tips reworded (§10.2, §10.5).
 
-**Not in R4:** new rules or numbers. The Gray Rot's own sprites are M7's.
+**Not in R4:** new rules or numbers. The merged radius (§18.2 #53) changes in R2, not here. The Gray Rot's own sprites are M7's.
 
 **Done when:**
 
-- every unit on the field reads its armor and damage type from its shape;
-- no card face carries a sentence;
+- R4a: every unit on the field reads its armor and damage type from its shape, on both sides; R4a's part of steps 1 and 2 below passes, and the user has agreed it at R4a's review gate;
+- R4b: no card face carries a sentence;
 - every verification step below passes, and a fresh tester has played.
 
 **Verification:**
 
-1. `npm run verify`. New data checks: every unit's body size follows its armor class, every unit carries its damage type's weapon mark, and every augment has an icon.
+1. `npm run verify`. New data checks: every unit's body size follows its armor class (R4a), every unit carries its mark by §5.8's rule (R4a), and every augment and combo has an icon (R4b).
 2. Browser checks:
 
    ```bash
-   npm run screenshot -- --name r4-lineup   --params "scenario=unit-lineup&paused=1"
-   npm run screenshot -- --name r4-planning --params "scene=battle&seed=1&player=bot:balanced&enemy=general:scripted&round=4&phase=planning"
-   npm run screenshot -- --name r4-lineup-d --params "scenario=unit-lineup&paused=1" --filter deuteranopia
-   npm run screenshot -- --name r4-lineup-p --params "scenario=unit-lineup&paused=1" --filter protanopia
+   npm run screenshot -- --name r4-lineup      --params "scenario=unit-lineup&paused=1"
+   npm run screenshot -- --name r4-lineup-twin --params "scenario=unit-lineup-twin&paused=1"
+   npm run screenshot -- --name r4-planning    --params "scene=battle&seed=1&player=bot:balanced&enemy=general:scripted&round=4&phase=planning"
+   npm run screenshot -- --name r4-lineup-d    --params "scenario=unit-lineup&paused=1" --filter deuteranopia
+   npm run screenshot -- --name r4-lineup-p    --params "scenario=unit-lineup&paused=1" --filter protanopia
    ```
 
-   plus each Help tab (`--click`, §15.6).
+   plus each Help tab (`--click`, §15.6). R4a runs the four lineups, and R4b runs everything, the lineups again with the full roster.
 
    Visual checklist:
-   - At the field's 2× scale in a 1280×720 window, each archetype is recognizable by its silhouette alone, on both sides.
-   - Bodies are ordered by armor, and merged units keep their body with pips added.
-   - Weapon marks are visible on every unit, and augment icons on squads in planning.
-   - The sides stay distinguishable under both filters.
-   - No card face carries a sentence, and every Help tab fits 1280×720.
-3. **Playtest gate (human, a fresh tester with tips reset):**
+   - At the field's scale in a 1280×720 window (2× on one-lane maps, about 1.78× on Twin Roots, §10.1), each archetype is recognizable by its silhouette alone, on both sides. (R4a)
+   - Bodies are ordered by armor, and merged units keep their body with pips added, Elders with a gold rim. (R4a)
+   - Weapon marks are visible on every unit (R4a), and augment icons on squads in planning (R4b).
+   - The sides stay distinguishable under both filters. (R4a)
+   - No card face carries a sentence, and every Help tab fits 1280×720. (R4b)
+3. **Playtest gate (human, a fresh tester with tips reset), after R4b:**
    - Was anything on the field you didn't understand?
    - Shown the general's army in planning, can you pick the card that answers it without opening a tooltip?
+   - Could you spot the Elders?
 
-   The gate also answers §10.4's open question: whether the shape language reads at the field's 2× scale, or a clash needs a closer view.
+   The gate also answers §10.4's open question: whether the shape language reads at the field's scale, Twin Roots included, or a clash needs a closer view (§18.2 #52).
+
+**R4a's review gate (the user, before R2's first playtest).** The user looks at R4a's lineup captures and at the dev site, and agrees that R2's first playtest can run on these sprites. That playtest also asks "Could you spot the Elders, and tell a Bloomed unit from a base one?", and takes a first reading of #52 on Twin Roots.
 
 ### Milestone 6 — Meta-progression
 
@@ -3917,7 +3973,7 @@ Where it lives (RB-Q1, RB-Q2):
   - a blight raises the general's income above its default ×1.0 (§1.3 #3). This is the difficulty ladder's way of giving the general more, since there's no Easy / Normal / Hard (§17 #14).
 - **The Three Hollows** (3-lane) map, with a colony in each lane (§4.6, §11.9). **Open:** its layout, since its 5-row lanes and 3 home columns don't divide into v2's 2×2 plots in 2 ranks. First guess: 3 lanes of 4 rows and 4 home columns, 12 plots in all (§11.9).
 - **Content:** the relics and buildings that the ten run packs need (§11.15), each relic with a v2 effect.
-- A colorblind palette check: simulate deuteranopia and protanopia on screenshots.
+- The colour-vision check on the Gray Rot's own sprites. R4a's contrast test already holds the palette to §2's cases (R4-Q4). M7 runs it on the new sprites' tones, and its filtered screenshots check the new silhouettes.
 - First-run tutorial hints beyond the first-time tips (§10.2).
 
 **Verification:**
@@ -4131,10 +4187,10 @@ Items from 7 on are v2's, one row per question: each is a rule the user hasn't d
 | 49 | Does each general get its own weights for the Burster Pod and the other v2 cards? | No: weight 1 for any card its weights don't list, until tuning says otherwise | §11.11 | R3 |
 | 50 | Do plots from relics, traits and commanders (Mycelial Web, Root Pressure, Armilla) count toward the most plots a colony can hold? | Yes, so no source takes a colony past that limit or the performance budget | §11.7 | R3 |
 | 51 | What "mono" means for G3's and G12's mono bots once copies apply: how many copies of their card they hold | None yet | §12.3 | R3 |
-| 52 | Does the shape language read at the field's 2× scale in a 1280×720 window, or does a clash need a closer view? | It reads at 2×, with no closer view | §10.4 | R4 (its playtest gate) |
-| 53 | Should a merged unit's body radius still grow ×1.25 per tier now that its sprite doesn't? | Yes, as today's data (`tierRadiusMult` 1.25) | §5.6 | R4 |
+| 52 | Does the shape language read at the field's scale in a 1280×720 window (2×, and about 1.78× on Twin Roots), or does a clash need a closer view? | It reads, with no closer view. The plan, agreed 2026-11-01: Twin Roots is the worst case, with a lineup capture of its own, and marks and pips are at least 2 native px wide | §10.4 | R4 (R4b's playtest gate); R2's first playtest reads it first |
+| 53 | **(closed 2026-11-01)** Should a merged unit's body radius still grow ×1.25 per tier now that its sprite doesn't? | Decided: no. `tierRadiusMult` becomes 1.0, and R2 changes the data inside its first golden refresh. R4a, which moves no golden, leaves it | §5.6 | R4a's plan (S0) |
 | 54 | Does area damage get a matchup mark against crowds, since no body size is strong or weak against it? | No: the area mark itself is the cue | §5.8 | R4 |
-| 55 | What mark the Tender gets, since it has no weapon | The heal mark | §11.3 | R4 |
+| 55 | **(closed 2026-11-01)** What mark the Tender gets, since it has no weapon | Decided: the heal mark, which §5.8's rule gives any healer that deals no damage | §11.3 | R4a's plan (S0) |
 | 56 | An in-world name for lives | The working name *Regrowths* | §2, §8.5 | R4 (the card-text pass) |
 | 57 | May a strain, chosen before the run, change a unit's body or weapon? If it may, its drawn body or weapon mark changes with it | No, as for augments, so *Ironcap*, *Gillguard* and *Thornpuff* need new patches | §9.3 (§5.8, §11.5 and §14.1 point there) | M6 |
 | 58 | How strains and augments divide the work (*Bursting* reads like an augment; Tier 4 #4 suggests strains as draftable mutation cards) | Strains are the loadout chosen before a run, augments the build found during it; R3 and M6 remove overlaps | §9.3 | M6 |

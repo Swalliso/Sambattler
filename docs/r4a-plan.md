@@ -1,0 +1,198 @@
+# Milestone R4a plan: the shape language on the field
+
+**Status: agreed with the user on 2026-11-01** (S0 of [the task list](tasks/r4-readable-armies.md), T007). The user settled the decisions below the same day, then agreed the plan as written, call 10 included. The answers are dated in `docs/tasks/clarify.md`, and S0 wrote them into SPEC before any code.
+
+Written 2026-11-01 against `develop` at `778a564` ([#42](https://github.com/Swalliso/Sambattler/pull/42), R1's plan, merged). R4a is the first part of SPEC §16 "Milestone R4 — Readable armies", split by X3. Its scope comes from that milestone and the sections it cites: §2, §4.6, §5.6, §5.8, §10.1, §10.4, §11.2, §11.3, §13.2, §13.6, §14.2, §14.3, §15.6 and §17 #20. The calls below come from the review of SPEC v2: its findings, cited by A-ID (`docs/tasks/spec-analysis.md`), and the user's answers to X3, R4-Q1 to R4-Q5, #52, #53 and #55 (`docs/tasks/clarify.md`). The tasks are Part 1 of `docs/tasks/r4-readable-armies.md`, T001–T039.
+
+## Goal
+
+On the field, you can tell the units apart and read each one's armor and weapon from its shape, on both sides (F17). That has to hold before R2a's playtest asks whether seeing the general's army helped. Today a sprite's size shows its merge tier, not its armor, so that answer would be confounded (A202).
+
+After R4a, size means armor and nothing else, and a weapon mark shows the damage type. A merged unit keeps its body and shows its tier with pips, and an Elder also carries a gold rim. R4a changes how units are drawn, not how they fight. It changes no rule and no number in the battle, so no golden hash moves.
+
+## Scope
+
+**In R4a:**
+- **One unit drawer,** `src/render/unitSprite.ts` (new), that v1's renderer and R2a's new views share. `TIER_SCALE` and `TIER_PIPS` go once, for both (call 5).
+- **The tier cue** (R4-Q3):
+  - `i-pip`, a 3×3 gold core in a 1-px dark outline, one for Bloomed and two for Elder, on the field and in the inspect panel;
+  - a 1-px gold rim on Elders, baked per frame;
+  - the Elder aura, kept.
+- **The shape block** on unit sprites, and the body bands on the sheet (R4-Q1, R4-Q2). The block holds the body (small, medium, big or structure), the mark, a mark point per frame and an optional accent.
+- **Shared mark glyphs** in `data/sprites/marks.json` (new), baked onto each frame when the atlas bakes (R4-Q2, #55).
+- **Pure shape checks,** in `src/data/shapes.ts` (new) and the registry:
+  - the body follows the armor;
+  - the mark follows `markOf`;
+  - the bands;
+  - the glyph's placement;
+  - distinct silhouettes;
+  - the width bound.
+- **`npm run sprite-sheet`** (`tools/sprite-sheet.ts`, new). It renders every frame at 2× and 4×, facing both ways. It overlays the band lines and each measured box, lists each problem, draws strips of each unit on its squad's grid, and takes both colour-vision filters.
+- **A draft silhouette sheet** (`docs/r4a-silhouettes.json`), which the user approves before any game sprite is redrawn (T026).
+- **All 13 unit sprites redrawn:** the core six first (the Sporeling, Capguard, Gill Archer, Amanita Knight, Hammercap and Burster), then the other seven. Also the Puffball Mortar's emplacement sprite, `e-puffballMortar` (R4-Q5).
+- **The colour-vision check, moved from M7:**
+  - the matrices in `tools/lib/cvd.ts` (new);
+  - team, soil, outline and mark contrast cases in `tests/unit/contrast.test.ts`;
+  - a lighter Gray Rot body (R4-Q4).
+- **The lineups:** `unit-lineup` and `unit-lineup-twin` replace `elder-showcase`, with their screenshots (#52).
+
+**Not in R4a:**
+- **R4b's, after R3:** matchup marks in full and their glyphs (the structure glyph among them), augment and combo icons, the card face, the card-text pass, the words into the data, Help, the tooltips and the tips.
+- **Not R4's at all:**
+  - new rules or numbers, since #53's radius change is R2a's;
+  - the Gray Rot's own sprites, which are M7's.
+
+**What R4a hands on:**
+- **To R2a:**
+  - `drawUnitSprite`, `drawPips` and `emplacementSprite`. R2a's renderer session (S11) draws every unit through them and never copies `drawUnit`.
+  - The lineups, which R2a/T048 copies in clash form.
+  - The shape checks, which R2a S1 re-runs once it adopts R1's squad sizes. A width failure is fixed by narrowing that sprite in a follow-up R4a PR, never by loosening the check.
+  - #52's first reading and the tier question at R2a's playtest (R2a/T137).
+- **To R4b:** `marks.json`, where R4b adds the `mm-` matchup glyphs, `bodyOf` in `src/data/shapes.ts`, and the lineups.
+- **To M7:** the Gray Rot's own sprites follow the same shape checks and the same contrast test.
+
+## The decisions (2026-11-01)
+
+1. **X3, split R4:** yes. The user answered in the hub session that started this one ("Both", for the two side tracks). R4a runs now beside R1 and lands before R2a's playtest. R4b follows R3.
+2. **Marks** (R4-Q2, #55): the recommendation.
+   - Each mark is one shared glyph, the same on every unit and on both sides, baked onto each frame at the sprite's `shape.markAt[frame]`.
+   - The rule is `markOf`:
+     - the area mark for armor-ignoring damage (`burst`);
+     - the heal mark for a healer with 0 damage (the Tender);
+     - otherwise the damage type's mark: blade for slash, hammer for crush, and for pierce an arrow on a unit that shoots (`projectileSpeed` > 0) or a spike on one that doesn't (A149).
+   - The Scythecap carries the blade alone, since cleave goes through the matrix as slash (A150).
+   - A splash that goes through the matrix keeps its type's mark. So the Mortar carries the hammer with a small splash accent (A151).
+3. **Body bands** (R4-Q1): the recommendation.
+   - Heights: small 8–9, medium 11–12 and big 15–16 native px. They're measured on the frame's own opaque pixels, with the mark and the Elder rim left out (call 2). §14.3's "about 10–14 px" becomes 8–16.
+   - Widths, mark included: at most floor(32/k) native px, where k = ceil(sqrt(n)) and n is the building's base squad + 1 for the Rhizome Vault (call 8).
+     - Today's data gives 10 px for the Capguard, Gill Archer, Hammercap, Sporeling, Veilstalker, Morel Runner, Burster and Driftling, and 16 px for the Amanita Knight, Tender, Scythecap, Rootbreaker and Rhizomorph.
+     - The Velvet Shrine's +2 overflows under #11's first guess, and the sheet tool lists it.
+4. **The tier cue** (R4-Q3): changed from clarify's recommendation, at this session's suggestion.
+   - Bigger pips for both tiers, and the Elder aura kept.
+   - A gold rim on Elders only, and no rim on Bloomed. A rim drawn outside the outline makes a unit look 2 px bigger, and the bands are only 2–3 px apart, so a rimmed small Bloomed would look 10–11 px tall against medium's 11–12. Bloomed units are also about half of a merging army (8 Sporelings field 2 Bloomed + 2), so a rim on every Bloomed would outline half the field.
+   - If R2a's playtest finds Bloomed units hard to tell from base ones, the spore-white tier-2 rim is one more bake.
+5. **Team contrast** (R4-Q4): the recommendation. The check moves from M7 into R4a, with a lighter, bone Gray Rot body (call 7, T033, T034). This session re-ran the numbers:
+   - today, under deuteranopia and protanopia, the two sides' body tones differ by only 1.00–1.10:1 in luminance;
+   - the lighter first guess (`v #b0bcab`, `l #eaf0e2`, `d #808b7c`) gives 1.51–2.13:1, 3.57:1 or more against every soil tone and 4.73:1 or more against the outline;
+   - a darker body passes the team case but sinks into the soil (1.07:1) and into its own outline (1.32:1).
+6. **Emplacements** (R4-Q5): the recommendation.
+   - An emplacement has a slot-sized sprite of its own, `e-<buildingId>`, at most 32 × 32, carrying its weapon's mark. The Rootgate has no attack, so it carries none.
+   - It's found by that name, and the building's own sprite stands in where there's none (call 4).
+   - Structure has no body band. Its matchup glyph is R4b's (T049).
+7. **The field's scale** (#52): the recommendation's plan.
+   - Twin Roots draws at about 1.78× in a 1280×720 window (A077), so it's the worst case. It gets a lineup capture of its own, `r4-lineup-twin`.
+   - Marks and pips are at least 2 native px wide in every stroke (A158).
+   - §10.1 states each map's scale.
+   - R2a's playtest takes a first reading, and R4b's fresh-tester gate closes #52 (T075, T076).
+8. **The merged radius** (#53): the alternative, ×1.0. A merged unit's collision radius stops growing, as its sprite does. The change moves goldens, so R2a makes it inside S1's one golden refresh (R2a/T011), and R4a, which moves none, leaves `tierRadiusMult` at 1.25 in the data.
+
+## Calls this plan makes where the spec is ambiguous
+
+Each is easy to reverse. Calls 1–9 are the task list's Technical context calls, and call 6 follows R4-Q3's answer. Call 10 is new in this plan.
+
+1. **Weapon marks are shared glyphs** in `data/sprites/marks.json` (`m-blade`, `m-arrow`, `m-spike`, `m-hammer`, `m-area`, `m-heal`, and the accent `m-splash`), with no faction swap. The atlas composites them onto each unit frame at `shape.markAt[frame]` before it mirrors the frame.
+   - The baked frame holds the mark, as §14.3 asks, and needs no draw call of its own (§13.6).
+   - Every blade looks the same and both sides draw the same weapon, so the check compares names (A148).
+   - Each glyph is at most 5×5, with strokes at least 2 native px wide, a light core and a dark `k` outline, so it reads on both sides' bodies.
+   - The arrow and the spike both mean pierce. The arrow is a shaft with a head, and the spike a solid point, so they read as one family.
+2. **Body size is the height of a frame's own opaque pixels.** Marks aren't in the frame's rows, so they never count toward height (A148). The Elder rim is a separate baked region, so it doesn't count either. Width counts the composed box, body and mark (call 8).
+3. **The lineups use v1's scenario format now,** as `elder-showcase` does, with only default-data units, so R4a can take screenshots before R2a exists.
+   - The units that exist only as presets (the Burster, the Rhizomorph and the Driftling) are checked through `protoContent('rework')`.
+   - R2a/T048 makes clash-form copies, R2b/T048 ports the files before `test.noTurrets` leaves `ScenarioSchema`, and R4b-S0 (T043) adds the Burster and the Rhizomorph once they're default data (A077, A158).
+4. **An emplacement's sprite is `e-<buildingId>`,** found by convention, with the building's own sprite as the fallback, so no `BuildingDef` field and no hashed data change (A154).
+5. **One unit drawer** (`src/render/unitSprite.ts`) serves v1's renderer and R2a's new views, so `TIER_SCALE` is removed once and R2a never copies `drawUnit` (A066).
+6. **The Elder rim is gold `#f0c85a`, team-neutral,** a 1-px outline of the frame's mask in a (w + 2) × (h + 2) region, drawn under the sprite, with one bake for both factions. Bloomed units get no rim (R4-Q3). Gold is the pips' colour and belongs to neither side. Lilac is the Velvet Bloom's own tone (§2), so a lilac rim would read as the wrong team on a Gray Rot unit (A162).
+7. **The colour-vision matrices move** to `tools/lib/cvd.ts`, so the screenshot tool, the sheet tool and the contrast test use the same numbers (A159). `applyCvd` works in linear RGB, as the screenshot tool's `feColorMatrix` does by default (`color-interpolation-filters` is `linearRGB`), so the test's ratios match the PNGs.
+8. **The width bound counts the base squad plus one.** n is the building's base squad + 1 for every spawner, since the Rhizome Vault fields 1 more unit beside it (§11.2, R3/T085).
+   - The upgraded Burrow's 12 is left out, because upgrade tracks retire in R3.
+   - The Velvet Shrine's +2 and M6's strains (Teeming's 9) may overflow under #11's first guess. The sheet tool lists them, and the test doesn't fail them (A165).
+   - Until R1's sizes are data (R2a S1), the bound reads today's spawn-derived squads.
+9. **Silhouettes and marks don't double up.** The glyph is the unit's one weapon mark. A silhouette feature that suggests a weapon is body: it counts toward the band, and it doesn't repeat the glyph's shape.
+   - That covers §11.3's Gill Archer bow, the Hammercap's raised arm and the Scythecap's hooked cap edge.
+   - So the Gill Archer's bow carries the `m-arrow` glyph, and the Hammercap's maul head is the `m-hammer` glyph, held up on a raised arm that is body. The arm's pixels lift the body's top row, so call 10 holds and the arm counts toward the medium band.
+10. **A mark stays within the body's rows** (new in this plan). In every frame, the glyph's rows lie between the body's top and bottom rows. It may stand out to the front, never above or below.
+    - The band measures the body alone, so without this rule a raised hammer could make a medium Hammercap look big while it still passes the check.
+    - `shapeProblems` rejects a mark that leaves the body's rows (T017, T019), as it rejects one in the back half or outside the sprite's box.
+
+## Stand-ins
+
+What R4a uses in place of pieces that don't exist yet, and why each is good enough:
+
+- **v1's battle shows the new sprites** until R2a's views exist. It's the same drawer (call 5), so what the user reviews at the gate is what R2a draws.
+- **The lineups use v1's scenario format** (call 3). They place every default-data unit at tiers 1, 2 and 3 on both sides, with `test.noTurrets`, so nothing merges or fights while paused.
+- **The preset-only units** (the Burster, the Rhizomorph and the Driftling) are checked through `protoContent('rework')`. They can't stand in the lineup until R2a makes them default data, since the registry rejects unknown units (R4b/T043 adds them).
+- **Today's squads stand in for R1's sizes.** The width bound uses `spawn.count × round(60 / spawn.interval)` until R2a adds `squad` from R1's numbers. R2a S1 then re-runs the shape test (call 8).
+- **v1's battle still draws the Mortar as its building.** The emplacement sprite first appears in R2a's clash view, through `emplacementSprite()`.
+- **The Gray Rot plays the Velvet Bloom's drawings** in its own, lighter palette until M7 draws its roster.
+
+## Steps
+
+The tasks are Part 1 of `docs/tasks/r4-readable-armies.md`, one session per row of its Sessions table, each ending in a PR into `develop`.
+
+1. **Agree this plan** (S0, T001–T007, `feature/r4a-plan`). Then record X3, R4-Q1 to R4-Q5, #52's plan, #53 and #55 in SPEC, `docs/tasks/clarify.md` and `docs/status.md`. S0 is docs only.
+2. **One unit drawer** (S1, T008–T016, `feature/r4a-unit-drawer`):
+   - the colour-vision matrices;
+   - the two lineups, replacing `elder-showcase`;
+   - the atlas's bake as pure functions (`src/render/compose.ts`);
+   - `src/render/unitSprite.ts`;
+   - no `TIER_SCALE`;
+   - `i-pip`, the Elder rim, and pips in the inspect panel.
+
+   It merges before R2a's renderer session where possible.
+3. **The shape checks** (S2, T017–T023, `feature/r4a-shape-checks`): the shape schema, `marks.json` and the glyph bake, `src/data/shapes.ts`, the registry's cross-checks, and the sprite-sheet tool. Tests first.
+4. **The silhouettes** (S2b, T024–T026, `feature/r4a-silhouettes`): a draft sheet of frame 0 for all 13 units and the Mortar's emplacement, fixed until the tool lists no problem. **The user approves it** (T026) before S3.
+5. **The core six and the emplacement** (S3, T027–T029, `feature/r4a-core-sprites`), redrawn from the approved sheet, three frames each.
+6. **The other seven** (S4, T030–T032, `feature/r4a-roster-sprites`): the distinctness and width cases, the redraws, and a shape block required on every unit sprite. It reads R1's proposed squad sizes if R1 has reported.
+7. **Contrast, verification and docs** (S5, T033–T038, `feature/r4a-contrast`): the contrast cases, the Gray Rot's lighter tones, R4a's verification and its As built. The contrast tasks may move to any session after S2 if the user wants the palette sooner.
+8. **The review gate** (T039): the user looks at the captures and the dev site, and agrees that R2a's playtest can run on these sprites.
+
+All of it runs beside R1, which works in `tools/` and `src/sim/formation.ts` and shares no code file with R4a. Every R4a session that changes `data/` adds one `data/CHANGELOG-balance.md` entry: display only, no golden moved, and the approval it rests on (T038).
+
+## Verification
+
+SPEC §16 R4's R4a part:
+
+1. **`npm run verify`,** with the body and mark checks running in `validate:data` through `src/data/registry.ts` (T035). Every R4a session also runs `npm run golden -- verify` and says in its PR that no hash moved: sprites, `marks.json`, palettes and scenarios that no golden replays aren't battle state (`src/sim/state.ts:189-197`).
+2. **The captures,** each PNG opened and its checklist walked (T036):
+
+   ```bash
+   npm run screenshot -- --name r4-lineup      --params "scenario=unit-lineup&paused=1"
+   npm run screenshot -- --name r4-lineup-d    --params "scenario=unit-lineup&paused=1" --filter deuteranopia
+   npm run screenshot -- --name r4-lineup-p    --params "scenario=unit-lineup&paused=1" --filter protanopia
+   npm run screenshot -- --name r4-lineup-twin --params "scenario=unit-lineup-twin&paused=1"
+   ```
+
+   The checklist:
+   - each unit's silhouette is distinct at the field's scale, on both sides;
+   - bodies are ordered by armor, and merged units keep their body with pips, Elders with a gold rim;
+   - a weapon mark is on every unit;
+   - the sides stay apart under both filters;
+   - #52's first reading on Twin Roots, noted here.
+3. **`npm run sprite-sheet`** lists no problem for `data/sprites/units.json`.
+4. **`npm run test:browser`, `npm run test:slow` and `npm run golden -- verify`** (T037). v1's guardrails give the same verdicts as before, since no rule changed.
+5. **The review gate** (T039, the user): R2a's playtest then runs on these sprites, and asks "Could you spot the Elders, and tell a Bloomed unit from a base one?" (A162).
+
+## Open questions for the user
+
+**At T007 (S0): answered 2026-11-01,** and the plan agreed as written (the Decision and "R4a part agreed" lines in `docs/tasks/clarify.md`):
+- X3: split R4 (decision 1).
+- R4-Q2 and #55: the marks (decision 2).
+- R4-Q1: the bands (decision 3).
+- R4-Q3: the tier cue, with Elders alone rimmed (decision 4).
+- R4-Q4: team contrast, with a lighter Gray Rot (decision 5).
+- R4-Q5: the emplacement sprite, with the structure glyph in R4b (decision 6).
+- #52: Twin Roots as the worst case (decision 7). Its Decision line stays open until R4b's gate.
+- #53: ×1.0, made in R2a (decision 8).
+
+**Later:**
+- **T026 (S2b):** approve the silhouette sheet before any game sprite is redrawn.
+- **T039 (the gate):** agree that R2a's playtest can run on R4a's sprites.
+- **#52:** a first reading at R2a's playtest, and the call at R4b's fresh-tester gate (T075, T076).
+- **R1's squad sizes (#7):** they set the width bound. If R1 makes a 4-unit squad bigger, its bound may drop from 16 px to 10, and the sprite is narrowed in a follow-up PR.
+- **The Bloomed cue:** if R2a's playtest finds Bloomed units hard to tell from base ones, add the spore-white tier-2 rim (R4-Q3's other option).
+
+R4b's own calls (R4-Q6, #54, the structure glyph's form) come at R4b-S0.
+
+## As built
+
+_Empty until R4a lands._
