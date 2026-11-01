@@ -18,6 +18,7 @@ one of those files (see the end).
   - where things stand, what waits on the user and what's next: `docs/status.md`. Read it first, and update it when work lands or the user decides something
   - adopted rules and the milestones: `SPEC.md`, updated when a change is adopted
   - a milestone's plan, stand-ins and "As built" results: `docs/<milestone>-plan.md`, such as `docs/r1-plan.md`. A plan has: Goal, Scope, Stand-ins, Steps, Verification, Open questions for the user, and, once built, As built
+  - a milestone's task list, in spec-kit's format, with one session per row of its Sessions table: `docs/tasks/<milestone>.md`. The decisions each milestone needs from the user are in `docs/tasks/clarify.md`, and the review of SPEC v2 in `docs/tasks/spec-analysis.md`. `docs/tasks/README.md` says how a session picks up its tasks, and the skills `/implement`, `/clarify` and `/tasks` run its procedures. Tick a task in the same commit as its work
   - balance candidates and prototype results: `docs/balance-backlog.md` (v2's); data changes: `data/CHANGELOG-balance.md`
   - human playtest notes: `docs/playtest-feedback.md`, newest first
   - ideas that aren't adopted, written against v2: `docs/ideas/`
