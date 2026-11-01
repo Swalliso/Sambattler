@@ -6,10 +6,13 @@
 // in the data yet are named here (plan call 19); R2a moves them into balance.json (§11.1).
 import type { Content } from '../../src/data/registry.ts';
 import { addBuilding, addUnit } from '../../src/sim/create.ts';
-import { formationBox, slotPositions } from '../../src/sim/formation.ts';
-import type { FieldGeom, Slot } from '../../src/sim/formation.ts';
-import { createBattle, hash32, makeConfig, nextFloat, seedStream } from '../../src/sim/index.ts';
+import { formationBox, musterKnits, slotPositions } from '../../src/sim/formation.ts';
+import type { FieldGeom, MusterUnit, Slot } from '../../src/sim/formation.ts';
+import { SIDES, createBattle, hash32, makeConfig, nextFloat, other, runHeadless, seedStream } from '../../src/sim/index.ts';
 import type { BattleState, Side } from '../../src/sim/index.ts';
+import { nextSigned } from '../../src/sim/rng.ts';
+import { mergeTriosNow } from '../../src/sim/systems/merging.ts';
+import { clampToLane, findUnit, unitDef, unitRadius } from '../../src/sim/world.ts';
 import { rosterIds } from './balance.ts';
 
 /** v2's clash numbers, until R2a puts them in the data (§4.6, §5.6, §6.7, §12.3). */
@@ -366,4 +369,341 @@ export function placeArmy(state: BattleState, side: Side, placements: readonly P
     }
   });
   return squadOf;
+}
+
+/** The options a clash plays under, beside its armies (A017). Each is v2's first guess unless set. */
+export interface ClashOpts {
+  /** Merging, at the muster and after it (default on). */
+  merging?: boolean;
+  /** Plots a side opens past the base ones, in a third rank (R1-Q4; default 0). */
+  extraPlots?: number;
+  /** How buildings take lanes on a field of more than one (default `line`, R1-Q1). */
+  lanesRule?: LanesRule;
+  /** v1's movement, without the idle seek (R1-Q8): units with no target march to the far edge. */
+  v1Movement?: boolean;
+  /** v1's targeting (R1-Q7): siege units go for buildings, the Mortar's first. */
+  v1Targeting?: boolean;
+}
+
+/** One clash to play: two armies at a budget on a field, a seed, which seat the first army takes, and the jitter. */
+export interface ClashJob {
+  field: FieldId;
+  seed: number;
+  /** The side the first army plays; the second plays the other. */
+  seat: Side;
+  armies: [Army, Army];
+  /** Up to ± this many tiles per unit per axis, after the muster's knits (default 0, which draws nothing). */
+  jitter?: number;
+  opts?: ClashOpts;
+}
+
+/** Hooks a test uses to stage units and look at the clash at its start. */
+export interface ClashHooks {
+  /** After the arrival, before the muster: place exact units. */
+  stage?: (state: BattleState) => void;
+  /** At tick 20, after the muster's knits and the jitter, before the first step. */
+  mustered?: (state: BattleState) => void;
+}
+
+/** The two readings of the 45 s cap (§18.2 #13): with the muster counted (the first guess), and after it. */
+export type Reading = 'cap' | 'capAfterMuster';
+
+/** How a lane's clash ended: a side wiped out (`wipe`), the 45 s comparison (`cap`), or one of §6.7's edge cases. */
+export type LaneCase = 'wipe' | 'cap' | 'E1' | 'E2' | 'E3' | 'E4' | 'E5' | 'E6';
+
+/** A lane's result in one reading, as it locked (§6.7). */
+export interface LaneReading {
+  case: LaneCase;
+  winner: Side | 'draw';
+  /** The tick it locked: the lane's length, the muster counted. */
+  ticks: number;
+  /** Whether the cap decided it. */
+  capped: boolean;
+  /** Each side's surviving supply: its living units' own supply. */
+  surviving: Record<Side, number>;
+  /** Surviving supply with each siege unit counted twice. */
+  damageSupply: Record<Side, number>;
+  /** 25 × the margin, to the loser's Heartcap; 0 for a draw. */
+  raw: number;
+}
+
+export interface LaneRecord {
+  lane: number;
+  cap: LaneReading;
+  capAfterMuster: LaneReading;
+  /** The lane reached the cap (`cap` reading) with a side kept in it by emplacements alone (#10). */
+  emplacementsHeld: boolean;
+}
+
+/** A clash's result in one reading (§6.7, R1-Q3). */
+export interface ClashReading {
+  /** When its last lane locked: the clash's length in ticks, the muster counted. */
+  ticks: number;
+  /** Whether any lane reached the cap. */
+  capped: boolean;
+  lanesWon: Record<Side, number>;
+  /** Each side's Heartcap damage: summed over the lanes it lost (storm ×1.0), and that sum capped at 500. */
+  heartcap: Record<Side, { uncapped: number; capped: number }>;
+  /** The clash winner (R1-Q3): more lanes won, then more uncapped Heartcap damage dealt, else a draw. */
+  winner: Side | 'draw';
+  /** §6.7's round result: more Heartcap damage dealt after the cap, else a drawn round. */
+  round: Side | 'draw';
+}
+
+/** Merges by the tier they made. */
+export interface Merges {
+  '2': number;
+  '3': number;
+}
+
+/** What one side fielded and did in a clash. */
+export interface ArmyRecord {
+  controller: string;
+  /** Merges at the muster, and on the field after it. */
+  merges: { muster: Merges; field: Merges };
+  /** Its units after the muster, by tier, and their supply. */
+  mustered: { units: number; supply: number; base: number; bloomed: number; elders: number };
+}
+
+/** One clash's record (§16 R1, "Records"). */
+export interface ClashRecord {
+  field: FieldId;
+  budget: number;
+  seed: number;
+  /** The side the job's first army played. */
+  seat: Side;
+  jitter: number;
+  opts: Required<ClashOpts>;
+  armies: Record<Side, ArmyRecord>;
+  lanes: LaneRecord[];
+  cap: ClashReading;
+  capAfterMuster: ClashReading;
+}
+
+/** The tick each reading's cap falls on: 45 s of the clash clock, or 45 s after the muster. */
+const CAP_TICK: Record<Reading, number> = { cap: CLASH.capTicks, capAfterMuster: CLASH.capTicks + CLASH.musterTicks };
+const READINGS: readonly Reading[] = ['cap', 'capAfterMuster'];
+
+/** A job's options with v2's first guesses filled in. */
+export function clashOpts(opts: ClashOpts = {}): Required<ClashOpts> {
+  return {
+    merging: opts.merging ?? true, extraPlots: opts.extraPlots ?? 0, lanesRule: opts.lanesRule ?? 'line',
+    v1Movement: opts.v1Movement ?? false, v1Targeting: opts.v1Targeting ?? false,
+  };
+}
+
+/**
+ * One clash on v1's sim (§16 R1, plan calls 5–8). Both armies arrive at tick 0 in formation (the job's
+ * first army in its seat), then the muster: per side, the player first, `musterKnits` runs on the units
+ * where they stand and each pass is applied with `mergeTriosNow`, so each merged unit's id is its key
+ * (A024). Then the jitter, if any, and the clock jumps to tick 20: nobody moved or attacked in the
+ * muster. Lanes where one side or neither fields anything lock at tick 0 (E1, E2). The rest fight in
+ * `runHeadless`, with v2's targeting and movement switched on unless the job asks for v1's, until each
+ * lane ends by §6.7's rule: a side has no units and no emplacements left, or the cap. The cap reading
+ * locks the lanes still fighting at tick 900, the muster counted (the first guess); the clash runs on to
+ * tick 920 for the other reading (#13). Both are scored by §6.7, storm ×1.0, and by R1-Q3's winner.
+ */
+export function playClash(content: Content, job: ClashJob, hooks: ClashHooks = {}): ClashRecord {
+  const opts = clashOpts(job.opts);
+  const field = clashField(content, job.field, { extraPlots: opts.extraPlots });
+  const state = createBattle(content, makeConfig(content, {
+    seed: job.seed, mapId: field.mapId, player: 'human', enemy: 'human', flags: { merging: opts.merging },
+    test: {
+      // as the supply duels run, with v1's time limit past the 920 ticks both readings need
+      noTurrets: true, noTerritory: true, noHeartcapTargets: true, timeLimitSeconds: 47,
+      ...(opts.v1Targeting ? {} : { noBuildingPreference: true }), ...(opts.v1Movement ? {} : { idleSeek: true }),
+    },
+  }));
+  state.phase = 'live';
+  const armies = { [job.seat]: job.armies[0], [other(job.seat)]: job.armies[1] } as Record<Side, Army>;
+  for (const side of SIDES) placeArmy(state, side, assignSlots(content, armies[side], field, { lanesRule: opts.lanesRule }));
+  hooks.stage?.(state);
+
+  const atMuster = muster(state);
+  jitter(state, job);
+  state.tick = CLASH.musterTicks;
+  const mustered = { player: fielded(state, 'player'), enemy: fielded(state, 'enemy') };
+  hooks.mustered?.(state);
+
+  const lanes = state.lanes.map(() => ({} as Partial<Record<Reading, LaneReading>> & { held?: boolean }));
+  // E1 and E2: decided by what each side fields, before anyone moves
+  tally(state).forEach((t, l) => {
+    if (t.player.alive && t.enemy.alive) return;
+    const r = t.player.alive || t.enemy.alive ? ended(t, 0, 'E1') : ended(t, 0, 'E2');
+    for (const reading of READINGS) lanes[l]![reading] = r;
+  });
+  const open = () => lanes.some((l) => !l.cap || !l.capAfterMuster);
+  if (open()) {
+    runHeadless(state, {
+      until: CAP_TICK.capAfterMuster,
+      onTick: (s) => {
+        tally(s).forEach((t, l) => {
+          const lane = lanes[l]!;
+          const end = !t.player.alive || !t.enemy.alive ? ended(t, s.tick) : undefined;
+          for (const reading of READINGS) {
+            if (lane[reading]) continue;
+            if (end) lane[reading] = end;
+            else if (s.tick >= CAP_TICK[reading]) {
+              lane[reading] = capped(t, s.tick);
+              if (reading === 'cap') lane.held = t.player.units === 0 || t.enemy.units === 0;
+            }
+          }
+        });
+        if (!open()) s.phase = 'ended';
+      },
+    });
+  }
+  const laneRecords = lanes.map((l, lane): LaneRecord => ({ lane, cap: l.cap!, capAfterMuster: l.capAfterMuster!, emplacementsHeld: l.held ?? false }));
+  const armyRecord = (side: Side): ArmyRecord => {
+    const all = state.stats[side].merges;
+    const m = atMuster[side];
+    return { controller: armies[side].controller, merges: { muster: m, field: { '2': all['2'] - m['2'], '3': all['3'] - m['3'] } }, mustered: mustered[side] };
+  };
+  return {
+    field: job.field, budget: job.armies[0].budget, seed: job.seed, seat: job.seat, jitter: job.jitter ?? 0, opts,
+    armies: { player: armyRecord('player'), enemy: armyRecord('enemy') },
+    lanes: laneRecords,
+    cap: scoreReading(laneRecords.map((l) => l.cap)),
+    capAfterMuster: scoreReading(laneRecords.map((l) => l.capAfterMuster)),
+  };
+}
+
+/**
+ * The muster's knits (§5.6, plan call 6): per side, the player first, `musterKnits` on the units as they
+ * stand, each pass applied with `mergeTriosNow` in its order, so each merged unit's id equals its key.
+ * Returns each side's merges. With merging off, nothing knits.
+ */
+function muster(state: BattleState): Record<Side, Merges> {
+  const lanes = state.lanes.map((l) => ({ top: l.rowStart, bottom: l.rowEnd }));
+  for (const side of SIDES) {
+    if (!state.config.flags.merging) break;
+    const firstKey = state.nextId;
+    const res = musterKnits(state.units.filter((u) => u.side === side).map((u): MusterUnit => ({
+      key: u.id, side, lane: u.lane, unitId: u.unitId, tier: u.tier, x: u.x, y: u.y, mergeOn: u.mergeOn, source: u.sourceBuildingId,
+      // §5.6's eligibility apart from the toggle and the tier, which the record carries: burrowed and burst units never knit
+      eligible: !u.burrowed && !(state.rules.burst && unitDef(state, u).tags.includes('burst')),
+    })), {
+      firstKey, mergeRadius: state.compiled[side].mergeRadius, lanes, width: state.map.width,
+      radiusOf: (unitId, tier) => state.compiled[side].units[unitId]!.tiers[tier - 1]!.radius,
+    });
+    for (const pass of res.passes) mergeTriosNow(state, pass.map((trio) => trio.map((key) => findUnit(state, key)!)));
+    const units = state.units.filter((u) => u.side === side);
+    if (units.length !== res.units.length || units.some((u, i) => u.id !== res.units[i]!.key || u.tier !== res.units[i]!.tier)) {
+      throw new Error(`playClash: ${side}'s muster gave units whose ids aren't musterKnits's keys`);
+    }
+  }
+  return { player: { ...state.stats.player.merges }, enemy: { ...state.stats.enemy.merges } };
+}
+
+/**
+ * The measurement's jitter (§12.2, plan call 5): each unit, in id order, moves up to ± `job.jitter` tiles
+ * on each axis, uniformly, from the clash's own stream, and is clamped to its lane. It holds its new row.
+ * Jitter 0 draws nothing.
+ */
+function jitter(state: BattleState, job: ClashJob): void {
+  const j = job.jitter ?? 0;
+  if (!(j > 0)) return;
+  const rng = seedStream(hash32(job.seed, `jitter:${job.seat}`, 0), 'combat', 0);
+  for (const u of state.units) {
+    u.x += nextSigned(rng) * j;
+    u.y += nextSigned(rng) * j;
+    clampToLane(state, u, unitRadius(state, u));
+    u.px = u.x; u.py = u.y; u.spawnY = u.y;
+  }
+}
+
+/** A side's units after the muster, by tier, and their supply. */
+function fielded(state: BattleState, side: Side): ArmyRecord['mustered'] {
+  const out = { units: 0, supply: 0, base: 0, bloomed: 0, elders: 0 };
+  for (const u of state.units) {
+    if (u.side !== side) continue;
+    out.units++;
+    out.supply += u.supply;
+    if (u.tier === 1) out.base++; else if (u.tier === 2) out.bloomed++; else out.elders++;
+  }
+  return out;
+}
+
+/** What one side has in a lane: living units and emplacements, its surviving supply and its damage supply. */
+interface SideTally { units: number; towers: number; alive: boolean; surviving: number; damage: number }
+type LaneTally = Record<Side, SideTally>;
+
+/** Each lane's tally (§6.7): every living unit counts its own supply, a siege unit twice for damage. */
+function tally(state: BattleState): LaneTally[] {
+  const out = state.lanes.map((): LaneTally => ({
+    player: { units: 0, towers: 0, alive: false, surviving: 0, damage: 0 },
+    enemy: { units: 0, towers: 0, alive: false, surviving: 0, damage: 0 },
+  }));
+  for (const u of state.units) {
+    if (u.hp <= 0) continue;
+    const t = out[u.lane]![u.side];
+    t.units++;
+    t.surviving += u.supply;
+    t.damage += unitDef(state, u).tags.includes('siege') ? u.supply * CLASH.siegeDamageMult : u.supply;
+  }
+  // every building on a clash's field is an emplacement
+  for (const b of state.buildings) if (b.hp > 0) out[b.lane]![b.side].towers++;
+  for (const t of out) for (const side of SIDES) t[side].alive = t[side].units + t[side].towers > 0;
+  return out;
+}
+
+/**
+ * A lane that ended because a side is out of it, or both (E4), at `tick`: the side left wins, its whole
+ * damage supply the margin. It's E6 when only emplacements are left to win it. At tick 0, `arrival`
+ * names the case: E1 when one side fields nothing, E2 when neither does.
+ */
+function ended(t: LaneTally, tick: number, arrival?: 'E1' | 'E2'): LaneReading {
+  const winner: Side | 'draw' = t.player.alive ? 'player' : t.enemy.alive ? 'enemy' : 'draw';
+  const kase: LaneCase = arrival ?? (winner === 'draw' ? 'E4' : t[winner].units > 0 ? 'wipe' : 'E6');
+  return lock(t, tick, kase, winner, false);
+}
+
+/**
+ * A lane still fighting at the cap: the side with more surviving supply wins it, its margin its damage
+ * supply less the loser's, never below 0 (#22's first guess). Only emplacements left on both sides (E5)
+ * or equal surviving supply (E3) is a draw.
+ */
+function capped(t: LaneTally, tick: number): LaneReading {
+  if (t.player.units === 0 && t.enemy.units === 0) return lock(t, tick, 'E5', 'draw', true);
+  if (t.player.surviving === t.enemy.surviving) return lock(t, tick, 'E3', 'draw', true);
+  return lock(t, tick, 'cap', t.player.surviving > t.enemy.surviving ? 'player' : 'enemy', true);
+}
+
+function lock(t: LaneTally, tick: number, kase: LaneCase, winner: Side | 'draw', isCapped: boolean): LaneReading {
+  const margin = winner === 'draw' ? 0 : Math.max(0, t[winner].damage - t[other(winner)].damage);
+  return {
+    case: kase, winner, ticks: tick, capped: isCapped,
+    surviving: { player: t.player.surviving, enemy: t.enemy.surviving },
+    damageSupply: { player: t.player.damage, enemy: t.enemy.damage },
+    raw: CLASH.damagePerSupply * margin,
+  };
+}
+
+/**
+ * A clash's score in one reading (§6.7, R1-Q3): each lane's raw damage to its loser's Heartcap, storm
+ * ×1.0 (so `floor(raw × 10000 / 10000)` is the raw), summed per Heartcap and capped at 500. The clash
+ * goes to more lanes won, then more uncapped damage dealt, else it's a draw; the round, to more capped
+ * damage dealt, else it's a drawn round.
+ */
+function scoreReading(lanes: readonly LaneReading[]): ClashReading {
+  const won = { player: 0, enemy: 0 }, taken = { player: 0, enemy: 0 };
+  for (const l of lanes) {
+    if (l.winner === 'draw') continue;
+    won[l.winner]++;
+    taken[other(l.winner)] += l.raw;
+  }
+  const heartcap = {
+    player: { uncapped: taken.player, capped: Math.min(CLASH.damageCap, taken.player) },
+    enemy: { uncapped: taken.enemy, capped: Math.min(CLASH.damageCap, taken.enemy) },
+  };
+  const more = (p: number, e: number): Side | 'draw' => (p > e ? 'player' : e > p ? 'enemy' : 'draw');
+  const byLanes = more(won.player, won.enemy);
+  return {
+    ticks: Math.max(...lanes.map((l) => l.ticks)),
+    capped: lanes.some((l) => l.capped),
+    lanesWon: won,
+    heartcap,
+    winner: byLanes !== 'draw' ? byLanes : more(heartcap.enemy.uncapped, heartcap.player.uncapped),
+    round: more(heartcap.enemy.capped, heartcap.player.capped),
+  };
 }
