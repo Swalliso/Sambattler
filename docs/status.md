@@ -22,7 +22,7 @@ Updated 2026-11-01, on `feature/r1-plan` (R1 S0, a docs PR into `develop`). This
 - **Then:**
   - R2: rounds, the general plans first, lives, and the planning screen. R2 starts only once R1's results are in `docs/balance-backlog.md` and the user has agreed them. A session asked to start R2 before that stops and asks. The task lists split it in two (X1): R2a, a single battle in rounds, then R2b, the run in rounds;
   - R3: the kit, the six archetypes, augments, combos and run packs;
-  - R4: readable armies and the card-text pass, split (X3) into R4a, the shapes on the field, which can start now, and R4b, the cards, after R3;
+  - R4: readable armies and the card-text pass, in two parts (X3, agreed 2026-11-01): R4a, the shapes on the field, now beside R1 (below), and R4b, the cards, after R3;
   - then M6–M8, rewritten for v2.
 
   [docs/tasks/README.md](tasks/README.md) has the full order and every milestone's sessions.
@@ -44,7 +44,10 @@ Updated 2026-11-01, on `feature/r1-plan` (R1 S0, a docs PR into `develop`). This
   - R1-Q9: a three-lane screen, outside the bars.
   - For later calls, R1 also records eliteShare by parts' base supply (R2-Q3), measures copies at 2, 3 and 4 (X4), and builds the race model (X5). Those calls stay open.
 - **Alongside R1:**
-  - R4a-S0, the shape-language plan, if the user agrees X3;
+  - **R4a, the shape language on the field** (X3, agreed 2026-11-01).
+    - **Its plan,** [docs/r4a-plan.md](r4a-plan.md), was agreed on 2026-11-01 (R4a-S0). Every recommendation was taken but two: only Elders get a rim (R4-Q3), and the merged radius goes ×1.0, which R2a writes (#53).
+    - **Next: R4a-S1** (`feature/r4a-unit-drawer`, R4/T008–T016), once S0's PR (`feature/r4a-plan`) has merged. It builds the one unit drawer, the pips and the Elder rim, and the lineups. Then S2 to S5 follow in the order of [the task list](tasks/r4-readable-armies.md)'s Sessions table, still beside R1.
+    - **R2a's playtest waits for R4a's review gate** (R4/T039).
   - Run it back's S0 ([run-it-back.md](tasks/run-it-back.md)), if the user agrees X10.
 
   These touch different files.
@@ -81,6 +84,7 @@ Updated 2026-11-01, on `feature/r1-plan` (R1 S0, a docs PR into `develop`). This
 
 | Work | Where | State |
 |---|---|---|
+| R4a plan agreed (2026-11-01) | [r4a-plan.md](r4a-plan.md), [clarify.md](tasks/clarify.md) (X3, R4-Q1 to R4-Q5, #52, #53, #55), SPEC §2, §5.6, §5.8, §10, §11.1, §11.3, §13.6, §14.2, §14.3, §16 R4 and M7, and §18.2, the `feature/r4a-plan` PR | Every recommendation taken but two: only Elders get a rim, and the merged radius goes ×1.0 in R2a. R4a-S1 next |
 | R1 plan agreed (2026-11-01) | [r1-plan.md](r1-plan.md), [clarify.md](tasks/clarify.md) (R1-Q1 to R1-Q9), SPEC §16 R1, §12.2 and §13.7, the `feature/r1-plan` PR | Every recommendation taken. The full-colony budget is now 150 live units a side. R1 S1 and S2 next |
 | SPEC v2 broken into tasks (2026-11-01) | [tasks/](tasks/README.md), [#40](https://github.com/Swalliso/Sambattler/pull/40) | On `develop`. R1's list is being worked; the rest are refreshed at each milestone's plan |
 | Archive of the v1-era notes (2026-10-31) | [archive/](archive/README.md), [research/](research/README.md), the `feature/spec-v2` PR | v1 notes moved, links kept, rules updated so sessions don't pick up v1 as current |

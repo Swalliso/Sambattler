@@ -191,7 +191,7 @@ These ten calls set how the work after R1 is cut. The task files assume each rec
 - **Recommendation:** Yes. It reverses §1.3 #10's order, so it needs your OK. **Why:** R2's gate asks whether seeing the general's army helped, but today a sprite's size shows its merge tier, not its armor, so the answer is confounded (A202). No sprite meets a size band (A148). Sprites aren't battle state, so no golden moves. R4a-S1 moves unit drawing into `src/render/unitSprite.ts`, which v1's renderer and R2a's views (R2a/T081) share, so the pips and body-size change land once for both.
 - **Alternatives:** R4 whole after R3; R2a's playtest then reads armies on v1 sprites.
 - **Blocks:** R4a-S0; when R2a's playtest runs.
-- **Decision:** _open_
+- **Decision:** 2026-11-01 (the hub session; recorded at R4a-S0): yes. The user was asked "Which side tracks should start beside R1? Picking a track is your yes to its decision (X3, X10)" and answered "Both". So R4a, the shapes on the field, runs now beside R1 and lands before R2a's playtest, and R4b follows R3. In SPEC §1.3 #10, §5.8, §10.2, §10.4 and §16 (its intro and R4).
 
 ### X4 · Copies before R3
 
@@ -1115,7 +1115,12 @@ The R3 plan settles these itself, with no call from you: A131, A140.
 - **Recommendation:** Measure the body's opaque bounding-box height, leaving out the weapon mark. Bands at least 3 px apart: small 8–9, medium 11–12 and big 15–16 px, with §14.3's range widened to about 8–16 px (A148). Keep widths within the squad grid's spacing (8 native px at k = 4), let height carry the difference, and put the mark on the front edge (A165). **Why:** three bands in 10–14 px sit 2 px apart, no sprite meets one today (A148), and wider bodies overlap in the formation preview (A165).
 - **Alternatives:** bands by area.
 - **Blocks:** R4a's shape schema and redraw.
-- **Decision:** _open_
+- **Decision:** 2026-11-01 (R4a-S0): the recommendation.
+  - Heights: small 8–9, medium 11–12 and big 15–16 native px, measured on the frame's own opaque pixels with the mark and the Elder rim left out. §14.3's "about 10–14 px" becomes 8–16.
+  - Widths, mark included: at most floor(32/k), with n the building's base squad + 1 for the Rhizome Vault. Today that's 10 px for the 4- to 9-unit squads and 16 px for the 2- and 3-unit ones. The Shrine's +2 overflows, and the sheet tool lists it.
+  - The plan adds one check: a mark stays within the body's rows, so it never makes a unit look taller than its band (`docs/r4a-plan.md`, call 10).
+
+  In SPEC §5.8, §10.4, §14.2 and §14.3.
 
 ### R4-Q2 · Weapon marks
 
@@ -1130,7 +1135,12 @@ The R3 plan settles these itself, with no call from you: A131, A140.
   This disagrees with §5.8 and §11.3. **Why:** Mortar shells hit as crush, so an area mark there breaks "the shape always tells the base matchup" (A151). One glyph per mark means every blade looks the same on both sides, and the check compares names instead of hunting pixels.
 - **Alternatives:** the mark drawn into each sprite with reserved palette keys listed in `shape.markKeys`, so a check finds it. If you pick it, R4/T019 and R4/T022 check `shape.markKeys`, and R4/T021 makes no weapon glyphs.
 - **Blocks:** R4a's schema, data checks and redraw.
-- **Decision:** _open_
+- **Decision:** 2026-11-01 (R4a-S0): the recommendation.
+  - Shared glyphs in `data/sprites/marks.json`, baked onto each frame at `shape.markAt`.
+  - The rule: area for `burst`; heal for a healer with 0 damage; otherwise blade (slash), hammer (crush), and for pierce an arrow on a unit that shoots or a spike on one that doesn't.
+  - The Scythecap carries the blade only. A splashing emplacement keeps its type's mark with a splash accent, so the Mortar carries a hammer.
+
+  In SPEC §5.8, §10.4, §11.3, §13.6, §14.2, §14.3 and §16 R4 step 1.
 
 ### R4-Q3 · A louder tier cue
 
@@ -1139,7 +1149,15 @@ The R3 plan settles these itself, with no call from you: A131, A140.
 - **Recommendation:** Yes: a 1-px rim baked per tier, team-neutral: spore-white `#fbf6ff` (`--spore-white`) for Bloomed and gold `#f0c85a` for Elder. Pips with a 3×3 gold core in a 1-px dark outline, so no smaller than today's 3×2 core. The Elder aura kept, and "could you spot the Elders?" added to R2a's playtest and R4b's gate (A162). **Why:** an Elder has ×7.84 HP and damage but would show two 3×2 px pips (A162). Lilac is the Velvet Bloom's own tone (§2), so a lilac rim would read as the wrong team on a Gray Rot unit.
 - **Alternatives:** a lilac rim for Bloomed; pips only.
 - **Blocks:** R4a's pips work.
-- **Decision:** _open_
+- **Decision:** 2026-11-01 (R4a-S0): changed from the recommendation, at the session's suggestion.
+  - Bigger pips for both tiers (a 3×3 gold core in a 1-px dark outline), and the Elder aura kept.
+  - A 1-px gold `#f0c85a` rim on Elders only, and no rim on Bloomed.
+
+  **Why:**
+  - A rim outside the outline makes a unit look 2 px bigger, and the bands are only 2–3 px apart. A rimmed small Bloomed would look 10–11 px tall, against medium's 11–12.
+  - Bloomed units are about half of a merging army (8 Sporelings field 2 Bloomed + 2), so a rim on every one would outline half the field.
+
+  If R2a's playtest finds Bloomed units hard to tell from base ones, a spore-white tier-2 rim is one more bake. "Could you spot the Elders, and tell a Bloomed unit from a base one?" joins R2a's playtest (R2a/T137) and R4b's gate (R4/T075). In SPEC §5.6, §5.8, §10.4, §13.6 and §14.3.
 
 ### R4-Q4 · Team contrast in R4
 
@@ -1148,7 +1166,11 @@ The R3 plan settles these itself, with no call from you: A131, A140.
 - **Recommendation:** Yes: a unit test that the factions' body tones differ by at least 1.5:1 in lightness under both filters and stand off the soil and the dark outline, and a lighter ("bone") ash body for the Gray Rot's swap tones (A159). **Why:** under both filters the tones keep a hue difference but almost no lightness difference (ratio 1.00–1.17), marginal on small sprites (A159). A darker body can't pass both checks: under deuteranopia, a `v` tone 1.5:1 darker than the Velvet Bloom's `#8a4fd8` falls below the Velvet Bloom's own 1.77:1 against the soil tone `#5e4532`, so enemy units would sink into the clash ground. A lighter body passes both. R4/T033 and R4/T034 have the numbers.
 - **Alternatives:** a darker body, with a lower soil floor; wait for M7.
 - **Blocks:** R4a's palette and checks.
-- **Decision:** _open_
+- **Decision:** 2026-11-01 (R4a-S0): the recommendation.
+  - The check moves into R4a. Under both filters the sides' body tones differ by at least 1.5:1 in luminance, each side's body tones stand at least 1.75:1 off every soil tone, and its dark tone 1.5:1 off the outline.
+  - The Gray Rot gets a lighter, bone body, first guess `v #b0bcab`, `l #eaf0e2`, `d #808b7c`. S0 re-ran the numbers: 1.51–2.13:1 under the filters, 3.57:1 or more against the soil, 4.73:1 or more against the outline. Today's tones differ by only 1.00–1.10:1 under the filters.
+
+  In SPEC §2 and §16 M7.
 
 ### R4-Q5 · Emplacements on the field, and a Structure mark
 
@@ -1157,7 +1179,11 @@ The R3 plan settles these itself, with no call from you: A131, A140.
 - **Recommendation:** A slot-sized emplacement sprite carrying its weapon mark (the Rootgate has none), in R4a. A "structure" glyph, a stump or a block, in the mark set, in R4b. Structure has no body band (A154). **Why:** crush and siege units are strong against emplacements, and nothing could show it (A154).
 - **Alternatives:** the 32×32 building art as the emplacement.
 - **Blocks:** R4a's redraw; R4b's marks.
-- **Decision:** _open_
+- **Decision:** 2026-11-01 (R4a-S0): the recommendation.
+  - In R4a, an emplacement has a slot-sized sprite of its own, `e-<buildingId>`, at most 32×32. It's found by that name, with the building's sprite as the fallback, and carries its weapon's mark: the Mortar's hammer with a splash accent, and none on the Rootgate. Structure has no body band.
+  - In R4b, a structure glyph joins the mark set. R4b-S1 draws its form, a stump or a block (R4/T049).
+
+  In SPEC §5.8 and §14.3.
 
 ### R4-Q6 · Card and mark details
 
@@ -1182,7 +1208,8 @@ The R3 plan settles these itself, with no call from you: A131, A140.
 - **Recommendation:** Agree for one-lane maps, but test the worst case. Twin Roots draws at about 1.78× (units about 21–25 px), so R4a adds a Twin Roots lineup screenshot and draws marks and pips at least 2 native px wide (A077, A158). **Why:** §10.4's MUST assumes 2×, which at 720 px high needs the bands to total 272 px or less, against today's 334 (A077).
 - **Alternatives:** a closer clash view; slimmer bands on two-lane maps.
 - **Blocks:** R4a-S0; read at R2a's playtest and R4b's fresh-tester gate.
-- **Decision:** _open_
+- **Decision:** _open_ (R4b's fresh-tester gate decides, R4/T076)
+- **R4a part agreed:** 2026-11-01 (R4a-S0): the recommendation. Twin Roots, at about 1.78×, is the worst case: R4a adds the `r4-lineup-twin` capture, draws marks and pips at least 2 native px wide, and states each map's scale in §10.1. R2a's playtest takes a first reading (R2a/T137). In SPEC §10.1, §10.4, §16 R4 and §18.2 #52.
 
 ### #53 · Merged units' body radius
 
@@ -1191,7 +1218,7 @@ The R3 plan settles these itself, with no call from you: A131, A140.
 - **Recommendation:** Agree. **Why:** the radius is collision and range math, not drawing (§5.6). A change moves the goldens, so if you want one, make it in R2a, where goldens move anyway, not in R4a, which moves none.
 - **Alternatives:** ×1.0, changed in R2a.
 - **Blocks:** R4a-S0 (R2a S0 to change it).
-- **Decision:** _open_
+- **Decision:** 2026-11-01 (R4a-S0): the alternative. `tierRadiusMult` becomes 1.0, so a merged unit's radius stops growing, as its sprite does. R2a makes the change inside S1's golden refresh (R2a/T011). R4a moves no golden, so it leaves the data at 1.25. In SPEC §5.6, §11.1 and §18.2 #53.
 
 ### #54 · An area mark against crowds
 
@@ -1209,7 +1236,7 @@ The R3 plan settles these itself, with no call from you: A131, A140.
 - **Recommendation:** Agree; R4-Q2's check names it.
 - **Alternatives:** no mark.
 - **Blocks:** R4a's redraw.
-- **Decision:** _open_
+- **Decision:** 2026-11-01 (R4a-S0): the recommendation. The heal mark, which R4-Q2's rule gives any healer that deals no damage. In SPEC §5.8, §11.3 and §18.2 #55.
 
 ### #56 · An in-world name for lives
 
