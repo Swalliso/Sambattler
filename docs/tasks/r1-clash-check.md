@@ -1,8 +1,8 @@
 # R1 — The clash check: tasks
 
-R1 builds a headless check that fights whole armies at equal gold, in formation, and finds out whether every strong army has an answer and what squad sizes R2a starts from (SPEC §16 R1's Goal). It changes no rule and no data, so no golden hash moves. This list is a draft of 2026-11-01, made from SPEC v2 and `docs/tasks/spec-analysis.md` before the user has agreed `docs/r1-plan.md`.
+R1 builds a headless check that fights whole armies at equal gold, in formation, and finds out whether every strong army has an answer and what squad sizes R2a starts from (SPEC §16 R1's Goal). It changes no rule and no data, so no golden hash moves. This list was drafted on 2026-11-01 from SPEC v2 and `docs/tasks/spec-analysis.md`. The user agreed `docs/r1-plan.md` the same day (S0), taking every recommendation, so the tasks stand as written.
 
-**Status:** Draft, not agreed · **Spec:** SPEC §16 "Milestone R1 — The clash check" and the sections it cites · **Plan:** `docs/r1-plan.md` (drafted; S0 agrees it at T001) · **Gate in:** SPEC v2 (#39) and these task lists (the `feature/v2-tasks` PR) on `develop`; then S0 merged: the plan agreed and R1's calls written into SPEC (T001, T051) · **Gate out:** the user has read the report and settled #7–#15, X4 and X5 (T049), and T050 has recorded the calls. R2a S0 starts only then.
+**Status:** Agreed 2026-11-01 (S0) · **Spec:** SPEC §16 "Milestone R1 — The clash check" and the sections it cites · **Plan:** `docs/r1-plan.md` (agreed 2026-11-01, T001) · **Gate in:** SPEC v2 (#39) and these task lists (the `feature/v2-tasks` PR) on `develop`; then S0 merged: the plan agreed and R1's calls written into SPEC (T001, T051) · **Gate out:** the user has read the report and settled #7–#15, X4 and X5 (T049), and T050 has recorded the calls. R2a S0 starts only then.
 
 ## Read first
 
@@ -21,7 +21,7 @@ R1 builds a headless check that fights whole armies at equal gold, in formation,
 ## Before you start
 
 **Decisions** (by clarify ref; until one is answered, its task builds the recommendation):
-- R1-Q1 to R1-Q9, R2-Q3's R1 part, and the R1 parts of X4 and X5 are agreed at T001 (S0), and T051 writes them into SPEC. What each blocks:
+- R1-Q1 to R1-Q9, R2-Q3's R1 part, and the R1 parts of X4 and X5 were agreed at T001 (S0) on 2026-11-01, each as recommended, and T051 wrote them into SPEC. The ⛔ marks on them below are satisfied. What each blocks:
   - R1-Q1 (where squads stand) → T013, T014;
   - R1-Q2 (spending a budget) → T011, T012;
   - R1-Q3 (a clash win, jitter) → T015, T016, T020, T022, T023;
@@ -110,7 +110,7 @@ R1 builds a headless check that fights whole armies at equal gold, in formation,
 
 ## Phase 1: Setup
 
-- [ ] T001 [USER] Agree `docs/r1-plan.md` with the user. Walk through its calls; the user answers R1-Q1 to R1-Q9, R2-Q3's R1 part and the R1 parts of X4 and X5. Write each R1-Q answer, dated, in the Decision line of its block in `docs/tasks/clarify.md`, and every answer beside its call in `docs/r1-plan.md`; set the plan's status line to "agreed" (§16 R1)
+- [x] T001 [USER] Agree `docs/r1-plan.md` with the user. Walk through its calls; the user answers R1-Q1 to R1-Q9, R2-Q3's R1 part and the R1 parts of X4 and X5. Write each R1-Q answer, dated, in the Decision line of its block in `docs/tasks/clarify.md`, and every answer beside its call in `docs/r1-plan.md`; set the plan's status line to "agreed" (§16 R1)
   - A changed answer changes the tasks it blocks (Before you start). Edit those task lines in this file in the same commit.
   - For X4, X5 and R2-Q3, add a dated "R1 measures: …" line under the block and leave its Decision line open. X4 and X5 close at T050, R2-Q3 at R2a S0.
 - [ ] T051 Write the agreed R1-Q answers and R1's wording fixes (`docs/tasks/spec-analysis.md`, "SPEC wording fixes", R1) into `SPEC.md`, so every later session reads a SPEC that matches this list (§0, §16 R1, §12.2)
