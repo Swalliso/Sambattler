@@ -124,7 +124,7 @@ export class BattleView {
       reroll: () => session.issue({ type: 'draftReroll' }),
       skip: () => session.issue({ type: 'draftSkip' }),
     });
-    this.inspect = new InspectPanel(content, this.log, (id) => session.issue({ type: 'sell', entityId: id }),
+    this.inspect = new InspectPanel(content, atlas, this.log, (id) => session.issue({ type: 'sell', entityId: id }),
       (id) => session.toggleMerge(id), (_state, id) => session.mergeShown(id));
     this.tipGold = uiIcon(atlas, 'i-gold');
     this.fieldWrap = h('div', { class: 'fieldwrap' }, this.canvas, this.tip);

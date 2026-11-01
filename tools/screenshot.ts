@@ -11,6 +11,8 @@ import { existsSync, mkdirSync, readdirSync, statSync, writeFileSync } from 'nod
 import { dirname, join } from 'node:path';
 import { chromium, firefox } from 'playwright';
 import { nodeContent, ROOT } from './lib/content.ts';
+import { CVD_MATRICES, cvdMatrixValues } from './lib/cvd.ts';
+import type { CvdFilter } from './lib/cvd.ts';
 import { RUN_SCENES, runForParams, sceneOf, stateForParams } from './lib/params.ts';
 import { hashRun, intelDots } from '../src/run/index.ts';
 import { COUNTER_KINDS } from '../src/sim/index.ts';
@@ -18,7 +20,7 @@ import { hashState, summarize } from '../src/sim/index.ts';
 import type { BattleState } from '../src/sim/index.ts';
 
 interface Args {
-  name: string; params: string; url?: string; browser: 'chromium' | 'firefox'; filter?: 'deuteranopia' | 'protanopia';
+  name: string; params: string; url?: string; browser: 'chromium' | 'firefox'; filter?: CvdFilter;
   width: number; height: number; clicks: string[]; settings?: string;
 }
 
@@ -30,7 +32,10 @@ function parseArgs(argv: string[]): Args {
     else if (k === '--params') { a.params = v ?? ''; i++; }
     else if (k === '--url') { a.url = v!; i++; }
     else if (k === '--browser') { a.browser = v as Args['browser']; i++; }
-    else if (k === '--filter') { a.filter = v as Args['filter']; i++; }
+    else if (k === '--filter') {
+      if (!v || !(v in CVD_MATRICES)) throw new Error(`--filter wants ${Object.keys(CVD_MATRICES).join(' or ')}, got ${v}`);
+      a.filter = v as CvdFilter; i++;
+    }
     else if (k === '--size') {
       const m = /^(\d+)x(\d+)$/.exec(v ?? '');
       if (!m) throw new Error(`--size wants WxH, got ${v}`);
@@ -75,11 +80,6 @@ async function waitForServer(url: string, ms: number): Promise<void> {
   throw new Error(`server at ${url} did not start`);
 }
 
-const FILTERS: Record<string, string> = {
-  deuteranopia: '0.625 0.375 0 0 0  0.7 0.3 0 0 0  0 0.3 0.7 0 0  0 0 0 1 0',
-  protanopia: '0.567 0.433 0 0 0  0.558 0.442 0 0 0  0 0.242 0.758 0 0  0 0 0 1 0',
-};
-
 async function main(): Promise<number> {
   const args = parseArgs(process.argv.slice(2));
   const q = new URLSearchParams(args.params);
@@ -120,7 +120,7 @@ async function main(): Promise<number> {
         svg.innerHTML = `<filter id="cvd"><feColorMatrix type="matrix" values="${matrix}"/></filter>`;
         document.body.append(svg);
         document.documentElement.style.filter = 'url(#cvd)';
-      }, FILTERS[args.filter]!);
+      }, cvdMatrixValues(args.filter));
     }
 
     // 1. no console or page errors
