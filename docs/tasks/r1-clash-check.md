@@ -113,7 +113,7 @@ R1 builds a headless check that fights whole armies at equal gold, in formation,
 - [x] T001 [USER] Agree `docs/r1-plan.md` with the user. Walk through its calls; the user answers R1-Q1 to R1-Q9, R2-Q3's R1 part and the R1 parts of X4 and X5. Write each R1-Q answer, dated, in the Decision line of its block in `docs/tasks/clarify.md`, and every answer beside its call in `docs/r1-plan.md`; set the plan's status line to "agreed" (§16 R1)
   - A changed answer changes the tasks it blocks (Before you start). Edit those task lines in this file in the same commit.
   - For X4, X5 and R2-Q3, add a dated "R1 measures: …" line under the block and leave its Decision line open. X4 and X5 close at T050, R2-Q3 at R2a S0.
-- [ ] T051 Write the agreed R1-Q answers and R1's wording fixes (`docs/tasks/spec-analysis.md`, "SPEC wording fixes", R1) into `SPEC.md`, so every later session reads a SPEC that matches this list (§0, §16 R1, §12.2)
+- [x] T051 Write the agreed R1-Q answers and R1's wording fixes (`docs/tasks/spec-analysis.md`, "SPEC wording fixes", R1) into `SPEC.md`, so every later session reads a SPEC that matches this list (§0, §16 R1, §12.2)
   - §16 R1's scope and §12.2's clash check:
     - formation: the line by §7.3's tags (A006); centre-out files, and on Twin Roots the `line` lane rule with §7.3's round-1 rule as a variant (R1-Q1, A012, A002); formation by plot is R2's, measured by G16 (A019);
     - spending: economy and utility picks skipped; a pick that doesn't fit is skipped and drawing goes on; one stream per army; the monos are the army buildings, the Tender's Ring and the Puffball Mortar included (R1-Q2, A016, A003);
@@ -125,6 +125,7 @@ R1 builds a headless check that fights whole armies at equal gold, in formation,
     - the records: eliteShare by parts' base supply, with the swarm read and the Elder-only share (R2-Q3's R1 part; §7.4's rule waits for R2a S0);
     - the copies variants at 2, 3 and 4 (X4's R1 part) and the race-model section (X5's R1 part). D45, §6.7 and §8.10 stay as they are until T050.
   - §13.7 and §15.4: the full-colony budget in live units at the arrival (at most 150 a side), and the bench case as the true worst case, reported only until R2 adds it to G11 (R1-Q5, A004, A018, A200). §16 R1's Done-when line names the same budget.
+    - The old "about 100 supply" also stood in §1.1, §4.6, §5.4, §11.1, §12.2, D33 and §18.2 #7's first guess, so S0 changed those too and SPEC states one budget (added at S0: the task named only §13.7, §15.4 and §16 R1).
   - Leave A013 (§12.2's cost) and A017 (§15.3's options) to T040, which writes them as built.
   - Write the answer the user gave at T001, not the recommendation, where they differ.
 - [ ] T002 Update `docs/status.md` (R1 started, its branches, the agreed calls in one line each, and "Next session" naming S1 and S2) and the R1 rows of `docs/tasks/README.md`'s "Where to start" (§16 R1)
