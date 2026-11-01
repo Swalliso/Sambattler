@@ -8,12 +8,12 @@ import type { Content } from '../../src/data/registry.ts';
 import { addBuilding, addUnit } from '../../src/sim/create.ts';
 import { formationBox, musterKnits, overflows, slotGrid, slotPositions } from '../../src/sim/formation.ts';
 import type { FieldGeom, MusterUnit, Slot } from '../../src/sim/formation.ts';
-import { SIDES, bloomTrios, createBattle, hash32, makeConfig, nextFloat, other, runHeadless, seedStream, topKind } from '../../src/sim/index.ts';
+import { SIDES, bloomTrios, createBattle, hash32, makeConfig, nextFloat, other, seedStream, step, topKind } from '../../src/sim/index.ts';
 import type { BattleState, CounterKind, IntelProfile, Side } from '../../src/sim/index.ts';
 import { nextSigned } from '../../src/sim/rng.ts';
 import { mergeTriosNow } from '../../src/sim/systems/merging.ts';
 import { clampToLane, findUnit, unitDef, unitRadius } from '../../src/sim/world.ts';
-import { rosterIds } from './balance.ts';
+import { rosterIds } from './roster.ts';
 
 /** v2's clash numbers, until R2a puts them in the data (§4.6, §5.6, §6.7, §12.3). */
 export const CLASH = {
@@ -31,6 +31,8 @@ export const CLASH = {
   damageCap: 500,
   /** G13: at most this share of clashes reach the cap (§12.3). */
   g13StallShare: 0.15,
+  /** G13's target for the median clash length, in seconds, reported beside the bar (§12.3). */
+  g13MedianSeconds: [20, 40],
 } as const;
 
 /** One building of an army: a spawner's squad, or a tower fielded as an emplacement. */
@@ -533,8 +535,8 @@ export function clashOpts(opts: ClashOpts = {}): Required<ClashOpts> {
  * first army in its seat), then the muster: per side, the player first, `musterKnits` runs on the units
  * where they stand and each pass is applied with `mergeTriosNow`, so each merged unit's id is its key
  * (A024). Then the jitter, if any, and the clock jumps to tick 20: nobody moved or attacked in the
- * muster. Lanes where one side or neither fields anything lock at tick 0 (E1, E2). The rest fight in
- * `runHeadless`, with v2's targeting and movement switched on unless the job asks for v1's, until each
+ * muster. Lanes where one side or neither fields anything lock at tick 0 (E1, E2). The rest fight on
+ * v1's `step`, with v2's targeting and movement switched on unless the job asks for v1's, until each
  * lane ends by §6.7's rule: a side has no units and no emplacements left, or the cap. The cap reading
  * locks the lanes still fighting at tick 900, the muster counted (the first guess); the clash runs on to
  * tick 920 for the other reading (#13). Both are scored by §6.7, storm ×1.0, and by R1-Q3's winner.
@@ -579,21 +581,22 @@ export function playClash(content: Content, job: ClashJob, hooks: ClashHooks = {
     lanes[l]!.capAfterMuster = r;
   });
   const open = () => lanes.some((l) => !l.cap || !l.capAfterMuster);
-  if (open()) {
-    runHeadless(state, {
-      until: CAP_TICK.capAfterMuster,
-      onTick: (s) => {
-        tally(s).forEach((t, l) => {
-          const lane = lanes[l]!;
-          const end = !t.player.alive || !t.enemy.alive ? ended(t, s.tick) : undefined;
-          if (!lane.cap && (end || s.tick >= CAP_TICK.cap)) {
-            lockCap(s, l, end ?? capped(t, s.tick));
-            if (!end) lane.held = t.player.units === 0 || t.enemy.units === 0;
-          }
-          if (!lane.capAfterMuster && (end || s.tick >= CAP_TICK.capAfterMuster)) lane.capAfterMuster = end ?? capped(t, s.tick);
-        });
-        if (!open()) s.phase = 'ended';
-      },
+  // runHeadless's loop (src/sim/headless.ts) without the hash of the final state it ends on, which the
+  // clash never reads and which cost a quarter of a clash (R1 S4). A clash queues no commands and is never
+  // held for a draft, so each step is one tick.
+  while (open() && state.tick < CAP_TICK.capAfterMuster) {
+    const before = state.tick;
+    step(state);
+    if (state.tick !== before + 1) throw new Error(`playClash: tick ${before} didn't step to the next`);
+    if (state.outcome) throw new Error(`playClash: v1's battle ended at tick ${state.tick}, before the clash did`);
+    tally(state).forEach((t, l) => {
+      const lane = lanes[l]!;
+      const end = !t.player.alive || !t.enemy.alive ? ended(t, state.tick) : undefined;
+      if (!lane.cap && (end || state.tick >= CAP_TICK.cap)) {
+        lockCap(state, l, end ?? capped(t, state.tick));
+        if (!end) lane.held = t.player.units === 0 || t.enemy.units === 0;
+      }
+      if (!lane.capAfterMuster && (end || state.tick >= CAP_TICK.capAfterMuster)) lane.capAfterMuster = end ?? capped(t, state.tick);
     });
   }
   const laneRecords = lanes.map((l, lane): LaneRecord => ({ lane, cap: l.cap!, capAfterMuster: l.capAfterMuster!, emplacementsHeld: l.held ?? false }));
