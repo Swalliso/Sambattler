@@ -176,7 +176,7 @@ From another file, cite this file's tasks as RB/T0nn.
 
 **Goal:** a finished run restarts in one key, with the same commander and bans on a new seed, straight on the route. **Independent test:** the browser cases in T008.
 
-- [ ] T008 [US1] Write `tests/browser/records.test.ts` (new) on T005's harness, with the Run it back cases, and add them to `tests/unit/records.test.ts` (§16 M6, §8.1, §10.3, §13.8)
+- [x] T008 [US1] Write `tests/browser/records.test.ts` (new) on T005's harness, with the Run it back cases, and add them to `tests/unit/records.test.ts` (§16 M6, §8.1, §10.3, §13.8)
   - Browser, from `/?scene=summary&seed=7&autoplay=run&test=1`:
     - `R` opens the route: `__GAME__.run()` reports screen `route`, row 0, the ended run's commander and bans, and a `seed` that differs;
     - `Enter` does the same;
@@ -185,15 +185,15 @@ From another file, cite this file's tasks as RB/T0nn.
     - the page writes no profile key, before or after `R`.
   - Browser, on a persisted page: seed a finished run into `spore-sprawl.run.v1` with `addInitScript` (`simulateRun(nodeContent(), 7, AUTOPLAY, { commander: 'armilla', bans: ['scythecapGrove'] }).run`), and open `/?scene=run&debug=1`, which has no seed or `test`, so the page persists and still has the bridge. `R` restarts the run as Armilla with `scythecapGrove` banned, and `localStorage['spore-sprawl/profile/v1']`'s `lastSetup` names both.
   - Unit: `runItBackSetup(content, { commander: 'nobody', bans: [] })` gives `DEFAULT_COMMANDER`. `runItBackSetup(content, { commander: 'vesper', bans: ['rootbreakerDen', 'scythecapGrove'] })` drops `rootbreakerDen`, which is in Vesper's core, and keeps `scythecapGrove`.
-- [ ] T009 [P] [US1] Add `runItBackSetup(content, setup)` to `src/meta/records.ts`. It returns a commander and the bans that `banProblem()` (`src/run/runState.ts`) accepts, in their order, at most `MAX_BANS` (§8.1, §8.4)
-- [ ] T010 [P] [US1] Add `seed` to `RunBrief` in `src/app/debugBridge.ts` (§15.6)
+- [x] T009 [P] [US1] Add `runItBackSetup(content, setup)` to `src/meta/records.ts`. It returns a commander and the bans that `banProblem()` (`src/run/runState.ts`) accepts, in their order, at most `MAX_BANS` (§8.1, §8.4)
+- [x] T010 [P] [US1] Add `seed` to `RunBrief` in `src/app/debugBridge.ts` (§15.6)
   - The bridge is app-only, so no hash moves.
-- [ ] T011 [US1] Add `RunController.runItBack()` to `src/app/run.ts` (§16 M6, §8.1)
+- [x] T011 [US1] Add `RunController.runItBack()` to `src/app/run.ts` (§16 M6, §8.1)
   - Take `{ commander, bans }` from the ended run through `runItBackSetup`.
   - Call `createRun(content, { seed: this.env.newSeed(), ...setup })`, then `this.start(run)`, which clears the old save and shows the route.
   - When `records` is set, save `lastSetup` with `updateRecords(records, (rec) => setLastSetup(rec, setup))`.
   - It works on both entry paths: from the title (`openTitle`, which has a `setup`) and from `scene=run` (`startRun`, which has none).
-- [ ] T012 [US1] Give the summary's footer Run it back and its keys in `src/ui/screens/run.ts` (§16 M6, §10.3, §10.5)
+- [x] T012 [US1] Give the summary's footer Run it back and its keys in `src/ui/screens/run.ts` (§16 M6, §10.3, §10.5)
   - `summaryScreen`'s actions gain `runItBack()`.
   - The footer reads: Title, New run (to the Underroot, no longer primary), and Run it back (`#run-it-back`, `btn primary`, with `Enter` and `R` keycaps), which takes the focus.
   - The key listener follows `eventResultScreen`'s pattern and the calls above.

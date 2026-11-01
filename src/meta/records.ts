@@ -3,14 +3,19 @@
 // the record to a later version under the same key. Every write goes through updateRecords(), which
 // loads the key, applies a pure change and saves in one synchronous step, so no screen holds a copy
 // across another and the features sharing the key never lose each other's updates. The app passes
-// the Storage in (SPEC §13.2).
+// the Storage in (SPEC §13.2). Run it back (SPEC §16 M6) starts the next run from the setup it reads.
+import { banProblem } from '../run/index.ts';
 import type { Storage } from '../run/index.ts';
+import { DEFAULT_COMMANDER } from '../sim/index.ts';
+import type { Content } from '../sim/index.ts';
 
 export const PROFILE_KEY = 'spore-sprawl/profile/v1';
 /** Where a corrupt record is copied, raw, before the defaults load (SPEC §9.7). */
 export const PROFILE_BACKUP_KEY = 'spore-sprawl/profile/v1.bak';
 /** The record version this build reads and writes. */
 export const PROFILE_VERSION = 1;
+/** The player's faction, the only one createRun() starts. */
+const FACTION = 'velvet-bloom';
 
 /** The setup a run began with (SPEC §8.1): its commander and bans, with room for M6's traits and strains and M7's blights (M6-Q7). */
 export interface SetupRecord {
@@ -90,4 +95,16 @@ export function updateRecords(storage: Storage, change: (rec: ProfileV1) => Prof
 /** The record with `setup` as its last setup, a change for updateRecords(). */
 export function setLastSetup(rec: ProfileV1, setup: SetupRecord): ProfileV1 {
   return { ...rec, lastSetup: { ...setup, bans: [...setup.bans] } };
+}
+
+/**
+ * The commander and bans a new run starts with, from an ended run or a saved setup (SPEC §8.1): an unknown
+ * commander falls back to DEFAULT_COMMANDER, and each ban stays, in order, only while banProblem() accepts
+ * the list with it. So a ban now in the commander's core, outside the roster or past MAX_BANS drops.
+ */
+export function runItBackSetup(content: Content, setup: { commander: string; bans: readonly string[] } | undefined): SetupRecord {
+  const commander = setup && content.commanders[setup.commander] ? setup.commander : DEFAULT_COMMANDER;
+  const bans: string[] = [];
+  for (const id of setup?.bans ?? []) if (!banProblem(content, commander, FACTION, [...bans, id])) bans.push(id);
+  return { commander, bans };
 }

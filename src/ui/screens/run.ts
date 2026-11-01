@@ -15,6 +15,7 @@ import { h } from '../h.ts';
 import { uiIcon } from '../icons.ts';
 import { rollUp } from '../motion.ts';
 import { uiScale } from '../scale.ts';
+import { settingsOpen } from '../settingsScreen.ts';
 import { buildingDescription, relicDiagram, relicText, upgradeText } from '../words.ts';
 
 const NODE_ICON: Record<RouteNode['kind'], string> = { battle: 'i-battle', elite: 'i-elite', event: 'i-event', grove: 'i-grove', boss: 'i-boss' };
@@ -541,7 +542,12 @@ function sparkline(b: BattleRecord): SVGElement {
   return root;
 }
 
-export function summaryScreen(content: Content, atlas: Atlas, run: RunState, actions: { newRun(): void; toTitle?: () => void }): HTMLElement {
+/**
+ * The run's end (SPEC §8.8): the outcome, each battle, damage by building, the cards drafted and what the run
+ * earned. Run it back (Enter or R, SPEC §16 M6) starts the next run with the same commander and bans; New run
+ * goes to the Underroot to choose again.
+ */
+export function summaryScreen(content: Content, atlas: Atlas, run: RunState, actions: { newRun(): void; runItBack(): void; toTitle?: () => void }): HTMLElement {
   const won = run.outcome === 'victory';
   const damage = new Map<string, number>();
   for (const b of run.battles) for (const [id, v] of Object.entries(b.damageByBuilding)) damage.set(id, (damage.get(id) ?? 0) + v);
@@ -549,7 +555,8 @@ export function summaryScreen(content: Content, atlas: Atlas, run: RunState, act
   const maxDmg = Math.max(1, ...dmgRows.map(([, v]) => v));
   const totalTicks = run.battles.reduce((n, b) => n + b.durationTicks, 0);
   const lastBoss = run.battles.find((b) => b.kind === 'boss');
-  return h('div', { class: 'runscreen', id: 'summary' },
+  const again = h('button', { class: 'btn primary', id: 'run-it-back', onclick: () => done() }, 'Run it back', h('kbd', null, 'Enter'), h('kbd', null, 'R'));
+  const el = h('div', { class: 'runscreen', id: 'summary' },
     runBar(content, atlas, run),
     h('div', { class: 'runpanel wide' },
       h('div', { class: `banner reveal ${won ? 'win' : 'loss'}`, style: '--d:0' },
@@ -607,6 +614,26 @@ export function summaryScreen(content: Content, atlas: Atlas, run: RunState, act
     ),
     runFoot(run, h('span', { class: 'hint' }, won ? 'The run is won. Start another from here or from the title.' : 'Every run starts fresh: a new route, kit and set of generals.'),
       actions.toTitle ? h('button', { class: 'btn', id: 'to-title', onclick: actions.toTitle }, 'Title') : null,
-      h('button', { class: 'btn primary', id: 'new-run', onclick: actions.newRun }, 'New run')),
+      h('button', { class: 'btn', id: 'new-run', onclick: actions.newRun }, 'New run'),
+      again),
   );
+  // Enter or R runs it back, except on a held key, with a modifier (Ctrl+R reloads) or under the settings sheet
+  const onKey = (e: KeyboardEvent) => {
+    if (!el.isConnected) { window.removeEventListener('keydown', onKey); return; }
+    if (e.repeat || e.ctrlKey || e.metaKey || e.altKey || settingsOpen()) return;
+    // Enter on another focused button is that button's
+    const enter = e.key === 'Enter' && !(e.target instanceof HTMLButtonElement && e.target !== again);
+    if (enter || e.key === 'r' || e.key === 'R') { e.preventDefault(); done(); }
+  };
+  // the focused button's click and the key start one run between them
+  let left = false;
+  const done = () => {
+    if (left) return;
+    left = true;
+    window.removeEventListener('keydown', onKey);
+    actions.runItBack();
+  };
+  window.addEventListener('keydown', onKey);
+  requestAnimationFrame(() => { if (el.isConnected) again.focus({ preventScroll: true }); });
+  return el;
 }

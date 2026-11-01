@@ -1,10 +1,13 @@
 // The profile store (src/meta/records.ts, SPEC §9.7, §13.8): one key, spore-sprawl/profile/v1, that holds
 // meta only. records-1 keeps the last setup in it. Every write loads the key, applies a pure change and
 // saves; a corrupt record is copied raw to the .bak key, and a newer build's record is never overwritten.
+// Run it back (SPEC §16 M6) starts the next run from a setup that the content still allows.
 import { describe, expect, it } from 'vitest';
-import { PROFILE_BACKUP_KEY, PROFILE_KEY, loadRecords, setLastSetup, updateRecords } from '../../src/meta/index.ts';
+import { PROFILE_BACKUP_KEY, PROFILE_KEY, loadRecords, runItBackSetup, setLastSetup, updateRecords } from '../../src/meta/index.ts';
 import type { ProfileV1 } from '../../src/meta/index.ts';
-import { MemoryStorage } from '../../src/run/index.ts';
+import { MemoryStorage, createRun } from '../../src/run/index.ts';
+import { DEFAULT_COMMANDER } from '../../src/sim/index.ts';
+import { content } from '../helpers.ts';
 
 const stored = (s: MemoryStorage): unknown => JSON.parse(s.get(PROFILE_KEY)!);
 
@@ -95,5 +98,26 @@ describe('the profile store', () => {
       .toEqual({ commander: 'armilla', bans: ['scythecapGrove'] });
     expect(s.get(PROFILE_KEY)).toBe(text);
     expect(s.get(PROFILE_BACKUP_KEY)).toBeNull();
+  });
+});
+
+describe('Run it back', () => {
+  it('falls back to the default commander, with no bans, for an unknown commander or no setup', () => {
+    expect(runItBackSetup(content, { commander: 'nobody', bans: [] })).toEqual({ commander: DEFAULT_COMMANDER, bans: [] });
+    expect(runItBackSetup(content, { commander: 'nobody', bans: ['scythecapGrove'] })).toEqual({ commander: DEFAULT_COMMANDER, bans: ['scythecapGrove'] });
+    expect(runItBackSetup(content, undefined)).toEqual({ commander: DEFAULT_COMMANDER, bans: [] });
+  });
+
+  it("keeps each ban banProblem() still accepts, in order: a ban in the commander's core drops", () => {
+    expect(runItBackSetup(content, { commander: 'vesper', bans: ['rootbreakerDen', 'scythecapGrove'] })).toEqual({ commander: 'vesper', bans: ['scythecapGrove'] });
+    // a building outside the roster, a repeat and a fourth ban drop too
+    expect(runItBackSetup(content, { commander: 'armilla', bans: ['glowcapSpire', 'scythecapGrove', 'gillNest', 'scythecapGrove', 'tendersRing', 'morelWarren'] }))
+      .toEqual({ commander: 'armilla', bans: ['scythecapGrove', 'gillNest', 'tendersRing'] });
+  });
+
+  it('gives a setup that createRun() accepts', () => {
+    const setup = runItBackSetup(content, { commander: 'cordis', bans: ['scythecapGrove', 'hammercapForge'] });
+    expect(setup).toEqual({ commander: 'cordis', bans: ['hammercapForge'] });
+    expect(createRun(content, { seed: 1, ...setup })).toMatchObject({ commander: 'cordis', bans: ['hammercapForge'] });
   });
 });
