@@ -4,7 +4,6 @@ import { perkAt } from '../sim/compile.ts';
 import type { Tier } from '../sim/index.ts';
 
 export const TIER_NAME = ['base', 'Bloomed', 'Elder'] as const;
-export const TIER_PIPS = ['', '✦', '✦✦'] as const;
 
 const num = (x: number) => String(Math.round(x * 100) / 100);
 

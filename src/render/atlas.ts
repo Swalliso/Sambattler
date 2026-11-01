@@ -1,15 +1,19 @@
 // Bakes every text sprite (SPEC §14.3) into one atlas with a simple shelf packer (SPEC §13.6).
 // Sprites marked `factionSwap` get a Gray Rot variant baked from the faction palette, and unit
-// sprites also get mirrored variants so enemy units face left.
+// sprites also get mirrored variants so enemy units face left, and an Elder's gold rim for each
+// frame. The layout and each region's pixels come from the pure functions in compose.ts; this
+// file paints them onto the canvas.
 import type { Content } from '../data/registry.ts';
-import type { SpriteDef } from '../data/schema.ts';
+import { atlasLayout, framePixels, regionKey, rimKey, rimPixels } from './compose.ts';
+import type { Faction, Region } from './compose.ts';
 
-export interface Region { x: number; y: number; w: number; h: number; ax: number; ay: number }
-export type Faction = 'velvet-bloom' | 'gray-rot';
+export type { Faction, Region } from './compose.ts';
 
 export interface Atlas {
   canvas: HTMLCanvasElement | OffscreenCanvas;
   get(id: string, faction: Faction, frame: number, flip?: boolean): Region | undefined;
+  /** A unit frame's Elder rim (R4-Q3), one pixel bigger all round, for both factions. */
+  rim(id: string, frame: number, flip?: boolean): Region | undefined;
   frames(id: string): number;
 }
 
@@ -20,64 +24,23 @@ function makeCanvas(w: number, h: number): HTMLCanvasElement | OffscreenCanvas {
   return c;
 }
 
-function hexToRgb(hex: string): [number, number, number] {
-  return [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)];
-}
-
 export function bakeAtlas(content: Content): Atlas {
   const gray = content.factions['gray-rot']?.palette ?? {};
-  interface Job { key: string; sprite: SpriteDef; frame: number; faction: Faction; flip: boolean }
-  const jobs: Job[] = [];
-  for (const id of content.spriteOrder) {
-    const s = content.sprites[id]!;
-    const isUnit = id.startsWith('u-');
-    const factions: Faction[] = s.factionSwap ? ['velvet-bloom', 'gray-rot'] : ['velvet-bloom'];
-    for (const faction of factions) {
-      for (let f = 0; f < s.frames.length; f++) {
-        for (const flip of isUnit ? [false, true] : [false]) {
-          jobs.push({ key: `${id}|${faction}|${f}|${flip ? 1 : 0}`, sprite: s, frame: f, faction, flip });
-        }
-      }
-    }
-  }
-  // shelf packing: tallest first
-  const order = [...jobs].sort((a, b) => b.sprite.h - a.sprite.h || (a.key < b.key ? -1 : 1));
-  const W = 1024;
-  let x = 0, y = 0, shelf = 0;
-  const regions = new Map<string, Region>();
-  for (const j of order) {
-    const { w, h } = j.sprite;
-    if (x + w > W) { x = 0; y += shelf + 1; shelf = 0; }
-    regions.set(j.key, { x, y, w, h, ax: j.flip ? w - j.sprite.anchor[0] : j.sprite.anchor[0], ay: j.sprite.anchor[1] });
-    x += w + 1;
-    shelf = Math.max(shelf, h);
-  }
-  const H = y + shelf + 1;
+  const { jobs, regions, width: W, height: H } = atlasLayout(content);
   const canvas = makeCanvas(W, H);
   const ctx = canvas.getContext('2d') as CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
   const img = ctx.createImageData(W, H);
   for (const j of jobs) {
     const r = regions.get(j.key)!;
-    const rows = j.sprite.frames[j.frame]!;
-    for (let py = 0; py < j.sprite.h; py++) {
-      const row = rows[py]!;
-      for (let px = 0; px < j.sprite.w; px++) {
-        const ch = row[px]!;
-        let col = j.sprite.palette[ch];
-        if (j.faction === 'gray-rot' && j.sprite.factionSwap && gray[ch]) col = gray[ch];
-        if (!col) continue;
-        const [cr, cg, cb] = hexToRgb(col);
-        const dx = j.flip ? j.sprite.w - 1 - px : px;
-        const o = ((r.y + py) * W + r.x + dx) * 4;
-        img.data[o] = cr; img.data[o + 1] = cg; img.data[o + 2] = cb; img.data[o + 3] = 255;
-      }
-    }
+    const f = j.rim ? rimPixels(j.sprite, j.frame, j.flip) : framePixels(j.sprite, j.frame, { swap: j.faction === 'gray-rot' ? gray : undefined, flip: j.flip });
+    for (let py = 0; py < f.h; py++) img.data.set(f.px.subarray(py * f.w * 4, (py + 1) * f.w * 4), ((r.y + py) * W + r.x) * 4);
   }
   ctx.putImageData(img, 0, 0);
   return {
     canvas,
     get: (id, faction, frame, flip = false) =>
-      regions.get(`${id}|${faction}|${frame}|${flip ? 1 : 0}`) ?? regions.get(`${id}|velvet-bloom|${frame}|${flip ? 1 : 0}`),
+      regions.get(regionKey(id, faction, frame, flip)) ?? regions.get(regionKey(id, 'velvet-bloom', frame, flip)),
+    rim: (id, frame, flip = false) => regions.get(rimKey(id, frame, flip)),
     frames: (id) => content.sprites[id]?.frames.length ?? 0,
   };
 }

@@ -84,7 +84,7 @@ This list was drafted on 2026-11-01 from SPEC v2 and `docs/tasks/spec-analysis.m
   - `tools/sprite-sheet.ts` and `tools/lib/cvd.ts`;
   - `tests/unit/unitSprite.test.ts` and `tests/unit/shapes.test.ts`;
   - `docs/r4a-silhouettes.json`, a draft sheet that T032 deletes.
-- Changed in R4a: `src/render/renderer.ts`, `src/render/atlas.ts`, `src/render/assistPreview.ts`, `src/data/schema.ts`, `src/data/registry.ts`, `data/sprites/units.json` (redrawn), `data/sprites/buildings.json`, `data/sprites/ui.json`, `data/factions/gray-rot/faction.json`, `src/ui/mergeHints.ts`, `src/ui/inspect.ts`, `src/ui/icons.ts`, `tools/screenshot.ts`, `package.json`, `tests/unit/data.test.ts`, `tests/unit/contrast.test.ts`, `tests/browser/inspect.test.ts`.
+- Changed in R4a: `src/render/renderer.ts`, `src/render/atlas.ts`, `src/render/assistPreview.ts`, `src/data/schema.ts`, `src/data/registry.ts`, `data/sprites/units.json` (redrawn), `data/sprites/buildings.json`, `data/sprites/ui.json`, `data/factions/gray-rot/faction.json`, `src/ui/mergeHints.ts`, `src/ui/inspect.ts`, `src/ui/icons.ts`, `src/ui/styles.css` (the pips' size), `src/app/battleView.ts` (the inspect panel's atlas), `tools/screenshot.ts`, `package.json`, `tests/unit/data.test.ts`, `tests/unit/contrast.test.ts`, `tests/browser/inspect.test.ts`.
 - Retired in R4a: `TIER_SCALE`, `TIER_PIPS` and `data/scenarios/elder-showcase.json`.
 - New in R4b: `shapeClass`, `squadMarks` and `cardMarks`, added beside R2a/T084's `matchupClass` in the module that defines it; `tests/unit/matchups.test.ts`, `tests/unit/cardText.test.ts`, `tests/browser/marks.test.ts`.
 - Retired in R4b: `src/ui/words.ts`, `tests/unit/words.test.ts`, and §15.7's Plain words row.
@@ -169,17 +169,17 @@ This list was drafted on 2026-11-01 from SPEC v2 and `docs/tasks/spec-analysis.m
 
 ## Phase 2: Foundational (R4a; blocks every R4a story)
 
-- [ ] T008 [P] Move the colour-vision matrices from `tools/screenshot.ts:78-81` into `tools/lib/cvd.ts` (new). Export `CVD_MATRICES` (deuteranopia, protanopia) and a pure `applyCvd(rgb, filter)`, and have `tools/screenshot.ts` build its filter string from them, behaviour unchanged (§15.6, §2)
+- [x] T008 [P] Move the colour-vision matrices from `tools/screenshot.ts:78-81` into `tools/lib/cvd.ts` (new). Export `CVD_MATRICES` (deuteranopia, protanopia) and a pure `applyCvd(rgb, filter)`, and have `tools/screenshot.ts` build its filter string from them, behaviour unchanged (§15.6, §2)
   - `applyCvd` decodes sRGB to linear, applies the matrix and re-encodes, matching `feColorMatrix`'s default `color-interpolation-filters="linearRGB"` (`tools/screenshot.ts:120`), so the PNGs don't change and the test's ratios match them (call 7).
-- [ ] T009 [P] Write `data/scenarios/unit-lineup.json` (new) and `data/scenarios/unit-lineup-twin.json` (new) in v1's scenario format, delete `data/scenarios/elder-showcase.json`, and point the merged-units case at `tests/unit/data.test.ts:96` to `unit-lineup` (§15.6, §16 R4 step 2)
+- [x] T009 [P] Write `data/scenarios/unit-lineup.json` (new) and `data/scenarios/unit-lineup-twin.json` (new) in v1's scenario format, delete `data/scenarios/elder-showcase.json`, and point the merged-units case at `tests/unit/data.test.ts:96` to `unit-lineup` (§15.6, §16 R4 step 2)
   - `unit-lineup`: Bogwater Hollow, `test.noTurrets`, gold 0. Every unit in the default data (sporeling, capguard, gillArcher, amanitaKnight, hammercap, tender, veilstalker, scythecap, morelRunner, rootbreaker) at tiers 1, 2 and 3 on both sides: the player's in columns 5–15, the general's in 17–27, at least 1.5 tiles apart, one per tier so nothing merges.
   - `unit-lineup-twin`: the same on Twin Roots, split between its two lanes, so the fractional scale is checked (A158, A077).
   - The preset-only units can't be named here, since the registry rejects unknown units (`src/data/registry.ts:242`). T043 adds them once R2a has made them default data.
   - R2a/T048 copies both in clash form, and R2b/T048 ports them before it drops `test.noTurrets` (Handoffs).
-- [ ] T010 [P] Move the atlas's bake into pure functions in `src/render/compose.ts` (new), which touch no DOM, and have `bakeAtlas` in `src/render/atlas.ts` use them, behaviour unchanged (§13.6, §14.3)
+- [x] T010 [P] Move the atlas's bake into pure functions in `src/render/compose.ts` (new), which touch no DOM, and have `bakeAtlas` in `src/render/atlas.ts` use them, behaviour unchanged (§13.6, §14.3)
   - `framePixels(sprite, frame, { swap, flip })` returns `{ w, h, px: Uint8ClampedArray }`: the per-pixel loop at :59-76. `bakeAtlas` copies its output into the `ImageData`.
   - `atlasLayout(content)` returns the job list and the shelf-packed regions, keyed as today (`id|faction|frame|flip`), so a unit test can read the layout without a canvas.
-- [ ] T011 [P] Move unit drawing out of `src/render/renderer.ts` into `src/render/unitSprite.ts` (new), behaviour unchanged for now. Then `drawUnit` (:511) calls it, and `src/render/assistPreview.ts` imports `teamMark` from it (§13.6, §10.4)
+- [x] T011 [P] Move unit drawing out of `src/render/renderer.ts` into `src/render/unitSprite.ts` (new), behaviour unchanged for now. Then `drawUnit` (:511) calls it, and `src/render/assistPreview.ts` imports `teamMark` from it (§13.6, §10.4)
   - `drawUnitSprite(g, atlas, opts)`, where `opts` covers the sprite id, faction, frame, flip, foot point, tier, alpha (for R2a's dimmed preview), flying, burrowed, HP fraction, `shieldFrac` (undefined for no shield), side, the faction's glow, assist, selected, the time and calm.
   - It keeps today's draw order: team mark, flyer shadow, Elder aura, sprite, shield ring, selection box, pips, HP bar.
   - Moved and exported: `drawPips(g, atlas, cx, y, tier)` (R2a's merge preview uses it), `elderAura`, `flyerShadow`, `mound`, `shieldRing` (the rework's mixed-wave shield, drawn from `shieldFrac`), `teamMark` (from `renderer.ts:101`) and the HP bar as `hpBar`, which `renderer.ts` imports back for buildings and the Heartcap (:354, :432).
@@ -193,19 +193,20 @@ This list was drafted on 2026-11-01 from SPEC v2 and `docs/tasks/spec-analysis.m
 
 **Goal:** size means armor and nothing else, while tiers stay easy to spot. **Independent test:** see Stories.
 
-- [ ] T012 [US1] Write `tests/unit/unitSprite.test.ts` (new) and a case in `tests/browser/inspect.test.ts` (§5.8, §10.4, §13.6) ⛔ R4-Q3
+- [x] T012 [US1] Write `tests/unit/unitSprite.test.ts` (new) and a case in `tests/browser/inspect.test.ts` (§5.8, §10.4, §13.6) ⛔ R4-Q3
   - A pure `unitLayout(region, footX, footY, tier, opts)`: a Bloomed and an Elder unit get the tier-1 box. One pip for Bloomed and two for Elder, centred over the sprite, above the HP bar when the unit is damaged, and touching neither. A flyer's box is lifted by `FLY_LIFT`.
   - `i-pip` in `data/sprites/ui.json` has a gold core of at least 3×3 native px inside its 1-px outline (A158, A162).
   - `rimPixels(sprite, frame, flip)` gives the 1-px outline of the opaque mask in a (w + 2) × (h + 2) box, with the anchor shifted by (+1, +1).
   - `atlasLayout(content)` has one Elder-rim region for every `u-` sprite frame and flip, shared by both factions, and none for tier 2 (R4-Q3).
   - `unitLayout` gives an Elder its rim box under the sprite, and a Bloomed unit none.
   - `tests/browser/inspect.test.ts`: an Elder's Tier row shows two `i-pip` canvases and no ✦.
-- [ ] T013 [US1] Add `unitLayout` to `src/render/unitSprite.ts`. Remove `TIER_SCALE` there and from `src/render/renderer.ts` (`drawKnits`' head height at :675 takes the sprite region's own height), so every tier draws at its sprite's size (§5.8, §10.4, §13.6)
-- [ ] T014 [US1] Add `i-pip`, a 3×3 gold `#f0c85a` core in a 1-px dark `#120a16` outline (5×5), to `data/sprites/ui.json`, and add it to `REQUIRED_SPRITES` in `src/data/registry.ts:53`. `drawPips` in `src/render/unitSprite.ts` stacks it from the `ui` sheet, replacing `pips()`'s `fillRect` (`renderer.ts:720-728`) (§13.6, §14.3) ⛔ R4-Q3
-- [ ] T015 [US1] Bake the Elder rim: add a pure `rimPixels` to `src/render/compose.ts` and rim jobs to its `atlasLayout`, bake them in `src/render/atlas.ts`, and draw the rim under an Elder's sprite in `drawUnitSprite` in `src/render/unitSprite.ts` (§5.8, §10.4, §13.6) ⛔ R4-Q3
+- [x] T013 [US1] Add `unitLayout` to `src/render/unitSprite.ts`. Remove `TIER_SCALE` there and from `src/render/renderer.ts` (`drawKnits`' head height at :675 takes the sprite region's own height), so every tier draws at its sprite's size (§5.8, §10.4, §13.6)
+- [x] T014 [US1] Add `i-pip`, a 3×3 gold `#f0c85a` core in a 1-px dark `#120a16` outline (5×5), to `data/sprites/ui.json`, and add it to `REQUIRED_SPRITES` in `src/data/registry.ts:53`. `drawPips` in `src/render/unitSprite.ts` stacks it from the `ui` sheet, replacing `pips()`'s `fillRect` (`renderer.ts:720-728`) (§13.6, §14.3) ⛔ R4-Q3
+- [x] T015 [US1] Bake the Elder rim: add a pure `rimPixels` to `src/render/compose.ts` and rim jobs to its `atlasLayout`, bake them in `src/render/atlas.ts`, and draw the rim under an Elder's sprite in `drawUnitSprite` in `src/render/unitSprite.ts` (§5.8, §10.4, §13.6) ⛔ R4-Q3
   - For every `u-` sprite frame and flip, a 1-px gold `#f0c85a` outline of its mask, (w + 2) × (h + 2), one bake for both factions. Bloomed units get no rim (call 6).
   - Add `atlas.rim(id, frame, flip)`, keep `elderAura`, and check the atlas still packs in its 1024-wide sheet.
-- [ ] T016 [US1] Show the tier in the DOM with pip sprites. Add `tierPips(atlas, tier)` to `src/ui/icons.ts`, use it in `src/ui/inspect.ts`'s Tier row (:124, which takes a node beside the tier's name), and delete `TIER_PIPS` from `src/ui/mergeHints.ts:7` (§10.4)
+- [x] T016 [US1] Show the tier in the DOM with pip sprites. Add `tierPips(atlas, tier)` to `src/ui/icons.ts`, use it in `src/ui/inspect.ts`'s Tier row (:124, which takes a node beside the tier's name), and delete `TIER_PIPS` from `src/ui/mergeHints.ts:7` (§10.4)
+  - As built: the panel takes the atlas from `src/app/battleView.ts` (one line), and `src/ui/styles.css` shows the pips at 2×.
 
 **Checkpoint:** `npx vitest run tests/unit/unitSprite.test.ts`, `npm run verify`, `npm run test:browser` and `npm run golden -- verify` (unchanged). `grep -rn TIER_SCALE src` finds nothing. In the r4-lineup PNG, tiers 2 and 3 stand at their base size with pips, and Elders with a gold rim, on both sides.
 
@@ -476,7 +477,7 @@ This list was drafted on 2026-11-01 from SPEC v2 and `docs/tasks/spec-analysis.m
 - R4b-S4, R4b-S5 and R4b-S6 run in parallel. S4 and S5 both touch `src/app/battleView.ts` (S5 only its `words.ts` import), so the second rebases. S6 shares no file with them.
 
 **R4a and R2a's renderer** (X2: R2a builds its battle views as new modules beside v1's)
-- R4a-S1 (T010, T011, T013–T016) merges into develop first. In `src/render/renderer.ts` it moves `drawUnit`'s body, `teamMark`, `elderAura`, `flyerShadow`, `mound`, `shieldRing`, `pips`, the HP bar and `FLY_LIFT` into `src/render/unitSprite.ts`, and edits `drawKnits` (T013). It also edits `src/render/atlas.ts` (T010, T015), `src/render/assistPreview.ts`'s import, `src/ui/icons.ts`, `src/ui/inspect.ts` and `src/ui/mergeHints.ts` (T016).
+- R4a-S1 (T010, T011, T013–T016) merges into develop first. In `src/render/renderer.ts` it moves `drawUnit`'s body, `teamMark`, `elderAura`, `flyerShadow`, `mound`, `shieldRing`, `pips`, the HP bar and `FLY_LIFT` into `src/render/unitSprite.ts`, and edits `drawKnits` (T013). It also edits `src/render/atlas.ts` (T010, T015), `src/render/assistPreview.ts`'s import, `src/ui/icons.ts`, `src/ui/inspect.ts`, `src/ui/mergeHints.ts`, `src/ui/styles.css` and one line of `src/app/battleView.ts` (T016).
 - R2a's battle-renderer session (R2a S11's T081, then S12's T083 and the merge preview) draws every unit through `drawUnitSprite` and every merge-preview pip through `drawPips` from `src/render/unitSprite.ts`. It never copies `drawUnit` or `TIER_SCALE`.
 - If R2a's renderer session is already open when R4a-S1 merges, it rebases onto develop. Its new modules don't touch R4a-S1's lines, so the rebase is mechanical, and the session then switches its unit drawing to `drawUnitSprite`.
 - The redraws (R4a-S2b to R4a-S4) touch only `data/sprites/` and `docs/`, so they never conflict with R2a.

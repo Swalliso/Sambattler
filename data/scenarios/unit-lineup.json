@@ -1,0 +1,39 @@
+{
+  "id": "unit-lineup",
+  "description": "R4a's lineup (SPEC §16 R4 step 2, docs/tasks/r4-readable-armies.md T009): every default-data unit at tiers 1, 2 and 3 on both sides, light and heavy units on the left of each side and medium ones on the right, 1.5 tiles apart and one per tier so nothing merges. Heartcap turrets are off. Screenshot it paused.",
+  "map": "bogwater-hollow",
+  "test": { "noTurrets": true },
+  "flags": { "merging": true },
+  "sides": {
+    "player": {
+      "gold": 0,
+      "units": [
+        { "unit": "sporeling", "tier": 1, "x": 5.0, "y": 1.6 }, { "unit": "sporeling", "tier": 2, "x": 6.5, "y": 1.6 }, { "unit": "sporeling", "tier": 3, "x": 8.0, "y": 1.6 },
+        { "unit": "gillArcher", "tier": 1, "x": 5.0, "y": 3.1 }, { "unit": "gillArcher", "tier": 2, "x": 6.5, "y": 3.1 }, { "unit": "gillArcher", "tier": 3, "x": 8.0, "y": 3.1 },
+        { "unit": "veilstalker", "tier": 1, "x": 5.0, "y": 4.6 }, { "unit": "veilstalker", "tier": 2, "x": 6.5, "y": 4.6 }, { "unit": "veilstalker", "tier": 3, "x": 8.0, "y": 4.6 },
+        { "unit": "tender", "tier": 1, "x": 5.0, "y": 6.1 }, { "unit": "tender", "tier": 2, "x": 6.5, "y": 6.1 }, { "unit": "tender", "tier": 3, "x": 8.0, "y": 6.1 },
+        { "unit": "amanitaKnight", "tier": 1, "x": 5.0, "y": 7.6 }, { "unit": "amanitaKnight", "tier": 2, "x": 6.5, "y": 7.6 }, { "unit": "amanitaKnight", "tier": 3, "x": 8.0, "y": 7.6 },
+        { "unit": "capguard", "tier": 1, "x": 11.0, "y": 1.6 }, { "unit": "capguard", "tier": 2, "x": 12.5, "y": 1.6 }, { "unit": "capguard", "tier": 3, "x": 14.0, "y": 1.6 },
+        { "unit": "scythecap", "tier": 1, "x": 11.0, "y": 3.1 }, { "unit": "scythecap", "tier": 2, "x": 12.5, "y": 3.1 }, { "unit": "scythecap", "tier": 3, "x": 14.0, "y": 3.1 },
+        { "unit": "hammercap", "tier": 1, "x": 11.0, "y": 4.6 }, { "unit": "hammercap", "tier": 2, "x": 12.5, "y": 4.6 }, { "unit": "hammercap", "tier": 3, "x": 14.0, "y": 4.6 },
+        { "unit": "morelRunner", "tier": 1, "x": 11.0, "y": 6.1 }, { "unit": "morelRunner", "tier": 2, "x": 12.5, "y": 6.1 }, { "unit": "morelRunner", "tier": 3, "x": 14.0, "y": 6.1 },
+        { "unit": "rootbreaker", "tier": 1, "x": 11.0, "y": 7.6 }, { "unit": "rootbreaker", "tier": 2, "x": 12.5, "y": 7.6 }, { "unit": "rootbreaker", "tier": 3, "x": 14.0, "y": 7.6 }
+      ]
+    },
+    "enemy": {
+      "gold": 0,
+      "units": [
+        { "unit": "sporeling", "tier": 1, "x": 27.0, "y": 1.6 }, { "unit": "sporeling", "tier": 2, "x": 25.5, "y": 1.6 }, { "unit": "sporeling", "tier": 3, "x": 24.0, "y": 1.6 },
+        { "unit": "gillArcher", "tier": 1, "x": 27.0, "y": 3.1 }, { "unit": "gillArcher", "tier": 2, "x": 25.5, "y": 3.1 }, { "unit": "gillArcher", "tier": 3, "x": 24.0, "y": 3.1 },
+        { "unit": "veilstalker", "tier": 1, "x": 27.0, "y": 4.6 }, { "unit": "veilstalker", "tier": 2, "x": 25.5, "y": 4.6 }, { "unit": "veilstalker", "tier": 3, "x": 24.0, "y": 4.6 },
+        { "unit": "tender", "tier": 1, "x": 27.0, "y": 6.1 }, { "unit": "tender", "tier": 2, "x": 25.5, "y": 6.1 }, { "unit": "tender", "tier": 3, "x": 24.0, "y": 6.1 },
+        { "unit": "amanitaKnight", "tier": 1, "x": 27.0, "y": 7.6 }, { "unit": "amanitaKnight", "tier": 2, "x": 25.5, "y": 7.6 }, { "unit": "amanitaKnight", "tier": 3, "x": 24.0, "y": 7.6 },
+        { "unit": "capguard", "tier": 1, "x": 21.0, "y": 1.6 }, { "unit": "capguard", "tier": 2, "x": 19.5, "y": 1.6 }, { "unit": "capguard", "tier": 3, "x": 18.0, "y": 1.6 },
+        { "unit": "scythecap", "tier": 1, "x": 21.0, "y": 3.1 }, { "unit": "scythecap", "tier": 2, "x": 19.5, "y": 3.1 }, { "unit": "scythecap", "tier": 3, "x": 18.0, "y": 3.1 },
+        { "unit": "hammercap", "tier": 1, "x": 21.0, "y": 4.6 }, { "unit": "hammercap", "tier": 2, "x": 19.5, "y": 4.6 }, { "unit": "hammercap", "tier": 3, "x": 18.0, "y": 4.6 },
+        { "unit": "morelRunner", "tier": 1, "x": 21.0, "y": 6.1 }, { "unit": "morelRunner", "tier": 2, "x": 19.5, "y": 6.1 }, { "unit": "morelRunner", "tier": 3, "x": 18.0, "y": 6.1 },
+        { "unit": "rootbreaker", "tier": 1, "x": 21.0, "y": 7.6 }, { "unit": "rootbreaker", "tier": 2, "x": 19.5, "y": 7.6 }, { "unit": "rootbreaker", "tier": 3, "x": 18.0, "y": 7.6 }
+      ]
+    }
+  }
+}

@@ -1,10 +1,12 @@
 // The color-blind assist's preview on the settings screen: a strip of field with the Velvet Bloom's mat
 // and two of its units on the left and the Gray Rot's on the right, drawn with the renderer's own mat
-// tiles, team marks and unit sprites, so it shows exactly what the field will with the assist on or off.
+// tiles, the unit drawer's team marks and the unit sprites, so it shows exactly what the field will with
+// the assist on or off.
 import type { Content } from '../data/registry.ts';
 import type { Side } from '../sim/index.ts';
 import type { Atlas } from './atlas.ts';
-import { TILE, factionOf, matTile, teamMark } from './renderer.ts';
+import { TILE, factionOf, matTile } from './renderer.ts';
+import { teamMark } from './unitSprite.ts';
 
 export const PREVIEW_COLS = 8;
 export const PREVIEW_ROWS = 2;

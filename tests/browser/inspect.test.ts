@@ -132,3 +132,18 @@ describe('live building inspection at 3× speed', () => {
     expect(await page.evaluate(() => window.__GAME__!.summary()!.rejectedCommands)).toBe(0);
   });
 });
+
+describe('unit inspection', () => {
+  it("shows an Elder's tier as two pip sprites, without ✦", async () => {
+    await page.goto(`${base}/?scenario=unit-lineup&paused=1&seed=1&test=1`);
+    await page.waitForFunction(() => window.__GAME__?.ready === true);
+    // the player's Elder Sporeling stands at (8.0, 1.6); the field is 36 tiles wide (the map and two Heartcap strips) and 8 tall
+    const canvas = page.locator('#battlefield');
+    const box = (await canvas.boundingBox())!;
+    await canvas.click({ position: { x: box.width * (8.0 + 2) / 36, y: box.height * 1.6 / 8 } });
+    await expectText(page.locator('#inspect h3'), 'Sporeling · Velvet Bloom');
+    const tier = page.locator('#inspect .row').filter({ hasText: /^Tier/ });
+    await expectText(tier, 'TierElder');
+    expect(await tier.locator('canvas.pip').count()).toBe(2);
+  });
+});

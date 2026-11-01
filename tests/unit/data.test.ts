@@ -93,6 +93,6 @@ describe('data', () => {
     bad['factions/velvet-bloom/units.json'][0].mergePerks['2'].armor = 'heavy';
     expect(() => loadContent(bad)).toThrow(ContentError);
     const c = loadContent(raw);
-    expect(c.scenarios['elder-showcase']!.sides.player.units!.some((u) => u.tier === 3)).toBe(true);
+    expect(c.scenarios['unit-lineup']!.sides.player.units!.some((u) => u.tier === 3)).toBe(true);
   });
 });
