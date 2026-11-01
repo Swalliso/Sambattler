@@ -74,7 +74,7 @@ Each story says how to test it on its own, and each phase ends with a **Checkpoi
 
 ## Running a session
 
-Start a new session in its own worktree and name the row, for example: *"Implement R1 session S1 from docs/tasks/r1-clash-check.md."* The session then:
+Start a new session in its own worktree and run `/implement r1 s1`, or `/implement` alone for the next row that's ready (`.claude/skills/implement/`). An agent without the skill can be given the row in words: *"Read docs/status.md and docs/tasks/README.md, then implement R1 session S1 from docs/tasks/r1-clash-check.md."* Either way, the session:
 
 1. **Orients.** Reads [docs/status.md](../status.md), then the task list's **Read first** and **Before you start** sections, its **Technical context**, and the session's row and tasks. It reads the SPEC sections the tasks cite, not the archive.
 2. **Checks the gate.** Everything in the row's **Gate** column has to be true on `origin/develop` (or the integration branch): the named sessions merged, and the named decisions recorded in their clarify.md block's **Decision** line (or satisfied as the ⛔ bullet under [Task format](#task-format) says). If something is missing, the session says what and stops. It doesn't build on a recommendation the user hasn't agreed when a task is marked ⛔, except where that bullet allows.
@@ -95,11 +95,26 @@ Start a new session in its own worktree and name the row, for example: *"Impleme
 
 Sessions are sized at about a day of focused work. Two small adjacent rows can share one session and one PR if the user agrees. A row that turns out too big is split, and the Sessions table updated in the same PR.
 
+## Working rhythm
+
+- **One session per row.** Each row starts in a new session with its own worktree and ends in a PR. A long conversation gets summarized and loses detail, while a fresh session starts from these files. A hub conversation can start sessions and read their reports, but it doesn't do the implementation.
+- **Parallel only where the lists allow it.** Now that's R1, R4a and records-1. Later, it's the rows whose Gate says "may run beside".
+- **Batch the decisions.** Plan sessions and gates go faster with `/clarify` and "take the recommendations except …".
+- **Merging.** A session merges its own PR into `develop` only if the user said so when starting it, for example "merge when green". Small neighbouring rows can share a PR. Nothing touches `main` until the user asks for a release.
+- **Ultracode and workflows where breadth or an adversarial check pays:**
+  - a skeptic pass on each plan before the user agrees it;
+  - R1 S7's analysis of its measurement runs;
+  - each milestone's verification session;
+  - `/code-review` on the big PRs: R2a's state machine and clash core, and R2b's deletion of v1.
+
+  Routine sessions run without them.
+- **Playtests decide the design:** R2a's, R2b's, R3's, R4b's and M8's run length. Everything after each one waits for it.
+
 ## Settling decisions
 
 [clarify.md](clarify.md) holds every call the user needs to make, in the order the work needs them. Each block has the question, SPEC's first guess, a recommendation with its evidence, the alternatives, and what it blocks. Some recommendations disagree with SPEC's first guess, and say why.
 
-To settle them, a session:
+To settle them, run `/clarify <milestone or refs>`, for example `/clarify r2a` or `/clarify X1 X2 X3 X10` (`.claude/skills/clarify/`). The session:
 
 1. Reads the blocks for the milestone, the §18.2 rows they name, the SPEC sections they cite and the milestone's findings in [spec-analysis.md](spec-analysis.md).
 2. Asks the user a few at a time, with the recommendation as the first option and the realistic alternatives after it.
@@ -124,3 +139,5 @@ Each milestone's S0 session writes `docs/<milestone>-plan.md` (R1's is already d
    - a **Sessions** table whose rows each end in a PR that keeps `npm run verify` green and the game playable.
 4. **Checks** that every task has a path and a SPEC section, no two `[P]` tasks in a phase share a file, dependencies point backward, and the Sessions table covers every task.
 5. **Updates** the milestone table above and [docs/status.md](../status.md) if the sessions changed.
+
+`/tasks <milestone>` runs these steps (`.claude/skills/tasks/`).
