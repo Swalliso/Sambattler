@@ -1,17 +1,16 @@
 // npm run sprite-sheet -- [--sheet <path>] [--name <file>] [--filter deuteranopia|protanopia]
 // Shows the user, and the tools, when a sprite is drawn off its shape (SPEC §5.8, §14.3, §15.6, §17 #20;
 // R4a, T023). It validates a sprite sheet (default data/sprites/units.json) with SpriteSheetSchema and renders
-// every frame through the atlas's own framePixels, mark glyphs baked on, into a Playwright page (setContent,
-// no server): at 2× and 4×, the Velvet Bloom facing right and the Gray Rot facing left (mirrored where the
-// atlas mirrors, on unit sprites), on the field's soil. The 4× frames overlay the measurements: green lines
-// where the body's top edge may sit for its band, the body's measured box in cyan and each glyph's box in
-// yellow. Under each sprite it lists its problems: shapeProblems, and its unit's body and mark (or an
-// emplacement's, for `e-<buildingId>`). For a unit's sprite it adds strips of frame 0 on its squad's k × k
-// grid in a 32 px slot, at the base squad, base + 1 (a Rhizome Vault beside it) and base + 2 (the Velvet
-// Shrine), and lists each overflow: for a sprite with a shape, a squad of base or base + 1 that its width
-// with the mark overflows is a problem (§14.3); base + 2 is §18.2 #11's, listed only. Units come from the
-// default data plus the units that exist only under ?proto=rework, and glyphs from data/sprites/marks.json
-// and the sheet itself. --filter shows the art through tools/lib/cvd.ts's matrices (the annotations stay
+// every frame through the atlas's own framePixels into a Playwright page (setContent, no server): at 2× and
+// 4×, the Velvet Bloom facing right and the Gray Rot facing left (mirrored where the atlas mirrors, on unit
+// sprites), on the field's soil. The 4× frames overlay the measurements: green lines where the body's top edge
+// may sit for its band, and the body's measured box in cyan. Under each sprite it lists its problems:
+// shapeProblems, and its unit's body (or an emplacement's, for `e-<buildingId>`). Units carry no weapon mark
+// (§5.8, 2026-11-01). For a unit's sprite it adds strips of frame 0 on its squad's k × k grid in a 32 px slot,
+// at the base squad, base + 1 (a Rhizome Vault beside it) and base + 2 (the Velvet Shrine), and lists each
+// overflow: for a sprite with a shape, a squad of base or base + 1 that its width overflows is a problem
+// (§14.3); base + 2 is §18.2 #11's, listed only. Units come from the default data plus the units that exist
+// only under ?proto=rework. --filter shows the art through tools/lib/cvd.ts's matrices (the annotations stay
 // unfiltered). Writes artifacts/sprite-sheet/<name>.png and <name>.json (the name is the sheet's file name by
 // default, with -d or -p under a filter) and exits 1 if any sprite has a problem.
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -21,10 +20,8 @@ import { applyProto } from '../src/data/proto.ts';
 import type { RawContent } from '../src/data/registry.ts';
 import { BuildingSchema, FactionSchema, SpriteSheetSchema, UnitSchema } from '../src/data/schema.ts';
 import type { BuildingDef, SpriteBands, SpriteDef, UnitDef } from '../src/data/schema.ts';
-import {
-  baseSquad, bodyBox, composedBox, emplacementShapeProblems, glyphBox, placedGlyphs, shapeProblems, unitShapeProblems, widthBound,
-} from '../src/data/shapes.ts';
-import type { Box, Glyphs } from '../src/data/shapes.ts';
+import { baseSquad, bodyBox, emplacementShapeProblems, shapeProblems, unitShapeProblems, widthBound } from '../src/data/shapes.ts';
+import type { Box } from '../src/data/shapes.ts';
 import { framePixels } from '../src/render/compose.ts';
 import type { FramePixels } from '../src/render/compose.ts';
 import { slotGrid, slotPositions } from '../src/sim/formation.ts';
@@ -48,14 +45,14 @@ function parseArgs(argv: string[]): Args {
   return a;
 }
 
-/** What the sheet is checked against: units and buildings (preset-only ones too), the glyphs, the Gray Rot's swap and the soil. */
-interface World { units: UnitDef[]; buildings: BuildingDef[]; glyphs: Glyphs; gray: Record<string, string>; soil?: SpriteDef }
+/** What the sheet is checked against: units and buildings (preset-only ones too), the Gray Rot's swap and the soil. */
+interface World { units: UnitDef[]; buildings: BuildingDef[]; gray: Record<string, string>; soil?: SpriteDef }
 
 /**
  * Reads the data files on their own, not through loadContent, so a sheet whose sprites the registry rejects
  * still renders with its problems listed.
  */
-function loadWorld(sheet: SpriteDef[]): World {
+function loadWorld(): World {
   const raw = readRawContent();
   const { raw: rework, problems } = applyProto(raw, 'rework');
   for (const p of problems) console.warn(`warning: ${p}`);
@@ -73,30 +70,28 @@ function loadWorld(sheet: SpriteDef[]): World {
     if (!r.success) console.warn(`warning: data/${file} doesn't validate, so its sprites are left out`);
     return r.success ? r.data.sprites : [];
   };
-  const glyphs: Record<string, SpriteDef> = {};
-  for (const s of [...sheetOf('sprites/marks.json'), ...sheet]) glyphs[s.id] = s;
   const gray = FactionSchema.safeParse(raw['factions/gray-rot/faction.json']);
-  return { units, buildings, glyphs, gray: gray.success ? gray.data.palette : {}, soil: sheetOf('sprites/terrain.json').find((s) => s.id === 't-soil') };
+  return { units, buildings, gray: gray.success ? gray.data.palette : {}, soil: sheetOf('sprites/terrain.json').find((s) => s.id === 't-soil') };
 }
 
-/** One squad strip: a spawner's squad of n in its slot, and whether the sprite's width with its mark overflows it. */
+/** One squad strip: a spawner's squad of n in its slot, and whether the sprite's width overflows it. */
 interface Strip { building: string; label: string; n: number; k: number; bound: number; width: number; over: boolean; counts: boolean }
 interface SpriteReport {
   id: string; w: number; h: number; shape: SpriteDef['shape'] | null; units: string[]; building: string | null;
-  frames: { body: Box | null; composed: Box | null }[];
+  frames: { body: Box | null }[];
   strips: Strip[]; problems: string[]; overflows: string[];
 }
 
 function report(s: SpriteDef, world: World, bands: SpriteBands | undefined): SpriteReport {
-  const frames = s.frames.map((_, f) => ({ body: bodyBox(s, f), composed: composedBox(s, f, world.glyphs) }));
+  const frames = s.frames.map((_, f) => ({ body: bodyBox(s, f) }));
   const units = world.units.filter((u) => u.sprite === s.id);
   const building = s.id.startsWith('e-') ? world.buildings.find((b) => b.id === s.id.slice(2)) : undefined;
   const problems = [
-    ...shapeProblems(s, bands, world.glyphs),
+    ...shapeProblems(s, bands),
     ...units.flatMap((u) => unitShapeProblems(u, s)),
     ...(building ? emplacementShapeProblems(building, s) : []),
   ];
-  const width = Math.max(0, ...frames.map((f) => f.composed?.w ?? 0));
+  const width = Math.max(0, ...frames.map((f) => f.body?.w ?? 0));
   const strips: Strip[] = [];
   for (const u of units) {
     for (const b of world.buildings.filter((x) => x.spawn?.unit === u.id)) {
@@ -111,8 +106,7 @@ function report(s: SpriteDef, world: World, bands: SpriteBands | undefined): Spr
   const overflows: string[] = [];
   for (const st of strips) {
     if (!st.over) continue;
-    const mark = s.shape && s.shape.mark !== 'none' ? ' with its mark' : '';
-    const line = `${s.id} is ${st.width} px wide${mark}, over the ${st.bound} px a unit has in ${st.building}'s squad of ${st.n} (${st.label})`;
+    const line = `${s.id} is ${st.width} px wide, over the ${st.bound} px a unit has in ${st.building}'s squad of ${st.n} (${st.label})`;
     if (st.counts && s.shape) problems.push(`sprite ${line}`);
     else overflows.push(line);
   }
@@ -129,7 +123,7 @@ interface Canvas { id: string; w: number; h: number; ops: Op[] }
 /** An image the page decodes once: RGBA rows, base64. */
 interface Image { b64: string; w: number; h: number }
 
-const COLORS = { band: '#5fd38d', body: '#4fd6ff', glyph: '#ffd34f', slot: 'rgba(255,255,255,0.55)', grid: 'rgba(255,255,255,0.18)' };
+const COLORS = { band: '#5fd38d', body: '#4fd6ff', slot: 'rgba(255,255,255,0.55)', grid: 'rgba(255,255,255,0.18)' };
 
 function filtered(f: FramePixels, filter: CvdFilter | undefined): FramePixels {
   if (!filter) return f;
@@ -163,14 +157,9 @@ class Painter {
     return { t: 'img', i, x, y, s };
   }
 
-  /** A frame as pixels, its glyphs baked on; with a glyph missing (a listed problem), without its shape. */
+  /** A frame as pixels, as the atlas bakes it. */
   frame(s: SpriteDef, f: number, gray: boolean, flip: boolean): FramePixels {
-    const opts = { swap: gray ? this.world.gray : undefined, flip, glyphs: this.world.glyphs };
-    try {
-      return filtered(framePixels(s, f, opts), this.filter);
-    } catch {
-      return filtered(framePixels({ ...s, shape: undefined }, f, opts), this.filter);
-    }
+    return filtered(framePixels(s, f, { swap: gray ? this.world.gray : undefined, flip }), this.filter);
   }
 
   /** A canvas w × h with the soil tiled at scale s; returns its id. */
@@ -199,11 +188,6 @@ class Painter {
     if (body) {
       if (band) for (const row of [bottom - band[1], bottom - band[0]]) ops.push(hline(0, top + row * scale, s.w * scale + 2 * pad, COLORS.band));
       ops.push(around(mirror(body), pad, top, scale, COLORS.body));
-      for (const g of placedGlyphs(s, f)) {
-        const def = this.world.glyphs[g.id];
-        const gb = def && glyphBox(def);
-        if (gb) ops.push(around(mirror({ x: g.x + gb.x, y: g.y + gb.y, w: gb.w, h: gb.h }), pad, top, scale, COLORS.glyph));
-      }
     }
     return this.canvas(s.w * scale + 2 * pad, s.h * scale + top + pad, scale, ops);
   }
@@ -242,9 +226,8 @@ function section(s: SpriteDef, r: SpriteReport, p: Painter, world: World, bands:
     ...r.units.map((id) => { const u = world.units.find((x) => x.id === id)!; return `unit ${id} (${u.armor} armor, ${u.damageType}${u.tags.length ? `, ${u.tags.join(' ')}` : ''})`; }),
     ...(r.building ? [`building ${r.building}`] : []),
   ];
-  const shape = s.shape ? `${s.shape.body} body · ${s.shape.mark} mark${s.shape.accent ? ` + ${s.shape.accent}` : ''}` : 'no shape';
-  const marked = s.shape && s.shape.mark !== 'none' ? ' with the mark' : '';
-  const sizes = `body height ${r.frames.map((f) => f.body?.h ?? 0).join('/')} · width${marked} ${r.frames.map((f) => f.composed?.w ?? 0).join('/')}`;
+  const shape = s.shape ? `${s.shape.body} body` : 'no shape';
+  const sizes = `body height ${r.frames.map((f) => f.body?.h ?? 0).join('/')} · width ${r.frames.map((f) => f.body?.w ?? 0).join('/')}`;
   const spawners = [...new Set(r.strips.map((st) => st.building))];
   const strips = spawners.map((b) => `<div class="row"><div class="cap">${esc(b)}'s squad on its k × k grid in a 32 px slot</div>${r.strips.filter((st) => st.building === b).map((st) =>
     `<div class="strip"><canvas id="${p.strip(s, st.n)}"></canvas><div class="${st.over ? (st.counts && s.shape ? 'bad' : 'warn') : 'dim'}">${st.n}, ${esc(st.label)} · k ${st.k} · ${st.bound} px a unit</div></div>`).join('')}</div>`);
@@ -308,7 +291,7 @@ async function main(): Promise<number> {
     return 1;
   }
   const sheet = parsed.data;
-  const world = loadWorld(sheet.sprites);
+  const world = loadWorld();
   const name = (args.name ?? basename(path, '.json')) + (args.filter ? { deuteranopia: '-d', protanopia: '-p' }[args.filter] : '');
   const painter = new Painter(world, args.filter);
   const reports = sheet.sprites.map((s) => report(s, world, sheet.bands));
@@ -318,7 +301,7 @@ async function main(): Promise<number> {
     esc(args.sheet), b ? `bands: small ${b.small.join('–')}, medium ${b.medium.join('–')}, big ${b.big.join('–')} px` : 'no bands',
     args.filter ? `art through the ${args.filter} filter` : 'no filter',
     `<span style="color:${COLORS.band}">green</span>: where the body's top edge may sit for its band`,
-    `<span style="color:${COLORS.body}">cyan</span>: the body's box · <span style="color:${COLORS.glyph}">yellow</span>: each glyph's box`,
+    `<span style="color:${COLORS.body}">cyan</span>: the body's box`,
   ].join(' · ');
 
   const dir = join(ROOT, 'artifacts', 'sprite-sheet');

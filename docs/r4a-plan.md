@@ -1,14 +1,14 @@
 # Milestone R4a plan: the shape language on the field
 
-**Status: agreed with the user on 2026-11-01** (S0 of [the task list](tasks/r4-readable-armies.md), T007). The user settled the decisions below the same day, then agreed the plan as written, call 10 included. The answers are dated in `docs/tasks/clarify.md`, and S0 wrote them into SPEC before any code.
+**Status: agreed with the user on 2026-11-01** (S0 of [the task list](tasks/r4-readable-armies.md), T007). The user settled the decisions below the same day, then agreed the plan as written, call 10 included. The answers are dated in `docs/tasks/clarify.md`, and S0 wrote them into SPEC before any code. Later that day, at T026's review of the silhouette sheet, the user dropped weapon marks from units (decision 9). That superseded decision 2 and calls 1 and 10, and reworded call 9. The user then approved the sheet redrawn without marks (T026, "The approved silhouette sheet" below).
 
 Written 2026-11-01 against `develop` at `778a564` ([#42](https://github.com/Swalliso/Sambattler/pull/42), R1's plan, merged). R4a is the first part of SPEC §16 "Milestone R4 — Readable armies", split by X3. Its scope comes from that milestone and the sections it cites: §2, §4.6, §5.6, §5.8, §10.1, §10.4, §11.2, §11.3, §13.2, §13.6, §14.2, §14.3, §15.6 and §17 #20. The calls below come from the review of SPEC v2: its findings, cited by A-ID (`docs/tasks/spec-analysis.md`), and the user's answers to X3, R4-Q1 to R4-Q5, #52, #53 and #55 (`docs/tasks/clarify.md`). The tasks are Part 1 of `docs/tasks/r4-readable-armies.md`, T001–T039.
 
 ## Goal
 
-On the field, you can tell the units apart and read each one's armor and weapon from its shape, on both sides (F17). That has to hold before R2a's playtest asks whether seeing the general's army helped. Today a sprite's size shows its merge tier, not its armor, so that answer would be confounded (A202).
+On the field, you can tell the units apart and read each one's armor from its size and its archetype from its silhouette, on both sides (F17). That has to hold before R2a's playtest asks whether seeing the general's army helped. Today a sprite's size shows its merge tier, not its armor, so that answer would be confounded (A202).
 
-After R4a, size means armor and nothing else, and a weapon mark shows the damage type. A merged unit keeps its body and shows its tier with pips, and an Elder also carries a gold rim. R4a changes how units are drawn, not how they fight. It changes no rule and no number in the battle, so no golden hash moves.
+After R4a, size means armor and nothing else, and each archetype has a silhouette of its own. No unit carries a weapon mark (decision 9). A merged unit keeps its body and shows its tier with pips, and an Elder also carries a gold rim. R4a changes how units are drawn, not how they fight. It changes no rule and no number in the battle, so no golden hash moves.
 
 ## Scope
 
@@ -18,13 +18,11 @@ After R4a, size means armor and nothing else, and a weapon mark shows the damage
   - `i-pip`, a 3×3 gold core in a 1-px dark outline, one for Bloomed and two for Elder, on the field and in the inspect panel;
   - a 1-px gold rim on Elders, baked per frame;
   - the Elder aura, kept.
-- **The shape block** on unit sprites, and the body bands on the sheet (R4-Q1, R4-Q2). The block holds the body (small, medium, big or structure), the mark, a mark point per frame and an optional accent.
-- **Shared mark glyphs** in `data/sprites/marks.json` (new), baked onto each frame when the atlas bakes (R4-Q2, #55).
+- **The shape block** on unit sprites, and the body bands on the sheet (R4-Q1). The block holds the body only: small, medium, big or structure (decision 9).
+- **No mark glyphs** (decision 9). S2 built shared glyphs in `data/sprites/marks.json`, baked onto each frame (R4-Q2, #55), and S2b retired them (T077).
 - **Pure shape checks,** in `src/data/shapes.ts` (new) and the registry:
   - the body follows the armor;
-  - the mark follows `markOf`;
   - the bands;
-  - the glyph's placement;
   - distinct silhouettes;
   - the width bound.
 - **`npm run sprite-sheet`** (`tools/sprite-sheet.ts`, new). It renders every frame at 2× and 4×, facing both ways. It overlays the band lines and each measured box, lists each problem, draws strips of each unit on its squad's grid, and takes both colour-vision filters.
@@ -32,7 +30,7 @@ After R4a, size means armor and nothing else, and a weapon mark shows the damage
 - **All 13 unit sprites redrawn:** the core six first (the Sporeling, Capguard, Gill Archer, Amanita Knight, Hammercap and Burster), then the other seven. Also the Puffball Mortar's emplacement sprite, `e-puffballMortar` (R4-Q5).
 - **The colour-vision check, moved from M7:**
   - the matrices in `tools/lib/cvd.ts` (new);
-  - team, soil, outline and mark contrast cases in `tests/unit/contrast.test.ts`;
+  - team, soil and outline contrast cases in `tests/unit/contrast.test.ts`;
   - a lighter Gray Rot body (R4-Q4).
 - **The lineups:** `unit-lineup` and `unit-lineup-twin` replace `elder-showcase`, with their screenshots (#52).
 
@@ -48,13 +46,13 @@ After R4a, size means armor and nothing else, and a weapon mark shows the damage
   - The lineups, which R2a/T048 copies in clash form.
   - The shape checks, which R2a S1 re-runs once it adopts R1's squad sizes. A width failure is fixed by narrowing that sprite in a follow-up R4a PR, never by loosening the check.
   - #52's first reading and the tier question at R2a's playtest (R2a/T137).
-- **To R4b:** `marks.json`, where R4b adds the `mm-` matchup glyphs, `bodyOf` in `src/data/shapes.ts`, and the lineups.
+- **To R4b:** `bodyOf` in `src/data/shapes.ts`, and the lineups. R4b's `mm-` matchup glyphs, the structure glyph among them, go in a sheet of their own, since `marks.json` went with decision 9 (R4b-S0 picks the file).
 - **To M7:** the Gray Rot's own sprites follow the same shape checks and the same contrast test.
 
 ## The decisions (2026-11-01)
 
 1. **X3, split R4:** yes. The user answered in the hub session that started this one ("Both", for the two side tracks). R4a runs now beside R1 and lands before R2a's playtest. R4b follows R3.
-2. **Marks** (R4-Q2, #55): the recommendation.
+2. **Marks** (R4-Q2, #55): the recommendation. **Superseded the same day by decision 9:** units carry no weapon marks. What follows is the decision as first taken.
    - Each mark is one shared glyph, the same on every unit and on both sides, baked onto each frame at the sprite's `shape.markAt[frame]`.
    - The rule is `markOf`:
      - the area mark for armor-ignoring damage (`burst`);
@@ -67,6 +65,7 @@ After R4a, size means armor and nothing else, and a weapon mark shows the damage
    - Widths, mark included: at most floor(32/k) native px, where k = ceil(sqrt(n)) and n is the building's base squad + 1 for the Rhizome Vault (call 8).
      - Today's data gives 10 px for the Capguard, Gill Archer, Hammercap, Sporeling, Veilstalker, Morel Runner, Burster and Driftling, and 16 px for the Amanita Knight, Tender, Scythecap, Rootbreaker and Rhizomorph.
      - The Velvet Shrine's +2 overflows under #11's first guess, and the sheet tool lists it.
+   - Since decision 9 there's no mark, so the width is the body's own.
 4. **The tier cue** (R4-Q3): changed from clarify's recommendation, at this session's suggestion.
    - Bigger pips for both tiers, and the Elder aura kept.
    - A gold rim on Elders only, and no rim on Bloomed. A rim drawn outside the outline makes a unit look 2 px bigger, and the bands are only 2–3 px apart, so a rimmed small Bloomed would look 10–11 px tall against medium's 11–12. Bloomed units are also about half of a merging army (8 Sporelings field 2 Bloomed + 2), so a rim on every Bloomed would outline half the field.
@@ -76,26 +75,26 @@ After R4a, size means armor and nothing else, and a weapon mark shows the damage
    - the lighter first guess (`v #b0bcab`, `l #eaf0e2`, `d #808b7c`) gives 1.51–2.13:1, 3.57:1 or more against every soil tone and 4.73:1 or more against the outline;
    - a darker body passes the team case but sinks into the soil (1.07:1) and into its own outline (1.32:1).
 6. **Emplacements** (R4-Q5): the recommendation.
-   - An emplacement has a slot-sized sprite of its own, `e-<buildingId>`, at most 32 × 32, carrying its weapon's mark. The Rootgate has no attack, so it carries none.
+   - An emplacement has a slot-sized sprite of its own, `e-<buildingId>`, at most 32 × 32, carrying its weapon's mark. The Rootgate has no attack, so it carries none. Since decision 9 no emplacement carries a mark.
    - It's found by that name, and the building's own sprite stands in where there's none (call 4).
    - Structure has no body band. Its matchup glyph is R4b's (T049).
 7. **The field's scale** (#52): the recommendation's plan.
    - Twin Roots draws at about 1.78× in a 1280×720 window (A077), so it's the worst case. It gets a lineup capture of its own, `r4-lineup-twin`.
-   - Marks and pips are at least 2 native px wide in every stroke (A158).
+   - Pips are at least 2 native px wide in every stroke (A158). Weapon marks were held to it too, until decision 9 dropped them.
    - §10.1 states each map's scale.
    - R2a's playtest takes a first reading, and R4b's fresh-tester gate closes #52 (T075, T076).
 8. **The merged radius** (#53): the alternative, ×1.0. A merged unit's collision radius stops growing, as its sprite does. The change moves goldens, so R2a makes it inside S1's one golden refresh (R2a/T011), and R4a, which moves none, leaves `tierRadiusMult` at 1.25 in the data.
+9. **No weapon marks on units** (the user, 2026-11-01, at T026's review of the silhouette sheet; R4/T077). It supersedes decision 2 and #55.
+   - "If we don't have too many units and they're visually distinct enough we don't need that visual clutter on the units." No unit or emplacement carries a mark glyph on the field, now or later.
+   - A unit's damage type reads from its own silhouette, where a weapon §11.3 names is drawn as body (call 9), and from the hit sparks, the matchup marks on cards and the planning screen, and the inspect panel.
+   - F17 stays answered: size and silhouette tell the units apart, and the cards and the planning screen say which one counters what.
 
 ## Calls this plan makes where the spec is ambiguous
 
-Each is easy to reverse. Calls 1–9 are the task list's Technical context calls, and call 6 follows R4-Q3's answer. Call 10 is new in this plan.
+Each is easy to reverse. Calls 1–9 are the task list's Technical context calls, and call 6 follows R4-Q3's answer. Call 10 is new in this plan. Decision 9 superseded calls 1 and 10 and reworded call 9.
 
-1. **Weapon marks are shared glyphs** in `data/sprites/marks.json` (`m-blade`, `m-arrow`, `m-spike`, `m-hammer`, `m-area`, `m-heal`, and the accent `m-splash`), with no faction swap. The atlas composites them onto each unit frame at `shape.markAt[frame]` before it mirrors the frame.
-   - The baked frame holds the mark, as §14.3 asks, and needs no draw call of its own (§13.6).
-   - Every blade looks the same and both sides draw the same weapon, so the check compares names (A148).
-   - Each glyph is at most 5×5, with strokes at least 2 native px wide, a light core and a dark `k` outline, so it reads on both sides' bodies.
-   - The arrow and the spike both mean pierce. The arrow is a shaft with a head, and the spike a solid point, so they read as one family.
-2. **Body size is the height of a frame's own opaque pixels.** Marks aren't in the frame's rows, so they never count toward height (A148). The Elder rim is a separate baked region, so it doesn't count either. Width counts the composed box, body and mark (call 8).
+1. **No weapon marks** (decision 9, 2026-11-01). This call first had shared glyphs in `data/sprites/marks.json` (`m-blade`, `m-arrow`, `m-spike`, `m-hammer`, `m-area`, `m-heal`, and the accent `m-splash`), which the atlas baked onto each unit frame at `shape.markAt[frame]`. R4/T077 retired them, with the shape block's mark fields and their checks. Don't add marks back.
+2. **Body size is the height of a frame's own opaque pixels** (A148). The Elder rim is a separate baked region, so it doesn't count. Width is the same box's width (call 8). Since decision 9 there's no mark to add to it.
 3. **The lineups use v1's scenario format now,** as `elder-showcase` does, with only default-data units, so R4a can take screenshots before R2a exists.
    - The units that exist only as presets (the Burster, the Rhizomorph and the Driftling) are checked through `protoContent('rework')`.
    - R2a/T048 makes clash-form copies, R2b/T048 ports the files before `test.noTurrets` leaves `ScenarioSchema`, and R4b-S0 (T043) adds the Burster and the Rhizomorph once they're default data (A077, A158).
@@ -107,12 +106,11 @@ Each is easy to reverse. Calls 1–9 are the task list's Technical context calls
    - The upgraded Burrow's 12 is left out, because upgrade tracks retire in R3.
    - The Velvet Shrine's +2 and M6's strains (Teeming's 9) may overflow under #11's first guess. The sheet tool lists them, and the test doesn't fail them (A165).
    - Until R1's sizes are data (R2a S1), the bound reads today's spawn-derived squads.
-9. **Silhouettes and marks don't double up.** The glyph is the unit's one weapon mark. A silhouette feature that suggests a weapon is body: it counts toward the band, and it doesn't repeat the glyph's shape.
-   - That covers §11.3's Gill Archer bow, the Hammercap's raised arm and the Scythecap's hooked cap edge.
-   - So the Gill Archer's bow carries the `m-arrow` glyph, and the Hammercap's maul head is the `m-hammer` glyph, held up on a raised arm that is body. The arm's pixels lift the body's top row, so call 10 holds and the arm counts toward the medium band.
-10. **A mark stays within the body's rows** (new in this plan). In every frame, the glyph's rows lie between the body's top and bottom rows. It may stand out to the front, never above or below.
-    - The band measures the body alone, so without this rule a raised hammer could make a medium Hammercap look big while it still passes the check.
-    - `shapeProblems` rejects a mark that leaves the body's rows (T017, T019), as it rejects one in the back half or outside the sprite's box.
+9. **A weapon a silhouette draws is body** (reworded 2026-11-01 by decision 9). It counts toward the band and stays inside it, and no glyph sits beside it.
+   - That covers §11.3's Gill Archer bow, the Hammercap's raised maul, the Scythecap's hooked cap edge and the Rootbreaker's ram.
+   - So the Hammercap's maul, held up on its raised arm, lifts the body's top row, and the whole of it counts toward the medium band.
+   - First form: silhouettes and marks didn't double up, so the bow carried the `m-arrow` glyph and the maul head was the `m-hammer` glyph.
+10. **Retired 2026-11-01 (decision 9).** It kept a mark within the body's rows, so a raised hammer couldn't make a medium Hammercap look big while it passed the check. With no marks it has nothing to hold, and call 9 keeps a drawn weapon inside the band.
 
 ## Stand-ins
 
@@ -139,8 +137,8 @@ The tasks are Part 1 of `docs/tasks/r4-readable-armies.md`, one session per row 
    - `i-pip`, the Elder rim, and pips in the inspect panel.
 
    It merges before R2a's renderer session where possible.
-3. **The shape checks** (S2, T017–T023, `feature/r4a-shape-checks`): the shape schema, `marks.json` and the glyph bake, `src/data/shapes.ts`, the registry's cross-checks, and the sprite-sheet tool. Tests first.
-4. **The silhouettes** (S2b, T024–T026, `feature/r4a-silhouettes`): a draft sheet of frame 0 for all 13 units and the Mortar's emplacement, fixed until the tool lists no problem. **The user approves it** (T026) before S3.
+3. **The shape checks** (S2, T017–T023, `feature/r4a-shape-checks`): the shape schema, `marks.json` and the glyph bake, `src/data/shapes.ts`, the registry's cross-checks, and the sprite-sheet tool. Tests first. S2b retired the glyphs and the bake (decision 9).
+4. **The silhouettes** (S2b, T024–T026 and T077, `feature/r4a-silhouettes`): a draft sheet of frame 0 for all 13 units and the Mortar's emplacement, fixed until the tool lists no problem. At its review the user dropped weapon marks (decision 9), so S2b also retires them in code and docs and redraws the sheet without them (T077). **The user approves it** (T026) before S3.
 5. **The core six and the emplacement** (S3, T027–T029, `feature/r4a-core-sprites`), redrawn from the approved sheet, three frames each.
 6. **The other seven** (S4, T030–T032, `feature/r4a-roster-sprites`): the distinctness and width cases, the redraws, and a shape block required on every unit sprite. It reads R1's proposed squad sizes if R1 has reported.
 7. **Contrast, verification and docs** (S5, T033–T038, `feature/r4a-contrast`): the contrast cases, the Gray Rot's lighter tones, R4a's verification and its As built. The contrast tasks may move to any session after S2 if the user wants the palette sooner.
@@ -152,7 +150,7 @@ All of it runs beside R1, which works in `tools/` and `src/sim/formation.ts` and
 
 SPEC §16 R4's R4a part:
 
-1. **`npm run verify`,** with the body and mark checks running in `validate:data` through `src/data/registry.ts` (T035). Every R4a session also runs `npm run golden -- verify` and says in its PR that no hash moved: sprites, `marks.json`, palettes and scenarios that no golden replays aren't battle state (`src/sim/state.ts:189-197`).
+1. **`npm run verify`,** with the body checks running in `validate:data` through `src/data/registry.ts` (T035). Every R4a session also runs `npm run golden -- verify` and says in its PR that no hash moved: sprites, palettes and scenarios that no golden replays aren't battle state (`src/sim/state.ts:189-197`).
 2. **The captures,** each PNG opened and its checklist walked (T036):
 
    ```bash
@@ -165,7 +163,7 @@ SPEC §16 R4's R4a part:
    The checklist:
    - each unit's silhouette is distinct at the field's scale, on both sides;
    - bodies are ordered by armor, and merged units keep their body with pips, Elders with a gold rim;
-   - a weapon mark is on every unit;
+   - no unit carries a mark glyph (decision 9);
    - the sides stay apart under both filters;
    - #52's first reading on Twin Roots, noted here.
 3. **`npm run sprite-sheet`** lists no problem for `data/sprites/units.json`.
@@ -176,7 +174,7 @@ SPEC §16 R4's R4a part:
 
 **At T007 (S0): answered 2026-11-01,** and the plan agreed as written (the Decision and "R4a part agreed" lines in `docs/tasks/clarify.md`):
 - X3: split R4 (decision 1).
-- R4-Q2 and #55: the marks (decision 2).
+- R4-Q2 and #55: the marks (decision 2), superseded at T026's review by decision 9.
 - R4-Q1: the bands (decision 3).
 - R4-Q3: the tier cue, with Elders alone rimmed (decision 4).
 - R4-Q4: team contrast, with a lighter Gray Rot (decision 5).
@@ -185,13 +183,37 @@ SPEC §16 R4's R4a part:
 - #53: ×1.0, made in R2a (decision 8).
 
 **Later:**
-- **T026 (S2b):** approve the silhouette sheet before any game sprite is redrawn.
+- **T026 (S2b): approved 2026-11-01.** At its first review the user dropped weapon marks (decision 9), and then approved the sheet redrawn without them, as drawn. The record is below, in "The approved silhouette sheet".
 - **T039 (the gate):** agree that R2a's playtest can run on R4a's sprites.
 - **#52:** a first reading at R2a's playtest, and the call at R4b's fresh-tester gate (T075, T076).
 - **R1's squad sizes (#7):** they set the width bound. If R1 makes a 4-unit squad bigger, its bound may drop from 16 px to 10, and the sprite is narrowed in a follow-up PR.
 - **The Bloomed cue:** if R2a's playtest finds Bloomed units hard to tell from base ones, add the spore-white tier-2 rim (R4-Q3's other option).
 
 R4b's own calls (R4-Q6, #54, the structure glyph's form) come at R4b-S0.
+
+## The approved silhouette sheet (T026, 2026-11-01)
+
+The user approved `docs/r4a-silhouettes.json` as drawn ("Approve as drawn"), on `feature/r4a-silhouettes` (R4a-S2b). It's frame 0 of all 13 unit sprites and of `e-puffballMortar`, and S3 and S4 redraw the game's sprites from it. `npm run sprite-sheet -- --sheet docs/r4a-silhouettes.json --name r4a-silhouettes` renders it, plain and with `--filter deuteranopia` or `--filter protanopia`.
+
+**The change the user asked for.** The first draft carried S2's mark glyphs. At its review the user dropped them (decision 9, R4/T077), and the redraw draws each weapon §11.3 names as body: the Gill Archer's bow with an arrow, the Hammercap's raised maul, the Scythecap's hooked cap and the Rootbreaker's ram.
+
+**What the approval covers**, for S3 and S4 to follow:
+- **Heights:** small bodies are 8 px (the Sporeling and the Burster) or 9 (the Gill Archer, the Tender, the Veilstalker and the Driftling). Every medium body is 12, and the Amanita Knight is 16.
+- **The Rootbreaker** is a capped root beast carrying a knotted root log forward, its head curled like a ram's horn. That's how this sheet draws §11.3's "ram's head of knotted root".
+- **The Amanita Knight's** dome stays red and cream on both sides, as today. Its side shows in its gill band, its ring and which way it faces.
+- **The Driftling** draws no shadow, since `flyerShadow` draws one under every flyer.
+- **The Mortar's emplacement** is 24 × 22, anchored at its centre, since an emplacement stands at its slot's centre (`emplacementPosition`). S3 may resize it within 32 × 32 (T029).
+- **Soil and roots** (the Rhizomorph's mound, the Mortar's base and the Rootbreaker's log) use unswapped browns, so the ground looks the same under both sides.
+
+**The checks when it was approved:**
+- The tool listed no problem in any of the three renders. It listed 4 overflows, all at base + 2 (the Velvet Shrine's): the Tender, the Scythecap, the Rootbreaker and the Rhizomorph.
+- Every pair of the 13 units passes T030's distinctness rule, with an IoU of at most 0.69.
+- `npm run verify` passed, and no golden moved.
+
+**For S3 and S4:**
+- The sheet has frame 0 only. T028 and T031 add the two walk frames and the attack frame.
+- Under deuteranopia, the Rootbreaker's brown log turns olive like the soil, and only its outline keeps it apart. Watch it in T036's captures.
+- T032 deletes this sheet once S4 has drawn the roster.
 
 ## As built
 

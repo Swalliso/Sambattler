@@ -3,7 +3,6 @@
 // targets, plus the run content (upgrade tracks, relics, events, elite modifiers, commanders with
 // their passives and powers), the effects DSL (§14.2) and the sound bank (§13.9).
 import { z } from 'zod';
-import { shapeBlockProblems } from './shapes.ts';
 
 export const Id = z.string().min(1).regex(/^[a-zA-Z0-9:_-]+$/, 'ids use letters, digits, : _ -');
 export const DamageType = z.enum(['slash', 'pierce', 'crush']);
@@ -492,19 +491,13 @@ export const MapSchema = z.object({
   });
 });
 
-/** A pixel in a sprite's frame: [x, y] from its top-left. */
-const PixelPoint = z.tuple([z.number().int(), z.number().int()]);
 /**
- * A unit's or an emplacement's shape (SPEC §5.8, §14.2, §14.3; R4a): its body, its mark by §5.8's rule, and
- * in each frame the top-left where the atlas bakes the mark's `m-` glyph, and the accent's. The data checks
- * (src/data/shapes.ts) hold every frame to it.
+ * A unit's or an emplacement's shape (SPEC §5.8, §14.2, §14.3; R4a): its body, which the data checks
+ * (src/data/shapes.ts) hold every frame to. Strict, so a weapon mark can't come back in: units and
+ * emplacements carry none (§5.8, the user's decision of 2026-11-01).
  */
 export const SpriteShapeSchema = z.object({
   body: z.enum(['small', 'medium', 'big', 'structure']),
-  mark: z.enum(['blade', 'arrow', 'spike', 'hammer', 'area', 'heal', 'none']),
-  accent: z.enum(['splash']).optional(),
-  markAt: z.array(PixelPoint).optional(),
-  accentAt: z.array(PixelPoint).optional(),
 }).strict();
 const Band = z.tuple([z.number().int().positive(), z.number().int().positive()]).refine(([lo, hi]) => lo <= hi, 'a band is [min, max]');
 /** Each body class's [min, max] height in native px (§14.3): display data, kept out of balance.json. Structure has none. */
@@ -527,8 +520,6 @@ export const SpriteSchema = z.object({
       }
     });
   });
-  // a shape gives its mark and its accent one point per frame; its bands and glyphs are checked once, in shapeProblems
-  for (const message of shapeBlockProblems(s)) ctx.addIssue({ code: 'custom', message });
 });
 export const SpriteSheetSchema = z.object({ sheet: Id, sprites: z.array(SpriteSchema), bands: SpriteBandsSchema.optional() }).strict();
 

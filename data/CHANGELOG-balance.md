@@ -8,6 +8,18 @@ replaces. None of it is open work, including headings that say "Open:". From mil
 entries measure or tune v2's round battle (SPEC §11, §12). "The backlog" in the entries below means
 v1's, now [archived](../docs/archive/v1/balance-backlog.md).
 
+## R4a-S2b: the mark glyphs retired (2026-11-01)
+
+**Display only, no golden moved.** It rests on the user's decision of 2026-11-01, at the silhouette sheet's review
+(R4/T026, T077): units carry no weapon mark, now or later, so the field shows less clutter and each archetype's
+silhouette tells it apart (SPEC §5.8). It supersedes R4-Q2 and §18.2 #55's answers, below. No number or rule
+changed, and no frame the game draws changed: no unit sprite had a shape block yet.
+- **Deleted:** `data/sprites/marks.json` and its seven glyphs (`m-blade`, `m-arrow`, `m-spike`, `m-hammer`,
+  `m-area`, `m-heal`, `m-splash`). The atlas bakes nothing over a frame.
+- **The shape block** is `{ body }` alone, and it's strict, so the registry rejects a block that names a mark. A
+  unit's damage type shows in its silhouette, the hit sparks, the matchup marks on cards and the planning screen,
+  and the inspect panel.
+
 ## R4a-S2: the mark glyphs (2026-11-01)
 
 **Display only, no golden moved.** It rests on R4a's plan, agreed by the user on 2026-11-01 (R4/T007,

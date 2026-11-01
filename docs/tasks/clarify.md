@@ -42,13 +42,13 @@ This is the clarify step for SPEC v2. SPEC.md is the spec, `docs/<milestone>-pla
 | R1-Q9 | A three-lane field | R1 S0 | Yes, as a screen |
 | R2-Q3 | How eliteShare counts merged units | R1 S0 (records), R2a S0 | Parts' base supply, recalibrated from R1 |
 | R4-Q1 | Body-size bands | R4a-S0 | Heights 8–9, 11–12, 15–16 px |
-| R4-Q2 | Weapon marks | R4a-S0 | Shared glyphs baked onto each frame; area mark only for armor-ignoring damage |
+| R4-Q2 | Weapon marks | R4a-S0 | Shared glyphs baked onto each frame; area mark only for armor-ignoring damage. Superseded 2026-11-01: units carry no marks |
 | R4-Q3 | A louder tier cue | R4a-S0 | A team-neutral rim per tier, bigger pips |
 | R4-Q4 | Team contrast in R4 | R4a-S0 | Yes, with a lighter Gray Rot body, checked against the soil too |
 | R4-Q5 | Emplacements, and a Structure mark | R4a-S0, R4b-S0 | A slot sprite; a structure glyph |
 | #52 | Does the shape language read at 2×? | R4a-S0 | Yes, but test Twin Roots at about 1.78× |
 | #53 | Merged units' body radius | R4a-S0 | Keep ×1.25 |
-| #55 | The Tender's mark | R4a-S0 | The heal mark |
+| #55 | The Tender's mark | R4a-S0 | The heal mark. Superseded 2026-11-01: units carry no marks |
 | #7 | Squad sizes and the full colony | R1 gate | Per building, the Burrow first |
 | #8 | Mixed-wave shields | R1 gate | Not adopted unless the bar needs them |
 | #9 | The Elder Sporeling's splash | R1 gate | Keep, unless the swarm fails with it |
@@ -1116,7 +1116,7 @@ The R3 plan settles these itself, with no call from you: A131, A140.
 
 ## R4: readable armies
 
-`docs/r4a-plan.md` and `docs/r4b-plan.md` settle these. R4a needs R4-Q1 to R4-Q5, #52, #53 and #55. R4b needs R4-Q5's glyph, R4-Q6 and #54. #56 is best settled at R2b S0.
+`docs/r4a-plan.md` and `docs/r4b-plan.md` settle these. R4a needs R4-Q1 to R4-Q5, #52, #53 and #55 (R4-Q2 and #55 were superseded on 2026-11-01: units carry no weapon marks). R4b needs R4-Q5's glyph, R4-Q6 and #54. #56 is best settled at R2b S0.
 
 ### R4-Q1 · Body-size bands
 
@@ -1131,6 +1131,7 @@ The R3 plan settles these itself, with no call from you: A131, A140.
   - The plan adds one check: a mark stays within the body's rows, so it never makes a unit look taller than its band (`docs/r4a-plan.md`, call 10).
 
   In SPEC §5.8, §10.4, §14.2 and §14.3.
+- **Changed:** 2026-11-01 (R4a-S2b, at T026's review): with weapon marks dropped (R4-Q2), a body's width is its own, and call 10's check is retired. The bands stand as agreed (R4/T077).
 
 ### R4-Q2 · Weapon marks
 
@@ -1151,6 +1152,10 @@ The R3 plan settles these itself, with no call from you: A131, A140.
   - The Scythecap carries the blade only. A splashing emplacement keeps its type's mark with a splash accent, so the Mortar carries a hammer.
 
   In SPEC §5.8, §10.4, §11.3, §13.6, §14.2, §14.3 and §16 R4 step 1.
+- **Superseded:** 2026-11-01 (R4a-S2b, at T026's review of the silhouette sheet): the user dropped weapon marks from units. "If we don't have too many units and they're visually distinct enough we don't need that visual clutter on the units."
+  - No unit or emplacement carries a mark glyph on the field, now or later. Don't add marks back.
+  - A unit's damage type reads from its own silhouette (a weapon it draws, such as the Gill Archer's bow or the Hammercap's maul, is body), the hit sparks, the matchup marks on cards and the planning screen, and the inspect panel.
+  - `data/sprites/marks.json`, the shape block's `mark`, `accent`, `markAt` and `accentAt`, and their checks are retired (R4/T077). SPEC §5.8 records the decision, and the sections that cited the marks follow it.
 
 ### R4-Q3 · A louder tier cue
 
@@ -1194,6 +1199,7 @@ The R3 plan settles these itself, with no call from you: A131, A140.
   - In R4b, a structure glyph joins the mark set. R4b-S1 draws its form, a stump or a block (R4/T049).
 
   In SPEC §5.8 and §14.3.
+- **Changed:** 2026-11-01 (R4a-S2b, at T026's review): the emplacement sprite stays, but it carries no weapon mark, as units carry none (R4-Q2, superseded; R4/T077). The structure glyph stays R4b's, among the matchup glyphs, in a sheet of their own now that `data/sprites/marks.json` is gone.
 
 ### R4-Q6 · Card and mark details
 
@@ -1219,7 +1225,7 @@ The R3 plan settles these itself, with no call from you: A131, A140.
 - **Alternatives:** a closer clash view; slimmer bands on two-lane maps.
 - **Blocks:** R4a-S0; read at R2a's playtest and R4b's fresh-tester gate.
 - **Decision:** _open_ (R4b's fresh-tester gate decides, R4/T076)
-- **R4a part agreed:** 2026-11-01 (R4a-S0): the recommendation. Twin Roots, at about 1.78×, is the worst case: R4a adds the `r4-lineup-twin` capture, draws marks and pips at least 2 native px wide, and states each map's scale in §10.1. R2a's playtest takes a first reading (R2a/T137). In SPEC §10.1, §10.4, §16 R4 and §18.2 #52.
+- **R4a part agreed:** 2026-11-01 (R4a-S0): the recommendation. Twin Roots, at about 1.78×, is the worst case: R4a adds the `r4-lineup-twin` capture, draws marks and pips at least 2 native px wide, and states each map's scale in §10.1. R2a's playtest takes a first reading (R2a/T137). In SPEC §10.1, §10.4, §16 R4 and §18.2 #52. Since 2026-11-01 units carry no weapon marks (R4-Q2, superseded), so the 2-px rule covers pips only.
 
 ### #53 · Merged units' body radius
 
@@ -1235,6 +1241,7 @@ The R3 plan settles these itself, with no call from you: A131, A140.
 - **Question:** Does area damage get a matchup mark against crowds?
 - **SPEC's first guess:** no; the area mark itself is the cue (§5.8).
 - **Recommendation:** Agree. **Why:** area damage ignores armor, and a crowd isn't a body size, so a mark per crowd would be a rule no shape shows.
+- **Changed reason (2026-11-01):** units no longer carry weapon marks (R4-Q2, superseded), so there's no area mark to be the cue. The first guess stays no: the Burster's own silhouette and its burst are the cue.
 - **Alternatives:** a "packed" mark.
 - **Blocks:** R4b's marks.
 - **Decision:** _open_
@@ -1247,6 +1254,7 @@ The R3 plan settles these itself, with no call from you: A131, A140.
 - **Alternatives:** no mark.
 - **Blocks:** R4a's redraw.
 - **Decision:** 2026-11-01 (R4a-S0): the recommendation. The heal mark, which R4-Q2's rule gives any healer that deals no damage. In SPEC §5.8, §11.3 and §18.2 #55.
+- **Superseded:** 2026-11-01 (R4a-S2b, at T026's review): units carry no weapon marks (R4-Q2), so the Tender carries no mark. Its silhouette, a ring-shaped cap with a lantern glow, says it heals.
 
 ### #56 · An in-world name for lives
 
@@ -1342,8 +1350,8 @@ The R4 plans settle these themselves, with no call from you: A155, A161.
 
 - **Question:** May a strain, chosen before the run, change a unit's body or weapon?
 - **SPEC's first guess:** no, as for augments, so *Ironcap*, *Gillguard* and *Thornpuff* need new patches (§9.3).
-- **Recommendation:** Agree. **Why:** the shape never lies (§5.8): one drawing per unit, and the marks and the general's counter sets read a fixed armor and damage type.
-- **Alternatives:** yes, with the drawn body or mark changing to match.
+- **Recommendation:** Agree. **Why:** the shape never lies (§5.8): one drawing per unit, and the matchup marks and the general's counter sets read a fixed armor and damage type.
+- **Alternatives:** yes, with the drawn body changing to match. Units carry no weapon mark since 2026-11-01 (R4-Q2), so there's no mark to change.
 - **Blocks:** M6's strains.
 - **Decision:** _open_
 
@@ -1431,7 +1439,7 @@ The M6 plan settles these itself, with no call from you: A174, A187.
 ### #64 · Gray Rot counterparts for the other roles
 
 - **Question:** What are the Gray Rot's healer, fast swarm, tunneler and flyer?
-- **SPEC's first guess:** M7 names them, one per role, each with its role's body and weapon mark (§11.12).
+- **SPEC's first guess:** M7 names them, one per role, each with its role's body and damage type (§11.12). Units carry no weapon mark since 2026-11-01 (R4-Q2).
 - **Recommendation:** Agree for the healer, the fast swarm and the tunneler; drop the flyer under X9 (A191).
 - **Alternatives:** a Gray Rot flyer too, if flyers ship (X9).
 - **Blocks:** M7's roster.

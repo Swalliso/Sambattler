@@ -51,12 +51,12 @@ This list is a draft of 2026-11-01, made from SPEC v2 and `docs/tasks/spec-analy
 
 **Findings:**
 - A170 (high): nothing maps a Gray Rot card to its Velvet Bloom card, packs, augments, the always-in set and general kits all name Velvet Bloom ids, and SPEC doesn't say whether Gray Rot stats are derived or authored. M7-Q1; T002, T004–T013.
-- A148 (high, R4): no measurable body band or weapon mark. R4a's shape block settles it; the Gray Rot's sprites carry it (T014, T015).
+- A148 (high, R4): no measurable body band or weapon mark. R4a's shape block settles the band; the Gray Rot's sprites carry it (T014, T015). Units carry no weapon mark since 2026-11-01 (R4/T077).
 - A171 (medium): mastery level 10's three blights exceed §17 #15's six. T003, T021.
 - A173 (medium): Second Flush and Hardy Spores can't reach a run. X9; T034 checks it.
 - A178 (medium): M7's "content the ten run packs need" overlaps R3, and the tenth pack waits for flyers. X9; T003, T034, T035.
 - A191 (medium): SPEC disagrees on whether flyers ship, and #64 asks for a Gray Rot flyer. X9; T002, T003.
-- A149 and A151 (medium, R4): the area mark only for armor-ignoring bursts, the heal mark for the healer, and a splashing emplacement keeps its hammer. R4-Q2's rules; T014, T015.
+- A149 and A151 (medium, R4): moot since 2026-11-01. The user dropped weapon marks from units and emplacements (R4-Q2 superseded, R4/T077), so no Gray Rot sprite carries one either.
 - A154 (medium, R4): an emplacement needs a slot sprite, `e-<buildingId>` (R4 Call 4). T014, T015 (`e-ashpuffKiln`).
 - A158 (medium, R4): Twin Roots draws at about 1.78×. T018's twin lineup.
 - A165 (medium, R4): bodies must fit the squad grid's width (R4 Call 8). T014.
@@ -91,8 +91,8 @@ This list is a draft of 2026-11-01, made from SPEC v2 and `docs/tasks/spec-analy
   - map fairness: Velvet Bloom against Velvet Bloom.
 
 **Sprites:**
-- Gray Rot sprites are new ids in `data/sprites/units.json` and `buildings.json`. Each `u-` sprite carries the shape block R4/T032 requires, with its mirror's body class and mark (§5.8), and passes R4's checks in `src/data/shapes.ts`.
-- R4's rules apply as they stand: the area mark only for bursts and the heal mark for the healer (A149, A151); an emplacement's slot sprite is `e-<buildingId>` (R4 Call 4, A154); a body's width stays within R4's Call 8 width bound (A165).
+- Gray Rot sprites are new ids in `data/sprites/units.json` and `buildings.json`. Each `u-` sprite carries the shape block R4/T032 requires, with its mirror's body class (§5.8), and passes R4's checks in `src/data/shapes.ts`. It carries no weapon mark: units have none since 2026-11-01 (R4/T077), and the block is `{ body }`.
+- R4's rules apply as they stand: an emplacement's slot sprite is `e-<buildingId>`, with no weapon mark (R4 Call 4, A154); a body's width stays within R4's Call 8 width bound (A165).
 - Gray Rot units draw from their own sprites, so their body tones live in those sprites' palettes. R4/T033's contrast test reads `data/factions/*/faction.json`; T016 points it at the sprites' palettes.
 - The palette swap in `src/render/atlas.ts` stays for the Heartcap and the frame only.
 - Sprites aren't battle state, so they move no golden. The roster's ids do.
@@ -181,16 +181,15 @@ This list is a draft of 2026-11-01, made from SPEC v2 and `docs/tasks/spec-analy
 
 ## Phase 4: US2 — The Gray Rot reads like its roles (P2)
 
-**Goal:** each Gray Rot archetype has its own silhouette, with its mirror's body size and weapon mark. **Independent test:** T014's checks, and the screenshots in T018.
+**Goal:** each Gray Rot archetype has its own silhouette, with its mirror's body size and damage type, and no weapon mark (R4/T077). **Independent test:** T014's checks, and the screenshots in T018.
 
 - [ ] T014 [US2] Add the Gray Rot to R4's sprite checks in `tests/unit/data.test.ts` and `tests/unit/shapes.test.ts` (R4/T017) (§5.8, §14.3, §17 #20)
-  - Each Gray Rot `u-` sprite carries R4's required shape block (R4/T032), with its mirror's body class and mark (A148).
-  - The area-archetype counterpart has the area mark, and the healer counterpart the heal mark (A149, A151).
+  - Each Gray Rot `u-` sprite carries R4's required shape block (R4/T032), with its mirror's body class (A148). No sprite carries a weapon mark (R4/T077).
   - Each body's width is within R4's Call 8 bound (A165).
   - The Ashpuff Kiln has its `e-ashpuffKiln` slot sprite (R4 Call 4, A154).
   - Each Gray Rot archetype's silhouette is distinct from the others and from its mirror's.
 - [ ] T015 [US2] Draw the Gray Rot's unit and building sprites in `data/sprites/units.json` and `data/sprites/buildings.json`, as text-defined sprites with 2-frame cycles (§11.12, §14.3, §17 #20)
-  - Each `u-` sprite carries R4's required shape block (R4/T032), with the marks R4-Q2 settled (A148, A149, A151).
+  - Each `u-` sprite carries R4's required shape block (R4/T032), the body only, with no weapon mark (A148; R4/T077).
   - Draw `e-ashpuffKiln` as the Ashpuff Kiln's slot sprite (R4 Call 4, A154).
 - [ ] T016 [US2] Extend `tests/unit/contrast.test.ts` (R4/T033) to the Gray Rot's new body tones, read from the new sprites' palettes in `data/sprites/units.json` (A159), and to R4b's weak and strong marks drawn on them (A166) (§2, §10.4)
   - Adjust the Gray Rot sprites' palettes, or `data/factions/gray-rot/faction.json`'s Heartcap and frame tones, only if a pair fails.
@@ -338,7 +337,7 @@ This list is a draft of 2026-11-01, made from SPEC v2 and `docs/tasks/spec-analy
 |---|---|
 | The distinct Gray Rot roster (§11.12) with sprites, for the six core archetypes and the unlockable roles | T002, T006, T009, T011, T015 |
 | Generals switch over to it | T010, T012 |
-| Its units follow the shape language: a Gray Rot unit's body and weapon mark read the same matchup as the Velvet Bloom's | T014, T015, T016, T018 |
+| Its units follow the shape language: a Gray Rot unit's body and damage type read the same matchup as the Velvet Bloom's (no weapon marks, R4/T077) | T014, T015, T016, T018 |
 | Blights and Decay (§9.6, §11.8), rewritten for rounds, with Decay reward multipliers and the best Decay per commander | T019, T020, T023, T025 |
 | Blights tied to retired systems get new effects, and Hoarding Rot replaces Silent General | T019, T020 |
 | A blight raises the general's income above its default ×1.0 | T019 (Hoarding Rot), T020 |
@@ -363,7 +362,7 @@ This list is a draft of 2026-11-01, made from SPEC v2 and `docs/tasks/spec-analy
 | A173 (medium): Second Flush and Hardy Spores unreachable | X9; T034 |
 | A178 (medium): M7's pack content overlaps R3; the tenth pack waits for flyers | X9; T003, T034, T035 |
 | A191 (medium): flyers in or out; a Gray Rot flyer | X9, #64; T002, T003 |
-| A149, A151 (medium, R4): the area mark only for bursts, the heal mark for the healer | R4-Q2 (R4a); T014, T015 |
+| A149, A151 (medium, R4): the area mark only for bursts, the heal mark for the healer | Moot since R4/T077: units carry no weapon marks |
 | A154 (medium, R4): an emplacement's slot sprite | R4 Call 4; T014, T015 |
 | A158 (medium, R4): Twin Roots' fractional scale | T018 (`m7-gray-rot-twin`), T042 |
 | A165 (medium, R4): bodies must fit the squad grid's width | R4 Call 8; T014 |
