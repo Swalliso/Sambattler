@@ -235,10 +235,11 @@ This list was drafted on 2026-11-01 from SPEC v2 and `docs/tasks/spec-analysis.m
   - As built: `SpriteShapeSchema` and `SpriteBandsSchema`, with the types `SpriteShape` and `SpriteBands`. A band must be [min, max].
 - [x] T021 [US2] Write `data/sprites/marks.json` (new), sheet `marks`, with no `factionSwap`: `m-blade`, `m-arrow`, `m-spike`, `m-hammer`, `m-area`, `m-heal` and the accent `m-splash`. Each is at most 5×5, its strokes at least 2 native px wide (A158), with a light core and a dark `k` outline so it reads on both sides' bodies. Then teach `framePixels` in `src/render/compose.ts` to composite `m-<mark>` at `shape.markAt[frame]` and the accent at `shape.accentAt[frame]` before mirroring (§5.8, §13.6, §14.3) ⛔ R4-Q2
   - As built: a spore-white `#fbf6ff` core in a `#1a1020` outline. With an outline all round, a 5×5 glyph's core is at most 3×3, so the hammer's haft, the heal + and the area × have 1-px strokes; the user judges them at T026 (`data/CHANGELOG-balance.md`). `framePixels` takes the glyphs as `opts.glyphs` and throws if a shape's glyph is missing. `rimPixels` takes them too, so an Elder's rim outlines the mark, and `bakeAtlas` passes `content.sprites` to both.
-- [ ] T022 [US2] Cross-check units against their sprites in `src/data/registry.ts`, beside the sprite checks at :172-188 (§5.8, §14.3)
+- [x] T022 [US2] Cross-check units against their sprites in `src/data/registry.ts`, beside the sprite checks at :172-188 (§5.8, §14.3)
   - For every unit whose sprite declares a shape: `shape.body === bodyOf(unit.armor)`, `shape.mark === markOf(unit)`, and `m-<mark>` exists.
   - `shapeProblems(sprite, bands, glyphs)` is empty, with the bands of the sheet that holds the sprite (the registry keeps each sheet's `bands` as it parses it) and the `m-` sprite defs it has loaded. It imports only from `src/data`.
   - Each problem names the unit, the sprite and the frame.
+  - As built: `Content` keeps `spriteSheet` (each sprite's sheet) and `bands` (each sheet's bands).
 - [ ] T023 [US2] Write `tools/sprite-sheet.ts` (new) and add `"sprite-sheet": "tsx tools/sprite-sheet.ts"` to `package.json` (§14.3, §15.6, §17 #20)
   - It reads a sheet file (`--sheet <path>`, default `data/sprites/units.json`) and validates it with `SpriteSheetSchema`.
   - It renders through `framePixels` into a Playwright page (`page.setContent`, no server): every frame at 2× and 4×, Velvet Bloom facing right and Gray Rot facing left.
