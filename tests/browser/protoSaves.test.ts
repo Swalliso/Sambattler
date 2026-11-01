@@ -3,32 +3,14 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { chromium } from 'playwright';
 import type { Browser, Page } from 'playwright';
-import { createServer } from 'vite';
-import type { ViteDevServer } from 'vite';
 import { RUN_KEY, chooseNode, createRun } from '../../src/run/index.ts';
 import { nodeContent } from '../../tools/lib/content.ts';
+import { PROTO, closeServers, serve } from './serve.ts';
 
-const PROTO = 'hotstart';
-const servers: ViteDevServer[] = [];
 let game: string;
 let dev: string;
 let browser: Browser | undefined;
 let page: Page;
-
-/**
- * A Vite server for the game, or (`develop`) for the dev site, whose keys all get the `dev/` prefix. The
- * dev site's server keeps its own dependency cache: its config differs, so sharing `node_modules/.vite`
- * would make it and the other test files' servers re-optimize under each other's pages.
- */
-async function serve(mode?: string): Promise<string> {
-  const cacheDir = mode ? `node_modules/.vite-${mode}` : undefined;
-  const server = await createServer({ mode, cacheDir, server: { host: '127.0.0.1', port: 0, watch: null, hmr: false } });
-  servers.push(server);
-  await server.listen();
-  const address = server.httpServer?.address();
-  if (!address || typeof address === 'string') throw new Error('Vite did not open a TCP port');
-  return `http://127.0.0.1:${address.port}`;
-}
 
 beforeAll(async () => {
   game = await serve();
@@ -38,7 +20,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await browser?.close();
-  for (const server of servers) await server.close();
+  await closeServers();
 });
 
 beforeEach(async () => {

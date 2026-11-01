@@ -72,7 +72,7 @@ From another file, cite this file's tasks as RB/T0nn.
   interface SetupRecord { commander: string; bans: string[];
     traits?: string[]; strains?: Record<string, string>; blights?: Record<string, number> }   // M6, M7 (M6-Q7)
   interface ProfileV1 {
-    v: 1; lastSetup?: SetupRecord;                  // records-1
+    v: number; lastSetup?: SetupRecord;             // records-1. v is 1; a newer build's record loads with its own v, read-only
     // records-2 adds (a first guess, settled at T024):
     //   runs?: RunRecord[] (newest first, at most 20); tallies?: Record<string, CommanderTally>;
     //   current?: { seed: number; playMs: number } (the run in progress, US3);
@@ -108,6 +108,7 @@ From another file, cite this file's tasks as RB/T0nn.
 - **Keys:** `Enter`, `r` and `R` on the summary only, ignored on `e.repeat`, while the settings sheet is open (`settingsOpen()`) and once the screen has left the page.
   - A `left` guard, as in `eventResultScreen`'s `done()`, stops the focused button's click and the key from both starting a run.
   - `R` is free on run screens; in battle it opens the relics, which the summary doesn't have.
+  - Added in S1: a key with Ctrl, Cmd or Alt is ignored, so Ctrl+R and Cmd+R still reload the page, and `Enter` on another focused button (Title, New run, sound, settings) stays that button's.
 - **Play time** (records-2, RB-Q3's recommendation, on R2a's counter):
   - it counts while `document.visibilityState` is `visible` and a run screen or battle of a persisted run is up;
   - it stops counting 60 s after the last `pointerdown`, `pointermove` or `keydown`, and the next input resumes it. Idle time isn't added back;
@@ -144,28 +145,29 @@ From another file, cite this file's tasks as RB/T0nn.
 
 ## Phase 2: Foundational (blocks every story)
 
-- [ ] T003 [P] Write `tests/unit/records.test.ts` (new) against `src/meta/records.ts` (new in T006), on `MemoryStorage` (§9.7, §13.8) ⛔ RB-Q1
+- [x] T003 [P] Write `tests/unit/records.test.ts` (new) against `src/meta/records.ts` (new in T006), on `MemoryStorage` (§9.7, §13.8) ⛔ RB-Q1
   - Empty storage loads `{ v: 1 }`.
   - `updateRecords` with `setLastSetup` saves the setup, and the next load returns it.
   - A garbage string at `spore-sprawl/profile/v1` is copied to `spore-sprawl/profile/v1.bak`, and defaults load.
   - Unknown fields, and unknown commander or building ids in `lastSetup`, survive a load and a save.
   - A record with `v: 2` loads read-only: `updateRecords` writes nothing.
   - The run-record cases are records-2's (T025).
-- [ ] T004 [P] Add `src/meta` to the pure layers in `eslint.config.js` and `tests/unit/purity.test.ts` (§13.2, §13.3)
+- [x] T004 [P] Add `src/meta` to the pure layers in `eslint.config.js` and `tests/unit/purity.test.ts` (§13.2, §13.3)
   - `eslint.config.js`: a `files: ['src/meta/**/*.ts']` block with `pureRules`, whose `no-restricted-imports` forbids `forbiddenFromPure` (render, ui, app, tools, Node modules).
   - `tests/unit/purity.test.ts`: add `'src/meta'` to `PURE`. `BANNED_IMPORT` already bans `/meta/` from the other pure layers. Imports inside `src/meta` are `./…`, and `src/meta` may import `../run/`, `../sim/` and `../data/`.
   - The test's `files()` throws on a missing folder, and T006 creates `src/meta`: skip a folder that doesn't exist yet.
-- [ ] T005 [P] Move the served-page harness from `tests/browser/protoSaves.test.ts` into `tests/browser/serve.ts` (new), for the records cases (§13.8, §15.6)
+- [x] T005 [P] Move the served-page harness from `tests/browser/protoSaves.test.ts` into `tests/browser/serve.ts` (new), for the records cases (§13.8, §15.6)
   - `tests/browser/serve.ts` exports `serve(mode?)` (a game server, or a `develop`-mode server for the dev-site cases) and `PROTO`. `tests/browser/protoSaves.test.ts` imports both, so R2b, which retires the `hotstart` preset (§16 R2), changes one line.
   - `tests/browser/protoSaves.test.ts` passes, with no other change. T008 writes `tests/browser/records.test.ts` on the harness.
-- [ ] T006 Build the profile store in `src/meta/records.ts` (new) and `src/meta/index.ts` (new) (§9.7, §13.2, §13.8) ⛔ RB-Q1
+  - As built (S1): it also exports `closeServers()`, which each file calls in its `afterAll`.
+- [x] T006 Build the profile store in `src/meta/records.ts` (new) and `src/meta/index.ts` (new) (§9.7, §13.2, §13.8) ⛔ RB-Q1
   - Exports: `PROFILE_KEY = 'spore-sprawl/profile/v1'`, `PROFILE_BACKUP_KEY = 'spore-sprawl/profile/v1.bak'`, `SetupRecord` and `ProfileV1` from Technical context, `loadRecords(storage)`, `updateRecords(storage, change)` and `setLastSetup(rec, setup)`.
   - `updateRecords` loads the key's current value, applies the pure `change` and saves, in one synchronous step. It writes nothing when the record is read-only or the change leaves it as it was.
   - The load is as forgiving as `loadSettings()`: it keeps unknown fields and fills missing ones with defaults.
   - Pure: no `window`, `Date` or `localStorage`; the caller passes the `Storage`.
   - Bring SPEC §13.2's line on when `src/meta` arrives, and §13.4's `meta/` line, up to date with `records.ts` and `index.ts`, since §13.4 follows the code (added at S0).
   - Make T003 and T004 pass.
-- [ ] T007 Give the app its profile storage in `src/app/run.ts` and `src/app/main.ts` (§9.7, §13.8) ⛔ RB-Q2
+- [x] T007 Give the app its profile storage in `src/app/run.ts` and `src/app/main.ts` (§9.7, §13.8) ⛔ RB-Q2
   - `RunEnv` gains `records: Storage | null`.
   - `openTitle()` and `startRun()` in `src/app/main.ts` pass `new BrowserStorage('')` when `persist` is true and `params.proto` is null, else `null`.
   - Nothing writes it yet: T011 saves `lastSetup` from Run it back, and T014 from the Underroot. Run recording is records-2's (T042, T043).
@@ -176,7 +178,7 @@ From another file, cite this file's tasks as RB/T0nn.
 
 **Goal:** a finished run restarts in one key, with the same commander and bans on a new seed, straight on the route. **Independent test:** the browser cases in T008.
 
-- [ ] T008 [US1] Write `tests/browser/records.test.ts` (new) on T005's harness, with the Run it back cases, and add them to `tests/unit/records.test.ts` (§16 M6, §8.1, §10.3, §13.8)
+- [x] T008 [US1] Write `tests/browser/records.test.ts` (new) on T005's harness, with the Run it back cases, and add them to `tests/unit/records.test.ts` (§16 M6, §8.1, §10.3, §13.8)
   - Browser, from `/?scene=summary&seed=7&autoplay=run&test=1`:
     - `R` opens the route: `__GAME__.run()` reports screen `route`, row 0, the ended run's commander and bans, and a `seed` that differs;
     - `Enter` does the same;
@@ -185,15 +187,15 @@ From another file, cite this file's tasks as RB/T0nn.
     - the page writes no profile key, before or after `R`.
   - Browser, on a persisted page: seed a finished run into `spore-sprawl.run.v1` with `addInitScript` (`simulateRun(nodeContent(), 7, AUTOPLAY, { commander: 'armilla', bans: ['scythecapGrove'] }).run`), and open `/?scene=run&debug=1`, which has no seed or `test`, so the page persists and still has the bridge. `R` restarts the run as Armilla with `scythecapGrove` banned, and `localStorage['spore-sprawl/profile/v1']`'s `lastSetup` names both.
   - Unit: `runItBackSetup(content, { commander: 'nobody', bans: [] })` gives `DEFAULT_COMMANDER`. `runItBackSetup(content, { commander: 'vesper', bans: ['rootbreakerDen', 'scythecapGrove'] })` drops `rootbreakerDen`, which is in Vesper's core, and keeps `scythecapGrove`.
-- [ ] T009 [P] [US1] Add `runItBackSetup(content, setup)` to `src/meta/records.ts`. It returns a commander and the bans that `banProblem()` (`src/run/runState.ts`) accepts, in their order, at most `MAX_BANS` (§8.1, §8.4)
-- [ ] T010 [P] [US1] Add `seed` to `RunBrief` in `src/app/debugBridge.ts` (§15.6)
+- [x] T009 [P] [US1] Add `runItBackSetup(content, setup)` to `src/meta/records.ts`. It returns a commander and the bans that `banProblem()` (`src/run/runState.ts`) accepts, in their order, at most `MAX_BANS` (§8.1, §8.4)
+- [x] T010 [P] [US1] Add `seed` to `RunBrief` in `src/app/debugBridge.ts` (§15.6)
   - The bridge is app-only, so no hash moves.
-- [ ] T011 [US1] Add `RunController.runItBack()` to `src/app/run.ts` (§16 M6, §8.1)
+- [x] T011 [US1] Add `RunController.runItBack()` to `src/app/run.ts` (§16 M6, §8.1)
   - Take `{ commander, bans }` from the ended run through `runItBackSetup`.
   - Call `createRun(content, { seed: this.env.newSeed(), ...setup })`, then `this.start(run)`, which clears the old save and shows the route.
   - When `records` is set, save `lastSetup` with `updateRecords(records, (rec) => setLastSetup(rec, setup))`.
   - It works on both entry paths: from the title (`openTitle`, which has a `setup`) and from `scene=run` (`startRun`, which has none).
-- [ ] T012 [US1] Give the summary's footer Run it back and its keys in `src/ui/screens/run.ts` (§16 M6, §10.3, §10.5)
+- [x] T012 [US1] Give the summary's footer Run it back and its keys in `src/ui/screens/run.ts` (§16 M6, §10.3, §10.5)
   - `summaryScreen`'s actions gain `runItBack()`.
   - The footer reads: Title, New run (to the Underroot, no longer primary), and Run it back (`#run-it-back`, `btn primary`, with `Enter` and `R` keycaps), which takes the focus.
   - The key listener follows `eventResultScreen`'s pattern and the calls above.

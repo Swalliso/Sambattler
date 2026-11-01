@@ -3,6 +3,7 @@
 // progress are saved at each wave boundary and when the tab is hidden, then resumed by replaying
 // their command log (SPEC §8.9).
 import type { Atlas } from '../render/atlas.ts';
+import { runItBackSetup, setLastSetup, updateRecords } from '../meta/index.ts';
 import {
   battleRewards, chooseNode, clearBattle, clearRun, createRun, currentRow, eventChoose, finishBattle, groveChoose, loadBattle, promptAnswer,
   recoverPendingChoice, resumeBattle, saveBattle, saveRun, spoilsPick, spoilsReroll,
@@ -46,6 +47,8 @@ export interface RunEnv {
   storage: Storage;
   /** False for seeded and test runs: nothing is written to storage. */
   persist: boolean;
+  /** Where the profile is kept (SPEC §9.7): normal play only. Null for seeded, test and prototype runs, which write no records (RB-Q2). */
+  records: Storage | null;
   debug: boolean;
   /** Ambient motion holds still (`?test=1`), so screenshots and browser tests are stable. */
   still: boolean;
@@ -186,7 +189,9 @@ export class RunController {
         });
         break;
       case 'summary':
-        el = summaryScreen(content, atlas, run, { newRun: () => this.newRun(), ...(this.env.toTitle ? { toTitle: this.env.toTitle } : {}) });
+        el = summaryScreen(content, atlas, run, {
+          newRun: () => this.newRun(), runItBack: () => this.runItBack(), ...(this.env.toTitle ? { toTitle: this.env.toTitle } : {}),
+        });
         break;
     }
     if (el) {
@@ -266,6 +271,17 @@ export class RunController {
     if (!window.confirm('Abandon this run? It cannot be resumed.')) return;
     if (this.env.persist) clearRun(this.env.storage);
     this.newRun();
+  }
+
+  /**
+   * Run it back (SPEC §16 M6): the ended run's commander and bans on a new seed, straight on the route. Normal
+   * play remembers the setup for the Underroot.
+   */
+  runItBack(): void {
+    const setup = runItBackSetup(this.env.content, this.run);
+    const run = createRun(this.env.content, { seed: this.env.newSeed(), ...setup });
+    if (this.env.records) updateRecords(this.env.records, (rec) => setLastSetup(rec, setup));
+    this.start(run);
   }
 
   /** A new run: through the Underroot when there is one, else at once with the default commander. */
