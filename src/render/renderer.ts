@@ -1,6 +1,6 @@
 // Canvas renderer (SPEC §13.6). Reads sim state and per-tick events; never mutates the sim.
 // Layers, back to front: terrain → territory tint and capture progress → buildings → merge tethers
-// and knit glow → units (by y, then id; merged units larger, with tier pips) → projectiles and
+// and knit glow → units (by y, then id, each at its own size, with tier pips) → projectiles and
 // sparks → labels (merge pops, damage numbers, coin pops) → overlays (placement ghost, ranges, debug).
 // Color-blind assist (the settings screen) adds a team mark under every unit, a light ring for the
 // Velvet Bloom and a dark dashed bar for the Gray Rot, and bolder mat textures: brighter wandering
@@ -18,7 +18,7 @@ import type { HitUnit } from '../sim/systems/combat.ts';
 import { findBuilding, findUnit } from '../sim/world.ts';
 import type { Atlas, Faction } from './atlas.ts';
 import { Effects } from './effects.ts';
-import { INK_DEEP, TIER_SCALE, drawUnitSprite, hpBar } from './unitSprite.ts';
+import { INK_DEEP, drawUnitSprite, hpBar } from './unitSprite.ts';
 import type { UnitSpriteOpts } from './unitSprite.ts';
 
 export { FLY_LIFT } from './unitSprite.ts';
@@ -362,8 +362,8 @@ export class Renderer {
     if (state.clouds?.length) this.drawClouds(state, t);
     this.drawMergeLinks(state, alpha, t);
 
-    // units, sorted by y then id; merged units are drawn larger, with tier pips; flyers (combat rework
-    // `flyers`) go last, over every ground unit, raised above their shadows
+    // units, sorted by y then id, each at its own size whatever its tier, with tier pips; flyers (combat
+    // rework `flyers`) go last, over every ground unit, raised above their shadows
     const us = this.sorted;
     us.length = 0;
     for (const u of state.units) us.push(u);
@@ -603,10 +603,11 @@ export class Renderer {
       for (const u of state.units) if (u.knit?.group === k.group) trio.push(u);
       const glow = this.mat(lead.side).glow;
       const prog = this.knitProgress(state, lead.side, k.untilTick, alpha);
-      const head = (u: UnitState): [number, number] => [
-        Math.round(this.sx(u.px + (u.x - u.px) * alpha)),
-        Math.round((u.py + (u.y - u.py) * alpha) * TILE - 11 * TIER_SCALE[u.tier - 1]!),
-      ];
+      // head height: a row below the top of the unit's own sprite, whatever its tier
+      const head = (u: UnitState): [number, number] => {
+        const r = this.atlas.get(this.content.units[u.unitId]!.sprite, factionOf(u.side), 0, u.side === 'enemy');
+        return [Math.round(this.sx(u.px + (u.x - u.px) * alpha)), Math.round((u.py + (u.y - u.py) * alpha) * TILE - (r ? r.ay - 1 : 11))];
+      };
       for (let i = 0; i < trio.length; i++) {
         const [x0, y0] = head(trio[i]!);
         const [x1, y1] = head(trio[(i + 1) % trio.length]!);

@@ -3,13 +3,63 @@
 // renderer draws every unit through it, and R2a's views will too (R4a, call 5). It takes the foot point
 // in native pixels and imports nothing from the renderer, so any view can use it.
 import type { Side, Tier } from '../sim/index.ts';
-import type { Atlas, Faction } from './atlas.ts';
+import type { Atlas, Faction, Region } from './atlas.ts';
 
-/** Sprite scale per merge tier (SPEC §10.4: "a slightly larger sprite"). */
-export const TIER_SCALE = [1, 1.25, 1.5];
 /** Combat rework `flyers`: how far a flyer's sprite floats above its shadow, in pixels (half a tile). */
 export const FLY_LIFT = 8;
 export const INK_DEEP = '#120a16';
+/** A pip's size (the `i-pip` sprite, a gold core in a dark outline), and the gap between two pips. */
+export const PIP_SIZE = { w: 5, h: 5 };
+const PIP_GAP = 1;
+
+/** A box on the canvas, in native pixels. */
+export interface Box { x: number; y: number; w: number; h: number }
+
+export interface LayoutOpts {
+  /** A flyer floats `FLY_LIFT` px up, plus its bob (0 or 1). */
+  flying?: boolean;
+  bob?: number;
+  /** Below full HP: the HP bar shows, and the pips sit above it. */
+  damaged?: boolean;
+  /** The pip sprite's size; `PIP_SIZE` when unset. */
+  pip?: { w: number; h: number };
+}
+
+/** Where a unit's parts go (SPEC §5.8, §10.4): every tier at its sprite's own size, so size means armor. */
+export interface UnitLayout {
+  /** The sprite's box. */
+  body: Box;
+  /** An Elder's gold rim, one pixel outside the body and drawn under it; null below Elder (R4-Q3). */
+  rim: Box | null;
+  /** One pip per tier above base, left to right, centred over the sprite. */
+  pips: Box[];
+  /** The HP bar's fill, on a 1-px dark backing; null at full HP. */
+  bar: Box | null;
+  /** How far a flyer is raised, in px. */
+  lift: number;
+}
+
+/** `tier - 1` pip boxes, centred on `cx`, with their tops at `top`. */
+export function pipBoxes(cx: number, top: number, tier: Tier, pip: { w: number; h: number } = PIP_SIZE): Box[] {
+  const n = tier - 1;
+  const span = n * pip.w + Math.max(0, n - 1) * PIP_GAP;
+  const x0 = Math.round(cx - span / 2);
+  return Array.from({ length: n }, (_, i) => ({ x: x0 + i * (pip.w + PIP_GAP), y: top, w: pip.w, h: pip.h }));
+}
+
+/**
+ * Lays out a unit drawn from `region` with its foot at (footX, footY). The pips sit one clear row above
+ * the HP bar's backing when the unit is damaged, else above the rim or the sprite, so they touch neither.
+ */
+export function unitLayout(region: Region, footX: number, footY: number, tier: Tier, opts: LayoutOpts = {}): UnitLayout {
+  const lift = opts.flying ? FLY_LIFT + (opts.bob ?? 0) : 0;
+  const body = { x: Math.round(footX - region.ax), y: Math.round(footY - region.ay) - lift, w: region.w, h: region.h };
+  const rim = tier === 3 ? { x: body.x - 1, y: body.y - 1, w: body.w + 2, h: body.h + 2 } : null;
+  const bar = opts.damaged ? { x: body.x + 1, y: body.y - 3, w: body.w - 2, h: 2 } : null;
+  const pip = opts.pip ?? PIP_SIZE;
+  const under = bar ? bar.y - 1 : rim ? rim.y : body.y;
+  return { body, rim, pips: pipBoxes(body.x + body.w / 2, under - 1 - pip.h, tier, pip), bar, lift };
+}
 
 export interface UnitSpriteOpts {
   /** The sprite, its frame (0 and 1 walk, 2 attack), the faction it's baked for, and whether it faces left. */
@@ -45,9 +95,9 @@ export interface UnitSpriteOpts {
 }
 
 /**
- * One unit: its sprite at its foot point (merged units larger, with tier pips), shield ring, HP bar and
- * selection box. A tunnelling Rhizomorph is a mound; a flyer floats `FLY_LIFT` px above a shadow on the
- * ground, bobbing a pixel unless ambient motion holds still.
+ * One unit: its sprite at its foot point and its own size whatever its tier, with tier pips, its shield
+ * ring, HP bar and selection box. A tunnelling Rhizomorph is a mound; a flyer floats `FLY_LIFT` px above
+ * a shadow on the ground, bobbing a pixel unless ambient motion holds still.
  */
 export function drawUnitSprite(g: CanvasRenderingContext2D, atlas: Atlas, o: UnitSpriteOpts): void {
   const a = o.alpha ?? 1;
@@ -55,22 +105,20 @@ export function drawUnitSprite(g: CanvasRenderingContext2D, atlas: Atlas, o: Uni
   if (o.burrowed) { mound(g, o.x, o.y, o.side, o.id, o.glow, o.time, !!o.selected); g.globalAlpha = 1; return; }
   const r = atlas.get(o.sprite, o.faction, o.frame, o.flip);
   if (!r) { g.globalAlpha = 1; return; }
-  const scale = TIER_SCALE[o.tier - 1]!;
-  const w = Math.round(r.w * scale), hgt = Math.round(r.h * scale);
-  const lift = o.flying ? FLY_LIFT + (o.calm ? 0 : Math.floor(o.time / 320 + o.id) % 2) : 0;
-  const dx = Math.round(o.x - r.ax * scale), dy = Math.round(o.y - r.ay * scale) - lift;
-  if (o.assist) teamMark(g, Math.round(o.x), Math.round(o.y), w, o.side);
-  if (o.flying) flyerShadow(g, o.x, o.y, w);
-  if (o.tier === 3) elderAura(g, o.x, o.y - lift, w, o.glow, o.time + o.id * 37, a);
-  g.drawImage(atlas.canvas as CanvasImageSource, r.x, r.y, r.w, r.h, dx, dy, w, hgt);
-  if (o.shieldFrac !== undefined) shieldRing(g, o.x, dy + hgt / 2, w, hgt, o.shieldFrac, a);
+  const bob = o.flying && !o.calm ? Math.floor(o.time / 320 + o.id) % 2 : 0;
+  const L = unitLayout(r, o.x, o.y, o.tier, { flying: o.flying, bob, damaged: o.hpFrac < 1 });
+  const { body } = L;
+  if (o.assist) teamMark(g, Math.round(o.x), Math.round(o.y), body.w, o.side);
+  if (o.flying) flyerShadow(g, o.x, o.y, body.w);
+  if (o.tier === 3) elderAura(g, o.x, o.y - L.lift, body.w, o.glow, o.time + o.id * 37, a);
+  g.drawImage(atlas.canvas as CanvasImageSource, r.x, r.y, r.w, r.h, body.x, body.y, body.w, body.h);
+  if (o.shieldFrac !== undefined) shieldRing(g, o.x, body.y + body.h / 2, body.w, body.h, o.shieldFrac, a);
   if (o.selected) {
     g.strokeStyle = '#ffe9a8';
-    g.strokeRect(dx - 0.5, dy - 0.5, w + 1, hgt + 1);
+    g.strokeRect(body.x - 0.5, body.y - 0.5, body.w + 1, body.h + 1);
   }
-  const damaged = o.hpFrac < 1;
-  if (o.tier > 1) drawPips(g, atlas, Math.round(o.x), dy - (damaged ? 7 : 4), o.tier);
-  if (damaged) hpBar(g, dx + 1, dy - 3, w - 2, o.hpFrac, o.side);
+  if (L.pips.length) drawPips(g, atlas, body.x + body.w / 2, L.pips[0]!.y, o.tier);
+  if (L.bar) hpBar(g, L.bar.x, L.bar.y, L.bar.w, o.hpFrac, o.side);
   g.globalAlpha = 1;
 }
 
@@ -137,16 +185,14 @@ export function mound(g: CanvasRenderingContext2D, cx: number, footY: number, si
   }
 }
 
-/** Tier insignia: one pip for Bloomed, two for Elder, centred on `cx` with their top at `y`. */
+/** Tier insignia: one pip for Bloomed, two for Elder, centred on `cx` with their tops at `y`. */
 export function drawPips(g: CanvasRenderingContext2D, _atlas: Atlas, cx: number, y: number, tier: Tier): void {
-  const n = tier - 1;
-  if (n < 1) return;
-  const w = n * 4 - 1;
-  const x0 = cx - Math.floor(w / 2);
-  g.fillStyle = INK_DEEP;
-  g.fillRect(x0 - 1, y - 1, w + 2, 4);
-  g.fillStyle = '#f0c85a';
-  for (let i = 0; i < n; i++) g.fillRect(x0 + i * 4, y, 3, 2);
+  for (const p of pipBoxes(cx, y, tier)) {
+    g.fillStyle = INK_DEEP;
+    g.fillRect(p.x, p.y + 1, p.w, 4);
+    g.fillStyle = '#f0c85a';
+    g.fillRect(p.x + 1, p.y + 2, 3, 2);
+  }
 }
 
 /** A slow pulsing halo under an Elder's feet. */
