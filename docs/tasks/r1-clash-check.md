@@ -162,24 +162,25 @@ R1 builds a headless check that fights whole armies at equal gold, in formation,
   - It repeats passes until none forms. Within a pass, it sorts each trio's keys ascending and the trios by their lowest key, the order `resolveKnits` completes knits in, and `passes` returns them in that order. Each trio becomes one unit at its centroid, at tier + 1, clamped by `radiusOf(unitId, tier + 1)` to top + r ≤ y ≤ bottom + 1 − r and r ≤ x ≤ width − r, as `clampToLane` does. New keys are given in that order, from `firstKey`, so they equal the ids `mergeTriosNow` gives.
   - Don't change `detectTrios`: the goldens must not move. Records go in and out, so R2a can apply the passes once with their side effects (A032).
 
-- [ ] T007 [P] Write the switches' tests in `tests/unit/combat.test.ts` (§5.2)
+- [x] T007 [P] Write the switches' tests in `tests/unit/combat.test.ts` (§5.2)
   - `test: { noBuildingPreference: true }`: a Rootbreaker with an enemy Capguard 2 tiles away and an enemy Puffball Mortar 3 tiles away, both within its aggro range of 4, targets the Capguard. Without the flag it targets the Mortar, as v1 does.
   - `test: { idleSeek: true }`: a player Sporeling with no enemy within its aggro range and an enemy Capguard 8 tiles ahead and 3 rows down steps toward the Capguard each tick, at its speed. Without the flag it advances along +x and drifts toward its spawn row.
   - Idle seek never seeks a burrowed unit. With a Mortar as the only enemy in its lane, it walks toward the Mortar's centre. With no enemy in its lane, it advances as before.
   - Without either flag, `compileRules` gives `rules.test` with neither key.
-- [ ] T008 Add `noBuildingPreference?: boolean` and `idleSeek?: boolean` to `BattleConfig.test`, and `noBuildingPreference?: true` and `idleSeek?: true` to `Rules.test`, in `src/sim/state.ts`; set them in `compileRules` in `src/sim/compile.ts` only when true (§5.2, §13.3) ⛔ R1-Q7, R1-Q8
+- [x] T008 Add `noBuildingPreference?: boolean` and `idleSeek?: boolean` to `BattleConfig.test`, and `noBuildingPreference?: true` and `idleSeek?: true` to `Rules.test`, in `src/sim/state.ts`; set them in `compileRules` in `src/sim/compile.ts` only when true (§5.2, §13.3) ⛔ R1-Q7, R1-Q8
   - A comment on each: tool-only, for R1's clash check; v2's rule (§5.2); R2a writes the rule in its round systems (R2a/T037, T038), and R2b deletes `config.test` (R2b/T043, R2b/T158).
   - If the user declines a flag, skip it here and in T009 or T010, and have T018's records count far-edge parking and the Mortar cells as v1 behaviour instead.
-- [ ] T009 Drop siege units' building preference under `rules.test.noBuildingPreference` in `retargetUnit` in `src/sim/systems/targeting.ts`: `prefBuildings = def.siege && !state.rules.test.noBuildingPreference` (§5.2, §6.7) ⛔ R1-Q7
-- [ ] T010 Add the idle seek under `rules.test.idleSeek` to the no-target branch of `movementSystem` in `src/sim/systems/movement.ts` (§5.2) ⛔ R1-Q8
+- [x] T009 Drop siege units' building preference under `rules.test.noBuildingPreference` in `retargetUnit` in `src/sim/systems/targeting.ts`: `prefBuildings = def.siege && !state.rules.test.noBuildingPreference` (§5.2, §6.7) ⛔ R1-Q7
+- [x] T010 Add the idle seek under `rules.test.idleSeek` to the no-target branch of `movementSystem` in `src/sim/systems/movement.ts` (§5.2) ⛔ R1-Q8
   - The unit steps toward the nearest enemy in its lane that it could target, by squared edge distance, ties to the lower id: living units (not burrowed; not a flyer unless `reachesAir`), and living enemy towers, at their centre.
   - The step is capped as the advance is (`waveStep` when `rules.waves` is set), so the pace variant still applies. With no candidate, it advances as before.
   - Support units (the `support` tag: the Tender, which only heals) never seek an enemy. With no heal target they advance as before.
+  - A burst unit (under `burster`) seeks only what it could aim at: units, not flyers or towers, since `aimBurst` never picks either (added in S2).
   - Build each side's per-lane candidate list once a tick, as `prepareWaves` does, not once per unit.
 
 The armies (T011–T012) need nothing from `formation.ts` or the switches, so S2 builds them beside S1.
 
-- [ ] T011 [P] Write the army tests in `tests/unit/clash.test.ts` (new) (§11.2, §12.2, §16 R1) ⛔ R1-Q2
+- [x] T011 [P] Write the army tests in `tests/unit/clash.test.ts` (new) (§11.2, §12.2, §16 R1) ⛔ R1-Q2
   - `squadSize` at 60 s reproduces §11.2's Squad column: Burrow 8, Hall 4, Nest 4, Lodge 2, Forge 4, Den 3, Grove 3, Hollow 6, Warren 6, Ring 3; the Burster Pod 6 under `protoContent('burster')` and the Rhizomorph Tunnel 3 under `protoContent('rhizomorph')`.
   - `clashArmyIds` is the roster without the Truffle Cellar, the Spore Exchange and the Rhizome Vault; the Tender's Ring and the Puffball Mortar are in (A016).
   - `armyFromBot`: mono Burrow spends 220 at 300 (2 Burrows) and holds 8 Burrows at 1,500 on the one-lane field (the plot cap, 880 spent); mono Lodge holds 1 at 300.
@@ -187,7 +188,7 @@ The armies (T011–T012) need nothing from `formation.ts` or the switches, so S2
   - The same (bot, budget, seed) gives the same army in both seats and against every opponent. At 900, seeds 1–10 give at least two distinct `bot:balanced` armies.
   - `general:scripted` builds an army too: its opener's Cellar is skipped and its squads have merging on (`mergePolicy` "auto").
   - `bot:pair-capguardHall-gillNest` (from `counterBotSpec`) at 300 is [capguardHall, gillNest]. `bot:balanced-nomerge`'s squads have merging off.
-- [ ] T012 Build squads and armies in `tools/lib/clash.ts` (new): `squadSize(content, buildingId, seconds = 60)`, `clashArmyIds(content)` and `armyFromBot(content, controller, budget, seed, plots)` → `Army` (§11.2, §12.2, §16 R1) ⛔ R1-Q2, R1-Q4
+- [x] T012 Build squads and armies in `tools/lib/clash.ts` (new): `squadSize(content, buildingId, seconds = 60)`, `clashArmyIds(content)` and `armyFromBot(content, controller, budget, seed, plots)` → `Army` (§11.2, §12.2, §16 R1) ⛔ R1-Q2, R1-Q4
   - `squadSize`: `spawn.count × round(seconds / spawn.interval)`, halves rounded up.
   - `armyFromBot` reads the opener, the weights and `maxOwned` from the `AiState` that `createBattle` resolves for the controller on a throwaway state, which it then drops.
   - It filters economy and utility cards out first, takes the opener (skipping what doesn't fit), then weighted picks from the army's own stream (Technical context). A pick that doesn't fit is skipped and drawing goes on. It stops when no pickable card fits or the plots are full. It honours `maxOwned` and ignores `afterSeconds`.

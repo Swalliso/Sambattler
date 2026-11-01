@@ -168,6 +168,9 @@ export function compileRules(b: BalanceDef, config: BattleConfig): Rules {
       turrets: !test.noTurrets,
       territory: !test.noTerritory,
       heartcapTargets: !test.noHeartcapTargets,
+      // R1's tool-only switches (SPEC §5.2), set only when on, so every battle's rules hash as before
+      ...(test.noBuildingPreference ? { noBuildingPreference: true as const } : {}),
+      ...(test.idleSeek ? { idleSeek: true as const } : {}),
     },
   };
 }
