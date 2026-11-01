@@ -29,7 +29,12 @@ Entries before 2026-10-31 describe the v1 battle, which [SPEC v2](../SPEC.md) re
 | F19 | Waves mix real time with turns and are hard to follow; a build phase, then a fight phase, was suggested | §4.2, §4.7 | **SPEC v2:** battles are rounds of planning, clash and aftermath. Waves and Hold are retired |
 | F20 | Placement doesn't matter: the player fills the home zone from the top left down | §4.6, §11.14 | **SPEC v2:** the colony is the formation (front and back ranks), plus combos by position |
 | F21 | Unit cards and buildings are too word-dense | §10.4 | Postponed by the user until combat is settled: milestone R4 |
-| F22 | Nothing pulls you into another run: the research has examples, and none are built | §8, §9, §16 | **SPEC v2:** lives instead of a run lost in one battle, run packs, augments and combos; M6 rewritten for v2. "Run it back and records" is proposed as separate work |
+| F22 | Nothing pulls you into another run: the research has examples, and none are built | §8, §9, §16 | **SPEC v2:** lives instead of a run lost in one battle, run packs, augments and combos; M6 rewritten for v2. Run it back and records were agreed as separate work (X10, 2026-11-01). records-1, Run it back and the remembered setup, is on `develop` and passed the user's check on 2026-11-01; records-2 follows R2b |
+
+## 2026-11-01: records-1's check on the dev site (the user)
+
+The user ran records-1's check (T023 in [run-it-back.md](tasks/run-it-back.md)) on the dev site, once records S2 ([#51](https://github.com/Swalliso/Sambattler/pull/51)) had deployed. The steps: finish a run, press Run it back, then reload and choose New run. Run it back should start the same commander and bans on a new route, and the Underroot should then open on that setup. The user's verdict: "It worked." There were no other notes.
+- Nothing to act on. records-1 is done. Play time and the run records come with records-2, after R2b ([run-it-back-plan.md](run-it-back-plan.md)).
 
 ## 2026-10-31: P3, the combat rework (the user)
 

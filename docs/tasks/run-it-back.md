@@ -12,7 +12,7 @@ The file holds two parts, so each part ends with its own Polish phase. Task IDs 
 
 From another file, cite this file's tasks as RB/T0nn.
 
-**Status:** records-1 agreed 2026-11-01 (S0); records-2 a draft until T024 · **Spec:** SPEC §16 "Milestone 6 — Meta-progression" (its block "Independent of M6: Run it back, and records") and the sections it cites · **Plan:** `docs/run-it-back-plan.md` (agreed 2026-11-01, T001; updated in records-2's S3) · **Gate in:** records-1: S0 merged, with X10, RB-Q1 and RB-Q2 answered (2026-11-01); R1 may be in flight; records-2: R2b merged into `develop` · **Gate out:** records-1: the user has tried Run it back on the dev site (T023); records-2: the user has checked the summary, the records and the codex on the dev site (T041)
+**Status:** records-1 done 2026-11-01 (S0–S2, and the user's check, T023); records-2 a draft until T024 · **Spec:** SPEC §16 "Milestone 6 — Meta-progression" (its block "Independent of M6: Run it back, and records") and the sections it cites · **Plan:** `docs/run-it-back-plan.md` (agreed 2026-11-01, T001; updated in records-2's S3) · **Gate in:** records-1: S0 merged, with X10, RB-Q1 and RB-Q2 answered (2026-11-01); R1 may be in flight; records-2: R2b merged into `develop` · **Gate out:** records-1: the user has tried Run it back on the dev site (T023); records-2: the user has checked the summary, the records and the codex on the dev site (T041)
 
 ## Read first
 
@@ -231,7 +231,8 @@ From another file, cite this file's tasks as RB/T0nn.
   - The footer and the banner fit 1280×720.
   - The Underroot looks as before.
 - [x] T022 Update `docs/status.md` (records-1 landed, Run it back on the dev site) and the As built section of `docs/run-it-back-plan.md` (§16 M6)
-- [ ] T023 [USER] records-1 check on the dev site: the user finishes a run, uses Run it back, reloads, and sees the Underroot remember the setup. Play time comes with records-2. Notes go in `docs/playtest-feedback.md`, newest first (§16 M6, §8.1)
+- [x] T023 [USER] records-1 check on the dev site: the user finishes a run, uses Run it back, reloads, and sees the Underroot remember the setup. Play time comes with records-2. Notes go in `docs/playtest-feedback.md`, newest first (§16 M6, §8.1)
+  - Passed on 2026-11-01: "It worked," with no other notes.
 
 ## Phase 6: Setup and foundational, records-2 (after R2b)
 

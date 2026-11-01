@@ -11,9 +11,8 @@ SPEC v2, broken into task lists that later sessions work through one row of a Se
 | 1 | **R1 S4** in [r1-clash-check.md](r1-clash-check.md): T053 (the muster's exact ties), then the clash jobs on the pool, G3, G12 and G13 on clashes, and `--checks clash` | R1 S3 merged (`feature/r1-clash-runner`: one clash recorded, and `--checks clash --pair`) |
 | 2 | **R1 S5 and S6**, side by side: the variants; the race model, the pairings, the full colony and the bench case | R1 S4 merged |
 | 3 | **R4a-S2b** in [r4-readable-armies.md](r4-readable-armies.md): the draft silhouette sheet, which the user approves (T026) | R4a-S2 merged (`feature/r4a-shape-checks`: the shape schema, `marks.json`, the shape checks and the sprite-sheet tool) |
-| 4 | **records-1's check**, the user's (T023 in [run-it-back.md](run-it-back.md)): on the dev site, finish a run, use Run it back, then reload and choose New run: the Underroot opens on that setup. records-2 (S3) starts after R2b | records S2 merged (`feature/records-1-setup`: the Underroot remembers the setup, and records-1 is verified) and `develop` deployed |
 
-R1, R4a and records-1 touch different code files and can run at the same time. Their doc edits fall in different sections of `SPEC.md`, `clarify.md` and `docs/status.md`, so whichever PR merges second rebases ([r1-plan.md](../r1-plan.md), "Beside R1"). Everything else waits for R1's review gate.
+R1 and R4a touch different code files and can run at the same time; records-1, which ran beside them, is done. Their doc edits fall in different sections of `SPEC.md`, `clarify.md` and `docs/status.md`, so whichever PR merges second rebases ([r1-plan.md](../r1-plan.md), "Beside R1"). Everything else waits for R1's review gate.
 
 ## Milestones
 
