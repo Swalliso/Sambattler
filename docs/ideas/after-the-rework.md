@@ -2,7 +2,7 @@
 
 Written 2026-10-31 against `develop` at `ef2e133`, the build on the dev site, to read before and during the P3 playtest of `?proto=rework`. **Nothing here is adopted.** These are proposals with their evidence. Rule changes and retunes across several units wait for your OK (`.claude/rules/balance.md`). New rules would arrive as default-off `?proto=` knobs, be measured, and then be playtested.
 
-**What it rests on:**
+**What it rests on** (all of it is in [after-the-rework/](after-the-rework/README.md)):
 - **Fresh headless measurements** of M5 rules, `rework`, and `rework` with step B's prototypes: 720 single battles and 600 runs per variant.
 - **Two agent playthroughs** of the dev site with `?proto=rework` in a real browser:
   - a newcomer: 2 runs, 5 battles;
@@ -57,7 +57,7 @@ Written 2026-10-31 against `develop` at `ef2e133`, the build on the dev site, to
   - The loser's army falls behind about 2 minutes before the end, and the HUD doesn't show it: the side holding more ground at 2:00–4:00 goes on to win only about 40% of the time.
 - **Choices are small, and nothing carries over.** Random drafting wins about as many runs as greedy, almost every upgrade level is a flat number, and nothing is saved between runs.
 - **Half the rework can't be seen or heard.** The release beat is silent, pinning and call for help have no visual, and Help has no rework tab.
-- **Before you play:** a few hours of UI-only fixes, so the playtest doesn't measure confusion the build causes itself. Also play `?proto=rework,hotstart` beside `?proto=rework`.
+- **Before you play:** the UI-only fixes are done ([below](#fixes-made-before-the-playtest)), so the playtest won't measure confusion the build caused itself. Also play `?proto=rework,hotstart` beside `?proto=rework`.
 - **Now, while you playtest:**
   - lives: a lost battle below the boss costs run HP, not the run;
   - the tools later numbers need;
@@ -109,23 +109,27 @@ Numbers come from the fresh measurements unless a playthrough is named.
 
 ## Before your playtest
 
-### Fixes worth making first
+### Fixes made before the playtest
 
-These are render and UI only: no `src/sim` change and no golden change, a few hours in all. Each was checked in the code at `ef2e133`. About half also reach the default game (no `?proto=`): Help's keys, the neutral-column callouts, gold in the report and the tray's price. The rest only show under `rework`.
+Done in this page's PR, on `feature/after-the-rework`. They're render and UI only: no sim rule changed, and the golden hashes didn't move. Several were bugs in the default game too. SPEC §10 is updated to match.
 
-| Fix | What's wrong | File |
+| Fix | What changed | Default game too? |
 |---|---|---|
-| Help's Keys tab | Says a hold "lasts up to 30 s", which is wrong under waves (a hold lasts until the next beat), and lists keys 1–8 although the tray numbers 1–9 | `src/ui/help.ts:56`, `:68` |
-| The Hold tip | "Hold your units back for a bigger push", but under waves Hold recalls no one | `src/app/tips.ts:83` |
-| The storm's tip and tooltip | Neither says each stack grows waves by 20%, the rule that decided every battle over 8 minutes. Only the beat chip says it (`explain.ts:290`) | `src/ui/hud/explain.ts` `stormTip`; `src/app/tips.ts` |
-| Neutral columns | Any enemy flip raises a red "Column N lost", even for ground you never held. It adds to the callout noise that buried "Your Heartcap is under attack!" | `src/app/battleView.ts:332` |
-| The flyer spark | A melee hit on a flyer throws the gold "strong" spark. The spark is classed on matrix × tag, and the flyer's ×0.5 goes into `resist`, so a Sporeling's 0.75 hit looks strong. Reclassify it on the render side | `src/sim/systems/combat.ts:256–259`, `:301`; fix in `src/render/renderer.ts` |
-| The chips row | 34 px too wide at 1280×720, so the relics chip overlaps "GRAY ROT HEARTCAP". The beat chip also uses Hold's icon | `src/ui/hud/top.ts:132` |
-| Gold from relics and cards | The report lists stipend, economy, interest and comeback gold only. Spore Tithe paid the newcomer about 400 gold that never showed. The data is in `goldEarned.effects` and `.drafts` (`state.ts:641`) | `src/ui/report.ts:251` |
-| The tray's price | Cards fill "need N" toward the base cost while the forward price applies, so placements fail for 1–19 gold with only an error sound. Show "from N" | `src/ui/hud/tray.ts:88–99` |
-| Optional | The interest tip says "each wave pays" (it's the 60 s wave). The Hold label truncates (`battleView.ts:475`). F during Hold's cooldown does nothing visible (`session.ts:100`). Tray cards past the ninth have no hotkey (`tray.ts:30`). A "Copy run report" button would put real run lengths in your notes | as listed |
+| Help, tips and tooltips under waves | Help's Keys tab, the Hold tip, and the storm's tip, tooltip and Help tab now say what Hold and the storm do under waves: a hold keeps a lane's next wave home for one beat, and each storm stack grows waves 20%. Interest is named by its clock. Help's key ranges match the tray and the draft | The key ranges and the interest tip |
+| Help's Keys tab overflowed | With a commander power, its last rows were cut off by 36 px. Four keys moved to a table of their own | Yes |
+| The chips row | It tightens in two steps when it would run into the Heartcap labels. The beat chip pushed it 54–100 px over at 1280×720, and big late-run numbers did too without the rework. The beat chip has its own icon | Yes, late in a run |
+| Neutral columns | "Column N lost" and its sound fire only for a column that was yours | Yes |
+| Hold under waves | The labels fit ("Home · N s", "Out in N s"). F now says when Hold will be ready, where it used to do nothing | F's message |
+| The flyer spark | A ground melee hit on a flyer now shows as weak, matching the damage dealt. It's classed in the renderer; the sim's hit event is unchanged | No (there are no flyers) |
+| Gold in the report | New rows for relics, the commander power and skipped drafts, so the rows add up to "gold earned" | Yes |
+| Honest prices | Tray cards show the cheapest price you can place at now ("home full, from N"), so a lit card never fails on gold. The tooltip and its payback use the same price. The placement tip's "+N%" uses your own rate, so Forward Spores shows | Yes |
+| The 17-card tray at 1280×720 | Every price was cut off under the rework. The narrowest cards now drop the coin from the price pill | No |
+| The battle report at 1280×720 | On two lanes, or with the new gold rows, its buttons fell below the window. They now stay pinned to the card's foot | Yes |
 
-If you'd rather keep the build frozen for the playtest, the same list works as a "known confusions" note.
+**Left for later:**
+- Tray cards past the ninth still have no hotkey.
+- There's no "Copy run report" button.
+- Under the rework, the general's "2 waves" countdown and the cards' "each new wave" still mean the 60 s wave, which reads as the beat. That's a P3 question, so the notes below ask about it.
 
 ### URL variants worth playing beside `?proto=rework`
 
@@ -443,7 +447,7 @@ The second front on one-lane maps (OMR-10) isn't on either list. It failed as an
 About one session per step (steps 9, 10 and 12 take two or three), each on a branch from `develop`, and each only once you've agreed to it (CLAUDE.md: review before building).
 
 **Before and during the playtest:**
-1. **Pre-playtest fixes,** a few hours. Merge them to `develop` before you play, or use the list as a note.
+1. **Pre-playtest fixes:** done in this page's PR. Merge it to `develop` before you play.
 2. **Tools** (item 1): AI holds, the readout section and the matchup check. Measure comeback gold by army (item 4) in the same session.
 3. **Lives** (item 2), with the boss slot, boss-lever measurements and the route-shape knob. Propose a band. If you agree, put `?proto=rework,hotstart,lives` on the dev site.
 4. **The battle-1 package** (item 3), with and without lives.
@@ -572,7 +576,14 @@ The critics' scores: impact (I) and confidence (C) from 1 to 5, and effort (E) f
 
 ## Appendix C: where the numbers come from
 
-The ledger is in the repo: [after-the-rework/ledger.md](after-the-rework/ledger.md). The other working files (the measurement scripts and tables, the playthrough reports with their screenshots, the three research reports and the 48 proposals with their critiques) were written in a temporary session folder and aren't in the repo. Ask to bring any of them into `docs/ideas/` if they should be kept.
+Everything this page rests on is in [after-the-rework/](after-the-rework/README.md):
+- the [ledger](after-the-rework/ledger.md);
+- the measurement, rework, run-loop and battle-feel reports;
+- the two playthroughs and the three research reports;
+- the five lenses' [proposals and critiques](after-the-rework/proposals/README.md);
+- 20 screenshots and the measurement scripts.
+
+The session's scratch folder was wiped before they were committed, so they were rebuilt from its transcripts. The ledger came back byte-identical to its earlier copy. Raw experiment outputs and most screenshots weren't kept.
 
 The repo's own sources:
 - the [engagement review](../engagement-review.md);

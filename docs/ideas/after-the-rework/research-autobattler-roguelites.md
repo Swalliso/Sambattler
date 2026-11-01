@@ -19,7 +19,7 @@ Written 2026-10-31 against `develop` `ef2e133`, for the fun review. This is web 
 - The repo already covers some of this, and this file doesn't repeat it:
   - 9 Kings' kings, loot and perk board: `docs/ideas/combat-rework.md` "Waves and run variety";
   - round-based loss and scouting rules for Mechabellum, TFT, Super Auto Pets, Backpack Battles, 9 Kings, Legion TD 2 and Hearthstone Battlegrounds: `docs/ideas/rounds.md`;
-  - Backpack Battles hover stars, Hades Heat, Balatro's "ruthless design", Monster Train's assembly rule and the Ascension and Covenant ladders: the external design review.
+  - Backpack Battles hover stars, Hades Heat, Balatro's "ruthless design", Monster Train's assembly rule and the Ascension and Covenant ladders: the [external design review](../one-more-run-design-review.md).
 
 ---
 

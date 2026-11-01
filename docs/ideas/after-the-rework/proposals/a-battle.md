@@ -17,7 +17,7 @@ Written 2026-10-31 against `develop` at `ef2e133`, with `?proto=rework` as the r
 
 1. **The ending is an avalanche the player can't see coming or answer.**
    - The newcomer's three full-length battles ended at 8:34, 8:55 and 8:56, all at storm 5. One Heartcap went 2000 → 425 → 0 in about 13 s ([`playthrough-newcomer`](../playthrough-newcomer.md) F-1, `SS/99–101`).
-   - The strategist held 27–13 columns and a full Heartcap at 7:08. He lost 10 of 11 buildings from 7:21 to 7:41 and was routed at 7:47 (`b1_t709.png` → `b1_end.png`).
+   - The strategist held 27–13 columns and a full Heartcap at 7:08, then lost 10 of 11 buildings from 7:21 to 7:41 and was routed at 7:47 ([`b1_t709.png`](../screenshots/strategist/b1_t709.png) → [`b1_end.png`](../screenshots/strategist/b1_end.png)).
    - Bots ([`measurements.md`](../measurements.md), 720 battles):
      - A beaten Heartcap falls 12 s after its first hit, and 6 s from ⅔ (18 s and 9 s on M5). The winner arrives with 56 supply (34 on M5).
      - Comebacks: 0 in 720.

@@ -55,12 +55,12 @@ P10 isn't in the brief's list, but it's the "one more run" problem in its plaine
 **Sources:** the developer's [Balatro Timeline](https://localthunk.com/blog/balatro-timeline-3aarh) (2025) and [Solitaire](https://localthunk.com/blog/solitaire) (2025); Game Developer on [signposting](https://gamedeveloper.com/design/balatro-creator-unveils-a-few-slick-signposting-strategies) (Jul 2024) and on [poker as onboarding](https://www.gamedeveloper.com/business/localthunk-knew-balatro-needed-to-draw-players-in-with-poker) (May 2024); [Rogueliker interview](https://rogueliker.com/balatro-interview/).
 
 - **Familiar words as onboarding.** [Dev] The poker theme was added on top of an existing design: "It was like an onboarding tool." Players are "more willing to interface with a game if it's talking about blinds, discards." The theme was "a coat of paint to make this seem approachable."
-- **Teach through the items, a little at a time.** [Dev] He describes Balatro's signposting as an "extended low-calorie tutorial." Specific Jokers teach specific ideas: Four Fingers was "the first moment people really understood Balatro's hook"; Amber Acorn teaches card order. The demo deck was chosen to "push players to try an unfamiliar mechanic."
+- **Teach through the items, a little at a time.** [Dev] LocalThunk describes Balatro's signposting as an "extended low-calorie tutorial." Specific Jokers teach specific ideas: Four Fingers was "the first moment people really understood Balatro's hook"; Amber Acorn teaches card order. The demo deck was chosen to "push players to try an unfamiliar mechanic."
 - **The score is the juice.** [Dev] Chips × Mult was in the first prototype and "seemed very natural for a scoring system." A friend's suggestion of a flaming effect on big scores was adopted because it "fit perfectly." The timeline credits watching Luck Be a Landlord: "that whole score attack concept really fuelled the direction."
 - **A difficulty checklist after the first win.** [Dev] Stakes were borrowed from Slay the Spire's Ascension to "add difficulty and give players a sort of checklist to work through."
 - **Low stakes, short sessions.** [Dev] "Essentially I wanted to play Balatro like people play solitaire." Achievements and unlocks are meant to nudge players into the systems, not to pad playtime.
-- **Tester-led balance.** [Dev] From May 2023 the beta moved him to a "more player-focused development strategy"; testers "knew more about how to play the game properly than I did."
-- **Randomness and builds.** [Dev] He admits "a lot of randomness, possibly too much", and frames the metagame as "mitigating risk": a build that can't easily be countered (Rogueliker).
+- **Tester-led balance.** [Dev] From May 2023 the beta moved LocalThunk to a "more player-focused development strategy"; testers "knew more about how to play the game properly than I did."
+- **Randomness and builds.** [Dev] LocalThunk admits "a lot of randomness, possibly too much", and frames the metagame as "mitigating risk": a build that can't easily be countered (Rogueliker).
 
 **For us:** the strongest transferable ideas are the vocabulary (P7) and the score display (P6). Our names (Truffle Cellar, Gill Nest, Capguard Hall, Heartcap, Sporestorm) are flavour-first, so the player learns a word *and* a function. Balatro teaches with words the player already owns. And Balatro makes a +Mult card *visible* in every hand's score. Our +15% cards have no on-screen readout at all.
 
@@ -94,9 +94,9 @@ P10 isn't in the brief's list, but it's the "one more run" problem in its plaine
 
 **Sources:** [Pocket Tactics interview](https://www.pockettactics.com/vampire-survivors/interview) with Luca Galante; [The Conversation](https://theconversation.com/vampire-survivors-how-developers-used-gambling-psychology-to-create-a-bafta-winning-game-203613) (Peter Howell, University of Portsmouth); The Verge interview *(secondary, via news reports)*; [Epic Games Store feature](https://store.epicgames.com/news/vampire-survivors-built-genre-autoshooter-bullet-heaven) *(secondary)*; Brotato's [1.0 press release](https://www.gamespress.com/Brotato-10-Release) and [unlock guide](https://commonsensegamer.com/brotato-how-to-unlock-all-characters/).
 
-- **Fun over balance.** [Dev] Galante: "balance is completely out of the window", and "I just want to make stuff that is fun." He tests new characters to see "how much chaos I can put on screen."
+- **Fun over balance.** [Dev] Galante: "balance is completely out of the window", and "I just want to make stuff that is fun." Galante tests new characters to see "how much chaos I can put on screen."
 - **A slot machine's polish on the reward.** [Dev, secondary] Galante worked on slot machines before Vampire Survivors and has said slot designers put heavy polish on sound and animation because the player pays on every press. The chest-opening screen, with flashing lights and music, is the visible legacy.
-- **A fixed run length that makes near misses.** [Mech] A run is won at the 30-minute mark. [Opinion] Howell argues a run that ends short of 30 minutes produces a near-miss feeling. He cites the gambling literature but has no Vampire Survivors data.
+- **A fixed run length that makes near misses.** [Mech] A run is won at the 30-minute mark. [Opinion] Howell argues a run that ends short of 30 minutes produces a near-miss feeling. Howell cites the gambling literature but has no Vampire Survivors data.
 - **Short runs, many unlocks.** [Mech] Runs cap at 15–30 minutes *(secondary)*, and coins from every run, won or lost, buy permanent upgrades and characters.
 - **Brotato: short waves and a ladder.** [Mech] 20 waves of 20–90 seconds each, with a shop between every wave (press release). Danger 0–5: winning at one level unlocks the next. Many characters and weapons unlock by "win a run with X" (e.g. Power Fist from Brawler), which turns each new character into a goal for the next run.
 
@@ -198,7 +198,7 @@ What the experiments found:
 
 - [Opinion] **Positive and negative feedback.** Wagar maps comebacks to negative feedback and snowballs to positive feedback. Snowballs create "lame duck" endings: "Creating lame duck scenarios isn't ideal." Heavy comebacks create "low effort upsets, which are frustrating", and a game where "the guy who appears to be winning, is not actually winning yet." Comebacks feel earned when they're limited in strength or duration *and* the trailing player still has to win exchanges.
 - [Opinion] **A rubber band must make the game more interesting for both sides.** "Done wrong, rubber bands make good play meaningless." The blue shell fails because it "negates good decisions rather than creating them." Street Fighter IV's Ultra passes: it grows as you take damage, but you still have to land it, and the leader can play around it.
-- [Dev] **Players feel odds, they don't compute them.** Sid Meier's Civilization Revolution testers accepted losing at 2-to-1 odds but were upset losing at 20-to-10: "It's 20-to-10! I should win! It's a big number!" He also noted: "In the world of games, you almost always win."
+- [Dev] **Players feel odds, they don't compute them.** Sid Meier's Civilization Revolution testers accepted losing at 2-to-1 odds but were upset losing at 20-to-10: "It's 20-to-10! I should win! It's a big number!" Meier also noted: "In the world of games, you almost always win."
 - [Dev] **Dominant strategies drain fun.** Soren Johnson: "Given the opportunity, players will optimize the fun out of a game." "Games lose their dynamic quality once a strategy emerges that dominates under all conditions." A good design makes a decision right in some situations and wrong in others.
 - [Mech] TFT pays streak gold for losing streaks too (2.10). Mario Kart's blue shell is the standard example of the cheap kind.
 
@@ -244,7 +244,7 @@ What the experiments found:
   9. Teach with visuals.
   10. Lean on what people already know (Sunflower, Wall-nut).
 - [Dev] **Balatro:** familiar vocabulary as an "onboarding tool"; items as an "extended low-calorie tutorial" (2.1).
-- [Opinion/Dev] **Sid Meier**, via Johnson: a good game is "a series of interesting choices", and they must be *informed*: don't ask players to commit before they understand. The player must "always be the star." Covert Action is his example of two good sub-games undermining each other by competing for attention.
+- [Opinion/Dev] **Sid Meier**, via Johnson: a good game is "a series of interesting choices", and they must be *informed*: don't ask players to commit before they understand. The player must "always be the star." Covert Action is Meier's example of two good sub-games undermining each other by competing for attention.
 - [Dev] **Dome Keeper:** "very easy to pick up," with depth from interactions, not from rule count (2.8).
 - [Opinion] **Kingdom Rush:** level 1 is deliberately easy; each level adds one new enemy or mechanic; the most unusual towers come last (Harlow).
 - [Opinion] **Compton:** "more choices isn't always better"; too many options cause analysis paralysis and regret.
