@@ -1,8 +1,10 @@
 # Spore & Sprawl: project notes for Claude
 
-A lane tug-of-war auto-battler roguelite in the browser (TypeScript, Vite, Canvas). The design and
-milestones live in `SPEC.md`. This file holds only what every session needs. Rules that matter in
-only some files live in `.claude/rules/` and load when Claude opens one of those files (see the end).
+A round-based lane auto-battler roguelite in the browser (TypeScript, Vite, Canvas). The design and
+milestones live in `SPEC.md`, which is v2 since 2026-10-31. Until milestone R2 lands, the code still
+follows v1: the M1–M5 battle plus the rework's `?proto=` knobs. This file holds only what every session
+needs. Rules that matter in only some files live in `.claude/rules/` and load when Claude opens one of
+those files (see the end).
 
 ## How we work
 
@@ -10,6 +12,7 @@ only some files live in `.claude/rules/` and load when Claude opens one of those
 - **One session per milestone or phase**, each in its own worktree from `develop`, ending in a PR into `develop`.
 - **Review before building.** Playtest notes, reviews and ideas get discussed with the user before anything is built from them.
 - **Balance and rules:** diagnose, measure and recommend. A rule change or a retune across several units waits for the user's OK (`.claude/rules/balance.md`).
+- **Tests follow the spec.** When SPEC retires a system, its tests, goldens and guardrails are retired or rewritten with it. They don't hold the new design to the old rules.
 - **Where things get written down:**
   - where things stand, what waits on the user and what's next: `docs/status.md`. Read it first, and update it when work lands or the user decides something
   - adopted rules and the milestones: `SPEC.md`, updated when a change is adopted

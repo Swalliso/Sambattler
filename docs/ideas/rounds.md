@@ -1,6 +1,21 @@
 # Rounds: a paper design for the combat rework's Level 3
 
-Drafted on 2026-10-31 against `c556f3c` (`develop`). **This is a paper design. Nothing here is built or adopted.** It's the hedge in the [combat rework](combat-rework.md). If Level 2 (waves on a shared clock, plus new tools) can't give every strong build an answer, the plan's [P4](combat-rework.md#p4-decide) moves to [Level 3](combat-rework.md#level-3-rounds): rounds, as in Mechabellum, written up as "a paper design plus a headless clash prototype". This doc is the paper design. It specifies the prototype but doesn't build it.
+Drafted on 2026-10-31 against `c556f3c` (`develop`). **This was a paper design.** It's adopted with changes (below), and nothing is built yet. It's the hedge in the [combat rework](combat-rework.md). If Level 2 (waves on a shared clock, plus new tools) can't give every strong build an answer, the plan's [P4](combat-rework.md#p4-decide) moves to [Level 3](combat-rework.md#level-3-rounds): rounds, as in Mechabellum, written up as "a paper design plus a headless clash prototype". This doc is the paper design. It specifies the prototype but doesn't build it.
+
+**Adopted on 2026-10-31 as the base of [SPEC v2](../../SPEC.md), with changes.** After the P3 playtest the user chose rounds over tuning waves ([playtest feedback](../playtest-feedback.md#2026-10-31-p3-the-combat-rework-the-user)). The spec is now the source of truth, and this page keeps the reasoning and the research. Where v2 differs from this page:
+- **Scouting:** the general plans first each round, and you see its whole army before you plan. That is question 4's option (b), not both sides at once.
+- **Heartcaps:** each battle is a race between two per-battle Heartcaps, and the run has lives. A won battle costs nothing. That replaces question 3's single pool for the run.
+- **The kit:** building cards with copies limit how many of one building you can plant.
+- **The roster:** six core archetypes, with the rest unlockable, plus augments and combos.
+- **No supply cap:** plots and copies are the limits.
+- **Territory:** dropped (question 2). Your colony gains plots over a run instead.
+- **Merging:** kept as this page has it, with pips instead of bigger sprites (question 6).
+
+Questions 1, 5, 7 and 8 went as this page recommends:
+- the clash prototype is milestone R1;
+- the damage numbers are the starting point;
+- only the commander power stays live;
+- the counter matrix is the main bar.
 
 Where Level 2 stands: P1c's write-up is on `feature/combat-rework` (`e648dee`), which isn't on `develop` yet.
 - The strict counter bar passes in all nine of P1c's confirmed variants.

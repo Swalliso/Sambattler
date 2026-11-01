@@ -1,5 +1,7 @@
 # After the combat rework: what would make it fun
 
+**Since the P3 playtest (2026-10-31), the game is moving to [SPEC v2](../../SPEC.md),** which is built around rounds. Lives, run packs, augments, combos and reading the enemy are folded into v2. Proposals tied to waves, columns or Hold are superseded ([SPEC Appendix A](../../SPEC.md#appendix-a-retired-v1-systems)). The diagnosis and the research below still hold.
+
 Written 2026-10-31 against `develop` at `ef2e133`, the build on the dev site, to read before and during the P3 playtest of `?proto=rework`. **Nothing here is adopted.** These are proposals with their evidence. Rule changes and retunes across several units wait for your OK (`.claude/rules/balance.md`). New rules would arrive as default-off `?proto=` knobs, be measured, and then be playtested.
 
 **What it rests on** (all of it is in [after-the-rework/](after-the-rework/README.md)):

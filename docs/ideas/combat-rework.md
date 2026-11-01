@@ -1,6 +1,6 @@
 # Combat rework: no unit type should win alone
 
-Drafted on 2026-10-30 against `f5e70a9`. **Nothing here is adopted yet.** On 2026-10-30 the user chose Level 2 ([Decisions](#decisions-2026-10-30)). P0 and P1 of the [prototype plan](#prototype-plan) ran the same day, and their results changed the target: see [What P0 and P1 found](#what-p0-and-p1-found). P1b and P1c followed that evening, and P1d the next morning ([What P1b, P1c and P1d found](#what-p1b-p1c-and-p1d-found)). P2 ran the same day and was cut short for a playtest, with flyers added ([What P2 found](#what-p2-found)). Flyers took the design's rule C, and the package went to `develop` for P3, the playtest ([#35](https://github.com/Swalliso/Sambattler/pull/35), [#36](https://github.com/Swalliso/Sambattler/pull/36)). [Where things stand](../status.md) tracks what's next. This doc replaces the step C draft (sheltered forward plots), which is parked; see [What waits](#what-waits).
+Drafted on 2026-10-30 against `f5e70a9`. **Superseded on 2026-10-31:** P4 chose Level 3, rounds, which became [SPEC v2](../../SPEC.md) ([P4](#p4-decide)). The Level 2 package stays on `develop` behind `?proto=rework` until milestone R2 replaces the battle. Before that: On 2026-10-30 the user chose Level 2 ([Decisions](#decisions-2026-10-30)). P0 and P1 of the [prototype plan](#prototype-plan) ran the same day, and their results changed the target: see [What P0 and P1 found](#what-p0-and-p1-found). P1b and P1c followed that evening, and P1d the next morning ([What P1b, P1c and P1d found](#what-p1b-p1c-and-p1d-found)). P2 ran the same day and was cut short for a playtest, with flyers added ([What P2 found](#what-p2-found)). Flyers took the design's rule C, and the package went to `develop` for P3, the playtest ([#35](https://github.com/Swalliso/Sambattler/pull/35), [#36](https://github.com/Swalliso/Sambattler/pull/36)). [Where things stand](../status.md) tracks what's next. This doc replaces the step C draft (sheltered forward plots), which is parked; see [What waits](#what-waits).
 
 The user's brief:
 - Fix battles that are one-sided because one unit type dominates, even if that takes significant rework.
@@ -576,6 +576,10 @@ One of three outcomes:
 - **Adopt** the pieces that carry the result. Each is a SPEC change (below). Adopted rules go to `develop`, and the goldens get refreshed.
 - **Iterate** on the numbers.
 - **Move to Level 3.** If no version gives every mono build an answer, write up rounds as a paper design plus a headless clash prototype.
+
+**Decided on 2026-10-31: Level 3.** After the P3 playtest ([playtest feedback](../playtest-feedback.md#2026-10-31-p3-the-combat-rework-the-user)), the user moved the game to rounds rather than adopting or tuning the Level 2 package. The reasons weren't the counter bar: waves felt like "a real-time thing mixed in with a turn based thing", the opener felt like a gamble, placement didn't matter, and units were hard to tell apart. [SPEC v2](../../SPEC.md) is now the design (its §0.1 and §1.3). It adopts [rounds](rounds.md) with changes: the general plans first, there are per-battle Heartcaps and lives, a kit of cards with copies, and six core archetypes with augments and combos.
+
+From the Level 2 package, v2 keeps pinning, spore clouds, cleave, the Burster (the area archetype candidate) and the Rhizomorph (an unlockable). Waves, Hold and call for help are retired. The mixed-wave shields, the Elder Sporeling's splash and flyers wait on milestone R1's clash check (SPEC §16).
 
 ## What it touches
 
