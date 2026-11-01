@@ -1,7 +1,8 @@
-// The one unit drawer (SPEC §5.8, §10.4, §13.6): a unit's sprite at its foot point, with its team mark,
-// flyer shadow, Elder aura, shield ring, selection box, tier pips and HP bar, drawn in that order. v1's
-// renderer draws every unit through it, and R2a's views will too (R4a, call 5). It takes the foot point
-// in native pixels and imports nothing from the renderer, so any view can use it.
+// The one unit drawer (SPEC §5.8, §10.4, §13.6): a unit's sprite at its foot point and its own size, with
+// its team mark, flyer shadow, Elder aura and gold rim under it, and its shield ring, selection box, tier
+// pips and HP bar over it, drawn in that order. v1's renderer draws every unit through it, and R2a's views
+// will too (R4a, call 5). It takes the foot point in native pixels and imports nothing from the renderer,
+// so any view can use it.
 import type { Side, Tier } from '../sim/index.ts';
 import type { Atlas, Faction, Region } from './atlas.ts';
 
@@ -95,9 +96,10 @@ export interface UnitSpriteOpts {
 }
 
 /**
- * One unit: its sprite at its foot point and its own size whatever its tier, with tier pips, its shield
- * ring, HP bar and selection box. A tunnelling Rhizomorph is a mound; a flyer floats `FLY_LIFT` px above
- * a shadow on the ground, bobbing a pixel unless ambient motion holds still.
+ * One unit: its sprite at its foot point and its own size whatever its tier, with tier pips (and an
+ * Elder's gold rim under the sprite), its shield ring, HP bar and selection box. A tunnelling Rhizomorph
+ * is a mound; a flyer floats `FLY_LIFT` px above a shadow on the ground, bobbing a pixel unless ambient
+ * motion holds still.
  */
 export function drawUnitSprite(g: CanvasRenderingContext2D, atlas: Atlas, o: UnitSpriteOpts): void {
   const a = o.alpha ?? 1;
@@ -111,6 +113,8 @@ export function drawUnitSprite(g: CanvasRenderingContext2D, atlas: Atlas, o: Uni
   if (o.assist) teamMark(g, Math.round(o.x), Math.round(o.y), body.w, o.side);
   if (o.flying) flyerShadow(g, o.x, o.y, body.w);
   if (o.tier === 3) elderAura(g, o.x, o.y - L.lift, body.w, o.glow, o.time + o.id * 37, a);
+  const rim = L.rim && atlas.rim(o.sprite, o.frame, o.flip);
+  if (L.rim && rim) g.drawImage(atlas.canvas as CanvasImageSource, rim.x, rim.y, rim.w, rim.h, L.rim.x, L.rim.y, rim.w, rim.h);
   g.drawImage(atlas.canvas as CanvasImageSource, r.x, r.y, r.w, r.h, body.x, body.y, body.w, body.h);
   if (o.shieldFrac !== undefined) shieldRing(g, o.x, body.y + body.h / 2, body.w, body.h, o.shieldFrac, a);
   if (o.selected) {
