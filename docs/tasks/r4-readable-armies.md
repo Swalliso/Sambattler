@@ -214,7 +214,7 @@ This list was drafted on 2026-11-01 from SPEC v2 and `docs/tasks/spec-analysis.m
 
 **Goal:** a measurable shape rule that the data checks, a tool, and the user can all see. **Independent test:** see Stories.
 
-- [ ] T017 [P] [US2] Write `tests/unit/shapes.test.ts` (new) for `src/data/shapes.ts` and `src/render/compose.ts` (§5.8, §11.3, §14.3)
+- [x] T017 [P] [US2] Write `tests/unit/shapes.test.ts` (new) for `src/data/shapes.ts` and `src/render/compose.ts` (§5.8, §11.3, §14.3)
   - `bodyOf`: light → small, medium → medium, heavy → big.
   - `markOf` from the content: Burster → area (via `protoContent('rework')`), Tender → heal, Gill Archer → arrow, Veilstalker and Morel Runner → spike, Scythecap → blade (A150), Hammercap and Rootbreaker → hammer.
   - `towerMarkOf(puffballMortar)` → hammer with a splash accent (A151).
@@ -222,7 +222,7 @@ This list was drafted on 2026-11-01 from SPEC v2 and `docs/tasks/spec-analysis.m
   - `shapeProblems` rejects: `markAt` with a different length from `frames`; no `markAt` when the mark isn't `none`; no `accentAt` when an accent is set; a glyph that leaves the w × h box; a mark in the back half (A165); a glyph whose rows reach above the body's top row or below its bottom row in that frame (call 10).
   - `composedBox(sprite, frame, glyphs, flip)` unites the body's opaque box with the glyph's own opaque box at `markAt[frame]`, mirrored with `flip`.
   - `framePixels` with a mark: the glyph's pixels sit at `markAt`, mirror with `flip`, and fill exactly the box `composedBox` gives. The Gray Rot swap doesn't touch them.
-- [ ] T018 [P] [US2] Add cases to `tests/unit/data.test.ts` (§15.7 Data row, §16 R4 step 1)
+- [x] T018 [P] [US2] Add cases to `tests/unit/data.test.ts` (§15.7 Data row, §16 R4 step 1)
   - Through `loadContent` with a patched raw sprite: "rejects a heavy unit drawn small", "rejects a crush unit with a blade" and "rejects a shape mark with no `m-` glyph".
   - "Every sprite that declares a shape passes", over the default content and over `protoContent('rework')`, so `?proto=rework` keeps loading.
 - [ ] T019 [US2] Write `src/data/shapes.ts` (new), pure, with no DOM: `bodyOf(armor)`, `markOf(unit)` and `towerMarkOf(building)` by T003's rule; `bodyBox(sprite, frame)` (the opaque bounding box); `glyphBox(glyph)`; `composedBox(sprite, frame, glyphs, flip)`; and `shapeProblems(sprite, bands, glyphs)` (§5.8, §13.2, §14.3) ⛔ R4-Q1, R4-Q2, §18.2 #55
