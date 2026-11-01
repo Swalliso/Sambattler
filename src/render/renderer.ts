@@ -18,13 +18,13 @@ import type { HitUnit } from '../sim/systems/combat.ts';
 import { findBuilding, findUnit } from '../sim/world.ts';
 import type { Atlas, Faction } from './atlas.ts';
 import { Effects } from './effects.ts';
+import { INK_DEEP, TIER_SCALE, drawUnitSprite, hpBar } from './unitSprite.ts';
+import type { UnitSpriteOpts } from './unitSprite.ts';
+
+export { FLY_LIFT } from './unitSprite.ts';
 
 export const TILE = 16;
 const STRIP = 2; // Heartcap strip width in tiles on each side
-/** Sprite scale per merge tier (SPEC §10.4: "a slightly larger sprite"). */
-const TIER_SCALE = [1, 1.25, 1.5];
-/** Combat rework `flyers`: how far a flyer's sprite floats above its shadow, in pixels (half a tile). */
-export const FLY_LIFT = 8;
 /** "Big hits only" shows damage numbers from this amount up. */
 export const BIG_HIT = 30;
 export type DamageNumbers = 'off' | 'big' | 'all';
@@ -48,7 +48,6 @@ export interface View {
 export const factionOf = (side: Side): Faction => (side === 'player' ? 'velvet-bloom' : 'gray-rot');
 /** A faction's mycelial mat colors (data/factions/<id>/faction.json). */
 export interface FactionMat { base: string; strand: string; glow: string }
-const INK_DEEP = '#120a16';
 /** Color-blind assist: where the Gray Rot's ash tufts sit in a mat tile (each is a dark stroke with a pale tip). */
 const TUFTS: readonly [number, number][] = [[2, 2], [9, 1], [13, 6], [5, 8], [11, 12], [1, 12], [7, 14]];
 
@@ -92,28 +91,6 @@ export function matTile(m: FactionMat, side: Side, assist: boolean): HTMLCanvasE
   g.fillStyle = m.glow;
   g.fillRect(Math.floor(rnd() * TILE), Math.floor(rnd() * TILE), 1, 1);
   return c;
-}
-
-/**
- * Color-blind assist: a mark under a unit's feet that peeks out either side of the sprite. The Velvet
- * Bloom's is a light lilac ring; the Gray Rot's is a dark bar with pale dashes along its foot.
- */
-export function teamMark(g: CanvasRenderingContext2D, cx: number, footY: number, w: number, side: Side): void {
-  const half = Math.max(5, Math.round(w / 2) + 1);
-  const x0 = cx - half, x1 = cx + half - 1;
-  if (side === 'player') {
-    g.fillStyle = INK_DEEP;
-    g.fillRect(x0, footY + 2, x1 - x0 + 1, 1);
-    g.fillStyle = '#c9a2ff';
-    g.fillRect(x0, footY - 1, 1, 2);
-    g.fillRect(x1, footY - 1, 1, 2);
-    g.fillRect(x0 + 1, footY + 1, x1 - x0 - 1, 1);
-  } else {
-    g.fillStyle = INK_DEEP;
-    g.fillRect(x0, footY, x1 - x0 + 1, 3);
-    g.fillStyle = '#b8c4a8';
-    for (let x = x0 + 1; x < x1; x += 3) g.fillRect(x, footY + 2, 1, 1);
-  }
 }
 
 /**
@@ -173,6 +150,10 @@ export class Renderer {
   private eligible: UnitState[] = [];
   private trio: UnitState[] = [];
   private links = new Int32Array(64);
+  /** The unit drawer's options, refilled for each unit so a frame allocates none. */
+  private unitOpts: UnitSpriteOpts = {
+    sprite: '', faction: 'velvet-bloom', frame: 0, flip: false, x: 0, y: 0, tier: 1, side: 'player', id: 0, hpFrac: 1, glow: '', time: 0,
+  };
   readonly width: number;
   readonly height: number;
 
@@ -351,7 +332,7 @@ export class Renderer {
         g.lineWidth = 1;
         g.strokeRect(x + 0.5, y + 0.5, def.w * TILE - 1, def.h * TILE - 1);
       }
-      if (b.hp < b.maxHp) this.bar(x + 2, y + 1, def.w * TILE - 4, b.hp / b.maxHp, b.side);
+      if (b.hp < b.maxHp) hpBar(g, x + 2, y + 1, def.w * TILE - 4, b.hp / b.maxHp, b.side);
       if (besieged) this.glyph('½', x + def.w * TILE - 7, y + 10, '#ffb4a8');
       if (b.holding) this.glyph('⬢!', x + 2, y + 10, '#f0c85a');
       // combat rework `waves`: the units waiting inside for the next wave
@@ -388,11 +369,12 @@ export class Renderer {
     for (const u of state.units) us.push(u);
     us.sort((a, b) => a.y - b.y || a.id - b.id);
     let flyers = false;
+    const calm = this.calm();
     for (const u of us) {
       if (u.flying) flyers = true;
-      else this.drawUnit(state, view, u, alpha, t);
+      else this.drawUnit(state, view, u, alpha, t, calm);
     }
-    if (flyers) for (const u of us) if (u.flying) this.drawUnit(state, view, u, alpha, t);
+    if (flyers) for (const u of us) if (u.flying) this.drawUnit(state, view, u, alpha, t, calm);
     this.drawKnits(state, alpha, t);
 
     // projectiles
@@ -429,7 +411,7 @@ export class Renderer {
     for (const side of ['player', 'enemy'] as Side[]) {
       const ss = state.sides[side];
       const x = side === 'player' ? 2 : (state.map.width + STRIP) * TILE + 2;
-      this.bar(x, 2, STRIP * TILE - 4, ss.heartcapHp / ss.heartcapMaxHp, side, 3);
+      hpBar(g, x, 2, STRIP * TILE - 4, ss.heartcapHp / ss.heartcapMaxHp, side, 3);
     }
 
     if (view.ghost) this.drawGhost(view.ghost, state);
@@ -503,86 +485,37 @@ export class Renderer {
     }
   }
 
-  /**
-   * One unit: its sprite at its foot point (merged units larger, with tier pips), shield ring, HP bar
-   * and selection box. A tunnelling Rhizomorph is a mound; a flyer floats `FLY_LIFT` px above a shadow
-   * on the ground, bobbing a pixel unless ambient motion holds still.
-   */
-  private drawUnit(state: BattleState, view: View, u: UnitState, alpha: number, t: number): void {
-    const g = this.ctx;
+  /** One unit, through the shared drawer (src/render/unitSprite.ts), at its interpolated foot point. */
+  private drawUnit(state: BattleState, view: View, u: UnitState, alpha: number, t: number, calm: boolean): void {
     const x = u.px + (u.x - u.px) * alpha;
     const y = u.py + (u.y - u.py) * alpha;
-    if (u.burrowed) { this.mound(this.sx(x), y * TILE, u, t, view.selected === u.id); return; }
-    const sprite = this.content.units[u.unitId]!.sprite;
     const moving = u.x !== u.px || u.y !== u.py;
     const attacking = state.tick - u.lastAttackTick < 6 && u.lastAttackTick >= 0;
-    const frame = attacking ? 2 : moving ? Math.floor(t / 250 + u.id) % 2 : 0;
-    const flip = u.side === 'enemy';
-    const r = this.atlas.get(sprite, factionOf(u.side), frame, flip);
-    if (!r) return;
-    const scale = TIER_SCALE[u.tier - 1]!;
-    const w = Math.round(r.w * scale), hgt = Math.round(r.h * scale);
-    const lift = u.flying ? FLY_LIFT + (this.calm() ? 0 : Math.floor(t / 320 + u.id) % 2) : 0;
-    const dx = Math.round(this.sx(x) - r.ax * scale), dy = Math.round(y * TILE - r.ay * scale) - lift;
-    if (this.assist) teamMark(g, Math.round(this.sx(x)), Math.round(y * TILE), w, u.side);
-    if (u.flying) this.flyerShadow(this.sx(x), y * TILE, w);
-    if (u.tier === 3) this.elderAura(this.sx(x), y * TILE - lift, w, this.mat(u.side).glow, t + u.id * 37);
-    g.drawImage(this.atlas.canvas as CanvasImageSource, r.x, r.y, r.w, r.h, dx, dy, w, hgt);
-    if (u.shield) this.shieldRing(this.sx(x), dy + hgt / 2, w, hgt, u.shield / Math.max(1, u.maxHp * (state.rules.mixed?.shieldFrac ?? 1)));
-    if (u.id === view.selected) {
-      g.strokeStyle = '#ffe9a8';
-      g.strokeRect(dx - 0.5, dy - 0.5, w + 1, hgt + 1);
-    }
-    if (u.tier > 1) this.pips(Math.round(this.sx(x)), dy - (u.hp < u.maxHp ? 7 : 4), u.tier - 1);
-    if (u.hp < u.maxHp) this.bar(dx + 1, dy - 3, w - 2, u.hp / u.maxHp, u.side);
+    const o = this.unitOpts;
+    o.sprite = this.content.units[u.unitId]!.sprite;
+    o.faction = factionOf(u.side);
+    o.frame = attacking ? 2 : moving ? Math.floor(t / 250 + u.id) % 2 : 0;
+    o.flip = u.side === 'enemy';
+    o.x = this.sx(x);
+    o.y = y * TILE;
+    o.tier = u.tier;
+    o.side = u.side;
+    o.id = u.id;
+    o.hpFrac = u.hp / u.maxHp;
+    o.shieldFrac = u.shield ? u.shield / Math.max(1, u.maxHp * (state.rules.mixed?.shieldFrac ?? 1)) : undefined;
+    o.flying = u.flying;
+    o.burrowed = u.burrowed;
+    o.glow = this.mat(u.side).glow;
+    o.assist = this.assist;
+    o.selected = u.id === view.selected;
+    o.time = t;
+    o.calm = calm;
+    drawUnitSprite(this.ctx, this.atlas, o);
   }
 
   /** Ambient motion holds still: `?test=1` (set by the battle view) or reduced motion. */
   private calm(): boolean {
     return this.still || (typeof document !== 'undefined' && document.documentElement.classList.contains('reduce-motion'));
-  }
-
-  /** Combat rework `flyers`: a soft dark oval on the ground under a flyer, where it really stands. */
-  private flyerShadow(cx: number, footY: number, w: number): void {
-    const g = this.ctx;
-    const x = Math.round(cx), y = Math.round(footY);
-    const half = Math.max(3, Math.round(w * 0.3));
-    g.fillStyle = 'rgba(18, 10, 22, 0.4)';
-    g.fillRect(x - half, y - 1, half * 2, 2);
-    g.fillRect(x - half + 2, y - 2, half * 2 - 4, 1);
-    g.fillRect(x - half + 2, y + 1, half * 2 - 4, 1);
-  }
-
-  /** Combat rework (the Rhizomorph): a tunnelling unit is a mound of earth on the move, kicking up crumbs behind it. */
-  private mound(cx: number, footY: number, u: UnitState, t: number, selected: boolean): void {
-    const g = this.ctx;
-    const x = Math.round(cx), y = Math.round(footY);
-    // a dark outline, the earth, a lit crest and a glowing seam where the hyphae break the surface
-    g.fillStyle = INK_DEEP;
-    g.fillRect(x - 8, y - 3, 16, 4);
-    g.fillRect(x - 6, y - 5, 12, 2);
-    g.fillRect(x - 3, y - 6, 6, 1);
-    g.fillStyle = '#5c4330';
-    g.fillRect(x - 7, y - 3, 14, 3);
-    g.fillRect(x - 5, y - 5, 10, 2);
-    g.fillStyle = '#7a5236';
-    g.fillRect(x - 4, y - 5, 6, 1);
-    g.fillRect(x - 2, y - 6, 3, 1);
-    g.fillStyle = this.mat(u.side).glow;
-    g.fillRect(x - 3, y - 2, 1, 1);
-    g.fillRect(x + 1, y - 3, 1, 1);
-    g.fillRect(x + 4, y - 2, 1, 1);
-    // crumbs thrown up behind it as it goes
-    const back = u.side === 'player' ? -1 : 1;
-    g.fillStyle = '#7a5236';
-    for (let i = 0; i < 4; i++) {
-      const k = (Math.floor(t / 110) + u.id + i) % 5;
-      g.fillRect(x + back * (8 + 2 * k), y - 2 - (k % 3), 1, 1);
-    }
-    if (selected) {
-      g.strokeStyle = '#ffe9a8';
-      g.strokeRect(x - 9.5, y - 7.5, 19, 10);
-    }
   }
 
   /**
@@ -716,47 +649,6 @@ export class Renderer {
     }
   }
 
-  /** Tier insignia: one pip for Bloomed, two for Elder, centred above the sprite. */
-  private pips(cx: number, y: number, n: number): void {
-    const g = this.ctx;
-    const w = n * 4 - 1;
-    const x0 = cx - Math.floor(w / 2);
-    g.fillStyle = '#120a16';
-    g.fillRect(x0 - 1, y - 1, w + 2, 4);
-    g.fillStyle = '#f0c85a';
-    for (let i = 0; i < n; i++) g.fillRect(x0 + i * 4, y, 3, 2);
-  }
-
-  /** A slow pulsing halo under an Elder's feet. */
-  private elderAura(cx: number, footY: number, w: number, color: string, t: number): void {
-    const g = this.ctx;
-    g.globalAlpha = 0.22 + 0.08 * Math.sin(t / 300);
-    g.fillStyle = color;
-    g.beginPath();
-    g.ellipse(cx, footY - 1, w * 0.55, 3.5, 0, 0, Math.PI * 2);
-    g.fill();
-    g.globalAlpha = 1;
-  }
-
-  /**
-   * Combat rework `mixedWave`: a pale bubble round a shielded unit, fading as the shield wears down
-   * (`frac`: what is left of the shield it set out with).
-   */
-  private shieldRing(cx: number, cy: number, w: number, h: number, frac: number): void {
-    const g = this.ctx;
-    const k = Math.max(0, Math.min(1, frac));
-    g.globalAlpha = 0.2 + 0.5 * k;
-    g.strokeStyle = '#cfe8ff';
-    g.lineWidth = 1;
-    g.beginPath();
-    g.ellipse(Math.round(cx) + 0.5, Math.round(cy) + 0.5, w * 0.62 + 1, h * 0.58 + 1, 0, 0, Math.PI * 2);
-    g.stroke();
-    g.globalAlpha = 0.08 + 0.1 * k;
-    g.fillStyle = '#cfe8ff';
-    g.fill();
-    g.globalAlpha = 1;
-  }
-
   /** "Merge off" status glyph: a knot struck through. */
   private knotOff(x: number, y: number, color: string): void {
     const g = this.ctx;
@@ -792,14 +684,6 @@ export class Renderer {
     g.fillRect(x + 3, by, w, 1);
     g.fillStyle = b.holding ? '#7b6c90' : '#c9a2ff';
     g.fillRect(x + 3, by, Math.round(w * Math.max(0, Math.min(1, frac))), 1);
-  }
-
-  private bar(x: number, y: number, w: number, frac: number, side: Side, h = 2): void {
-    const g = this.ctx;
-    g.fillStyle = '#120a16';
-    g.fillRect(x - 1, y - 1, w + 2, h + 2);
-    g.fillStyle = side === 'player' ? '#c9a2ff' : '#b8c4a8';
-    g.fillRect(x, y, Math.max(0, Math.round(w * Math.max(0, Math.min(1, frac)))), h);
   }
 
   private glyph(text: string, x: number, y: number, color: string): void {
