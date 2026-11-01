@@ -1,0 +1,126 @@
+# Tasks for SPEC v2
+
+SPEC v2, broken into task lists that later sessions work through one row of a Sessions table at a time. Written on 2026-11-01 from a review of SPEC v2 ([#39](https://github.com/Swalliso/Sambattler/pull/39)) in which ten reviewers read the spec against the code and a skeptic checked each finding.
+
+**These lists are drafts.** R1's list is ready to work. Everything after it was written before R1's results and before the user's decisions in [clarify.md](clarify.md). Each later milestone's S0 session refreshes its list once its plan is agreed (see [Refreshing a task list](#refreshing-a-task-list)).
+
+## Where to start
+
+| Now | Session | Waits on |
+|---|---|---|
+| 1 | **R1 S0** in [r1-clash-check.md](r1-clash-check.md): agree [docs/r1-plan.md](../r1-plan.md) with the user and write R1's calls into SPEC. Docs only | These task lists on `develop` (the `feature/v2-tasks` PR). S0's first task is the user agreeing the plan |
+| 2 | **R1 S1 and S2**, side by side: `src/sim/formation.ts`; the two tool-only switches and the army builder | R1 S0 merged |
+| 3 | **R4a-S0** in [r4-readable-armies.md](r4-readable-armies.md): the shape-language plan | These task lists on `develop`; S0's first [USER] task (R4/T002) puts X3 (split R4) to the user |
+| 4 | **records S0** in [run-it-back.md](run-it-back.md): the Run it back plan | These task lists on `develop`; S0's first [USER] task (RB/T001) puts X10 (Run it back in two parts) to the user |
+
+R1, R4a and records-1 touch different code files and can run at the same time. Their doc edits fall in different sections of `SPEC.md`, `clarify.md` and `docs/status.md`, so whichever PR merges second rebases ([r1-plan.md](../r1-plan.md), "Beside R1"). Everything else waits for R1's review gate.
+
+## Milestones
+
+| Milestone | Task list | Sessions | Starts | Lands |
+|---|---|---|---|---|
+| R1, the clash check | [r1-clash-check.md](r1-clash-check.md), plan [r1-plan.md](../r1-plan.md) | S0–S8 | Now | One PR per session into `develop`. No rule changes, so no golden moves |
+| R2a, a battle in rounds | [r2a-battle-in-rounds.md](r2a-battle-in-rounds.md) | S0–S21 (S3 and S10 in two parts) | After R1's review gate (R1 S8) | Beside v1 on `develop`, behind a dev-build-only entry (X2). Ends with a playtest gate on the dev site |
+| R2b, the run in rounds | [r2b-run-in-rounds.md](r2b-run-in-rounds.md) | S0–S14 (with S1b and S4b) | After R2a's playtest gate | S1–S4 and S1b as sub-PRs into `feature/r2b-cutover`, merged into `develop` at S4b once a whole run plays and v1 is gone; S5–S14 one PR each into `develop` |
+| R3, the kit | [r3-kit.md](r3-kit.md) | S0–S15 | After R2b | One PR per session into `develop` |
+| R4a, shapes on the field | [r4-readable-armies.md](r4-readable-armies.md), part 1 | R4a-S0–S5 (with S2b) | Now, beside R1 (X3). Lands before R2a's playtest | One PR per session into `develop` |
+| R4b, readable cards | [r4-readable-armies.md](r4-readable-armies.md), part 2 | R4b-S0–S7 | After R3 | One PR per session into `develop` |
+| Run it back, records-1 and records-2 | [run-it-back.md](run-it-back.md) | S0–S2, then S3–S5 | records-1 now (X10); records-2 after R2b | One PR per session into `develop` |
+| M6, meta-progression | [m6-meta-progression.md](m6-meta-progression.md) | S0–S9 | After R3 and R4b, in SPEC §16's order (records-1 if it has landed) | One PR per session into `develop` |
+| M7, the Gray Rot and content | [m7-gray-rot-and-content.md](m7-gray-rot-and-content.md) | S0–S7 | After M6 | One PR per session into `develop` |
+| M8, release | [m8-release.md](m8-release.md) | S0–S7 | After M7 | S7 is the release PR into `main`, only when the user asks |
+
+The order, with the gates the user holds:
+
+```
+R1 ─► R1 review gate ─► R2a ─► R2a playtest ─► R2b ─► R3 ─► R4b ─► M6 ─► M7 ─► M8 ─► release (user asks)
+R4a ─────────────────────────► (merged before R2a's playtest)
+records-1 ─────────────────────────────────────► records-2 (after R2b)
+```
+
+The R2 and R4 splits (X1, X3), building R2 beside v1 (X2) and the two parts of Run it back (X10) are recommendations the user hasn't agreed yet. Each list says in one line what changes if the user picks the alternative.
+
+## How this folder works
+
+The task lists borrow [spec-kit](https://github.com/github/spec-kit)'s flow and fit it to this repo's own documents:
+
+| spec-kit step | Here |
+|---|---|
+| constitution | [CLAUDE.md](../../CLAUDE.md), [AGENTS.md](../../AGENTS.md) and `.claude/rules/`: how we work, the checks, the branch rules |
+| specify | [SPEC.md](../../SPEC.md) v2: the rules, and each milestone's scope and verification (§16) |
+| clarify | [clarify.md](clarify.md): the decisions each milestone needs from the user before it builds, with a recommendation for each |
+| plan | `docs/<milestone>-plan.md` in CLAUDE.md's format (Goal, Scope, Stand-ins, Steps, Verification, Open questions, As built), agreed with the user before building |
+| tasks | one file per milestone in this folder |
+| analyze | [spec-analysis.md](spec-analysis.md): the 209 problems found in SPEC v2 while breaking it down, checked against the code, and where each one is handled |
+| implement | one session per row of a milestone's **Sessions** table, ending in a PR |
+| converge | the milestone's **Verification** block in SPEC §16, run in its last session |
+
+### Task format
+
+```
+- [ ] T012 [P] [US2] Add the clash row to the counter report in `tools/lib/balance.ts` (§12.2)
+```
+
+- `- [ ]` becomes `- [x]` when the task is done, in the same commit as the work.
+- `T012` numbers the task in its file, in execution order. From another file, write `R1/T012`.
+- `[P]` means it can run in parallel with the other `[P]` tasks of its phase: different files, and no dependency on an unfinished task.
+- `[US2]` ties a task to a story in the file's **Stories** table. Setup, foundational and polish tasks have none.
+- `[USER]` means the task needs the user: a decision, a review gate or a playtest. A session stops there and asks.
+- `⛔ X5` or `⛔ §18.2 #32` names the decision a task waits on (its block in [clarify.md](clarify.md)), and `⛔ R1 results` names a result. Don't start the task until that's settled. A ⛔ on a ref whose block carries a dated `R1 measures: …` (or `<milestone> part agreed: …`) line is satisfied by that line for that milestone's tasks, and so is a ref the list's **Before you start** says the milestone builds on provisionally (R1's §18.2 #51).
+- Every task names the files it touches and cites the SPEC section that holds its rule. A file the milestone creates is marked `(new)`.
+- **Tests follow the spec** (CLAUDE.md): test tasks come first in a story, and a story isn't done until its tests pass.
+
+Each story says how to test it on its own, and each phase ends with a **Checkpoint** that has to hold before the next phase starts.
+
+## Running a session
+
+Start a new session in its own worktree and name the row, for example: *"Implement R1 session S1 from docs/tasks/r1-clash-check.md."* The session then:
+
+1. **Orients.** Reads [docs/status.md](../status.md), then the task list's **Read first** and **Before you start** sections, its **Technical context**, and the session's row and tasks. It reads the SPEC sections the tasks cite, not the archive.
+2. **Checks the gate.** Everything in the row's **Gate** column has to be true on `origin/develop` (or the integration branch): the named sessions merged, and the named decisions recorded in their clarify.md block's **Decision** line (or satisfied as the ⛔ bullet under [Task format](#task-format) says). If something is missing, the session says what and stops. It doesn't build on a recommendation the user hasn't agreed when a task is marked ⛔, except where that bullet allows.
+3. **Branches.** `git fetch`, then `git switch --no-track -c <the row's branch> origin/develop`. R2b's S1–S4 and S1b branch from `origin/feature/r2b-cutover` instead.
+4. **Works the tasks in order.**
+   - Tests first, then the code that passes them.
+   - `[P]` tasks may go to parallel subagents, since they touch different files.
+   - Each task is ticked in the same commit as its work.
+   - At each **Checkpoint**, run its command and fix what fails before going on.
+   - At a `[USER]` task, stop and ask. Record the answer as [Settling decisions](#settling-decisions) says.
+5. **Fixes the list when it's wrong.** If the code or a result shows a task is wrong, missing or in the wrong order, the session fixes the task list in the same PR and says why in the PR. A rule change or a retune still waits for the user (`.claude/rules/balance.md`).
+6. **Finishes.**
+   - `npm run verify` passes, plus the checkpoint's own commands (browser tests, the slow suite or a bench where the row says so).
+   - The game still plays on `develop`.
+   - [docs/status.md](../status.md) says what landed and names the next session.
+   - A milestone's last session also writes the plan's **As built** and runs SPEC §16's verification for it.
+   - The session pushes and opens its PR into `develop` (or the integration branch) when the user asks, as CLAUDE.md says, and never merges on its own.
+
+Sessions are sized at about a day of focused work. Two small adjacent rows can share one session and one PR if the user agrees. A row that turns out too big is split, and the Sessions table updated in the same PR.
+
+## Settling decisions
+
+[clarify.md](clarify.md) holds every call the user needs to make, in the order the work needs them. Each block has the question, SPEC's first guess, a recommendation with its evidence, the alternatives, and what it blocks. Some recommendations disagree with SPEC's first guess, and say why.
+
+To settle them, a session:
+
+1. Reads the blocks for the milestone, the §18.2 rows they name, the SPEC sections they cite and the milestone's findings in [spec-analysis.md](spec-analysis.md).
+2. Asks the user a few at a time, with the recommendation as the first option and the realistic alternatives after it.
+3. Records each answer:
+   - in the block's **Decision** line, with the date;
+   - in SPEC: the section loses its **Open:** marker and states the rule, and a §18.2 row is marked "(closed)" with the decision and the date, keeping its number (SPEC §0);
+   - in [docs/status.md](../status.md);
+   - in the task list, if the answer changes a task.
+
+It changes no code, and commits the doc changes on the milestone's plan branch or a `docs/…` branch.
+
+## Refreshing a task list
+
+Each milestone's S0 session writes `docs/<milestone>-plan.md` (R1's is already drafted, so R1's S0 agrees it and writes its calls into SPEC), settles the milestone's decisions, and then refreshes its task list:
+
+1. **Reads** SPEC §16 for the milestone (scope, Not in, Done when, Verification) and every section its scope cites; the agreed plan; the milestone's blocks in clarify.md; its open findings in spec-analysis.md; the earlier milestones' **As built**; and the code each task lands in. Every path it names has to exist or be marked `(new)`.
+2. **Keeps what's done.** A ticked task keeps its box and its ID. New tasks take the next free IDs, and nothing is renumbered.
+3. **Keeps the shape:**
+   - stories, one per increment a player or a tool can see, with a priority (P1 is the smallest useful slice) and an independent test;
+   - phases: Setup, Foundational, one per story in priority order, then Polish;
+   - a **Coverage** table mapping every scope bullet, Done-when line and verification step in SPEC §16 to its tasks, and every retired system's code, tests, goldens, guardrails, UI, Help and tips to the tasks that remove them;
+   - a **Sessions** table whose rows each end in a PR that keeps `npm run verify` green and the game playable.
+4. **Checks** that every task has a path and a SPEC section, no two `[P]` tasks in a phase share a file, dependencies point backward, and the Sessions table covers every task.
+5. **Updates** the milestone table above and [docs/status.md](../status.md) if the sessions changed.
