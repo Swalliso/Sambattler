@@ -1,7 +1,7 @@
-// The sim, the run layer and the data layer under them must stay pure (SPEC §13.2–13.3). ESLint
-// enforces this per directory; this test scans the import graph and source text as a second line
-// of defence.
-import { readdirSync, readFileSync, statSync } from 'node:fs';
+// The sim, the run and meta layers, and the data layer under them must stay pure (SPEC §13.2–13.3).
+// ESLint enforces this per directory; this test scans the import graph and source text as a second
+// line of defence.
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { ROOT } from '../../tools/lib/content.ts';
@@ -13,7 +13,8 @@ function files(dir: string): string[] {
   });
 }
 
-const PURE = ['src/sim', 'src/data', 'src/run'];
+/** src/meta may import from src/run, src/sim and src/data; its own modules import each other as `./…`. */
+const PURE = ['src/sim', 'src/data', 'src/run', 'src/meta'];
 const BANNED_IMPORT = /^(node:|fs$|path$|os$|child_process$)|\/(render|ui|app|meta|tools)\//;
 const BANNED_TEXT: [RegExp, string][] = [
   [/\bMath\.(random|sin|cos|tan|asin|acos|atan2?|exp|log(2|10|1p)?|pow|hypot|cbrt|fround)\b/, 'non-deterministic Math'],
@@ -25,6 +26,8 @@ const BANNED_TEXT: [RegExp, string][] = [
 
 describe('purity', () => {
   for (const dir of PURE) {
+    // a pure layer's folder arrives with its first module
+    if (!existsSync(join(ROOT, dir))) continue;
     for (const f of files(join(ROOT, dir))) {
       const rel = relative(ROOT, f).split(sep).join('/');
       it(`${rel} imports only pure modules and uses no impure globals`, () => {

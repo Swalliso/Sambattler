@@ -151,11 +151,11 @@ From another file, cite this file's tasks as RB/T0nn.
   - Unknown fields, and unknown commander or building ids in `lastSetup`, survive a load and a save.
   - A record with `v: 2` loads read-only: `updateRecords` writes nothing.
   - The run-record cases are records-2's (T025).
-- [ ] T004 [P] Add `src/meta` to the pure layers in `eslint.config.js` and `tests/unit/purity.test.ts` (§13.2, §13.3)
+- [x] T004 [P] Add `src/meta` to the pure layers in `eslint.config.js` and `tests/unit/purity.test.ts` (§13.2, §13.3)
   - `eslint.config.js`: a `files: ['src/meta/**/*.ts']` block with `pureRules`, whose `no-restricted-imports` forbids `forbiddenFromPure` (render, ui, app, tools, Node modules).
   - `tests/unit/purity.test.ts`: add `'src/meta'` to `PURE`. `BANNED_IMPORT` already bans `/meta/` from the other pure layers. Imports inside `src/meta` are `./…`, and `src/meta` may import `../run/`, `../sim/` and `../data/`.
   - The test's `files()` throws on a missing folder, and T006 creates `src/meta`: skip a folder that doesn't exist yet.
-- [ ] T005 [P] Move the served-page harness from `tests/browser/protoSaves.test.ts` into `tests/browser/serve.ts` (new), for the records cases (§13.8, §15.6)
+- [x] T005 [P] Move the served-page harness from `tests/browser/protoSaves.test.ts` into `tests/browser/serve.ts` (new), for the records cases (§13.8, §15.6)
   - `tests/browser/serve.ts` exports `serve(mode?)` (a game server, or a `develop`-mode server for the dev-site cases) and `PROTO`. `tests/browser/protoSaves.test.ts` imports both, so R2b, which retires the `hotstart` preset (§16 R2), changes one line.
   - `tests/browser/protoSaves.test.ts` passes, with no other change. T008 writes `tests/browser/records.test.ts` on the harness.
 - [ ] T006 Build the profile store in `src/meta/records.ts` (new) and `src/meta/index.ts` (new) (§9.7, §13.2, §13.8) ⛔ RB-Q1
