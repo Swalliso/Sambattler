@@ -670,6 +670,8 @@ None.
 
 Each entry names its half: R4a (the shape language on the field, now) or R4b (marks in full, card text, icons and Help, after R3), as X3 splits them.
 
+**Since 2026-11-01:** the user dropped weapon marks from units and emplacements, at R4/T026's review of the silhouette sheet (R4/T077; clarify R4-Q2, superseded). A149, A150 and A151 are moot, A148's weapon-mark half is too, and A154's and A158's apply only to matchup marks and pips. Matchup marks on cards and the planning screen are unchanged.
+
 #### High
 
 - **A148** · high · gap · R4a · There's no measurable definition of a body-size band or of a weapon mark, and `SpriteDef` has no field for either, so R4's two data checks have nothing to test. Today's sprites break size-by-armor both ways, and any bands must also fit §4.6's squad spacing (A165).

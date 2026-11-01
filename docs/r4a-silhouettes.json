@@ -2,20 +2,20 @@
   "sheet": "r4a-silhouettes",
   "bands": {"small": [8, 9], "medium": [11, 12], "big": [15, 16]},
   "sprites": [
-    {"id": "u-sporeling", "w": 10, "h": 8, "anchor": [3, 7], "factionSwap": true, "palette": {".": null, "d": "#5a2f99", "e": "#120a16", "k": "#1a1020", "l": "#c9a2ff", "s": "#e8d9b5", "t": "#b9a77f", "v": "#8a4fd8"}, "shape": {"body": "small", "mark": "blade", "markAt": [[5, 2]]},
+    {"id": "u-sporeling", "w": 8, "h": 8, "anchor": [3, 7], "factionSwap": true, "palette": {".": null, "d": "#5a2f99", "e": "#120a16", "k": "#1a1020", "l": "#c9a2ff", "s": "#e8d9b5", "t": "#b9a77f", "v": "#8a4fd8"}, "shape": {"body": "small"},
      "frames": [
       [
-        "..kkkk....",
-        ".kvllvk...",
-        "kvlvvvvk..",
-        "kvvvvvdk..",
-        ".kkkkkk...",
-        "..ksek....",
-        "..kstk....",
-        ".kk..kk..."
+        "..kkkk..",
+        ".kvllvk.",
+        "kvlvvvvk",
+        "kvvvvvdk",
+        ".kkkkkk.",
+        "..ksek..",
+        "..kstk..",
+        ".kk..kk."
       ]
      ]},
-    {"id": "u-capguard", "w": 10, "h": 12, "anchor": [4, 11], "factionSwap": true, "palette": {".": null, "d": "#5a2f99", "e": "#120a16", "k": "#1a1020", "l": "#c9a2ff", "s": "#e8d9b5", "v": "#8a4fd8"}, "shape": {"body": "medium", "mark": "blade", "markAt": [[5, 6]]},
+    {"id": "u-capguard", "w": 10, "h": 12, "anchor": [4, 11], "factionSwap": true, "palette": {".": null, "d": "#5a2f99", "e": "#120a16", "k": "#1a1020", "l": "#c9a2ff", "s": "#e8d9b5", "v": "#8a4fd8"}, "shape": {"body": "medium"},
      "frames": [
       [
         ".kkkkkk...",
@@ -32,21 +32,21 @@
         ".kkk.kkk.."
       ]
      ]},
-    {"id": "u-gillArcher", "w": 10, "h": 9, "anchor": [3, 8], "factionSwap": true, "palette": {".": null, "d": "#5a2f99", "k": "#1a1020", "l": "#c9a2ff", "s": "#e8d9b5", "t": "#b9a77f", "v": "#8a4fd8"}, "shape": {"body": "small", "mark": "arrow", "markAt": [[5, 2]]},
+    {"id": "u-gillArcher", "w": 10, "h": 9, "anchor": [3, 8], "factionSwap": true, "palette": {".": null, "d": "#5a2f99", "k": "#1a1020", "l": "#c9a2ff", "s": "#e8d9b5", "t": "#b9a77f", "v": "#8a4fd8", "w": "#f4eee6"}, "shape": {"body": "small"},
      "frames": [
       [
         ".kkkkk.t..",
-        "kvlvvvk.t.",
-        "kdvdvdk.t.",
-        ".kdvdk..t.",
-        "..ksk...t.",
-        "..ksk...t.",
-        "..ksk...t.",
+        "kvlvvvk..t",
+        "kdvdvdk..t",
+        ".kdvdk...t",
+        "..kskssssw",
+        "..ksk....t",
+        "..ksk....t",
         "..ksk...t.",
         ".kk.kk.t.."
       ]
      ]},
-    {"id": "u-amanitaKnight", "w": 16, "h": 16, "anchor": [7, 15], "factionSwap": true, "palette": {".": null, "R": "#c8423a", "d": "#5a2f99", "e": "#120a16", "k": "#1a1020", "s": "#e8d9b5", "t": "#b9a77f", "v": "#8a4fd8", "w": "#f4eee6"}, "shape": {"body": "big", "mark": "blade", "markAt": [[10, 9]]},
+    {"id": "u-amanitaKnight", "w": 16, "h": 16, "anchor": [7, 15], "factionSwap": true, "palette": {".": null, "R": "#c8423a", "d": "#5a2f99", "e": "#120a16", "k": "#1a1020", "s": "#e8d9b5", "t": "#b9a77f", "v": "#8a4fd8", "w": "#f4eee6"}, "shape": {"body": "big"},
      "frames": [
       [
         ".....kkkkkk.....",
@@ -67,16 +67,16 @@
         "..kkkkk.kkkkk..."
       ]
      ]},
-    {"id": "u-hammercap", "w": 10, "h": 12, "anchor": [4, 11], "factionSwap": true, "palette": {".": null, "d": "#5a2f99", "e": "#120a16", "k": "#1a1020", "l": "#c9a2ff", "s": "#e8d9b5", "v": "#8a4fd8"}, "shape": {"body": "medium", "mark": "hammer", "markAt": [[4, 0]]},
+    {"id": "u-hammercap", "w": 10, "h": 12, "anchor": [4, 11], "factionSwap": true, "palette": {".": null, "d": "#5a2f99", "e": "#120a16", "h": "#7a5236", "k": "#1a1020", "l": "#c9a2ff", "m": "#8a8f99", "p": "#cfd3dc", "s": "#e8d9b5", "v": "#8a4fd8"}, "shape": {"body": "medium"},
      "frames": [
       [
-        "......kk..",
-        "......kk..",
-        "......kk..",
-        "......kk..",
-        "......kk..",
-        ".....kssk.",
-        "..kkkkssk.",
+        "....kkkkkk",
+        "....kppmmk",
+        "....kmmmmk",
+        "....kkhkkk",
+        ".....khk..",
+        "....kshk..",
+        "..kkkssk..",
         ".kvvlvvkk.",
         "kvlvvvvvdk",
         "kddddddddk",
@@ -84,48 +84,48 @@
         ".kk....kk."
       ]
      ]},
-    {"id": "u-burster", "w": 10, "h": 8, "anchor": [5, 7], "factionSwap": true, "palette": {".": null, "d": "#5a2f99", "k": "#1a1020", "l": "#c9a2ff", "v": "#8a4fd8", "w": "#f4eee6"}, "shape": {"body": "small", "mark": "area", "markAt": [[5, 2]]},
+    {"id": "u-burster", "w": 10, "h": 8, "anchor": [5, 7], "factionSwap": true, "palette": {".": null, "d": "#5a2f99", "k": "#1a1020", "l": "#c9a2ff", "v": "#8a4fd8", "w": "#f4eee6"}, "shape": {"body": "small"},
      "frames": [
       [
         "....kk....",
         "...kllk...",
         "..klwvvk..",
-        ".kvlvvvvk.",
+        ".kvlvvlvk.",
         "kvvvvvvvvk",
-        "kvvvvvvvdk",
+        "kvlvvvvvdk",
         ".kdvvvvdk.",
         "..kkkkkk.."
       ]
      ]},
-    {"id": "u-tender", "w": 14, "h": 9, "anchor": [5, 8], "factionSwap": true, "palette": {".": null, "G": "#3f9e68", "d": "#5a2f99", "e": "#120a16", "g": "#7be0a0", "k": "#1a1020", "l": "#c9a2ff", "s": "#e8d9b5", "v": "#8a4fd8", "w": "#f4eee6"}, "shape": {"body": "small", "mark": "heal", "markAt": [[9, 4]]},
+    {"id": "u-tender", "w": 12, "h": 9, "anchor": [5, 8], "factionSwap": true, "palette": {".": null, "G": "#3f9e68", "d": "#5a2f99", "e": "#120a16", "g": "#7be0a0", "k": "#1a1020", "l": "#c9a2ff", "s": "#e8d9b5", "v": "#8a4fd8", "w": "#f4eee6"}, "shape": {"body": "small"},
      "frames": [
       [
-        "....kkk.......",
-        "...kgggk......",
-        "...kgwgk......",
-        "kkkkgggkkkk...",
-        "kvlvkGkvvlvk..",
-        ".kddddddddk...",
-        "...kssssk.....",
-        "...ksesk......",
-        "..kk...kk....."
+        "....kkk.....",
+        "...kgggk....",
+        "...kgwgk....",
+        "kkkkgggkkkk.",
+        "kvlvkGkvvlvk",
+        ".kddddddddk.",
+        "...kssssk...",
+        "...ksesk....",
+        "..kk...kk..."
       ]
      ]},
-    {"id": "u-veilstalker", "w": 10, "h": 9, "anchor": [4, 8], "factionSwap": true, "palette": {".": null, "d": "#5a2f99", "e": "#120a16", "k": "#1a1020", "l": "#c9a2ff", "v": "#8a4fd8"}, "shape": {"body": "small", "mark": "spike", "markAt": [[5, 3]]},
+    {"id": "u-veilstalker", "w": 9, "h": 9, "anchor": [4, 8], "factionSwap": true, "palette": {".": null, "d": "#5a2f99", "e": "#120a16", "k": "#1a1020", "l": "#c9a2ff", "v": "#8a4fd8"}, "shape": {"body": "small"},
      "frames": [
       [
-        ".....kkk..",
-        "....kvvdk.",
-        "...kvlvdk.",
-        "..kvvvkk..",
-        ".kvvvkek..",
-        "kllvvkk...",
-        "klklkk....",
-        ".k.k.k....",
-        "..kk.kk..."
+        ".....kkk.",
+        "....kvvdk",
+        "...kvlvdk",
+        "..kvvvkk.",
+        ".kvvvkek.",
+        "kllvvkk..",
+        "klklkk...",
+        ".k.k.k...",
+        "..kk.kk.."
       ]
      ]},
-    {"id": "u-scythecap", "w": 15, "h": 12, "anchor": [4, 11], "factionSwap": true, "palette": {".": null, "d": "#5a2f99", "e": "#120a16", "k": "#1a1020", "l": "#c9a2ff", "s": "#e8d9b5", "v": "#8a4fd8"}, "shape": {"body": "medium", "mark": "blade", "markAt": [[7, 5]]},
+    {"id": "u-scythecap", "w": 15, "h": 12, "anchor": [4, 11], "factionSwap": true, "palette": {".": null, "d": "#5a2f99", "e": "#120a16", "k": "#1a1020", "l": "#c9a2ff", "s": "#e8d9b5", "v": "#8a4fd8"}, "shape": {"body": "medium"},
      "frames": [
       [
         "..kkkkk........",
@@ -142,72 +142,72 @@
         ".kkk.kkk......."
       ]
      ]},
-    {"id": "u-morelRunner", "w": 10, "h": 12, "anchor": [3, 11], "factionSwap": true, "palette": {".": null, "d": "#5a2f99", "e": "#120a16", "k": "#1a1020", "s": "#e8d9b5", "v": "#8a4fd8"}, "shape": {"body": "medium", "mark": "spike", "markAt": [[5, 4]]},
+    {"id": "u-morelRunner", "w": 9, "h": 12, "anchor": [3, 11], "factionSwap": true, "palette": {".": null, "d": "#5a2f99", "e": "#120a16", "k": "#1a1020", "s": "#e8d9b5", "v": "#8a4fd8"}, "shape": {"body": "medium"},
      "frames": [
       [
-        "...kk.....",
-        "..kdvk....",
-        "..kvdvk...",
-        ".kdvdvk...",
-        ".kvdvdvk..",
-        "kdvdvdvk..",
-        "kvdvdvdvk.",
-        ".kkkkkkk..",
-        "..ksek....",
-        "..k..k....",
-        ".k....k...",
-        "kk....kk.."
+        "...kk....",
+        "..kdvk...",
+        "..kvdvk..",
+        ".kdvdvk..",
+        ".kvdvdvk.",
+        "kdvdvdvk.",
+        "kvdvdvdvk",
+        ".kkkkkkk.",
+        "..ksek...",
+        "..k..k...",
+        ".k....k..",
+        "kk....kk."
       ]
      ]},
-    {"id": "u-rootbreaker", "w": 16, "h": 12, "anchor": [3, 11], "factionSwap": true, "palette": {".": null, "d": "#5a2f99", "e": "#120a16", "h": "#7a5236", "k": "#1a1020", "l": "#c9a2ff", "n": "#5c4330", "s": "#e8d9b5", "v": "#8a4fd8"}, "shape": {"body": "medium", "mark": "hammer", "markAt": [[11, 5]]},
+    {"id": "u-rootbreaker", "w": 16, "h": 12, "anchor": [3, 11], "factionSwap": true, "palette": {".": null, "d": "#5a2f99", "e": "#120a16", "h": "#7a5236", "k": "#1a1020", "l": "#c9a2ff", "n": "#5c4330", "s": "#e8d9b5", "v": "#8a4fd8"}, "shape": {"body": "medium"},
      "frames": [
       [
         "...kkkkk........",
         "..kvvvlvk.......",
-        ".kvlvvvvvk......",
-        "kvvvvvvvvvk.....",
-        "kdddddddddk.....",
-        ".kkkkkkkkkkkkk..",
-        "..ksekhhnhhhhhk.",
-        ".kssskhnhhhnhhk.",
-        ".kssskhhhnhhhhhk",
+        ".kvlvvvvvk..kk..",
+        "kvvvvvvvvvkkhhk.",
+        "kdddddddddkhkkhk",
+        ".kkkkkkkkkkhkhhk",
+        "..ksekhhnhhkhkhk",
+        ".kssskhnhhhnkhhk",
+        ".kssskhhhnhhhhnk",
         ".kssskkkkkkkkkk.",
         "..k..k..........",
         ".kk..kk........."
       ]
      ]},
-    {"id": "u-rhizomorph", "w": 14, "h": 12, "anchor": [5, 11], "factionSwap": true, "palette": {".": null, "d": "#5a2f99", "e": "#120a16", "h": "#7a5236", "k": "#1a1020", "l": "#c9a2ff", "n": "#5c4330", "v": "#8a4fd8"}, "shape": {"body": "medium", "mark": "blade", "markAt": [[9, 3]]},
+    {"id": "u-rhizomorph", "w": 12, "h": 12, "anchor": [5, 11], "factionSwap": true, "palette": {".": null, "d": "#5a2f99", "e": "#120a16", "h": "#7a5236", "k": "#1a1020", "l": "#c9a2ff", "n": "#5c4330", "v": "#8a4fd8", "w": "#f4eee6"}, "shape": {"body": "medium"},
      "frames": [
       [
-        ".....kkkkk....",
-        "....kvvvvlk...",
-        "...kvlvvvvvk..",
-        "...kvvekdddk..",
-        "...kvvvkkkk...",
-        "....kvvdk.....",
-        "....kvvdk.....",
-        "...kvvdk......",
-        "..kvvvdk......",
-        ".knkvdkknk....",
-        "knhhnnnhnnk...",
-        "kkkkkkkkkkk..."
+        ".....kkkk...",
+        "....kvvvlkk.",
+        "...kvlvvvvvk",
+        "...kvekkwkwk",
+        "...kvvkwkwkk",
+        "....kvvdkk..",
+        "....kvvdk...",
+        "...kvvdk....",
+        "..kvvvdk....",
+        ".knkvdkknk..",
+        "knhhnnnhnnk.",
+        "kkkkkkkkkkk."
       ]
      ]},
-    {"id": "u-driftling", "w": 10, "h": 9, "anchor": [4, 8], "factionSwap": true, "palette": {".": null, "d": "#5a2f99", "k": "#1a1020", "l": "#c9a2ff", "v": "#8a4fd8"}, "shape": {"body": "small", "mark": "blade", "markAt": [[5, 4]]},
+    {"id": "u-driftling", "w": 9, "h": 9, "anchor": [4, 8], "factionSwap": true, "palette": {".": null, "d": "#5a2f99", "k": "#1a1020", "l": "#c9a2ff", "v": "#8a4fd8"}, "shape": {"body": "small"},
      "frames": [
       [
-        "l.l.l.l.l.",
-        ".l.lll.l..",
-        "..lllll...",
-        "....l.....",
-        "...kkkk...",
-        "..kvlvvk..",
-        "..kvvvdk..",
-        "...kvdk...",
-        "....kk...."
+        "l.l.l.l.l",
+        ".l.lll.l.",
+        "..lllll..",
+        "....l....",
+        "...kkkk..",
+        "..kvlvvk.",
+        "..kvvvdk.",
+        "...kvdk..",
+        "....kk..."
       ]
      ]},
-    {"id": "e-puffballMortar", "w": 24, "h": 22, "anchor": [12, 11], "factionSwap": true, "palette": {".": null, "d": "#5a2f99", "e": "#120a16", "h": "#7a5236", "j": "#4e3322", "k": "#1a1020", "l": "#c9a2ff", "n": "#5c4330", "v": "#8a4fd8", "w": "#f4eee6"}, "shape": {"body": "structure", "mark": "hammer", "accent": "splash", "markAt": [[11, 8]], "accentAt": [[17, 3]]},
+    {"id": "e-puffballMortar", "w": 24, "h": 22, "anchor": [12, 11], "factionSwap": true, "palette": {".": null, "d": "#5a2f99", "e": "#120a16", "h": "#7a5236", "j": "#4e3322", "k": "#1a1020", "l": "#c9a2ff", "n": "#5c4330", "v": "#8a4fd8", "w": "#f4eee6"}, "shape": {"body": "structure"},
      "frames": [
       [
         "..............kkkk......",

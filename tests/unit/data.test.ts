@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ContentError, loadContent } from '../../src/data/registry.ts';
-import type { SpriteDef } from '../../src/data/schema.ts';
-import { bodyOf, glyphBox, markOf, shapeProblems } from '../../src/data/shapes.ts';
+import { bodyOf, shapeProblems } from '../../src/data/shapes.ts';
 import { protoContent, readRawContent } from '../../tools/lib/content.ts';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -99,21 +98,15 @@ describe('data', () => {
   });
 
   // The shape language (SPEC §5.8, §14.3, §16 R4 step 1; R4a, T018): the registry holds each unit's sprite to
-  // the body its armor gives it, the mark §5.8's rule gives it, and its sheet's bands.
+  // the body its armor gives it and its sheet's bands. Units carry no weapon mark (§5.8, 2026-11-01; T077).
   describe('unit shapes', () => {
     const BANDS = { small: [8, 9], medium: [11, 12], big: [15, 16] };
-    const glyph = (mark: string) => (raw['sprites/marks.json'] as Loose).sprites.find((s: Loose) => s.id === `m-${mark}`) as SpriteDef;
-    /**
-     * A raw unit sprite drawn to a shape: three frames of a body `bodyH` px tall and 6 wide, with its mark's
-     * glyph on the body's front column, mid-height.
-     */
-    function shaped(id: string, body: string, mark: string, bodyH: number): Loose {
-      const g = glyphBox(glyph(mark))!;
-      const w = 7 + g.w, rows = Array.from({ length: bodyH }, () => 'vvvvvv'.padEnd(w, '.'));
-      const at = [5 - g.x, Math.floor((bodyH - g.h) / 2) - g.y];
+    /** A raw unit sprite drawn to a shape: three frames of a body `bodyH` px tall and 6 wide. */
+    function shaped(id: string, body: string, bodyH: number): Loose {
+      const rows = Array.from({ length: bodyH }, () => 'vvvvvv.');
       return {
-        id, w, h: bodyH, anchor: [3, bodyH - 1], factionSwap: true, palette: { '.': null, k: '#1a1020', v: '#8a4fd8' },
-        frames: [rows, rows, rows], shape: { body, mark, markAt: [at, at, at] },
+        id, w: 7, h: bodyH, anchor: [3, bodyH - 1], factionSwap: true, palette: { '.': null, k: '#1a1020', v: '#8a4fd8' },
+        frames: [rows, rows, rows], shape: { body },
       };
     }
     /** The raw content with that sprite in place of the one with its id, and the bands on its sheet. */
@@ -126,47 +119,34 @@ describe('data', () => {
     }
 
     it('accepts a unit drawn to its shape, and keeps its sheet and the bands', () => {
-      const c = loadContent(withSprite(shaped('u-amanitaKnight', 'big', 'blade', 15)));
-      expect(c.sprites['u-amanitaKnight']!.shape).toMatchObject({ body: 'big', mark: 'blade' });
+      const c = loadContent(withSprite(shaped('u-amanitaKnight', 'big', 15)));
+      expect(c.sprites['u-amanitaKnight']!.shape).toEqual({ body: 'big' });
       expect(c.spriteSheet['u-amanitaKnight']).toBe('units');
       expect(c.bands.units).toEqual(BANDS);
     });
 
     it('rejects a heavy unit drawn small', () => {
-      expect(() => loadContent(withSprite(shaped('u-amanitaKnight', 'small', 'blade', 8))))
+      expect(() => loadContent(withSprite(shaped('u-amanitaKnight', 'small', 8))))
         .toThrow(/unit amanitaKnight: sprite u-amanitaKnight has a small body, but heavy armor draws a big one/);
-      expect(() => loadContent(withSprite(shaped('u-amanitaKnight', 'big', 'blade', 11))))
+      expect(() => loadContent(withSprite(shaped('u-amanitaKnight', 'big', 11))))
         .toThrow(/unit amanitaKnight: sprite u-amanitaKnight frame 0: big body out of band \(11 px tall, the band is 15–16\)/);
     });
 
-    it('rejects a crush unit with a blade', () => {
-      expect(() => loadContent(withSprite(shaped('u-hammercap', 'medium', 'blade', 11))))
-        .toThrow(/unit hammercap: sprite u-hammercap carries the blade mark, but its unit's mark is the hammer/);
-    });
-
-    it('rejects a shape mark with no m- glyph', () => {
-      const r = withSprite(shaped('u-capguard', 'medium', 'blade', 11));
-      r['sprites/marks.json'].sprites = r['sprites/marks.json'].sprites.filter((s: Loose) => s.id !== 'm-blade');
-      expect(() => loadContent(r)).toThrow(/unit capguard: sprite u-capguard: no m-blade glyph for its blade mark/);
-    });
-
-    it('rejects a mark point missing for a frame', () => {
-      const s = shaped('u-capguard', 'medium', 'blade', 11);
-      s.shape.markAt.pop();
-      expect(() => loadContent(withSprite(s))).toThrow(/sprite u-capguard: markAt has 2 entries for 3 frames/);
+    it('rejects a weapon mark in a shape block, since units carry none', () => {
+      const s = shaped('u-hammercap', 'medium', 11);
+      s.shape.mark = 'hammer';
+      expect(() => loadContent(withSprite(s))).toThrow(/shape: Unrecognized key: "mark"/);
     });
 
     it('every sprite that declares a shape passes, in the default content and under ?proto=rework', () => {
       for (const c of [loadContent(raw), protoContent('rework')]) {
         for (const id of c.spriteOrder) {
           const s = c.sprites[id]!;
-          if (s.shape) expect(shapeProblems(s, c.bands[c.spriteSheet[id]!], c.sprites), id).toEqual([]);
+          if (s.shape) expect(shapeProblems(s, c.bands[c.spriteSheet[id]!]), id).toEqual([]);
         }
         for (const u of Object.values(c.units)) {
           const shape = c.sprites[u.sprite]!.shape;
-          if (!shape) continue;
-          expect(shape.body, u.id).toBe(bodyOf(u.armor));
-          expect(shape.mark, u.id).toBe(markOf(u));
+          if (shape) expect(shape.body, u.id).toBe(bodyOf(u.armor));
         }
       }
     });

@@ -1,11 +1,9 @@
 // The atlas's bake as pure functions (SPEC §13.6, §14.3), touching no DOM: a sprite frame's pixels after
-// the faction swap, with its shape's mark glyphs baked on, then the mirror; an Elder's gold rim around a unit
-// frame; and the atlas's shelf-packed layout. The atlas (src/render/atlas.ts) paints them onto its canvas, and
-// unit tests and the sprite-sheet tool read them without one.
+// the faction swap and the mirror, an Elder's gold rim around a unit frame, and the atlas's shelf-packed
+// layout. The atlas (src/render/atlas.ts) paints them onto its canvas, and unit tests and the sprite-sheet
+// tool read them without one.
 import type { Content } from '../data/registry.ts';
 import type { SpriteDef } from '../data/schema.ts';
-import { placedGlyphs } from '../data/shapes.ts';
-import type { Glyphs } from '../data/shapes.ts';
 
 export type Faction = 'velvet-bloom' | 'gray-rot';
 /** A baked frame's place in the atlas, and its anchor (a unit's foot), mirrored with the frame. */
@@ -35,47 +33,35 @@ function hexToRgb(hex: string): [number, number, number] {
 
 /**
  * One frame of a sprite as pixels. `swap` is a faction's palette (the Gray Rot's), applied to the keys it
- * covers when the sprite is `factionSwap`. A sprite with a shape (§14.3) then gets its mark's glyph baked on
- * at `shape.markAt[frame]` and its accent's at `shape.accentAt[frame]`, from `glyphs` (`m-<mark>`), in the
- * glyph's own colours: marks aren't swapped, so both sides draw the same weapon (R4-Q2). Last, `flip` mirrors
- * the whole frame, as enemy units face left. Pixels outside the sprite's box are dropped.
+ * covers when the sprite is `factionSwap`; `flip` mirrors the frame, as enemy units face left.
  */
-export function framePixels(sprite: SpriteDef, frame: number, opts: { swap?: Readonly<Record<string, string>>; flip?: boolean; glyphs?: Glyphs } = {}): FramePixels {
+export function framePixels(sprite: SpriteDef, frame: number, opts: { swap?: Readonly<Record<string, string>>; flip?: boolean } = {}): FramePixels {
   const { w, h } = sprite;
   const swap = sprite.factionSwap ? opts.swap : undefined;
+  const rows = sprite.frames[frame]!;
   const px = new Uint8ClampedArray(w * h * 4);
-  const paint = (rows: readonly string[], palette: SpriteDef['palette'], dx: number, dy: number, keys?: Readonly<Record<string, string>>) => {
-    rows.forEach((row, ry) => {
-      const y = dy + ry;
-      if (y < 0 || y >= h) return;
-      for (let rx = 0; rx < row.length; rx++) {
-        const x = dx + rx, ch = row[rx]!;
-        let col = palette[ch];
-        if (keys?.[ch]) col = keys[ch];
-        if (!col || x < 0 || x >= w) continue;
-        const [r, g, b] = hexToRgb(col);
-        const o = (y * w + (opts.flip ? w - 1 - x : x)) * 4;
-        px[o] = r; px[o + 1] = g; px[o + 2] = b; px[o + 3] = 255;
-      }
-    });
-  };
-  paint(sprite.frames[frame]!, sprite.palette, 0, 0, swap);
-  for (const g of placedGlyphs(sprite, frame)) {
-    const glyph = opts.glyphs?.[g.id];
-    if (!glyph) throw new Error(`framePixels: ${sprite.id} frame ${frame} needs the ${g.id} glyph`);
-    paint(glyph.frames[0]!, glyph.palette, g.x, g.y);
+  for (let y = 0; y < h; y++) {
+    const row = rows[y]!;
+    for (let x = 0; x < w; x++) {
+      const ch = row[x]!;
+      let col = sprite.palette[ch];
+      if (swap?.[ch]) col = swap[ch];
+      if (!col) continue;
+      const [r, g, b] = hexToRgb(col);
+      const o = (y * w + (opts.flip ? w - 1 - x : x)) * 4;
+      px[o] = r; px[o + 1] = g; px[o + 2] = b; px[o + 3] = 255;
+    }
   }
   return { w, h, px };
 }
 
 /**
- * An Elder's gold rim around a unit frame (SPEC §5.8, §14.3): the 1-px outline of the baked frame's opaque
- * mask, mark included (`glyphs`, as for `framePixels`), every clear pixel beside it on a side, in a box one
- * pixel bigger all round, with the anchor moved by (+1, +1). It mirrors with `flip`, and the mask is the same
- * for both factions.
+ * An Elder's gold rim around a unit frame (SPEC §5.8, §14.3): the 1-px outline of the frame's opaque mask,
+ * every clear pixel beside it on a side, in a box one pixel bigger all round, with the anchor moved by
+ * (+1, +1). It mirrors with `flip`, and the mask is the same for both factions.
  */
-export function rimPixels(sprite: SpriteDef, frame: number, flip = false, glyphs?: Glyphs): FramePixels & { ax: number; ay: number } {
-  const f = framePixels(sprite, frame, { flip, glyphs });
+export function rimPixels(sprite: SpriteDef, frame: number, flip = false): FramePixels & { ax: number; ay: number } {
+  const f = framePixels(sprite, frame, { flip });
   const opaque = (x: number, y: number) => x >= 0 && y >= 0 && x < f.w && y < f.h && f.px[(y * f.w + x) * 4 + 3]! > 0;
   const w = f.w + 2, h = f.h + 2;
   const px = new Uint8ClampedArray(w * h * 4);
