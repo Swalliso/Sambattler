@@ -224,13 +224,13 @@ From another file, cite this file's tasks as RB/T0nn.
 
 ## Phase 5: Polish and verification, records-1
 
-- [ ] T020 Run `npm run verify` (`tools/verify.ts`) and `npm run test:browser`, and end the PR's last commit with a summary of their output (§16's rules for every milestone, §15.1)
-- [ ] T021 Take screenshots `rb/summary` (`scene=summary&seed=7&autoplay=run&test=1`) and `rb/underroot` (`scene=underroot&test=1`) with `tools/screenshot.ts`, and read the PNGs (§15.6)
+- [x] T020 Run `npm run verify` (`tools/verify.ts`) and `npm run test:browser`, and end the PR's last commit with a summary of their output (§16's rules for every milestone, §15.1)
+- [x] T021 Take screenshots `rb/summary` (`scene=summary&seed=7&autoplay=run&test=1`) and `rb/underroot` (`scene=underroot&test=1`) with `tools/screenshot.ts`, and read the PNGs (§15.6)
   - Each passes its Node-against-browser hash assertion, so the run hash didn't move.
   - Run it back is the primary button with its keycaps.
   - The footer and the banner fit 1280×720.
   - The Underroot looks as before.
-- [ ] T022 Update `docs/status.md` (records-1 landed, Run it back on the dev site) and the As built section of `docs/run-it-back-plan.md` (§16 M6)
+- [x] T022 Update `docs/status.md` (records-1 landed, Run it back on the dev site) and the As built section of `docs/run-it-back-plan.md` (§16 M6)
 - [ ] T023 [USER] records-1 check on the dev site: the user finishes a run, uses Run it back, reloads, and sees the Underroot remember the setup. Play time comes with records-2. Notes go in `docs/playtest-feedback.md`, newest first (§16 M6, §8.1)
 
 ## Phase 6: Setup and foundational, records-2 (after R2b)
