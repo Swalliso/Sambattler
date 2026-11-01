@@ -5,6 +5,7 @@
 // New run goes through the Underroot (`scene=underroot`), where the commander and bans are chosen.
 // `scene=sounds` is the sound board, a tool for auditioning data/sounds.json.
 import '../ui/styles.css';
+import { loadRecords, runItBackSetup, setLastSetup, updateRecords } from '../meta/index.ts';
 import { bakeAtlas } from '../render/atlas.ts';
 import { createRun, currentRow, loadRun, MemoryStorage, runForScene } from '../run/index.ts';
 import type { RunState } from '../run/index.ts';
@@ -165,7 +166,11 @@ function openTitle(content: Content, atlas: ReturnType<typeof bakeAtlas>, params
     if (fresh) ctl.start(run);
     else ctl.show();
   };
-  /** The Underroot (SPEC §8.1): choose a commander and bans, then Begin run; Back returns to the title. */
+  /**
+   * The Underroot (SPEC §8.1): choose a commander and bans, then Begin run; Back returns to the title. Normal
+   * play opens it on the setup last begun and remembers the new one (Run it back's records-1); seeded, test
+   * and prototype pages open it on the default.
+   */
   const openSetup = (tab: UnderrootTab = 'commanders') => sporeWipe(() => {
     ctl?.stop();
     ctl = null;
@@ -177,10 +182,12 @@ function openTitle(content: Content, atlas: ReturnType<typeof bakeAtlas>, params
     const tip = settings.tips && !tipsShown().has(UNDERROOT_TIP);
     if (tip) markTipShown(UNDERROOT_TIP);
     const screen = underrootScreen(content, atlas, {
-      tab, tip, choice: { commander: DEFAULT_COMMANDER, bans: [] },
+      tab, tip, choice: records ? runItBackSetup(content, loadRecords(records).lastSetup) : { commander: DEFAULT_COMMANDER, bans: [] },
       begin: (choice) => {
         const seed = params.seed ?? randomSeed();
-        play(createRun(content, { seed, commander: choice.commander, bans: choice.bans }), true);
+        const run = createRun(content, { seed, commander: choice.commander, bans: choice.bans });
+        if (records) updateRecords(records, (rec) => setLastSetup(rec, choice));
+        play(run, true);
       },
       back: show,
     });

@@ -1,7 +1,8 @@
 // The Underroot (SPEC §8.1, §10.5): run setup before a run starts. Milestone 5 has two tabs: the
 // commanders (all three selectable until M6 brings unlocks), each card showing its passive, its power
 // and its starter kit; and bans, up to 3 buildings from the shared pool (a commander's core can't be
-// banned). Begin run hands the choice back; nothing is saved until the run exists.
+// banned). Begin run hands the choice back. In normal play the app remembers it, and opens this screen
+// on the setup last begun (Run it back's records-1).
 import type { Content } from '../../data/registry.ts';
 import type { Atlas } from '../../render/atlas.ts';
 import { spriteToCanvas } from '../../render/atlas.ts';

@@ -207,12 +207,16 @@ From another file, cite this file's tasks as RB/T0nn.
 
 **Goal:** New run opens the Underroot on the last commander and bans, after a reload too. **Independent test:** T013's persisted-page case.
 
-- [ ] T013 [US2] Add the remembered-setup cases to `tests/browser/records.test.ts` (§16 M6, §8.1)
+- [x] T013 [US2] Add the remembered-setup cases to `tests/browser/records.test.ts` (§16 M6, §8.1)
   - On the game server, open `/?scene=underroot&debug=1`, pick Armilla, ban the Scythecap Grove, Begin, then reload `/?scene=underroot&debug=1`: Armilla's `.commander-card` has `.on`, and `[data-ban="scythecapGrove"]` is pressed.
   - Seed a profile whose `lastSetup` names an unknown commander: the Underroot opens on Vesper with no bans.
   - `/?scene=underroot&seed=5&test=1` never writes the profile key.
   - On the `develop`-mode server, `/?proto=${PROTO}&scene=underroot` writes no `dev/spore-sprawl/profile/v1` (RB-Q2), with `PROTO` from `tests/browser/serve.ts` (T005).
-- [ ] T014 [US2] Remember the setup in `src/app/main.ts` (§8.1, §13.8)
+  - As built (S2), a little wider than the lines above:
+    - the reload case runs on the dev site too, where the setup is remembered under `dev/spore-sprawl/profile/v1` and no other profile key is written;
+    - the unknown commander's seeded bans drop as well: `rootbreakerDen` is in Vesper's core, and `nothing` is outside the roster. Opening the Underroot leaves the record as it was;
+    - the seeded test page and the prototype page start from a stored profile naming Armilla, and open on Vesper all the same: they neither read nor write it (the plan's call 5).
+- [x] T014 [US2] Remember the setup in `src/app/main.ts` (§8.1, §13.8)
   - `openSetup` opens `underrootScreen` with `choice: runItBackSetup(content, loadRecords(records).lastSetup)` when `records` is set, else today's `{ commander: DEFAULT_COMMANDER, bans: [] }`.
   - Its `begin` saves `lastSetup` through `updateRecords` before `play()`.
 
