@@ -8,13 +8,17 @@ replaces. None of it is open work, including headings that say "Open:". From mil
 entries measure or tune v2's round battle (SPEC §11, §12). "The backlog" in the entries below means
 v1's, now [archived](../docs/archive/v1/balance-backlog.md).
 
-## R4a-S1: the lineups (2026-11-01)
+## R4a-S1: the lineups and the pip (2026-11-01)
 
 **Display only, no golden moved.** It rests on R4a's plan, agreed by the user on 2026-11-01 (R4/T007,
-`docs/r4a-plan.md`). No number or rule changed, and no golden replays these scenarios.
+`docs/r4a-plan.md`), with only Elders rimmed (R4-Q3). No number or rule changed: sprites aren't battle state, and no
+golden replays these scenarios.
 - **The lineups** (R4/T009): `data/scenarios/unit-lineup.json` on Bogwater Hollow and `unit-lineup-twin.json` on
   Twin Roots place every default-data unit at tiers 1, 2 and 3 on both sides, for R4a's screenshots (SPEC §16 R4
   step 2). They replace `elder-showcase.json`, which is deleted.
+- **The pip** (R4/T014): `i-pip` in `data/sprites/ui.json`, a 3 × 3 gold `#f0c85a` core in a 1-px dark `#120a16`
+  outline (5 × 5, its corners clear), with no faction swap. One marks a Bloomed unit and two an Elder, on the field
+  and in the inspect panel, in place of v1's bigger merged sprites (SPEC §5.8, §10.4). It's in `REQUIRED_SPRITES`.
 
 ## Combat rework: flyers take rule C (2026-10-31)
 

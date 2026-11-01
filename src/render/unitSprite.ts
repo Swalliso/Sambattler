@@ -106,7 +106,7 @@ export function drawUnitSprite(g: CanvasRenderingContext2D, atlas: Atlas, o: Uni
   const r = atlas.get(o.sprite, o.faction, o.frame, o.flip);
   if (!r) { g.globalAlpha = 1; return; }
   const bob = o.flying && !o.calm ? Math.floor(o.time / 320 + o.id) % 2 : 0;
-  const L = unitLayout(r, o.x, o.y, o.tier, { flying: o.flying, bob, damaged: o.hpFrac < 1 });
+  const L = unitLayout(r, o.x, o.y, o.tier, { flying: o.flying, bob, damaged: o.hpFrac < 1, pip: atlas.get('i-pip', 'velvet-bloom', 0) });
   const { body } = L;
   if (o.assist) teamMark(g, Math.round(o.x), Math.round(o.y), body.w, o.side);
   if (o.flying) flyerShadow(g, o.x, o.y, body.w);
@@ -185,14 +185,14 @@ export function mound(g: CanvasRenderingContext2D, cx: number, footY: number, si
   }
 }
 
-/** Tier insignia: one pip for Bloomed, two for Elder, centred on `cx` with their tops at `y`. */
-export function drawPips(g: CanvasRenderingContext2D, _atlas: Atlas, cx: number, y: number, tier: Tier): void {
-  for (const p of pipBoxes(cx, y, tier)) {
-    g.fillStyle = INK_DEEP;
-    g.fillRect(p.x, p.y + 1, p.w, 4);
-    g.fillStyle = '#f0c85a';
-    g.fillRect(p.x + 1, p.y + 2, 3, 2);
-  }
+/**
+ * Tier insignia from the `ui` sheet (`i-pip`, a gold core in a dark outline): one for Bloomed, two for
+ * Elder, centred on `cx` with their tops at `y`. R2a's merge preview draws them too.
+ */
+export function drawPips(g: CanvasRenderingContext2D, atlas: Atlas, cx: number, y: number, tier: Tier): void {
+  const pip = atlas.get('i-pip', 'velvet-bloom', 0);
+  if (!pip) return;
+  for (const p of pipBoxes(cx, y, tier, pip)) g.drawImage(atlas.canvas as CanvasImageSource, pip.x, pip.y, pip.w, pip.h, p.x, p.y, pip.w, pip.h);
 }
 
 /** A slow pulsing halo under an Elder's feet. */

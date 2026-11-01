@@ -201,7 +201,7 @@ This list was drafted on 2026-11-01 from SPEC v2 and `docs/tasks/spec-analysis.m
   - `unitLayout` gives an Elder its rim box under the sprite, and a Bloomed unit none.
   - `tests/browser/inspect.test.ts`: an Elder's Tier row shows two `i-pip` canvases and no ✦.
 - [x] T013 [US1] Add `unitLayout` to `src/render/unitSprite.ts`. Remove `TIER_SCALE` there and from `src/render/renderer.ts` (`drawKnits`' head height at :675 takes the sprite region's own height), so every tier draws at its sprite's size (§5.8, §10.4, §13.6)
-- [ ] T014 [US1] Add `i-pip`, a 3×3 gold `#f0c85a` core in a 1-px dark `#120a16` outline (5×5), to `data/sprites/ui.json`, and add it to `REQUIRED_SPRITES` in `src/data/registry.ts:53`. `drawPips` in `src/render/unitSprite.ts` stacks it from the `ui` sheet, replacing `pips()`'s `fillRect` (`renderer.ts:720-728`) (§13.6, §14.3) ⛔ R4-Q3
+- [x] T014 [US1] Add `i-pip`, a 3×3 gold `#f0c85a` core in a 1-px dark `#120a16` outline (5×5), to `data/sprites/ui.json`, and add it to `REQUIRED_SPRITES` in `src/data/registry.ts:53`. `drawPips` in `src/render/unitSprite.ts` stacks it from the `ui` sheet, replacing `pips()`'s `fillRect` (`renderer.ts:720-728`) (§13.6, §14.3) ⛔ R4-Q3
 - [ ] T015 [US1] Bake the Elder rim: add a pure `rimPixels` to `src/render/compose.ts` and rim jobs to its `atlasLayout`, bake them in `src/render/atlas.ts`, and draw the rim under an Elder's sprite in `drawUnitSprite` in `src/render/unitSprite.ts` (§5.8, §10.4, §13.6) ⛔ R4-Q3
   - For every `u-` sprite frame and flip, a 1-px gold `#f0c85a` outline of its mask, (w + 2) × (h + 2), one bake for both factions. Bloomed units get no rim (call 6).
   - Add `atlas.rim(id, frame, flip)`, keep `elderAura`, and check the atlas still packs in its 1024-wide sheet.
