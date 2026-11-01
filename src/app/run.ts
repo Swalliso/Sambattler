@@ -46,6 +46,8 @@ export interface RunEnv {
   storage: Storage;
   /** False for seeded and test runs: nothing is written to storage. */
   persist: boolean;
+  /** Where the profile is kept (SPEC §9.7): normal play only. Null for seeded, test and prototype runs, which write no records (RB-Q2). */
+  records: Storage | null;
   debug: boolean;
   /** Ambient motion holds still (`?test=1`), so screenshots and browser tests are stable. */
   still: boolean;

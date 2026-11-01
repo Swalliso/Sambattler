@@ -165,7 +165,7 @@ From another file, cite this file's tasks as RB/T0nn.
   - Pure: no `window`, `Date` or `localStorage`; the caller passes the `Storage`.
   - Bring SPEC §13.2's line on when `src/meta` arrives, and §13.4's `meta/` line, up to date with `records.ts` and `index.ts`, since §13.4 follows the code (added at S0).
   - Make T003 and T004 pass.
-- [ ] T007 Give the app its profile storage in `src/app/run.ts` and `src/app/main.ts` (§9.7, §13.8) ⛔ RB-Q2
+- [x] T007 Give the app its profile storage in `src/app/run.ts` and `src/app/main.ts` (§9.7, §13.8) ⛔ RB-Q2
   - `RunEnv` gains `records: Storage | null`.
   - `openTitle()` and `startRun()` in `src/app/main.ts` pass `new BrowserStorage('')` when `persist` is true and `params.proto` is null, else `null`.
   - Nothing writes it yet: T011 saves `lastSetup` from Run it back, and T014 from the Underroot. Run recording is records-2's (T042, T043).
