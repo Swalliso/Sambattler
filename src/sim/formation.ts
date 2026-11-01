@@ -4,8 +4,9 @@
 // (§13.3 rule 2), so the same colony always gives the same formation and a preview can't differ from
 // the clash. R1's clash check (`tools/lib/clash.ts`) calls them on its armies. R2a's `formationOf` maps
 // plots to these slots, and it, `mergePreview` and the arrival call these functions unchanged (§13.4,
-// §14.6). `findTrios` copies the detection rule of `detectTrios` in `systems/merging.ts`, which stays as
-// it is; tests/unit/formation.test.ts checks that the two agree.
+// §14.6). `findTrios` keeps the detection rule of `detectTrios` in `systems/merging.ts` but breaks exact
+// ties by key, where `detectTrios`, which stays as it is, leaves them to floating-point rounding;
+// tests/unit/formation.test.ts checks that the two agree on the sim's own cases.
 import type { Side, Tier } from './state.ts';
 
 /** A field's geometry: its width in tiles, its lanes' tile rows, and the tiles between the two front ranks. */
@@ -124,8 +125,9 @@ export interface MusterOpts {
  * One pass of merging's detection rule (§5.6), as `detectTrios` runs it. Per side, walk the eligible
  * units in key order. Each unit not yet reserved takes the two nearest unreserved units of its type,
  * tier and lane within `radius` (squared centre distance ≤ radius², ties to the lower key), and the
- * three are reserved. Returns each trio's keys ascending, the trios in order of their lowest key: the
- * order `resolveKnits` completes knits in.
+ * three are reserved. A tie is exact: squared distances within `TIE` of each other are equal, so the same
+ * colony musters the same on both sides of the field. Returns each trio's keys ascending, the trios in
+ * order of their lowest key: the order `resolveKnits` completes knits in.
  */
 export function findTrios(units: readonly MusterUnit[], radius: number): Trio[] {
   return walk([...units].sort(byKey), radius).map(keysOf);
@@ -157,6 +159,14 @@ export function musterKnits(units: readonly MusterUnit[], opts: MusterOpts): { p
   return { passes, units: list };
 }
 
+/**
+ * Squared distances closer than this are a tie (§5.6: ties go to the lower key). §4.6's grid stands many
+ * units at exactly equal distances, and the two sides' mirrored positions round differently (13 − 1/3
+ * against 19 + 1/3), so strict comparisons alone sent ties different ways by seat (R1/T053). Rounding
+ * moves a squared distance by about 1e-14; two different distances on the grid differ by over 1e-4.
+ */
+const TIE = 1e-9;
+
 /** `findTrios` on units already in key order, returning the trios' units. */
 function walk(units: readonly MusterUnit[], radius: number): MusterUnit[][] {
   const r2 = radius * radius;
@@ -165,7 +175,8 @@ function walk(units: readonly MusterUnit[], radius: number): MusterUnit[][] {
   for (let i = 0; i < units.length; i++) {
     const u = units[i]!;
     if (reserved[i] || !canKnit(u)) continue;
-    // the two nearest unreserved matches; scanning in key order with strict < sends ties to the lower key
+    // the two nearest unreserved matches; scanning in key order, a match must be nearer by more than TIE
+    // to displace one found earlier, so ties go to the lower key
     let a = -1, b = -1, da = Infinity, db = Infinity;
     for (let j = 0; j < units.length; j++) {
       if (j === i || reserved[j]) continue;
@@ -173,9 +184,9 @@ function walk(units: readonly MusterUnit[], radius: number): MusterUnit[][] {
       if (!canKnit(v) || v.side !== u.side || v.unitId !== u.unitId || v.tier !== u.tier || v.lane !== u.lane) continue;
       const dx = v.x - u.x, dy = v.y - u.y;
       const d = dx * dx + dy * dy;
-      if (d > r2) continue;
-      if (d < da) { b = a; db = da; a = j; da = d; }
-      else if (d < db) { b = j; db = d; }
+      if (d > r2 + TIE) continue;
+      if (d < da - TIE) { b = a; db = da; a = j; da = d; }
+      else if (d < db - TIE) { b = j; db = d; }
     }
     if (b < 0) continue;
     reserved[i] = 1; reserved[a] = 1; reserved[b] = 1;

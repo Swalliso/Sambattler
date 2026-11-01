@@ -282,6 +282,33 @@ describe('the muster: squads knit in place, to a fixed point (SPEC §5.6)', () =
     expect(findTrios(sporelings([10, 4], [10.5, 4], [9.5, 4], [10, 4.4]), 1.5)).toEqual([[0, 1, 3]]);
   });
 
+  it('musters a colony the same on both sides: a tie goes by key, however the positions round', () => {
+    // Five Burrows on one lane, as mono Sporeling plants them at 600 gold: front files 1–4, then back
+    // file 2. The two sides' grids mirror, so every distance is the same on both, but their positions
+    // round differently (13 − 1/3 against 19 + 1/3), which once sent ties different ways by seat (R1 S3).
+    const colony = (side: Side): MusterUnit[] => {
+      const slots = formationBox(flat, side, 2);
+      return records(([[0, 1], [0, 2], [0, 3], [0, 4], [1, 2]] as const).flatMap(([rank, file]) => squadAt(side, at(slots, 0, rank, file), 8, 'sporeling', file)));
+    };
+    const player = musterKnits(colony('player'), optsOn(flat, 40));
+    const general = musterKnits(colony('enemy'), optsOn(flat, 40));
+    expect(fielded(player.units)).toEqual({ elders: 3, bloomed: 4, base: 1 });
+    expect(general.passes).toEqual(player.passes);
+    expect(general.units).toHaveLength(player.units.length);
+    general.units.forEach((u, i) => {
+      const p = player.units[i]!;
+      expect([u.key, u.tier]).toEqual([p.key, p.tier]);
+      expect(u.x).toBeCloseTo(flat.width - p.x, 9);
+      expect(u.y).toBeCloseTo(p.y, 9);
+    });
+    // Scaled by 27, every coordinate is a whole number (the arrival's thirds, a Bloomed unit's ninths), so
+    // every squared distance is exact: the walk gives the same passes
+    const exact = colony('player').map((u) => ({ ...u, x: Math.round(27 * u.x), y: Math.round(27 * u.y) }));
+    expect(musterKnits(exact, {
+      ...optsOn(flat, 40, 27 * 1.5), radiusOf: (id, tier) => 27 * radiusOf(id, tier), lanes: [{ top: 0, bottom: 27 * 8 - 1 }], width: 27 * flat.width,
+    }).passes).toEqual(player.passes);
+  });
+
   it('gives a merged unit the next key, above every other, and its lowest-key parent\'s source and toggle', () => {
     const units = records([
       { side: 'player', lane: 0, unitId: 'sporeling', x: 12, y: 3, source: 9 },
