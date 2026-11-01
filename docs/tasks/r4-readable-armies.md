@@ -84,7 +84,7 @@ This list was drafted on 2026-11-01 from SPEC v2 and `docs/tasks/spec-analysis.m
   - `tools/sprite-sheet.ts` and `tools/lib/cvd.ts`;
   - `tests/unit/unitSprite.test.ts` and `tests/unit/shapes.test.ts`;
   - `docs/r4a-silhouettes.json`, a draft sheet that T032 deletes.
-- Changed in R4a: `src/render/renderer.ts`, `src/render/atlas.ts`, `src/render/assistPreview.ts`, `src/data/schema.ts`, `src/data/registry.ts`, `data/sprites/units.json` (redrawn), `data/sprites/buildings.json`, `data/sprites/ui.json`, `data/factions/gray-rot/faction.json`, `src/ui/mergeHints.ts`, `src/ui/inspect.ts`, `src/ui/icons.ts`, `tools/screenshot.ts`, `package.json`, `tests/unit/data.test.ts`, `tests/unit/contrast.test.ts`, `tests/browser/inspect.test.ts`.
+- Changed in R4a: `src/render/renderer.ts`, `src/render/atlas.ts`, `src/render/assistPreview.ts`, `src/data/schema.ts`, `src/data/registry.ts`, `data/sprites/units.json` (redrawn), `data/sprites/buildings.json`, `data/sprites/ui.json`, `data/factions/gray-rot/faction.json`, `src/ui/mergeHints.ts`, `src/ui/inspect.ts`, `src/ui/icons.ts`, `src/ui/styles.css` (the pips' size), `src/app/battleView.ts` (the inspect panel's atlas), `tools/screenshot.ts`, `package.json`, `tests/unit/data.test.ts`, `tests/unit/contrast.test.ts`, `tests/browser/inspect.test.ts`.
 - Retired in R4a: `TIER_SCALE`, `TIER_PIPS` and `data/scenarios/elder-showcase.json`.
 - New in R4b: `shapeClass`, `squadMarks` and `cardMarks`, added beside R2a/T084's `matchupClass` in the module that defines it; `tests/unit/matchups.test.ts`, `tests/unit/cardText.test.ts`, `tests/browser/marks.test.ts`.
 - Retired in R4b: `src/ui/words.ts`, `tests/unit/words.test.ts`, and §15.7's Plain words row.
@@ -206,6 +206,7 @@ This list was drafted on 2026-11-01 from SPEC v2 and `docs/tasks/spec-analysis.m
   - For every `u-` sprite frame and flip, a 1-px gold `#f0c85a` outline of its mask, (w + 2) × (h + 2), one bake for both factions. Bloomed units get no rim (call 6).
   - Add `atlas.rim(id, frame, flip)`, keep `elderAura`, and check the atlas still packs in its 1024-wide sheet.
 - [x] T016 [US1] Show the tier in the DOM with pip sprites. Add `tierPips(atlas, tier)` to `src/ui/icons.ts`, use it in `src/ui/inspect.ts`'s Tier row (:124, which takes a node beside the tier's name), and delete `TIER_PIPS` from `src/ui/mergeHints.ts:7` (§10.4)
+  - As built: the panel takes the atlas from `src/app/battleView.ts` (one line), and `src/ui/styles.css` shows the pips at 2×.
 
 **Checkpoint:** `npx vitest run tests/unit/unitSprite.test.ts`, `npm run verify`, `npm run test:browser` and `npm run golden -- verify` (unchanged). `grep -rn TIER_SCALE src` finds nothing. In the r4-lineup PNG, tiers 2 and 3 stand at their base size with pips, and Elders with a gold rim, on both sides.
 
@@ -476,7 +477,7 @@ This list was drafted on 2026-11-01 from SPEC v2 and `docs/tasks/spec-analysis.m
 - R4b-S4, R4b-S5 and R4b-S6 run in parallel. S4 and S5 both touch `src/app/battleView.ts` (S5 only its `words.ts` import), so the second rebases. S6 shares no file with them.
 
 **R4a and R2a's renderer** (X2: R2a builds its battle views as new modules beside v1's)
-- R4a-S1 (T010, T011, T013–T016) merges into develop first. In `src/render/renderer.ts` it moves `drawUnit`'s body, `teamMark`, `elderAura`, `flyerShadow`, `mound`, `shieldRing`, `pips`, the HP bar and `FLY_LIFT` into `src/render/unitSprite.ts`, and edits `drawKnits` (T013). It also edits `src/render/atlas.ts` (T010, T015), `src/render/assistPreview.ts`'s import, `src/ui/icons.ts`, `src/ui/inspect.ts` and `src/ui/mergeHints.ts` (T016).
+- R4a-S1 (T010, T011, T013–T016) merges into develop first. In `src/render/renderer.ts` it moves `drawUnit`'s body, `teamMark`, `elderAura`, `flyerShadow`, `mound`, `shieldRing`, `pips`, the HP bar and `FLY_LIFT` into `src/render/unitSprite.ts`, and edits `drawKnits` (T013). It also edits `src/render/atlas.ts` (T010, T015), `src/render/assistPreview.ts`'s import, `src/ui/icons.ts`, `src/ui/inspect.ts`, `src/ui/mergeHints.ts`, `src/ui/styles.css` and one line of `src/app/battleView.ts` (T016).
 - R2a's battle-renderer session (R2a S11's T081, then S12's T083 and the merge preview) draws every unit through `drawUnitSprite` and every merge-preview pip through `drawPips` from `src/render/unitSprite.ts`. It never copies `drawUnit` or `TIER_SCALE`.
 - If R2a's renderer session is already open when R4a-S1 merges, it rebases onto develop. Its new modules don't touch R4a-S1's lines, so the rebase is mechanical, and the session then switches its unit drawing to `drawUnitSprite`.
 - The redraws (R4a-S2b to R4a-S4) touch only `data/sprites/` and `docs/`, so they never conflict with R2a.
