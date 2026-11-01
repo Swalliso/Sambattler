@@ -292,12 +292,21 @@ The armies (T011–T012) need nothing from `formation.ts` or the switches, so S2
     - The confirmation takes the best `top` answers that count. A mono answer that fails clash G3 is flagged in the screen and never confirmed, so G12 always rests on `top` answers that count. This reads "the top 3" as the top 3 the bar can use.
     - A mono answer that clash G3 didn't play (a run with `--mono`) counts, marked "clash G3 not played", as in `evaluateCounters`.
     - The clash matrix lists 3 answers per budget (`CLASH_CHECK.matrixAnswers`), whatever `--top` is. Each answer comes with the cards its armies fielded there and their §7.4 kinds. The row gives the build's read: its army's top kind after the muster, plain and with the swarm read, from G3's record on the first field.
-- [ ] T024 [US2] Add `--checks clash` to `tools/experiment.ts` (§12.2, §15.3, §16 R1)
+- [x] T024 [US2] Add `--checks clash` to `tools/experiment.ts` (§12.2, §15.3, §16 R1)
   - Options: `--budgets` (default 300,600,900,1200,1500), `--fields` (default `one,twin`), `--g3seeds` (default G3's 50), `--screen-seeds` (20), `--confirm-seeds` (50), `--top` (3), `--mono`, `--answers`, `--matrix all`, `--jitter` (0), `--records` (write every record), `--workers`, `--label` (default `clash`, or `clash-<proto>` with a proto spec, sanitised as today's labels are, so no run overwrites v1's `baseline` report).
   - Refuse any spec whose items include the `rework` preset (`rework`, `kept,rework` and so on) with "rework is v1's P3 package, not R1's variant (SPEC §16 R1)".
   - `reports/experiments/<label>.json`: options, armies per build and budget (entries, spent, supply, units), G3, G12, G13 (`clashG13` over every record) and the matrix, per budget and field beside the pooled result. Wall time and clashes played go in a `timing` block and on stdout.
   - Stdout, in the tables `docs/balance-backlog.md` will quote: G3 per build per budget beside pooled; G12 per build with its top answers per field; G13 both readings; PASS/FAIL lines; clashes played and wall time.
   - Update the header comment, which documents every option.
+  - As built (S4):
+    - The report's `clash` block holds `options`, `armies`, `G3`, `G12`, `matrix`, `G13` and `timing`, plus `records` with `--records`.
+      - `armies`: each mono's and `bot:balanced`'s, per field and budget, with the means over the seeds.
+      - `G12` carries the answers' descriptions and §7.4's sets.
+      - `timing`: `ms`, `clashes` played and `cells`.
+      - `records`: every clash played, once each, with the controllers of the first cell that played it.
+    - Stdout prints the clash matrix between G12 and G13.
+    - `--pair` keeps S3's mode, and the `rework` refusal covers both modes, through `specPresets` in `src/data/proto.ts`.
+    - The small run plays 108 clashes for 600 cells in under a second, since with no jitter a mono's army is one clash a seat. Its `--workers 1` JSON matches `--workers 2`'s apart from `options.workers` and `timing`. So does a jittered run of every mono at 300, 900 and 1,500 gold: 7,202 clashes for 9,276 cells, 22 s on one worker and 6 s on four.
 
 **Checkpoint:** `npm run verify` is green with no moved hash. The small run in the Stories table finishes in about a minute, and the same run with `--workers 1` writes JSON identical apart from `options.workers` and `timing` (this is the pooled-equals-in-process check).
 

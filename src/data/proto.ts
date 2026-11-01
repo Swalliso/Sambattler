@@ -262,6 +262,11 @@ function splitSpec(spec: string): string[] {
   return out.map((s) => s.trim()).filter(Boolean);
 }
 
+/** The presets a spec names, lowercased, in order: its items that aren't `path:value` overrides. */
+export function specPresets(spec: string): string[] {
+  return splitSpec(spec).filter((item) => !item.includes(':')).map((item) => item.toLowerCase());
+}
+
 function parseValue(v: string): unknown {
   try { return JSON.parse(v); } catch { return v; }
 }
