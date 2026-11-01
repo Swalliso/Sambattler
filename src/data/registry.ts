@@ -7,8 +7,9 @@ import {
 } from './schema.ts';
 import type {
   BalanceDef, BalanceTargets, BotDef, BuildingDef, CommanderDef, EffectBundle, EliteDef, EventDef, FactionDef,
-  GeneralDef, MapDef, RelicDef, ScenarioDef, SoundBankDef, SoundDef, SpriteDef, UnitDef, UpgradeTrackDef,
+  GeneralDef, MapDef, RelicDef, ScenarioDef, SoundBankDef, SoundDef, SpriteBands, SpriteDef, UnitDef, UpgradeTrackDef,
 } from './schema.ts';
+import { shapeProblems, unitShapeProblems } from './shapes.ts';
 
 /** Raw data files keyed by their path relative to `data/`, e.g. `maps/bogwater-hollow.json`. */
 export type RawContent = Record<string, unknown>;
@@ -24,6 +25,10 @@ export interface Content {
   maps: Record<string, MapDef>;
   sprites: Record<string, SpriteDef>;
   spriteOrder: string[];
+  /** Each sprite's sheet, the name of its file under data/sprites/. */
+  spriteSheet: Record<string, string>;
+  /** Each sheet's body bands (SPEC §14.3), for the sheets that give them; display data the battle never reads. */
+  bands: Record<string, SpriteBands>;
   generals: Record<string, GeneralDef>;
   bots: Record<string, BotDef>;
   scenarios: Record<string, ScenarioDef>;
@@ -95,6 +100,8 @@ export function loadContent(raw: RawContent): Content {
   const maps: Record<string, MapDef> = {};
   const sprites: Record<string, SpriteDef> = {};
   const spriteOrder: string[] = [];
+  const spriteSheet: Record<string, string> = {};
+  const bands: Record<string, SpriteBands> = {};
   const generals: Record<string, GeneralDef> = {};
   const bots: Record<string, BotDef> = {};
   const scenarios: Record<string, ScenarioDef> = {};
@@ -137,7 +144,12 @@ export function loadContent(raw: RawContent): Content {
       const sheet = parse(SpriteSheetSchema, path);
       if (sheet) {
         if (sheet.sheet !== m[1]) problems.push(`${path}: sheet "${sheet.sheet}" does not match its file name`);
-        for (const s of sheet.sprites) if (addUnique(sprites, s, path, 'sprite')) spriteOrder.push(s.id);
+        if (sheet.bands) bands[sheet.sheet] = sheet.bands;
+        for (const s of sheet.sprites) {
+          if (!addUnique(sprites, s, path, 'sprite')) continue;
+          spriteOrder.push(s.id);
+          spriteSheet[s.id] = sheet.sheet;
+        }
       }
     } else if ((m = path.match(/^scenarios\/([^/]+)\.json$/))) {
       const s = parse(ScenarioSchema, path);
@@ -187,6 +199,19 @@ export function loadContent(raw: RawContent): Content {
     if (s.factionSwap && !Object.keys(s.palette).some((k) => Object.values(factions).some((f) => k in f.palette))) {
       problems.push(`sprite ${s.id}: factionSwap is set but no palette key is swappable`);
     }
+  }
+  // the shape language (SPEC §5.8, §14.3; R4a): every shape block against its sheet's bands and the `m-`
+  // glyphs, and every unit drawn with the body its armor gives and the mark §5.8's rule gives
+  const drawn: Record<string, string[]> = {};
+  for (const u of Object.values(units)) (drawn[u.sprite] ??= []).push(u.id);
+  for (const s of Object.values(sprites)) {
+    if (!s.shape) continue;
+    const who = drawn[s.id] ? `unit ${drawn[s.id]!.join(', ')}: ` : '';
+    for (const p of shapeProblems(s, bands[spriteSheet[s.id]!], sprites)) problems.push(who + p);
+  }
+  for (const u of Object.values(units)) {
+    const s = sprites[u.sprite];
+    if (s) problems.push(...unitShapeProblems(u, s));
   }
   const kitRefs = (owner: string, opener: string[], weights: Record<string, number>, limits: Record<string, unknown> | undefined) => {
     for (const id of opener) buildingRef(`${owner} opener`, id);
@@ -274,7 +299,7 @@ export function loadContent(raw: RawContent): Content {
 
   if (problems.length || !balance || !targets || !audio) throw new ContentError(problems.length ? problems : ['balance or sound files failed to parse']);
   return {
-    balance, targets, factions, buildings, buildingOrder, units, maps, sprites, spriteOrder, generals, bots, scenarios,
-    upgrades, relics, relicOrder, events, eventOrder, elites, eliteOrder, commanders, audio, sounds,
+    balance, targets, factions, buildings, buildingOrder, units, maps, sprites, spriteOrder, spriteSheet, bands, generals, bots,
+    scenarios, upgrades, relics, relicOrder, events, eventOrder, elites, eliteOrder, commanders, audio, sounds,
   };
 }
