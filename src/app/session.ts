@@ -96,11 +96,16 @@ export class Session {
     return true;
   }
 
-  /** E1 Hold / Advance: holds every lane that can hold, or, if every lane already holds, advances them all. */
-  toggleAllStances(): void {
+  /**
+   * E1 Hold / Advance: holds every lane that can hold, or, if every lane already holds, advances them all.
+   * False if nothing changed: every lane that would hold is still on its cooldown.
+   */
+  toggleAllStances(): boolean {
     const lanes = this.state.lanes.map((_, i) => i);
     const allHeld = lanes.every((i) => this.stanceShown(i));
-    for (const i of lanes) if (this.stanceShown(i) === allHeld) this.toggleStance(i);
+    let changed = false;
+    for (const i of lanes) if (this.stanceShown(i) === allHeld && this.toggleStance(i)) changed = true;
+    return changed;
   }
 
   /** The player's commander power in this battle, if any. */

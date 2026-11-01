@@ -171,8 +171,13 @@ describe('fit at small windows', () => {
     });
   }
 
-  it('Help fits at 1280×720 with no key cell over two lines', async () => {
-    const p = await open('/?scene=deploy&map=test-flat&enemy=human&seed=1&test=1&paused=1');
+  // a commander power adds the Q row to Keys (it overflowed until 2026-10-31), and the rework adds the waves' Hold and storm lines
+  for (const [label, query] of [
+    ['a plain battle', '/?scene=deploy&map=test-flat&enemy=human&seed=1&test=1&paused=1'],
+    ['a battle with a commander power', '/?scenario=power-demo&test=1&paused=1'],
+    ['a power under the rework', '/?scenario=power-demo&proto=rework&test=1&paused=1'],
+  ] as const) it(`Help fits at 1280×720 with no key cell over two lines: ${label}`, async () => {
+    const p = await open(query);
     await p.locator('#help-btn').click();
     for (const tab of ['matrix', 'merging', 'general', 'economy', 'storm', 'keys']) {
       await p.locator(`#help-tab-${tab}`).click();

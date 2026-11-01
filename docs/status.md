@@ -1,6 +1,6 @@
 # Where things stand
 
-Updated 2026-10-31, at `develop` `56386c1`. This is the hand-over page. It covers what we're working on, what's waiting on the user's decision, and where each piece lives. Update it when work lands or the user decides something. Keep the detail in the docs it links to.
+Updated 2026-10-31, at `develop` `ef2e133`. This is the hand-over page. It covers what we're working on, what's waiting on the user's decision, and where each piece lives. Update it when work lands or the user decides something. Keep the detail in the docs it links to.
 
 ## In short
 
@@ -14,6 +14,9 @@ Updated 2026-10-31, at `develop` `56386c1`. This is the hand-over page. It cover
   - All of it is on `develop` behind prototype settings that are off by default, so without `?proto=` the dev site plays like M5.
 - **Next: P4.** The user decides what to adopt from the playtest and the measurements.
   - M6–M8's content waits on that, since it will be written for the combat model that's adopted.
+- **Beyond the rework:** [after-the-rework.md](ideas/after-the-rework.md) (2026-10-31) lists what still stands between the game and fun, and what to do before, during and after the playtest. Nothing in it is adopted.
+  - Its evidence is in [ideas/after-the-rework/](ideas/after-the-rework/README.md).
+  - Its pre-playtest UI fixes are in the same PR. They're render and UI only, and the goldens are unchanged.
 
 ## The playtest (P3)
 
@@ -68,6 +71,9 @@ Updated 2026-10-31, at `develop` `56386c1`. This is the hand-over page. It cover
    - See [colony-swarm.md](ideas/colony-swarm.md) and the One More Run review's [suggested path](ideas/one-more-run-review.md#suggested-path).
 7. **The open playtest items F1–F16** in [playtest-feedback.md](playtest-feedback.md). Most wait on the user.
 8. **A release to `main`:** M5 and whatever P4 adopts, only when the user asks.
+9. **The after-the-rework proposals** ([after-the-rework.md](ideas/after-the-rework.md)):
+   - which Tier 1 sessions to start while the playtest runs (tools, lives, the battle-1 package, comeback gold by army, read the enemy, honest prices, run it back);
+   - after P4: what territory is for, and whether merging becomes a choice again.
 
 ## Recent work and where it lives
 
@@ -85,6 +91,9 @@ Updated 2026-10-31, at `develop` `56386c1`. This is the hand-over page. It cover
 | Rounds (Level 3) | [ideas/rounds.md](ideas/rounds.md), [#33](https://github.com/Swalliso/Sambattler/pull/33) | Paper design, the fallback |
 | Colony and swarm direction | [ideas/colony-swarm.md](ideas/colony-swarm.md), [#23](https://github.com/Swalliso/Sambattler/pull/23), [#25](https://github.com/Swalliso/Sambattler/pull/25) | Notes only, parked |
 | Prototype saves on the dev site | `.claude/rules/storage.md`, [#34](https://github.com/Swalliso/Sambattler/pull/34) | On `develop` |
+| After-the-rework review (2026-10-31) | [ideas/after-the-rework.md](ideas/after-the-rework.md), evidence in [ideas/after-the-rework/](ideas/after-the-rework/README.md) | Proposals, waiting on the user |
+| Pre-playtest UI fixes (2026-10-31) | [after-the-rework.md](ideas/after-the-rework.md#fixes-made-before-the-playtest), SPEC §10 | In the same PR |
+| Outside notes brought in (2026-10-31) | [the design review](ideas/one-more-run-design-review.md), [fun and agency](ideas/fun-and-agency-research.md), [symbiotic colonies](ideas/symbiotic-colonies-slice.md) | Records, nothing adopted; closes OMR-12 |
 
 ## Measuring the package
 

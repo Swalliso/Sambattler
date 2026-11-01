@@ -119,7 +119,7 @@ export function bindInput(session: Session, view: BattleView, hooks: InputHooks)
       case 'm': case 'M':
         if (session.selected !== null) session.toggleMerge(session.selected);
         break;
-      case 'f': case 'F': session.toggleAllStances(); break;
+      case 'f': case 'F': view.toggleAllStances(); break;
       case 'q': case 'Q': view.togglePower(); break;
       case 'h': case 'H': view.toggleHelp(); break;
       case 'r': case 'R': view.top.kit.toggle(); break;

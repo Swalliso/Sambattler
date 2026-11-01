@@ -216,7 +216,7 @@ Add these to the continuous lane as it is:
 
 ### Level 3: rounds
 
-Battles become a series of clashes, as in Mechabellum. This is the design review's Direction B, which it kept as a fallback.
+Battles become a series of clashes, as in Mechabellum. This is the [design review](one-more-run-design-review.md#4-three-directions)'s Direction B, which it kept as a fallback.
 
 - **Planning phase:** buy and place buildings, and position the army. The buildings decide what you field.
 - **Clash:** both full armies deploy in formation and fight.
@@ -230,7 +230,7 @@ Battles become a series of clashes, as in Mechabellum. This is the design review
 **Against:**
 - It gives up the continuous tug-of-war, territory capture and the Sporestorm in their current form.
 - It rewrites the sim loop, the AI, the UI and run pacing.
-- It moves the game toward Mechabellum and 9 Kings, which the design review warned against competing with head-on.
+- It moves the game toward Mechabellum and 9 Kings. The design review warned against competing head-on with 9 Kings and Hivemind.
 
 **When to use it:** if Level 2 can't give every mono build an answer. The paper design is in [rounds.md](rounds.md).
 

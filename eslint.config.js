@@ -32,7 +32,13 @@ const pureRules = {
 const forbiddenFromPure = ['**/render/**', '**/ui/**', '**/app/**', '**/tools/**', 'node:*', 'fs', 'path', 'os', 'child_process'];
 
 export default tseslint.config(
-  { ignores: ['dist/**', 'node_modules/**', 'artifacts/**', 'reports/**'] },
+  {
+    ignores: [
+      'dist/**', 'node_modules/**', 'artifacts/**', 'reports/**',
+      // Reference copies of a review's one-off scripts, kept as they ran and not maintained (see the README there).
+      'docs/ideas/after-the-rework/scripts/**',
+    ],
+  },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {

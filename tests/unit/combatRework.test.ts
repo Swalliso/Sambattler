@@ -13,11 +13,13 @@ import type { BattleState, Content, CounterState } from '../../src/sim/index.ts'
 import { addBuilding } from '../../src/sim/create.ts';
 import { addCloud } from '../../src/sim/systems/clouds.ts';
 import { lanePresence } from '../../src/sim/systems/territory.ts';
+import { findUnit } from '../../src/sim/world.ts';
+import { shownEffectiveness } from '../../src/render/renderer.ts';
 import { flyerHitters, versusFlyers } from '../../src/ui/matrixHints.ts';
 import { protoContent, readRawContent } from '../../tools/lib/content.ts';
 import { runBattle } from '../../tools/lib/run.ts';
 import { building, content, liveState, setBorders, steps, unit } from '../helpers.ts';
-import type { UnitState } from '../../src/sim/index.ts';
+import type { SimEvent, Tier, UnitState } from '../../src/sim/index.ts';
 
 const NO_FIELD = { noTurrets: true, noTerritory: true, noHeartcapTargets: true };
 
@@ -999,6 +1001,84 @@ describe('flyers (preset flyers)', () => {
       if (a === 'capguard' || a === 'sporeling') expect(Math.abs(half - full / 2)).toBeLessThanOrEqual(0.5);
       else expect(half).toBe(full);
     }
+  });
+
+  it("a ground unit's melee hit on a flyer sparks for what it deals: a Sporeling's slash reads weak, not strong", () => {
+    // the sim classes a hit on matrix × tag, before the flyer's ×0.5; the renderer shows the class after it
+    const first = (s: BattleState, target: UnitState, attacker: UnitState) => {
+      const last = new Map<number, UnitState>();
+      for (let i = 0; i < 60; i++) {
+        last.clear();
+        for (const u of s.units) last.set(u.id, u);
+        steps(s, 1);
+        const e = s.events.find((x) => x.t === 'hit' && x.target === target.id && x.src === attacker.id);
+        if (e?.t === 'hit') return { sim: e.eff, shown: shownEffectiveness(s, e, last), unread: shownEffectiveness(s, e, new Map()), felled: !s.units.includes(target) };
+      }
+      throw new Error(`${attacker.unitId} never hit the ${target.unitId}`);
+    };
+    const onFlyer = (spec: string, attacker: string, tier: Tier = 1, flyerTier: Tier = 1, flyerHp = 0) => {
+      const s = protoState(protoContent(spec));
+      const d = unit(s, 'enemy', 'driftling', 10, 4, flyerTier);
+      freeze(s, 'enemy', 'driftling');
+      if (flyerHp) d.hp = flyerHp;
+      return first(s, d, unit(s, 'player', attacker, attacker === 'gillArcher' ? 7 : 9.4, 4, tier));
+    };
+    expect(onFlyer('flyers', 'sporeling')).toMatchObject({ sim: 'strong', shown: 'weak' }); // Slash vs Light, 1.5 × 0.5
+    expect(onFlyer('flyers', 'capguard')).toMatchObject({ sim: 'strong', shown: 'weak' });
+    expect(onFlyer('flyers', 'veilstalker')).toMatchObject({ sim: 'normal', shown: 'weak' }); // Pierce, 1 × 0.5
+    expect(onFlyer('flyers', 'veilstalker', 1, 2)).toMatchObject({ sim: 'strong', shown: 'strong' }); // its slayer ×3 on a Bloomed flyer: 1.5
+    expect(onFlyer('flyers', 'gillArcher')).toMatchObject({ sim: 'normal', shown: 'normal' }); // a shot keeps its class
+    expect(onFlyer('flyers', 'driftling')).toMatchObject({ sim: 'strong', shown: 'strong' }); // and so does a flyer's cut
+    expect(onFlyer('flyers,flying.meleeMult:1', 'sporeling')).toMatchObject({ sim: 'strong', shown: 'strong' });
+    // a killing blow: the flyer has left the field, and only the tick before's units still name it
+    expect(onFlyer('flyers', 'sporeling', 1, 1, 1)).toEqual({ sim: 'strong', shown: 'weak', unread: 'strong', felled: true });
+    // the default game has no flyers: every hit keeps the sim's class
+    const s = liveState();
+    const archer = unit(s, 'enemy', 'gillArcher', 10, 4);
+    freeze(s, 'enemy', 'gillArcher');
+    expect(first(s, archer, unit(s, 'player', 'sporeling', 9.4, 4))).toMatchObject({ sim: 'strong', shown: 'strong' });
+  });
+
+  it('a flyer born and felled in the same tick is read from its events', () => {
+    const s = protoState(fc);
+    const d = unit(s, 'enemy', 'driftling', 10, 4), a = unit(s, 'player', 'sporeling', 9.4, 4);
+    s.units.splice(s.units.indexOf(d), 1);
+    const hit: Extract<SimEvent, { t: 'hit' }> = { t: 'hit', target: d.id, src: a.id, amount: 6, eff: 'strong', x: 10, y: 4, splash: false };
+    s.events = [{ t: 'spawned', id: d.id }, hit, { t: 'died', id: d.id, side: 'enemy', unitId: 'driftling', x: 10, y: 4 }];
+    expect(shownEffectiveness(s, hit, new Map())).toBe('weak');
+    s.events.shift(); // with no birth to give its tier it can't be read, and the sim's class stands
+    expect(shownEffectiveness(s, hit, new Map())).toBe('strong');
+  });
+
+  it('over a battle only ground melee hits on flyers change class, killing blows too, and the sim never notices', () => {
+    const c = protoContent('rework');
+    const make = () => createBattle(c, makeConfig(c, { seed: 1, mapId: 'bogwater-hollow', player: 'bot:mono:driftStalk', enemy: 'bot:balanced' }));
+    const s = make();
+    queueCommand(s, { tick: 0, side: 'player', type: 'begin' });
+    const last = new Map<number, UnitState>();
+    const changed: Record<string, number> = {};
+    let blows = 0;
+    while (s.phase !== 'ended') {
+      steps(s, 1);
+      for (const e of s.events) {
+        if (e.t !== 'hit') continue;
+        const shown = shownEffectiveness(s, e, last);
+        if (shown === e.eff) continue;
+        const target = findUnit(s, e.target) ?? last.get(e.target), src = findUnit(s, e.src) ?? last.get(e.src);
+        const def = src && s.compiled[src.side].units[src.unitId]!;
+        expect(!!target?.flying && def?.projectileSpeed === 0 && !def.tags.includes('flying')).toBe(true);
+        changed[`${e.eff} → ${shown}`] = (changed[`${e.eff} → ${shown}`] ?? 0) + 1;
+        if (!s.units.includes(target!)) blows++;
+      }
+      last.clear();
+      for (const u of s.units) last.set(u.id, u);
+    }
+    expect(changed['strong → weak']).toBeGreaterThan(0);
+    expect(Object.keys(changed).every((k) => k.endsWith('→ weak'))).toBe(true);
+    expect(blows).toBeGreaterThan(0);
+    const ref = make();
+    runHeadless(ref, { until: 'end' });
+    expect(hashState(s)).toBe(hashState(ref));
   });
 
   it('the cards say who can hit a flyer, under rule C or reach', () => {

@@ -235,4 +235,22 @@ describe('battle sounds', () => {
       { id: 'sell', gain: 0.5 }, { id: 'sell', gain: 1 },
     ]);
   });
+
+  it('plays a lost column only for one that was yours', () => {
+    const s = createBattle(content, makeConfig(content, { seed: 1, mapId: 'test-flat', player: 'human', enemy: 'human' }));
+    const played: string[] = [];
+    const bs = new BattleSound(s, 0.5, (id) => played.push(id));
+    const owner = s.lanes[0]!.owner;
+    const flip = (column: number, to: 'player' | 'enemy') => {
+      owner[column] = to === 'player' ? 1 : 2;
+      s.events = [{ t: 'columnFlipped', lane: 0, column, to }];
+      bs.onTick(s);
+    };
+    const unclaimed = owner.indexOf(0), yours = owner.indexOf(1);
+    expect(unclaimed).toBeGreaterThan(yours);
+    flip(unclaimed, 'enemy'); // the enemy taking unclaimed ground is quiet
+    flip(yours, 'enemy');
+    flip(unclaimed, 'player');
+    expect(played).toEqual(['column-lost', 'column-gained']);
+  });
 });

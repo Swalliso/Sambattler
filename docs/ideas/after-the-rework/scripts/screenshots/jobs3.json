@@ -1,0 +1,10 @@
+[
+ {"name":"rw-burst-4100","params":"proto=rework&scene=battle&player=bot:mono:bursterPod&enemy=general:scripted&seed=3&ticks=4100","waitMs":200,"crops":[[0,0,576,128,2]]},
+ {"name":"rw-burst-4500","params":"proto=rework&scene=battle&player=bot:mono:bursterPod&enemy=general:scripted&seed=3&ticks=4500","waitMs":200,"crops":[[0,0,576,128,2]]},
+ {"name":"rw-burst-5000","params":"proto=rework&scene=battle&player=bot:mono:bursterPod&enemy=general:scripted&seed=3&ticks=5000","waitMs":200,"crops":[[0,0,576,128,2]]},
+ {"name":"rw-twin-5m","params":"proto=rework&scene=battle&map=twin-roots&player=bot:balanced&enemy=general:mother-mold&seed=5&ticks=6000","waitMs":300,"crops":[[0,0,576,208,2]]},
+ {"name":"rw-1080-5m","params":"proto=rework&scene=battle&player=bot:balanced&enemy=general:mother-mold&seed=7&ticks=6000","waitMs":300,"w":1920,"h":1080},
+ {"name":"rw-help-keys","params":"proto=rework&scene=battle&seed=7&enemy=general:mother-mold","waitMs":300,"keys":["h"]},
+ {"name":"rw-beat-tip","params":"proto=rework&scene=battle&player=bot:balanced&enemy=general:mother-mold&seed=7&ticks=3600&paused=1","waitMs":300,"hover":"#chip-beat"},
+ {"name":"rw-card-tip","params":"proto=rework&scene=battle&seed=7&enemy=general:mother-mold","waitMs":300,"hover":"[data-building=driftStalk]"}
+]

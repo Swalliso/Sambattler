@@ -1,0 +1,9 @@
+[
+ {"name":"rw-mold-finale-9330","params":"proto=rework&scene=battle&player=bot:balanced&enemy=general:mother-mold&seed=7&ticks=9330","waitMs":250,"crops":[[384,0,192,128,4]]},
+ {"name":"rw-mold-finale-9390","params":"proto=rework&scene=battle&player=bot:balanced&enemy=general:mother-mold&seed=7&ticks=9390","waitMs":120,"crops":[[384,0,192,128,4]]},
+ {"name":"rw-mold-end","params":"proto=rework&scene=battle&player=bot:balanced&enemy=general:mother-mold&seed=7&ticks=9390","waitMs":2500},
+ {"name":"rw-deploy-human","params":"proto=rework&scene=battle&seed=7&enemy=general:mother-mold","waitMs":600},
+ {"name":"rw-mono-drift-3m","params":"proto=rework&scene=battle&player=bot:mono:driftStalk&enemy=general:scripted&seed=3&ticks=3700","waitMs":300,"crops":[[0,0,576,128,2],[192,0,192,128,4]]},
+ {"name":"rw-mono-burst-3m","params":"proto=rework&scene=battle&player=bot:mono:bursterPod&enemy=general:scripted&seed=3&ticks=3700","waitMs":300,"crops":[[0,0,576,128,2],[192,0,192,128,4]]},
+ {"name":"rw-mono-rhizo-2m","params":"proto=rework&scene=battle&player=bot:mono:rhizomorphTunnel&enemy=general:scripted&seed=3&ticks=2500","waitMs":300,"crops":[[0,0,576,128,2],[192,0,192,128,4]]}
+]

@@ -415,7 +415,7 @@ The bar for step C: a network rule set on Bogwater should lift split-half ρ wel
 
 ## Step B: battle-feel prototypes (2026-10-30)
 
-Step B of the [One More Run review](ideas/one-more-run-review.md#suggested-path): engagement review recommendations 2–3 and the design review's P1, as prototypes. **Nothing is adopted.** Each knob is absent from `balance.json`, so goldens and hashes are unchanged:
+Step B of the [One More Run review](ideas/one-more-run-review.md#suggested-path): engagement review recommendations 2–3 and the [design review](ideas/one-more-run-design-review.md#phased-roadmap)'s P1, as prototypes. **Nothing is adopted.** Each knob is absent from `balance.json`, so goldens and hashes are unchanged:
 
 | Preset | Knob | What it does |
 |---|---|---|

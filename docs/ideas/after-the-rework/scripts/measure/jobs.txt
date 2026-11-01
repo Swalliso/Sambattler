@@ -1,0 +1,6 @@
+base|
+rework|rework
+rwB|rework,hotstart,bigdrafts,breach
+rwbreach|rework,breach
+rwhb|rework,hotstart,bigdrafts
+stepB|hotstart,bigdrafts,breach

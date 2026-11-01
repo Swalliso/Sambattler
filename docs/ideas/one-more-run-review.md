@@ -1,6 +1,6 @@
 # Review of "Design Review and Roadmap to One More Run"
 
-Written 2026-10-30 against `develop` at `31f081d` (M5 merged, the colony-swarm notes merged). The user brought the design review from a claude.ai conversation that couldn't read the repo: it worked from PR descriptions and a spec summary. This review checks its claims against the data, the code and the repo's own experiments, and sorts its proposals into new, already tried, and what to try first. **Nothing here is adopted.**
+Written 2026-10-30 against `develop` at `31f081d` (M5 merged, the colony-swarm notes merged). The user brought the [design review](one-more-run-design-review.md) from a claude.ai conversation that couldn't read the repo: it worked from PR descriptions and a spec summary. This review checks its claims against the data, the code and the repo's own experiments, and sorts its proposals into new, already tried, and what to try first. **Nothing here is adopted.**
 
 ## Short answer
 
@@ -48,7 +48,7 @@ Archer dominance looks largely like a one-lane effect. The cause isn't known yet
 |---|---|
 | "41% of runs end in battle 1; the boss loses 80%" | Measured before Hold. Hold made it worse (46 of 80 runs ended in battle 1, boss reach 11%). With M5's commanders it's about **34%** (61 of 180), and the boss loses about 74% of the fights it gets (43 of 58). The curve is still upside down, but less so |
 | "A run takes 25–35 min" | That's the spec's target, not a measurement. Bots that reach the boss spend a median 20–25 min in battle. Human time with pauses and drafts is unmeasured |
-| "Your worktree notes aren't committed" | The colony-swarm notes are on `develop` (PRs #23 and #25). Codex's two notes, `fun-and-agency-research-2026-10-29.md` and `symbiotic-colonies-slice.md`, are still uncommitted in `~/.codex/worktrees/5608/Sambattler/docs/` |
+| "Your worktree notes aren't committed" | The colony-swarm notes are on `develop` (PRs #23 and #25). Codex's two notes, `fun-and-agency-research-2026-10-29.md` and `symbiotic-colonies-slice.md`, are still uncommitted in a Codex worktree. They came into the repo on 2026-10-31 as [fun-and-agency-research.md](fun-and-agency-research.md) and [symbiotic-colonies-slice.md](symbiotic-colonies-slice.md) |
 | "M5 PR #22 is on develop" | Merged on 2026-10-29. Armilla was reworked on 2026-10-30, and the commander tournament passes (spread 10 points) |
 
 ### Wrong or misread, and why it matters
@@ -256,5 +256,5 @@ The user's answers:
 - **G3 measures every map** (decided after step A): every mono bot against `bot:balanced` on every run-pool map, 50 seeds per seat, with mean ≤ 55% and worst map ≤ 60%. Mono Gill Nest, Sporeling and Amanita fail it; mono Morel sits exactly on the mean limit. See the [backlog](../balance-backlog.md#g3-on-every-map-the-rewrite-2026-10-30).
 
 Still open:
-- whether Codex's two uncommitted notes and the original design review should come into `docs/ideas/`;
+- whether Codex's two uncommitted notes and the original design review should come into `docs/ideas/`: **resolved 2026-10-31**, they're in as [one-more-run-design-review.md](one-more-run-design-review.md), [fun-and-agency-research.md](fun-and-agency-research.md) and [symbiotic-colonies-slice.md](symbiotic-colonies-slice.md);
 - whether one-lane maps get a second front (measured [above](#second-front-test-2026-10-30): not as the archer fix on its own). The [combat rework](combat-rework.md) looks for the fix in how armies meet instead.
