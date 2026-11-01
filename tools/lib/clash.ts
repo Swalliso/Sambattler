@@ -827,3 +827,71 @@ function scoreReading(lanes: readonly LaneReading[]): ClashReading {
     round: more(heartcap.enemy.capped, heartcap.player.capped),
   };
 }
+
+/** A mirror's second army is built on seed 1,000 + s, so the two armies differ (Technical context, R1's task list). */
+export const MIRROR_SEED = 1000;
+
+/** One matchup over budgets, fields and seeds, in both seats (`--checks clash --pair`). */
+export interface PairOpts {
+  a: string;
+  b: string;
+  budgets: readonly number[];
+  fields: readonly FieldId[];
+  /** Seeds 1 to n. */
+  seeds: number;
+  jitter?: number;
+  opts?: ClashOpts;
+}
+
+/**
+ * Plays `a` against `b` at each budget on each field, seeds 1 to n, `a` in the player's seat and then
+ * the enemy's. Each army is built once from its own stream, so both seats see the same two armies; a
+ * mirror builds its second army on seed 1,000 + s. Records come by field, budget, seed, then seat.
+ */
+export function playPair(content: Content, p: PairOpts): ClashRecord[] {
+  const out: ClashRecord[] = [];
+  for (const id of p.fields) {
+    const field = clashField(content, id, { extraPlots: p.opts?.extraPlots ?? 0 });
+    for (const budget of p.budgets) {
+      for (let seed = 1; seed <= p.seeds; seed++) {
+        const armies: [Army, Army] = [
+          armyFromBot(content, p.a, budget, seed, field.plots),
+          armyFromBot(content, p.b, budget, p.a === p.b ? MIRROR_SEED + seed : seed, field.plots),
+        ];
+        for (const seat of SIDES) out.push(playClash(content, { field: id, seed, seat, armies, jitter: p.jitter ?? 0, ...(p.opts ? { opts: p.opts } : {}) }));
+      }
+    }
+  }
+  return out;
+}
+
+/**
+ * One clash as a line, from the first army's side (`a`, in seat `a=…`) in the `cap` reading: each lane's
+ * winner, how it ended, the surviving supply a–b and when; each Heartcap's damage, capped (uncapped
+ * beside it when the cap cut it); the clash's length, and when it was capped the other reading; the clash
+ * and round results; and each army's merges at the muster, to Bloomed + to Elder.
+ */
+export function pairLine(r: ClashRecord): string {
+  const a = r.seat, b = other(r.seat);
+  const who = (w: Side | 'draw') => (w === 'draw' ? 'draw' : w === a ? 'a' : 'b');
+  const sec = (t: number) => `${(t / 20).toFixed(1)} s`;
+  const lanes = r.lanes.map((l) => `L${l.lane} ${who(l.cap.winner)} ${l.cap.case} ${l.cap.surviving[a]}–${l.cap.surviving[b]} at ${sec(l.cap.ticks)}`).join('; ');
+  const dmg = (s: Side) => {
+    const h = r.cap.heartcap[s];
+    return h.uncapped > h.capped ? `${h.capped} (${h.uncapped} uncapped)` : String(h.capped);
+  };
+  const after = r.cap.capped ? `, capped (after the muster: ${sec(r.capAfterMuster.ticks)}, clash ${who(r.capAfterMuster.winner)})` : '';
+  const merges = (s: Side) => `${r.armies[s].merges.muster['2']}+${r.armies[s].merges.muster['3']}`;
+  return `${r.field.padEnd(5)} ${String(r.budget).padStart(4)}  seed ${r.seed}  a=${a.padEnd(6)}  ${lanes} | damage to a ${dmg(a)}, to b ${dmg(b)}`
+    + ` | ${sec(r.cap.ticks)}${after} | clash ${who(r.cap.winner)}, round ${who(r.cap.round)} | muster a ${merges(a)}, b ${merges(b)}`;
+}
+
+/** The first army's results over some records, in the `cap` reading: wins, draws and losses, and its score with draws worth half. */
+export function pairScore(records: readonly ClashRecord[]): { wins: number; draws: number; losses: number; score: number; capped: number } {
+  let wins = 0, draws = 0, losses = 0, capped = 0;
+  for (const r of records) {
+    if (r.cap.winner === 'draw') draws++; else if (r.cap.winner === r.seat) wins++; else losses++;
+    if (r.cap.capped) capped++;
+  }
+  return { wins, draws, losses, score: records.length ? (wins + draws / 2) / records.length : 0, capped };
+}

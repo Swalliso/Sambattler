@@ -10,7 +10,7 @@ import { createBattle, makeConfig } from '../../src/sim/index.ts';
 import type { BattleState, Side, UnitState } from '../../src/sim/index.ts';
 import { counterBotSpec } from '../../tools/lib/balance.ts';
 import {
-  CLASH, armyFromBot, armyOf, assignSlots, clashArmyIds, clashField, lineOf, placeArmy, playClash, squadSize,
+  CLASH, MIRROR_SEED, armyFromBot, armyOf, assignSlots, clashArmyIds, clashField, lineOf, pairLine, pairScore, placeArmy, playClash, playPair, squadSize,
 } from '../../tools/lib/clash.ts';
 import type { Army, ClashField, ClashJob, ClashOpts, ClashRecord, FieldId, Placement } from '../../tools/lib/clash.ts';
 import { protoContent } from '../../tools/lib/content.ts';
@@ -543,5 +543,26 @@ describe("one clash's record: what each army fielded and how it reads (SPEC §5.
       mustered: stageUnits({ side: 'player', unitId: 'sporeling', x: 10, y: 3.5 }, { side: 'player', unitId: 'sporeling', x: 10, y: 4.5 }, { side: 'player', unitId: 'sporeling', x: 10.5, y: 4 }),
     });
     expect(late.armies.player.merges).toEqual({ muster: { '2': 0, '3': 0 }, field: { '2': 1, '3': 0 } });
+  });
+});
+
+describe("a matchup in both seats (`--checks clash --pair`, SPEC §12.2)", () => {
+  it('plays each field, budget and seed in both seats with the same two armies, records in that order', () => {
+    const rs = playPair(content, { a: 'bot:mono:capguardHall', b: 'bot:mono:gillNest', budgets: [300], fields: ['one', 'twin'], seeds: 2 });
+    expect(rs.map((r) => [r.field, r.budget, r.seed, r.seat])).toEqual([
+      ['one', 300, 1, 'player'], ['one', 300, 1, 'enemy'], ['one', 300, 2, 'player'], ['one', 300, 2, 'enemy'],
+      ['twin', 300, 1, 'player'], ['twin', 300, 1, 'enemy'], ['twin', 300, 2, 'player'], ['twin', 300, 2, 'enemy'],
+    ]);
+    for (const r of rs) expect([r.armies[r.seat].controller, r.armies[r.seat === 'player' ? 'enemy' : 'player'].controller]).toEqual(['bot:mono:capguardHall', 'bot:mono:gillNest']);
+    expect(rs[1]!.armies.enemy.entries).toEqual(rs[0]!.armies.player.entries);
+    const score = pairScore(rs);
+    expect(score.wins + score.draws + score.losses).toBe(8);
+    expect(pairLine(rs[4]!)).toMatch(/^twin\s+300 {2}seed 1 {2}a=player {2}L0 .*; L1 .* \| damage to a .* \| clash (a|b|draw), round (a|b|draw) \| muster a \d+\+\d+, b \d+\+\d+$/);
+  });
+
+  it("a mirror builds its second army on seed 1,000 + s, so the two armies differ", () => {
+    const [r] = playPair(content, { a: 'bot:balanced', b: 'bot:balanced', budgets: [900], fields: ['one'], seeds: 1 });
+    expect(r!.armies.enemy.entries).toEqual(armyFromBot(content, 'bot:balanced', 900, MIRROR_SEED + 1, 8).entries);
+    expect(r!.armies.enemy.entries).not.toEqual(r!.armies.player.entries);
   });
 });
