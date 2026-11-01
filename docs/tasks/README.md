@@ -8,10 +8,10 @@ SPEC v2, broken into task lists that later sessions work through one row of a Se
 
 | Now | Session | Waits on |
 |---|---|---|
-| 1 | **R1 S1 and S2** in [r1-clash-check.md](r1-clash-check.md), side by side: `src/sim/formation.ts`; the two tool-only switches and the army builder | R1 S0 merged (`feature/r1-plan`: the plan agreed on 2026-11-01, and R1's calls in SPEC) |
-| 2 | **R1 S3**: one clash recorded, and `--checks clash --pair` | R1 S1 and S2 merged |
+| 1 | **R1 S4** in [r1-clash-check.md](r1-clash-check.md): T053 (the muster's exact ties), then the clash jobs on the pool, G3, G12 and G13 on clashes, and `--checks clash` | R1 S3 merged (`feature/r1-clash-runner`: one clash recorded, and `--checks clash --pair`) |
+| 2 | **R1 S5 and S6**, side by side: the variants; the race model, the pairings, the full colony and the bench case | R1 S4 merged |
 | 3 | **R4a-S2b** in [r4-readable-armies.md](r4-readable-armies.md): the draft silhouette sheet, which the user approves (T026) | R4a-S2 merged (`feature/r4a-shape-checks`: the shape schema, `marks.json`, the shape checks and the sprite-sheet tool) |
-| 4 | **records S2** in [run-it-back.md](run-it-back.md): the Underroot remembers the setup, records-1's checks, and the user's check on the dev site (`feature/records-1-setup`) | records S1 merged (`feature/records-1-run-it-back`: the profile store and Run it back) |
+| 4 | **records-1's check**, the user's (T023 in [run-it-back.md](run-it-back.md)): on the dev site, finish a run, use Run it back, then reload and choose New run: the Underroot opens on that setup. records-2 (S3) starts after R2b | records S2 merged (`feature/records-1-setup`: the Underroot remembers the setup, and records-1 is verified) and `develop` deployed |
 
 R1, R4a and records-1 touch different code files and can run at the same time. Their doc edits fall in different sections of `SPEC.md`, `clarify.md` and `docs/status.md`, so whichever PR merges second rebases ([r1-plan.md](../r1-plan.md), "Beside R1"). Everything else waits for R1's review gate.
 
@@ -101,6 +101,7 @@ Sessions are sized at about a day of focused work. Two small adjacent rows can s
 - **Parallel only where the lists allow it.** Now that's R1, R4a and records-1. Later, it's the rows whose Gate says "may run beside".
 - **Batch the decisions.** Plan sessions and gates go faster with `/clarify` and "take the recommendations except …".
 - **Merging.** A session merges its own PR into `develop` only if the user said so when starting it, for example "merge when green". Small neighbouring rows can share a PR. Nothing touches `main` until the user asks for a release.
+- **When a hub runs the sessions** (since 2026-11-01): the hub reviews each PR against its tasks and merges it once CI is green, as the user agreed. Each session edits only its own lines in `docs/status.md`. The hub keeps the "Recent work" table and "Where to start", since parallel PRs collide there.
 - **Ultracode and workflows where breadth or an adversarial check pays:**
   - a skeptic pass on each plan before the user agrees it;
   - R1 S7's analysis of its measurement runs;

@@ -1,7 +1,8 @@
 // Run it back and the profile in the browser (SPEC §16 M6, §9.7, §13.8): on a finished run's summary,
 // Enter or R starts one new run with the same commander and bans on another seed, straight on the route.
-// Normal play remembers that setup in the profile, spore-sprawl/profile/v1; seeded, test and prototype
-// pages never write it (RB-Q2).
+// Normal play remembers that setup in the profile, spore-sprawl/profile/v1, as Begin run does, and the
+// Underroot opens on it, after a reload too. Seeded, test and prototype pages neither read nor write it
+// (RB-Q2).
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { chromium } from 'playwright';
 import type { Browser, Page } from 'playwright';
@@ -59,6 +60,12 @@ async function countRoutes(): Promise<() => Promise<number>> {
   });
   return () => page.evaluate(() => (window as unknown as { routesShown: number }).routesShown);
 }
+
+/** What the Underroot has selected: the commander card that's on, and the pressed bans. */
+const underroot = () => page.evaluate(() => ({
+  commander: document.querySelector<HTMLElement>('.commander-card.on')?.dataset.commander ?? null,
+  bans: [...document.querySelectorAll<HTMLElement>('.ban[aria-pressed="true"]')].map((b) => b.dataset.ban ?? ''),
+}));
 
 /** A keydown as the window's listeners see it, for a held key or a modifier that the page can't be sent safely. */
 type KeyInit = { key: string; repeat?: boolean; ctrlKey?: boolean; metaKey?: boolean; altKey?: boolean };
@@ -136,5 +143,65 @@ describe('Run it back on the summary', () => {
     expect(next).toMatchObject({ screen: 'route', row: 0, commander: 'cordis', bans: ['hammercapForge'] });
     expect(JSON.parse((await stored(`dev/proto=${PROTO}/${RUN_KEY}`))!)).toMatchObject({ seed: next.seed, path: [] });
     expect(await profileKeys()).toEqual([]);
+  });
+});
+
+describe('the Underroot remembers the setup', () => {
+  // the dev site keeps its own profile under the dev/ prefix, and never touches the game's
+  for (const [site, prefix] of [['the game', ''], ['the dev site', 'dev/']] as const) {
+    it(`opens on the last commander and bans begun, after a reload too, on ${site}`, async () => {
+      await open(`${prefix ? dev : game}/?scene=underroot&debug=1`);
+      expect(await underroot()).toEqual({ commander: 'vesper', bans: [] });
+      await page.locator('[data-commander="armilla"]').click();
+      await page.locator('#tab-bans').click();
+      await page.locator('[data-ban="scythecapGrove"]').click();
+      // nothing is remembered until Begin run
+      expect(await profileKeys()).toEqual([]);
+      await page.locator('#underroot-begin').click();
+      await page.waitForSelector('#route');
+      expect(await brief()).toMatchObject({ screen: 'route', commander: 'armilla', bans: ['scythecapGrove'] });
+      expect(JSON.parse((await stored(`${prefix}${PROFILE_KEY}`))!)).toEqual({ v: 1, lastSetup: { commander: 'armilla', bans: ['scythecapGrove'] } });
+      expect(await profileKeys()).toEqual([`${prefix}${PROFILE_KEY}`]);
+      await page.reload();
+      await page.waitForFunction(() => window.__GAME__?.ready === true);
+      expect(await page.locator('[data-commander="armilla"]').evaluate((c) => c.classList.contains('on'))).toBe(true);
+      expect(await page.locator('[data-ban="scythecapGrove"]').getAttribute('aria-pressed')).toBe('true');
+      expect(await underroot()).toEqual({ commander: 'armilla', bans: ['scythecapGrove'] });
+      expect(await page.locator('#uc-chosen').textContent()).toBe('Armilla the Vast · 1 ban');
+    });
+  }
+
+  it('opens on Vesper with no bans when the profile names an unknown commander, and writes nothing on opening', async () => {
+    // the bans drop too: Rootbreaker Den is in Vesper's core, and `nothing` is outside the roster
+    const profile = JSON.stringify({ v: 1, lastSetup: { commander: 'nobody', bans: ['rootbreakerDen', 'nothing'] } });
+    await open(`${game}/?scene=underroot&debug=1`, { [PROFILE_KEY]: profile });
+    expect(await underroot()).toEqual({ commander: 'vesper', bans: [] });
+    expect(await page.locator('#uc-chosen').textContent()).toBe('Vesper Velvetcap');
+    expect(await stored(PROFILE_KEY)).toBe(profile);
+  });
+
+  it('on a seeded test page, neither reads nor writes the profile', async () => {
+    const profile = JSON.stringify({ v: 1, lastSetup: { commander: 'armilla', bans: ['scythecapGrove'] } });
+    await open(`${game}/?scene=underroot&seed=5&test=1`, { [PROFILE_KEY]: profile });
+    expect(await underroot()).toEqual({ commander: 'vesper', bans: [] });
+    await page.locator('#underroot-begin').click();
+    await page.waitForSelector('#route');
+    expect(await brief()).toMatchObject({ screen: 'route', seed: 5, commander: 'vesper', bans: [] });
+    expect(await stored(PROFILE_KEY)).toBe(profile);
+    expect(await profileKeys()).toEqual([PROFILE_KEY]);
+  });
+
+  it('on a prototype page on the dev site, neither reads nor writes the profile (RB-Q2)', async () => {
+    const profile = JSON.stringify({ v: 1, lastSetup: { commander: 'armilla', bans: ['scythecapGrove'] } });
+    await open(`${dev}/?proto=${PROTO}&scene=underroot&debug=1`, { [`dev/${PROFILE_KEY}`]: profile });
+    expect(await underroot()).toEqual({ commander: 'vesper', bans: [] });
+    await page.locator('[data-commander="cordis"]').click();
+    await page.locator('#underroot-begin').click();
+    await page.waitForSelector('#route');
+    expect(await brief()).toMatchObject({ screen: 'route', commander: 'cordis', bans: [] });
+    // the run saves apart from the real save, and the profile stays as it was
+    expect(JSON.parse((await stored(`dev/proto=${PROTO}/${RUN_KEY}`))!)).toMatchObject({ commander: 'cordis', path: [] });
+    expect(await stored(`dev/${PROFILE_KEY}`)).toBe(profile);
+    expect(await profileKeys()).toEqual([`dev/${PROFILE_KEY}`]);
   });
 });
