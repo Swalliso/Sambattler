@@ -1,4 +1,4 @@
-// The combat rework's settings (docs/ideas/combat-rework.md, P1 to P2): pinned, call for help,
+// The combat rework's settings (docs/archive/v1/ideas/combat-rework.md, P1 to P2): pinned, call for help,
 // spore clouds, the Rhizomorph, waves, mixed waves, cleave and the Burster. Every setting is absent from data/balance.json
 // and its content exists only under its preset, so the shipped rules are unchanged; with a setting
 // on, it behaves as described.

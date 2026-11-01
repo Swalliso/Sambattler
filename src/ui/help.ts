@@ -1,5 +1,5 @@
 // Help overlay (SPEC §10.3 `H`), all read from the data so it never drifts from the rules. Six tabs
-// (docs/ui-ux-plan.md C6, playtest round 3): the damage/armor matrix and tags, merging and your units'
+// (docs/archive/v1/ui-ux-plan.md C6, playtest round 3): the damage/armor matrix and tags, merging and your units'
 // perks, how the general adapts, the economy (income, interest, the Spore Exchange, the forward price),
 // the Sporestorm, and every key. Each tab fits a 1280×720 window; arrow keys move between tabs, and the
 // last tab opened is the one that opens next time.

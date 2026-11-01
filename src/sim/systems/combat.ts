@@ -1,3 +1,4 @@
+// v1 code: R2 removes turrets and damage to buildings and keeps the rest (SPEC §13.4).
 // Attacks, projectiles, damage and deaths (SPEC §5.3, §4.5 turrets).
 import { fireBreaches, fireTriggers, runAction } from '../effects.ts';
 import { insertHit } from '../hits.ts';

@@ -1,4 +1,4 @@
-// The battle HUD (docs/ui-ux-plan.md, Phase 1b): both Heartcaps frame the top band, its chips stay clear
+// The battle HUD (docs/archive/v1/ui-ux-plan.md, Phase 1b): both Heartcaps frame the top band, its chips stay clear
 // of their labels (also with the combat rework's beat chip), Begin and its hint
 // stay off the field, the tray never clips or scrolls sideways (two compact rows when 14 cards don't fit
 // one row), unaffordable cards are unlit rather than faded, legal tiles light up while placing, the
@@ -60,7 +60,7 @@ describe('the top band', () => {
     expect(await page.locator('.fieldwrap .hp').count()).toBe(0);
   });
 
-  // the combat rework's beat chip ran the row over "GRAY ROT HEARTCAP" at 1280 px (docs/ideas/after-the-rework.md);
+  // the combat rework's beat chip ran the row over "GRAY ROT HEARTCAP" at 1280 px (docs/archive/v1/ideas/after-the-rework.md);
   // a battle 2:00 in, with a run's late numbers: four-digit gold, two-digit relics and upgrade levels
   const RELICS = ['thickCaps', 'fruitingSeason', 'rotWard', 'quickRoots', 'freshSpores', 'hardySpores', 'rootStipend', 'deepCellars', 'sporeTithe', 'forwardSpores'];
   for (const [width, height] of [[1280, 720], [1366, 650]] as const) {

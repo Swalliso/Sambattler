@@ -1,4 +1,4 @@
-// Draft cards (SPEC §8.3, docs/ui-ux-plan.md C3), shared by the in-battle draft overlay and the run's
+// Draft cards (SPEC §8.3, docs/archive/v1/ui-ux-plan.md C3), shared by the in-battle draft overlay and the run's
 // spoils screen. Each rarity has a frame (common bark, uncommon teal-lit, rare amber-lit with a spore
 // sparkle) and keeps its word; the type's icon heads the card; a blueprint shows stat chips (its price,
 // what it makes or does, its role) instead of prose. Cards deal in left to right, and lift and lean a

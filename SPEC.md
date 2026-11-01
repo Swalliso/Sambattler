@@ -34,6 +34,7 @@ Conventions:
 - Rounds are numbered from 1 within each battle. The **battle index** numbers the battles of a run from 1.
 - "Player" means the human side (left, violet). "Enemy" or "general" means the AI side (right, gray). The rules are symmetric unless stated otherwise. The main exception is the order of planning: the general plans first, and the player plans seeing its army (§7.1).
 - **v1 and v2** are versions of this spec. Where a passage kept from v1 says what "v1 ships", or titles a table "(v1)", it means the game's first full release, through Milestone 8 (§16).
+- **Links into `docs/archive/v1/` are background:** the v1-era reasoning, research and evidence behind a v2 rule. They aren't rules, and where an archived doc and this spec differ, this spec wins. Research on other games that still applies is in `docs/research/`.
 - **Section numbers are fixed.** v2 keeps every v1 section number, because the code cites sections by number (for example `SPEC §7.4`).
   - A v1 subsection whose system v2 retires stays as a short stub under its old number and title, marked "(retired in v2)". The stub says what replaced the system and points to Appendix A. The retired system's code remains until milestone R2 removes it.
   - A new subsection takes the next free number in its section (for example §4.6, §5.8, §8.10).
@@ -73,7 +74,7 @@ v2 rebuilds the battle around rounds and keeps most of the rest. The decisions a
 - **Close calls left no mark.** The battles weren't too easy, but the run summary showed the Heartcap at 3000 → 3000 in all four battles.
 - **The spec and the tests:** the user wondered whether following v1 and its older tests too closely was limiting what got tried. In v2, tests follow the spec (§1.3 #13).
 
-The measurements agree ([docs/ideas/after-the-rework.md](docs/ideas/after-the-rework.md) and its folder):
+The measurements agree ([docs/archive/v1/ideas/after-the-rework.md](docs/archive/v1/ideas/after-the-rework.md) and its folder):
 - under the rework, the best plot was worth about 5% of a building more than the median one;
 - two playtests found forward building not worth it (F1), and testers found column capture awkward or confusing (F6);
 - the side holding more ground at 2:00–4:00 went on to win only about 40% of the time;
@@ -105,7 +106,7 @@ The measurements agree ([docs/ideas/after-the-rework.md](docs/ideas/after-the-re
 
 v1's pillars *Territory is build space* and *Three become one* no longer break ties: territory is retired (Appendix A), and merging stays as a rule (§5.6). *Every run asks something new* lives on in pillar 3.
 
-**What keeps it its own game.** Rounds move the game toward Mechabellum, and plots and lives toward 9 Kings ([docs/ideas/rounds.md](docs/ideas/rounds.md), "Identity"). Four things keep it apart:
+**What keeps it its own game.** Rounds move the game toward Mechabellum, and plots and lives toward 9 Kings ([docs/archive/v1/ideas/rounds.md](docs/archive/v1/ideas/rounds.md), "Identity"). Four things keep it apart:
 - **The opponent** is one general that plans in the open, answers what you fielded and remembers you across the run, not another player or a fixed deck.
 - **The army is a colony.** Each building fields a squad, and the colony's layout is the formation.
 - **Units grow on the field.** Three become one, and neighbors make Elders.
@@ -507,7 +508,7 @@ Units exist only during a clash. On the clash's first tick, each squad appears i
   - With a target out of range: step toward it at `speed`.
   - With no target in reach: move toward the nearest enemy unit in its lane that it could target (by squared edge distance; not a burrowed unit, and not a flyer for a unit that can't hit one, §5.3).
   - With no such enemy: advance along the lane (+x for the player, −x for the enemy) while drifting back toward the y of the unit's slot (its file, §4.6) at 0.3 tiles/s, up to the far edge.
-  - **Open:** whether a squad keeps its place in the formation on the approach. The rework's waves marched at their slowest unit's pace, with ranged units 1 tile behind their melee front. The first guess is no: each unit moves at its own speed, as in v1.
+  - **Open:** whether a squad keeps its place in the formation on the approach. The rework's waves marched at their slowest unit's pace, with ranged units 1 tile behind their melee front. The first guess is no: each unit moves at its own speed, as in v1. R1's pace variant measures it (§16).
 - **Hold / Advance** (`laneStance`, retired in v2): both whole armies start each clash at once, after the same 1 s muster (§5.6), which is what Hold was for, so no lane holds. See Appendix A.
 - **Tunnelers** (the `burrow` tag; the Rhizomorph, an unlockable, §11.3):
   - A tunneler is fielded **burrowed**. While burrowed it has no target, can't be targeted or hit by anything (attacks, splash, clouds, bursts), passes under every unit, pins nothing and doesn't merge.
@@ -609,7 +610,7 @@ v2 keeps four rules from the combat rework as rules of the game (§1.3 #11). The
 - **Chains:** a burst that fells another Burster sets it off in turn, in id order, until none is left.
 - **What it can't hit:** buildings, friends, burrowed units and flyers.
 
-**Flyers (later, as an unlockable):** v2 adds flyers as an unlockable role (the Driftling, a working name, §11.3). The starting rule is the rework's **rule C**, from [docs/ideas/flyers.md](docs/ideas/flyers.md): no immunity, a penalty.
+**Flyers (later, as an unlockable):** v2 adds flyers as an unlockable role (the Driftling, a working name, §11.3). The starting rule is the rework's **rule C**, from [docs/archive/v1/ideas/flyers.md](docs/archive/v1/ideas/flyers.md): no immunity, a penalty.
 
 - **Who can hit it:** every unit can hit a flyer. A ground unit's melee hit on one deals **×0.5** (`flying.meleeMult`), and ranged hits and other flyers' hits deal full damage.
 - **What can't:** lobbed shells (a tower whose shell splashes, such as the Mortar) and bursts can't hit a flyer, and neither aims at one.
@@ -838,7 +839,7 @@ Starting gold for round 1 is `300 + 75 × (battleIndex − 1)`, the same for bot
 - **Comeback gold** is v1's comeback income, paid once a round, like the loss-streak gold in Teamfight Tactics. Winning a round pays nothing extra, so income never snowballs.
 - **The general's income** follows the same rules, times a data value of **1.0**. It gets no extra gold for planning first (§1.3 #3). A blight MAY raise the value later (§9.6, §17 #14).
 - Relics and traits may modify any source (§11.7).
-- **Expected income:** about one new spawner a round after the opener, or 1,000–1,300 gold over a 7-round battle ([docs/ideas/rounds.md](docs/ideas/rounds.md), "The run layer"). The balance tools report the actual figure (§12).
+- **Expected income:** about one new spawner a round after the opener, or 1,000–1,300 gold over a 7-round battle ([docs/archive/v1/ideas/rounds.md](docs/archive/v1/ideas/rounds.md), "The run layer"). The balance tools report the actual figure (§12).
 
 ### 6.3 Supply-line cost (retired in v2)
 
@@ -1039,7 +1040,7 @@ Score each candidate:
 - **Aggressive personalities** (the Blightwright, `laneStyle: aggressive`) send spawners instead to the lane where the player fielded the least supply last round.
 - **Economy and utility** go to a lane with a free loam plot, else to the lane with more free back-rank plots.
 - A full lane falls back to the other.
-- **Open:** the lane rule. First guess: the starting rule above. Twin Roots is where mono Sporeling escaped its answers in the counter-matrix check, because `bot:balanced` splits its army ([docs/ideas/combat-rework.md](docs/ideas/combat-rework.md#the-counter-matrix-check); [docs/ideas/rounds.md](docs/ideas/rounds.md), "The general (§7)").
+- **Open:** the lane rule. First guess: the starting rule above. Twin Roots is where mono Sporeling escaped its answers in the counter-matrix check, because `bot:balanced` splits its army ([docs/archive/v1/ideas/combat-rework.md](docs/archive/v1/ideas/combat-rework.md#the-counter-matrix-check); [docs/archive/v1/ideas/rounds.md](docs/archive/v1/ideas/rounds.md), "The general (§7)").
 
 ### 7.4 Counter cycle (Milestone 4, in rounds)
 
@@ -1054,7 +1055,7 @@ The counter cycle still runs, now in rounds. It reads what the player fielded an
 
 The boss also gets an early cycle in round 3's planning, reading rounds 1–2.
 
-- Each cycle analyses and activates in the same planning phase. v1 warned two waves ahead; with the vague telegraph retired there is no pending counter to hide (§7.5, Appendix A). The activation rounds are those of [docs/ideas/rounds.md](docs/ideas/rounds.md).
+- Each cycle analyses and activates in the same planning phase. v1 warned two waves ahead; with the vague telegraph retired there is no pending counter to hide (§7.5, Appendix A). The activation rounds are those of [docs/archive/v1/ideas/rounds.md](docs/archive/v1/ideas/rounds.md).
 - A cycle runs in the general's turn (§7.2, step 1), so the counter's buildings are planted before the player plans.
 - A battle that ends sooner never reaches its later cycles.
 - **Open:** whether a counter should land a round after its analysis instead, so the player's build gets a round to pay off. First guess: no, it activates in the planning phase of its analysis, as above.
@@ -1077,7 +1078,7 @@ The boss also gets an early cycle in round 3's planning, reading rounds 1–2.
 
 If the player fielded nothing in the rounds read, the cycle passes.
 
-**What the counter-matrix check found.** The counter-matrix check ([docs/ideas/combat-rework.md](docs/ideas/combat-rework.md#the-counter-matrix-check)), run on v1's rules on 2026-10-30 ([results](docs/balance-backlog.md#counter-matrix-on-todays-rules-2026-10-30)), measured what beats each strong mono build:
+**What the counter-matrix check found.** The counter-matrix check ([docs/archive/v1/ideas/combat-rework.md](docs/archive/v1/ideas/combat-rework.md#the-counter-matrix-check)), run on v1's rules on 2026-10-30 ([results](docs/archive/v1/balance-backlog.md#counter-matrix-on-todays-rules-2026-10-30)), measured what beats each strong mono build:
 
 | Against | Best answers |
 |---|---|
@@ -1089,7 +1090,7 @@ If the player fielded nothing in the rounds read, the cycle passes.
 
 - The counter sets above match most of these: slash for the swarm (Capguards, Amanita Knights), crush for heavy armor (Hammercaps), pierce for medium (Veilstalkers against Morel Runners).
 - They miss archers: the analysis computes a ranged share, but no kind scores it, and the check's answer to archers is a swarm. **Open:** whether R1 adds an Anti-Ranged kind that scores `rangedShare`, with `swarm` spawners as its set. First guess: no, the four kinds above until R1 measures it.
-- **Open:** whether the counter sets come from R1's clash matrix instead, as [docs/ideas/rounds.md](docs/ideas/rounds.md) suggests. First guess: by damage type and tag, as in the table above.
+- **Open:** whether the counter sets come from R1's clash matrix instead, as [docs/archive/v1/ideas/rounds.md](docs/archive/v1/ideas/rounds.md) suggests. First guess: by damage type and tag, as in the table above.
 - **Open:** an Anti-Air kind for flyers, which come later (§1.3 #11). First guess: none until flyers arrive.
 - **Open:** (settled in R3) how the analysis reads an augment that flips a matchup, so the general can answer it as §1.3 #7 requires. First guess: the general rates its counter set against the player's squads as augmented (the compiled matchup, §5.3), skips a building that loses, and reaches for the next answer.
 
@@ -1217,8 +1218,8 @@ The route map has six rows. You pick one node per row, and every node connects t
 | 5 | Battle, Elite |
 | 6 | Boss |
 
-- **Battles per run:** 4 or 5, including the boss. A battle of 6–8 rounds takes about 6–8 minutes if planning averages about 30 s a round ([docs/ideas/rounds.md](docs/ideas/rounds.md)), which matches the 25–35 minute target.
-- **Run length under lives:** a lost battle no longer ends the run (§8.5), so more runs reach the boss and a run grows longer. With lives, an emulation under v1's waves put a run at about 35–45 minutes for a person at 1× ([docs/ideas/after-the-rework.md](docs/ideas/after-the-rework.md), Tier 1 item 2). The route's shape (its rows and the node kinds in each) SHOULD live in data, so a shorter run can be measured.
+- **Battles per run:** 4 or 5, including the boss. A battle of 6–8 rounds takes about 6–8 minutes if planning averages about 30 s a round ([docs/archive/v1/ideas/rounds.md](docs/archive/v1/ideas/rounds.md)), which matches the 25–35 minute target.
+- **Run length under lives:** a lost battle no longer ends the run (§8.5), so more runs reach the boss and a run grows longer. With lives, an emulation under v1's waves put a run at about 35–45 minutes for a person at 1× ([docs/archive/v1/ideas/after-the-rework.md](docs/archive/v1/ideas/after-the-rework.md), Tier 1 item 2). The route's shape (its rows and the node kinds in each) SHOULD live in data, so a shorter run can be measured.
 - **Battle nodes** show:
   - the map name and lane count;
   - the general's portrait, name and title, and any elite modifier (§7.7);
@@ -1287,7 +1288,7 @@ A run's draft pool deals from three sources. Bans remove buildings from it.
 - **Open:** whether the always-in set holds any relics. First guess: no. The Sporestorm Sigil isn't in it (§11.7).
 - **Open:** whether the always-in set can be banned. First guess: no, so the swarm's answer is in every run. v1 had no such set, so this extends v1's ban rule.
 - **Open:** what a ban does to a pack. First guess: a pack whose building is banned isn't dealt, and the next pack is dealt in its place.
-- **Open:** a pack swap at run setup (one dealt pack traded for another), which [docs/ideas/after-the-rework.md](docs/ideas/after-the-rework.md) Tier 4 #3 suggests beside the bans. First guess: no swap.
+- **Open:** a pack swap at run setup (one dealt pack traded for another), which [docs/archive/v1/ideas/after-the-rework.md](docs/archive/v1/ideas/after-the-rework.md) Tier 4 #3 suggests beside the bans. First guess: no swap.
 
 ### 8.5 Lives across a run
 
@@ -1301,7 +1302,7 @@ A run's draft pool deals from three sources. Bans remove buildings from it.
 - **The run is lost** at 0 lives, or (first guess, Open below) when you lose the boss battle by any outcome.
 - **Shown:** your lives sit under your Heartcap in battle (§10.2) and on the run bar (§10.5). The battle report names a life lost and the lives left.
 
-**Why lives:** under v1, 92% of battles started at full HP, so repairs did almost nothing, and only 2 of 159 runs that lost battle 1 went on to win ([docs/ideas/after-the-rework.md](docs/ideas/after-the-rework.md), Tier 1 item 2). Losing Heartcap in a battle you win punished success (§1.3 #2). A life is a cost you can see, paid only for a loss.
+**Why lives:** under v1, 92% of battles started at full HP, so repairs did almost nothing, and only 2 of 159 runs that lost battle 1 went on to win ([docs/archive/v1/ideas/after-the-rework.md](docs/archive/v1/ideas/after-the-rework.md), Tier 1 item 2). Losing Heartcap in a battle you win punished success (§1.3 #2). A life is a cost you can see, paid only for a loss.
 
 The number of lives, 3, is a first guess to tune like any number, not an open rule.
 
@@ -1359,7 +1360,7 @@ The number of lives, 3, is a first guess to tune like any number, not an open ru
   - damage by building across the whole run
   - a per-battle round sparkline: the Heartcap damage dealt and taken in each round (it replaces v1's front-line sparkline)
   - Spores, Amber and XP earned; feats completed; Decay
-- **Run it back and records** ([docs/ideas/after-the-rework.md](docs/ideas/after-the-rework.md) Tier 1 item 7) is independent work (§16): a quick restart with the last commander and bans, truthful summary lines and per-commander records. Nothing in this section depends on it.
+- **Run it back and records** ([docs/archive/v1/ideas/after-the-rework.md](docs/archive/v1/ideas/after-the-rework.md) Tier 1 item 7) is independent work (§16): a quick restart with the last commander and bans, truthful summary lines and per-commander records. Nothing in this section depends on it.
 
 ### 8.9 Save and resume
 
@@ -1382,7 +1383,7 @@ This section owns when a battle saves and where it resumes. §13.8 points here.
 
   A clash is at most 45 s (900 ticks, §6.7), so a battle is at most 9 × 900 = 8,100 ticks, and replaying takes about a second or less.
 - **Saves from before R2:** a run or battle saved under v1's rules can't continue under rounds. A v1 battle restarts from round 1's planning with v1's notice for an incompatible save, and the run's progress is kept.
-  - **Open:** what a run saved before R2 becomes, since it has a run-long Heartcap and no lives or copies. First guess: it migrates, keeping its kit, relics and progress, with 3 lives. The alternative is to end it with a notice. Either way it MUST NOT be lost silently, and its key stays (§13.8).
+  - **Open:** what a run saved before R2 becomes, since it has a run-long Heartcap and no lives or copies. First guess: it migrates, keeping its kit, relics and progress, with 3 lives. The alternative is to end it with a notice. Either way it MUST NOT be lost silently, and its key stays (§13.8). Today `loadRun` (`src/run/resume.ts`) returns null on a version mismatch, which would drop it silently, so R2 MUST replace that (§16).
 - **Legacy event prompts:** if an old save offers a sacrifice that can no longer pay its full reward, return to the event choices before charging that cost. If an older version already charged the cost for an upgrade reward, offer the levels its remaining tracks can hold (or continue if none fit), with a visible shortfall notice and preserved run progress. This applies until R3 replaces upgrade levels with augments.
 
 ### 8.10 The kit: cards and copies
@@ -1500,7 +1501,7 @@ Each feat is a data record: `id`, `name`, `description`, `scope` (`battle` or `r
 
 - **Order:** the strain patches the building's definition first, and augments apply on top of it. This is v1's order of base data, then the strain patch, then modifiers (§14.1).
 - **Open:** whether a strain may change a unit's body (armor class) or weapon (damage type). First guess: no, as for augments, so the shape never lies (§5.8, §14.1). v1's strains that change one (*Ironcap*'s heavy Capguards, *Gillguard*'s and *Thornpuff*'s damage types, §11.5) then need new patches in M6. If the answer is yes, such a strain MUST change the unit's body size or weapon mark to match, so the shape still tells the matchup. §5.8, §11.5 and §14.1 point here.
-- **Open:** how strains and augments divide the work. Some v1 strains read like augments (*Bursting*'s Sporelings that explode on death), and [docs/ideas/after-the-rework.md](docs/ideas/after-the-rework.md) Tier 4 #4 suggests drafting strains as "mutation" cards. First guess: strains stay the loadout chosen before a run, augments are the build found during it, and R3 and M6 remove overlaps.
+- **Open:** how strains and augments divide the work. Some v1 strains read like augments (*Bursting*'s Sporelings that explode on death), and [docs/archive/v1/ideas/after-the-rework.md](docs/archive/v1/ideas/after-the-rework.md) Tier 4 #4 suggests drafting strains as "mutation" cards. First guess: strains stay the loadout chosen before a run, augments are the build found during it, and R3 and M6 remove overlaps.
 
 ### 9.4 Colony traits and Root Capacity (Hades II Arcana style)
 
@@ -1590,7 +1591,7 @@ A battle is a series of rounds (§4.7), and the battle screen keeps one layout t
 └────────────────┴──────────────────────────────────────────────────────────────┴────────────────────┘
 ```
 
-- **Top band** (docs/ui-ux-plan.md, Phase 1b): the win condition frames it.
+- **Top band** (docs/archive/v1/ui-ux-plan.md, Phase 1b): the win condition frames it.
   - **Your Heartcap** at the left end and **the Gray Rot's** at the right: the Heartcap's cap, its HP in the display face and a striped HP bar that drains toward the field's centre. Both are this battle's Heartcaps, full when the battle starts (§4.5). Below a third of its HP, the number turns danger red.
   - **Lives:** in a run, your lives sit under your Heartcap, one cap icon per life, lit for each one left (§8.5).
   - Between the Heartcaps, **stat chips** (a pixel icon, a tabular display-face number and a small word):
@@ -1631,7 +1632,7 @@ A battle is a series of rounds (§4.7), and the battle screen keeps one layout t
 
     Each is shown once, ever, and remembered under `spore-sprawl/tips/v1` (through `storageKey()`); the settings screen turns tips off or shows them all again. The ids of v1's retired tips (the frontier, Hold) stay in old records and are ignored. The economy tip waits in the same queue but isn't remembered. A tip is cream on its panel with a lilac "Tip" word and names its key with a keycap; tips never use gold, which means money. R4 rewrites their words (§16).
   - **Pinned callouts** come before the timed ones and stay until they no longer apply: the planning hint, the empty-lane warning at Begin (see the planning view), "Paused" while a clash is paused, the commander power's aim while aiming, and a notice when a saved battle couldn't be restored. Nothing else sits on the field.
-- **Field frame** (docs/ui-ux-plan.md, Phase 1a): the void between the bands, above, below and beside the battlefield, is drawn as the earth the field sits in.
+- **Field frame** (docs/archive/v1/ui-ux-plan.md, Phase 1a): the void between the bands, above, below and beside the battlefield, is drawn as the earth the field sits in.
   - What it shows: a roots ceiling, a soil bed with each side's buried threads (lilac under your half, ash under theirs), roots down each side, and each Heartcap's crown rising into the ceiling.
   - How it's drawn: text sprites from `data/sprites/frame.json`, baked onto a canvas behind the field and the bands at the field's own pixel scale, with its pixels lined up with the field's. It stays darker than the field and takes no input.
   - **Ambient spores** drift across it, thicker with each round of the Sporestorm from round 5. They drift at 1× in planning, move at the game's speed in a clash, stop while a clash is paused and once the battle is over, and hold still under `prefers-reduced-motion` and `?test=1`.
@@ -1730,7 +1731,7 @@ A battle is a series of rounds (§4.7), and the battle screen keeps one layout t
   - **On the planning screen:** while a card is chosen or one of your squads is hovered, each enemy squad shows the class of your hits on it. Hovering an enemy squad shows the class of its hits on your squads and cards.
   - R2's planning screen needs basic marks to be playtestable; R4 draws them (§16).
 - **Augment icons:** an augment shows on its card and on its squad in the formation preview, the general's included (§11.13). In a clash a unit carries no augment icon. An augment shows its icon where and when it acts (spores bursting from a dying Sporeling, a shield stopping an arrow), and inspecting the unit lists its augments.
-- **Combo highlights:** while placing, the ghost lights each neighbor it would link with and shows the combo's icon. In planning, linked buildings are joined by a hypha with the combo's icon at its middle ("mycelium connects", docs/ui-ux-plan.md). In a clash, a combo shows its icon when it acts, as an augment does.
+- **Combo highlights:** while placing, the ghost lights each neighbor it would link with and shows the combo's icon. In planning, linked buildings are joined by a hypha with the combo's icon at its middle ("mycelium connects", docs/archive/v1/ui-ux-plan.md). In a clash, a combo shows its icon when it acts, as an augment does.
 - **Damage numbers:** none by default. The setting offers *off*, *big hits only* (30 or more) and *all*. It lives on the settings screen (§10.5), which the cog in the battle's bottom band opens, and is saved with the other settings.
 - **HP bars:** shown only on damaged units; always shown on Heartcaps, in the top band. Buildings can't be hit, so they have none.
 - **Hit sparks** come in three tints by effectiveness class (§5.3):
@@ -1779,7 +1780,7 @@ A battle is a series of rounds (§4.7), and the battle screen keeps one layout t
 
 Milestone R2 (§16) needs the battle's three views and the report by round. The run screens change only where lives replace the run's Heartcap, the kit gains copies and the general's route node shows its kit.
 
-**Run screens as built (docs/ui-ux-plan.md, Phase 2), with v2's changes.** Every run screen is DOM (so Playwright can query it), with spores drifting behind it, the run bar on top and a footer with the seed.
+**Run screens as built (docs/archive/v1/ui-ux-plan.md, Phase 2), with v2's changes.** Every run screen is DOM (so Playwright can query it), with spores drifting behind it, the run bar on top and a footer with the seed.
 - **Title** (the page with no `scene`): "Spore & Sprawl" in the display face beside the Heartcap's silhouette, lit from below. Continue (only with a saved run, and naming its row and lives), New run (after a confirm if a run is saved), How to play (Help) and Settings (the settings screen). The run's route and summary have a Title button back. It becomes the door to the Underroot in M6.
 - **Run bar:** your lives (one cap icon per life, lit for each one left, §8.5) in place of v1's Heartcap HP and bar, Spores and Amber with their icons, battles won, the kit (each card with its copies and its augments' icons) and the relics, then the speaker and the settings cog. Each relic is a pixel badge whose shape and rim name its rarity (round, diamond, star), with a tooltip on hover or focus.
 - **Route map:** spore pods on soil, one icon per node kind, joined by hyphae from every node to every node in the next row (and from the colony's start to the first row). The path you walked glows violet, the threads you can take now glow lilac, the rest stay dim, and hovering or focusing a pod lights its threads. A legend names the node kinds. A battle node shows its general (portrait, name and title), any elite modifier and the general's kit with each card's copies, so you can plan a run around who's coming (§7.5, §8.2).
@@ -1795,7 +1796,7 @@ Milestone R2 (§16) needs the battle's three views and the report by round. The 
   - R4 rewrites Help's words (§16).
 - **Motion:** things grow in (from 0.96, ease-out) and nothing bounces more than once. Every screen change (title, route, spoils, event, Grove, battle, report, summary) is a spore-burst wipe of 360 ms: a veil of the void rises over the old screen on a band of spore-white motes (150 ms, ease-in), the screen swaps, and the veil lifts off the new one from the bottom up (210 ms, ease-out). Clicks and keys wait while it runs; the page's first screen appears at once. A battle's phases aren't screen changes: planning, clash and aftermath share the battle screen, and only the report arrives behind the wipe. Under reduced motion (§10.4) there's no wipe, stagger, lift, tilt, sparkle, roll-up, drift or surge, and fades take 120 ms or less. `?test=1` holds every screen still and makes every change instant.
 
-**Settings screen as built (docs/ui-ux-plan.md, Phase 3).** An overlay sheet that opens from the title's Settings button, the battle's cog (a clash pauses while it is open, and the sheet says so) and the run bar's cog. Esc, Close or a press on the scrim closes it; while it is open, keys reach nothing behind it (except `S`, which still mutes) and Tab stays inside. The speakers keep their quick mute. Two columns:
+**Settings screen as built (docs/archive/v1/ui-ux-plan.md, Phase 3).** An overlay sheet that opens from the title's Settings button, the battle's cog (a clash pauses while it is open, and the sheet says so) and the run bar's cog. Esc, Close or a press on the scrim closes it; while it is open, keys reach nothing behind it (except `S`, which still mutes) and Tab stays inside. The speakers keep their quick mute. Two columns:
 - **Sound:** mute, and master, effects and ambience volume (§13.9).
 - **Battle:** damage numbers (off, big hits, all), default speed (1×, 2×, 3×: a battle's first clash runs at it, and a speed you choose carries to the next clash) and screen shake (off or on). v1's spawn timers setting is gone with spawn timers; a saved value is ignored.
 - **Learning** (under Display and motion): tips (off or on, on by default) and "Show tips again", which forgets which first-time tips were shown.
@@ -1872,7 +1873,7 @@ Key names for new constants are first guesses; §14.2 fixes them.
 | `effectiveness` | strong at ×1.5 or more, weak at ×0.75 or less: the hit sparks and the matchup marks (§10.4) |
 | `movement.driftSpeed` / `separationPasses` | 0.3 / 2 |
 
-**The combat rework's rules kept in v2** (§1.3 #11). They live in `src/data/proto.ts` today and move into `data/balance.json` in R2:
+**The combat rework's rules kept in v2** (§1.3 #11). They live in `src/data/proto.ts` today. R2 adopts R1's chosen set as default data: its rules move into `data/balance.json`, and the Burster's and the Rhizomorph's units and buildings into the faction files (§11.2). R3 gives those buildings their place in a run (§11.15):
 
 | Rule | Value | Section |
 |---|---|---|
@@ -1881,8 +1882,8 @@ Key names for new constants are first guesses; §14.2 fixes them.
 | Burst (Burster) | 40 damage, ignoring armor, to every enemy within 1.5 tiles, plus a spore cloud of 1.5 tiles for 4 s at 10 a second | §5.3 |
 | Spore clouds (Puffball Mortar) | Range 7; each shell leaves a cloud of 1.5 tiles for 6 s at 10 a second, ignoring armor | §5.3, §11.2 |
 | Flyers (later) | Rule C: melee hits a flyer for ×0.5; lobbed shells and bursts can't hit it | §5.3 |
-| Mixed-wave shields | Not adopted. R1 measures whether mixed armies need them | §16 |
-| The Elder Sporeling's splash | Off under `?proto=rework`. R1 measures it | §16 |
+| Mixed-wave shields | Not adopted. R1 measures whether mixed armies need them, as a shield at a clash's arrival; R2 adopts them only if R1 keeps them | §16 |
+| The Elder Sporeling's splash | Off under `?proto=rework`. R1 measures it, and R2 follows R1's result | §16 |
 | The general's swarm read | `ai.counter.swarmMaxSupply` 1, the `swarmread` preset in `src/data/proto.ts` (not in `data/balance.json`): a unit of 1 supply reads by its armor, not as Elite, even when merged. R1 measures whether rounds still need it | §7.4 |
 
 **Retired in v2** (Appendix A). The values are the data's at `aa37365`:
@@ -1940,7 +1941,7 @@ All buildings have a 2×2 footprint and fill one plot (§4.6). Buildings aren't 
 | 6 | `rootgate` | Rootgate (Armilla, mastery 2) | Emplacement | | tower | 140 | itself: a root wall in its slot, 1200 HP, no attack, restored each round. **Open:** its new effect; this is the first guess | – |
 | 6 | `puppetPod` | Puppet Pod (Cordis, mastery 2) | Swarm | | spawner | 150 | 9 Sporelings; merge forced on; knit time −50% | 9 |
 
-- **The rework's three buildings** (the Burster Pod, the Rhizomorph Tunnel and the Drift Stalk) exist today only under `?proto=rework` (`src/data/proto.ts`). R2 and R3 move the kept ones into `data/factions/velvet-bloom/buildings.json`. The Drift Stalk waits for flyers (§1.3 #11).
+- **The rework's three buildings** (the Burster Pod, the Rhizomorph Tunnel and the Drift Stalk) exist today only as `?proto=` presets (`burster`, `rhizomorph` and `flyers` in `src/data/proto.ts`, all three in `rework`). R2 moves the ones in R1's chosen set into `data/factions/velvet-bloom/buildings.json` and `units.json` as default data (§16). R3 gives each its place in a run: the Burster Pod as the sixth archetype or in a pack, and the Rhizomorph Tunnel in the Deep Roots pack (§11.15). The Drift Stalk waits for flyers (§1.3 #11).
 - **Economy and utility buildings** field nothing, so each leaves a hole in the formation; they belong at the back (§4.6). A Truffle Cellar on a loam plot yields +50% (§11.9). The Spore Exchange's +12 a round is its v1 trickle of 1 gold per 5 s tick. The Rhizome Vault's v1 effect (+6 supply cap, at most 2 Vaults) went with the supply cap; its new effect and the Velvet Shrine's show on the field as combo links do (§10.4, §11.14).
 - **The Puffball Mortar** is the alternative sixth archetype. Until that's decided it's an unlockable emplacement in the Bastion pack (§11.15), and it stays in Vesper's core and Armilla's starter (§11.10). As an **emplacement** (a `tower` building's archetype, §4.4) it fields itself in its plot's slot: it can't move, it fights with its own HP, armor and attack, and it's restored every round. With the kept spore-cloud rule its shells reach 7 tiles and leave clouds (§11.1). Siege units deal ×2.0 to it (Structure armor, a first guess). How an emplacement keeps its lane alive and what it counts toward Heartcap damage are §6.7's (a first guess, Open there).
 - The Gray Rot plays this roster in its own palette until M7 (§11.12).
@@ -2032,7 +2033,7 @@ The role factors are guesses until the clash check calibrates them: ranged 1.6, 
 | Puppet Pod | 9 | 25.1 | 1.0 | 1.51 | 226 | 25.1 |
 
 - **What the heuristic can't value:** the Burster deals its 40 once, through armor and over an area; the Tender heals; the Rhizomorph's worth is where it surfaces. The clash check measures those three directly. The Amanita Knight's worth is mostly its armor: against Slash, which takes ×0.5 on Heavy, its effective HP doubles and its value per gold reads about 1.09.
-- **The swarm's gold edge.** Cheap Sporelings are the most gold-efficient squad and among the least plot-efficient. In a clash the square law (strength ∝ quality × bodies²) widens that edge further than this linear value shows ([docs/ideas/rounds.md](docs/ideas/rounds.md), "At equal gold, the triangle tilts toward the swarm"). Their brakes in v2 are copies and plots (the supply cap was v1's), Slash damage, and area damage. Merging is how a squad rises above its per-plot value. The direct knob is the Burrow's squad: at 7 its value per gold is 1.60, and at 6 it's 1.37.
+- **The swarm's gold edge.** Cheap Sporelings are the most gold-efficient squad and among the least plot-efficient. In a clash the square law (strength ∝ quality × bodies²) widens that edge further than this linear value shows ([docs/archive/v1/ideas/rounds.md](docs/archive/v1/ideas/rounds.md), "At equal gold, the triangle tilts toward the swarm"). Their brakes in v2 are copies and plots (the supply cap was v1's), Slash damage, and area damage. Merging is how a squad rises above its per-plot value. The direct knob is the Burrow's squad: at 7 its value per gold is 1.60, and at 6 it's 1.37.
 
 **Intended counter graph for the core six** (rough estimates for R1's clash check to confirm; each core archetype has an answer among the six):
 
@@ -2196,7 +2197,7 @@ Each commander's starter kit is its 3 starter cards with 2 copies each (copies f
 
 - **Cores and the core six.** A commander's core pool isn't limited to the six core archetypes: Vesper's and Armilla's bring the Rootbreaker Den and the Puffball Mortar, Armilla's the Rhizome Vault, and Cordis's the Scythecap Grove, the Veilstalker Hollow and Tender's Ring (§8.4).
 - **Armilla's starter** holds one unit type plus the Mortar, which fields itself as an emplacement (§11.2).
-- **v1's powers** (for the record): Spore Burst also hit buildings, with a 75 s cooldown, first ready at 0:45. Rhizome Tithe paid per column with a 75 s cooldown, first ready at 1:00; M5 reworked it from Rhizome Surge, which captured the frontier column in every lane (docs/m5-plan.md). Puppet Bloom had an 80 s cooldown, first ready at 1:00.
+- **v1's powers** (for the record): Spore Burst also hit buildings, with a 75 s cooldown, first ready at 0:45. Rhizome Tithe paid per column with a 75 s cooldown, first ready at 1:00; M5 reworked it from Rhizome Surge, which captured the frontier column in every lane (docs/archive/v1/m5-plan.md). Puppet Bloom had an 80 s cooldown, first ready at 1:00.
 
 ### 11.11 Generals' doctrine weights (Milestone 4)
 
@@ -2271,7 +2272,7 @@ A **combo** is a rule about position: two buildings planted in front of, behind 
 
   A plot that touches only at a corner doesn't count, except with Mycorrhizal Link (§11.7). On Twin Roots a combo never crosses lanes.
 - **A combo is active** while both buildings are planted, and it acts on the squads it names. Both sides make combos, and the general's colony shows its own (§7.3).
-- **Each combo changes what happens,** never a small percentage per neighbor: the research found those below noise ([DR-7](docs/ideas/after-the-rework.md#what-not-to-do-again)). Keep them few.
+- **Each combo changes what happens,** never a small percentage per neighbor: the research found those below noise ([DR-7](docs/archive/v1/ideas/after-the-rework.md#what-not-to-do-again)). Keep them few.
 - **It shows while placing:** the ghost lights the neighbor it would link with, and in planning the two buildings are joined by a hypha with the combo's icon (§10.4).
 - **Open:** whether a combo stacks when a building has two partners. First guess: no; a squad gets each combo's effect once.
 
@@ -2333,15 +2334,15 @@ The ten packs use every unlockable building once (the mastery buildings aside, �
 
 These are defined in §15. Every tool is headless, deterministic and seeded, and writes a report.
 
-**The clash check (milestone R1).** `npm run experiment -- --checks clash`, the headless tool from [docs/ideas/rounds.md](docs/ideas/rounds.md) ("The smallest clash prototype"). It changes no rule. It fights single clashes on today's sim and sets squad sizes before the round loop is built (§16).
+**The clash check (milestone R1).** `npm run experiment -- --checks clash`, defined here and in §16's R1. It began as the clash prototype in the archived [rounds.md](docs/archive/v1/ideas/rounds.md) ("The smallest clash prototype"), which is background only (§0). It changes no rule. It fights single clashes on today's sim and sets squad sizes before the round loop is built (§16).
 - **Armies from build lists:**
   - **The build list:** any bot spec the counter matrix uses (mono bots, the even pairs, `bot:balanced` and the hand-written answers). The army takes the bot's opener, then its weighted picks from the seed's AI stream, until a gold budget is spent.
   - **The budget** counts army buildings only, since one clash can't value economy. Economy picks are skipped.
-  - **The army:** each spawner adds its squad (§4.4), and `--squad-seconds` sets how many seconds of v1 production a squad is worth. A Puffball Mortar adds itself as an emplacement.
+  - **The army:** each spawner adds its squad (§4.4), starting from §11.2's Squad column, and `--squad-seconds` sets how many seconds of v1 production a squad is worth. A Puffball Mortar adds itself as an emplacement.
   - **Limits:** no more buildings than the colony holds: 8 plots on the one-lane maps and 6 per lane on Twin Roots, plus up to 4 more at the top budgets, as sprawl allows (§4.6). v2 has no supply cap (§5.4), so the report gives each army's supply, to check the full-colony budget of about 100 supply a side (§13.7).
-- **Formation:** by role first. Melee squads form the front rank. Ranged squads and emplacements stand 2 tiles behind, with files spread over the lane's rows. Formation by plot (§4.6) is a later variant, once formation by role reads clearly.
-- **The fight:** both armies appear on the same tick, front ranks 6 tiles apart, on a flat field with the map's lanes and merging on. A lane's clash runs until it ends by §6.7's rule: one side has no units and no emplacements left in it, or 45 s pass.
-- **Records:** each lane's winner, surviving supply, the Heartcap damage §6.7 would deal, clash length, whether it hit the 45 s cap, and merges.
+- **Formation:** by role first. Melee squads take front-rank slots, and ranged squads and emplacements take back-rank slots, 2 tiles behind, files in order. Formation by plot (§4.6) is a later variant, once formation by role reads clearly. Either way units stand at §4.6's slot layout, which R1 builds as a pure function in `src/sim` for R2's `formationOf` to reuse (§16).
+- **The fight:** both armies appear on the same tick, front ranks 6 tiles apart, on a flat field with the map's lanes and merging on. The clash opens with §5.6's muster: for 1 s nobody moves or attacks, and squads with merging on knit in place to a fixed point. The clash clock includes the muster. A lane's clash runs until it ends by §6.7's rule: one side has no units and no emplacements left in it, or 45 s pass.
+- **Records:** each lane's winner, surviving supply, the Heartcap damage §6.7 would deal, clash length (the muster included), whether it hit the 45 s cap, and merges.
 - **Maps reduce to two fields.** Units ignore stumps, so Bogwater Hollow and Stumpfield give the same clash: one lane of 8 rows. Twin Roots is two lanes of 6 rows, with each side's buildings split between them by a lane rule (alternating, to start). Means over maps still average the three run maps, so the one-lane field counts twice.
 - **Budgets** (`--budgets`): 300, 600, 900, 1,200 and 1,500 gold of army, about rounds 1, 3, 5, 7 and 9. The report shows each budget beside the pooled result, so a build that dominates only early or only late shows up.
 - **Seeds** vary the bots' picks: 20 per seat for screens, and 50 for any number quoted, as G3 uses.
@@ -2351,15 +2352,18 @@ These are defined in §15. Every tool is headless, deterministic and seeded, and
   - today's combat alone (the baseline);
   - merging off, then only the Elder Sporeling's splash off;
   - squad sizes: squads worth 45, 60 and 75 s of production, and the Burrow's squad at 6 and 7;
-  - the rework's kept pieces from `src/data/proto.ts`, alone and together: pinning, spore clouds, the Burster, cleave and the Rhizomorph (§1.3 #11);
+  - the rework's kept pieces from `src/data/proto.ts`, alone and together: pinning, spore clouds, the Burster, cleave and the Rhizomorph (§1.3 #11). Alone they're the presets `pinned`, `sporecloud`, `burster`, `cleave` and `rhizomorph`; together they're `kept`, a preset R1 adds (§16);
   - the sixth archetype's candidates: the Burster Pod, and the Puffball Mortar as an emplacement (§11.2);
-  - last, the rework's mixed-wave shield, to see whether mixed armies need it.
-- **What it settles:** squad sizes, whether mixed armies need the shield, the Elder Sporeling's splash, and the most supply a full colony fields. A bench case, one clash of two full colonies, comes with it (§15.4). **Open:** each of those is R1's result, and the user decides what to adopt (§16).
+  - a pace variant: each lane's army keeps its formation on the approach, at its slowest idle unit's pace (§5.2, §18.2 #12);
+  - last, the rework's mixed-wave shield, to see whether mixed armies need it. At the arrival, each lane's army of at least `mixedWave.minTypes` unit types gives each of its units a shield of `shieldFrac` × its max HP. R1 lifts the requirement that `mixedWave` comes with `waves`, for the clash check (§16).
+- **Not `rework`.** `?proto=rework` is v1's P3 package: waves with `matchPace`, mixed-wave shields, call for help, storm-grown waves, flyers, the swarm read and the Elder's splash off, without spore clouds or cleave. It isn't R1's variant.
+- **Expected cost:** one clash takes about 10–30 ms. The full check at five budgets is about 155,000 clashes: about 10 minutes on 6 workers (`tools/lib/pool.ts`'s worker pool, which today plays G3 rows), or under an hour on one thread.
+- **What it settles:** squad sizes, whether mixed armies need the shield, the Elder Sporeling's splash, how an emplacement counts, and the most supply a full colony fields, with a measure for each other §18.2 row settled by R1 (#11–#15, listed in §16). A bench case, one clash of two full colonies, comes with it (§15.4). **Open:** each of those is R1's result, and the user decides what to adopt (§16).
 
 **The round loop.** The clash check can't judge the economy, the general's planning or the counter cycle. Those need whole battles of rounds.
-- [rounds.md](docs/ideas/rounds.md) suggests chaining clashes in the same tool next, with gold by round and one of two planning policies: fixed weights, or "buy the answer to what you saw". In v2 the round loop is R2's work instead (§16), so the clash check stays a check of single clashes.
+- [rounds.md](docs/archive/v1/ideas/rounds.md) suggests chaining clashes in the same tool next, with gold by round and one of two planning policies: fixed weights, or "buy the answer to what you saw". In v2 the round loop is R2's work instead (§16), so the clash check stays a check of single clashes.
 - **From R2,** the round loop is the sim itself (§4.7). `npm run sim` plays battles of rounds and whole runs with lives, and every tool below measures the real loop.
-- **How bots plan.** A strategy bot plans by its fixed weights and doesn't read the general's army (§7.1), which is what G3 and G12 need. [rounds.md](docs/ideas/rounds.md)'s second policy, "buy the answer to what you saw", MAY be added to the tools as a planning policy. **Open:** whether to add it, and whether the run guardrails (G14, G15) use it. The information edge is the player's by design (§1.3 #3), so a bot that ignores it understates the player.
+- **How bots plan.** A strategy bot plans by its fixed weights and doesn't read the general's army (§7.1), which is what G3 and G12 need. [rounds.md](docs/archive/v1/ideas/rounds.md)'s second policy, "buy the answer to what you saw", MAY be added to the tools as a planning policy. **Open:** whether to add it, and whether the run guardrails (G14, G15) use it. The information edge is the player's by design (§1.3 #3), so a bot that ignores it understates the player.
 
 **The tools that persist,** rewritten in round form by R2:
 - `npm run balance -- duel`: two kinds of duels.
@@ -2370,7 +2374,7 @@ These are defined in §15. Every tool is headless, deterministic and seeded, and
 - `npm run balance -- tournament`: the strategy bots (`bot:balanced`, `bot:rush`, `bot:turtle` and `bot:greedy`) against the scripted general (§7.9) on Bogwater Hollow over seeds. It gives a win-rate table, the median rounds per battle, the share of battles that reach round 9 (and so end by Decision), the share of clashes that reach the 45 s cap, the median clash length, and how often the lead in the Heartcap race changes hands. v1's front-line volatility is retired with territory. `tournament --commanders all` plays whole runs per commander: lives lost, battle-1 results, boss reach and boss fights won.
 - `npm run experiment -- --proto <spec> --checks …`: measures a prototype (§12.4) against the guardrails and the opt-in checks: `counters` (the counter matrix, G12), `engagement` (pacing), `runs` (how runs end) and, from R1, `clash`. R2 rewrites `engagement` in round terms (clash length, round damage, comebacks), retires `lanes` (per-lane border traces, tied to territory) and rewrites `spread` (placement spread) as the formation check (G16).
 - **The counter matrix** (`--checks counters`, `evaluateCounters` in `tools/lib/balance.ts`). Each build under test plays a field of answers on every run-pool map in both seats: every other mono bot, every even pair of army buildings, `bot:balanced`, the hand-written counter bots and the other data bots. A screen at 10 seeds per seat ranks the answers, and each build's top answers are confirmed on fresh seeds (50 per seat). From R1 it has a clash row beside its battle row, and from R2 its games are battles of rounds.
-- **Reports** are written to `reports/balance/<timestamp>-<mode>.md` plus `.json`, and experiments to `reports/experiments/<label>.json`. The `reports/` folder is git-ignored. Measurements worth keeping go in `docs/balance-backlog.md`.
+- **Reports** are written to `reports/balance/<timestamp>-<mode>.md` plus `.json`, and experiments to `reports/experiments/<label>.json`. The `reports/` folder is git-ignored. Measurements worth keeping go in `docs/balance-backlog.md` (v2's; v1's is archived).
 
 ### 12.3 Guardrails
 
@@ -2410,11 +2414,11 @@ A guardrail keeps its number where its check persists in round form. New ones ta
 
 **Open:** what "mono" means once copies apply (R3, §8.10). Copies make massing one card impossible by construction (§1.3 #5), so G3's and G12's mono bots need a rule for how many copies of their card they hold.
 
-**Why G12 is the main bar.** Under rounds, a committed build can be answered in the next round: the general's army is in plain view before you plan, and yours is in plain view to the general after one clash. A mono build can't change without leaving mono, and a fixed-weight reference bot can't make the answer either, so G3 measures the worst case. The counter matrix's answers are ones a player, or the general, can actually plant within a battle. On 2026-10-30 every strong mono build had an answer on every map except mono Sporeling, which failed the strict bar under every variant measured, always on Twin Roots ([docs/balance-backlog.md](docs/balance-backlog.md), "The counter matrix, against the strict bar"). At equal gold a clash favors the swarm, so R1 reads mono Sporeling first ([rounds.md](docs/ideas/rounds.md), "Today's strong builds under rounds").
+**Why G12 is the main bar.** Under rounds, a committed build can be answered in the next round: the general's army is in plain view before you plan, and yours is in plain view to the general after one clash. A mono build can't change without leaving mono, and a fixed-weight reference bot can't make the answer either, so G3 measures the worst case. The counter matrix's answers are ones a player, or the general, can actually plant within a battle. On 2026-10-30 every strong mono build had an answer on every map except mono Sporeling, which failed the strict bar under every variant measured, always on Twin Roots ([docs/archive/v1/balance-backlog.md](docs/archive/v1/balance-backlog.md), "The counter matrix, against the strict bar"). At equal gold a clash favors the swarm, so R1 reads mono Sporeling first ([rounds.md](docs/archive/v1/ideas/rounds.md), "Today's strong builds under rounds").
 
 **Why G3 measures every map.** Until step A, G3 required every mono bot to win ≤ 55% on Bogwater Hollow alone, with 40 games. That missed mono Sporeling's real rate (about 75% over 100 games; the 40-game check read 65%) and every failure that only shows on another map, such as mono Amanita on Twin Roots. Each map's rate is measured to about ±5 points, so the worst of three maps reads high on noise alone; the worst-map limit is 5 points above the mean's to allow for that. The mean catches a bot that is a little too strong everywhere, and the worst map catches one that dominates a single map.
 
-**Why G6, G14 and G15 are new in kind.** v1's Heartcap was all or nothing: the winner's Heartcap was almost never hit, and 92% of battles started at full HP ([docs/ideas/after-the-rework.md](docs/ideas/after-the-rework.md)). Under v2 each battle is a Heartcap race (§6.5), and the per-round damage cap is where comebacks come from. These checks make sure the race is a race, that battle 1 threatens a life without deciding the run, and that the boss is the run's hardest test.
+**Why G6, G14 and G15 are new in kind.** v1's Heartcap was all or nothing: the winner's Heartcap was almost never hit, and 92% of battles started at full HP ([docs/archive/v1/ideas/after-the-rework.md](docs/archive/v1/ideas/after-the-rework.md)). Under v2 each battle is a Heartcap race (§6.5), and the per-round damage cap is where comebacks come from. These checks make sure the race is a race, that battle 1 threatens a life without deciding the run, and that the boss is the run's hardest test.
 
 ### 12.4 Tuning workflow
 
@@ -2513,9 +2517,11 @@ The tree is the code as built under v1 (Milestones 1–5 and the combat rework's
 │  │               commands.ts  step.ts  rng.ts  hash.ts  snapshot.ts  headless.ts  stats.ts  summary.ts
 │  │               world.ts  spatial.ts (uniform grid spatial hash)  targets.ts  hits.ts
 │  │               draft.ts  powers.ts  placement.ts
-│  │               round.ts  planning.ts  formation.ts  kit.ts                    (new in R2)
+│  │               formation.ts                                                   (new in R1, extended in R2)
+│  │               round.ts  planning.ts  kit.ts                                  (new in R2)
 │  │               combos.ts                                                      (new in R3)
-│  │  ├─ systems/  combat.ts  targeting.ts  movement.ts  merging.ts  healing.ts  clouds.ts
+│  │  ├─ systems/  merging.ts  healing.ts  clouds.ts
+│  │  │            combat.ts  targeting.ts  movement.ts                           (v1 parts removed in R2)
 │  │  │            economy.ts  victory.ts                                         (rewritten in R2)
 │  │  │            clash.ts                                                       (new in R2)
 │  │  │            spawning.ts  territory.ts  stance.ts                           (retired in R2)
@@ -2542,12 +2548,13 @@ The tree is the code as built under v1 (Milestones 1–5 and the combat rework's
 └─ reports/        # balance reports (git-ignored)
 ```
 
-**What v2 changes in `src/sim`.** Milestone R2 builds rounds and removes v1's battle systems from the code; R3 adds the kit's augments and combos (§16). This follows `docs/ideas/rounds.md` ("The cost"), checked against the tree above.
+**What v2 changes in `src/sim`.** Milestone R1 adds the slot layout and the muster's knitting for the clash check, R2 builds rounds and removes v1's battle systems from the code, and R3 adds the kit's augments and combos (§16). This table is the plan, checked against the tree above and the code. It began as the cost estimate in the archived `docs/archive/v1/ideas/rounds.md` ("The cost"), which is background only (§0).
 
 | Change | Files | What happens |
 |---|---|---|
 | **Retired** (R2) | `systems/spawning.ts`, `systems/territory.ts`, `systems/stance.ts` | Spawn timers and waves, column capture and frontiers, and Hold / Advance go (Appendix A). Squads are fielded fresh each round instead |
-| **Retired** (R2), inside files that stay | `systems/combat.ts`, `world.ts`, `placement.ts`, `powers.ts`, `data/proto.ts` | Heartcap turrets; besieged spawners and suppression; the forward price; the column powers (`surge`, and `tithe`'s gold per column); the rework's wave, Hold, call-for-help and mixed-wave presets. Pinning, spore clouds, cleave and the Burster move from presets into the data (§1.3 #11) |
+| **Retired** (R2), inside files that stay | `world.ts`, `placement.ts`, `powers.ts`, `data/proto.ts` | Besieged spawners and suppression; the forward price; the column powers (`surge`, and `tithe`'s gold per column); the `?proto=` presets whose systems retire or that R1 doesn't keep, such as the mixed-wave preset, with their schema keys and tests (§16's R2 lists them). R1's chosen set of the rework's pieces (pinning, spore clouds, cleave, the Burster and the Rhizomorph, as R1 decides) moves from presets into the data (§1.3 #11, §11.1, §11.2) |
+| **Kept, with v1 parts removed** (R2) | `systems/movement.ts`, `systems/targeting.ts`, `systems/combat.ts` | **Movement** loses Hold and waves (with its imports from `spawning.ts` and `stance.ts`), rush, fall-back and dive, and the Rhizomorph's surfacing at spawners and its check for Heartcap turrets. **Targeting** loses buildings and Heartcaps as targets (emplacements stay targets, §6.7), call for help, and dive's preference for ranged units. **Combat** loses Heartcap turrets and damage to buildings and the Heartcap; siege's ×2 stays, against emplacements (§11.1). What stays follows §5.2 and §5.3 |
 | **Rewritten** (R2) | `step.ts` | The step by phase: planning, clash and aftermath (§14.6) |
 | **Rewritten** (R2) | `systems/economy.ts` | Income once a round, at the round's opening: the stipend, economy buildings with the loam bonus, interest on the gold banked at the end of planning, comeback gold (§6.2), and gold a clash left pending (`pendingGold`, §14.4) |
 | **Rewritten** (R2) | `systems/victory.ts` | The Heartcap race: a Heartcap at 0, or a Decision on damage dealt after round 9 (§6.5) |
@@ -2557,16 +2564,18 @@ The tree is the code as built under v1 (Milestones 1–5 and the combat rework's
 | **Extended** (R2) | `state.ts`, `create.ts`, `compile.ts`, `commands.ts`, `index.ts`, `src/data/schema.ts` | Phases, rounds and round results with the fielded record, plots, squads, per-battle Heartcaps, pending gold, the kit's cards, and commands per planning phase (§14). Copies join the kit in R3 |
 | **New** (R2) | `round.ts` | A round's phases: opening a round in §4.7's order, Begin, scoring a finished clash, round results |
 | **New** (R2) | `planning.ts` | The planning commands `plant`, `sell`, `toggleMerge` and `beginClash` (§14.5), with their checks, prices and refunds |
-| **New** (R2) | `systems/clash.ts` | The muster that opens a clash (§5.6), and how a lane's clash ends: one side has no units and no emplacements left, or the 45 s cap decides on surviving supply (§6.7) |
-| **New** (R2) | `formation.ts` | Plots to the formation box and each squad's slot, the units' places in each slot (§4.6), both sides' merge previews (§5.6), and the arrival. A pure function with no random stream (§13.3). The clash, the planning preview and the general all use it |
+| **New** (R2) | `systems/clash.ts` | The muster that opens a clash (§5.6), on `formation.ts`'s knitting, and how a lane's clash ends: one side has no units and no emplacements left, or the 45 s cap decides on surviving supply (§6.7) |
+| **New** (R1; extended in R2) | `formation.ts` | R1: the formation box, its slots and the units' places in each slot (§4.6), and the muster's knitting in place to a fixed point (§5.6), as pure functions for the clash check. R2: plots to the formation box and each squad's slot, `formationOf` and both sides' merge previews (`mergePreview`) on them, and the arrival. Pure functions with no random stream (§13.3). The clash, the planning preview and the general all use them |
 | **New** (R2; copies R3) | `kit.ts` | Kit cards: what is free to plant, and what selling returns (§8.10). In R2 a card has no copy limit and plots are the build limit; R3 adds copies and augments (§11.13) |
 | **New** (R3) | `combos.ts` | Combos: which planted neighbors link (in front of, behind, beside), resolved per squad when a clash begins (§11.14) |
-| **Carries over** | `systems/combat.ts`, `targeting.ts`, `movement.ts`, `merging.ts`, `healing.ts`, `clouds.ts`; `hits.ts`, `targets.ts`, `spatial.ts`, `effects.ts`, `rng.ts`, `hash.ts` | Unchanged, apart from dropping the Hold branch in movement and the turret code in combat |
+| **Carries over** | `systems/merging.ts`, `healing.ts`, `clouds.ts`; `hits.ts`, `targets.ts`, `spatial.ts`, `effects.ts`, `rng.ts`, `hash.ts` | Unchanged |
 
 **Outside `src/sim`:**
-- **`src/run`** (R2): `runState.ts` and `flow.ts` swap the run's Heartcap for lives, keep the kit (its copies from R3) and the plot count, and turn the Grove's repair into regaining a life (§8.5, §8.7). `resume.ts` saves between rounds (§8.9, §13.8). `intel.ts` builds the profile from the squads fielded (§7.6). R3 adds `packs.ts`, which deals each run's 4 of 10 packs (§8.4).
+- **`src/run`** (R2): `runState.ts` and `flow.ts` swap the run's Heartcap for lives, keep the kit (its copies from R3) and the plot count, and turn the Grove's repair into regaining a life (§8.5, §8.7). `resume.ts` saves between rounds (§8.9, §13.8), and its `loadRun` handles runs saved before R2 as §8.9 decides, where today it returns null on a version mismatch. `intel.ts` builds the profile from the squads fielded (§7.6). R3 adds `packs.ts`, which deals each run's 4 of 10 packs (§8.4).
 - **`src/render`** (R2, R4): the territory layer goes; the plot grid, the formation preview and the aftermath come in R2; pips, weapon marks and augment icons replace `TIER_SCALE` in R4 (§13.6).
 - **`src/ui` and `src/app`** (R2): the battle screen's three views, the round tally, the lane tug, lives, the kit tray (its copies from R3) and the draft in planning (§10.2). The Hold / Advance controls, the territory tug and the spawn-timer setting go.
+- **`src/data`** (R1, R2): R1 adds the `kept` preset and the clash check's default-off knobs to `proto.ts`. R2 moves R1's chosen pieces into the data and deletes the presets of retired systems, with their keys in `schema.ts` (§16).
+- **`index.html`** (R2): its `description`, `og:description` and `twitter:description` describe the round-based game (§13.8). The text stays as it is until R2.
 - **`tools` and `tests`** (R1, R2): R1 adds the clash check (§12.2, §15). R2 regenerates every golden and removes the tests and guardrails of retired systems (§1.3 #13, §15).
 
 ### 13.5 Game loop (browser), by phase
@@ -2955,7 +2964,7 @@ interface SpriteDef { id: Id; w: number; h: number; anchor: [number, number];
                       factionSwap?: boolean }                    // bake a gray-rot variant
 ```
 
-- **Squads.** A spawner's `squad` is what it fields each round. R1's clash check sets the counts (§1.3 #11, §16); `docs/ideas/rounds.md` ("Squads instead of timers") has the starting table, such as 8 Sporelings for a Sporeling Burrow and 4 Capguards for a Capguard Hall.
+- **Squads.** A spawner's `squad` is what it fields each round. R1's clash check sets the counts (§1.3 #11, §16); §11.2's Squad column has the starting table, such as 8 Sporelings for a Sporeling Burrow and 4 Capguards for a Capguard Hall.
 - **Copies** arrive in R3 (§8.10). Then `data/balance.json` gains a `kit` block: `starterCopies` (2), `blueprintCopies` (1, a drafted blueprint) and `copyCopies` (1, a drafted copy of a card you own). These are the key names §11.1 uses. Until R3 a kit card has no copy limit. `data/balance.json` also gains `packsPerRun` (4) in R3 (§8.4).
 - **Augments and combos** (R3) are first guesses, shaped so that every example in §11.13 and §11.14 can be written: the comment on each `UnitPatch` field, trigger and action names the example that needs it. An augment patches its building's unit and adds triggers to it; a combo does the same to the squad of `a` while `a` stands in its `relation` to a `b`. Timed statuses (slow, sunder) and the counters that `everyNth` and `firstInClash` read live on the unit in a clash (`UnitState`, §14.4). R3 adds a unit test for each example.
 - **Open:** whether an augment attaches to a building type or to one card (§8.10, §11.13). First guess: the type, for the run, so every copy's squad has it.
@@ -3239,7 +3248,7 @@ combosAt(state: BattleState, side: Side, buildingId: Id, plot: number): Id[]    
 incomePreview(state: BattleState, side: Side): IncomeBreakdown   // next round's income if planning ended now
 ```
 
-`formationOf` is the one formation rule (§4.6): a pure function of the colony (plots, buildings, squad sizes and merge toggles) that draws on no random stream (§13.3). A `SquadPlan` is a squad's building, lane, rank, file, slot and each unit's starting position, by §4.6's layout. The clash's arrival places units exactly there, so the preview and the clash can't disagree. `mergePreview` is the muster's own knitting (§5.6), run on `formationOf`'s positions to a fixed point with no enemies, so it shows what fields after the muster, neighboring squads that combine included. Retired with their systems: `legalPlacements`, `priceAt`, `depthOf`, `heldColumns`, `surgeLanes`, `lanePresence`, `frontier`, `frontierBlocked`, `isBesieged`, `isSuppressed`, `turretPos`, `holdsLane`, `rallyX` and `incomePerMinute`.
+`formationOf` is the one formation rule (§4.6): a pure function of the colony (plots, buildings, squad sizes and merge toggles) that draws on no random stream (§13.3). A `SquadPlan` is a squad's building, lane, rank, file, slot and each unit's starting position, by §4.6's layout. The clash's arrival places units exactly there, so the preview and the clash can't disagree. `mergePreview` is the muster's own knitting (§5.6), run on `formationOf`'s positions to a fixed point with no enemies, so it shows what fields after the muster, neighboring squads that combine included. Both build on the pure functions R1 adds to `formation.ts` for the clash check: the slot layout and the muster's knitting (§13.4, §16). Retired with their systems: `legalPlacements`, `priceAt`, `depthOf`, `heldColumns`, `surgeLanes`, `lanePresence`, `frontier`, `frontierBlocked`, `isBesieged`, `isSuppressed`, `turretPos`, `holdsLane`, `rallyX` and `incomePerMinute`.
 
 **The step, by phase.** The order is fixed and covered by tests. §4.7 owns a round's order of events; the steps below implement it.
 
@@ -3448,7 +3457,7 @@ Script options: `--name <file>` (it may hold folders: `phase4/1280x720/title`), 
 
 Claude then **opens the PNG with the Read tool** and checks the milestone's visual checklist. For interactive spot checks it can also open `npm run dev` in its built-in browser pane.
 
-**Browser tests** (`npm run test:browser`, `tests/browser/`) drive the real UI in Playwright Chromium against a Vite server, for what a screenshot can't show: the HUD's layout and tooltips, the run screens, settings and their saves, sound under `?test=1`, UI scale, resume, and prototype saves. R2 retires the cases for retired controls (deploy, Hold and its `F` key, forward plots and their price) and adds the planning screen: the general's army shown before planning, placing and selling on plots, the merge preview, Begin, and the power once per clash (§10.2, §10.3).
+**Browser tests** (`npm run test:browser`, `tests/browser/`) drive the real UI in Playwright Chromium against a Vite server, for what a screenshot can't show: the HUD's layout and tooltips, the run screens, settings and their saves, sound under `?test=1`, UI scale, resume, and prototype saves. R2 retires the cases for retired controls (deploy, Hold and its `F` key, forward plots and their price) and adds the planning screen: the general's army shown before planning, placing and selling on plots, the merge preview, Begin, and the power once per clash (§10.2, §10.3). It also adds resuming a battle saved before R2, which restarts round 1's planning with its notice (§8.9).
 
 ### 15.7 Unit test map (fast suite)
 
@@ -3467,20 +3476,20 @@ Claude then **opens the PNG with the Read tool** and checks the milestone's visu
 | Territory | Frontier-only capture; the 1.5× rule; 60-tick flip; decay; forts block; home columns never flip; a single neutral column contested by both sides | Retired (§4.3) |
 | Economy | Stipend, Truffle Cellars and loam plots, interest floor and cap on gold banked at the end of planning, comeback gold to the last round's loser (§6.2). v1's besieged halving and supply-line price go | Rewritten |
 | Buildings | Placement only on free plots, never on stumps; sell refunds (100% in the planning phase it was planted, 60% once it has fielded); the squad each spawner fields; the tray's price is one you can plant for now. v1's first-spawn timing, holding at the supply cap, no selling while besieged and the forward plot's price go | Rewritten |
-| Combat | Target choice, stickiness and tie-breaks; siege and slayer preferences; projectile delay; splash falloff; healing | Kept |
+| Combat | Target choice, stickiness and tie-breaks; siege and slayer preferences; projectile delay; splash falloff; healing | Kept, minus the tests of the v1 parts §13.4 removes (buildings and Heartcaps as targets, turrets, call for help, rush, fall-back and dive) |
 | Powers (M5) | Each power's effect, targeting validation, the auto policy and determinism. From R2: ready from the clash's first tick, during the muster too, and at most once per clash; the cooldown and first-ready time are retired (§14.2); new effects where a power was tied to a retired system (§6.6, §11.10) | Rewritten |
 | Rule scenarios | The `data/scenarios/` files assert their outcomes in the fast suite too. v1's territory and besieged scenarios (`fort-blocks-flip`, `home-never-flips`, `besieged-control`, `besieged-half-speed`) and `comeback-6` go. R2 adds round scenarios, such as the general planning first, the formation from plots, the 45 s cap, the round-damage cap, the Decision after round 9, and one per §6.7 edge case, E1 onward (§16) | Rewritten |
 | Endings and lives | A Heartcap at 0 (Rout); the Decision after round 9 by Heartcap damage dealt, and its tiebreakers; both Heartcaps reaching 0 in the same aftermath (E8, §6.7); both Heartcaps full and both colonies empty at each battle's start (§4.6); a lost battle costs one life and a won battle none; the run ends at 0 lives (§6.5, §8.5) | Rewritten |
 | Merging (M2) | Eligibility; radius; knit cancel; HP carry; supply ⅔; toggle propagation. From R2: squads set to merge knit in place during the muster, on `formationOf`'s positions, to a fixed point; `mergePreview` is the same function, so the preview equals what fields, with two Burrows side by side and three in a row as cases; after the muster v1's rule applies on the field (§5.6). v1's presence goes | Kept, extended; presence retired |
 | AI (M4) | Analysis scores for the squads fielded, read only from the per-round `fielded` record (§14.4); doctrine weights; buying from its kit under the plot rules, and from R3 the copy rules; selling for space; intel decay. v1's warning and activation ticks go with the telegraph | Rewritten |
-| Run (M3) | Route constraints; draft weights and exclusions; effect compilation order; rewards; the commanders' pools, starter kits and bans; save round-trip between rounds | Kept |
+| Run (M3) | Route constraints; draft weights and exclusions; effect compilation order; rewards; the commanders' pools, starter kits and bans; save round-trip between rounds. From R2: a run saved before R2 migrates or ends with a visible notice, never silently (§8.9) | Kept, extended |
 | Report | The battle report's gold rows add up to the gold the banner shows. From R2 it reports by round: each round's result and the damage by building (§10.5) | Kept, extended |
 | Meta (M6) | Feat conditions; strain patching; trait capacity; mastery thresholds; migrations | Kept |
 | Sound | The sound bank's schema and references; cooldowns per key; the voice cap and priority stealing; speed thinning; the engine as a no-op in Node; which battle events make sounds, at whose gain; settings migration | Kept |
 | Settings and contrast | Older settings records load with new fields at their defaults; unknown values fall back; listeners hear each change. Every text pair the UI uses is 4.5:1 or better and every control edge 3:1 or better, read from the tokens in `styles.css` | Kept |
 | Plain words | Every rewording in `src/ui/words.ts` names a real id and keeps every number the data's own text gives | Kept until the wording moves into data (§15.5) |
 | Teaching text | What Help, the first-time tips and the top band's tooltips teach agrees with the rules and the data | Rewritten in R2, and again with R4's Help |
-| Prototypes | Each `src/data/proto.ts` knob is absent from `data/balance.json`, so the shipped rules are unchanged; with the knob set, the prototype behaves as described. Knobs tied to retired systems go with them (for example `waves`, `mixedwave`, `stormwaves`, `callforhelp`, `hold` and `nohold`); the pieces v2 keeps (pinning, spore clouds, cleave, the Burster, the Rhizomorph) move to the areas above as their milestone adopts them | Rewritten |
+| Prototypes | Each `src/data/proto.ts` knob is absent from `data/balance.json`, so the shipped rules are unchanged; with the knob set, the prototype behaves as described. Knobs tied to retired systems go with them in R2, as §16's R2 lists (for example `waves`, `stormwaves`, `callforhelp`, `hold` and `nohold`, and `mixedwave` unless R1 keeps the shields); the pieces R1's chosen set keeps (pinning, spore clouds, cleave, the Burster, the Rhizomorph) move to the areas above when R2 adopts them | Rewritten |
 | Counter matrix | Its answer bots join the content through a proto spec without touching the shipped bots; a tiny run screens and confirms | Kept |
 | Purity | No forbidden imports or globals in `src/sim`, `src/run` or `src/meta` | Kept |
 
@@ -3538,37 +3547,52 @@ Its goldens are `m1-balanced-vs-scripted-s1` and `m1-turtle-vs-scripted-s2`. Its
 
 **Built under v1.** The commander select screen; Vesper, Armilla and Cordis, each with a passive, a power, a core pool and a starter kit; bans of up to 3 buildings; the power's UX (`Q`, then click, with targeting while paused); and powers for bots in sims through `--power-policy auto`. Its goldens are `m5-vesper-power-s3`, `m5-armilla-power-s3` and `m5-cordis-power-s3`. M5 is on `develop`; `main` has M1–M4.
 
-**Alongside M1–M5:** the UI/UX plan's phases 1–3 (§10), sound (§13.9) and the combat rework's prototypes behind `?proto=rework` (`src/data/proto.ts`, `docs/ideas/combat-rework.md`).
+**Alongside M1–M5:** the UI/UX plan's phases 1–3 (§10), sound (§13.9) and the combat rework's prototypes behind `?proto=rework` (`src/data/proto.ts`, `docs/archive/v1/ideas/combat-rework.md`).
 
 **In v2:** commanders and bans stay. A power fires at most once per clash instead of on a cooldown (§6.6), and Vesper's passive, Armilla's passive and Armilla's Rhizome Tithe get new effects because the systems they relied on retire (§11.10). The full scope is in the [v1 spec's §16](https://github.com/Swalliso/Sambattler/blob/aa37365/SPEC.md#16-milestone-plan).
 
 ### Milestone R1 — The clash check
 
-**Goal:** before the round loop is built, find out whether whole armies that meet at once, in formation, give every strong army an answer, and set squad sizes. R1 changes no rule in the game. Its design is the clash prototype in `docs/ideas/rounds.md` ("The smallest clash prototype"), with v2's limits.
+**Goal:** before the round loop is built, find out whether whole armies that meet at once, in formation, give every strong army an answer, and set squad sizes. R1 changes no rule in the game. Its design is this section and §12.2's clash check. It began as the clash prototype in the archived `docs/archive/v1/ideas/rounds.md`, which is background only (§0): that prototype keeps the supply cap of 60 and knits squads on the approach, and v2 drops both.
 
 **Scope:**
 
-- **The tool:** a headless check, `npm run experiment -- --checks clash`, plus a clash row in `tools/lib/balance.ts`, built on `createBattle`, `addUnit`, `addBuilding` and `runHeadless` as the supply duels are.
+- **The tool:** a headless check, `npm run experiment -- --checks clash`, plus a clash row in `tools/lib/balance.ts`, built on `createBattle`, `addUnit`, `addBuilding` and `runHeadless` as the supply duels are. The full check runs on `tools/lib/pool.ts`'s worker pool; §12.2 gives its expected cost.
 - **Armies from build lists:**
   - Any bot spec the counter check uses (mono bots, the pairs, `bot:balanced`, the hand-written answers) gives its opener, then its weighted picks on the seed's AI stream, until a gold budget is spent.
   - The budget counts army buildings only, since one clash can't value economy. Economy picks are skipped.
-  - Each spawner adds its squad: one minute of today's spawns in whole batches, halves rounded up (`docs/ideas/rounds.md`, "Squads instead of timers"). `--squad-seconds` changes the minute. A Puffball Mortar adds itself as an emplacement, under §6.7's first-guess rules for emplacements.
+  - Each spawner adds its squad, from §11.2's Squad column: one minute of today's spawns in whole batches, halves rounded up. `--squad-seconds` changes the minute. A Puffball Mortar adds itself as an emplacement, under §6.7's first-guess rules for emplacements.
   - **Limits:** no supply cap (§1.3 #4). The plots are the limit: 8 on a one-lane field and 6 per lane on Twin Roots, plus up to 4 more at the top budgets, as sprawl allows (§4.6).
-- **Formation:** by role first (melee in the front rank, ranged squads and emplacements 2 tiles behind, files spread over the lane's rows), then by plot (§4.6) once by role reads clearly. Either way, a squad's units stand inside its slot where `formationOf` puts them (§4.6), with no random draw.
+- **Formation:** by role first, then by plot (§4.6) once by role reads clearly.
+  - **By role** puts melee squads in front-rank slots, and ranged squads and emplacements in back-rank slots, 2 tiles behind. Each rank fills its files in order from file 1, in build-list order; a squad whose rank is full takes the nearest free slot in another rank.
+  - **The slot layout:** R1 builds §4.6's layout (the formation box, its slots and each unit's place in its slot) as a pure function in `src/sim`, with no random draw. R2's `formationOf` reuses it (§14.6), so the check's squads stand where the game's will.
+  - This adds code but no rule, so no golden hash moves.
 - **Jitter, as a measurement option only:** the check MAY add a seeded jitter to where units stand at the start, to see how much a result depends on exact positions. It's the tool's own variation, not a game rule: the game's formation stays deterministic (§4.6).
-- **The clash:** both armies appear on the same tick, front ranks 6 tiles apart, on a flat field with the map's lanes, with merging on. It runs until one side is gone in every lane, or 45 s pass (§6.7).
-- **Records:** each lane's winner, surviving supply, the Heartcap damage §6.7 would deal, clash length, whether the clash hit the 45 s cap, and merges.
+- **The clash:** both armies appear on the same tick at their slot positions, front ranks 6 tiles apart, on a flat field with the map's lanes, with merging on.
+  - **It opens with §5.6's muster:** for 1 s nobody moves or attacks, and squads with merging on knit in place, by merging's rule, to a fixed point. The knits land on the clash's first tick (§5.6's first guess; R1 has no powers, so the timing inside the muster changes nothing). After the muster, v1's rule applies on the field. The archived prototype's knitting on the approach isn't R1's rule.
+  - R1 builds the muster's knitting as a pure function in `src/sim`, beside the slot layout, and R2's `mergePreview` reuses it (§14.6). Like the layout, it adds code but no rule.
+  - **The clash clock includes the muster** (§18.2 #13). The clash runs until one side is gone in every lane, or 45 s pass (§6.7).
+- **Records:** each lane's winner, surviving supply, the Heartcap damage §6.7 would deal, clash length (the muster included), whether the clash hit the 45 s cap, and merges, at the muster and after it. For the swarm read (§7.4, §11.1), each army's `eliteShare` after the muster, as §7.4's analysis would read it, with and without `ai.counter.swarmMaxSupply`.
+- **The other §18.2 rows R1 settles** (#11–#15), each with a recorded measure or a variant:
+  - **Overflow** (#11, §4.6): the report lists each squad that overflows its slot (units wider than its grid's spacing) at each squad size measured. The check fields such a squad by the first guess, packed tighter.
+  - **Keeping formation on the approach** (#12, §5.2): a pace variant. Each lane's army marches at its slowest idle unit's pace, with idle ranged units 1 tile behind their side's frontmost melee unit, as the rework's waves did (`waves.matchPace` and `rangedGap`). The baseline is the first guess: each unit at its own speed.
+  - **The muster and the 45 s cap** (#13, §5.6, §6.7): the report gives the stall share (G13) and the median clash length with the muster counted, as the first guess has it, and with the cap starting after the muster.
+  - **An Anti-Ranged kind, and counter sets from the clash matrix** (#14, #15, §7.4): the report gives the clash matrix, each mono build's best answers at each budget, beside §7.4's counter sets by damage type and tag. It says whether `swarm` spawners are the best answers to mono Gill Archers.
 - **Fields:** one lane of 8 rows (Bogwater Hollow and Stumpfield give the same clash, since units ignore stumps) and Twin Roots' two lanes of 6 rows, with buildings split between lanes by alternating to start. The one-lane field counts twice in any mean over the run's maps.
 - **Budgets:** 300, 600, 900, 1,200 and 1,500 gold of army, about rounds 1, 3, 5, 7 and 9. The report shows each budget beside the pooled result.
 - **Variants,** each against the baseline of today's combat alone:
   - merging off, then only the Elder Sporeling's splash off;
   - squad minutes of 45, 60 and 75 s, and the Sporeling Burrow's squad at 6 and 7;
-  - the rework's kept pieces (§1.3 #11), alone and together: pinning, spore clouds through the Mortar's emplacement, the Burster, cleave and the Rhizomorph;
+  - the rework's kept pieces (§1.3 #11), alone and together: pinning, spore clouds through the Mortar's emplacement, the Burster, cleave and the Rhizomorph.
+    - Alone, each is a preset in `src/data/proto.ts` today: `pinned`, `sporecloud`, `burster`, `cleave` and `rhizomorph`.
+    - Together, they're a new preset that R1 adds there, `kept`: those five, with both new spawners (the Burster Pod and the Rhizomorph Tunnel) appended to both rosters as `rework` does, since spreading presets keeps only the last one's append.
+    - Not `rework`: that's v1's P3 package (waves on a 20 s beat with `matchPace` on, mixed-wave shields, call for help, storm-grown waves, flyers, the swarm read and the Elder's splash off), and it has neither spore clouds nor cleave. It isn't R1's variant.
   - the sixth archetype's candidates (§11.2): the Burster Pod, and the Puffball Mortar as an emplacement;
-  - last, the rework's mixed-wave shields, to see whether mixed armies need them.
+  - the pace variant (§18.2 #12, above);
+  - last, the rework's mixed-wave shields, to see whether mixed armies need them. In a clash, at the arrival, each lane's army of at least `mixedWave.minTypes` unit types (2; a merged form counts as its base type) gives each of its units a shield of `shieldFrac` (0.2) × its max HP. A shield soaks damage first and never comes back, and a unit knit at the muster keeps its parts' shields in proportion, as today's merging does. Today `src/sim/compile.ts` compiles `mixedWave` only with `waves`; R1 lifts that requirement for the clash check.
 - **The bench case:** one clash of two full colonies (the most plots, the biggest squads) for `npm run bench` (§13.7, §15.4).
 
-**Not in R1:** the round loop, income, the general's planning, drafts, any UI, and any change to the game's rules or data.
+**Not in R1:** the round loop, income, the general's planning, drafts, any UI, and any change to the game's rules or data. The knobs R1 adds to `src/data/proto.ts` (the `kept` preset, the pace variant, the shield at the arrival) are default-off, so without a spec the rules don't change (§12.4).
 
 **Done when:**
 
@@ -3576,17 +3600,20 @@ Its goldens are `m1-balanced-vs-scripted-s1` and `m1-turtle-vs-scripted-s2`. Its
 - a set of pieces is found that passes the bars below, and the report says whether that set needs the mixed-wave shields and the Elder Sporeling's splash (§18.2);
 - the most supply a full colony fields is known, and it fits the §13.7 budget (first guess: about 100 a side);
 - §6.7's first-guess rules for emplacements are confirmed or changed;
+- every §18.2 row settled by R1 (#7–#15) has its measure in the report and a recommendation;
 - the results are in `docs/balance-backlog.md` and `docs/status.md`, and the user has seen them before R2 starts.
 
 **Verification:**
 
-1. `npm run verify`. No golden hash moves, since no rule changed.
-2. The clash check on today's combat, then on the variants:
+1. `npm run verify`. No golden hash moves, since no rule changed. The unit suite covers the slot layout (§4.6's k × k grid, filled front to back, then top to bottom) and the muster's knitting to a fixed point, with two Burrows side by side and three in a row (§5.6, §15.7).
+2. The clash check on today's combat, then on the kept pieces together:
 
    ```bash
    npm run experiment -- --checks clash --budgets 300,600,900,1200,1500 --workers 8
-   npm run experiment -- --proto rework --checks clash --budgets 300,600,900,1200,1500 --workers 8
+   npm run experiment -- --proto kept --checks clash --budgets 300,600,900,1200,1500 --workers 8
    ```
+
+   The other variants run the same way, each with its own `--proto` spec or option (`--proto pinned`, `--squad-seconds 45` and so on). `--proto rework` isn't one of them.
 
    Seeds vary the bots' picks, and the positions' jitter when it's switched on: 20 per seat for screens, and 50 for any number quoted. Bars, pooled over the budgets:
    - **The strict counter bar** (G12): every mono build with a clash G3 mean above 40% has an answer that wins at least 60% on every field.
@@ -3595,7 +3622,7 @@ Its goldens are `m1-balanced-vs-scripted-s1` and `m1-turtle-vs-scripted-s2`. Its
 
    A build that dominates only early or only late shows in the per-budget columns, and the report flags it.
 3. `npm run bench` with the bench case: inside the §13.7 budget.
-4. **Review gate (human):** the user reads the report and agrees the squad sizes and the set of pieces R2 starts from.
+4. **Review gate (human):** the user reads the report, agrees the squad sizes and the set of pieces R2 starts from, and settles the other §18.2 rows R1 measured (#8–#15).
 
 ### Milestone R2 — Rounds
 
@@ -3613,9 +3640,17 @@ Its goldens are `m1-balanced-vs-scripted-s1` and `m1-turtle-vs-scripted-s2`. Its
 - **The commander power** at most once per clash (§6.6).
 - **Content tied to retired systems** gets its new effect or retires, as §7.7, §11.7, §11.8 and §11.10 list: Vesper's and Armilla's passives and Rhizome Tithe, the generals' passives, and the relics about capture, the forward price, spawn timing and turrets. Rot-Eater, which paid while the storm was active, pays for kills in a clash from round 5 (§11.7).
 - **Saves** at the start of each planning phase and at Begin (§8.9).
+- **Runs and battles saved before R2** (§8.9, §18.2 #32): get the user's call on migrating a saved run or ending it with a notice. Then `loadRun` (`src/run/resume.ts`) handles the old `RUN_VERSION` (1) as decided, instead of returning null: today a version mismatch drops the run silently, with no Continue and no notice. A v1 battle save in a run that goes on restarts round 1's planning with the notice for an incompatible save, instead of being ignored (today `src/app/run.ts` resumes a battle save only when its config matches). The keys stay (§13.8).
 - **UI** (§10.2, §10.5): the planning, clash and aftermath views; both colonies' plots; the formation and merge previews; the round tally and the lane tug; both Heartcaps and your lives; basic matchup marks (the class of your hits against each enemy squad); the report by round; lives on the run bar; the general's kit on its route node. All on today's sprites.
-- **Retiring v1's battle in code** (Appendix A): spawn timers, besieged spawners, territory and presence, forward building and the supply-line price, Hold / Advance, Heartcap turrets, the timed Sporestorm, the 10:00 Decision, the income tick, the supply cap, the vague telegraph, the run's Heartcap and its repairs, the deploy phase and placing while live. Their tests, goldens, guardrails, UI, Help and tips go with them, and so do the rework's waves, call for help and storm-grown waves (`src/data/proto.ts`).
-- **Tools:** `npm run sim` and `npm run balance` play rounds (§15.2); new goldens replace v1's eight (§15.5); the guardrails in round form (§12.3); screenshot parameters for a round and a phase (§15.6).
+- **Retiring v1's battle in code** (Appendix A; files in §13.4, tests in §15.7 and §15.6): spawn timers, besieged spawners, territory and presence, forward building and the supply-line price, Hold / Advance, Heartcap turrets, the timed Sporestorm, the 10:00 Decision, the income tick, the supply cap, the vague telegraph, the run's Heartcap and its repairs, the deploy phase and placing while live. Their tests, goldens, guardrails, UI, Help and tips go with them. The systems R2 keeps lose their v1 parts as §13.4 lists (movement, targeting and combat).
+- **The rework's pieces become the default** (§1.3 #11): R2 adopts R1's chosen set as default data. Its rules (pinning, spore clouds, cleave and the Burster's burst) move from `src/data/proto.ts` into `data/balance.json` (§11.1), and its units and buildings (the Burster Pod and the Rhizomorph Tunnel, if the set keeps them) into the faction files, for both rosters (§11.2). The mixed-wave shields, in clash form, and the Elder Sporeling's splash follow R1's result. Until R3 the new buildings join the roster like any other; R3 gives each its place in a run, a core archetype or a pack (§11.2, §11.15).
+- **Deleting the `?proto=` presets whose systems retire,** with their schema keys (`src/data/schema.ts`) and tests (`tests/unit/prototypes.test.ts`, `combatRework.test.ts`, `battleFeel.test.ts`, and the cases elsewhere that set them). In `src/data/proto.ts`:
+  - **They go in R2:** `b1` (`approachRush`), `a3` (counter cycles in seconds), `b4` (`unitLifespan`), `hold` and `nohold` (`laneStance`), `t1` (`rangedFirstSpawnFraction`), `t2` (`fallBack`), `diver` and `diverleap` (`diveRanged`), `hotstart` (`hotStart`), `breach` (`sideTriggers` and the `heartcapBreach` trigger), `bigdrafts` (`bigDrafts`), `t3` (`spawnerDefense`), `callforhelp` (`callForHelp`), `waves` (`waves`), `stormwaves` (`stormWaves`) and `rework`. `hotstart` and `breach` stay undecided proposals (Appendix A), and MAY come back in round form.
+  - **They stay only if R1 keeps them:** `mixedwave` (`mixedWave`, in clash form without `waves`), `swarmread` (`ai.counter.swarmMaxSupply`), the Elder Sporeling's splash off (inside `rework`), and any of `pinned`, `sporecloud`, `cleave`, `burster` and `rhizomorph` that R1's set leaves out. A piece R1 keeps becomes default data, and its preset (with `kept`) then goes, since the rule is the default.
+  - **They stay as default-off knobs:** `a2` and `b3`, which tune systems that stay, and `flyers`, for the later flyer (§1.3 #11), without `holdsGround`, which only territory reads.
+- **Settle §18.2's rows "Settled by R2"** (#16–#35) with the user in `docs/r2-plan.md` before building. The two that R2's playtest settles (#17, #33) start from their first guesses.
+- **Link previews** (§13.8): `index.html`'s `description`, `og:description` and `twitter:description` describe the round-based game. Today they describe v1's tug-of-war; their text stays as it is until R2.
+- **Tools:** `npm run sim` and `npm run balance` play rounds (§15.2); new goldens replace v1's eight (§15.5); the guardrails in round form (§12.3); screenshot parameters for a round and a phase (§15.6). §15.7 says which unit tests are kept, rewritten, retired or new, and §15.6 which browser tests go and come.
 
 **Not in R2:**
 
@@ -3660,9 +3695,10 @@ Its goldens are `m1-balanced-vs-scripted-s1` and `m1-turtle-vs-scripted-s2`. Its
    ```
 
    Expect every run to complete with 4–5 battles, no run to lose a life in a won battle, and the run's results (runs won, the boss reached, lives left) reported against §12.3's run guardrails (G14 for battle 1, G15 for the boss).
-6. `npm run test:slow`: the guardrails in round form (§12.3), asserting and passing, among them G4 (rounds per battle), G13 (stalls) and G16 (formation). The retired ones are gone.
-7. `npm run bench`: R1's full-colony clash inside the §13.7 budget.
-8. Browser checks (the parameters are §15.6's):
+6. Saves from before R2 (§8.9): a unit test loads a run saved under `RUN_VERSION` 1 and gets it migrated, or ended with a visible notice, as the user decided, never null; a browser test (§15.6) loads a v1 battle save in a run that goes on and sees round 1's planning with the restart notice, the run's progress kept.
+7. `npm run test:slow`: the guardrails in round form (§12.3), asserting and passing, among them G4 (rounds per battle), G13 (stalls) and G16 (formation). The retired ones are gone.
+8. `npm run bench`: R1's full-colony clash inside the §13.7 budget.
+9. Browser checks (the parameters are §15.6's):
 
    ```bash
    npm run screenshot -- --name r2-planning-1 --params "scene=battle&seed=1&player=bot:balanced&enemy=general:scripted&round=1&phase=planning"
@@ -3680,16 +3716,16 @@ Its goldens are `m1-balanced-vs-scripted-s1` and `m1-turtle-vs-scripted-s2`. Its
    - Nothing from the retired list shows: no territory, frontier, Hold switches, spawn timers, supply chip or telegraph countdown.
    - The report shows the round chart. The route's battle node shows its general's kit.
    - Nothing is clipped at 1280×720.
-9. **Playtest gate (human):** the user plays at least one full run on the dev site and answers:
-   - Did seeing the general's army first turn the opener into a plan rather than a gamble?
-   - Did where you planted change how a clash went?
-   - Did rounds read as "plan, then fight"?
-   - Did a close battle leave a mark, and did a lost battle feel like a setback rather than the end?
-   - About how long did planning take each round, and how long was the run (target 25–35 minutes)?
-   - When were you bored, and when did you feel clever?
-   - Did you miss placing or Hold during a clash, with only the commander power live?
+10. **Playtest gate (human):** the user plays at least one full run on the dev site and answers:
+    - Did seeing the general's army first turn the opener into a plan rather than a gamble?
+    - Did where you planted change how a clash went?
+    - Did rounds read as "plan, then fight"?
+    - Did a close battle leave a mark, and did a lost battle feel like a setback rather than the end?
+    - About how long did planning take each round, and how long was the run (target 25–35 minutes)?
+    - When were you bored, and when did you feel clever?
+    - Did you miss placing or Hold during a clash, with only the commander power live?
 
-   Tune the data before starting R3. The answers go in `docs/playtest-feedback.md`.
+    Tune the data before starting R3. The answers go in `docs/playtest-feedback.md`.
 
 ### Milestone R3 — The kit
 
@@ -3705,7 +3741,7 @@ Its goldens are `m1-balanced-vs-scripted-s1` and `m1-turtle-vs-scripted-s2`. Its
 - **Drafts reworked** (§8.3): blueprint, copy, augment and relic cards, after rounds 2, 4 and 6, and in spoils.
 - **Relics** (§11.7): each with its v2 effect, or retired.
 - **UI** (§10.2): copies, augments and combos on the cards, the formation preview, the ghost and the draft, with placeholder icons.
-- **Tools:** a card check, `--checks cards` (`docs/ideas/after-the-rework.md`, Tier 1 item 1), and build-diversity numbers in `--checks runs`: kit variety, the top building's damage share, and how often each card is offered and owned.
+- **Tools:** a card check, `--checks cards` (`docs/archive/v1/ideas/after-the-rework.md`, Tier 1 item 1), and build-diversity numbers in `--checks runs`: kit variety, the top building's damage share, and how often each card is offered and owned.
 
 **Not in R3:** the shape language's art and the card-text pass (R4); gating by unlocks (M6).
 
@@ -3809,7 +3845,7 @@ Its goldens are `m1-balanced-vs-scripted-s1` and `m1-turtle-vs-scripted-s2`. Its
 - Commander mastery: 10 levels × 3 commanders, including the exclusive buildings (Velvet Shrine, Rootgate, Puppet Pod) and alternate powers. The Rootgate's effect is tied to capture, so it gets a new one (§9.5, §11.2).
 - Save export/import and a migration framework.
 
-**Independent of M6: Run it back, and records** (`docs/ideas/after-the-rework.md`, Tier 1 item 7). It doesn't depend on the battle or on M6, and M6 doesn't depend on it, so it MAY land before, during or after M6 as its own piece of work:
+**Independent of M6: Run it back, and records** (`docs/archive/v1/ideas/after-the-rework.md`, Tier 1 item 7). It doesn't depend on the battle or on M6, and M6 doesn't depend on it, so it MAY land before, during or after M6 as its own piece of work:
 
 - remember the last commander and bans, and "Run it back" (`Enter` or `R`) starts a new seed straight on the route;
 - summary lines that tell the truth: how far you got, what beat you, and active play time;
@@ -3960,8 +3996,8 @@ Each default is deliberate and easy to change. D1–D24 are v1's, from the desig
 | D33 | A full colony fields about 100 supply a side at most, checked on the bench (§18.2 #7) | No supply cap, so squad sizes and the most plots MUST keep the biggest clash inside the §13.7 budget |
 | D34 | From R3, the starting kit is the commander's 3 starter buildings, 2 copies each. A blueprint adds a card with 1 copy, and drafting a card you own adds 1 copy | Enough copies to field a real army in round 1, and few enough that answers have to be drafted |
 | D35 | Selling refunds 100% in the planning phase a building was planted, and 60% once it has fielded. From R3 the copy returns to the kit | Forgiving for misclicks; changing course after a clash has a real cost |
-| D36 | Income each round: the Heartcap stipend of 100, +50 per Truffle Cellar (+50% on loam), interest of 1 per 20 gold banked at the end of planning up to 10 (Deep Cellars and the Spore Exchange add 10 to the cap, and the Exchange's trickle becomes +12 a round), and +40 to the last round's loser | `docs/ideas/rounds.md`'s numbers, close to v1's per-minute rates. About one new spawner a round after the opener |
-| D37 | Drafts after rounds 2, 4 and 6, in the next planning phase, plus spoils after a won battle. A draft opens after the general has planned, so you draft seeing its army (§4.7). Skipping a draft gives +40 gold | Three a battle. [Step B](docs/ideas/one-more-run-review.md#step-b-results-2026-10-30) found that a bigger draft has to mean more picks, not rarer cards |
+| D36 | Income each round: the Heartcap stipend of 100, +50 per Truffle Cellar (+50% on loam), interest of 1 per 20 gold banked at the end of planning up to 10 (Deep Cellars and the Spore Exchange add 10 to the cap, and the Exchange's trickle becomes +12 a round), and +40 to the last round's loser | `docs/archive/v1/ideas/rounds.md`'s numbers, close to v1's per-minute rates. About one new spawner a round after the opener |
+| D37 | Drafts after rounds 2, 4 and 6, in the next planning phase, plus spoils after a won battle. A draft opens after the general has planned, so you draft seeing its army (§4.7). Skipping a draft gives +40 gold | Three a battle. [Step B](docs/archive/v1/ideas/one-more-run-review.md#step-b-results-2026-10-30) found that a bigger draft has to mean more picks, not rarer cards |
 | D38 | From R3, each run deals the commander's core, an always-in set with an answer to the swarm, and 4 of 10 themed packs of one building and two relics. Neither the core nor the always-in set can be banned (**Open:** §18.2 #44, #45) | Runs differ before battle 1. The swarm has been the hardest army to answer in every measurement, so its answer is in every run |
 | D39 | An augment attaches to a building type, for the run (**Open:** §18.2 #37) | Simplest to show and to read: every copy of a building plays the same |
 | D40 | From R3, the general's kit has copies by the player's rule and gains one augment for each battle index above 1 (§7.8). Until R3, v1's `limits.*.maxOwned` and random upgrade levels stand in | It replaces v1's random upgrade levels, and the player sees each one |
@@ -4020,7 +4056,7 @@ Items from 7 on are v2's, one row per question: each is a rule the user hasn't d
 
 | # | Question | First guess | Section | Settled by |
 |---|---|---|---|---|
-| 7 | Squad sizes: what each building fields a round, and the most supply a full colony fields | `docs/ideas/rounds.md`'s table (8 Sporelings for a Burrow, 4 Capguards for a Hall); about 100 supply a side at most (D33) | §12.2 | R1 |
+| 7 | Squad sizes: what each building fields a round, and the most supply a full colony fields | §11.2's Squad column (8 Sporelings for a Burrow, 4 Capguards for a Hall); about 100 supply a side at most (D33) | §11.2, §12.2 | R1 |
 | 8 | Do mixed armies need the rework's mixed-wave shields (20% of max HP for an army of 2 or more unit types) to pass the strict counter bar in clashes? | Not adopted | §12.2 | R1 |
 | 9 | Does the Elder Sporeling keep its splash perk (0.6 tiles), which the rework turned off? | It keeps it, as today's data does outside `?proto=rework` | §5.6, §12.2 | R1 |
 | 10 | How an emplacement counts in a clash | A unit that never moves and can be killed (Structure armor); it keeps its side alive in its lane; 0 supply toward Heartcap damage and the 45 s comparison; only emplacements left at 45 s is a draw (E5); powers hit it as a unit (D50) | §6.7 (§11.2 points there) | R1 |
@@ -4047,7 +4083,7 @@ Items from 7 on are v2's, one row per question: each is a rule the user hasn't d
 | 31 | Should a counter land a round after its analysis, so the player's build gets a round to pay off? | No: it activates in the planning phase of its analysis | §7.4 | R2 |
 | 32 | What a run saved before R2 becomes. It MUST NOT be lost silently, and its key stays | It migrates, keeping its kit, relics and progress, with 3 lives; the alternative is to end it with a notice | §8.9 (§13.8 points there) | R2 |
 | 33 | Does the battle-1 economy tip still help, now that the general plans first and can punish a greedy opener? | Keep it as it is | §10.2 | R2 (its playtest) |
-| 34 | Should the tools add `docs/ideas/rounds.md`'s second bot policy, "buy the answer to what you saw", and should the run guardrails (G14, G15) use it? | Bots plan by fixed weights | §12.2 | R2 |
+| 34 | Should the tools add `docs/archive/v1/ideas/rounds.md`'s second bot policy, "buy the answer to what you saw", and should the run guardrails (G14, G15) use it? | Bots plan by fixed weights | §12.2 | R2 |
 | 35 | The bands of G6's second clause and of G14–G16, and G6's 700-HP deficit | §12.3's numbers, set by R2's first full measurement and its playtest | §12.3 | R2 |
 | 36 | The sixth core archetype, and the core six as a whole, which the user wants to discuss further | The Burster Pod; the alternative is the Puffball Mortar as an emplacement (D44) | §1.3 #6, §11.2, §14.2, Appendix A | R3 (R1 measures both candidates) |
 | 37 | Does an augment attach to a building type (all its copies) or to one card? | The type, for the run (D39) | §1.3 #7, §8.10, §11.13, §14.2 | R3 |
@@ -4060,7 +4096,7 @@ Items from 7 on are v2's, one row per question: each is a rule the user hasn't d
 | 44 | Does the always-in set hold any relics? | No: the six core archetypes and the Truffle Cellar only. The Sporestorm Sigil isn't in it | §8.4 | R3 |
 | 45 | Can the always-in set be banned? | No, so the swarm's answer is in every run (D38) | §8.4 (§8.1 points there) | R3 |
 | 46 | What a ban does to a run pack | A pack whose building is banned isn't dealt, and the next pack is dealt in its place | §8.4 | R3 |
-| 47 | A pack swap at run setup, one dealt pack traded for another (`docs/ideas/after-the-rework.md` Tier 4 #3) | No swap | §8.4 | R3 |
+| 47 | A pack swap at run setup, one dealt pack traded for another (`docs/archive/v1/ideas/after-the-rework.md` Tier 4 #3) | No swap | §8.4 | R3 |
 | 48 | Do the general's extra blueprints come only from the run's packs and the always-in set? | Yes, so a run without the Air pack meets no enemy Driftlings | §11.15 | R3 |
 | 49 | Does each general get its own weights for the Burster Pod and the other v2 cards? | No: weight 1 for any card its weights don't list, until tuning says otherwise | §11.11 | R3 |
 | 50 | Do plots from relics, traits and commanders (Mycelial Web, Root Pressure, Armilla) count toward the most plots a colony can hold? | Yes, so no source takes a colony past that limit or the performance budget | §11.7 | R3 |
@@ -4106,7 +4142,7 @@ Items from 7 on are v2's, one row per question: each is a rule the user hasn't d
 
 ## Appendix A: Retired v1 systems
 
-v2 retires these v1 systems. Each row says what the system was, where the [v1 spec](https://github.com/Swalliso/Sambattler/blob/aa37365/SPEC.md) described it, what does its job now, and why it went. The decisions are the user's, made on 2026-10-31 after the combat rework's P3 playtest (§1.3). The evidence is in `docs/playtest-feedback.md` (F numbers), `docs/ideas/after-the-rework.md` and its folder, and `docs/ideas/rounds.md`.
+v2 retires these v1 systems. Each row says what the system was, where the [v1 spec](https://github.com/Swalliso/Sambattler/blob/aa37365/SPEC.md) described it, what does its job now, and why it went. The decisions are the user's, made on 2026-10-31 after the combat rework's P3 playtest (§1.3). The evidence is in `docs/playtest-feedback.md` (F numbers), `docs/archive/v1/ideas/after-the-rework.md` and its folder, and `docs/archive/v1/ideas/rounds.md`.
 
 The code for every retired system remains until milestone R2 removes it, with its tests, goldens and guardrails (§16). A v1 subsection whose system is retired stays in this spec as a short stub under its old number.
 
@@ -4116,7 +4152,7 @@ The code for every retired system remains until milestone R2 removes it, with it
 - placement didn't matter: the user filled the home zone from the top left down (F20);
 - the close calls left no mark, with the run's Heartcap at 3000 → 3000 in all four battles.
 
-Most of the systems below served the continuous battle, and rounds do their jobs ([rounds.md, "Today's systems under rounds"](docs/ideas/rounds.md#todays-systems-under-rounds)).
+Most of the systems below served the continuous battle, and rounds do their jobs ([rounds.md, "Today's systems under rounds"](docs/archive/v1/ideas/rounds.md#todays-systems-under-rounds)).
 
 ### The retired systems
 
@@ -4124,11 +4160,11 @@ Most of the systems below served the continuous battle, and rounds do their jobs
 
 | System | What it was (v1) | v1 § | In v2 | Why |
 |---|---|---|---|---|
-| Spawn timers | Each spawner made units on its own timer, with a half-interval first spawn; a render bar showed the next spawn | §4.4, §10.2 | Each building fields one squad a round, fresh, in formation (§4.4, §4.7) | Units arrived one or two at a time, the first of the rework's three causes of one-sided battles ([combat-rework.md](docs/ideas/combat-rework.md#three-causes)). Rounds remove the trickle by construction |
-| The 60 s wave | A beat of the battle clock that drove drafts, interest, the Sporestorm and the counter cycle | §4.2, §18.1 D1 | The round: drafts, interest, the storm and the counter cycle count rounds (§4.2) | Under the rework "wave" named two clocks, and the user found the mix of real time and turns hard to follow (F19; [after-the-rework.md](docs/ideas/after-the-rework.md#where-the-fun-stands-on-develop), problem 11) |
+| Spawn timers | Each spawner made units on its own timer, with a half-interval first spawn; a render bar showed the next spawn | §4.4, §10.2 | Each building fields one squad a round, fresh, in formation (§4.4, §4.7) | Units arrived one or two at a time, the first of the rework's three causes of one-sided battles ([combat-rework.md](docs/archive/v1/ideas/combat-rework.md#three-causes)). Rounds remove the trickle by construction |
+| The 60 s wave | A beat of the battle clock that drove drafts, interest, the Sporestorm and the counter cycle | §4.2, §18.1 D1 | The round: drafts, interest, the storm and the counter cycle count rounds (§4.2) | Under the rework "wave" named two clocks, and the user found the mix of real time and turns hard to follow (F19; [after-the-rework.md](docs/archive/v1/ideas/after-the-rework.md#where-the-fun-stands-on-develop), problem 11) |
 | The deploy phase | A paused phase before the battle's clock started, with a 100% refund | §4.2, §10.2 | Round 1's planning, after the general has planned (§4.7, §10.2) | The opener was a guess (F18). Now every round opens with planning, and the general's opener is on the field first |
 | Placing while live | Planting and selling at any time, with an active pause | §4.4, §10.3, §18.1 D14 | Placing and selling are planning actions only. Planning is untimed (§4.2) | The user asked for "a build phase, then a fight phase" (F19) |
-| Hold / Advance | Per-lane stance: a held lane gathered at a rally line behind its border (adopted 2026-10-28) | §5.2, §10.3 | Both whole armies start every clash at once, which is what Hold was for (§5.2). The commander power is the one live action (§6.6) | Nothing trickles under rounds, so there's nothing to group. Under waves Hold became routine ([after-the-rework.md](docs/ideas/after-the-rework.md#where-the-fun-stands-on-develop), problem 7) |
+| Hold / Advance | Per-lane stance: a held lane gathered at a rally line behind its border (adopted 2026-10-28) | §5.2, §10.3 | Both whole armies start every clash at once, which is what Hold was for (§5.2). The commander power is the one live action (§6.6) | Nothing trickles under rounds, so there's nothing to group. Under waves Hold became routine ([after-the-rework.md](docs/archive/v1/ideas/after-the-rework.md#where-the-fun-stands-on-develop), problem 7) |
 | Power cooldowns | A commander power recharged on a cooldown, first ready after a delay | §6.6 | At most once per clash (§6.6) | A clash lasts 20–40 s, so a cooldown would mean once anyway |
 | The income tick | Income every 5 s: the stipend and economy buildings | §6.2 | Income once a round, at the start of planning (§6.2) | You plan with your gold in front of you, which gives interest a moment ("bank 140 for +7"). Round 3's testers found interest confusing (F4) |
 
@@ -4136,13 +4172,13 @@ Most of the systems below served the continuous battle, and rounds do their jobs
 
 | System | What it was (v1) | v1 § | In v2 | Why |
 |---|---|---|---|---|
-| Column capture | A column-by-column tug-of-war in each lane: the frontier column flipped after you out-muscled the enemy there (presence ≥ 1.5×) | §4.3 | Heartcap damage per round is the score. The two Heartcap bars and the round tally show who's winning (§4.5, §6.7) | Testers found capture awkward or confusing (F6). The side holding more ground at 2:00, 3:00 and 4:00 went on to win only 39, 41 and 44% of the time under the rework ([after-the-rework.md](docs/ideas/after-the-rework.md#where-the-fun-stands-on-develop), problem 3) |
+| Column capture | A column-by-column tug-of-war in each lane: the frontier column flipped after you out-muscled the enemy there (presence ≥ 1.5×) | §4.3 | Heartcap damage per round is the score. The two Heartcap bars and the round tally show who's winning (§4.5, §6.7) | Testers found capture awkward or confusing (F6). The side holding more ground at 2:00, 3:00 and 4:00 went on to win only 39, 41 and 44% of the time under the rework ([after-the-rework.md](docs/archive/v1/ideas/after-the-rework.md#where-the-fun-stands-on-develop), problem 3) |
 | Borders, frontiers and home zones as build space | You could build only on your own ground; home columns never flipped; buildings were forts that held a column | §4.3, §4.4 | The colony: fixed 2×2 plots whose rank and file set the formation (§4.6) | Under the rework the best plot was worth about 5% of a building more than the median one (25% on M5), from 14 legal plots (problem 4). Placement now sets position |
 | Presence | Each unit's weight in a column's tug; merged units counted their supply | §5.5, §18.1 D7 | Merged units' supply counts toward Heartcap damage (§5.5, §6.7) | It existed for column capture |
 | Forward building and the supply-line cost | Buildings past your home columns cost +5% a column | §6.3 | Plots are fixed in your colony (§4.6) | Two playtests found forward building not worth it (F1), and its readability question never got an answer (F3) |
 | Besieged spawners | A spawner under attack spawned at half speed | §4.4, §18.1 D8 | Buildings take no part in a clash and can't be hit (§4.6) | Under rounds archers shoot the army in front of them, not spawners from out of reach (rounds.md, "What changes in how armies meet") |
 | Buildings as targets | Buildings had HP, could be razed, and siege units dealt ×2 to them | §4.4, §5.3 | Buildings can't be hit and aren't lost between rounds. Siege units count double toward Heartcap damage (§6.7) | Gives the Rootbreaker a job when there's nothing to break. F12's repair question becomes moot |
-| Comeback income by columns | +1 gold per 2 columns behind per income tick, up to 6 | §6.2, §18.1 D17 | +40 gold to each round's loser (§6.2) | Paid by ground, it went the wrong way: eventual winners and losers each collected about 69 gold a battle under the rework ([after-the-rework.md](docs/ideas/after-the-rework.md#tier-1-now-while-you-playtest), item 4) |
+| Comeback income by columns | +1 gold per 2 columns behind per income tick, up to 6 | §6.2, §18.1 D17 | +40 gold to each round's loser (§6.2) | Paid by ground, it went the wrong way: eventual winners and losers each collected about 69 gold a battle under the rework ([after-the-rework.md](docs/archive/v1/ideas/after-the-rework.md#tier-1-now-while-you-playtest), item 4) |
 | Rich Loam and stumps in the contested middle | Loam tiles and stumps on the map between the home zones | §4.1, §11.9 | Loam and stump plots inside each colony (§4.6, §11.9) | Every loam tile on the maps, and every one of Stumpfield's stumps, lay in ground that rounds don't use (rounds.md) |
 | The front-line graph | The report's graph of each lane's borders over time | §5.7, §10.4 | The report's round chart: Heartcap damage both ways by round (§10.4) | Ground stopped predicting the winner (problem 3) |
 
@@ -4158,19 +4194,19 @@ Most of the systems below served the continuous battle, and rounds do their jobs
 
 | System | What it was (v1) | v1 § | In v2 | Why |
 |---|---|---|---|---|
-| Heartcap HP across a run | One Heartcap of 3000 for the run; its HP carried from battle to battle, and a Decision loss cost 25% of max HP | §8.5, §6.5, §18.1 D3 | Per-battle Heartcaps, both full at the start of each battle, and 3 lives for the run (§4.5, §6.5, §8.5) | The user: losing Heartcap in a battle you win "feels like punishing a player for succeeding". 92% of battles started at full HP, so run HP was all or nothing, and the P3 summary read 3000 → 3000 despite close calls ([after-the-rework.md](docs/ideas/after-the-rework.md#tier-1-now-while-you-playtest), item 2) |
+| Heartcap HP across a run | One Heartcap of 3000 for the run; its HP carried from battle to battle, and a Decision loss cost 25% of max HP | §8.5, §6.5, §18.1 D3 | Per-battle Heartcaps, both full at the start of each battle, and 3 lives for the run (§4.5, §6.5, §8.5) | The user: losing Heartcap in a battle you win "feels like punishing a player for succeeding". 92% of battles started at full HP, so run HP was all or nothing, and the P3 summary read 3000 → 3000 despite close calls ([after-the-rework.md](docs/archive/v1/ideas/after-the-rework.md#tier-1-now-while-you-playtest), item 2) |
 | Repairs | A Rout win's +10%, the Grove's +30%, Quiet Clearing's 15% and Mending Moss | §8.5, §8.7, §11.7 | The Grove regains a life (§8.7). Mending Moss keeps an in-battle heal as a first guess (§11.7), and the events get new effects (§8.7) | Nothing to repair once Heartcaps are per battle. Grove repair was chosen on 3 of 98 visits |
 
 **Limits, hints and content**
 
 | System | What it was (v1) | v1 § | In v2 | Why |
 |---|---|---|---|---|
-| The supply cap | 60 supply on the field per side | §5.4, §6.3 | Plots are the build limit, and copies join them in R3; supply stays as a unit's weight (§4.4, §5.4, §8.10) | "Mass the cheapest spawner" kept winning: G3 failed on mono Sporeling at 83 and 86% under the rework (F2; [after-the-rework.md](docs/ideas/after-the-rework.md#short-answer)). Copies make it impossible by construction |
+| The supply cap | 60 supply on the field per side | §5.4, §6.3 | Plots are the build limit, and copies join them in R3; supply stays as a unit's weight (§4.4, §5.4, §8.10) | "Mass the cheapest spawner" kept winning: G3 failed on mono Sporeling at 83 and 86% under the rework (F2; [after-the-rework.md](docs/archive/v1/ideas/after-the-rework.md#short-answer)). Copies make it impossible by construction |
 | The vague telegraph | A warning of a counter's broad kind, 2 waves ahead, without its units; the General's Intent countdown | §7.4, §7.5, §18.1 D9 | You see the general's whole army before you plan. Its counters show as new buildings in its colony (§7.4, §7.5) | The opener felt like a gamble (F18), and counters become moments you can see |
 | The spawn-mix read | The general estimated your army from spawn rates and merge toggles | §7.4 | It reads the squads you actually fielded (§7.4) | Exact and simpler. Under waves the read called a merged Sporeling swarm Elite in 155 of 199 reads (`src/data/proto.ts`) |
 | Random enemy upgrade levels | The general's kit gained random upgrade levels each battle | §7.8 | From R3, one augment per battle index above 1, shown on its squads (§7.8) | You can see an augment and plan for it |
-| Upgrade tracks | 3 levels per building, drafted; almost all flat numbers | §11.6 | Augments, which change how a building's units play (§11.13), from R3 | Almost all 42 levels were flat numbers, and 73% of runs never reached a level 3 ([after-the-rework.md](docs/ideas/after-the-rework.md#tier-4-bigger-bets-for-m6-and-beyond), Tier 4 #4) |
-| The shared unlocked pool | A run's draft pool: the commander's core plus every unlocked building | §8.4 | The commander's core, an always-in set and 4 of 10 random themed packs (§8.4, §11.15) | Runs differed too little before battle 1 ([after-the-rework.md](docs/ideas/after-the-rework.md#tier-4-bigger-bets-for-m6-and-beyond), Tier 4 #3) |
+| Upgrade tracks | 3 levels per building, drafted; almost all flat numbers | §11.6 | Augments, which change how a building's units play (§11.13), from R3 | Almost all 42 levels were flat numbers, and 73% of runs never reached a level 3 ([after-the-rework.md](docs/archive/v1/ideas/after-the-rework.md#tier-4-bigger-bets-for-m6-and-beyond), Tier 4 #4) |
+| The shared unlocked pool | A run's draft pool: the commander's core plus every unlocked building | §8.4 | The commander's core, an always-in set and 4 of 10 random themed packs (§8.4, §11.15) | Runs differed too little before battle 1 ([after-the-rework.md](docs/archive/v1/ideas/after-the-rework.md#tier-4-bigger-bets-for-m6-and-beyond), Tier 4 #3) |
 | Selling by timer | 100% refund in deploy or within 10 s before a building produced, otherwise 60%; no selling while besieged | §4.4, §18.1 D18 | 100% in the planning phase a building was planted, 60% once it has fielded; from R3 the copy returns (§4.4) | The timer rules guarded live production, which is gone |
 | Bigger merged units | Bloomed drawn at ×1.25 and Elders at ×1.5 (`TIER_SCALE`) | §10.4 | Pips mark merge tiers, and body size means armor (§5.8) | Units were hard to tell apart (F17); size has to mean one thing |
 | Mid-battle saves from the command log | Saves at every wave boundary, resumed by replaying the battle | §8.9 | Saves at the start of each planning phase and at Begin; a clash resumes by replaying it from its Begin save (§8.9) | The state between rounds is small and stable |
@@ -4181,8 +4217,8 @@ Most of the systems below served the continuous battle, and rounds do their jobs
 
 | Exclusion | v1 § | In v2 | Why |
 |---|---|---|---|
-| Flying units, anti-air and burrowing | §17 #7 | Unlockable roles: the Rhizomorph tunneler, and a flyer under the rework's rule C (§11.2). Terrain that changes movement stays out (§17 #22) | The rework built both; P2 and the flyer tests found where they help and where they take over ([combat-rework.md](docs/ideas/combat-rework.md#what-p2-found)) |
-| Core placement synergy | §17 #11 | Combos: in front of, behind, beside (§11.14) | Placement didn't matter (F20). Each combo changes what happens, because flat percentages per neighbour measured below the spread tool's noise ([after-the-rework.md](docs/ideas/after-the-rework.md#what-not-to-do-again), DR-7) |
+| Flying units, anti-air and burrowing | §17 #7 | Unlockable roles: the Rhizomorph tunneler, and a flyer under the rework's rule C (§11.2). Terrain that changes movement stays out (§17 #22) | The rework built both; P2 and the flyer tests found where they help and where they take over ([combat-rework.md](docs/archive/v1/ideas/combat-rework.md#what-p2-found)) |
+| Core placement synergy | §17 #11 | Combos: in front of, behind, beside (§11.14) | Placement didn't matter (F20). Each combo changes what happens, because flat percentages per neighbour measured below the spread tool's noise ([after-the-rework.md](docs/archive/v1/ideas/after-the-rework.md#what-not-to-do-again), DR-7) |
 
 ### The rework's pieces and proposals that v2 didn't adopt
 
@@ -4195,19 +4231,19 @@ Each row here follows from a decision of 2026-10-31, cited as §1.3 #N. Proposal
 | Waves on a 20 s beat | Spawns waited inside their building, and each lane's wave set out together on a shared beat | Retired (§1.3 #1, #11) | A round is the whole army in one wave, and nothing carries over. Waves felt like real time mixed with turns (F19) |
 | Hold under waves | A held lane kept its next wave home for one beat | Retired (§1.3 #11) | Nothing to group |
 | Call for help | Units within 5 tiles of an attacked friend took the attacker | Retired (§1.3 #11) | Its job was buildings shot with no answer; buildings aren't in a clash, and units already fight what's near them. It never had a visual |
-| Mixed-wave shields | A wave of 2 or more unit types set out with shields of 20% of each unit's max HP | Not adopted; R1 measures whether mixed armies need them (§1.3 #11, §18.2) | Under waves they carried the strict counter bar: without them, mono Sporeling's best answer fell from 85% to 47% ([combat-rework.md](docs/ideas/combat-rework.md#p1d-fewer-stalls-and-the-shields-carry-the-strict-bar)). Rounds give a mixed army information, another edge |
+| Mixed-wave shields | A wave of 2 or more unit types set out with shields of 20% of each unit's max HP | Not adopted; R1 measures whether mixed armies need them (§1.3 #11, §18.2) | Under waves they carried the strict counter bar: without them, mono Sporeling's best answer fell from 85% to 47% ([combat-rework.md](docs/archive/v1/ideas/combat-rework.md#p1d-fewer-stalls-and-the-shields-carry-the-strict-bar)). Rounds give a mixed army information, another edge |
 | Storm-grown waves | Each Sporestorm stack made waves 20% bigger | Retired with waves (§1.3 #1) | The storm raises round damage instead (§6.4) |
 | The Elder Sporeling's splash off | The swarm's Elder lost its splash | Measured in R1 (§1.3 #11, §18.2) | Under waves it was worth 9–18 points to the swarm, because waves doubled merges. Under rounds merges will be common too |
 | Flyers (the Driftling and its Drift Stalk) | Floating units that held no ground, under rule C | Later, as an unlockable flyer, starting from rule C (§1.3 #11, §11.2) | A flyer army took over G3 (mono Drift Stalk 89%, 72% under rule C) |
 | The general's swarm read | A 1-supply unit's spawner read by its armor, merged or not | Simplified: the general reads the squads you fielded (§1.3 #11, §7.4) | Exact under rounds |
 
-**Step B's prototypes** ([one-more-run-review.md](docs/ideas/one-more-run-review.md#step-b-results-2026-10-30); `?proto=` presets in `src/data/proto.ts`). `hotstart` and `breach` are undecided, below. The one a decision settles:
+**Step B's prototypes** ([one-more-run-review.md](docs/archive/v1/ideas/one-more-run-review.md#step-b-results-2026-10-30); `?proto=` presets in `src/data/proto.ts`). `hotstart` and `breach` are undecided, below. The one a decision settles:
 
 | Prototype | What it was | In v2 | Why |
 |---|---|---|---|
 | `bigdrafts` | Two drafts of 2 picks from 4 cards | Not adopted: drafts come after rounds 2, 4 and 6 (§1.3 #12, §8.3) | Its finding stays: a bigger draft means more picks, not rarer cards |
 
-**`docs/ideas/rounds.md`'s choices that v2 changed** (its own list is at its top):
+**`docs/archive/v1/ideas/rounds.md`'s choices that v2 changed** (its own list is at its top):
 
 | rounds.md | In v2 | Why |
 |---|---|---|
@@ -4217,7 +4253,7 @@ Each row here follows from a decision of 2026-10-31, cited as §1.3 #N. Proposal
 | The supply cap stays at 60 | No supply cap; plots, and copies from R3 (§1.3 #4, #5) | One limit instead of two |
 | The Puffball Mortar fields itself as an emplacement | One of the two candidates for the sixth archetype (§1.3 #6). **Open:** the sixth archetype (first guess: the Burster Pod; §11.2, §18.2) | The user wants to discuss the core six further |
 
-**`docs/ideas/after-the-rework.md`'s proposals.** v2 folds in lives (item 2), reading the enemy (item 5, as the general planning first), the generals' kits on their route nodes (item 8), themed packs (Tier 4 #3, as run packs), mutation cards (Tier 4 #4, as augments) and the unlock ladder (Tier 4 #7, in M6). "Run it back, and records" (item 7) is independent work (§16, M6). These follow from a decision and aren't adopted:
+**`docs/archive/v1/ideas/after-the-rework.md`'s proposals.** v2 folds in lives (item 2), reading the enemy (item 5, as the general planning first), the generals' kits on their route nodes (item 8), themed packs (Tier 4 #3, as run packs), mutation cards (Tier 4 #4, as augments) and the unlock ladder (Tier 4 #7, in M6). "Run it back, and records" (item 7) is independent work (§16, M6). These follow from a decision and aren't adopted:
 
 | Proposal | Settled by | Why not, under v2 |
 |---|---|---|
@@ -4235,8 +4271,8 @@ No decision of 2026-10-31 covers these, and the user hasn't rejected them. None 
 
 | Proposal | Source | What it was | Note |
 |---|---|---|---|
-| `hotstart` | Step B; [after-the-rework.md](docs/ideas/after-the-rework.md#url-variants-worth-playing-beside-protorework) | A free draft at deploy, and a battle-1 general on ¾ income | Under the rework, battle 1 was lost 53% of the time without it and 26% with it (step B's own measurement: 33% → 18%). v2 has no deploy phase, and the general's income is ×1.0 outside blights (§1.3 #3). Lives already make battle 1 a setback rather than the end (§1.3 #2) |
-| `breach` | Step B; [after-the-rework.md](docs/ideas/after-the-rework.md#url-variants-worth-playing-beside-protorework) | Defensive pulses at ⅔ and ⅓ of the Heartcap | Under the rework the fall went from 12 s to 31 s (step B: 18 s → 45 s), with identical outcomes and 0 comebacks. Under v2 a Heartcap takes damage only in the aftermath, and the per-round cap (§6.7) is what keeps it from falling at once |
+| `hotstart` | Step B; [after-the-rework.md](docs/archive/v1/ideas/after-the-rework.md#url-variants-worth-playing-beside-protorework) | A free draft at deploy, and a battle-1 general on ¾ income | Under the rework, battle 1 was lost 53% of the time without it and 26% with it (step B's own measurement: 33% → 18%). v2 has no deploy phase, and the general's income is ×1.0 outside blights (§1.3 #3). Lives already make battle 1 a setback rather than the end (§1.3 #2) |
+| `breach` | Step B; [after-the-rework.md](docs/archive/v1/ideas/after-the-rework.md#url-variants-worth-playing-beside-protorework) | Defensive pulses at ⅔ and ⅓ of the Heartcap | Under the rework the fall went from 12 s to 31 s (step B: 18 s → 45 s), with identical outcomes and 0 comebacks. Under v2 a Heartcap takes damage only in the aftermath, and the per-round cap (§6.7) is what keeps it from falling at once |
 | The battle-1 package (item 3) | after-the-rework.md, Tier 1 | `hotstart`, moving Old Mother Mold out of battle 1, and related data changes, measured side by side | Battle 1's general and its difficulty are tuned in data. Lives and the general planning first change what battle 1 has to teach |
 | Keystones and seasons (Tier 4 #5, #10) | after-the-rework.md, Tier 4 | Big rule cards at run start and after rows 3 and 5; one rule per run for both sides | For now augments, combos and relics carry run variety (§1.3 #7, #8) |
 | The boss's Edict (Tier 4 #6) | after-the-rework.md, Tier 4 | One rule per run, shown on the boss node from row 1 | For now the boss's Heartcap, kit and dual doctrine are its challenge (§7.6, §7.8) |

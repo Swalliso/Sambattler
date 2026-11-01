@@ -1,4 +1,4 @@
-// Motion (docs/ui-ux-plan.md A6, the design system's Motion section): the spore-burst wipe between
+// Motion (docs/archive/v1/ui-ux-plan.md A6, the design system's Motion section): the spore-burst wipe between
 // screens, roll-up counters for rewards and a restrained tilt on draft cards. Things grow in and wilt
 // out, and nothing bounces more than once. Reduced motion (the player's setting, or the device's when it
 // follows the system) is the `reduce-motion` class on <html>: no wipe, tilt or roll, and fades of 120 ms

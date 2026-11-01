@@ -6,6 +6,8 @@ paths:
   - "src/app/tips.ts"
   - "src/run/storage.ts"
   - "src/run/resume.ts"
+  - "src/run/runState.ts"
+  - "src/run/flow.ts"
   - "tests/unit/settings.test.ts"
   - "tests/unit/run.test.ts"
   - "tests/browser/resume.test.ts"
@@ -25,3 +27,6 @@ paths:
   overwrites the real save. The game never saves one.
 - The run layer only sees the `Storage` interface (`src/run/storage.ts`). The browser passes the
   localStorage store in `src/app/run.ts`; tests and tools use `MemoryStorage`.
+- SPEC v2's milestone R2 changes what a run save holds: lives instead of a run-long Heartcap, rounds,
+  and later the kit's copies. The keys still don't change. A save written before R2 is migrated, or
+  its run ends with a notice; it MUST NOT be lost silently (SPEC §8.9, §13.8, §18.2).

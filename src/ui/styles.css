@@ -700,7 +700,7 @@ kbd { font-family: var(--font-mono); font-size: 12px; line-height: 16px; padding
 .legend-item.thread-walked > i { background: var(--violet); box-shadow: 0 0 4px var(--violet); }
 .legend-item.thread-open > i { background: var(--lilac); box-shadow: 0 0 4px var(--lilac); }
 
-/* events, the Grove and prompts: a framed 4× scene, the story on stalk cream, the choices as cards (docs/ui-ux-plan.md C2) */
+/* events, the Grove and prompts: a framed 4× scene, the story on stalk cream, the choices as cards (docs/archive/v1/ui-ux-plan.md C2) */
 .runpanel { flex: 1; min-height: 0; margin: 0 auto; padding: var(--space-6) 0; justify-content: center; }
 .vignette-layout { display: grid; grid-template-columns: 216px minmax(0, 1fr); gap: 22px; align-items: start; align-content: center; }
 .vignette { display: grid; place-items: end center; width: 216px; height: 168px; padding: 0 0 10px; background: radial-gradient(ellipse 60% 70% at 50% 95%, var(--soil-mid), var(--bg) 80%); border: 2px solid var(--line-strong); border-radius: var(--radius-lg); box-shadow: var(--shadow-bevel), inset 0 0 0 4px var(--ink); }

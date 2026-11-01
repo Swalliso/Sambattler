@@ -1,7 +1,7 @@
 // Fixed-capacity ring buffer of short-lived visual effects (SPEC §13.6): hit sparks tinted by
 // effectiveness, death puffs, building rubble, spawn puffs, merge pops, damage numbers, heals and coin
 // pops. Entries are reused, never allocated after construction. Death and spawn puffs are spores, the
-// one particle (docs/ui-ux-plan.md, "lit from below"): motes 1–2 px across in spore-white.
+// one particle (docs/archive/v1/ui-ux-plan.md, "lit from below"): motes 1–2 px across in spore-white.
 import { GLYPH_H, pixelText, textWidth } from './pixelText.ts';
 import { SPORE_WHITE } from './spores.ts';
 

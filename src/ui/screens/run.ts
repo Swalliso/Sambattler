@@ -156,7 +156,7 @@ export function intelBars(atlas: Atlas, run: RunState): HTMLElement {
 const SVG = 'http://www.w3.org/2000/svg';
 
 /**
- * The hyphae between the pods (docs/ui-ux-plan.md C1): a thread from every node to every node in the next
+ * The hyphae between the pods (docs/archive/v1/ui-ux-plan.md C1): a thread from every node to every node in the next
  * row, and from the colony's start to the first row. The path you walked glows violet, the threads you can
  * take now glow lilac, the rest stay dim; hovering or focusing a pod lights its own threads. Threads are
  * drawn after layout, from the pods' centres, and again whenever the map changes size.
@@ -329,7 +329,7 @@ function choiceCard(atlas: Atlas, label: string, text: string, chips: Chip[], on
     h('kbd', { class: 'choice-key', 'aria-label': `Key ${key}` }, String(key)));
 }
 
-/** The event and Grove layout (docs/ui-ux-plan.md C2): a framed 4× scene, the story on stalk cream, the choices as cards. */
+/** The event and Grove layout (docs/archive/v1/ui-ux-plan.md C2): a framed 4× scene, the story on stalk cream, the choices as cards. */
 function vignette(content: Content, atlas: Atlas, run: RunState, id: string, art: string, eyebrow: string, title: string, text: string, choices: HTMLButtonElement[], foot: string): HTMLElement {
   const scene = spriteToCanvas(atlas, art, 'velvet-bloom');
   scene.className = 'scene';

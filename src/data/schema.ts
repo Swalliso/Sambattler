@@ -178,7 +178,7 @@ export const BalanceSchema = z.object({
     damage: Pos, damageType: DamageType, interval: Pos, range: Pos, projectileSpeed: Pos, homeOnly: z.boolean(),
   }).strict().optional(),
   /**
-   * Diver prototype (step A of docs/ideas/one-more-run-review.md), absent by default: listed units
+   * Diver prototype (step A of docs/archive/v1/ideas/one-more-run-review.md), absent by default: listed units
    * prefer `ranged`-tagged enemy units over other targets and see them from `aggroAdd` tiles
    * farther. With `burst`, a diver closing on a ranged unit sprints at `speedMult` for up to
    * `seconds`, then waits `cooldownSeconds` before the next burst.
@@ -189,7 +189,7 @@ export const BalanceSchema = z.object({
     burst: z.object({ speedMult: Pos, seconds: Pos, cooldownSeconds: Seconds }).strict().optional(),
   }).strict().optional(),
   /**
-   * Hot-start prototype (step B of docs/ideas/one-more-run-review.md), absent by default. With
+   * Hot-start prototype (step B of docs/archive/v1/ideas/one-more-run-review.md), absent by default. With
    * `deployDraft`, a side that drafts this battle gets a free draft before the clock starts (`cards`
    * cards, default its usual offer). `battles[i]` gives each side effects for run battle i + 1, as
    * battle modifiers, so the first battles can be gentler.
@@ -210,7 +210,7 @@ export const BalanceSchema = z.object({
    */
   bigDrafts: z.object({ picks: z.number().int().positive().optional(), rareBonus: z.number().nonnegative().optional() }).strict().optional(),
   /**
-   * Combat rework `pinned` (docs/ideas/combat-rework.md, P1), absent by default: a `ranged` unit with
+   * Combat rework `pinned` (docs/archive/v1/ideas/combat-rework.md, P1), absent by default: a `ranged` unit with
    * an enemy unit within `radius` tiles (edge distance) attacks at `rateMult` × its normal rate.
    */
   pinned: z.object({ radius: Pos, rateMult: z.number().gt(0).max(1) }).strict().optional(),
@@ -276,7 +276,7 @@ export const BalanceSchema = z.object({
    */
   stormWaves: z.object({ perStack: Pos }).strict().optional(),
   /**
-   * Combat rework `flyers` (docs/ideas/flyers.md), absent by default: a `flying` unit passes over ground
+   * Combat rework `flyers` (docs/archive/v1/ideas/flyers.md), absent by default: a `flying` unit passes over ground
    * units and holds no ground (unless `holdsGround`), and only attacks with reach can hit it: ranged
    * units, Heartcap turrets, other flyers, commander powers, spore clouds (with `cloudsReach`), towers
    * that don't lob (the Mortar's splashing shell does), and melee unit types of at least `reachSupply`

@@ -1,4 +1,4 @@
-// Step B battle-feel prototypes (docs/balance-backlog.md, "Step B"): the hot start, the Heartcap
+// Step B battle-feel prototypes (docs/archive/v1/balance-backlog.md, "Step B"): the hot start, the Heartcap
 // breach and last stand, and bigger drafts. Every knob is absent from data/balance.json, so the
 // shipped rules are unchanged; with a knob set, the prototype behaves as described.
 import { describe, expect, it } from 'vitest';

@@ -1,3 +1,4 @@
+// v1 code: R2 removes buildings and Heartcaps as targets, and call for help (SPEC §13.4).
 // Staggered target selection for units and towers (SPEC §5.2): preferred class first, then the
 // nearest by edge distance, ties to the lowest id; sticky within aggro × leash. The diver prototype
 // (balance `diveRanged`) adds ranged units as a preferred class for the listed units.

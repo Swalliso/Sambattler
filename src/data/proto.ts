@@ -1,4 +1,6 @@
-// Balance-backlog prototypes (docs/balance-backlog.md): named presets and `path:value` overrides
+// Prototype knobs (`?proto=`, `--proto`). v1's presets and their results are in docs/archive/v1/balance-backlog.md;
+// log new v2 knobs in docs/balance-backlog.md. Which pieces SPEC v2 keeps or retires: SPEC §1.3 #11, §13.4, Appendix A.
+// Named presets and `path:value` overrides
 // applied to the raw balance.json before validation, so a prototype can be measured by the tools
 // (`--proto`) or playtested in the browser (`?proto=`) without editing data. Every knob is absent
 // from balance.json by default, so without a spec the rules are unchanged.
@@ -6,7 +8,7 @@ import type { RawContent } from './registry.ts';
 
 type Json = Record<string, unknown>;
 
-// ---- the combat rework's settings (docs/ideas/combat-rework.md, P1 to P1d); `rework` is P2's package ----
+// ---- the combat rework's settings (docs/archive/v1/ideas/combat-rework.md, P1 to P1d); `rework` is P2's package ----
 
 /** Pinned: a ranged unit with an enemy unit within 1 tile attacks at 0.35× its rate. */
 const PINNED: Json = { pinned: { radius: 1, rateMult: 0.35 } };
@@ -102,7 +104,7 @@ const STORM_WAVES: Json = { stormWaves: { perStack: 0.2 } };
  */
 const SWARM_READ: Json = { 'ai.counter.swarmMaxSupply': 1 };
 /**
- * Flyers (docs/ideas/flyers.md; working names): the Driftling floats over ground units and holds no
+ * Flyers (docs/archive/v1/ideas/flyers.md; working names): the Driftling floats over ground units and holds no
  * ground. Every unit can hit it, melee at ×0.5, but the Mortar's lobbed shell and the Burster's burst
  * never can. That's the design's rule C, which the user took for the playtest on 2026-10-31 after
  * mono Drift Stalk took over G3 under the design's first pick, reach (only ranged units, turrets,

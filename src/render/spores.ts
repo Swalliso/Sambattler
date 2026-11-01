@@ -1,4 +1,4 @@
-// Spores, the one particle (docs/ui-ux-plan.md, "lit from below"): motes 1–2 native pixels across that drift
+// Spores, the one particle (docs/archive/v1/ui-ux-plan.md, "lit from below"): motes 1–2 native pixels across that drift
 // slowly upward with a little sway, on a canvas of their own. The battle's frame draws them behind the
 // field (src/render/frame.ts); the title and the battle report reuse the same drift. One seeded pool, no
 // allocations per frame, and no redraw when nothing moved. They hold still under reduced motion (the
@@ -122,7 +122,7 @@ const VEIL_SPREAD = 26;
 const VEIL_RAG = 5;
 
 /**
- * The screen wipe's art (docs/ui-ux-plan.md A6): a veil of the void with a ragged edge and a band of
+ * The screen wipe's art (docs/archive/v1/ui-ux-plan.md A6): a veil of the void with a ragged edge and a band of
  * spores riding it. `cover` raises the veil from the bottom over the old screen, with spores bursting up
  * ahead of it; `reveal` lifts it off the new screen from the bottom up, the spores trailing below and
  * thinning out; `burst` is the spores alone, rising (an overlay opening over a screen that stays).
