@@ -3,6 +3,7 @@
 // targets, plus the run content (upgrade tracks, relics, events, elite modifiers, commanders with
 // their passives and powers), the effects DSL (§14.2) and the sound bank (§13.9).
 import { z } from 'zod';
+import { shapeBlockProblems } from './shapes.ts';
 
 export const Id = z.string().min(1).regex(/^[a-zA-Z0-9:_-]+$/, 'ids use letters, digits, : _ -');
 export const DamageType = z.enum(['slash', 'pierce', 'crush']);
@@ -491,12 +492,31 @@ export const MapSchema = z.object({
   });
 });
 
+/** A pixel in a sprite's frame: [x, y] from its top-left. */
+const PixelPoint = z.tuple([z.number().int(), z.number().int()]);
+/**
+ * A unit's or an emplacement's shape (SPEC §5.8, §14.2, §14.3; R4a): its body, its mark by §5.8's rule, and
+ * in each frame the top-left where the atlas bakes the mark's `m-` glyph, and the accent's. The data checks
+ * (src/data/shapes.ts) hold every frame to it.
+ */
+export const SpriteShapeSchema = z.object({
+  body: z.enum(['small', 'medium', 'big', 'structure']),
+  mark: z.enum(['blade', 'arrow', 'spike', 'hammer', 'area', 'heal', 'none']),
+  accent: z.enum(['splash']).optional(),
+  markAt: z.array(PixelPoint).optional(),
+  accentAt: z.array(PixelPoint).optional(),
+}).strict();
+const Band = z.tuple([z.number().int().positive(), z.number().int().positive()]).refine(([lo, hi]) => lo <= hi, 'a band is [min, max]');
+/** Each body class's [min, max] height in native px (§14.3): display data, kept out of balance.json. Structure has none. */
+export const SpriteBandsSchema = z.object({ small: Band, medium: Band, big: Band }).strict();
+
 export const SpriteSchema = z.object({
   id: Id, w: z.number().int().positive(), h: z.number().int().positive(),
   anchor: z.tuple([z.number(), z.number()]),
   palette: z.record(z.string().length(1), Hex.nullable()),
   frames: z.array(z.array(z.string())).min(1),
   factionSwap: z.boolean().optional(),
+  shape: SpriteShapeSchema.optional(),
 }).strict().superRefine((s, ctx) => {
   s.frames.forEach((frame, f) => {
     if (frame.length !== s.h) ctx.addIssue({ code: 'custom', message: `sprite ${s.id} frame ${f}: ${frame.length} rows, expected ${s.h}` });
@@ -507,8 +527,10 @@ export const SpriteSchema = z.object({
       }
     });
   });
+  // a shape gives its mark and its accent one point per frame; its bands and glyphs are checked once, in shapeProblems
+  for (const message of shapeBlockProblems(s)) ctx.addIssue({ code: 'custom', message });
 });
-export const SpriteSheetSchema = z.object({ sheet: Id, sprites: z.array(SpriteSchema) }).strict();
+export const SpriteSheetSchema = z.object({ sheet: Id, sprites: z.array(SpriteSchema), bands: SpriteBandsSchema.optional() }).strict();
 
 // ---- sounds (SPEC §13.9): synthesized WebAudio, defined as parameters the way sprites are text ----
 
@@ -728,6 +750,8 @@ export type BuildingDef = z.infer<typeof BuildingSchema>;
 export type FactionDef = z.infer<typeof FactionSchema>;
 export type MapDef = z.infer<typeof MapSchema>;
 export type SpriteDef = z.infer<typeof SpriteSchema>;
+export type SpriteShape = z.infer<typeof SpriteShapeSchema>;
+export type SpriteBands = z.infer<typeof SpriteBandsSchema>;
 export type SoundLayerDef = z.infer<typeof SoundLayerSchema>;
 export type SoundDef = z.infer<typeof SoundSchema>;
 export type SoundBankDef = z.infer<typeof SoundBankSchema>;
