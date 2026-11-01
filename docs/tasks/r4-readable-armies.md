@@ -205,7 +205,7 @@ This list was drafted on 2026-11-01 from SPEC v2 and `docs/tasks/spec-analysis.m
 - [x] T015 [US1] Bake the Elder rim: add a pure `rimPixels` to `src/render/compose.ts` and rim jobs to its `atlasLayout`, bake them in `src/render/atlas.ts`, and draw the rim under an Elder's sprite in `drawUnitSprite` in `src/render/unitSprite.ts` (§5.8, §10.4, §13.6) ⛔ R4-Q3
   - For every `u-` sprite frame and flip, a 1-px gold `#f0c85a` outline of its mask, (w + 2) × (h + 2), one bake for both factions. Bloomed units get no rim (call 6).
   - Add `atlas.rim(id, frame, flip)`, keep `elderAura`, and check the atlas still packs in its 1024-wide sheet.
-- [ ] T016 [US1] Show the tier in the DOM with pip sprites. Add `tierPips(atlas, tier)` to `src/ui/icons.ts`, use it in `src/ui/inspect.ts`'s Tier row (:124, which takes a node beside the tier's name), and delete `TIER_PIPS` from `src/ui/mergeHints.ts:7` (§10.4)
+- [x] T016 [US1] Show the tier in the DOM with pip sprites. Add `tierPips(atlas, tier)` to `src/ui/icons.ts`, use it in `src/ui/inspect.ts`'s Tier row (:124, which takes a node beside the tier's name), and delete `TIER_PIPS` from `src/ui/mergeHints.ts:7` (§10.4)
 
 **Checkpoint:** `npx vitest run tests/unit/unitSprite.test.ts`, `npm run verify`, `npm run test:browser` and `npm run golden -- verify` (unchanged). `grep -rn TIER_SCALE src` finds nothing. In the r4-lineup PNG, tiers 2 and 3 stand at their base size with pips, and Elders with a gold rim, on both sides.
 

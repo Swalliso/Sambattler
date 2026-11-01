@@ -133,6 +133,10 @@ button { font: inherit; color: inherit; }
 .boot, .fatal { margin: auto; color: var(--muted); font-size: 16px; }
 .fatal { color: var(--danger); white-space: pre-wrap; max-width: 900px; font-family: var(--font-mono); font-size: 13px; }
 .ico { width: 16px; height: 16px; flex: none; image-rendering: pixelated; image-rendering: crisp-edges; }
+/* a unit's tier as the field's pips (i-pip, 5 × 5), shown at 2× beside its name */
+.pips { display: inline-flex; gap: 2px; vertical-align: -1px; }
+.pips:not(:empty) { margin-left: 6px; }
+.pip { width: 10px; height: 10px; flex: none; image-rendering: pixelated; image-rendering: crisp-edges; }
 :focus-visible { outline: none; box-shadow: var(--shadow-focus); }
 
 /* ---- top band: your Heartcap, the territory tug under the stat chips, their Heartcap, the general ---- */

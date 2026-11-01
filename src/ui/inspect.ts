@@ -3,12 +3,14 @@
 // living units, damage dealt, gold produced, the merge toggle and sell value. Selling takes two
 // presses (the first shows the refund).
 import type { Content } from '../data/registry.ts';
+import type { Atlas } from '../render/atlas.ts';
 import { sellValue } from '../sim/index.ts';
 import type { BattleState } from '../sim/index.ts';
 import { findBuilding, findUnit, isBesieged, isSuppressed, tierDef, unitDef } from '../sim/world.ts';
 import { h, setText, toggleClass } from './h.ts';
+import { tierPips } from './icons.ts';
 import { flyerHitters, strongVs, versusFlyers, vulnerableTo, weakVs } from './matrixHints.ts';
-import { TIER_NAME, TIER_PIPS, perkText } from './mergeHints.ts';
+import { TIER_NAME, perkText } from './mergeHints.ts';
 
 /** UI-side combat log fed from hit/died events: per-source damage history and kills. */
 export class CombatLog {
@@ -62,7 +64,7 @@ export class InspectPanel {
   private sellBtn: HTMLButtonElement;
 
   constructor(
-    private content: Content, private log: CombatLog, private onSell: (id: number) => void,
+    private content: Content, private atlas: Atlas, private log: CombatLog, private onSell: (id: number) => void,
     private onToggleMerge: (id: number) => void, private mergeShown: (state: BattleState, id: number) => boolean,
   ) {
     // Keep controls mounted across ticks and building selections. Replacing them between pointer
@@ -111,7 +113,7 @@ export class InspectPanel {
     }
   }
 
-  private rows(pairs: [string, string][]): HTMLElement[] {
+  private rows(pairs: [string, string | Node][]): HTMLElement[] {
     return pairs.map(([a, b]) => h('div', { class: 'row' }, h('span', { class: 'muted' }, a), h('span', null, b)));
   }
 
@@ -120,8 +122,9 @@ export class InspectPanel {
     const def = this.content.units[u.unitId]!;
     const t = tierDef(state, u);
     this.el.dataset.mode = 'unit';
-    const pairs: [string, string][] = [
-      ['Tier', `${TIER_NAME[u.tier - 1]} ${TIER_PIPS[u.tier - 1]}`.trim()],
+    const pairs: [string, string | Node][] = [
+      // the tier's name, and its pips as the field draws them
+      ['Tier', h('span', null, TIER_NAME[u.tier - 1], tierPips(this.atlas, u.tier))],
       ['HP', `${u.hp} / ${u.maxHp}${u.shield ? ` + ${u.shield} shield` : ''}`],
       ...(t.healAmount > 0
         ? [['Heals', `${t.healAmount} HP / ${t.healTicks / state.rules.tickRate}s · ${t.healTargets} target${t.healTargets > 1 ? 's' : ''} · range ${t.range}`] as [string, string]]
