@@ -1,6 +1,6 @@
 # Where things stand
 
-Updated 2026-11-02, on `docs/r2a-s3a` (the hub's docs PR into `develop`). This is the hand-over page. It covers what we're working on, what's waiting on the user's decision, and where each piece lives. Update it when work lands or the user decides something. Keep the detail in the docs it links to.
+Updated 2026-11-02, on `docs/r2a-s3b` (the hub's docs PR into `develop`). This is the hand-over page. It covers what we're working on, what's waiting on the user's decision, and where each piece lives. Update it when work lands or the user decides something. Keep the detail in the docs it links to.
 
 ## In short
 
@@ -18,7 +18,7 @@ Updated 2026-11-02, on `docs/r2a-s3a` (the hub's docs PR into `develop`). This i
   See [SPEC §0.1](../SPEC.md#01-what-changed-in-v2), [§1.3](../SPEC.md#13-v2-decisions-2026-10-31) and the [P3 notes](playtest-feedback.md#2026-10-31-p3-the-combat-rework-the-user).
 - **SPEC v2 is on `develop`** ([#39](https://github.com/Swalliso/Sambattler/pull/39)). **Nothing in v2 is built yet.** Until milestone R2 lands, the code follows v1: the M5 battle, with the rework's pieces behind `?proto=rework` on the dev site.
 - **The spec is broken into task lists** in [docs/tasks/](tasks/README.md) ([#40](https://github.com/Swalliso/Sambattler/pull/40), on `develop`), spec-kit style: one list per milestone, one session per row of its Sessions table. The decisions each milestone needs from the user are in [clarify.md](tasks/clarify.md), and the problems the breakdown found in SPEC v2 are in [spec-analysis.md](tasks/spec-analysis.md). Lists after R1's are drafts, refreshed when each milestone's plan is agreed.
-- **Milestone R1, the clash check, is done** ([SPEC §16](../SPEC.md#16-milestone-plan)). A headless tool fought whole armies at equal gold, with no rule change, to set squad sizes and check that every strong army has an answer before the round loop is built. At its review gate on 2026-11-02 you took every recommendation (below). **R2a's plan is agreed** (S0, 2026-11-02), **R2a S1, S2 and S3a have merged**, and **S3b is next**.
+- **Milestone R1, the clash check, is done** ([SPEC §16](../SPEC.md#16-milestone-plan)). A headless tool fought whole armies at equal gold, with no rule change, to set squad sizes and check that every strong army has an answer before the round loop is built. At its review gate on 2026-11-02 you took every recommendation (below). **R2a's plan is agreed** (S0, 2026-11-02), **R2a S1 to S3b have merged**, and **S4 is next**.
 - **Then:**
   - R2: rounds, the general plans first, lives, and the planning screen. R2a's plan, [r2a-plan.md](r2a-plan.md), was agreed on 2026-11-02. The task lists split it in two (X1): R2a, a single battle in rounds, then R2b, the run in rounds. R2a gets a rough playtest after S14, as soon as a battle in rounds is properly playable and before its counter cycle and powers (R2-Q25, agreed 2026-11-01), and S21's playtest stays the gate;
   - R3: the kit, the six archetypes, augments, combos and run packs;
@@ -27,11 +27,11 @@ Updated 2026-11-02, on `docs/r2a-s3a` (the hub's docs PR into `develop`). This i
 
   [docs/tasks/README.md](tasks/README.md) has the full order and every milestone's sessions.
 
-## Next session: R2a S3b
+## Next session: R2a S4
 
 - **Work from** [docs/tasks/r2a-battle-in-rounds.md](tasks/r2a-battle-in-rounds.md).
-  - **S3b** (`feature/r2a-create`, T021, T022, T027–T029, [#74](https://github.com/Swalliso/Sambattler/pull/74)): built, and waiting for the hub's review. `tests/roundHelpers.ts` starts the round harness with `planningState` and `fromScenario`. `src/sim/rounds/create.ts` has `createBattle`, `makeRoundConfig` and `createFromScenario`. `createBattle` opens round 1's planning through `openRound`, which stays a stub in `round.ts` until T055; the general's turn and a player-side bot's turn are its hooks. `rng.ts` adds `ai.player` and `ai.enemy`. `commands.ts`, `step.ts`, `snapshot.ts` and `index.ts` hold the queue, the step by phase, hashing and the API. Every command is refused until its executor lands. Round scenarios load from `data/scenarios/rounds/`, and a scenario from a later round makes the rounds before it from `dealt` and `last`. Verify and the browser tests are green, and no golden moved.
-- Then S4, once S3b has merged.
+  - **S4** (`feature/r2a-planning`, T030–T034): the planning commands with their refusals and refunds, the kit with no copies, and `formationOf` and `mergePreview` on state. It ends Phase 2. Its gate (S3b merged) is met, and it started on 2026-11-02.
+- Then S5, once S4 has merged.
 
 ## R2a, a battle in rounds
 
@@ -64,6 +64,11 @@ Updated 2026-11-02, on `docs/r2a-s3a` (the hub's docs PR into `develop`). This i
   - `src/sim/rounds/effects.ts` is the DSL: the triggers `roundStart`, `clashStart` and `roundWon`, `gainGold`, and `rank` and `onLoam` by plot.
   - The hub's review found that v1 doesn't know `rank`: a `rank` modifier on a building stat would apply to every building, and v1 ignores a trigger's `if.rank`. No data uses it. T046 now makes v1 skip those too.
   - Two shapes differ from §14.4's listing, for S20's As built: `UnitState.shield` (the arrival shield) and `SquadState.slot` as R1's `Slot`.
+- **S3b** (`feature/r2a-create`, T021, T022, T027–T029, [#74](https://github.com/Swalliso/Sambattler/pull/74)): merged. No golden moved.
+  - `tests/roundHelpers.ts` starts the round harness with `planningState` and `fromScenario`.
+  - `src/sim/rounds/create.ts` has `createBattle`, `makeRoundConfig` and `createFromScenario`. `createBattle` opens round 1's planning through `openRound`, a stub in `round.ts` until T055, whose hooks are the general's turn and a player-side bot's.
+  - `rng.ts` adds `ai.player` and `ai.enemy`. `commands.ts`, `step.ts`, `snapshot.ts` and `index.ts` hold the queue, the step by phase, hashing and the API. Every command is refused until its executor lands.
+  - Round scenarios load from `data/scenarios/rounds/`. A scenario from a later round makes the rounds before it from `dealt` and `last`.
 - **What R2a starts from:** R1's chosen set as default data (all of `kept`, the arrival shield, Capguard Hall's squad at 3, the Elder's splash on); X5's cap and Decision by share; no copies before R3 (D45); the Anti-Ranged kind and the three fixes to the counter sets (§7.4); and eliteShare by Elder parts.
 - **For R2a to watch** (R1, and S1's readings):
   - Capguard Hall at 3 still won 92% at 300 gold and 2% at 1,500;
@@ -173,6 +178,7 @@ Updated 2026-11-02, on `docs/r2a-s3a` (the hub's docs PR into `develop`). This i
 
 | Work | Where | State |
 |---|---|---|
+| R2a S3b: `createBattle`, the step by phase and round scenarios (2026-11-02) | [#74](https://github.com/Swalliso/Sambattler/pull/74), `src/sim/rounds/create.ts`, `commands.ts`, `step.ts`, `snapshot.ts`, `tests/roundHelpers.ts` | Merged after the hub's review. No golden moved. S4 is next |
 | R2a S3a: the round types, compile and the modifier DSL (2026-11-02) | [#72](https://github.com/Swalliso/Sambattler/pull/72), `src/sim/rounds/state.ts`, `compile.ts`, `effects.ts`, `src/data/schema.ts` | Merged after the hub's review. No golden moved. S3b is next |
 | R2a S1: the rounds data, and R1's set as default data (2026-11-02) | [#70](https://github.com/Swalliso/Sambattler/pull/70), `data/balance.json`, `src/data/schema.ts`, `src/sim/compile.ts`, `data/CHANGELOG-balance.md`, [balance-backlog.md](balance-backlog.md) | Merged after the hub's review. v1's goldens moved once, and the tray holds 16 cards. At `tierRadiusMult` 1.0 the Sporeling misses clash G3 on Twin Roots (62%), for S17 and S18 to read in rounds |
 | R2a S2: the colony and the formation's pure core (2026-11-02) | [#69](https://github.com/Swalliso/Sambattler/pull/69), `src/sim/rounds/colony.ts`, `src/sim/rounds/formation.ts`, the maps' `colony` blocks | Merged after the hub's review. No golden moved. S3a is next |
