@@ -39,7 +39,11 @@ Repo: github.com/Swalliso/Sambattler.
 
 - **Deploys:** every push to `main` or `develop` runs `.github/workflows/deploy.yml`. It verifies and builds both branches (`develop` with `npm run build:dev`) and publishes them as one Pages site, so pushing either branch publishes.
 - **CI:** `ci.yml` (job `test-and-build`) runs `npm run verify`, the browser tests and both builds on every PR, and on pushes to feature and hotfix branches.
-- **Only push, open PRs or merge when the user asks.** Never touch `main` unless the user asks for a release or a hotfix.
+- **Pushing and merging** (agreed with the user on 2026-11-02):
+  - A session pushes its own `feature/…` or `docs/…` branch and opens its PR into `develop` when its work is done, without asking.
+  - It then turns on auto-merge with `gh pr merge --auto --merge`, so the PR merges itself once CI's `test-and-build` passes.
+  - The exception is a PR that changes `src/sim/`, `src/data/` or `tools/lib/`: it waits for a review (the hub's, when a hub runs the sessions, or the user's), and the reviewer turns auto-merge on.
+  - Never push to `main` or `develop` directly, never force-push, and never touch `main` unless the user asks for a release or a hotfix.
 - **Prototypes:** new rules and experiments go to `develop` and get playtested on the dev site, rather than shipping behind `?proto=` knobs on `main`. `?proto=` stays available for headless measurement (`npm run experiment -- --proto …`).
 - **v2's milestones replace the v1 battle** (SPEC §16): each lands on `develop` as the new default, not as another knob on v1, and retires what it replaces. `main` keeps the v1 game until the user asks for a release.
 
