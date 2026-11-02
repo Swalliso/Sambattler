@@ -73,7 +73,7 @@ function execute(state: BattleState, cmd: Command): void {
       if (problem) reject(state, cmd, problem);
       return;
     }
-    // The power lands in S16; R2a has no drafts (plan Call 26). Until then each is refused.
+    // The power lands in S16, and R2a has no drafts (plan Call 26), so these are refused.
     case 'draftPick':
     case 'draftReroll':
     case 'draftSkip':
