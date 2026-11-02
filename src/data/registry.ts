@@ -9,7 +9,7 @@ import type {
   BalanceDef, BalanceTargets, BotDef, BuildingDef, CommanderDef, EffectBundle, EliteDef, EventDef, FactionDef,
   GeneralDef, MapDef, RelicDef, ScenarioDef, SoundBankDef, SoundDef, SpriteBands, SpriteDef, UnitDef, UpgradeTrackDef,
 } from './schema.ts';
-import { shapeProblems, unitShapeProblems } from './shapes.ts';
+import { emplacementShapeProblems, shapeProblems, unitShapeProblems } from './shapes.ts';
 
 /** Raw data files keyed by their path relative to `data/`, e.g. `maps/bogwater-hollow.json`. */
 export type RawContent = Record<string, unknown>;
@@ -212,6 +212,15 @@ export function loadContent(raw: RawContent): Content {
   for (const u of Object.values(units)) {
     const s = sprites[u.sprite];
     if (s) problems.push(...unitShapeProblems(u, s));
+  }
+  // an emplacement (§5.8, R4-Q5; R4a call 4): every tower with an attack stands in its slot on `e-<id>`, a
+  // structure body. v1's battle still draws the tower as its building.
+  for (const b of Object.values(buildings)) {
+    if (b.kind !== 'tower' || !b.attack) continue;
+    const s = sprites[`e-${b.id}`];
+    if (!s) problems.push(`building ${b.id}: emplacement sprite "e-${b.id}" does not exist`);
+    else if (!s.shape) problems.push(`building ${b.id}: emplacement sprite ${s.id} declares no shape`);
+    else problems.push(...emplacementShapeProblems(b, s));
   }
   const kitRefs = (owner: string, opener: string[], weights: Record<string, number>, limits: Record<string, unknown> | undefined) => {
     for (const id of opener) buildingRef(`${owner} opener`, id);

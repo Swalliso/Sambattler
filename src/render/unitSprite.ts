@@ -3,6 +3,7 @@
 // pips and HP bar over it, drawn in that order. v1's renderer draws every unit through it, and R2a's views
 // will too (R4a, call 5). It takes the foot point in native pixels and imports nothing from the renderer,
 // so any view can use it.
+import type { Content } from '../data/registry.ts';
 import type { Side, Tier } from '../sim/index.ts';
 import type { Atlas, Faction, Region } from './atlas.ts';
 
@@ -124,6 +125,16 @@ export function drawUnitSprite(g: CanvasRenderingContext2D, atlas: Atlas, o: Uni
   if (L.pips.length) drawPips(g, atlas, body.x + body.w / 2, L.pips[0]!.y, o.tier);
   if (L.bar) hpBar(g, L.bar.x, L.bar.y, L.bar.w, o.hpFrac, o.side);
   g.globalAlpha = 1;
+}
+
+/**
+ * The sprite an emplacement stands on in its slot (§5.8, R4-Q5; R4a call 4): `e-<buildingId>` where the data
+ * draws one, else the building's own. v1's battle keeps drawing a tower as its building; R2a's clash view
+ * draws the emplacement through this.
+ */
+export function emplacementSprite(content: Pick<Content, 'sprites' | 'buildings'>, buildingId: string): string {
+  const e = `e-${buildingId}`;
+  return e in content.sprites ? e : content.buildings[buildingId]!.sprite;
 }
 
 /**
