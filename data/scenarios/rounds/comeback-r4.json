@@ -1,0 +1,47 @@
+{
+  "id": "comeback-r4",
+  "description": "SPEC §12.3 G6: round 4, after you lost rounds 1–3. The colonies, gold and max HP are equal (3000 a side), and your Heartcap is 700 below full, so you get the comeback gold. Each round's record holds what both fielded, as this colony musters. G6 plays it in both seats with bots; as a rule scenario, both sides are human and round 4 is the mirror's clash.",
+  "map": "bogwater-hollow",
+  "round": 4,
+  "sides": {
+    "player": {
+      "heartcapHp": 2300,
+      "colony": [
+        { "building": "capguardHall", "lane": 0, "rank": 0, "file": 2 },
+        { "building": "sporelingBurrow", "lane": 0, "rank": 0, "file": 3 },
+        { "building": "gillNest", "lane": 0, "rank": 1, "file": 2 }
+      ]
+    },
+    "enemy": {
+      "heartcapMaxHp": 3000,
+      "colony": [
+        { "building": "capguardHall", "lane": 0, "rank": 0, "file": 2 },
+        { "building": "sporelingBurrow", "lane": 0, "rank": 0, "file": 3 },
+        { "building": "gillNest", "lane": 0, "rank": 1, "file": 2 }
+      ]
+    }
+  },
+  "rounds": [
+    {
+      "lanes": ["enemy"], "damage": { "player": 0, "enemy": 250 },
+      "fielded": {
+        "player": [{ "unit": "capguard", "tier": 2, "count": 1 }, { "unit": "gillArcher", "count": 1 }, { "unit": "gillArcher", "tier": 2, "count": 1 }, { "unit": "sporeling", "count": 2 }, { "unit": "sporeling", "tier": 2, "count": 2 }],
+        "enemy": [{ "unit": "capguard", "tier": 2, "count": 1 }, { "unit": "gillArcher", "count": 1 }, { "unit": "gillArcher", "tier": 2, "count": 1 }, { "unit": "sporeling", "count": 2 }, { "unit": "sporeling", "tier": 2, "count": 2 }]
+      }
+    },
+    {
+      "lanes": ["enemy"], "damage": { "player": 0, "enemy": 250 },
+      "fielded": {
+        "player": [{ "unit": "capguard", "tier": 2, "count": 1 }, { "unit": "gillArcher", "count": 1 }, { "unit": "gillArcher", "tier": 2, "count": 1 }, { "unit": "sporeling", "count": 2 }, { "unit": "sporeling", "tier": 2, "count": 2 }],
+        "enemy": [{ "unit": "capguard", "tier": 2, "count": 1 }, { "unit": "gillArcher", "count": 1 }, { "unit": "gillArcher", "tier": 2, "count": 1 }, { "unit": "sporeling", "count": 2 }, { "unit": "sporeling", "tier": 2, "count": 2 }]
+      }
+    },
+    {
+      "lanes": ["enemy"], "damage": { "player": 0, "enemy": 200 },
+      "fielded": {
+        "player": [{ "unit": "capguard", "tier": 2, "count": 1 }, { "unit": "gillArcher", "count": 1 }, { "unit": "gillArcher", "tier": 2, "count": 1 }, { "unit": "sporeling", "count": 2 }, { "unit": "sporeling", "tier": 2, "count": 2 }],
+        "enemy": [{ "unit": "capguard", "tier": 2, "count": 1 }, { "unit": "gillArcher", "count": 1 }, { "unit": "gillArcher", "tier": 2, "count": 1 }, { "unit": "sporeling", "count": 2 }, { "unit": "sporeling", "tier": 2, "count": 2 }]
+      }
+    }
+  ]
+}

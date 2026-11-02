@@ -1,0 +1,13 @@
+{
+  "id": "emplacements-only-draw",
+  "description": "SPEC §6.7 E5: both sides have only emplacements left at 45 s. Each side fields one Puffball Mortar in its back rank, 12 tiles apart, out of each other's reach (7 tiles, clouds included). Emplacements count 0 supply, so at the cap the lane is drawn, with no damage either way.",
+  "map": "bogwater-hollow",
+  "sides": {
+    "player": {
+      "colony": [{ "building": "puffballMortar", "lane": 0, "rank": 1, "file": 3 }]
+    },
+    "enemy": {
+      "colony": [{ "building": "puffballMortar", "lane": 0, "rank": 1, "file": 3 }]
+    }
+  }
+}

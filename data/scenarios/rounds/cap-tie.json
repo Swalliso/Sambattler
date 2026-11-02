@@ -1,0 +1,13 @@
+{
+  "id": "cap-tie",
+  "description": "SPEC §6.7 E3: a tie in surviving supply at 45 s. Each side fields one Tenders Ring, and Tenders never attack, so at the cap both have 3 supply left: the lane is drawn, nobody takes damage, and the round is drawn, so nobody gets the comeback gold. Merging is off.",
+  "map": "bogwater-hollow",
+  "sides": {
+    "player": {
+      "colony": [{ "building": "tendersRing", "lane": 0, "rank": 0, "file": 2, "merge": false }]
+    },
+    "enemy": {
+      "colony": [{ "building": "tendersRing", "lane": 0, "rank": 0, "file": 2, "merge": false }]
+    }
+  }
+}
