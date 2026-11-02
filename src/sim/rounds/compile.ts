@@ -7,10 +7,10 @@
 import type { Content } from '../../data/registry.ts';
 import type { ModifierDef, UnitDef } from '../../data/schema.ts';
 import { perkAt, secToTicks } from '../compile.ts';
-import { MAX_RADIUS } from '../targets.ts';
 import { battleModifiers, buildingMatcher, collectRoundEffects, resolveStat, unitMatcher } from './effects.ts';
 import type { RoundEffects } from './effects.ts';
 import { SIDES } from './state.ts';
+import { MAX_RADIUS } from './targets.ts';
 import type {
   BattleConfig, CompiledBuilding, CompiledSide, CompiledTier, CompiledUnit, DamageType, KitCard, Library, LibraryUnit, Rules, Side, Tier,
 } from './state.ts';
@@ -203,7 +203,9 @@ function compileTier(lib: Library, u: LibraryUnit, tier: Tier, mods: readonly Mo
 /**
  * A tower as its emplacement (§4.4, §6.7, #10): one unit under the tower's id, with the tower's attack and
  * `hp` and Structure armor, which never moves or merges and counts no supply. A tower whose shells leave
- * spore clouds reaches the clouds' range (§5.3). Its body is the largest a unit's may be.
+ * spore clouds reaches the clouds' range and aims them (§5.3). Its body is the largest a unit's may be, and
+ * its range runs from its centre, as a tower's did (`systems/targeting.ts`, `systems/combat.ts`). Each round's
+ * arrival fields it fresh, at the tower's full `hp`.
  */
 function compileEmplacement(lib: Library, id: string, mods: readonly ModifierDef[]): CompiledUnit {
   const b = lib.buildings[id]!;
