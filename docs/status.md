@@ -37,6 +37,12 @@ Updated 2026-11-02, on `docs/r2a-s5` (the hub's docs PR into `develop`). This is
     - **For S7:** scoring goes in `endClash` in `round.ts`, which reads each lane's lock and `clash.fielded`.
     - **For S20's As built:** `LaneLock.capped`, `ClashState.fielded` and `SquadState.stats` aren't in §14.4's listing.
     - Verify and the browser tests are green.
+  - **S7** (`feature/r2a-scoring`, T047–T052, [#81](https://github.com/Swalliso/Sambattler/pull/81)): built, and waiting for the hub's review. With it, US1 is done.
+    - **Scoring** (`scoreRound` in `round.ts`, its helpers in `systems/victory.ts`): 25 × each lane's margin, the storm by round, the loser's damage-taken modifiers (none reach R2a), then the cap on each Heartcap's sum. `RoundResult.damage` is recorded capped, before the HP floor, and the round's winner fires `roundWon`.
+    - **The end:** a Rout at 0, with both at 0 going to the general (E8). After round 9 it's a Decision by share of max HP, then the HP fraction, then the general.
+    - **19 round scenarios** in `data/scenarios/rounds/`: §16's, E1–E8, `comeback-r4`, and clash-form copies of v1's merge scenarios and R4a's lineups. `scenarios.test.ts` asserts each exactly.
+    - **For S8:** `stormBpFor` gives the round's storm for `roundStarted`, and `roundOutcome(...).loser` names the comeback recipient. `scoreRound` already counts `heartcapDamageTaken`.
+    - Verify and the browser tests are green, and no golden moved.
 - Then S7, once S6 has merged.
 
 ## R2a, a battle in rounds
