@@ -8,7 +8,7 @@ import { findTrios, formationBox, musterKnits, slotPositions } from '../../src/s
 import type { MusterUnit } from '../../src/sim/formation.ts';
 import { createBattle, makeConfig, nextFloat } from '../../src/sim/index.ts';
 import type { BattleState, Side, UnitState } from '../../src/sim/index.ts';
-import { counterBotSpec } from '../../tools/lib/balance.ts';
+import { CORE_SPAWNERS, core6Spec, counterBotSpec } from '../../tools/lib/balance.ts';
 import {
   CLASH, MIRROR_SEED, armyFromBot, armyOf, assignSlots, clashArmyIds, clashField, lineOf, pairLine, pairScore, placeArmy, playClash, playPair, squadSize,
 } from '../../tools/lib/clash.ts';
@@ -43,9 +43,9 @@ describe("R1's squads and army cards (SPEC §11.2, §16 R1)", () => {
   });
 
   it('squadSize counts whole batches, halves rounded up, and only spawners have one', () => {
-    expect(squadSize(content, 'amanitaLodge', 45)).toBe(2); // 1 × round(1.5)
-    expect(squadSize(content, 'veilstalkerHollow', 45)).toBe(6); // 2 × round(2.5)
-    expect(squadSize(content, 'sporelingBurrow', 75)).toBe(10); // 2 × round(4.6875)
+    expect(squadSize(content, 'amanitaLodge', { squadSeconds: 45 })).toBe(2); // 1 × round(1.5)
+    expect(squadSize(content, 'veilstalkerHollow', { squadSeconds: 45 })).toBe(6); // 2 × round(2.5)
+    expect(squadSize(content, 'sporelingBurrow', { squadSeconds: 75 })).toBe(10); // 2 × round(4.6875)
     expect(() => squadSize(content, 'puffballMortar')).toThrow(/spawns nothing/);
   });
 
@@ -571,5 +571,110 @@ describe("a matchup in both seats (`--checks clash --pair`, SPEC §12.2)", () =>
     const [r] = playPair(content, { a: 'bot:balanced', b: 'bot:balanced', budgets: [900], fields: ['one'], seeds: 1 });
     expect(r!.armies.enemy.entries).toEqual(armyFromBot(content, 'bot:balanced', 900, MIRROR_SEED + 1, 8).entries);
     expect(r!.armies.enemy.entries).not.toEqual(r!.armies.player.entries);
+  });
+});
+
+describe("R1's variants (SPEC §16 R1, §12.2; X4, §18.2 #51, R1-Q6)", () => {
+  const one = 'one' as const;
+
+  it("clashshield: a lane army of 2 or more unit types gets shields of 20% of its units' max HP at the arrival, kept in proportion through the muster's knits", () => {
+    const sc = protoContent('clashshield');
+    const arrival: [Side, string, number | undefined][] = [];
+    let mustered: UnitState[] = [];
+    let mortar: unknown;
+    playClash(sc, job(one, army(['sporelingBurrow', 'capguardHall'], sc), army(['capguardHall', 'puffballMortar'], sc)), {
+      stage: (s) => { for (const u of s.units) arrival.push([u.side, u.unitId, u.shield]); },
+      mustered: (s) => { mustered = s.units.map((u) => ({ ...u })); mortar = s.buildings.find((b) => b.buildingId === 'puffballMortar'); },
+    });
+    // the player's Sporelings and Capguards are two types: 72 and 220 HP, so 14 and 44
+    expect(arrival.filter(([side]) => side === 'player').map(([, id, shield]) => [id, shield]))
+      .toEqual([...Array<[string, number]>(8).fill(['sporeling', 14]), ...Array<[string, number]>(4).fill(['capguard', 44])]);
+    // the enemy's Capguards and Mortar are one type: an emplacement neither counts nor takes a shield
+    expect(arrival.filter(([side]) => side === 'enemy').map(([, , shield]) => shield)).toEqual([undefined, undefined, undefined, undefined]);
+    expect(mortar).not.toHaveProperty('shield');
+    const bloomed = mustered.filter((u) => u.side === 'player' && u.unitId === 'sporeling' && u.tier === 2);
+    expect(bloomed).toHaveLength(2);
+    for (const u of bloomed) expect(u.shield).toBe(Math.round((u.maxHp * 3 * 14) / (3 * 72)));
+    // a one-type army gets none, and without the preset nobody does
+    playClash(sc, job(one, army(['sporelingBurrow'], sc), none()), { stage: (s) => { expect(s.units.every((u) => u.shield === undefined)).toBe(true); } });
+    playClash(content, job(one, army(['sporelingBurrow', 'capguardHall']), none()), { stage: (s) => { expect(s.units.every((u) => u.shield === undefined)).toBe(true); } });
+  });
+
+  it("clashpace: every arriving unit has wave 0, an idle lane army marches at its slowest idle unit's pace, and idle ranged units stop 1 tile behind their melee front", () => {
+    const run = (c: Content) => {
+      let waves: (number | undefined)[] = [];
+      const at20 = new Map<number, [number, number]>();
+      let first: { unitId: string; moved: number; speed: number; idle: boolean }[] = [];
+      // merging off, so no knit stands a unit on another and nothing is pushed apart in the first step
+      playClash(c, job(one, army(['sporelingBurrow', 'capguardHall', 'gillNest'], c), army(['capguardHall'], c), { merging: false }), {
+        stage: (s) => {
+          waves = s.units.map((u) => u.wave);
+          // the archers stand half a tile behind the melee front, inside the 1-tile gap, in the empty files 1 and 4
+          const mine = s.units.filter((u) => u.side === 'player');
+          const front = Math.max(...mine.filter((u) => u.unitId !== 'gillArcher').map((u) => u.x));
+          mine.filter((u) => u.unitId === 'gillArcher').forEach((u, i) => {
+            u.x = u.px = front - 0.5;
+            u.y = u.py = u.spawnY = [0.5, 1.2, 6.8, 7.5][i]!;
+          });
+        },
+        mustered: (s) => { for (const u of s.units) at20.set(u.id, [u.x, u.y]); },
+        step: (s) => {
+          if (s.tick !== CLASH.musterTicks + 1) return;
+          first = s.units.filter((u) => u.side === 'player').map((u) => {
+            const [x, y] = at20.get(u.id)!;
+            return { unitId: u.unitId, moved: Math.hypot(u.x - x, u.y - y), speed: s.compiled.player.units[u.unitId]!.tiers[u.tier - 1]!.speedPerTick, idle: u.targetId === 0 };
+          });
+        },
+      });
+      return { waves, first };
+    };
+    const paced = run(protoContent('clashpace')), free = run(content);
+    expect(paced.waves.length).toBeGreaterThan(0);
+    expect(paced.waves.every((w) => w === 0)).toBe(true);
+    expect(free.waves.every((w) => w === undefined)).toBe(true);
+    expect(paced.first.every((u) => u.idle)).toBe(true);
+    const slowest = Math.min(...paced.first.map((u) => u.speed)); // the Capguards'
+    for (const u of paced.first) expect(u.moved, u.unitId).toBeCloseTo(u.unitId === 'gillArcher' ? 0 : slowest, 9);
+    for (const u of free.first) expect(u.moved, u.unitId).toBeCloseTo(u.speed, 9);
+    expect(free.first.some((u) => u.speed > 1.5 * slowest)).toBe(true); // so the pace rule slowed someone
+  });
+
+  it('merging off: nothing knits, at the muster or after', () => {
+    const r = playClash(content, job(one, army(['sporelingBurrow', 'sporelingBurrow']), army(['sporelingBurrow']), { merging: false }));
+    for (const side of ['player', 'enemy'] as const) expect(r.armies[side].merges).toEqual({ muster: { '2': 0, '3': 0 }, field: { '2': 0, '3': 0 } });
+    expect(r.armies.player.mustered).toMatchObject({ units: 16, base: 16, bloomed: 0, elders: 0 });
+  });
+
+  it("squads: v1's timers over other seconds, the 60 s squad scaled, and a fixed squad per building (A010)", () => {
+    const sizes = (opts: Parameters<typeof squadSize>[2], ids: string[]) => ids.map((id) => squadSize(content, id, opts));
+    expect(sizes({ squadSeconds: 45 }, ['sporelingBurrow', 'amanitaLodge', 'hammercapForge'])).toEqual([6, 2, 3]);
+    expect(sizes({ squadSeconds: 75 }, ['sporelingBurrow', 'amanitaLodge', 'hammercapForge'])).toEqual([10, 3, 4]);
+    expect(sizes({ squadScale: 45 }, ['sporelingBurrow', 'veilstalkerHollow', 'amanitaLodge', 'hammercapForge'])).toEqual([6, 5, 2, 3]);
+    expect(sizes({ squadScale: 75 }, ['sporelingBurrow', 'veilstalkerHollow', 'amanitaLodge', 'hammercapForge'])).toEqual([10, 8, 3, 5]);
+    expect(sizes({ squad: { sporelingBurrow: 7 } }, ['sporelingBurrow', 'capguardHall'])).toEqual([7, 4]);
+    expect(() => squadSize(content, 'sporelingBurrow', { squadSeconds: 45, squadScale: 45 })).toThrow(/don't combine/);
+    // an army's squads follow them
+    expect(armyFromBot(content, 'bot:mono:sporelingBurrow', 300, 1, 8, { squad: { sporelingBurrow: 7 } }).entries.map((e) => e.count)).toEqual([7, 7]);
+  });
+
+  it("copies 3: no card fields more than 3 buildings, and a mono's other plots and gold go by bot:balanced's weights (#51)", () => {
+    const most = (a: Army) => Math.max(...[...new Set(ids(a))].map((id) => ids(a).filter((x) => x === id).length));
+    const mono = armyFromBot(content, 'bot:mono:sporelingBurrow', 1500, 1, 8, { copies: 3 });
+    expect(ids(mono).slice(0, 3)).toEqual(['sporelingBurrow', 'sporelingBurrow', 'sporelingBurrow']);
+    expect(ids(mono)).toHaveLength(8);
+    expect(most(mono)).toBe(3);
+    const balanced = Object.keys(content.bots.balanced!.weights);
+    for (const id of ids(mono)) expect(balanced).toContain(id);
+    for (let seed = 1; seed <= 10; seed++) expect(most(armyFromBot(content, 'bot:balanced', 1500, seed, 12, { copies: 3 }))).toBeLessThanOrEqual(3);
+    expect(most(armyFromBot(content, 'bot:balanced', 1500, 1, 12))).toBeGreaterThan(3); // without the cap it holds more
+  });
+
+  it('core six: the core6 reference weighs the five core spawners and the candidate at 1 each, with the Burrow as its opener (R1-Q6)', () => {
+    expect(CORE_SPAWNERS).toEqual(['sporelingBurrow', 'capguardHall', 'gillNest', 'amanitaLodge', 'hammercapForge']);
+    for (const candidate of ['bursterPod', 'puffballMortar']) {
+      const c = protoContent([candidate === 'bursterPod' ? 'burster' : '', core6Spec(candidate)].filter(Boolean).join(','));
+      expect(c.bots.core6).toMatchObject({ opener: ['sporelingBurrow'], weights: Object.fromEntries([...CORE_SPAWNERS, candidate].map((id) => [id, 1])), mergePolicy: 'on', fixedWeights: true });
+      expect(ids(armyFromBot(c, 'bot:core6', 300, 1, 8))[0]).toBe('sporelingBurrow');
+    }
   });
 });

@@ -592,6 +592,18 @@ export function counterBots(content: Content): Record<string, Omit<BotDef, 'id'>
   return bots;
 }
 
+/** §11.2's five core spawners (★); the sixth archetype is open, between the Burster Pod and the Puffball Mortar (§18.2 #36). */
+export const CORE_SPAWNERS = ['sporelingBurrow', 'capguardHall', 'gillNest', 'amanitaLodge', 'hammercapForge'] as const;
+
+/**
+ * The core-six check's reference, `bot:core6` (R1-Q6), as a spec item the check appends: the five core
+ * spawners and the candidate at weight 1 each, the Burrow as its opener, merging on and its weights fixed.
+ */
+export function core6Spec(candidate: string): string {
+  const weights = Object.fromEntries([...CORE_SPAWNERS, candidate].map((id) => [id, 1]));
+  return `bot.core6:${JSON.stringify({ description: 'core six, even', opener: ['sporelingBurrow'], weights, mergePolicy: 'on', fixedWeights: true })}`;
+}
+
 /** The proto spec that adds `counterBots` (`bot.<id>:{…}` entries): build the check's content with `protoContent`. */
 export function counterBotSpec(content: Content): string {
   return Object.entries(counterBots(content)).map(([id, def]) => `bot.${id}:${JSON.stringify(def)}`).join(',');

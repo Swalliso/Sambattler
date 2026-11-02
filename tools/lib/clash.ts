@@ -59,15 +59,39 @@ export interface Army {
   units: number;
 }
 
+/** How squads are sized (§11.2, §16 R1's squad variants, A010). Each is v2's first guess unless set. */
+export interface SquadOpts {
+  /** v1's timers over this many seconds (default 60). */
+  squadSeconds?: number;
+  /** The 60 s squad × this / 60, halves rounded up: a uniform scale, which `squadSeconds` isn't (A010). */
+  squadScale?: number;
+  /** A fixed squad for these buildings, over the rule. */
+  squad?: Record<string, number>;
+}
+
+/** How an army is built past its bot, gold and plots: its squads, and the copies cap (X4). */
+export interface ArmyOpts extends SquadOpts {
+  /**
+   * No card more than this many times (X4). A mono's card is capped at it, and its other plots and gold go
+   * by `bot:balanced`'s weights (§18.2 #51's recommendation, provisionally).
+   */
+  copies?: number;
+}
+
 /**
- * A spawner's squad (§11.2): what it made in `seconds` under v1's timers, in whole batches with
- * halves rounded up, `count × round(seconds / interval)`.
+ * A spawner's squad (§11.2): what it made in `squadSeconds` (60) under v1's timers, in whole batches with
+ * halves rounded up, `count × round(seconds / interval)`. Or the 60 s squad scaled by `squadScale` / 60,
+ * halves rounded up, or the building's fixed `squad`.
  */
-export function squadSize(content: Content, buildingId: string, seconds = 60): number {
+export function squadSize(content: Content, buildingId: string, opts: SquadOpts = {}): number {
   const b = content.buildings[buildingId];
   if (!b) throw new Error(`squadSize: unknown building ${buildingId}`);
   if (!b.spawn) throw new Error(`squadSize: ${buildingId} spawns nothing`);
-  return b.spawn.count * Math.round(seconds / b.spawn.interval);
+  const fixed = opts.squad?.[buildingId];
+  if (fixed !== undefined) return fixed;
+  if (opts.squadSeconds !== undefined && opts.squadScale !== undefined) throw new Error("squadSize: squadSeconds and squadScale don't combine");
+  const over = (seconds: number) => b.spawn!.count * Math.round(seconds / b.spawn!.interval);
+  return opts.squadScale !== undefined ? Math.round((over(60) * opts.squadScale) / 60) : over(opts.squadSeconds ?? 60);
 }
 
 /**
@@ -118,10 +142,11 @@ function buildList(content: Content, controller: string): BuildList {
  * The army `controller` builds with `budget` gold of army and `plots` plots (§16 R1, R1-Q2, R1-Q4):
  * its opener first, skipping what doesn't fit, then weighted picks from the army's own stream. A
  * pick that doesn't fit the gold left is skipped and drawing goes on, until no pickable card fits or
- * the plots are full. `maxOwned` holds. The stream is keyed by the seed and the bot alone, so an
- * army is the same in both seats and against every opponent.
+ * the plots are full. `maxOwned` holds, and so does `opts.copies`: a mono capped by it then fills its
+ * plots by `bot:balanced`'s weights, on the same stream (#51). The stream is keyed by the seed and the
+ * bot alone, so an army is the same in both seats and against every opponent.
  */
-export function armyFromBot(content: Content, controller: string, budget: number, seed: number, plots: number): Army {
+export function armyFromBot(content: Content, controller: string, budget: number, seed: number, plots: number, opts: ArmyOpts = {}): Army {
   const list = buildList(content, controller);
   const rng = seedStream(hash32(seed, controller, 0), 'ai', 0);
   const cost = (id: string): number => content.buildings[id]!.cost;
@@ -129,9 +154,10 @@ export function armyFromBot(content: Content, controller: string, budget: number
   const owned = new Map<string, number>();
   const built: string[] = [];
   let gold = budget;
-  const room = (id: string): boolean => {
-    const max = maxOf.get(id) ?? -1;
-    return max < 0 || (owned.get(id) ?? 0) < max;
+  const copies = opts.copies ?? Infinity;
+  const room = (id: string, max = maxOf.get(id) ?? -1): boolean => {
+    const n = owned.get(id) ?? 0;
+    return (max < 0 || n < max) && n < copies;
   };
   const buy = (id: string): void => {
     gold -= cost(id);
@@ -143,42 +169,46 @@ export function armyFromBot(content: Content, controller: string, budget: number
     if (cost(id) <= gold && room(id)) buy(id);
   }
   const eff: number[] = [];
-  while (built.length < plots) {
-    eff.length = 0;
-    let total = 0, fits = false;
-    for (const w of list.weights) {
-      const x = room(w.building) ? w.weight : 0;
-      eff.push(x);
-      total += x;
-      if (x > 0 && cost(w.building) <= gold) fits = true;
+  const draw = (weights: BuildList['weights']): void => {
+    while (built.length < plots) {
+      eff.length = 0;
+      let total = 0, fits = false;
+      for (const w of weights) {
+        const x = room(w.building, w.maxOwned) ? w.weight : 0;
+        eff.push(x);
+        total += x;
+        if (x > 0 && cost(w.building) <= gold) fits = true;
+      }
+      if (!fits) return;
+      // the AI's weighted pick (src/sim/ai/controller.ts)
+      let roll = nextFloat(rng) * total;
+      let pick = -1;
+      for (let i = 0; i < eff.length && pick < 0; i++) {
+        roll -= eff[i]!;
+        if (roll < 0 && eff[i]! > 0) pick = i;
+      }
+      for (let i = eff.length - 1; i >= 0 && pick < 0; i--) if (eff[i]! > 0) pick = i;
+      const id = weights[pick]!.building;
+      if (cost(id) <= gold) buy(id);
     }
-    if (!fits) break;
-    // the AI's weighted pick (src/sim/ai/controller.ts)
-    let roll = nextFloat(rng) * total;
-    let pick = -1;
-    for (let i = 0; i < eff.length && pick < 0; i++) {
-      roll -= eff[i]!;
-      if (roll < 0 && eff[i]! > 0) pick = i;
-    }
-    for (let i = eff.length - 1; i >= 0 && pick < 0; i--) if (eff[i]! > 0) pick = i;
-    const id = list.weights[pick]!.building;
-    if (cost(id) <= gold) buy(id);
-  }
-  return armyOf(content, controller, budget, built, list.mergeOn);
+  };
+  draw(list.weights);
+  if (opts.copies !== undefined && controller.startsWith('bot:mono:')) draw(buildList(content, 'bot:balanced').weights);
+  return armyOf(content, controller, budget, built, list.mergeOn, opts);
 }
 
 /**
  * The army these buildings field, in this build-list order: each spawner its squad (§11.2), each tower
  * itself as an emplacement. `spent` is what they cost.
  */
-export function armyOf(content: Content, controller: string, budget: number, buildingIds: readonly string[], mergeOn: boolean): Army {
+export function armyOf(content: Content, controller: string, budget: number, buildingIds: readonly string[], mergeOn: boolean, opts: SquadOpts = {}): Army {
   let spent = 0;
   const entries = buildingIds.map((id): ArmyEntry => {
     const b = content.buildings[id];
     if (!b) throw new Error(`armyOf: unknown building ${id}`);
     spent += b.cost;
     if (!b.spawn) return { buildingId: id, kind: 'emplacement', count: 1, mergeOn: false };
-    return { buildingId: id, kind: 'squad', unitId: b.spawn.unit, count: squadSize(content, id), mergeOn };
+    return { buildingId: id, kind: 'squad', unitId: b.spawn.unit, count: squadSize(content, id, opts), mergeOn };
   });
   let supply = 0, units = 0;
   for (const e of entries) {
@@ -405,6 +435,8 @@ export interface ClashHooks {
   stage?: (state: BattleState) => void;
   /** At tick 20, after the muster's knits and the jitter, before the first step. */
   mustered?: (state: BattleState) => void;
+  /** After each step, before the lanes are read. */
+  step?: (state: BattleState) => void;
 }
 
 /** The two readings of the 45 s cap (§18.2 #13): with the muster counted (the first guess), and after it. */
@@ -557,6 +589,9 @@ export function playClash(content: Content, job: ClashJob, hooks: ClashHooks = {
   const streams = (job.jitter ?? 0) > 0 ? undefined : JSON.stringify(state.rng);
   const armies = { [job.seat]: job.armies[0], [other(job.seat)]: job.armies[1] } as Record<Side, Army>;
   for (const side of SIDES) placeArmy(state, side, assignSlots(content, armies[side], field, { lanesRule: opts.lanesRule }));
+  // the pace variant (`clashpace`): the pace rule reads a unit's wave, so every arrival is wave 0 (plan call 9)
+  if (state.rules.waves) for (const u of state.units) u.wave = 0;
+  arrivalShields(content, state);
   hooks.stage?.(state);
 
   const arrival = { player: fielded(state, 'player'), enemy: fielded(state, 'enemy') };
@@ -591,6 +626,7 @@ export function playClash(content: Content, job: ClashJob, hooks: ClashHooks = {
     step(state);
     if (state.tick !== before + 1) throw new Error(`playClash: tick ${before} didn't step to the next`);
     if (state.outcome) throw new Error(`playClash: v1's battle ended at tick ${state.tick}, before the clash did`);
+    hooks.step?.(state);
     tally(state).forEach((t, l) => {
       const lane = lanes[l]!;
       const end = !t.player.alive || !t.enemy.alive ? ended(t, state.tick) : undefined;
@@ -619,6 +655,25 @@ export function playClash(content: Content, job: ClashJob, hooks: ClashHooks = {
     cap: scoreReading(laneRecords.map((l) => l.cap)),
     capAfterMuster: scoreReading(laneRecords.map((l) => l.capAfterMuster)),
   };
+}
+
+/**
+ * The mixed shields at the arrival (`clashshield`, plan call 10), before the muster: `shieldMixedWaves`'s
+ * rule (src/sim/systems/spawning.ts) without its wave filter. A side's lane army of `minTypes` or more unit
+ * types (a merged form counts as its base type) gives each of its units a shield of `shieldFrac` × its max
+ * HP, which a knit keeps in proportion. Emplacements neither count as a type nor take a shield, since a v1
+ * building holds none (R2a decides them if #8 is adopted).
+ */
+function arrivalShields(content: Content, state: BattleState): void {
+  const mx = content.balance.mixedWave;
+  if (!mx) return;
+  for (const side of SIDES) {
+    state.lanes.forEach((_, lane) => {
+      const mine = state.units.filter((u) => u.side === side && u.lane === lane && u.hp > 0);
+      if (new Set(mine.map((u) => u.unitId)).size < mx.minTypes) return;
+      for (const u of mine) u.shield = Math.max(u.shield ?? 0, Math.round(u.maxHp * mx.shieldFrac));
+    });
+  }
 }
 
 /**
