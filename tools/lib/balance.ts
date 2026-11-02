@@ -5,13 +5,15 @@
 import type { Content } from '../../src/data/registry.ts';
 import type { BotDef } from '../../src/data/schema.ts';
 import { addBuilding, addUnit } from '../../src/sim/create.ts';
-import { COUNTER_KINDS, SIDES, buildLibrary, counterKindsOf, counterSets, createBattle, makeConfig, runHeadless, summarize } from '../../src/sim/index.ts';
+import { COUNTER_KINDS, SIDES, buildLibrary, counterKindsOf, counterSets, createBattle, makeConfig, other, runHeadless, summarize } from '../../src/sim/index.ts';
 import type { BattleConfig, BattleState, CounterKind, Side, Tier } from '../../src/sim/index.ts';
 import { buildingDef } from '../../src/sim/world.ts';
-import { mapPool, simulateRun } from '../../src/run/index.ts';
+import { createRun, generalKit, mapPool, simulateRun } from '../../src/run/index.ts';
 import { CLASH, MIRROR_SEED, armyFromBot, clashArmyIds, clashField, clashOpts } from './clash.ts';
 import type { Army, ArmyEntry, ClashField, ClashJob, ClashOpts, ClashRecord, FieldId, Reading } from './clash.ts';
 import { rosterIds } from './roster.ts';
+import { budgetRound, raceReport, stormBp } from './roundRace.ts';
+import type { RaceReport } from './roundRace.ts';
 import { median, runBattle } from './run.ts';
 
 export { rosterIds };
@@ -873,10 +875,15 @@ export function clashCache(content: Content, runner: ClashRunner, o: ClashCacheO
     for (let s = 0; s < todo.length; s += CLASH_BATCH) {
       const batch = todo.slice(s, s + CLASH_BATCH);
       const records = await runner(batch.map((i) => jobs[i]!));
-      played += records.length;
       records.forEach((r, n) => {
-        done.set(keys[batch[n]!]!, { cap: r.cap, capAfterMuster: r.capAfterMuster, ...(full ? { record: r } : {}) });
-        if (o.keep) kept.push(r);
+        const k = keys[batch[n]!]!;
+        // a clash played for a slim record is played again for its full one, but counted and kept once
+        if (!done.has(k)) {
+          played++;
+          if (o.keep) kept.push(r);
+        }
+        // a kept record costs nothing more to hold, so a full record asked for later reuses it
+        done.set(k, { cap: r.cap, capAfterMuster: r.capAfterMuster, ...(full || o.keep ? { record: r } : {}) });
       });
     }
     return keys.map((k) => done.get(k)!);
@@ -1384,6 +1391,245 @@ export function uniqueCells(...lists: readonly (readonly CellRecord[])[]): CellR
     }
   }
   return out;
+}
+
+// ---- the race section (X5): the G4 row, the cap-binding share and drawn rounds (§6.7, §12.3 G4, §16 R1) ----
+
+/** G4's pairing (§12.3), for the race model's even battles: `bot:balanced` against the scripted general. */
+const G4_PLAYER = 'bot:balanced', G4_GENERAL = 'general:scripted';
+
+export interface ClashG4RowOptions {
+  cache: ClashCache;
+  /** Budgets (default 300 to 1,500). */
+  budgets?: readonly number[];
+  /** Seeds per seat (default 50, plan call 17). */
+  seeds?: number;
+}
+
+export interface ClashG4Row {
+  budgets: number[];
+  seeds: number;
+  /** `bot:balanced` against `general:scripted`, then against itself, each by budget, seed, then seat. */
+  records: ClashRecord[];
+  /** `bot:balanced`'s clash score against `general:scripted`, per budget. */
+  scores: { budget: number; score: ClashScore }[];
+  details: string[];
+}
+
+/**
+ * The race model's G4 case (plan call 17, A193): `bot:balanced` against `general:scripted` on the one-lane
+ * field at each budget, seeds 1 to n in both seats, and beside it `bot:balanced` against itself, its
+ * second army on seed 1,000 + s. These are the even battles G4's band is about. Their records feed the
+ * race model and G13.
+ */
+export async function evaluateClashG4Row(content: Content, o: ClashG4RowOptions): Promise<ClashG4Row> {
+  if (!content.generals.scripted) throw new Error("the G4 row needs G4's scripted general");
+  const budgets = [...(o.budgets ?? CLASH_CHECK.budgets)], seeds = o.seeds ?? 50;
+  const cells = (b: string): Cell[] => budgets.flatMap((budget) => Array.from({ length: seeds }, (_, s) => s + 1)
+    .flatMap((seed) => SIDES.map((seat): Cell => ({ a: G4_PLAYER, b, field: 'one', budget, seed, seat }))));
+  const pairing = await o.cache.full(cells(G4_GENERAL));
+  const mirror = await o.cache.full(cells(G4_PLAYER));
+  const per = 2 * seeds;
+  const scores = budgets.map((budget, i) => ({ budget, score: scoreOf(pairing.slice(i * per, (i + 1) * per), 'a') }));
+  return {
+    budgets, seeds, records: [...pairing, ...mirror], scores,
+    details: [
+      `G4 row: ${G4_PLAYER} against ${G4_GENERAL} on the one-lane field, ${seeds} seeds a seat, and against itself on fresh seeds (its second army on seed 1,000 + s), for the race model and G13`,
+      `     ${G4_PLAYER}'s clash win % against ${G4_GENERAL} (a draw half): ${scores.map((s) => `${s.budget} ${whole(s.score.rate)}`).join(' · ')}`,
+    ],
+  };
+}
+
+/** A set of clashes' cap readings (A208, A022). */
+export interface CapRead {
+  clashes: number;
+  /** The share whose loser's uncapped Heartcap damage passes the 500 cap at storm ×1.0. */
+  binds: number;
+  /** The same at the budget's round storm. */
+  bindsStorm: number;
+  /** The share whose capped round result (§6.7) is a draw. */
+  drawn: number;
+}
+
+export interface ClashRace {
+  /** Per budget and field, budgets ascending, with the budget's round storm. */
+  cells: ({ budget: number; field: FieldId; stormBp: number } & CapRead)[];
+  /** Every clash, pooled. */
+  all: CapRead;
+  race: RaceReport;
+  details: string[];
+}
+
+/**
+ * The race section (plan call 17): per budget and field over every clash the check played, the share
+ * where the cap binds (A208), at storm ×1.0 and at the storm of the round of battle 1 the budget stands
+ * for (×1.0, ×1.0, ×1.2, ×1.6 and ×2.0 at 300 to 1,500), and the share of drawn rounds (A022); then the
+ * race model over `race`, the G4 row's records and G3's. A drawn clash's loser is its more damaged side.
+ * Each lane's raw is 25 × its margin, so the storm's ×1.2 to ×2.0 multiply it exactly.
+ */
+export function clashRace(records: readonly CellRecord[], race: readonly ClashRecord[]): ClashRace {
+  const read = (rs: readonly CellRecord[], bpOf: (r: CellRecord) => number): CapRead => {
+    let binds = 0, bindsStorm = 0, drawn = 0;
+    for (const r of rs) {
+      const h = r.cap.heartcap;
+      const taken = r.cap.winner === 'draw' ? Math.max(h.player.uncapped, h.enemy.uncapped) : h[other(r.cap.winner)].uncapped;
+      if (taken > CLASH.damageCap) binds++;
+      if (Math.floor((taken * bpOf(r)) / 10000) > CLASH.damageCap) bindsStorm++;
+      if (r.cap.round === 'draw') drawn++;
+    }
+    return { clashes: rs.length, binds: binds / rs.length, bindsStorm: bindsStorm / rs.length, drawn: drawn / rs.length };
+  };
+  const bpOf = (r: CellRecord) => stormBp(budgetRound(r.budget));
+  const groups = new Map<string, CellRecord[]>();
+  for (const r of records) {
+    const k = `${r.budget}|${r.field}`;
+    const g = groups.get(k);
+    if (g) g.push(r); else groups.set(k, [r]);
+  }
+  const cells = [...groups.values()].map((rs) => ({ budget: rs[0]!.budget, field: rs[0]!.field, stormBp: bpOf(rs[0]!), ...read(rs, bpOf) }))
+    .sort((p, q) => p.budget - q.budget || FIELD_ORDER.indexOf(p.field) - FIELD_ORDER.indexOf(q.field));
+  const all = read(records, bpOf);
+  const report = raceReport(race);
+  const details = [
+    `cap-binding (A208) and drawn rounds (A022) over the ${records.length} clashes the check played: per budget and field, the share whose loser's uncapped Heartcap damage passes ${CLASH.damageCap} at storm ×1.0 → at the storm of the round of battle 1 the budget stands for, and the share of drawn rounds (§6.7's capped result)`,
+  ];
+  for (const budget of [...new Set(cells.map((c) => c.budget))]) {
+    const at = cells.filter((c) => c.budget === budget);
+    details.push(`     ${String(budget).padStart(5)} (round ${budgetRound(budget)}, ×${(at[0]!.stormBp / 10000).toFixed(1)}): ${at.map((c) => `${c.field} ${pct(c.binds)} → ${pct(c.bindsStorm)}, drawn ${pct(c.drawn)}`).join(' · ')}`);
+  }
+  details.push(`     pooled: ${pct(all.binds)} → ${pct(all.bindsStorm)}, drawn ${pct(all.drawn)}`);
+  return { cells, all, race: report, details: [...details, ...report.lines] };
+}
+
+// ---- battle 1's pairings (§16 R1, §12.3 G14; R2-Q13, A201) ----
+
+/** The generals a run meets in battle 1: adaptive (runs use no other, `assignGenerals`), not the boss, with 1 in `appearsIn`. */
+export function battleOneGenerals(content: Content): string[] {
+  return Object.values(content.generals).filter((g) => g.adaptive && !g.boss && g.appearsIn.includes(1)).map((g) => g.id);
+}
+
+/** Each commander's starter against each battle-1 general, commanders in the data's order. */
+export function battleOnePairings(content: Content): { commander: string; general: string }[] {
+  const generals = battleOneGenerals(content);
+  return Object.keys(content.commanders).flatMap((commander) => generals.map((general) => ({ commander, general })));
+}
+
+/** A general's battle-1 kit (§7.8 at index 1): `generalKit`'s, its economy and utility cards filtered (R1-Q2). */
+export function battleOneKit(content: Content, general: string): string[] {
+  const cards = new Set(clashArmyIds(content));
+  const run = createRun(content, { seed: 1, commander: Object.keys(content.commanders)[0]! });
+  return generalKit(content, run, { kind: 'battle', map: 'bogwater-hollow', general }, 1).kit.filter((id) => cards.has(id));
+}
+
+/** A starter's candidate armies: each of its army cards' mono, then each even pair, as the counter check names them. */
+export function starterCandidates(content: Content, commander: string): string[] {
+  const order = armyIds(content), mine = new Set(clashArmyIds(content));
+  const cards = content.commanders[commander]!.starter.filter((id) => mine.has(id));
+  const sorted = [...cards].sort((a, b) => order.indexOf(a) - order.indexOf(b));
+  const pairs: string[] = [];
+  for (let i = 0; i < sorted.length; i++) for (let j = i + 1; j < sorted.length; j++) pairs.push(`bot:pair-${sorted[i]}-${sorted[j]}`);
+  return [...cards.map((id) => `bot:mono:${id}`), ...pairs];
+}
+
+/** Each battle-1 general as a bot, `bot:kit1-<id>`: its opener, weights and limits on its battle-1 kit alone, and its merge policy. */
+export function pairingBots(content: Content): Record<string, Omit<BotDef, 'id'>> {
+  const bots: Record<string, Omit<BotDef, 'id'>> = {};
+  for (const id of battleOneGenerals(content)) {
+    const g = content.generals[id]!, kit = new Set(battleOneKit(content, id));
+    const only = <T>(r: Record<string, T> | undefined): Record<string, T> => Object.fromEntries(Object.entries(r ?? {}).filter(([k]) => kit.has(k)));
+    bots[`kit1-${id}`] = {
+      description: `${g.name}'s battle-1 army: its opener and weights on its battle-1 kit (§7.8)`,
+      opener: g.opener.filter((b) => kit.has(b)), weights: only(g.weights), limits: only(g.limits), mergePolicy: g.mergePolicy ?? 'auto', fixedWeights: true,
+    };
+  }
+  return bots;
+}
+
+/** The proto spec that adds `pairingBots`: the pairing check's content is `protoContent` of it with `counterBotSpec`'s pairs. */
+export function pairingBotSpec(content: Content): string {
+  return Object.entries(pairingBots(content)).map(([id, def]) => `bot.${id}:${JSON.stringify(def)}`).join(',');
+}
+
+/** A pairing's answer bar: a candidate that wins this share or more answers the general (§16 R1). */
+const PAIRING_ANSWER = 0.6;
+
+export interface PairingOptions {
+  cache: ClashCache;
+  /** Budgets (default 300, 600 and 900 gold: battle 1's rounds 1, 3 and 5). */
+  budgets?: readonly number[];
+  /** Fields (default the one-lane field and Twin Roots; the one-lane field counts twice in the mean). */
+  fields?: readonly FieldId[];
+  /** Seeds (default 20), the general in the enemy seat only. */
+  seeds?: number;
+}
+
+/** A pairing's reading: per budget and pooled, the best candidate by its mean over the fields, and its rate. */
+export interface PairingRow {
+  commander: string;
+  general: string;
+  budgets: { budget: number; best: string; rate: number }[];
+  pooled: { best: string; rate: number };
+  /** The pooled best wins 60% or more. */
+  answered: boolean;
+  /** Each candidate's mean per budget, then pooled. */
+  candidates: { controller: string; budgets: number[]; pooled: number }[];
+}
+
+export interface PairingVerdict {
+  rows: PairingRow[];
+  /** The share of pairings with no answer at 60% or more, pooled over the budgets. */
+  unanswered: number;
+  budgets: { budget: number; unanswered: number }[];
+  fields: FieldId[];
+  seeds: number;
+  jitter: number;
+  details: string[];
+}
+
+/**
+ * Battle 1's pairing table (§16 R1, R2-Q13's measurement, A201): each commander's starter candidates (its army
+ * cards' monos and even pairs) against each battle-1 general's army, built from its opener and weights on its
+ * battle-1 kit, the general in the enemy seat, seeds 1 to n on each field, at 300, 600 and 900 gold. Both
+ * controllers are `human` in a clash, so no passive applies (R2-Q17 decides their v2 form). It reports each
+ * pairing's best candidate and its rate, per budget and pooled, and the share of pairings with no answer at 60%.
+ */
+export async function evaluatePairings(content: Content, o: PairingOptions): Promise<PairingVerdict> {
+  const budgets = [...(o.budgets ?? [300, 600, 900])], fields = [...(o.fields ?? CLASH_CHECK.fields)], seeds = o.seeds ?? 20;
+  const counted = countedFields(fields);
+  const pairs = battleOnePairings(content);
+  const rows: PairingRow[] = [];
+  // the cache's jitter, as its records carry it
+  let jitter = 0;
+  for (const { commander, general } of pairs) {
+    const b = `bot:kit1-${general}`;
+    const candidates = starterCandidates(content, commander);
+    const cells: Cell[] = candidates.flatMap((a) => fields.flatMap((field) => budgets.flatMap((budget) =>
+      Array.from({ length: seeds }, (_, s): Cell => ({ a, b, field, budget, seed: s + 1, seat: 'player' })))));
+    const records = await o.cache.slim(cells);
+    jitter = records[0]?.jitter ?? 0;
+    const per = fields.length * budgets.length * seeds;
+    const reads = candidates.map((controller, i) => {
+      const at = byBudget(records.slice(i * per, (i + 1) * per), 'a', budgets, fields, 'lowest');
+      return { controller, budgets: at.map((x) => x.mean), pooled: overFields(pooled(at, fields), counted, 'lowest').mean };
+    });
+    const bestOf = (rate: (r: (typeof reads)[number]) => number) => reads.reduce((best, r) => (rate(r) > rate(best) ? r : best));
+    const top = bestOf((r) => r.pooled);
+    rows.push({
+      commander, general, candidates: reads,
+      budgets: budgets.map((budget, k) => { const r = bestOf((x) => x.budgets[k]!); return { budget, best: r.controller, rate: r.budgets[k]! }; }),
+      pooled: { best: top.controller, rate: top.pooled }, answered: top.pooled >= PAIRING_ANSWER,
+    });
+  }
+  const share = (n: number) => n / rows.length;
+  const unanswered = share(rows.filter((r) => !r.answered).length);
+  const perBudget = budgets.map((budget, k) => ({ budget, unanswered: share(rows.filter((r) => r.budgets[k]!.rate < PAIRING_ANSWER).length) }));
+  const name = (c: string) => c.replace(/^bot:/, '');
+  const details = [
+    `battle-1 pairings (§16 R1, §12.3 G14; R2-Q13): each starter's candidates (its army cards' monos and even pairs) against each battle-1 general's army (its opener and weights on its battle-1 kit), the general in the enemy seat, ${seeds} seeds on ${fields.join(', ')}, jitter ${jitter ? `±${jitter}` : 'off'}; passives off (both sides human, R2-Q17). The best candidate's win % (a draw half; the one-lane field twice in the mean)`,
+    ...rows.map((r) => `    ${r.answered ? 'ok  ' : 'none'} ${r.commander} against ${r.general}: ${r.budgets.map((x) => `${x.budget} ${name(x.best)} ${whole(x.rate)}`).join(' · ')} · pooled ${name(r.pooled.best)} ${whole(r.pooled.rate)}`),
+    `no answer at ${pct(PAIRING_ANSWER)} or more: ${rows.filter((r) => !r.answered).length} of ${rows.length} pairings pooled (${pct(unanswered)}); per budget ${perBudget.map((x) => `${x.budget} ${pct(x.unanswered)}`).join(' · ')}`,
+  ];
+  return { rows, unanswered, budgets: perBudget, fields, seeds, jitter, details };
 }
 
 function pct(x: number): string {

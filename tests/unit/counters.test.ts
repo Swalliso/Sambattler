@@ -6,8 +6,8 @@ import { describe, expect, it } from 'vitest';
 import { SIDES, other } from '../../src/sim/index.ts';
 import type { Side } from '../../src/sim/index.ts';
 import {
-  armyIds, clashCache, clashG13, counterAnswers, counterBots, counterBotSpec, evaluateClashCounters, evaluateClashG3, evaluateCounters, evaluateG3,
-  g3Row, uniqueCells,
+  armyIds, clashCache, clashG13, clashRace, counterAnswers, counterBots, counterBotSpec, evaluateClashCounters, evaluateClashG3, evaluateClashG4Row, evaluateCounters,
+  evaluateG3, evaluatePairings, g3Row, pairingBotSpec, uniqueCells,
 } from '../../tools/lib/balance.ts';
 import type { Cell, CellRecord, ClashRunner } from '../../tools/lib/balance.ts';
 import { armyFromBot, playClash } from '../../tools/lib/clash.ts';
@@ -158,6 +158,21 @@ describe('the clash cache (A007)', () => {
     expect(cache.stats()).toEqual({ cells: 8, played: 4 }); // the budgets still share: the same armies on the same seed
     expect(records[4]).toEqual({ ...records[0], budget: 1500 });
   });
+
+  it("a full record after a slim one reuses the kept record, and a clash played again for its full record counts once (S4's review)", async () => {
+    const seen: ClashJob[] = [];
+    const runner: ClashRunner = (jobs) => { seen.push(...jobs); return inProcessClashes(cc)(jobs); };
+    const kept = clashCache(cc, runner, { keep: true });
+    await kept.slim(cells);
+    const full = await kept.full(cells);
+    expect([seen.length, kept.stats().played, kept.records().length]).toEqual([2, 2, 2]);
+    expect(full[0]).toEqual(kept.records()[0]);
+    seen.length = 0;
+    const plain = clashCache(cc, runner);
+    await plain.slim(cells);
+    expect(await plain.full(cells)).toEqual(full);
+    expect([seen.length, plain.stats().played]).toEqual([4, 2]);
+  });
 });
 
 describe('clash G3 (SPEC §12.3, §16 R1)', () => {
@@ -286,5 +301,63 @@ describe('G13, clash stalls (SPEC §12.3)', () => {
     const twice = uniqueCells(g3, [{ ...g3[0]! }, ...matrix]);
     expect(twice).toHaveLength(10);
     expect(clashG13(twice, g3).all).toEqual(v.all);
+  });
+});
+
+describe("the race section: the G4 row, the cap-binding share and drawn rounds (SPEC §6.7, §12.3 G4; A208, A022)", () => {
+  it('the G4 row plays bot:balanced against general:scripted, then against itself, on the one-lane field in both seats', async () => {
+    const seen: ClashJob[] = [];
+    const row = await evaluateClashG4Row(cc, { cache: clashCache(cc, scripted(() => 'a', seen), { jitter: 0.2 }), budgets: [300, 600], seeds: 2 });
+    expect(row.records).toHaveLength(16);
+    expect(row.records.map((r) => `${r.armies[r.seat].controller} ${r.armies[other(r.seat)].controller}`)).toEqual([
+      ...Array<string>(8).fill('bot:balanced general:scripted'), ...Array<string>(8).fill('bot:balanced bot:balanced'),
+    ]);
+    expect(row.records.map((r) => `${r.field} ${r.budget} ${r.seed} ${r.seat}`).slice(0, 4)).toEqual(['one 300 1 player', 'one 300 1 enemy', 'one 300 2 player', 'one 300 2 enemy']);
+    expect(row.scores.map((s) => [s.budget, s.score.rate])).toEqual([[300, 1], [600, 1]]);
+    // a mirror's second army is built on seed 1,000 + s
+    const mirror = seen.find((j) => j.armies[1].controller === 'bot:balanced')!;
+    expect(mirror.armies[1]).toEqual(armyFromBot(cc, 'bot:balanced', mirror.armies[0].budget, 1000 + mirror.seed, 8));
+    expect(row.details[1]).toMatch(/300 100 · 600 100/);
+  });
+
+  let seed = 0;
+  /** A cell the enemy lost, with `taken` uncapped damage to its Heartcap and the round's result. */
+  const lost = (field: FieldId, budget: number, taken: number, round: Side | 'draw' = 'player'): CellRecord => {
+    const reading = {
+      ...template.cap, winner: 'player' as Side, round,
+      heartcap: { player: { uncapped: 0, capped: 0 }, enemy: { uncapped: taken, capped: Math.min(500, taken) } },
+    };
+    return { field, budget, seed: ++seed, seat: 'player', jitter: 0, armies: { player: { controller: 'bot:a' }, enemy: { controller: 'bot:b' } }, cap: reading, capAfterMuster: reading };
+  };
+
+  it("reads the share of clashes whose loser's uncapped damage passes 500, at storm ×1.0 and at the budget's round storm, and the share of drawn rounds", () => {
+    const cells = [lost('one', 900, 450), lost('one', 900, 600), lost('one', 900, 400), lost('one', 900, 500, 'draw'), lost('one', 1500, 300), lost('twin', 1500, 200, 'draw')];
+    const v = clashRace(cells, []);
+    expect(v.cells.map((c) => [c.budget, c.field, c.clashes, c.binds, c.bindsStorm, c.stormBp, c.drawn])).toEqual([
+      [900, 'one', 4, 0.25, 0.75, 12000, 0.25], [1500, 'one', 1, 0, 1, 20000, 0], [1500, 'twin', 1, 0, 0, 20000, 1],
+    ]);
+    expect(v.all).toMatchObject({ clashes: 6, binds: 1 / 6, bindsStorm: 4 / 6, drawn: 2 / 6 });
+    expect(v.details.join('\n')).toMatch(/900 \(round 5, ×1\.2\): one 25% → 75%, drawn 25%/);
+    expect(v.race.groups).toEqual([]);
+  });
+});
+
+describe("battle 1's pairing table (SPEC §16 R1, §12.3 G14; R2-Q13)", () => {
+  it("plays each starter's candidates against each battle-1 general's army in the enemy seat, and reports the best and the pairings with no answer at 60%", async () => {
+    const pc = protoContent([counterBotSpec(content), pairingBotSpec(content)].join(','));
+    const seen: ClashJob[] = [];
+    // mono Capguard always wins; everything else loses
+    const v = await evaluatePairings(pc, { cache: clashCache(pc, scripted((job) => (job.armies[0].controller === 'bot:mono:capguardHall' ? 'a' : 'b'), seen), { jitter: 0.2 }), seeds: 2 });
+    expect(seen.every((j) => j.seat === 'player' && j.armies[1].controller.startsWith('bot:kit1-'))).toBe(true);
+    expect(new Set(seen.map((j) => j.armies[0].budget))).toEqual(new Set([300, 600, 900]));
+    expect(new Set(seen.map((j) => j.field))).toEqual(new Set(['one', 'twin']));
+    expect(v.rows.map((r) => `${r.commander} ${r.general} ${r.pooled.best} ${r.pooled.rate} ${r.answered}`)).toEqual([
+      'vesper mother-mold bot:mono:capguardHall 1 true', 'vesper lichen-baron bot:mono:capguardHall 1 true',
+      'armilla mother-mold bot:mono:capguardHall 1 true', 'armilla lichen-baron bot:mono:capguardHall 1 true',
+      'cordis mother-mold bot:mono:sporelingBurrow 0 false', 'cordis lichen-baron bot:mono:sporelingBurrow 0 false',
+    ]);
+    expect(v.unanswered).toBeCloseTo(1 / 3);
+    expect(v.budgets.map((b) => b.unanswered)).toEqual([2 / 6, 2 / 6, 2 / 6]);
+    expect(v.details.join('\n')).toMatch(/jitter ±0\.2/);
   });
 });

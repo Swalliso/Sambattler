@@ -51,7 +51,16 @@
 //   and the best `--top n` answers that count (default 3) are confirmed on `--confirm-seeds n` more
 //   (default 50). A mono answer that fails clash G3 doesn't count;
 // - the clash matrix (#14, #15): each build's best 3 answers per budget, beside §7.4's counter sets;
-// - G13: the share of every clash that reached the 45 s cap, both cap readings, and the median length.
+// - the G4 row: bot:balanced against general:scripted on the one-lane field, `--g4seeds n` a seat (default
+//   50 here; v1's g4 keeps G4's 40), and against itself on fresh seeds, for the race model;
+// - G13: the share of every clash that reached the 45 s cap, both cap readings, and the median length;
+// - the race section (X5, tools/lib/roundRace.ts): per budget and field, the share of clashes whose loser's
+//   damage passes the 500 cap, at storm ×1.0 and at the budget's round storm, and the share of drawn rounds;
+//   then the race model, which chains the G4 row's clashes (first) and G3's into battles of up to 9 rounds
+//   under the 500 cap and its alternatives. It's crude, and not a guardrail;
+// - the full colony (§13.7, R1-Q5): the most units and supply a colony fields a side on 12 and 16 plots,
+//   against 150 live units a side, with the levers when it's over and A200's sensitivity rows; and the
+//   overflow table (#11): each squad at 45, 60 and 75 s and +1 and +2, flagged when it overflows its slot.
 // `--jitter j` moves each unit up to ±j tiles per axis after the muster (default 0, no jitter; numbers
 // are quoted at 0.2). It prints the bars per budget beside the pooled result, then the clashes played and
 // the wall time. The report, labelled `clash` (or `clash-<proto>`), holds the options, each mono's and
@@ -66,16 +75,24 @@
 // when it was capped; the clash winner and §6.7's round result; and the merges at the muster (to Bloomed
 // + to Elder). Then a's score per field and budget, draws worth half. Every record goes in the report,
 // whose label defaults to `clash-pair-<a>-<b>`, with `-<proto>` when `--proto` is set.
+//
+// Battle 1's pairings (pairings, SPEC §16 R1, §12.3 G14, R2-Q13, opt-in): each commander's starter
+// candidates (the monos and even pairs of its army cards) against each battle-1 general's army (its opener
+// and weights on its battle-1 kit, §7.8), the general in the enemy seat, at `--budgets` (default
+// 300,600,900) on `--fields` (default one,twin), `--seeds n` (default 20), `--jitter j` as given, on
+// `--workers n`. Passives are off: a clash plays both sides as human. It prints each pairing's best
+// candidate and its win %, and the share of pairings with no answer at 60% or more.
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { protoContent, ROOT } from './lib/content.ts';
 import {
-  CLASH_CHECK, clashCache, clashG13, counterBotSpec, evaluateClashCounters, evaluateClashG3, evaluateCounters, evaluateG1, evaluateG2, evaluateG3, evaluateG4,
-  evaluateG5, evaluateG6, evaluateG7, evaluateG8, g3Setup, g3Verdict, inProcessRows, rosterIds, supplyDuel, uniqueCells,
+  CLASH_CHECK, clashCache, clashG13, clashRace, counterBotSpec, evaluateClashCounters, evaluateClashG3, evaluateClashG4Row, evaluateCounters, evaluateG1, evaluateG2,
+  evaluateG3, evaluateG4, evaluateG5, evaluateG6, evaluateG7, evaluateG8, evaluatePairings, g3Setup, g3Verdict, inProcessRows, pairingBotSpec, rosterIds, supplyDuel,
+  uniqueCells,
 } from './lib/balance.ts';
 import type { G3Verdict, Verdict } from './lib/balance.ts';
 import { runBench } from './lib/bench.ts';
-import { pairLine, pairScore, playPair } from './lib/clash.ts';
+import { fullColony, overflowTable, pairLine, pairScore, playPair } from './lib/clash.ts';
 import type { FieldId } from './lib/clash.ts';
 import { clashPool, defaultWorkers, inProcessClashes, rowPool } from './lib/pool.ts';
 import { engagement, engagementLines, runEndingLines, runEndings } from './lib/engagement.ts';
@@ -94,7 +111,7 @@ const ALL = ['duels', 'g3', 'g4', 'g5', 'g6', 'g7', 'g8', 'g11', 'boss'];
 const checks = new Set((opt('--checks') ?? ALL.join(',')).split(','));
 /** The clash check's one matchup (`--pair a,b`). */
 const pair = opt('--pair')?.split(',');
-const defaultLabel = checks.has('clash') ? `clash${pair ? `-pair-${pair.join('-')}` : ''}${proto ? `-${proto}` : ''}` : proto || 'baseline';
+const defaultLabel = checks.has('clash') ? `clash${pair ? `-pair-${pair.join('-')}` : ''}${proto ? `-${proto}` : ''}` : checks.has('pairings') ? `pairings${proto ? `-${proto}` : ''}` : proto || 'baseline';
 const label = opt('--label') ?? defaultLabel.replace(/[^a-zA-Z0-9.=-]+/g, '_');
 /** G3's opponent: `bot:balanced` (the guardrail), or a one-off diagnostic bot added with `--proto bot.<id>:{…}`. */
 const defender = opt('--defender') ?? 'bot:balanced';
@@ -358,6 +375,7 @@ if (checks.has('clash')) {
       budgets, fields, jitter, g3Seeds,
       screenSeeds: num('--screen-seeds') ?? CLASH_CHECK.screenSeeds, confirmSeeds: num('--confirm-seeds') ?? CLASH_CHECK.confirmSeeds, top: num('--top') ?? CLASH_CHECK.top,
       mono: monoIds ?? null, answers: answers ?? null, matrix: matrix ?? null, records: args.includes('--records'), workers,
+      g4Seeds: num('--g4seeds') || 50,
     };
     const pool = workers > 1 ? clashPool(spec, workers) : undefined;
     try {
@@ -369,14 +387,20 @@ if (checks.has('clash')) {
         cache, g3, screenSeeds: options.screenSeeds, confirmSeeds: options.confirmSeeds, top: options.top,
         ...(matrix ? { matrix: 'all' as const } : {}), ...(answers ? { answers } : {}),
       });
-      // G13 reads every cell the check played, each once (plan call 15)
-      const g13 = clashG13(uniqueCells(g3.records, g12.records), g3.records);
+      const g4row = await evaluateClashG4Row(cc, { cache, budgets, seeds: options.g4Seeds });
+      // G13 and the cap-binding share read every cell the check played, each once (plan calls 15, 17)
+      const all = uniqueCells(g3.records, g12.records, g4row.records);
+      const g13 = clashG13(all, g3.records);
+      const race = clashRace(all, [...g4row.records, ...g3.records]);
       const ms = Date.now() - t0;
       const { cells, played } = cache.stats();
       const descriptions = Object.fromEntries([...new Set(Object.values(g12.answers).flat())].map((a) => [a, cc.bots[a.slice(4)]?.description ?? '']));
       const g3Lines = verdict(g3), g12Lines = verdict(g12);
       lines.push(...g12.matrixLines);
       const g13Lines = verdict(g13);
+      lines.push(...g4row.details, ...race.details);
+      const colony = fullColony(cc), overflow = overflowTable(cc);
+      lines.push(...colony.lines, ...overflow.lines);
       lines.push(`clash check: ${played} clashes played for ${cells} cells in ${(ms / 1000).toFixed(1)} s on ${workers} worker${workers > 1 ? 's' : ''}`);
       out.clash = {
         options,
@@ -388,12 +412,37 @@ if (checks.has('clash')) {
         },
         matrix: g12.builds.map((b) => ({ build: b.build, rows: b.matrix })),
         G13: { ...g13Lines, all: g13.all, g3: g13.g3, cells: g13.cells },
+        G4row: { budgets: g4row.budgets, seeds: g4row.seeds, scores: g4row.scores },
+        race: { cells: race.cells, all: race.all, groups: race.race.groups },
+        colony: { squads: colony.squads, fields: colony.fields, sensitivity: colony.sensitivity },
+        overflow: overflow.rows,
         timing: { ms, clashes: played, cells },
         ...(options.records ? { records: cache.records() } : {}),
       };
     } finally {
       await pool?.close();
     }
+  }
+}
+
+if (checks.has('pairings')) {
+  // battle 1's pairings (SPEC §16 R1, R2-Q13): the counter check's pairs and the generals' battle-1 armies join the content
+  if (specPresets(proto).includes('rework')) throw new Error("rework is v1's P3 package, not R1's variant (SPEC §16 R1)");
+  const spec = [proto, counterBotSpec(content), pairingBotSpec(content)].filter(Boolean).join(',');
+  const pc = protoContent(spec);
+  const budgets = (opt('--budgets')?.split(',') ?? ['300', '600', '900']).map(Number);
+  const fields = (opt('--fields')?.split(',') ?? CLASH_CHECK.fields) as FieldId[];
+  const options = { budgets, fields, seeds: Number(opt('--seeds') ?? 20), jitter: Number(opt('--jitter') ?? 0), workers };
+  const pool = workers > 1 ? clashPool(spec, workers) : undefined;
+  try {
+    const t0 = Date.now();
+    const cache = clashCache(pc, pool?.run ?? inProcessClashes(pc), { jitter: options.jitter });
+    const v = await evaluatePairings(pc, { cache, budgets, fields, seeds: options.seeds });
+    const ms = Date.now() - t0;
+    lines.push(...v.details, `pairings: ${cache.stats().played} clashes played for ${cache.stats().cells} cells in ${(ms / 1000).toFixed(1)} s`);
+    out.pairings = { options, rows: v.rows, unanswered: v.unanswered, budgets: v.budgets, timing: { ms, ...cache.stats() } };
+  } finally {
+    await pool?.close();
   }
 }
 

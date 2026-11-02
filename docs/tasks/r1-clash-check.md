@@ -358,7 +358,7 @@ The armies (T011–T012) need nothing from `formation.ts` or the switches, so S2
 
 **Goal:** the race-model section for X5, the cap-binding and drawn shares, and the battle-1 pairing table. **Independent test:** `npx vitest run tests/unit/roundRace.test.ts` passes, and the small US2 run prints a race section.
 
-- [ ] T032 [P] [US4] Write the race tests in `tests/unit/roundRace.test.ts` (new) (§6.4, §6.5, §6.7) ⛔ X5
+- [x] T032 [P] [US4] Write the race tests in `tests/unit/roundRace.test.ts` (new) (§6.4, §6.5, §6.7) ⛔ X5
   - A stream of 400-raw wins routs a 2000 Heartcap in round 5 (400 × 4, then 480).
   - A raw 600 is capped to 500. At round 9 a raw 200 becomes 400 and a raw 300 is capped at 500: the storm applies before the cap.
   - Both Heartcaps at 0 in one round: the player loses (E8).
@@ -366,22 +366,22 @@ The armies (T011–T012) need nothing from `formation.ts` or the switches, so S2
   - The alternatives: a cap of 25% of the loser's max HP (500 against 2000, 750 against 3000, 900 against the boss's 3600); the cap × stormBp; equal Heartcaps (2000 + 250 × (i − 1) on both sides).
   - Round r of battle i reads the clash at the measured budget nearest below 300 + 75 × (i − 1) + 150 × (r − 1), at most 1,500.
   - The G4 case: `raceReport` builds it only from records whose armies are `bot:balanced` against `general:scripted`, or `bot:balanced` against itself with the second army on seed 1,000 + s; a G3 record (a mono against `bot:balanced`) never enters it. In the first, the `bot:balanced` side is the player whichever seat it played. X5's section lists the G4 case first, then the G3 cases.
-- [ ] T033 [US4] Build the race model in `tools/lib/roundRace.ts` (new): `raceBattle(rounds, opts)` and `raceReport(records, opts)`, pure functions over clash records (§6.4, §6.5, §6.7, §4.5) ⛔ X5
+- [x] T033 [US4] Build the race model in `tools/lib/roundRace.ts` (new): `raceBattle(rounds, opts)` and `raceReport(records, opts)`, pure functions over clash records (§6.4, §6.5, §6.7, §4.5) ⛔ X5
   - The G4 case first (A193): G4's pairing (§12.3), `bot:balanced` against `general:scripted` at every budget on the one-lane field, 50 seeds per seat, with `bot:balanced` as the player (3000). Beside it, `bot:balanced` against itself on fresh seeds (the second army on seed 1,000 + s), where the seat sets who is the player. These are even battles, the population A193's claim and G4's band (≤ 15% reach round 9, median 6–8) are about. X5's section quotes them first.
   - Then the G3 cases, the lopsided ones: each (mono, seed, seat, field) of G3's records. The seat as played sets who is the player (3000).
   - Each case gives one battle per battle index 1–5, a Fortified elite at index 3 (the general's Heartcap +30%) and the boss (3600, index 6).
   - Per case and alternative: the median rounds, the share reaching round 9, Routs by side and round, how often the lead changes, and the shares of general wins by Rout and by Decision.
   - The header says what it leaves out: income, comeback gold and counters; and one seed's armies at each budget stand in for a colony growing within a battle (plan call 17).
-- [ ] T034 [US4] Add the race section to the clash report in `tools/lib/balance.ts` and `tools/experiment.ts` (`--checks clash` prints it after G13), with the G4 row, the cap-binding share and the drawn share (§6.7, §12.3 G4, §16 R1)
+- [x] T034 [US4] Add the race section to the clash report in `tools/lib/balance.ts` and `tools/experiment.ts` (`--checks clash` prints it after G13), with the G4 row, the cap-binding share and the drawn share (§6.7, §12.3 G4, §16 R1)
   - From S4's review: in `clashCache`, `full()` after `slim()` on the same key plays the clash again, and the clash then shows twice in `records()` and `played` (`balance.ts:869–879` at `f9a579b`). If the G4 row asks for both, `full()` reuses the record instead.
   - The G4 row: `evaluateClashG4Row(content, opts)` in `tools/lib/balance.ts` plays T033's G4 case on the one-lane field at every budget in `--budgets`, in both seats, at `--g4seeds n` per seat (default 50 here; the option exists for v1's `g4`, whose default stays G4's 40), on the pool with the dedupe and the jitter. `--checks clash` plays it by default, so every clash report (r1-baseline and r1-kept included, T042) carries its records; its records join G13's (T022).
   - Cap-binding (A208): per budget and field, the share of records whose loser's uncapped Heartcap damage passes 500, at storm ×1.0 and at the budget's round storm (×1.0, ×1.0, ×1.2, ×1.6, ×2.0 at 300 to 1,500).
   - Drawn share (A022): per budget and field, the share of records whose capped round result is a draw.
-- [ ] T035 [P] [US4] Write the pairing tests in `tests/unit/clash.test.ts` (§8.1, §7.8, §11.10)
+- [x] T035 [P] [US4] Write the pairing tests in `tests/unit/clash.test.ts` (§8.1, §7.8, §11.10)
   - The pairings come from the data: each commander's `starter` (`data/commanders.json`) against each adaptive, non-boss general with 1 in `appearsIn` (`data/generals.json`): Old Mother Mold and the Lichen Baron. Runs use only adaptive generals (`assignGenerals` in `src/run/route.ts`), so `scripted` is left out.
   - A general's battle-1 kit is §7.8's rule at index 1: its opener's cards, economy filtered. Mold's is the Sporeling Burrow alone; the Baron's the Capguard Hall (its Cellar filtered). Each equals `generalKit(content, createRun(content, { seed: 1, commander: 'vesper' }), { kind: 'battle', map: 'bogwater-hollow', general: id }, 1).kit` (`src/run/flow.ts`) with economy cards removed.
   - A starter's candidate armies are the monos and even pairs of its army cards.
-- [ ] T036 [US4] Add `--checks pairings` to `tools/experiment.ts`, with `evaluatePairings(content, opts)` in `tools/lib/balance.ts`: at 300, 600 and 900 gold, the general's army from its opener and weights limited to its battle-1 kit, against each starter's candidates; report each pairing's best candidate and its win rate, and the share of pairings with no answer at 60% or more (§16 R1, §12.3 G14)
+- [x] T036 [US4] Add `--checks pairings` to `tools/experiment.ts`, with `evaluatePairings(content, opts)` in `tools/lib/balance.ts`: at 300, 600 and 900 gold, the general's army from its opener and weights limited to its battle-1 kit, against each starter's candidates; report each pairing's best candidate and its win rate, and the share of pairings with no answer at 60% or more (§16 R1, §12.3 G14)
   - Both fields (the one-lane field counted twice in the mean), 20 seeds, the general's army in the enemy seat only, at `--jitter` as given (the report states it). Passives are off: both controllers are `human` in a clash (T016), so `sideModifiers` adds none, and R2-Q17 decides their v2 form.
   - It's the measurement R2-Q13 asks for (A201): R2b decides on a guaranteed answer in battle 1 from it.
 
@@ -391,13 +391,13 @@ The armies (T011–T012) need nothing from `formation.ts` or the switches, so S2
 
 **Goal:** the most a full colony fields is known, and the bench times a clash of two full colonies. **Independent test:** `npm run bench` prints the full-colony case beside `bench-300`, and its exit code depends only on `bench-300` and the full battle, as today.
 
-- [ ] T037 [US5] Add the full-colony and overflow tests to `tests/unit/clash.test.ts` (§13.7, §4.6, §18.2 #7, #11) ⛔ R1-Q5
+- [x] T037 [US5] Add the full-colony and overflow tests to `tests/unit/clash.test.ts` (§13.7, §4.6, §18.2 #7, #11) ⛔ R1-Q5
   - `fullColony`: at the first-guess sizes the biggest one-lane colony is 12 plots. 12 Burrows at the level-3 squad of 12 field 144 units and 144 supply a side; 12 Dens field 36 units and 108 supply; 12 Burrows of 8 field 96. Twin Roots' 16 plots field 192 units a side at 12 per squad.
   - The overflow table lists each squad at 45, 60 and 75 s and with +1 (the Vault's first guess) and +2 (the Shrine's), and flags the overflows (for example Hall 5, Forge 5, Den 5) (A020).
-- [ ] T038 [US5] Build `fullColony(content, opts)` and `overflowTable(content, opts)` in `tools/lib/clash.ts`, and print both as sections of the clash report in `tools/experiment.ts` (§13.7, §4.6) ⛔ R1-Q5
+- [x] T038 [US5] Build `fullColony(content, opts)` and `overflowTable(content, opts)` in `tools/lib/clash.ts`, and print both as sections of the clash report in `tools/experiment.ts` (§13.7, §4.6) ⛔ R1-Q5
   - `fullColony`: per building, its squad, its squad with the v1 upgrade levels that add units (`building.spawnCount` in `data/upgrades.json`: the Burrow's 12, the Warren's 9), supply and units; per field, the biggest colony by units and by supply, against "about 100 supply" and against 150 live units a side at the arrival (A004, A200).
   - Sensitivity rows for SPEC's other unit-adding first guesses (A200): every squad +1 (the Rhizome Vault's "each spawner beside it fields 1 more unit", §11.2, as an upper bound that ignores the Vault's own plot); the squad in front +2 (the Velvet Shrine's); and Old Mother Mold's passive (§7.7's first guess: `swarm` squads +10%, rounded up, so a Burrow's 12 become 14). Each row gives the biggest colony's units and supply a side.
-- [ ] T039 [US5] Add the full-colony clash to `tools/lib/bench.ts` as `runClashBench(content)`, and print it in `tools/bench.ts` (§13.7, §15.4) ⛔ R1-Q5
+- [x] T039 [US5] Add the full-colony clash to `tools/lib/bench.ts` as `runClashBench(content)`, and print it in `tools/bench.ts` (§13.7, §15.4) ⛔ R1-Q5
   - Two cases: the one-lane field at 12 plots and Twin Roots at 16, every plot a Burrow of 12 Sporelings, merging off (A018).
   - Warm on a throwaway copy, then time the arrival (both armies placed) against 5 ms, and every tick until the clash ends (at most 920): mean, p95, p99, peak units and heap growth, against G11's 1.0 ms mean and 2.5 ms p99.
   - Print the verdict as "report only until R2 adds it to G11". It doesn't change the exit code, and `--quick` skips it, so `npm run verify` is unchanged. `bench-300` stays the stress case of placed units (A112, A119).

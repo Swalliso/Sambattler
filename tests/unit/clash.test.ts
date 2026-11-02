@@ -8,9 +8,11 @@ import { findTrios, formationBox, musterKnits, slotPositions } from '../../src/s
 import type { MusterUnit } from '../../src/sim/formation.ts';
 import { createBattle, makeConfig } from '../../src/sim/index.ts';
 import type { BattleState, Side, UnitState } from '../../src/sim/index.ts';
-import { counterBotSpec } from '../../tools/lib/balance.ts';
+import { createRun, generalKit } from '../../src/run/index.ts';
+import { battleOneGenerals, battleOneKit, battleOnePairings, counterBotSpec, pairingBotSpec, starterCandidates } from '../../tools/lib/balance.ts';
 import {
-  CLASH, MIRROR_SEED, armyFromBot, armyOf, assignSlots, clashArmyIds, clashField, lineOf, pairLine, pairScore, placeArmy, playClash, playPair, squadSize,
+  CLASH, MIRROR_SEED, armyFromBot, armyOf, assignSlots, clashArmyIds, clashField, fullColony, lineOf, overflowTable, pairLine, pairScore, placeArmy, playClash,
+  playPair, squadSize,
 } from '../../tools/lib/clash.ts';
 import type { Army, ClashField, ClashJob, ClashOpts, ClashRecord, FieldId, Placement } from '../../tools/lib/clash.ts';
 import { protoContent } from '../../tools/lib/content.ts';
@@ -564,5 +566,88 @@ describe("a matchup in both seats (`--checks clash --pair`, SPEC §12.2)", () =>
     const [r] = playPair(content, { a: 'bot:balanced', b: 'bot:balanced', budgets: [900], fields: ['one'], seeds: 1 });
     expect(r!.armies.enemy.entries).toEqual(armyFromBot(content, 'bot:balanced', 900, MIRROR_SEED + 1, 8).entries);
     expect(r!.armies.enemy.entries).not.toEqual(r!.armies.player.entries);
+  });
+});
+
+describe("battle 1's pairings (`--checks pairings`, SPEC §7.8, §8.1, §11.10; R2-Q13)", () => {
+  it("pair each commander's starter with each adaptive, non-boss general that appears in battle 1: Old Mother Mold and the Lichen Baron", () => {
+    expect(battleOneGenerals(content)).toEqual(['mother-mold', 'lichen-baron']);
+    expect(battleOnePairings(content).map((p) => `${p.commander} ${p.general}`)).toEqual([
+      'vesper mother-mold', 'vesper lichen-baron', 'armilla mother-mold', 'armilla lichen-baron', 'cordis mother-mold', 'cordis lichen-baron',
+    ]);
+  });
+
+  it("a general's battle-1 kit is its opener's cards, economy filtered, as generalKit gives it at index 1", () => {
+    expect(battleOneKit(content, 'mother-mold')).toEqual(['sporelingBurrow']);
+    expect(battleOneKit(content, 'lichen-baron')).toEqual(['capguardHall']);
+    const run = createRun(content, { seed: 1, commander: 'vesper' });
+    for (const id of battleOneGenerals(content)) {
+      const kit = generalKit(content, run, { kind: 'battle', map: 'bogwater-hollow', general: id }, 1).kit;
+      expect(battleOneKit(content, id)).toEqual(kit.filter((b) => content.buildings[b]!.kind !== 'economy'));
+    }
+  });
+
+  it("a starter's candidates are the monos and even pairs of its army cards", () => {
+    expect(starterCandidates(content, 'vesper')).toEqual(['bot:mono:sporelingBurrow', 'bot:mono:capguardHall', 'bot:pair-sporelingBurrow-capguardHall']);
+    expect(starterCandidates(content, 'armilla')).toEqual(['bot:mono:capguardHall', 'bot:mono:puffballMortar', 'bot:pair-capguardHall-puffballMortar']);
+    expect(starterCandidates(content, 'cordis')).toEqual(['bot:mono:sporelingBurrow', 'bot:mono:gillNest', 'bot:pair-sporelingBurrow-gillNest']);
+  });
+
+  it("the general's battle-1 army builds from its opener and weights limited to its kit, merging as the general does", () => {
+    const pc = protoContent([counterBotSpec(content), pairingBotSpec(content)].join(','));
+    for (const [general, card] of [['mother-mold', 'sporelingBurrow'], ['lichen-baron', 'capguardHall']] as const) {
+      for (const budget of [300, 600, 900]) {
+        const a = armyFromBot(pc, `bot:kit1-${general}`, budget, 1, 8);
+        expect(a.entries.length).toBeGreaterThan(0);
+        expect(a.entries.every((e) => e.buildingId === card && e.mergeOn)).toBe(true);
+      }
+    }
+    for (const c of battleOnePairings(content).flatMap((p) => starterCandidates(content, p.commander))) expect(armyFromBot(pc, c, 600, 1, 8).entries.length).toBeGreaterThan(0);
+  });
+});
+
+describe('the full colony and the overflow table (SPEC §13.7, §4.6; R1-Q5, #7, #11; A004, A020, A200)', () => {
+  const fc = fullColony(content);
+  const squad = (id: string) => fc.squads.find((x) => x.buildingId === id)!;
+
+  it("at the first-guess sizes the biggest one-lane colony is 12 plots of the Burrow's level-3 squad of 12: 144 units and 144 supply a side", () => {
+    expect(squad('sporelingBurrow')).toMatchObject({ squad: 8, upgraded: 12, supply: 1, swarm: true });
+    expect(squad('morelWarren')).toMatchObject({ squad: 6, upgraded: 9 });
+    const one = fc.fields.find((f) => f.field === 'one')!;
+    expect(one).toMatchObject({ plots: 12, fits: true, levers: [] });
+    expect(one.byUnits).toEqual({ buildingId: 'sporelingBurrow', units: 144, supply: 144 });
+    expect(one.bySupply).toEqual({ buildingId: 'sporelingBurrow', units: 144, supply: 144 });
+    // 12 Dens field 36 units and 108 supply; 12 Burrows of 8 field 96
+    const den = squad('rootbreakerDen');
+    expect([12 * den.upgraded, 12 * den.upgraded * den.supply]).toEqual([36, 108]);
+    expect(12 * squad('sporelingBurrow').squad).toBe(96);
+  });
+
+  it("Twin Roots' 16 plots field 192 units a side at 12 a squad, over 150, and the report names the levers", () => {
+    const twin = fc.fields.find((f) => f.field === 'twin')!;
+    expect(twin).toMatchObject({ plots: 16, fits: false, byUnits: { buildingId: 'sporelingBurrow', units: 192, supply: 192 } });
+    expect(twin.levers).toEqual(['squads: at most 9 units a squad on 16 plots', "the upgrade's +1 per batch: without it, 16 sporelingBurrow squads of 8 field 128", 'plots: at most 12 plots of 12']);
+  });
+
+  it("A200's sensitivity rows: every squad +1 (the Vault), the squad in front +2 (the Shrine), and Old Mother Mold's swarm squads +10% rounded up", () => {
+    const row = (id: string) => fc.sensitivity.find((r) => r.id === id)!.fields.map((f) => `${f.field} ${f.buildingId} ${f.units} ${f.supply}`);
+    expect(row('vault')).toEqual(['one sporelingBurrow 156 156', 'twin sporelingBurrow 208 208']);
+    // the squads with a plot behind them: 8 of 12 on one lane, 10 of 16 on Twin Roots
+    expect(row('shrine')).toEqual(['one sporelingBurrow 160 160', 'twin sporelingBurrow 212 212']);
+    // a Burrow's 12 become 14
+    expect(row('mold')).toEqual(['one sporelingBurrow 168 168', 'twin sporelingBurrow 224 224']);
+    expect(fc.lines[0]).toMatch(/150 live units a side/);
+  });
+
+  it('the overflow table: each squad at 45, 60 and 75 s and the 60 s squad +1 and +2, flagging Hall 5, Forge 5 and Den 5 (A020)', () => {
+    const t = overflowTable(content);
+    const at = (id: string) => t.rows.find((r) => r.buildingId === id)!.sizes.map((x) => `${x.n}${x.overflows ? '*' : ''}`).join(' ');
+    expect(t.rows.map((r) => r.buildingId)).toEqual(clashArmyIds(content).filter((id) => content.buildings[id]!.spawn));
+    expect(t.rows[0]!.sizes.map((x) => x.at)).toEqual(['45 s', '60 s', '75 s', '+1', '+2']);
+    expect(at('capguardHall')).toBe('3 4 5* 5* 6*');
+    expect(at('hammercapForge')).toBe('3 4 4 5* 6*');
+    expect(at('rootbreakerDen')).toBe('2 3 4 4 5*');
+    expect(at('sporelingBurrow')).toBe('6 8 10 9 10');
+    expect(t.lines.some((l) => l.includes('capguardHall') && l.includes('5*'))).toBe(true);
   });
 });
