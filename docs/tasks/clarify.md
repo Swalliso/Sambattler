@@ -23,8 +23,8 @@ This is the clarify step for SPEC v2. SPEC.md is the spec, `docs/<milestone>-pla
 
 | Ref | Question (short) | Needed by | Recommendation (short) |
 |---|---|---|---|
-| X1 | Split R2 into R2a and R2b? | Now (before R2a S0) | Yes |
-| X2 | How R2 lands | Now (before R2a S0) | Beside v1 on develop; R2b on `feature/r2b-cutover` |
+| X1 | Split R2 into R2a and R2b? | Now (before R2a S0) | Yes (decided 2026-11-02) |
+| X2 | How R2 lands | Now (before R2a S0) | Beside v1 on develop (decided 2026-11-02); develop may switch wholly to v2, so R2b needn't use `feature/r2b-cutover` |
 | X3 | Split R4, the field's shape language first? | Now (R4a-S0) | Yes: R4a now, R4b after R3 |
 | X10 | Run it back in two parts? | Now (records-1 S0) | Yes: records-1 now, records-2 after R2b |
 | RB-Q1 | Where records live | records-1 S0 | The profile key, as profile v1, meta only |
@@ -169,7 +169,7 @@ These ten calls set how the work after R1 is cut. The task files assume each rec
 - **Recommendation:** Yes. R2a builds a single battle in rounds and playtests it (§16 R2 gate questions 1, 2, 3, 6 and 7). R2b builds lives, runs, saves, the switch-over and v1's deletion, and asks the rest. R2b also writes the round Help and tips with a first wording, which R4b rewords (A156). R2a's and R2b's task files (`docs/tasks/r2a-battle-in-rounds.md`, `docs/tasks/r2b-run-in-rounds.md`) set out the boundary. **Why:** R2 is several milestones in one (A195, A101), and one gate at the end puts the first test of "plan, then fight" after all of it.
 - **Alternatives:** one R2 with one playtest at the end; the phases stay the same, and the two task files merge.
 - **Blocks:** R2a S0; every R2 session.
-- **Decision:** _open_
+- **Decision:** 2026-11-02 (the hub session): the recommendation. The user: "I recommend we split r2 into r2a and r2b as well."
 
 ### X2 · How R2 lands: beside v1
 
@@ -183,7 +183,10 @@ These ten calls set how the work after R1 is cut. The task files assume each rec
   **Why:** edits in place break the typecheck of every module that imports the sim (A025), and many unit tests and every battle UI file read v1 state (A101, A066). It stretches §16's "as the new default" until R2b; the dev entry isn't a `?proto=` knob, and R2b deletes it.
 - **Alternatives:** one branch, `feature/r2-rounds`, for all of R2, both loops behind an internal switch (A101, A195). Then R2a's PRs target it, and its playtest runs from a local build. Or, for R2b only, keep `feature/r2b-cutover` until R2b's verification (S13, T147), so develop never shows the stand-ins; S5–S13 then target the branch, with `origin/develop` merged into it before each sub-PR (R2b Call 14).
 - **Blocks:** R2a S0; every R2 session's base branch; R2b S4b's merge.
-- **Decision:** _open_
+- **Decision:** 2026-11-02 (the hub session): R2a is built beside v1 on develop, as recommended. The user went further: "I'm more than okay with us breaking the develop site (or at least completely switching it over to the v2) at this point and going forward."
+  - So develop no longer has to stay playable as v1. R2b's switch-over may land on develop directly, without `feature/r2b-cutover`, and the stand-ins may show there. R2b S0 settles its branches and Sessions table with this (R2b Call 14). R2a S0 may simplify its own plan the same way, for example its dev-only entry.
+  - What stays: `npm run verify` is green on every PR into develop. A develop push that fails verify fails the whole deploy, so `main`'s site couldn't redeploy either (`.github/workflows/deploy.yml`).
+  - `main` keeps the v1 game until the user asks for a release.
 
 ### X3 · Split R4: the field's shape language now, the text after R3
 

@@ -8,11 +8,11 @@ SPEC v2, broken into task lists that later sessions work through one row of a Se
 
 | Now | Session | Waits on |
 |---|---|---|
-| 1 | **R1 S7** in [r1-clash-check.md](r1-clash-check.md): R1's runs, about 40 in the background, then R1's entry in `docs/balance-backlog.md`, the plan's As built and SPEC §15's tool docs (T040–T048, T052) | R1 S5 and S6 merged (#60, #59), and the user's OK to start the runs |
-| 2 | **R4a-S4** in [r4-readable-armies.md](r4-readable-armies.md): the other seven units redrawn, and a shape required on every unit sprite (T030–T032) | R4a-S3 merged (`feature/r4a-core-sprites`: the core six and the Mortar redrawn); R1's proposed squad sizes read, if R1 has reported |
-| 3 | **R1 S8**, R1's review gate: the user's calls R2a needs, recorded in `clarify.md`, SPEC and `docs/status.md` (T049–T050) | S7's PR merged, and the user has read the report |
+| 1 | **R1 S7** in [r1-clash-check.md](r1-clash-check.md): R1's runs, about 40 in the background, then R1's entry in `docs/balance-backlog.md`, the plan's As built and SPEC §15's tool docs (T040–T048, T052) | Running since 2026-11-02, on the user's OK (S5 and S6 merged: #60, #59) |
+| 2 | **R1 S8**, R1's review gate: the user's calls R2a needs, recorded in `clarify.md`, SPEC and `docs/status.md` (T049–T050) | S7's PR merged, and the user has read the report |
+| 3 | **R2a S0** in [r2a-battle-in-rounds.md](r2a-battle-in-rounds.md): R2a's plan and its decisions (T001–T006) | R1's review gate passed (R1/T049, R1/T050); X1 and X2 decided (2026-11-02) |
 
-R1 and R4a touch different code files and can run at the same time; records-1, which ran beside them, is done. Their doc edits fall in different sections of `SPEC.md`, `clarify.md` and `docs/status.md`, so whichever PR merges second rebases ([r1-plan.md](../r1-plan.md), "Beside R1"). Everything else waits for R1's review gate.
+R4a and records-1, which ran beside R1, are done. Their doc edits fall in different sections of `SPEC.md`, `clarify.md` and `docs/status.md`, so whichever PR merges second rebases ([r1-plan.md](../r1-plan.md), "Beside R1"). Everything else waits for R1's review gate.
 
 ## Milestones
 

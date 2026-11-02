@@ -184,7 +184,7 @@ SPEC §16 R4's R4a part:
 
 **Later:**
 - **T026 (S2b): approved 2026-11-01.** At its first review the user dropped weapon marks (decision 9), and then approved the sheet redrawn without them, as drawn. The record is below, in "The approved silhouette sheet".
-- **T039 (the gate):** agree that R2a's playtest can run on R4a's sprites.
+- **T039 (the gate):** agree that R2a's playtest can run on R4a's sprites. Agreed 2026-11-02 (As built, verification 5).
 - **#52:** a first reading at R2a's playtest, and the call at R4b's fresh-tester gate (T075, T076).
 - **R1's squad sizes (#7):** they set the width bound. If R1 makes a 4-unit squad bigger, its bound may drop from 16 px to 10, and the sprite is narrowed in a follow-up PR.
 - **The Bloomed cue:** if R2a's playtest finds Bloomed units hard to tell from base ones, add the spore-white tier-2 rim (R4-Q3's other option).
@@ -244,4 +244,4 @@ The user approved `docs/r4a-silhouettes.json` as drawn ("Approve as drawn"), on 
    - the browser suite: 94 tests in 12 files pass;
    - golden verify: all 8 pass, and none moved;
    - the slow suite: 5 of v1's 9 guardrails pass, and 4 miss (G1, G3, G7 and G8). R4a changed no input the battle reads: no sim or bot code reads a palette, and every golden replay is unchanged. So these are `develop`'s verdicts, not re-run there, and a v1 miss isn't open work (CLAUDE.md).
-5. **The review gate** (T039, the user): open. The user looks at the four captures and at the dev site once S5 has merged, at `?scenario=unit-lineup&paused=1` and `?scenario=unit-lineup-twin&paused=1`, and in a normal battle.
+5. **The review gate** (T039, the user): passed on 2026-11-02, with S5 on the dev site ([#63](https://github.com/Swalliso/Sambattler/pull/63)). On the two points S5 raised, the user said "I think the knight's cap staying red on both sides is okay" and "i'm okay with the color-blind mode implementation". So R2a's playtest runs on these sprites (R2a/T137).
