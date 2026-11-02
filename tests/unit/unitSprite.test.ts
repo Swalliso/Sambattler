@@ -6,7 +6,7 @@ import type { SpriteDef } from '../../src/data/schema.ts';
 import type { Atlas } from '../../src/render/atlas.ts';
 import { atlasLayout, framePixels, regionKey, rimKey, rimPixels } from '../../src/render/compose.ts';
 import type { Region } from '../../src/render/compose.ts';
-import { FLY_LIFT, drawUnitSprite, unitLayout } from '../../src/render/unitSprite.ts';
+import { FLY_LIFT, drawUnitSprite, emplacementSprite, unitLayout } from '../../src/render/unitSprite.ts';
 import type { Box } from '../../src/render/unitSprite.ts';
 import { nodeContent } from '../../tools/lib/content.ts';
 
@@ -202,5 +202,12 @@ describe('the pip and the rim', () => {
         expect(a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h).toBe(false);
       }
     }
+  });
+});
+
+describe('emplacementSprite (R4a call 4)', () => {
+  it("is e-<id> where the data draws one, else the building's own sprite", () => {
+    expect(emplacementSprite(content, 'puffballMortar')).toBe('e-puffballMortar');
+    expect(emplacementSprite(content, 'sporelingBurrow')).toBe('b-sporelingBurrow');
   });
 });

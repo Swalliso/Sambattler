@@ -955,3 +955,150 @@ export function pairScore(records: readonly ClashRecord[]): { wins: number; draw
   }
   return { wins, draws, losses, score: records.length ? (wins + draws / 2) / records.length : 0, capped };
 }
+
+// ---- the full colony and the overflow table (§13.7, §4.6; R1-Q5, #7, #11; A004, A020, A200) ----
+
+/** §13.7's budget for a full colony (R1-Q5), and the plots it holds at most (§4.6). */
+export const FULL_COLONY = {
+  /** At most this many live units a side when the armies arrive. */
+  units: 150,
+  /** §4.6's earlier "about 100 supply" a side, reported beside it (A004). */
+  supply: 100,
+  /** R1-Q4's plots past the base ones: 12 on one lane, 16 on Twin Roots. */
+  extraPlots: 4,
+} as const;
+
+/** A spawner's squad for the full colony. */
+export interface ColonySquad {
+  buildingId: string;
+  unitId: string;
+  /** Its squad at 60 s (§11.2). */
+  squad: number;
+  /** With every v1 upgrade level that adds units (`building.spawnCount`): the Burrow's 12, the Warren's 9. */
+  upgraded: number;
+  /** A unit's supply. */
+  supply: number;
+  /** Its unit is tagged `swarm`, for Old Mother Mold's passive. */
+  swarm: boolean;
+}
+
+/** A colony of one building's squads on every plot: its units a side, and their supply. */
+export interface ColonyRead {
+  buildingId: string;
+  units: number;
+  supply: number;
+}
+
+export interface ColonyField {
+  field: FieldId;
+  plots: number;
+  /** The biggest colony by units, and by supply. */
+  byUnits: ColonyRead;
+  bySupply: ColonyRead;
+  /** The biggest by units is inside §13.7's 150 live units a side. */
+  fits: boolean;
+  /** When it isn't, what brings it inside: the squad, the upgrade's +1 per batch, or the plots. */
+  levers: string[];
+}
+
+export interface FullColony {
+  squads: ColonySquad[];
+  fields: ColonyField[];
+  /** SPEC's other unit-adding first guesses (A200): each row's biggest colony by units, per field. */
+  sensitivity: { id: 'vault' | 'shrine' | 'mold'; label: string; fields: ({ field: FieldId } & ColonyRead)[] }[];
+  lines: string[];
+}
+
+/**
+ * The most a full colony fields (§13.7, §15.4, R1-Q5): every plot a colony can hold planted with one
+ * building's biggest squad, the v1 upgrades that add units included. A colony of mixed squads fields no
+ * more, since each plot counts alone. Per field, the biggest by units and by supply, against 150 live
+ * units a side at the arrival and "about 100 supply"; then A200's rows for the Rhizome Vault's, the Velvet
+ * Shrine's and Old Mother Mold's first guesses (§11.2, §7.7), each an upper bound.
+ */
+export function fullColony(content: Content, opts: { fields?: readonly FieldId[] } = {}): FullColony {
+  const squads = clashArmyIds(content).filter((id) => content.buildings[id]!.spawn).map((id): ColonySquad => {
+    const spawn = content.buildings[id]!.spawn!, unit = content.units[spawn.unit]!;
+    let add = 0;
+    for (const level of content.upgrades[id]?.levels ?? []) {
+      for (const m of level.effects.modifiers ?? []) if (m.stat === 'building.spawnCount' && m.op === 'add' && (m.where?.building ?? id) === id) add += m.value;
+    }
+    return {
+      buildingId: id, unitId: spawn.unit, squad: squadSize(content, id), upgraded: (spawn.count + add) * Math.round(60 / spawn.interval),
+      supply: unit.supply, swarm: unit.tags.includes('swarm'),
+    };
+  });
+  const fields = (opts.fields ?? ['one', 'twin']).map((id) => clashField(content, id, { extraPlots: FULL_COLONY.extraPlots }));
+  /** The biggest colony on a field when each plot's squad is `size(squad, plot)`, by `key` (units, or supply), ties to more of the other. */
+  const biggest = (f: ClashField, size: (s: ColonySquad, p: PlotRef) => number, key: 'units' | 'supply'): ColonyRead => {
+    let best: ColonyRead | undefined;
+    for (const s of squads) {
+      const units = f.open.reduce((n, p) => n + size(s, p), 0);
+      const read = { buildingId: s.buildingId, units, supply: units * s.supply };
+      const other = key === 'units' ? 'supply' : 'units';
+      if (!best || read[key] > best[key] || (read[key] === best[key] && read[other] > best[other])) best = read;
+    }
+    return best!;
+  };
+  const upgraded = (s: ColonySquad) => s.upgraded;
+  const colonies = fields.map((f): ColonyField => {
+    const byUnits = biggest(f, upgraded, 'units'), bySupply = biggest(f, upgraded, 'supply');
+    const fits = byUnits.units <= FULL_COLONY.units;
+    const top = squads.find((s) => s.buildingId === byUnits.buildingId)!;
+    const levers = fits ? [] : [
+      `squads: at most ${Math.floor(FULL_COLONY.units / f.plots)} units a squad on ${f.plots} plots`,
+      ...(top.upgraded > top.squad ? [`the upgrade's +1 per batch: without it, ${f.plots} ${top.buildingId} squads of ${top.squad} field ${f.plots * top.squad}`] : []),
+      `plots: at most ${Math.floor(FULL_COLONY.units / top.upgraded)} plots of ${top.upgraded}`,
+    ];
+    return { field: f.id, plots: f.plots, byUnits, bySupply, fits, levers };
+  });
+  // a plot has one behind it when the next rank opens the same file of its lane
+  const behind = (f: ClashField, p: PlotRef) => f.open.some((q) => q.lane === p.lane && q.file === p.file && q.rank === p.rank + 1);
+  const rows: { id: FullColony['sensitivity'][number]['id']; label: string; size: (f: ClashField) => (s: ColonySquad, p: PlotRef) => number }[] = [
+    { id: 'vault', label: "every squad +1 (the Rhizome Vault's first guess, §11.2; an upper bound that ignores the Vaults' plots)", size: () => (s) => s.upgraded + 1 },
+    { id: 'shrine', label: "the squad in front +2 (the Velvet Shrine's first guess, §11.2: each squad with a plot behind it; an upper bound that ignores the Shrines' plots)", size: (f) => (s, p) => s.upgraded + (behind(f, p) ? 2 : 0) },
+    { id: 'mold', label: "swarm squads +10%, rounded up (Old Mother Mold's passive, §7.7's first guess)", size: () => (s) => (s.swarm ? Math.ceil((s.upgraded * 11) / 10) : s.upgraded) },
+  ];
+  const sensitivity = rows.map((r) => ({ id: r.id, label: r.label, fields: fields.map((f) => ({ field: f.id, ...biggest(f, r.size(f), 'units') })) }));
+
+  const read = (c: ColonyRead) => `${c.buildingId} ${c.units} units, ${c.supply} supply`;
+  const lines = [
+    `full colony (§13.7, §4.6; R1-Q5, A004, A200): every plot planted with one building's biggest squad, the v1 upgrades that add units included; the budget is at most ${FULL_COLONY.units} live units a side at the arrival, beside "about ${FULL_COLONY.supply} supply"`,
+    `  squads at 60 s, upgraded, × supply: ${squads.map((s) => `${s.buildingId} ${s.squad}${s.upgraded > s.squad ? `→${s.upgraded}` : ''}×${s.supply}`).join(' · ')}`,
+    ...colonies.map((c) => `  ${c.fits ? 'fits' : 'OVER'} ${c.field} (${c.plots} plots): most units ${read(c.byUnits)}; most supply ${read(c.bySupply)}`
+      + `; ${c.bySupply.supply > FULL_COLONY.supply ? 'over' : 'inside'} about ${FULL_COLONY.supply} supply${c.levers.length ? `. Levers: ${c.levers.join('; ')}` : ''}`),
+    ...sensitivity.map((r) => `  if ${r.label}: ${r.fields.map((f) => `${f.field} ${f.units} units, ${f.supply} supply${f.units > FULL_COLONY.units ? ' (over)' : ''}`).join(' · ')}`),
+  ];
+  return { squads, fields: colonies, sensitivity, lines };
+}
+
+/** A squad's sizes for the overflow table: at 45, 60 and 75 s, and the 60 s squad +1 (the Vault's first guess) and +2 (the Shrine's). */
+export interface OverflowRow {
+  buildingId: string;
+  /** Its unit's width, twice its radius. */
+  width: number;
+  sizes: { at: '45 s' | '60 s' | '75 s' | '+1' | '+2'; n: number; overflows: boolean }[];
+}
+
+/**
+ * Which squads overflow their slots (§4.6, #11, A020): each spawner's squad at 45, 60 and 75 s, and its
+ * 60 s squad +1 and +2, against its slot's grid (k × k cells, 2/k tiles apart). A squad whose units are
+ * wider than that overflows, and fields on the same grid packed tighter.
+ */
+export function overflowTable(content: Content): { rows: OverflowRow[]; lines: string[] } {
+  const rows = clashArmyIds(content).filter((id) => content.buildings[id]!.spawn).map((id): OverflowRow => {
+    const radius = content.units[content.buildings[id]!.spawn!.unit]!.radius;
+    const at60 = squadSize(content, id);
+    const sizes = ([['45 s', squadSize(content, id, { squadSeconds: 45 })], ['60 s', at60], ['75 s', squadSize(content, id, { squadSeconds: 75 })], ['+1', at60 + 1], ['+2', at60 + 2]] as const)
+      .map(([at, n]) => ({ at, n, overflows: overflows(n, radius) }));
+    return { buildingId: id, width: 2 * radius, sizes };
+  });
+  const w = Math.max(...rows.map((r) => r.buildingId.length));
+  return {
+    rows,
+    lines: [
+      "overflow (§4.6, #11; A020): each squad at 45, 60 and 75 s, then the 60 s squad +1 (the Vault's first guess) and +2 (the Shrine's); * when its units are wider than its slot's grid spacing, so it fields packed tighter",
+      ...rows.map((r) => `  ${r.buildingId.padEnd(w)} width ${r.width.toFixed(2)}: ${r.sizes.map((x) => `${x.n}${x.overflows ? '*' : ''}`.padStart(4)).join('')}`),
+    ],
+  };
+}

@@ -4,7 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import { SpriteSchema } from '../../src/data/schema.ts';
 import type { SpriteBands, SpriteDef, SpriteShape } from '../../src/data/schema.ts';
-import { bodyBox, bodyOf, emplacementShapeProblems, shapeProblems, unitShapeProblems } from '../../src/data/shapes.ts';
+import { baseSquad, bodyBox, bodyOf, emplacementShapeProblems, shapeProblems, unitShapeProblems, widthBound } from '../../src/data/shapes.ts';
 import { nodeContent, protoContent } from '../../tools/lib/content.ts';
 
 const content = nodeContent();
@@ -82,5 +82,36 @@ describe('no weapon marks (§5.8, 2026-11-01)', () => {
 
   it('the data has no mark glyphs, in the default content or under ?proto=rework', () => {
     for (const c of [content, protoContent('rework')]) expect(c.spriteOrder.filter((id) => id.startsWith('m-'))).toEqual([]);
+  });
+});
+
+// The core six and the Mortar's emplacement, redrawn from the approved sheet (§5.8, §11.2, §14.3; R4a-S3, T027).
+describe('the core six and the Mortar', () => {
+  const rework = protoContent('rework');
+  const CORE = ['u-sporeling', 'u-capguard', 'u-gillArcher', 'u-amanitaKnight', 'u-hammercap'];
+
+  it('declare the body their armor gives, in band and within their squad width, in all three frames', () => {
+    for (const [c, ids] of [[content, CORE], [rework, [...CORE, 'u-burster']]] as const) {
+      for (const id of ids) {
+        const s = c.sprites[id]!, u = Object.values(c.units).find((x) => x.sprite === id)!;
+        const spawner = Object.values(c.buildings).find((b) => b.spawn?.unit === u.id)!;
+        expect(s.shape, id).toEqual({ body: bodyOf(u.armor) });
+        expect(s.frames, id).toHaveLength(3);
+        expect([...shapeProblems(s, c.bands[c.spriteSheet[id]!]), ...unitShapeProblems(u, s)], id).toEqual([]);
+        for (let f = 0; f < 3; f++) expect(bodyBox(s, f)!.w, `${id} frame ${f}`).toBeLessThanOrEqual(widthBound(baseSquad(spawner) + 1));
+      }
+    }
+  });
+
+  it('every tower with an attack stands on an e-<id> emplacement with a structure body, and no mark', () => {
+    for (const c of [content, rework]) {
+      const towers = Object.values(c.buildings).filter((b) => b.kind === 'tower' && b.attack);
+      expect(towers.map((b) => b.id)).toContain('puffballMortar');
+      for (const b of towers) {
+        const s = c.sprites[`e-${b.id}`]!;
+        expect(s.shape, s.id).toEqual({ body: 'structure' });
+        expect([...emplacementShapeProblems(b, s), ...shapeProblems(s, c.bands[c.spriteSheet[s.id]!])], s.id).toEqual([]);
+      }
+    }
   });
 });
