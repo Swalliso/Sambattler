@@ -151,4 +151,25 @@ describe('data', () => {
       }
     });
   });
+
+  // An emplacement's sprite (§5.8, R4-Q5; R4a call 4, T029): every tower with an attack stands on `e-<id>`,
+  // which declares a structure body.
+  describe('emplacement shapes', () => {
+    /** The raw content with the Mortar's emplacement edited, or dropped from its sheet. */
+    function withMortar(edit: (s: Loose, sheet: Loose) => void): Loose {
+      const r = structuredClone(raw) as Loose;
+      const sheet = r['sprites/buildings.json'];
+      edit(sheet.sprites.find((x: Loose) => x.id === 'e-puffballMortar'), sheet);
+      return r;
+    }
+
+    it('rejects a tower with no emplacement, one with no shape, and one drawn as a unit', () => {
+      expect(() => loadContent(withMortar((_, sheet) => { sheet.sprites = sheet.sprites.filter((x: Loose) => x.id !== 'e-puffballMortar'); })))
+        .toThrow(/building puffballMortar: emplacement sprite "e-puffballMortar" does not exist/);
+      expect(() => loadContent(withMortar((s) => { delete s.shape; })))
+        .toThrow(/building puffballMortar: emplacement sprite e-puffballMortar declares no shape/);
+      expect(() => loadContent(withMortar((s) => { s.shape.body = 'medium'; })))
+        .toThrow(/building puffballMortar: sprite e-puffballMortar has a medium body, but an emplacement's is structure/);
+    });
+  });
 });

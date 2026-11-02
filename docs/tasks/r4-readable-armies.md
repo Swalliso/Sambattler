@@ -269,15 +269,15 @@ This list was drafted on 2026-11-01 from SPEC v2 and `docs/tasks/spec-analysis.m
 
 **Goal:** the six core archetypes and the Mortar's emplacement follow the shape language on the field. **Independent test:** see Stories.
 
-- [ ] T027 [US3] Add cases to `tests/unit/shapes.test.ts` and `tests/unit/data.test.ts` (§5.8, §11.2, §14.3)
+- [x] T027 [US3] Add cases to `tests/unit/shapes.test.ts` and `tests/unit/data.test.ts` (§5.8, §11.2, §14.3)
   - `u-sporeling`, `u-capguard`, `u-gillArcher`, `u-amanitaKnight` and `u-hammercap` (default content) and `u-burster` (`protoContent('rework')`) declare shapes and pass.
   - Every `tower` building with an attack has an `e-<id>` sprite whose body is `structure`. It carries no weapon mark (T077).
-- [ ] T028 [US3] Redraw the core six in `data/sprites/units.json` from the approved sheet: `u-sporeling`, `u-capguard`, `u-gillArcher`, `u-amanitaKnight`, `u-hammercap` and `u-burster` (§5.8, §11.3, §14.3, §17 #20)
+- [x] T028 [US3] Redraw the core six in `data/sprites/units.json` from the approved sheet: `u-sporeling`, `u-capguard`, `u-gillArcher`, `u-amanitaKnight`, `u-hammercap` and `u-burster` (§5.8, §11.3, §14.3, §17 #20)
   - Three frames each: two walk frames and an attack frame.
   - Bodies in T004's bands and within its width bound, with a shape block (`{ body }`). No mark glyph: a weapon the silhouette draws, such as the Gill Archer's bow or the Hammercap's maul, is body (T077).
   - Ids unchanged, anchors at the foot, and the swappable keys `v l d s t` for the body only.
   - Add `"bands"` to the sheet.
-- [ ] T029 [US3] Draw `e-puffballMortar` (new sprite, at most 32 × 32, one slot) in `data/sprites/buildings.json`, with `shape: { body: 'structure' }` and no weapon mark (T077). Add the tower check to `src/data/registry.ts`, and add `emplacementSprite(content, buildingId)` to `src/render/unitSprite.ts`: `e-<id>` if it exists, else the building's sprite. v1's battle keeps drawing the Mortar as its building, and R2a's clash view draws the emplacement through this helper (§4.4, §5.8, §11.2) ⛔ R4-Q5
+- [x] T029 [US3] Draw `e-puffballMortar` (new sprite, at most 32 × 32, one slot) in `data/sprites/buildings.json`, with `shape: { body: 'structure' }` and no weapon mark (T077). Add the tower check to `src/data/registry.ts`, and add `emplacementSprite(content, buildingId)` to `src/render/unitSprite.ts`: `e-<id>` if it exists, else the building's sprite. v1's battle keeps drawing the Mortar as its building, and R2a's clash view draws the emplacement through this helper (§4.4, §5.8, §11.2) ⛔ R4-Q5
   - From S2 and T077: `emplacementShapeProblems(building, sprite)` in `src/data/shapes.ts` already checks that the body is `structure`. The tower check calls it, and adds that the sprite exists and declares a shape.
 
 **Checkpoint:** `npm run verify`, `npm run golden -- verify` (unchanged) and `npm run sprite-sheet`. In the r4-lineup PNG, the core units stand in their bands, each its own silhouette, on both sides.

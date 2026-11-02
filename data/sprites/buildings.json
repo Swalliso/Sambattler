@@ -356,6 +356,57 @@
         "kbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbk"
       ]
      ]},
+    {"id": "e-puffballMortar", "w": 24, "h": 22, "anchor": [12, 11], "factionSwap": true, "palette": {".": null, "d": "#5a2f99", "e": "#120a16", "h": "#7a5236", "j": "#4e3322", "k": "#1a1020", "l": "#c9a2ff", "n": "#5c4330", "v": "#8a4fd8", "w": "#f4eee6"}, "shape": {"body": "structure"},
+     "frames": [
+      [
+        "..............kkkk......",
+        "............kkeeeekk....",
+        "........kkkkkeeeeeek....",
+        "......kkllllkeeeeek.....",
+        ".....kllwwllllkkkkk.....",
+        "....kllwwllllllllvk.....",
+        "...kllllllllllllvvvk....",
+        "...klllllllllllvvvvk....",
+        "..kllllllllllllvvvvvk...",
+        "..klllllllllllvvvvvvk...",
+        "..kllllllllllvvvvvvvk...",
+        "..kllllllllvvvvvvvvvk...",
+        "...klllllvvvvvvvvvvk....",
+        "...kddvvvvvvvvvvvddk....",
+        "....kkdddddddddddkk.....",
+        "......kkkhhhhhhkkk......",
+        ".......khhjjjjhhk.......",
+        "....kkkkhhjjjjhhkkkk....",
+        "..kknnnnhhjjjjhhnnhnkk..",
+        ".knhnnnnnnnnnnnnnnnnnnk.",
+        "knnnnhnnnnnnnnnnhnnnnnnk",
+        "kkkkkkkkkkkkkkkkkkkkkkkk"
+      ],
+      [
+        "..............kkkk......",
+        "............kkewwekk....",
+        "........kkkkkeewweek....",
+        "......kkllllkeeeeek.....",
+        ".....kllwwllllkkkkk.....",
+        "....kllwwllllllllvk.....",
+        "...kllllllllllllvvvk....",
+        "...klllllllllllvvvvk....",
+        "..kllllllllllllvvvvvk...",
+        "..klllllllllllvvvvvvk...",
+        "..kllllllllllvvvvvvvk...",
+        "..kllllllllvvvvvvvvvk...",
+        "...klllllvvvvvvvvvvk....",
+        "...kddvvvvvvvvvvvddk....",
+        "....kkdddddddddddkk.....",
+        "......kkkhhhhhhkkk......",
+        ".......khhjjjjhhk.......",
+        "....kkkkhhjjjjhhkkkk....",
+        "..kknnnnhhjjjjhhnnhnkk..",
+        ".knhnnnnnnnnnnnnnnnnnnk.",
+        "knnnnhnnnnnnnnnnhnnnnnnk",
+        "kkkkkkkkkkkkkkkkkkkkkkkk"
+      ]
+     ]},
     {"id": "b-truffleCellar", "w": 32, "h": 32, "anchor": [0, 0], "factionSwap": true, "palette": {".": null, "b": "#3b2a1e", "g": "#f0c85a", "h": "#7a5236", "j": "#4e3322", "k": "#1a1020", "l": "#c9a2ff", "n": "#5c4330", "q": "#6b4a3c", "r": "#3d2620", "s": "#e8d9b5", "v": "#8a4fd8"},
      "frames": [
       [

@@ -8,6 +8,25 @@ replaces. None of it is open work, including headings that say "Open:". From mil
 entries measure or tune v2's round battle (SPEC §11, §12). "The backlog" in the entries below means
 v1's, now [archived](../docs/archive/v1/balance-backlog.md).
 
+## R4a-S3: the core six and the Mortar's emplacement redrawn (2026-11-01)
+
+**Display only, no golden moved.** It rests on the silhouette sheet the user approved as drawn on 2026-11-01
+(R4/T026, `docs/r4a-plan.md`), and on their decision that units carry no weapon mark (T077, SPEC §5.8). No number
+or rule changed: sprites aren't battle state, and no sprite id changed.
+- **`data/sprites/units.json`** (R4/T028): the sheet has `bands` (small 8–9, medium 11–12, big 15–16 px).
+  `u-sporeling`, `u-capguard`, `u-gillArcher`, `u-amanitaKnight`, `u-hammercap` and `u-burster` are redrawn, each
+  with a shape block (`{ body }`) and three frames: the approved sheet's frame 0, a second walk frame and an attack
+  frame. The attacks: the Sporeling lunges, the Capguard crouches behind its cap, the Gill Archer has loosed its
+  arrow, the Knight dips its dome, the Hammercap's maul comes down and the Burster swells.
+  - Heights: the Sporeling and the Burster 8 px, the Gill Archer 9, the Capguard and the Hammercap 12 (11 in the
+    attack frame) and the Knight 16 (15). Widths: 8 to 10 px, and the Knight's 16, all within their squads' bounds.
+  - The other seven keep their v1 sprites until R4a-S4.
+- **`data/sprites/buildings.json`** (R4/T029): `e-puffballMortar` (new), 24 × 22 and anchored at its centre, a
+  structure body with no mark. Frame 0 is the approved one, and a second frame glints spores in the barrel, for a
+  view that animates a building's two frames. v1's battle still draws the Mortar as `b-puffballMortar`.
+- **The tower check** (`src/data/registry.ts`): every tower with an attack has an `e-<id>` sprite that declares a
+  structure body, or the data fails to load. `emplacementSprite()` in `src/render/unitSprite.ts` finds it.
+
 ## R4a-S2b: the mark glyphs retired (2026-11-01)
 
 **Display only, no golden moved.** It rests on the user's decision of 2026-11-01, at the silhouette sheet's review
