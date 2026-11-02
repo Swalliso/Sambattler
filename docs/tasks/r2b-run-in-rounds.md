@@ -6,6 +6,8 @@ R2b finishes SPEC §16 R2's Goal: the battle in rounds that R2a built now sits "
 
 If the user picks X2's alternative (one `feature/r2-rounds` for all of R2), this file's sessions become sub-PRs into that branch after R2a's, S4b drops, and the playtest gate merges with R2a's. The tasks stay the same. If the user rejects X1 (one R2), this file and R2a's merge into one list and one plan, with one gate at the end.
 
+X1 and X2 were decided on 2026-11-02 (`docs/tasks/clarify.md`). R2 splits in two, and R2a goes beside v1. The user also said develop may switch wholly to v2 from now on. So S0 decides whether S1–S4 still need `feature/r2b-cutover` or land on develop directly (Call 14). Verify stays green on every PR either way.
+
 ## Read first
 
 - **SPEC:**
@@ -39,7 +41,7 @@ If the user picks X2's alternative (one `feature/r2-rounds` for all of R2), this
 
 | Ref | Decision (recommendation) | Blocks |
 |---|---|---|
-| X1, X2 | R2 split in two; R2b's S1–S4 on `feature/r2b-cutover`, merged into develop at S4b (Call 14) | S0 |
+| X1, X2 | R2 split in two; R2b's S1–S4 on `feature/r2b-cutover`, merged into develop at S4b (Call 14). Decided 2026-11-02: split, and develop may switch wholly to v2, so S0 decides whether the cutover branch is still needed | S0 |
 | #32 | A run saved before R2 migrates: lives = 3 − v1 battles lost (at least 1), plots by sprawl | S1 |
 | R2-Q23 | The run's kit stays a list of building ids until R3 (copy counts if X4 brought copies into R2a) | S1 |
 | #16 | A boss loss ends the run; "lives left count at the boss" as a default-off knob | S1 |
