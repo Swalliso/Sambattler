@@ -3,7 +3,7 @@
 // come from v1's file and are re-exported, so rounds' modules import from here; the rest are §14.4's and
 // §14.5's. The library and the compiled sides hold ids and numbers only, so rewording a card never moves a
 // round golden (R2-Q8, A152).
-import type { BalanceDef, BuildingDef, PowerDef, TriggerDef, UnitDef } from '../../data/schema.ts';
+import type { BalanceDef, BuildingDef, ModifierDef, PowerDef, TriggerDef, UnitDef } from '../../data/schema.ts';
 import type { Slot } from '../formation.ts';
 import type {
   Armor, BattleModifier, BuildingKind, CloudSpec, CloudState, CompiledTier, Controller, CounterKind, DamageType,
@@ -247,6 +247,20 @@ export interface SquadState {
   supply: number;
   /** R3: the combos it took into this clash. */
   combos: string[];
+  /** Its units' own stats, where something reaches this squad alone (T046). Absent otherwise: its units read their side's unit. */
+  stats?: SquadStats;
+}
+
+/**
+ * A squad's own unit stats (§5.6, §14.2, T046, A028): its side's unit with the patches that reach this squad
+ * alone, compiled at Begin and never per tick. Its units read them through `sourceBuildingId`, so a unit knit
+ * from two squads has its lowest-id parent's (R2-Q11). R3 adds augment and combo patches here (A131).
+ */
+export interface SquadStats {
+  /** In R2a, the side's unit modifiers whose `rank` or `onLoam` holds at the squad's plot. */
+  patches: ModifierDef[];
+  /** The unit at its three tiers: the side's modifiers, then the patches. */
+  tiers: [CompiledTier, CompiledTier, CompiledTier];
 }
 
 /** A lane's lock, written the tick it ends; the lane then freezes and scoring reads the lock, not the units (§6.7, A030). */
@@ -254,10 +268,13 @@ export interface LaneLock {
   ended: boolean;
   endTick: number;
   winner: Side | null;
+  /** Decided at the cap on surviving supply, not by a wipe: `LaneResult.capped`. */
+  capped: boolean;
   /** Plain surviving supply: merged units count their own, siege units once (§6.7). */
   survivors: Record<Side, number>;
   /** The supply toward Heartcap damage, with siege units counting double. */
   damageSupply: Record<Side, number>;
+  /** The winner's damage supply less the loser's, never below 0, and 0 for a draw (§6.7, #22). */
   margin: number;
 }
 
@@ -265,6 +282,8 @@ export interface ClashState {
   /** The clash's cap falls at `startTick + rules.clashCapTicks`. */
   startTick: number;
   lanes: LaneLock[];
+  /** What each side fields this round, recorded at Begin as it stands after the muster; scoring puts it in the round's `RoundResult` (T051). */
+  fielded: Record<Side, FieldedSquad[]>;
 }
 
 export interface LaneResult {
@@ -441,6 +460,11 @@ export type SimEvent =
   | { t: 'clashStarted'; round: number; supply: Record<Side, number> }
   /** A squad's units, on the clash's first tick. */
   | { t: 'arrived'; side: Side; ids: number[] }
+  /**
+   * A trio the muster knits inside Begin, after its `merged` (§5.6): the arrived units it's made of, by building
+   * and index j in that squad (`MergePreview`'s trios), and the unit it made. The view animates the 1 s from it.
+   */
+  | { t: 'musterKnit'; side: Side; id: number; parts: { building: number; j: number }[]; tier: 2 | 3; x: number; y: number }
   | { t: 'hit'; target: number; src: number; amount: number; eff: Effectiveness; x: number; y: number; splash: boolean }
   | { t: 'died'; id: number; side: Side; unitId: string; x: number; y: number }
   | { t: 'healed'; target: number; src: number; amount: number; x: number; y: number }

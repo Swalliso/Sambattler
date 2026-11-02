@@ -69,6 +69,9 @@ export type Match = (w: SelectorDef | undefined) => boolean;
 /** Where a squad's or building's plot stands, which `rank` and `onLoam` read (§4.6). */
 export interface Place { rank: number; terrain: Terrain }
 
+/** Does a selector read a squad's or building's plot, by its `rank` or `onLoam` (§4.6, T046)? */
+export const onPlot = (w: SelectorDef | undefined): boolean => !!w && (w.rank !== undefined || w.onLoam !== undefined);
+
 /**
  * Does a selector's plot part hold at `place`: `rank` the plot's rank, `onLoam` whether it's a loam plot.
  * Without a place it never does, so a side-wide compile leaves the modifier to each squad's plot (T046).

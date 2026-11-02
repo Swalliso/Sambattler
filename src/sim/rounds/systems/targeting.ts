@@ -8,7 +8,7 @@ import { other } from '../state.ts';
 import type { BattleState, UnitState } from '../state.ts';
 import { buildGrid, nearBuffer, queryNear } from '../spatial.ts';
 import { MAX_RADIUS, edgeDistance, tp } from '../targets.ts';
-import { findUnit, tierDef, unitDef, unitRadius } from '../world.ts';
+import { findUnit, frozen, tierDef, unitDef, unitRadius } from '../world.ts';
 
 let bestId = 0, bestD = 0, bestPref = false;
 
@@ -26,6 +26,7 @@ export function targetingSystem(state: BattleState): void {
   const tick = state.tick;
   const cloud = state.rules.cloud;
   for (const u of state.units) {
+    if (frozen(state, u.lane)) continue; // an ended lane holds still (§6.7)
     if (u.knit) { u.targetId = 0; continue; } // knitting units stop retargeting (SPEC §5.6)
     if (u.burrowed) { u.targetId = 0; continue; } // a tunnelling unit has no target (§5.2)
     const em = unitDef(state, u).emplacement;

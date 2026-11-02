@@ -11,15 +11,15 @@ import { SIDES, other } from '../state.ts';
 import type { BattleState, CompiledTier, Side, UnitState } from '../state.ts';
 import { buildGrid, nearBuffer, queryNear } from '../spatial.ts';
 import { MAX_RADIUS, edgeDistance, tp } from '../targets.ts';
-import { clampToLane, isEmplacement, tierDef, unitDef, unitRadius } from '../world.ts';
+import { clampToLane, frozen, isEmplacement, tierDef, unitDef, unitRadius } from '../world.ts';
 
 export function movementSystem(state: BattleState): void {
   const r = state.rules;
   prepareSeek(state);
   for (const u of state.units) {
     const def = unitDef(state, u);
-    if (def.emplacement) continue; // it never moves (§6.7)
-    const t = def.tiers[u.tier - 1]!;
+    if (def.emplacement || frozen(state, u.lane)) continue; // it never moves, nor does an ended lane (§6.7)
+    const t = tierDef(state, u);
     const rad = t.radius;
     const speed = t.speedPerTick;
     if (u.burrowed) { tunnel(state, u, t); continue; }
@@ -163,6 +163,7 @@ function separationSystem(state: BattleState): void {
   for (let pass = 0; pass < passes; pass++) {
     for (let i = 0; i < units.length; i++) {
       const a = units[i]!;
+      if (frozen(state, a.lane)) continue; // pairs share a lane
       const ra = unitRadius(state, a);
       const fixedA = isEmplacement(state, a);
       const n = queryNear(a.x, a.y, ra + MAX_RADIUS + 0.5);

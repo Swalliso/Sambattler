@@ -7,6 +7,7 @@
 // and `placement.ts` until R2b moves it to `src/sim/planning.ts`.
 import { addBuilding } from './create.ts';
 import { atMaxOwned, inKit } from './kit.ts';
+import { startClash } from './round.ts';
 import type { BattleState, Command, Side } from './state.ts';
 
 /** The planning commands, which run in the planning phase only (§4.2). */
@@ -66,12 +67,12 @@ export function toggleMerge(state: BattleState, side: Side, entityId: number, on
 /**
  * `beginClash`'s planning half (§4.7 step 12, §14.5): only the player's side begins the clash, a bot or
  * general there included (plan Call 8). R2b also refuses it while the side's draft is open; R2a has no
- * drafts (plan Call 26).
+ * drafts (plan Call 26). Its clash half, `startClash` in `round.ts`, then fields both armies.
  */
-export function beginClash(_state: BattleState, side: Side): string | null {
+export function beginClash(state: BattleState, side: Side): string | null {
   if (side !== 'player') return 'beginClashNotPlayer';
-  // Begin, its clash half, lands with T043 in `round.ts`; until then a Begin is refused there
-  return 'notInRoundsYet';
+  startClash(state);
+  return null;
 }
 
 /**

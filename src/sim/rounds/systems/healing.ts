@@ -7,7 +7,7 @@
 import { nearBuffer, queryNear } from '../spatial.ts';
 import { MAX_RADIUS } from '../targets.ts';
 import type { BattleState, CompiledTier, UnitState } from '../state.ts';
-import { isEmplacement, tierDef, unitRadius } from '../world.ts';
+import { frozen, isEmplacement, tierDef, unitRadius } from '../world.ts';
 
 const picked: UnitState[] = [];
 
@@ -15,7 +15,7 @@ export function healingSystem(state: BattleState): void {
   const tick = state.tick;
   const r = state.rules;
   for (const u of state.units) {
-    if (u.hp <= 0) continue;
+    if (u.hp <= 0 || frozen(state, u.lane)) continue; // nothing heals in an ended lane (§6.7)
     const t = tierDef(state, u);
     if (t.healAmount > 0 && !u.knit && (tick + u.id) % t.healTicks === 0) heal(state, u, t);
     if (t.regenPct > 0 && tick % r.tickRate === 0 && u.hp < u.maxHp && tick - u.lastCombatTick >= r.merge.cooldownTicks) {

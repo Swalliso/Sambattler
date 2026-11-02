@@ -68,7 +68,6 @@ function execute(state: BattleState, cmd: Command): void {
     case 'sell':
     case 'toggleMerge':
     case 'beginClash': {
-      // planning.ts refuses Begin until its clash half lands (S6, T043)
       const problem = executePlanning(state, cmd);
       if (problem) reject(state, cmd, problem);
       return;

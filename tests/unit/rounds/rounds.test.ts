@@ -12,6 +12,7 @@ import {
 } from '../../../src/sim/rounds/index.ts';
 import type { BattleState, Side } from '../../../src/sim/rounds/index.ts';
 import { readRawContent } from '../../../tools/lib/content.ts';
+import { newClash } from '../../../src/sim/rounds/round.ts';
 import { content, planningState } from '../../roundHelpers.ts';
 
 /** Battle `battleIndex` on Bogwater Hollow against `enemy`, with a human player. */
@@ -128,10 +129,7 @@ describe('the queue and the step by phase (§13.3 rule 7, §14.5, §14.6)', () =
   it('advances a clash by exactly one tick a step', () => {
     const s = planningState();
     s.phase = 'clash';
-    s.clash = {
-      startTick: 0,
-      lanes: s.lanes.map(() => ({ ended: false, endTick: 0, winner: null, survivors: { player: 0, enemy: 0 }, damageSupply: { player: 0, enemy: 0 }, margin: 0 })),
-    };
+    s.clash = newClash(s);
     step(s);
     expect(s.tick).toBe(1);
   });

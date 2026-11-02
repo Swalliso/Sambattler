@@ -50,13 +50,16 @@ describe('the schema in rounds (SPEC §14.2)', () => {
     expect(TriggerSchema.safeParse({ on: 'roundLost', do: [{ gainGold: 5 }] }).success).toBe(false);
   });
 
-  it('accepts a rank of 0 to 2, positional as onLoam is, so only where POSITIONAL_STATS allows until T046', () => {
+  it('accepts a rank of 0 to 2, positional as onLoam is: where POSITIONAL_STATS allows, and with onLoam on unit stats (T046)', () => {
     const ok = (stat: string, where: object) => ModifierSchema.safeParse({ stat, op: 'mul', value: 1.2, where }).success;
     for (const rank of [0, 1, 2]) expect(ok('building.goldPerTick', { rank }), `rank ${rank}`).toBe(true);
     expect(ok('building.spawnInterval', { rank: 0, tag: 'swarm' })).toBe(true);
     expect(ok('building.goldPerTick', { rank: 3 })).toBe(false);
     expect(ok('building.goldPerTick', { rank: -1 })).toBe(false);
-    for (const stat of ['unit.hp', 'tower.damage', 'building.spawnCount']) expect(ok(stat, { rank: 0 }), stat).toBe(false);
+    for (const where of [{ rank: 0 }, { onLoam: true }, { rank: 1, tag: 'swarm', tier: 2 }]) expect(ok('unit.hp', where), JSON.stringify(where)).toBe(true);
+    // a unit stat still takes no zone or adjacency, and tower and other building stats no plot
+    for (const where of [{ zone: 'home' }, { adjacentOwnBuildingsGte: 2 }]) expect(ok('unit.damage', where), JSON.stringify(where)).toBe(false);
+    for (const stat of ['tower.damage', 'building.spawnCount']) expect(ok(stat, { rank: 0 }), stat).toBe(false);
   });
 
   it('still refuses any "where" on a side.* or battle.* stat', () => {

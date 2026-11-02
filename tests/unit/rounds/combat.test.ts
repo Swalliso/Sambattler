@@ -1,7 +1,7 @@
 // The kept combat rules in rounds (SPEC §5.2, §5.3, §6.7, §15.7): v1's combat and damage cases in round form,
-// on the copies in `src/sim/rounds/`, plus an emplacement's body rules (§18.2 #10, A029). Until T045 wires
-// the clash into `step`, `tick` runs the kept systems in §14.6's clash order; lane ends and scoring are S6's
-// and S7's.
+// on the copies in `src/sim/rounds/`, plus an emplacement's body rules (§18.2 #10, A029). `tick` runs the
+// kept systems in §14.6's clash order without the clash's own rules, the muster's still ticks and lane ends,
+// which `step` adds and `clash.test.ts` tests.
 import { describe, expect, it } from 'vitest';
 import type { RoundScenarioDef } from '../../../src/data/schema.ts';
 import { addUnit, createFromScenario, formationOf, survivingSupply } from '../../../src/sim/rounds/index.ts';

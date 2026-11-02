@@ -10,7 +10,7 @@ import { POWER_SOURCE_ID, other } from '../state.ts';
 import type { Armor, BattleState, DamageType, Effectiveness, PendingHit, Rules, Side, UnitState } from '../state.ts';
 import { nearBuffer, queryNear } from '../spatial.ts';
 import { MAX_RADIUS, edgeDistance, tp } from '../targets.ts';
-import { findUnit, isEmplacement, soakShield, tierDef, unitDef, unitRadius } from '../world.ts';
+import { findUnit, frozen, isEmplacement, placeOf, soakShield, tierDef, unitDef, unitRadius } from '../world.ts';
 
 const EPS = 1e-6;
 
@@ -59,11 +59,12 @@ export function attackSystem(state: BattleState): void {
   const bursts = !!state.rules.burst;
   for (const u of state.units) {
     if (bursts && u.hp <= 0) continue; // struck down by a burst earlier this tick
+    if (frozen(state, u.lane)) continue; // an ended lane holds still (§6.7)
     if (u.cooldown > 0 && !(pin && pinSkips(state, u, pin))) u.cooldown--;
     if (u.cooldown > 0 || u.targetId === 0) continue;
     const def = unitDef(state, u);
     if (def.support) continue; // healers hold at range and never attack
-    const t = def.tiers[u.tier - 1]!;
+    const t = tierDef(state, u);
     // an emplacement measures from its centre, within its firing band (§6.7)
     const em = def.emplacement;
     const d = edgeDistance(state, u.x, u.y, em ? 0 : t.radius, u.targetId, other(u.side), u.lane);
@@ -216,7 +217,9 @@ export function deathSystem(state: BattleState): void {
     state.events.push({ t: 'died', id: u.id, side: u.side, unitId: u.unitId, x: u.x, y: u.y });
     for (const h of state.hits) if (h.targetId === u.id) { h.x = u.x; h.y = u.y; }
     const def = unitDef(state, u);
-    fireTriggers(state, u.side, 'unitDeath', { x: u.x, y: u.y, lane: u.lane, unitId: u.unitId, tier: u.tier, tags: def.tags, sourceBuildingId: u.sourceBuildingId });
+    fireTriggers(state, u.side, 'unitDeath', {
+      x: u.x, y: u.y, lane: u.lane, unitId: u.unitId, tier: u.tier, tags: def.tags, sourceBuildingId: u.sourceBuildingId, place: placeOf(state, u),
+    });
   }
   units.length = w;
 }

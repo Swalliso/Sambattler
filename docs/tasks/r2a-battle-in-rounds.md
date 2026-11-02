@@ -418,22 +418,22 @@ S1 to S4: the data, the colony, the round state machine and the planning command
   - at the cap, more surviving supply wins; a tie is drawn (E3), and so is emplacements only on both sides (E5);
   - on Twin Roots an ended lane holds still while the other fights: no moves, hits in flight dropped, clouds stopped, no heals or merges;
   - per-squad stats: a front-rank-only modifier reaches rank-0 squads only, and a knit of front and back parts takes the lowest-id parent's squad stats, with HP carried by the ratio.
-- [ ] T046 [US1] Compile per-squad stats in `src/sim/rounds/compile.ts` and `src/sim/rounds/effects.ts`, and allow them in data (§5.6, §14.2, §14.6) (A028, A131)
+- [x] T046 [US1] Compile per-squad stats in `src/sim/rounds/compile.ts` and `src/sim/rounds/effects.ts`, and allow them in data (§5.6, §14.2, §14.6) (A028, A131)
   - In `src/data/schema.ts`, allow `rank` and `onLoam` on `unit.*` stats, beside `POSITIONAL_STATS`. Make v1's `src/sim/compile.ts` skip a unit modifier carrying `rank` or `onLoam`, so v1 never applies one to every unit. v1 also skips a building modifier carrying `rank`, and a trigger whose `if` carries `rank`: S3a's review found that v1's `isPositional` doesn't know `rank`, so it would apply such a modifier to every building and ignore the condition (no data uses `rank` yet).
   - At Begin, the `rank` and `onLoam` selectors on `unit.*` stats build a tier table per squad, and units resolve their stats through `sourceBuildingId`. A unit knit from two squads takes the lowest-id parent's squad (R2-Q11).
   - Shape the table as base stats plus a list of patches per squad, so R3 adds augment and combo patches to it instead of building a second path (A131).
-- [ ] T043 [US1] Build Begin as `beginClash`'s clash half in `src/sim/rounds/round.ts` (new) (§4.7 steps 12–14, §5.6, §14.6) (A024, A026, A032, A047)
+- [x] T043 [US1] Build Begin as `beginClash`'s clash half in `src/sim/rounds/round.ts` (new) (§4.7 steps 12–14, §5.6, §14.6) (A024, A026, A032, A047)
   - It records `bankedAtBegin` and marks every planted building fielded.
   - It compiles stats per squad (T046, above) and places the arrival: every squad's units at `formationOf`'s positions, in plot order, then j.
   - It shields each lane's army of 2 or more unit types (`balance.rounds.arrivalShield`, Call 30) before the muster, as R1's `clashshield` did in `tools/lib/clash.ts`.
   - It resolves the muster's fixed point at once and applies the trios once (Call 4).
   - It writes `RoundResult.fielded` from the units as they then stand, with their lane.
   - It emits `clashStarted`, `arrived` and `musterKnit {parts, tier, x, y}` (the view animates the 1 s from it), then fires `clashStart` triggers and enters the clash.
-- [ ] T044 [US1] Build the clash step in `src/sim/rounds/systems/clash.ts` (new): §14.6's clash steps 1–14 (§5.6, §6.7, §14.6) (A026, A030)
+- [x] T044 [US1] Build the clash step in `src/sim/rounds/systems/clash.ts` (new): §14.6's clash steps 1–14 (§5.6, §6.7, §14.6) (A026, A030)
   - Muster ticks (`startTick + 1` to `+ 20`) skip targeting, movement, separation and attacks. The clock runs against `startTick + 900`.
   - A lane ends on the first tick one side has no units and no emplacements left, or at the cap on surviving supply; its lock record is stored, `laneWon` emitted, and the lane frozen.
   - When every lane has ended, the step hands over to scoring (T051).
-- [ ] T045 [US1] Wire the clash into `src/sim/rounds/step.ts`, which calls the copied systems in §14.6's order (§14.6)
+- [x] T045 [US1] Wire the clash into `src/sim/rounds/step.ts`, which calls the copied systems in §14.6's order (§14.6)
 
 **S7: scoring, the end of a battle and the rule scenarios**
 

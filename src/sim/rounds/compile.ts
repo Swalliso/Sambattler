@@ -7,12 +7,12 @@
 import type { Content } from '../../data/registry.ts';
 import type { ModifierDef, UnitDef } from '../../data/schema.ts';
 import { perkAt, secToTicks } from '../compile.ts';
-import { battleModifiers, buildingMatcher, collectRoundEffects, resolveStat, unitMatcher } from './effects.ts';
-import type { RoundEffects } from './effects.ts';
+import { battleModifiers, buildingMatcher, collectRoundEffects, onPlot, placeMatches, resolveStat, unitMatcher } from './effects.ts';
+import type { Place, RoundEffects } from './effects.ts';
 import { SIDES } from './state.ts';
 import { MAX_RADIUS } from './targets.ts';
 import type {
-  BattleConfig, CompiledBuilding, CompiledSide, CompiledTier, CompiledUnit, DamageType, KitCard, Library, LibraryUnit, Rules, Side, Tier,
+  BattleConfig, CompiledBuilding, CompiledSide, CompiledTier, CompiledUnit, DamageType, KitCard, Library, LibraryUnit, Rules, Side, SquadStats, Tier,
 } from './state.ts';
 
 /**
@@ -153,9 +153,10 @@ function compileRoundBuilding(lib: Library, id: string): CompiledBuilding {
 /**
  * A unit at its three merge tiers (§5.5, §5.6). Its modifiers resolve against the tier-1 base stats, then
  * tier scaling and merge perks apply on top, as v1's `compileUnit` has it (a perk replaces the splash
- * radius, and modifiers adjust the result). A modifier that depends on a plot doesn't reach it here.
+ * radius, and modifiers adjust the result). A modifier that depends on a plot reaches it only on a squad's
+ * plot, `place` (`squadStats`).
  */
-export function compileRoundUnit(lib: Library, id: string, mods: readonly ModifierDef[] = []): CompiledUnit {
+export function compileRoundUnit(lib: Library, id: string, mods: readonly ModifierDef[] = [], place?: Place): CompiledUnit {
   const u = lib.units[id];
   if (!u) throw new Error(`unknown unit ${id}`);
   return {
@@ -168,15 +169,28 @@ export function compileRoundUnit(lib: Library, id: string, mods: readonly Modifi
     slayer: u.tags.includes('slayer'),
     support: !!u.heal,
     tags: [...u.tags],
-    tiers: [compileTier(lib, u, 1, mods), compileTier(lib, u, 2, mods), compileTier(lib, u, 3, mods)],
+    tiers: [compileTier(lib, u, 1, mods, place), compileTier(lib, u, 2, mods, place), compileTier(lib, u, 3, mods, place)],
   };
 }
 
-function compileTier(lib: Library, u: LibraryUnit, tier: Tier, mods: readonly ModifierDef[]): CompiledTier {
+/**
+ * A squad's own unit stats (§5.6, §14.2, T046, A028), compiled at Begin: the side's unit modifiers whose
+ * `rank` or `onLoam` holds at the squad's plot are its patches, and its tiers resolve the side's other
+ * modifiers with the patches after them. Undefined when no patch reaches it, so its units read the side's
+ * unit. R3 adds augment and combo patches to the same list rather than build a second path (A131).
+ */
+export function squadStats(lib: Library, unitId: string, mods: readonly ModifierDef[], place: Place): SquadStats | undefined {
+  const patches = mods.filter((m) => m.stat.startsWith('unit.') && onPlot(m.where) && placeMatches(m.where!, place));
+  if (!patches.length) return undefined;
+  const sideWide = mods.filter((m) => !onPlot(m.where));
+  return { patches, tiers: compileRoundUnit(lib, unitId, [...sideWide, ...patches], place).tiers };
+}
+
+function compileTier(lib: Library, u: LibraryUnit, tier: Tier, mods: readonly ModifierDef[], place?: Place): CompiledTier {
   const b = lib.balance;
   const tr = b.tickRate;
   const p = perkAt(u as UnitDef, tier); // it reads only the merge perks, and the library's unit has no name
-  const match = unitMatcher(lib, u, tier);
+  const match = unitMatcher(lib, u, tier, place);
   const m = (stat: string, base: number) => resolveStat(base, mods, stat, match);
   const stat = tier === 1 ? 1 : tier === 2 ? b.tierStatMult : b.tierStatMult * b.tierStatMult;
   const size = tier === 1 ? 1 : tier === 2 ? b.tierRadiusMult : b.tierRadiusMult * b.tierRadiusMult;
