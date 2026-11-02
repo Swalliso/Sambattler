@@ -358,7 +358,7 @@ The armies (T011–T012) need nothing from `formation.ts` or the switches, so S2
 
 **Goal:** the race-model section for X5, the cap-binding and drawn shares, and the battle-1 pairing table. **Independent test:** `npx vitest run tests/unit/roundRace.test.ts` passes, and the small US2 run prints a race section.
 
-- [ ] T032 [P] [US4] Write the race tests in `tests/unit/roundRace.test.ts` (new) (§6.4, §6.5, §6.7) ⛔ X5
+- [x] T032 [P] [US4] Write the race tests in `tests/unit/roundRace.test.ts` (new) (§6.4, §6.5, §6.7) ⛔ X5
   - A stream of 400-raw wins routs a 2000 Heartcap in round 5 (400 × 4, then 480).
   - A raw 600 is capped to 500. At round 9 a raw 200 becomes 400 and a raw 300 is capped at 500: the storm applies before the cap.
   - Both Heartcaps at 0 in one round: the player loses (E8).
@@ -366,7 +366,7 @@ The armies (T011–T012) need nothing from `formation.ts` or the switches, so S2
   - The alternatives: a cap of 25% of the loser's max HP (500 against 2000, 750 against 3000, 900 against the boss's 3600); the cap × stormBp; equal Heartcaps (2000 + 250 × (i − 1) on both sides).
   - Round r of battle i reads the clash at the measured budget nearest below 300 + 75 × (i − 1) + 150 × (r − 1), at most 1,500.
   - The G4 case: `raceReport` builds it only from records whose armies are `bot:balanced` against `general:scripted`, or `bot:balanced` against itself with the second army on seed 1,000 + s; a G3 record (a mono against `bot:balanced`) never enters it. In the first, the `bot:balanced` side is the player whichever seat it played. X5's section lists the G4 case first, then the G3 cases.
-- [ ] T033 [US4] Build the race model in `tools/lib/roundRace.ts` (new): `raceBattle(rounds, opts)` and `raceReport(records, opts)`, pure functions over clash records (§6.4, §6.5, §6.7, §4.5) ⛔ X5
+- [x] T033 [US4] Build the race model in `tools/lib/roundRace.ts` (new): `raceBattle(rounds, opts)` and `raceReport(records, opts)`, pure functions over clash records (§6.4, §6.5, §6.7, §4.5) ⛔ X5
   - The G4 case first (A193): G4's pairing (§12.3), `bot:balanced` against `general:scripted` at every budget on the one-lane field, 50 seeds per seat, with `bot:balanced` as the player (3000). Beside it, `bot:balanced` against itself on fresh seeds (the second army on seed 1,000 + s), where the seat sets who is the player. These are even battles, the population A193's claim and G4's band (≤ 15% reach round 9, median 6–8) are about. X5's section quotes them first.
   - Then the G3 cases, the lopsided ones: each (mono, seed, seat, field) of G3's records. The seat as played sets who is the player (3000).
   - Each case gives one battle per battle index 1–5, a Fortified elite at index 3 (the general's Heartcap +30%) and the boss (3600, index 6).
