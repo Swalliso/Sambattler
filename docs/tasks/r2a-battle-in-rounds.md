@@ -298,13 +298,13 @@ S1 to S4: the data, the colony, the round state machine and the planning command
   - `homeCols` 6 and `startRanks` 2, with the arena plain soil.
   - v1 keeps reading `tiles` and `homeCols`, so no hash moves. `test-3lane`'s colony (homeCols 6, 4-row lanes) is for tests and the bench only.
 - [x] T018 Build `colonyPlots(map, side, plotCount)`, `plotNeighbors(plots, i)` and `openOrder(map)` in `src/sim/rounds/colony.ts` (new): pure functions of the map's `colony` block that return `PlotState`-shaped records `{lane, rank, file, col, row, terrain, open}` (§4.6, §13.3 rule 4)
-- [ ] T019 Write `tests/unit/rounds/formation.test.ts` (new) for the pure core (§4.6, §5.6, §15.7 Formation, Merging)
+- [x] T019 Write `tests/unit/rounds/formation.test.ts` (new) for the pure core (§4.6, §5.6, §15.7 Formation, Merging)
   - Bogwater's slots: the player's in columns 9–12, the general's in 19–22, the third rank 2 columns further back.
   - The k × k grid fills front to back, then top to bottom, with front toward the enemy. Holes stay holes, and an emplacement stands at its slot's centre. An overflowing squad packs tighter (#11).
   - Arrival order is plot order, then j (A024).
   - A Burrow's 8 come to 2 Bloomed and 2 base. Two Burrows side by side, and three in a row, give the same result whichever was planted first.
   - Nothing knits across Twin Roots' root wall, even with a merge-radius bonus (A040).
-- [ ] T020 Build `formationFor(input)` and `musterFor(input)` in `src/sim/rounds/formation.ts` (new) on R1's `src/sim/formation.ts` (§4.6, §5.6, §14.6) (A024, A039, A040)
+- [x] T020 Build `formationFor(input)` and `musterFor(input)` in `src/sim/rounds/formation.ts` (new) on R1's `src/sim/formation.ts` (§4.6, §5.6, §14.6) (A024, A039, A040)
   - The input is plain: the map's geometry, the side, and each plot's building `{id, squad {unitId, count, radius}, kind, mergeOn}`, plus `firstKey`, the side's `mergeRadius` (with any bonus), `radiusOf(unitId, tier)` and the map's width, passed straight to R1's `musterKnits`.
   - `formationFor` gives one slot per plot in the same rank and file, and squads in plot order with each unit's absolute position.
   - `musterFor` runs R1's knitting to a fixed point on those positions, in arrival order, within each lane. It returns Call 5's shape.
