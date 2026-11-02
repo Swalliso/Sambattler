@@ -364,21 +364,21 @@ S1 to S4: the data, the colony, the round state machine and the planning command
 
 **S4: planning commands, the kit and the formation on state**
 
-- [ ] T030 Write `tests/unit/rounds/planning.test.ts` (new) (§4.2, §4.4, §4.7, §14.5) (A034):
+- [x] T030 Write `tests/unit/rounds/planning.test.ts` (new) (§4.2, §4.4, §4.7, §14.5) (A034):
   - one case per refusal: the wrong phase; another side's plot or building; a taken plot; a stump plot; a closed plot; a card not in the kit; not enough gold; an enemy-side command after the opening; `beginClash` from the enemy;
   - a refund of 100% in the planting phase if unfielded, else floor(60%); the plot frees at once;
   - `toggleMerge` works only on your own spawner;
   - `state.tick` doesn't move over N planning steps;
   - replaying the log reproduces the same rejections; `priceOf` has no column term.
-- [ ] T031 Build the planning executors and checks in `src/sim/rounds/planning.ts` (new): `plant`, `sell`, `toggleMerge` and `beginClash`'s planning half, plus `legalPlots`, `plantProblem`, `priceOf` and `sellValue` (§4.4, §4.7, §14.5, §14.6) (A034)
+- [x] T031 Build the planning executors and checks in `src/sim/rounds/planning.ts` (new): `plant`, `sell`, `toggleMerge` and `beginClash`'s planning half, plus `legalPlots`, `plantProblem`, `priceOf` and `sellValue` (§4.4, §4.7, §14.5, §14.6) (A034)
   - Each command is checked again when it runs; a refusal is a `commandRejected` with a reason, counted in `stats.rejectedCommands`.
   - Events: `buildingPlanted`, `buildingSold {refund}`, `mergeToggled`.
-- [ ] T032 Write the kit cases in `tests/unit/rounds/planning.test.ts` (§4.4, §18.1 D45):
+- [x] T032 Write the kit cases in `tests/unit/rounds/planning.test.ts` (§4.4, §18.1 D45):
   - a single battle's kit is the faction roster, and a card outside it is refused;
   - with no copy limit (D45; X4 decided no, 2026-11-02), a card plants until the plots run out;
   - the general plants by `maxOwned`.
-- [ ] T033 Build the kit in `src/sim/rounds/kit.ts` (new): `kitOf(content, side, config)`, a single battle's faction roster, and `inKit`, which `plant` checks. There are no copies (D45, Call 29), and the general keeps `maxOwned` (§7.8); R3 adds copies here, and the general's are #42's (§4.4, §14.6, §18.1 D45) (A033, A145, A194, A196)
-- [ ] T034 Build `formationOf(state, side, change?)` and `mergePreview(state, side, change?)` in `src/sim/rounds/formation.ts` on T020's core, and export both with `survivingSupply` from `src/sim/rounds/index.ts` (§4.6, §5.6, §14.6) (A032, A060)
+- [x] T033 Build the kit in `src/sim/rounds/kit.ts` (new): `kitOf(content, side, config)`, a single battle's faction roster, and `inKit`, which `plant` checks. There are no copies (D45, Call 29), and the general keeps `maxOwned` (§7.8); R3 adds copies here, and the general's are #42's (§4.4, §14.6, §18.1 D45) (A033, A145, A194, A196)
+- [x] T034 Build `formationOf(state, side, change?)` and `mergePreview(state, side, change?)` in `src/sim/rounds/formation.ts` on T020's core, and export both with `survivingSupply` from `src/sim/rounds/index.ts` (§4.6, §5.6, §14.6) (A032, A060)
   - Add cases to `tests/unit/rounds/formation.test.ts`: a `change` preview equals the state after that change; `hashState` and every rng stream are unchanged after either call.
 
 **Checkpoint:** `npm run verify` is green with only S1's v1 golden refresh; `npx vitest run tests/unit/rounds` passes.

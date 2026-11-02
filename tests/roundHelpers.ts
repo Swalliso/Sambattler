@@ -1,10 +1,11 @@
 // Shared fixtures for the round-form unit suite (SPEC §15.7, §4.6, §4.7, §14.4): a battle in rounds in its
 // planning phase, or one built from a round scenario. v1's tests keep `tests/helpers.ts` and its
 // `liveState` until R2b folds this file into it. Each later helper lands with the task that builds its
-// command: `plant`, `sell` and `toggle` with T031, `begin` and `stepClash` with T043, `finishRound` with T052.
+// command: `plant`, `sell` and `toggle` came with T031; `begin` and `stepClash` come with T043, `finishRound`
+// with T052.
 import { nodeContent } from '../tools/lib/content.ts';
-import { createFromScenario, SIDES } from '../src/sim/rounds/index.ts';
-import type { BattleState, Flags, RoundScenarioOverrides, Side } from '../src/sim/rounds/index.ts';
+import { commandStamp, createFromScenario, queueCommand, SIDES, step } from '../src/sim/rounds/index.ts';
+import type { BattleState, CommandBody, Flags, RoundScenarioOverrides, Side, SimEvent } from '../src/sim/rounds/index.ts';
 
 export const content = nodeContent();
 
@@ -45,3 +46,27 @@ export function planningState(opts: PlanningOptions = {}): BattleState {
 export function fromScenario(id: string, over: RoundScenarioOverrides = {}): BattleState {
   return createFromScenario(content, id, over);
 }
+
+/** A plot named as §4.6 names it. */
+export interface PlotPlace { lane: number; rank: number; file: number }
+
+/** The index of the side's plot at a lane, rank and file. */
+export function plotAt(s: BattleState, side: Side, at: PlotPlace): number {
+  const i = s.sides[side].plots.findIndex((p) => p.lane === at.lane && p.rank === at.rank && p.file === at.file);
+  if (i < 0) throw new Error(`${side} has no plot at lane ${at.lane}, rank ${at.rank}, file ${at.file}`);
+  return i;
+}
+
+/** Queues a command for the side and steps once, so a planning command runs (§13.3 rule 7). It returns the step's events. */
+export function command(s: BattleState, side: Side, body: CommandBody): SimEvent[] {
+  queueCommand(s, { ...commandStamp(s), side, ...body });
+  step(s);
+  return [...s.events];
+}
+
+/** Plants a building on the side's plot at a lane, rank and file, through the queue (T031). */
+export const plant = (s: BattleState, side: Side, buildingId: string, at: PlotPlace): SimEvent[] =>
+  command(s, side, { type: 'plant', buildingId, plot: plotAt(s, side, at) });
+export const sell = (s: BattleState, side: Side, entityId: number): SimEvent[] => command(s, side, { type: 'sell', entityId });
+export const toggle = (s: BattleState, side: Side, entityId: number, on: boolean): SimEvent[] =>
+  command(s, side, { type: 'toggleMerge', entityId, on });

@@ -3,6 +3,7 @@
 // player first (plan Call 7). A planning command runs at the next step, a clash command on its tick.
 // Commands are validated when they run, so an illegal one becomes a deterministic `commandRejected` on
 // replay too. It stands beside v1's `src/sim/commands.ts` until R2b moves it there.
+import { executePlanning } from './planning.ts';
 import type { BattleState, Command, CommandBody, Side } from './state.ts';
 
 export type QueuedCommand = { round: number; tick: number; side: Side; seq?: number } & CommandBody;
@@ -63,13 +64,16 @@ const phaseOf = (type: Command['type']): BattleState['phase'] => (type === 'powe
 function execute(state: BattleState, cmd: Command): void {
   if (state.phase !== phaseOf(cmd.type)) { reject(state, cmd, 'wrongPhase'); return; }
   switch (cmd.type) {
-    // Their executors land with their tasks: plant, sell, toggleMerge and beginClash's planning half in S4
-    // (T031), Begin's clash half in S6 (T043) and the power in S16. R2a has no drafts (plan Call 26).
-    // Until then each is refused.
     case 'plant':
     case 'sell':
     case 'toggleMerge':
-    case 'beginClash':
+    case 'beginClash': {
+      // planning.ts refuses Begin until its clash half lands (S6, T043)
+      const problem = executePlanning(state, cmd);
+      if (problem) reject(state, cmd, problem);
+      return;
+    }
+    // The power lands in S16, and R2a has no drafts (plan Call 26), so these are refused.
     case 'draftPick':
     case 'draftReroll':
     case 'draftSkip':

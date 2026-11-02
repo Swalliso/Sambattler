@@ -8,6 +8,7 @@ import { seedStream } from '../rng.ts';
 import { basePlots, colonyPlots } from './colony.ts';
 import { buildRoundLibrary, compileRoundRules, compileRoundSides } from './compile.ts';
 import { collectRoundEffects, resolveStat } from './effects.ts';
+import { kitCards, kitOf } from './kit.ts';
 import { newClash, openRound } from './round.ts';
 import { SIDES, other } from './state.ts';
 import type {
@@ -49,7 +50,8 @@ export function makeRoundConfig(content: Content, opts: RoundBattleOptions): Bat
   const side = (s: Side, controller: Controller): SideConfig => {
     const faction = s === 'player' ? 'velvet-bloom' : 'gray-rot';
     return {
-      faction, controller, kit: (content.factions[faction]?.buildings ?? []).map((building) => ({ building })), relics: [],
+      // `kitOf` fills it once both sides stand
+      faction, controller, kit: [], relics: [],
       // `createBattle` refuses a map without a colony block, with a message
       plots: map.colony ? basePlots(map) : 0,
       heartcapMaxHp: s === 'player' ? bal.heartcapPlayerHp : bal.heartcapEnemyHp.base + bal.heartcapEnemyHp.perBattle * (battleIndex - 1),
@@ -64,6 +66,7 @@ export function makeRoundConfig(content: Content, opts: RoundBattleOptions): Bat
     enemy: side('enemy', ctl(opts.enemy, 'general:scripted')),
     flags: { ...DEFAULT_FLAGS, ...opts.flags },
   };
+  for (const s of SIDES) config[s].kit = kitOf(content, s, config);
   if (opts.commander) setCommander(content, config.player, opts.commander);
   setPassives(content, config);
   return config;
@@ -223,7 +226,7 @@ export function createFromScenario(content: Content, scenario: string | RoundSce
   config.scenario = sc.id;
   for (const s of SIDES) {
     const def = sc.sides[s], side = config[s];
-    if (def.kit) side.kit = def.kit.map((building) => ({ building }));
+    if (def.kit) side.kit = kitCards(content, side.controller, def.kit);
     if (def.plots !== undefined) side.plots = def.plots;
     if (def.heartcapMaxHp !== undefined) side.heartcapMaxHp = def.heartcapMaxHp;
     if (def.gold !== undefined) side.startingGold = def.gold;
