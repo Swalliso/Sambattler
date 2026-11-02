@@ -326,7 +326,7 @@ S1 to S4: the data, the colony, the round state machine and the planning command
   - a modifier on a retired stat compiles to nothing and is listed;
   - Cordis's `side.knitTicks` and `side.mergeRadius` apply;
   - the library holds no `name`, `description` or `text`.
-- [ ] T025 Build `buildRoundLibrary` and `compileRoundSides` in `src/sim/rounds/compile.ts` (new). The library holds ids and numbers only (R2-Q8). The compiled sides hold squads, `goldPerRound`, emplacement units, rules from `balance.rounds` and the list of ignored retired stats; v1's helpers that take only data, such as `perkAt`, are imported (§11.1, §11.2, §14.2) (A152)
+- [x] T025 Build `buildRoundLibrary` and `compileRoundSides` in `src/sim/rounds/compile.ts` (new). The library holds ids and numbers only (R2-Q8). The compiled sides hold squads, `goldPerRound`, emplacement units, rules from `balance.rounds` and the list of ignored retired stats; v1's helpers that take only data, such as `perkAt`, are imported (§11.1, §11.2, §14.2) (A152)
   - M7-Q1 dropped the Gray Rot's trait (2026-11-02), so the enemy seat gets no HP or speed change.
 - [ ] T140 Write `tests/unit/rounds/effects.test.ts` (new) first, on a compiled side from T025 (§14.2, §14.6) (A028):
   - `src/data/schema.ts` accepts `roundStart`, `clashStart` and `roundWon` triggers and a `rank` selector, and still refuses any `where` on a `side.*` or `battle.*` stat;
