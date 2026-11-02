@@ -1,0 +1,14 @@
+{
+  "id": "formation-from-plots",
+  "description": "SPEC §16 R2 step 4: a Capguard Hall planted in front of a Gill Archer Nest fields its Capguards in the front rank and the archers behind them. The general's colony holds both, with merging off, and yours is empty, so the general wins the lane on the first tick (E1) with all its damage supply, 3 × 2 + 4 × 2 = 14: 350 to your Heartcap.",
+  "map": "bogwater-hollow",
+  "sides": {
+    "player": {},
+    "enemy": {
+      "colony": [
+        { "building": "capguardHall", "lane": 0, "rank": 0, "file": 2, "merge": false },
+        { "building": "gillNest", "lane": 0, "rank": 1, "file": 2, "merge": false }
+      ]
+    }
+  }
+}

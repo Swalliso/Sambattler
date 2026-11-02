@@ -1,0 +1,12 @@
+{
+  "id": "knit-cancel",
+  "description": "v1's knit-cancel in clash form (SPEC §5.6): three player Capguards start knitting at tick 10, in the muster. Once the muster ends an enemy Gill Archer, close by, fires, and its first dart lands mid-knit, which cancels the knit and releases them. They kill the archer before they can knit again, so no merge follows.",
+  "map": "bogwater-hollow",
+  "sides": { "player": {}, "enemy": {} },
+  "clash": {
+    "units": [
+      { "side": "player", "unit": "capguard", "x": 8.0, "y": 3.4, "count": 3, "rows": 3, "dy": 0.6 },
+      { "side": "enemy", "unit": "gillArcher", "x": 10.5, "y": 4.0 }
+    ]
+  }
+}

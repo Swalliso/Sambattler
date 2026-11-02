@@ -1,0 +1,16 @@
+{
+  "id": "clash-cap",
+  "description": "SPEC §16 R2 step 4, §6.7: two armies that can't finish each other in 45 s. Tenders heal and never attack, so at the cap (tick 900) your two Tenders Rings (6 supply) beat the general's one (3) on surviving supply, and the damage counts only the difference: 25 × (6 − 3) = 75. Merging is off.",
+  "map": "bogwater-hollow",
+  "sides": {
+    "player": {
+      "colony": [
+        { "building": "tendersRing", "lane": 0, "rank": 0, "file": 2, "merge": false },
+        { "building": "tendersRing", "lane": 0, "rank": 0, "file": 3, "merge": false }
+      ]
+    },
+    "enemy": {
+      "colony": [{ "building": "tendersRing", "lane": 0, "rank": 0, "file": 2, "merge": false }]
+    }
+  }
+}

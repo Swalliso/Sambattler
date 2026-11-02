@@ -1,0 +1,16 @@
+{
+  "id": "split-lanes",
+  "description": "SPEC §6.7 E7 on Twin Roots: two lanes with different winners in one round. Your Rootbreakers and Hammercaps take the top lane on the first tick with 26 damage supply, 650 before the cap, and the general's Heartcap takes its cap, 500. Its Capguards take the bottom lane with 6, so yours takes 150. You dealt more, so you win the round and the general gets the comeback gold. Merging is off.",
+  "map": "twin-roots",
+  "sides": {
+    "player": {
+      "colony": [
+        { "building": "rootbreakerDen", "lane": 0, "rank": 0, "file": 1, "merge": false },
+        { "building": "hammercapForge", "lane": 0, "rank": 0, "file": 3, "merge": false }
+      ]
+    },
+    "enemy": {
+      "colony": [{ "building": "capguardHall", "lane": 1, "rank": 0, "file": 1, "merge": false }]
+    }
+  }
+}

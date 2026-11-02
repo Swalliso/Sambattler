@@ -1,0 +1,11 @@
+{
+  "id": "emplacement-only-win",
+  "description": "SPEC §6.7 E6: you win the lane with only an emplacement, since the general fields nothing. Your Puffball Mortar takes the lane on the first tick with 0 surviving supply and deals no damage, so the round is drawn and nobody gets the comeback gold.",
+  "map": "bogwater-hollow",
+  "sides": {
+    "player": {
+      "colony": [{ "building": "puffballMortar", "lane": 0, "rank": 1, "file": 3 }]
+    },
+    "enemy": {}
+  }
+}

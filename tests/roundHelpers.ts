@@ -1,7 +1,7 @@
 // Shared fixtures for the round-form unit suite (SPEC §15.7, §4.6, §4.7, §14.4): a battle in rounds in its
 // planning phase, or one built from a round scenario. v1's tests keep `tests/helpers.ts` and its
 // `liveState` until R2b folds this file into it. Each later helper lands with the task that builds its
-// command: `plant`, `sell` and `toggle` came with T031, `begin` and `stepClash` with T043; `finishRound` comes
+// command: `plant`, `sell` and `toggle` came with T031, `begin` and `stepClash` with T043, and `finishRound`
 // with T052.
 import { nodeContent } from '../tools/lib/content.ts';
 import { commandStamp, createFromScenario, queueCommand, SIDES, step } from '../src/sim/rounds/index.ts';
@@ -82,4 +82,14 @@ export function stepClash(s: BattleState, ticks = 1): SimEvent[] {
     out.push(...s.events);
   }
   return out;
+}
+
+/**
+ * Plays the round's clash to its end, Begin first if the round is still in planning, and stops in the
+ * aftermath with the round scored (T051, T052). It returns every event of those steps in order.
+ */
+export function finishRound(s: BattleState): SimEvent[] {
+  const out = s.phase === 'planning' ? begin(s) : [];
+  // the cap ends every clash by `startTick + clashCapTicks`
+  return [...out, ...stepClash(s, s.rules.clashCapTicks)];
 }

@@ -1,0 +1,12 @@
+{
+  "id": "double-wipe",
+  "description": "SPEC §6.7 E4: both sides wiped out on the same tick. Two Capguards stand in reach of each other, placed mirror-wise, so after the muster they strike on the same ticks for the same damage and fall together. The lane is drawn, with no damage either way.",
+  "map": "bogwater-hollow",
+  "sides": { "player": {}, "enemy": {} },
+  "clash": {
+    "units": [
+      { "side": "player", "unit": "capguard", "x": 15.6, "y": 4.0 },
+      { "side": "enemy", "unit": "capguard", "x": 16.4, "y": 4.0 }
+    ]
+  }
+}

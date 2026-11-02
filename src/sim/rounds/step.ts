@@ -58,7 +58,7 @@ function clashTick(state: BattleState): void {
   mergingSystem(state);
   // 12. lane ends: each lane's lock, and its freeze
   laneEndSystem(state);
-  // 13. once every lane has ended, the round is scored (T051) and the battle enters the aftermath
+  // 13. once every lane has ended, the round is scored, the battle's end checked, and the battle enters the aftermath
   if (clashOver(state)) endClash(state);
   // 14. stats sampling (T057)
 }
