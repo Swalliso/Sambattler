@@ -314,7 +314,7 @@ S1 to S4: the data, the colony, the round state machine and the planning command
 
 **S3a: the round types, compile and the modifier DSL**
 
-- [ ] T023 Define the round types in `src/sim/rounds/state.ts` (new), from §14.4–§14.5 (§14.4, §14.5) (A030, A036, A047, A052, A064, A068, A070, A121), with these additions:
+- [x] T023 Define the round types in `src/sim/rounds/state.ts` (new), from §14.4–§14.5 (§14.4, §14.5) (A030, A036, A047, A052, A064, A068, A070, A121), with these additions:
   - each lane in `ClashState` carries its lock: `{winner, survivors, damageSupply per side, margin, endTick}`;
   - `RoundResult` carries per-lane damage before the cap, `damageByBuilding` and `survivorsByBuilding`;
   - `FieldedSquad` carries `lane`;
