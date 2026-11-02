@@ -314,27 +314,27 @@ S1 to S4: the data, the colony, the round state machine and the planning command
 
 **S3a: the round types, compile and the modifier DSL**
 
-- [ ] T023 Define the round types in `src/sim/rounds/state.ts` (new), from §14.4–§14.5 (§14.4, §14.5) (A030, A036, A047, A052, A064, A068, A070, A121), with these additions:
+- [x] T023 Define the round types in `src/sim/rounds/state.ts` (new), from §14.4–§14.5 (§14.4, §14.5) (A030, A036, A047, A052, A064, A068, A070, A121), with these additions:
   - each lane in `ClashState` carries its lock: `{winner, survivors, damageSupply per side, margin, endTick}`;
   - `RoundResult` carries per-lane damage before the cap, `damageByBuilding` and `survivorsByBuilding`;
   - `FieldedSquad` carries `lane`;
   - `rng.ai` is `{player, enemy}`, and `AiState` carries `plans[]`;
   - `Command` stays `{round, tick, side, seq}`.
-- [ ] T024 Write `tests/unit/rounds/compile.test.ts` (new) (§11.2, §14.2, §13.3):
+- [x] T024 Write `tests/unit/rounds/compile.test.ts` (new) (§11.2, §14.2, §13.3):
   - a squad's count comes from `squad`;
   - a tower compiles to an emplacement unit with structure armor and its building's `hp`;
   - a modifier on a retired stat compiles to nothing and is listed;
   - Cordis's `side.knitTicks` and `side.mergeRadius` apply;
   - the library holds no `name`, `description` or `text`.
-- [ ] T025 Build `buildRoundLibrary` and `compileRoundSides` in `src/sim/rounds/compile.ts` (new). The library holds ids and numbers only (R2-Q8). The compiled sides hold squads, `goldPerRound`, emplacement units, rules from `balance.rounds` and the list of ignored retired stats; v1's helpers that take only data, such as `perkAt`, are imported (§11.1, §11.2, §14.2) (A152)
+- [x] T025 Build `buildRoundLibrary` and `compileRoundSides` in `src/sim/rounds/compile.ts` (new). The library holds ids and numbers only (R2-Q8). The compiled sides hold squads, `goldPerRound`, emplacement units, rules from `balance.rounds` and the list of ignored retired stats; v1's helpers that take only data, such as `perkAt`, are imported (§11.1, §11.2, §14.2) (A152)
   - M7-Q1 dropped the Gray Rot's trait (2026-11-02), so the enemy seat gets no HP or speed change.
-- [ ] T140 Write `tests/unit/rounds/effects.test.ts` (new) first, on a compiled side from T025 (§14.2, §14.6) (A028):
+- [x] T140 Write `tests/unit/rounds/effects.test.ts` (new) first, on a compiled side from T025 (§14.2, §14.6) (A028):
   - `src/data/schema.ts` accepts `roundStart`, `clashStart` and `roundWon` triggers and a `rank` selector, and still refuses any `where` on a `side.*` or `battle.*` stat;
   - a `gainGold` action pays its own side once per firing;
   - `rank` and `onLoam` select squads by their plot;
   - `npm run validate:data` and v1's `tests/unit/effects.test.ts` still pass.
   - That each trigger fires once at its §14.6 step is tested with the step: `roundStart` in T054, `clashStart` in T042, `roundWon` in T047.
-- [ ] T026 Build the modifier DSL for rounds in `src/sim/rounds/effects.ts` (new), and the data it needs in `src/data/schema.ts` (§14.2, §14.6)
+- [x] T026 Build the modifier DSL for rounds in `src/sim/rounds/effects.ts` (new), and the data it needs in `src/data/schema.ts` (§14.2, §14.6)
   - The schema: add `roundStart`, `clashStart` and `roundWon` to `TriggerSchema`'s `on` enum (`src/data/schema.ts:83`). v1's `src/sim/effects.ts` never fires them. Add `rank: 0 | 1 | 2` to `SelectorSchema`, treated as positional, so until T046 it's accepted only where `POSITIONAL_STATS` allows (`:46-67`).
   - The DSL: v1's stat resolution, the kept selectors plus `rank` and `onLoam`, and the triggers `battleStart`, `roundStart`, `clashStart`, `unitDeath`, `merge` and `roundWon`, with `gainGold`.
 

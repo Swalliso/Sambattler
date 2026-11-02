@@ -51,6 +51,8 @@ export const SelectorSchema = z.object({
   unit: Id.optional(), building: Id.optional(), tag: Tag.optional(), tier: TierSel.optional(),
   zone: z.enum(['home', 'contested']).optional(), onLoam: z.boolean().optional(),
   adjacentOwnBuildingsGte: z.number().int().positive().optional(),
+  /** R2a: the plot's rank in a battle in rounds, 0 at the front (§4.6, §14.2); positional, and v1 has no ranks. */
+  rank: z.union([z.literal(0), z.literal(1), z.literal(2)]).optional(),
 }).strict();
 
 export const ModifierSchema = z.object({
@@ -61,10 +63,10 @@ export const ModifierSchema = z.object({
 }).strict().superRefine((m, ctx) => {
   const w = m.where ?? {};
   const scope = m.stat.split('.')[0];
-  const positional = w.zone !== undefined || w.onLoam !== undefined || w.adjacentOwnBuildingsGte !== undefined;
+  const positional = w.zone !== undefined || w.onLoam !== undefined || w.adjacentOwnBuildingsGte !== undefined || w.rank !== undefined;
   if ((scope === 'side' || scope === 'battle') && m.where) ctx.addIssue({ code: 'custom', message: `${m.stat} applies to the whole ${scope}; it takes no "where"` });
   if (positional && !POSITIONAL_STATS.includes(m.stat)) {
-    ctx.addIssue({ code: 'custom', message: `positional selectors (zone, onLoam, adjacentOwnBuildingsGte) only work on ${POSITIONAL_STATS.join(' and ')}` });
+    ctx.addIssue({ code: 'custom', message: `positional selectors (zone, onLoam, adjacentOwnBuildingsGte, rank) only work on ${POSITIONAL_STATS.join(' and ')}` });
   }
   if (w.tier !== undefined && scope !== 'unit') ctx.addIssue({ code: 'custom', message: 'a tier selector only applies to unit stats' });
 });
@@ -80,7 +82,8 @@ export const EffectActionSchema = z.union([
 ]);
 
 export const TriggerSchema = z.object({
-  on: z.enum(['merge', 'unitDeath', 'buildingDestroyed', 'enemyUnitKilled', 'waveStart', 'battleStart', 'heartcapBreach']),
+  /** `roundStart`, `clashStart` and `roundWon` are R2a's, for a battle in rounds (§14.2, §14.6); v1's battle never fires them. */
+  on: z.enum(['merge', 'unitDeath', 'buildingDestroyed', 'enemyUnitKilled', 'waveStart', 'battleStart', 'heartcapBreach', 'roundStart', 'clashStart', 'roundWon']),
   /** `heartcapBreach` only: the fraction of max HP that the owner's Heartcap falls to or below. */
   at: z.number().gt(0).lt(1).optional(),
   if: SelectorSchema.extend({ sporestormGte: z.number().int().nonnegative().optional() }).strict().optional(),

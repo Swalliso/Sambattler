@@ -30,7 +30,7 @@ Updated 2026-11-02, on `docs/r2a-s1-s2` (the hub's docs PR into `develop`). This
 ## Next session: R2a S3a
 
 - **Work from** [docs/tasks/r2a-battle-in-rounds.md](tasks/r2a-battle-in-rounds.md).
-  - **S3a** (`feature/r2a-state`, T023–T025, T140, T026): the round types in `src/sim/rounds/state.ts`, the library and compiled sides with no display text, and the modifier DSL in rounds with its new triggers and `rank`. Its gate (S1 and S2 merged) is met, and it started on 2026-11-02.
+  - **S3a** (`feature/r2a-state`, T023–T025, T140, T026, [#72](https://github.com/Swalliso/Sambattler/pull/72)): built, and waiting for the hub's review. `src/sim/rounds/state.ts` holds the round types. `src/sim/rounds/compile.ts` builds the library with no name, description or text (R2-Q8), the rules, and each side's kit: squads from `squad`, a tower as an emplacement unit, gold a round, and Call 19's passives on retired stats compiled to nothing and listed. `src/sim/rounds/effects.ts` is the DSL: the triggers `roundStart`, `clashStart` and `roundWon`, `gainGold`, and `rank` and `onLoam` by plot. The schema accepts `rank` only where `POSITIONAL_STATS` allows until T046. Verify and the browser tests are green, and no golden moved.
 - Then S3b, once S3a has merged.
 
 ## R2a, a battle in rounds
