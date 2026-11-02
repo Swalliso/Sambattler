@@ -17,8 +17,8 @@ import { priceEl } from '../icons.ts';
 import { uiScale } from '../scale.ts';
 import { ROLE_LABEL, buildingTip, cardLine, trayOrder } from '../buildingInfo.ts';
 
-/** Full-size cards: the narrowest a card gets in one row, and the gap between cards (layout px). */
-const CARD_MIN = 86;
+/** Full-size cards: the narrowest a card gets in one row (`.tray`'s grid minimum in styles.css), and the gap between cards (layout px). */
+const CARD_MIN = 88;
 const GAP = 6;
 
 type Placing = Extract<Command, { type: 'place' }>;

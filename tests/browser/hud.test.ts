@@ -1,6 +1,6 @@
 // The battle HUD (docs/archive/v1/ui-ux-plan.md, Phase 1b): both Heartcaps frame the top band, its chips stay clear
 // of their labels (also with the combat rework's beat chip), Begin and its hint
-// stay off the field, the tray never clips or scrolls sideways (two compact rows when 14 cards don't fit
+// stay off the field, the tray never clips or scrolls sideways (two compact rows when 16 cards don't fit
 // one row), unaffordable cards are unlit rather than faded, legal tiles light up while placing, the
 // ghost tip stays beside its footprint inside the field, the cog opens the settings screen (and pauses),
 // F says when Hold is ready if no lane can hold yet, and battle 1's economy tip still fires.
@@ -33,7 +33,7 @@ afterEach(async () => {
   await page?.close();
 });
 
-/** test-flat (32×8 tiles plus a two-tile Heartcap strip at each end) in deploy, with the full 14-building kit. */
+/** test-flat (32×8 tiles plus a two-tile Heartcap strip at each end) in deploy, with the full 16-building kit (R1's two since R2a). */
 const DEPLOY = '/?scene=deploy&map=test-flat&enemy=human&seed=1&test=1';
 
 async function open(query: string, width = 1280, height = 720): Promise<Page> {
@@ -94,7 +94,7 @@ describe('the top band', () => {
 describe('the tray', () => {
   // the longest names and summaries; nine full-size cards at 1280 are the narrowest they get
   const NINE = ['truffleCellar', 'sporeExchange', 'sporelingBurrow', 'gillNest', 'rootbreakerDen', 'hammercapForge', 'veilstalkerHollow', 'puffballMortar', 'rhizomeVault'];
-  for (const [width, height, cards, compact] of [[1280, 720, 14, true], [1366, 650, 14, true], [1920, 1080, 14, false], [1280, 720, 9, false]] as const) {
+  for (const [width, height, cards, compact] of [[1280, 720, 16, true], [1366, 650, 16, true], [1920, 1080, 16, true], [1280, 720, 9, false]] as const) {
     it(`fits ${cards} cards in a ${width}×${height} window with nothing clipped`, async () => {
       page = await open(`${DEPLOY}&paused=1`, width, height);
       if (cards === 9) {
