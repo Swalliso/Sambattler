@@ -340,10 +340,10 @@ S1 to S4: the data, the colony, the round state machine and the planning command
 
 **S3b: `createBattle`, the step by phase and scenarios**
 
-- [ ] T021 Write `tests/roundHelpers.ts` (new), the round-form harness; `tests/helpers.ts`'s `liveState` stays for v1's tests (§15.7, §4.6, §4.7, §14.4)
+- [x] T021 Write `tests/roundHelpers.ts` (new), the round-form harness; `tests/helpers.ts`'s `liveState` stays for v1's tests (§15.7, §4.6, §4.7, §14.4)
   - It starts with `planningState({map, round, kits, gold, flags, battleIndex})` and `fromScenario(id)`, on T027 and T029.
   - Each later helper lands with the task that builds its command: `plant(s, side, buildingId, {lane, rank, file})`, `sell` and `toggle` with T031, `begin(s)` and `stepClash(s, n)` with T043, `finishRound(s)` with T052.
-- [ ] T022 Write `tests/unit/rounds/rounds.test.ts` (new) for creation (§4.7 steps 1–4, §14.4, §14.6):
+- [x] T022 Write `tests/unit/rounds/rounds.test.ts` (new) for creation (§4.7 steps 1–4, §14.4, §14.6):
   - after `createBattle`: phase `planning`, round 1, tick 0, both colonies empty;
   - both Heartcaps full, at 3000 and 2000 + 250 × (index − 1);
   - gold 300 + 75 × (index − 1) for each side;
