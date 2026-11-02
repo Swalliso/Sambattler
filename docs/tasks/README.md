@@ -2,23 +2,24 @@
 
 SPEC v2, broken into task lists that later sessions work through one row of a Sessions table at a time. Written on 2026-11-01 from a review of SPEC v2 ([#39](https://github.com/Swalliso/Sambattler/pull/39)) in which ten reviewers read the spec against the code and a skeptic checked each finding.
 
-**These lists are drafts.** R1's list is ready to work. Everything after it was written before R1's results and before the user's decisions in [clarify.md](clarify.md). Each later milestone's S0 session refreshes its list once its plan is agreed (see [Refreshing a task list](#refreshing-a-task-list)).
+**Most of these lists are drafts.** R1's is done, and R2a's was refreshed at its S0 on 2026-11-02. The lists after it were written before R1's results and before the user's decisions in [clarify.md](clarify.md), and each milestone's S0 session refreshes its list once its plan is agreed (see [Refreshing a task list](#refreshing-a-task-list)).
 
 ## Where to start
 
 | Now | Session | Waits on |
 |---|---|---|
-| 1 | **R2a S0** in [r2a-battle-in-rounds.md](r2a-battle-in-rounds.md): R2a's plan and its decisions (T001–T006) | Ready: R1's review gate passed on 2026-11-02 (R1/T049 and R1/T050, after #65); X1 and X2 decided (2026-11-02) |
+| 1 | **R2a S1** in [r2a-battle-in-rounds.md](r2a-battle-in-rounds.md): the rounds data, and R1's set as default data (T007–T014) | R2a S0 (`feature/r2a-plan`) merged |
+| 1 | **R2a S2**, beside S1: the colony and the formation's pure core (T015–T020) | The same |
 
-R1, R4a and records-1 are done. The sessions after R2a S0 are in R2a's Sessions table.
+R1, R4a, records-1 and R2a S0 are done. The sessions after S1 and S2 are in R2a's Sessions table.
 
 ## Milestones
 
 | Milestone | Task list | Sessions | Starts | Lands |
 |---|---|---|---|---|
 | R1, the clash check | [r1-clash-check.md](r1-clash-check.md), plan [r1-plan.md](../r1-plan.md) | S0–S8 | Done 2026-11-02 | One PR per session into `develop`. No rule changes, so no golden moves |
-| R2a, a battle in rounds | [r2a-battle-in-rounds.md](r2a-battle-in-rounds.md) | S0–S21 (S3 and S10 in two parts) | Now: S0 (R1's review gate passed 2026-11-02) | Beside v1 on `develop`, behind a dev-build-only entry (X2). Ends with a playtest gate on the dev site |
-| R2b, the run in rounds | [r2b-run-in-rounds.md](r2b-run-in-rounds.md) | S0–S14 (with S1b and S4b) | After R2a's playtest gate | S1–S4 and S1b as sub-PRs into `feature/r2b-cutover`, merged into `develop` at S4b once a whole run plays and v1 is gone; S5–S14 one PR each into `develop` |
+| R2a, a battle in rounds | [r2a-battle-in-rounds.md](r2a-battle-in-rounds.md), plan [r2a-plan.md](../r2a-plan.md) | S0–S21 (S3 and S10 in two parts, with S14b) | Now: S1 and S2 (S0 done 2026-11-02) | Beside v1 on `develop`, behind a preview entry (X2). Ends with a playtest gate on the dev site |
+| R2b, the run in rounds | [r2b-run-in-rounds.md](r2b-run-in-rounds.md) | S0–S14 (with S1b and S4b) | After R2a's playtest gate | S1–S4 and S1b as sub-PRs into `feature/r2b-cutover`, merged into `develop` at S4b once a whole run plays and v1 is gone; S5–S14 one PR each into `develop`. R2b S0 may drop the cutover branch, since X2 lets `develop` switch wholly to v2 |
 | R3, the kit | [r3-kit.md](r3-kit.md) | S0–S15 | After R2b | One PR per session into `develop` |
 | R4a, shapes on the field | [r4-readable-armies.md](r4-readable-armies.md), part 1 | R4a-S0–S5 (with S2b) | Now, beside R1 (X3). Lands before R2a's playtest | One PR per session into `develop` |
 | R4b, readable cards | [r4-readable-armies.md](r4-readable-armies.md), part 2 | R4b-S0–S7 | After R3 | One PR per session into `develop` |
@@ -35,7 +36,7 @@ R4a ─────────────────────────�
 records-1 ─────────────────────────────────────► records-2 (after R2b)
 ```
 
-The R2 split (X1) and building R2 beside v1 (X2) are recommendations the user hasn't agreed yet, and X4 and X5 wait for R1's review gate. The R4 split (X3) and the two parts of Run it back (X10) were agreed on 2026-11-01. Each list says in one line what changes if the user picks the alternative.
+X1–X8 and X10 are decided: X3 and X10 on 2026-11-01, X1, X2, X4 and X5 on 2026-11-02, and X6–X8 at R2a S0 the same day. X9 waits for R3's plan.
 
 ## How this folder works
 

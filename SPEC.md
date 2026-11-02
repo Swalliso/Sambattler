@@ -1,7 +1,7 @@
 # SPORE & SPRAWL — Game Specification (v2)
 
 > Working title. A browser-based, single-player, round-based lane auto-battler with roguelite runs and persistent meta-progression.
-> Status: v2 draft of 2026-10-31, written after the combat rework's P3 playtest. v1, from the design interview of 2026-10-24, stays readable at <https://github.com/Swalliso/Sambattler/blob/aa37365/SPEC.md>. Until Milestone R2 lands, the code follows v1 (Milestones 1–5) and the combat rework's `?proto=` prototypes. The rules are here; the docs this spec links hold the reasoning, the research and the measurements.
+> Status: v2 draft of 2026-10-31, written after the combat rework's P3 playtest. v1, from the design interview of 2026-10-24, stays readable at <https://github.com/Swalliso/Sambattler/blob/aa37365/SPEC.md>. Until Milestone R2 lands (R2b's switch-over), the code follows v1 (Milestones 1–5) and the combat rework's `?proto=` prototypes; R2a's battle in rounds sits beside it behind a temporary preview entry (§16). The rules are here; the docs this spec links hold the reasoning, the research and the measurements.
 
 ---
 
@@ -164,8 +164,8 @@ The user made these decisions on 2026-10-31, after the P3 playtest (§0.1). They
 
 | # | Topic | Decision | Sections |
 |---|---|---|---|
-| 1 | Battles are rounds | A battle is a series of rounds against the same general, each in three phases. **Planning:** the clock is stopped, with no time limit, and placing happens only here. **Clash:** live; both whole armies appear on the same tick, in formation, and fight to the end. A lane's clash ends when one side has no units left in it; at 45 s the side with more surviving supply in the lane wins it, and its damage counts only the difference (§6.7 has the edge cases, emplacements included). **Aftermath:** a short animation, not simulated, in which the winner's survivors damage the loser's Heartcap: 25 per supply left in each lane (merged units count their own supply, and siege units count double for damage only), and no round deals more than 500 (§6.7 gives the order of the arithmetic). From round 5 the Sporestorm raises round damage 20% a round, up to ×2.0 at round 9. The commander power is the one live action, at most once per clash. Nothing carries between rounds except the planted colony and gold. | §4.2, §4.7, §6.4, §6.6, §6.7 |
-| 2 | Heartcaps per battle, lives for the run | Each battle is a Heartcap race. Both Heartcaps start full: yours at 3000, the general's at 2000 + 250 × (battle index − 1), the boss's at 3600. A lost round chips yours, a won round chips the general's, and the two bars show who's winning. A battle ends when a Heartcap reaches 0, or after round 9 by **Decision**: the side that dealt more Heartcap damage in the battle wins, with half rewards. Target: a median of 6–8 rounds, with at most 15% of battles reaching round 9. The run has 3 lives: a lost battle costs one, a won battle never does, and the run ends at 0. The Grove's repair becomes "regain a life", Mending Moss gets a new effect that heals within a battle (first guess, §11.7), and other repairs are retired. The user: losing Heartcap in a battle you win "feels like punishing a player for succeeding". **Open:** whether losing the boss battle ends the run (first guess: yes, as in v1), and a bonus for a clean win. | §4.5, §6.5, §8.5, §8.7, §11.7 |
+| 1 | Battles are rounds | A battle is a series of rounds against the same general, each in three phases. **Planning:** the clock is stopped, with no time limit, and placing happens only here. **Clash:** live; both whole armies appear on the same tick, in formation, and fight to the end. A lane's clash ends when one side has no units left in it; at 45 s the side with more surviving supply in the lane wins it, and its damage counts only the difference (§6.7 has the edge cases, emplacements included). **Aftermath:** a short animation, not simulated, in which the winner's survivors damage the loser's Heartcap: 25 per supply left in each lane (merged units count their own supply, and siege units count double for damage only), and no Heartcap takes more than a quarter of its max HP in a round (§6.7 gives the order of the arithmetic). From round 5 the Sporestorm raises round damage 20% a round, up to ×2.0 at round 9. The commander power is the one live action, at most once per clash. Nothing carries between rounds except the planted colony and gold. | §4.2, §4.7, §6.4, §6.6, §6.7 |
+| 2 | Heartcaps per battle, lives for the run | Each battle is a Heartcap race. Both Heartcaps start full: yours at 3000, the general's at 2000 + 250 × (battle index − 1), the boss's at 3600. A lost round chips yours, a won round chips the general's, and the two bars show who's winning. A battle ends when a Heartcap reaches 0, or after round 9 by **Decision**: the side that dealt the larger share of the other Heartcap's max HP in the battle wins, with half rewards (§6.5). Target: a median of 6–8 rounds, with at most 15% of battles reaching round 9. The run has 3 lives: a lost battle costs one, a won battle never does, and the run ends at 0. The Grove's repair becomes "regain a life", Mending Moss gets a new effect that heals within a battle (first guess, §11.7), and other repairs are retired. The user: losing Heartcap in a battle you win "feels like punishing a player for succeeding". **Open:** whether losing the boss battle ends the run (first guess: yes, as in v1), and a bonus for a clean win. | §4.5, §6.5, §8.5, §8.7, §11.7 |
 | 3 | The general plans first, and you see its whole army | At the start of each planning phase the general takes its income, applies any due doctrine or counter change, buys from its kit and plants. Then you plan, seeing its whole colony and the army it will field: squad types, formation positions, merges and augments. It never sees what you plant in the same phase; it reacts to what you fielded in earlier rounds. It has the same gold, income rules, prices, kit, copy and plot rules (its kit for each battle is §7.8's, and its plots are §4.6's), and no extra gold for going first (the user: "it should just be the default"), so the information edge is the player's by design. The vague telegraph is retired, and counters show as new buildings in its colony. Its kit can show on its route node. There is no Easy / Normal / Hard (§17 #14). | §7.1, §7.2, §7.4, §7.5, §7.8 |
 | 4 | No column fight; the colony is the formation | Column capture, borders, frontiers, presence and forward building are gone, and Heartcap damage per round is the score. The colony is your home zone, divided into fixed 2×2 plots: 8 on one-lane maps (2 ranks × 4 files) and 6 per lane on Twin Roots (2 ranks × 3 files). In a clash each squad stands in its building's plot's slot of a formation box set in the middle of the lane: the plot's rank sets front or back, and its file sets the place across the lane. Buildings aren't in clashes. Plots and copies replace the supply cap of 60; supply stays as a unit's weight, and a full colony MUST fit the performance budget. Loam and stump plots move into the colonies. The colony gains plots over a run, as a third rank behind. **Open:** how many plots, and when (first guess: +1 per battle won, up to 4 more; some relics or nodes may add plots). | §4.1, §4.3, §4.6, §5.4, §11.9, §13.7 |
 | 5 | The kit: building cards with copies | Your kit lists the building cards you own this run, each with a number of copies. Each copy is one building you can have planted at once in a battle. Copies are fixed, not a random hand, so the answer you own is always there. Gold is still the price of planting. Selling returns the copy, refunding 100% in the planning phase it was planted and 60% once it has fielded. The starting kit is the commander's 3 starter buildings, 2 copies each. A blueprint adds a card with 1 copy, and drafting a card you own adds a copy. The general follows the same rule (§7.8). Copies arrive in milestone R3 (§16). | §4.4, §8.3, §8.10 |
@@ -175,8 +175,8 @@ The user made these decisions on 2026-10-31, after the P3 playtest (§0.1). They
 | 9 | Merging stays for now | v1's rule applies. Squads set to merge knit as the clash opens (§5.6), the merge toggle is a planning choice that the planning screen previews ("fields as 2 Bloomed + 2"), and neighbors can make Elders. Pips mark merge tiers instead of a bigger sprite, so size can mean armor. Slayers stay the counter. | §5.5, §5.6, §5.8 |
 | 10 | The shape language | Body size shows armor, team color stays violet against gray, pips mark merge tiers and icons mark augments. Cards and the planning screen show matchups as marks, not paragraphs. Text-defined sprites stay, but each archetype MUST have a distinct silhouette. Units carry no weapon mark (2026-11-01, §5.8). The art and the card-text pass are milestone R4, in two parts (X3, agreed 2026-11-01): R4a, the shapes on the field, runs beside R1 and lands before R2's first playtest; R4b, matchup marks in full, augment icons and the card-text pass, follows R3 (§16). | §5.8, §10.4, §17 #20 |
 | 11 | The rework's pieces | Kept: pinning, spore clouds, cleave, the Burster (the area candidate) and the Rhizomorph (an unlockable tunneler). Retired: waves, Hold and call for help. R1 measured the mixed-wave shields and the Elder Sporeling's splash, and its review gate (2026-11-02) adopted the shields in clash form, as the arrival shield (§5.3), and kept the splash. Later: flyers, as an unlockable, starting from the rework's rule that melee hits them for half damage and lobbed shells and bursts can't hit them. The general reads the squads you actually fielded. | §5.3, §7.4, §11.2, §11.3, §16 |
-| 12 | The economy per round | Each round: the Heartcap stipend of 100, +50 per Truffle Cellar (+50% on loam), interest of 1 per 20 gold banked at the end of planning (up to 10), and +40 to the last round's loser. Starting gold stays 300 + 75 per battle. Drafts come after rounds 2, 4 and 6, three a battle, opening in the next planning phase once the general has planned (§4.7), plus spoils after a won battle; rerolls and skips stay as in v1. | §6.1, §6.2, §8.3 |
-| 13 | How the work is done, and the tests | Rounds are the new battle, built on feature branches and merged into `develop` as the default, not as a `?proto=` knob. Tests follow the spec: goldens regenerate, and the tests and guardrails of retired systems go with them. Playtests decide what's fun, and bots catch degenerate builds; the main bar is the counter matrix's: "A strong build isn't the bug. A build with no answer is." Milestones R1–R4 (the clash check, rounds, the kit, readable armies) come before M6–M8, which are rewritten for v2. | §12, §15, §16 |
+| 12 | The economy per round | Each round: the Heartcap stipend of 100, +50 per Truffle Cellar (+50% on loam), interest of 1 per 10 gold banked at the end of planning (up to 30; R2a S0, 2026-11-02, R2-Q2), and +40 to the last round's loser. Starting gold stays 300 + 75 per battle. Drafts come after rounds 2, 4 and 6, three a battle, opening in the next planning phase once the general has planned (§4.7), plus spoils after a won battle; rerolls and skips stay as in v1. | §6.1, §6.2, §8.3 |
+| 13 | How the work is done, and the tests | Rounds are the new battle, built on feature branches and merged into `develop` as the default, not as a `?proto=` knob (R2a lands beside v1 first, and R2b makes rounds the default: X2, §16). Tests follow the spec: goldens regenerate, and the tests and guardrails of retired systems go with them. Playtests decide what's fun, and bots catch degenerate builds; the main bar is the counter matrix's: "A strong build isn't the bug. A build with no answer is." Milestones R1–R4 (the clash check, rounds, the kit, readable armies) come before M6–M8, which are rewritten for v2. | §12, §15, §16 |
 
 **Unchanged unless a section says otherwise:** theme and names; the damage matrix and tags (§5.3); merging's rule (§5.6); the general's memory (§7.6); commanders and powers, with new effects where theirs were tied to a retired system (§11.10); the route, nodes, events, rewards and relics, some with new effects (§8, §11.7); meta-progression's systems (§9); determinism, the tech stack, data-driven content, the localStorage keys and deployment (§13, §14).
 
@@ -208,7 +208,7 @@ All names below are original to this project.
 | The army's layout in a clash, copied from the colony | the formation | `formation` |
 | The area in the middle of the lane where one side's formation appears: one per side, or one per lane on Twin Roots | the formation box | built by `formationOf` (§4.6, §14.6) |
 | A plot's place in the formation box; it holds that plot's one squad | a slot | `slot` |
-| The clash's opening moment, when nobody moves or attacks and squads set to merge knit (first guess, §5.6) | the muster | `muster` |
+| The clash's opening moment, when nobody moves or attacks and squads set to merge knit (§5.6) | the muster | `muster` |
 | The building cards you own this run | the kit, made of kit cards (never "deck": nothing is drawn) | `kit` |
 | How many of one card you can have planted at once | copies | `copies` |
 | One of the six core unit roles | an archetype | `archetype` |
@@ -407,7 +407,7 @@ Common fields: footprint (every building is 2×2 and fills one plot), cost, and 
 - Gained plots extend the colony backward, as a third rank behind the back rank. Some relics or route nodes MAY add plots too (§8.2, §11.7).
 - The run carries how many plots the colony has gained, and each map sets the colony it starts from.
 - **Open:** how many plots, and when. First guess: +1 plot per battle won, up to 4 more, which fills a third rank of 4 files on a one-lane map.
-- **Open:** where the third rank's tiles come from, and the order its plots open. First guess: R2's maps reserve two more columns behind each colony (homeCols 6), whose plots stay closed until gained, and the arena shrinks to match (§11.9). On a one-lane map, gained plots open the middle files first (2, then 3), then file 1, then file 4. On Twin Roots, they open in the third rank of each lane in turn, the top lane first.
+- **The third rank's tiles, and the order its plots open** (R2a S0, 2026-11-02, §18.2 #19). R2's maps reserve two more columns behind each colony (homeCols 6), whose plots stay closed until gained, and the arena shrinks to match (§11.9). A map's `startRanks` (2) says which ranks start open, since `homeCols` alone can't. On a one-lane map, gained plots open files 2, 3, 1, then 4 of the third rank. On Twin Roots they open files 2, 1, 3, alternating lanes from the top. Armilla's Landholder opens the first third-rank plot from battle 1 (§11.10).
 - **Open: planted buildings don't carry between battles** (first guess). Each battle is a new map, so it starts with both colonies empty and every copy free, and only the run's state carries: the kit and its copies, augments, relics, the plots gained and lives (§4.7, §8.10). §4.4, §4.7, §8 and §14.4 point here.
 - **Open: the general's plots** (first guess). In each battle the general's colony opens the map's own plots plus as many as your colony has gained from sprawl by then. Plots from your own relics, traits or commander (such as Mycelial Web, Root Pressure and Armilla's Landholder, §11.7, §11.10) don't count: they're yours alone, and so is a blight's change to your plots, such as Thin Soil's stump (§11.8). §7.1 and §7.8 point here.
 
@@ -453,8 +453,8 @@ This is the exact order of events, and tests cover it. The sim owns every step e
 
 **Clash** (live; the clock runs):
 
-13. **Tick 0:** every squad of both sides appears in its slot, at the positions `formationOf` gives, in every lane, on the same tick (§4.6).
-14. **The muster** (1 s): nobody moves or attacks, and squads set to merge knit in place (§5.6).
+13. **Tick 0:** every squad of both sides appears in its slot, at the positions `formationOf` gives, in every lane, on the same tick (§4.6). Units arrive in plot order (lane, rank, file, then unit), so which trios knit never depends on the order the buildings were planted (R2a S0, 2026-11-02, R2-Q11).
+14. **The muster** (1 s): squads set to merge knit in place, within their lane, and the merged units replace their parts inside Begin, before any tick or power (§5.6, §18.2 #25). The muster's 20 ticks show the knits, and in them nobody targets, moves or attacks.
 15. **The clash runs** under the combat rules (§5). You may fire the commander power once, from the clash's first tick, the muster included (§6.6).
 16. **A lane's clash ends** when one side has no units and no emplacements left in it, or at 45 s (§6.7). Its result locks on that tick. On Twin Roots, a lane that ends first holds still while the other fights on.
 17. **The clash ends** when every lane's clash has ended. The sim scores the round: each lane's winner and margin, the damage, the Sporestorm, the cap, and the round's winner and loser. Each Heartcap loses the round's damage at once (§6.7).
@@ -497,7 +497,7 @@ This is the exact order of events, and tests cover it. The sim owns every step e
 
 ### 5.2 Movement and targeting in a clash
 
-Units exist only during a clash. On the clash's first tick, each squad appears in its slot of its side's formation box (§4.6, §4.7). The clash opens with a **1 s muster**, in which squads knit and nobody moves or attacks (§5.6). Then the rules below run until the lane's clash ends (§6.7). A unit counts as out of combat when it's fielded, so its squad can knit at the muster.
+Units exist only during a clash. At Begin, each squad appears in its slot of its side's formation box (§4.6, §4.7). The clash opens with a **1 s muster**: squads set to merge have already knit in place (§5.6), and for the muster's 20 ticks nobody targets, moves, separates or attacks. Then the rules below run until the lane's clash ends (§6.7). A unit counts as out of combat when it's fielded, so its squad can knit at the muster.
 
 - **Retargeting** happens on ticks where `(tick + unitId) % 5 === 0`, or immediately if the current target died.
 - **Candidates:** enemy units in the same lane within `aggroRange` (edge distance).
@@ -703,7 +703,7 @@ v1's rule applies under rounds (§1.3 #9). What changes is when it happens: ever
 **Detection** runs every 10 ticks, per side:
 
 1. Walk the eligible units in id order.
-2. For each unreserved unit `u`, find other eligible, unreserved units with the same `(unitId, tier)` within **1.5 tiles** (center distance).
+2. For each unreserved unit `u`, find other eligible, unreserved units **in the same lane** with the same `(unitId, tier)` within **1.5 tiles** (center distance). A trio never knits across Twin Roots' root wall (R2a S0, 2026-11-02, R2-Q11).
 3. If there are at least 2, take the two nearest (ties go to the lower id) and reserve all three.
 
 **Knitting** lasts 20 ticks (1.0 s). The three units stop attacking and retargeting and walk toward their centroid. They can be attacked. If any of them takes damage or dies, the knit cancels and the survivors are released.
@@ -716,21 +716,23 @@ v1's rule applies under rounds (§1.3 #9). What changes is when it happens: ever
 - radius unchanged by tier, as the sprite keeps its size (§5.8): `tierRadiusMult` is 1.0 (§18.2 #53). v1's data grows it ×1.25 per tier until R2 changes it; speed, range and attack interval unchanged
 - the tier's `mergePerks` applied
 - `sourceBuildingId` and `mergeOn` taken from the lowest-id parent. A unit knit from two squads' units therefore credits all its damage to that parent's building (§5.7)
+- the lowest-id parent's squad stats too (R2a S0, 2026-11-02, R2-Q11): a modifier that reads a squad's rank or loam (§14.2) applies to the merged unit as it does to that parent's squad, and its current HP still follows the ratio above
 - `lastCombatTick` set to the latest of its parents' values, so an idle trio of Bloomed units can knit again right away
 
 With no supply cap, nothing waits on supply. A merged unit counts its own supply (§5.5).
 
 **The radius doesn't grow** (§18.2 #53, decided 2026-11-01). A merged unit keeps its parts' collision radius, now that its sprite doesn't grow either. Under v1's ×1.25 an Elder Capguard's radius (about 0.65 tiles, with its `radiusAdd` perk) was bigger than an Amanita Knight's (0.45); at ×1.0 it's 0.45. The change moves the golden hashes, so R2 makes it in its first golden refresh. R4a, which moves no golden, leaves the data alone.
 
-**The muster: squads knit in place.** This section owns the rule; it's a first guess that milestone R1's clash check settles (§16).
+**The muster: squads knit in place.** This section owns the rule. Milestone R1's clash check measured it (§16), and its open points are settled: whether the muster counts toward the 45 s (#13, below) and when the merged units replace their parts (#25, below).
 
 - **What it is:** a clash opens with a **1 s muster** (20 ticks), in which nobody moves or attacks.
-- **Knitting in place:** squads with merging on knit where they stand, by the rule above (trios of identical eligible units within 1.5 tiles). The rule runs on `formationOf`'s positions (§4.6) to a fixed point: detection and knitting repeat, each merged unit standing at its trio's centroid, until no new trio forms. No enemy and no damage takes part. So Bloomed units that stand within reach of each other knit again into Elders.
-- **Across squads:** units of the same type from different squads knit together when they stand within reach, whatever their buildings. Only units with `mergeOn` take part, so a neighbor with merging off adds nothing and fields at tier 1. Distance decides which squads combine, not which slots touch, so a chain such as three Burrows in a row resolves by the same rule.
+- **Knitting in place:** squads with merging on knit where they stand, by the rule above (trios of identical eligible units in the same lane within 1.5 tiles). The rule runs on `formationOf`'s positions (§4.6) to a fixed point: detection and knitting repeat, each merged unit standing at its trio's centroid, until no new trio forms. No enemy and no damage takes part. So Bloomed units that stand within reach of each other knit again into Elders.
+- **Arrival order** (R2a S0, 2026-11-02, R2-Q11): units arrive in plot order, by lane, rank and file and then by unit, and take their ids in that order. So two Burrows side by side make the same Elders whichever was planted first, and the preview and the clash agree.
+- **Across squads:** units of the same type from different squads knit together when they stand within reach in the same lane, whatever their buildings. Only units with `mergeOn` take part, so a neighbor with merging off adds nothing and fields at tier 1. Distance decides which squads combine, not which slots touch, so a chain such as three Burrows in a row resolves by the same rule.
 - **Bonuses:** a merge-radius bonus widens the muster's reach. A knit-time bonus acts only after the muster, since the muster's knits take no time of their own.
 - **Powers:** a commander power may fire from the clash's first tick, during the muster too (§6.6).
 - **After the muster,** v1's rule applies on the field: units still eligible (leftovers, and units back out of combat) knit when a trio stands within reach, at the usual knit time, and fire can cancel those knits.
-- **Open:** when, inside the muster, the merged units replace their parts in the sim, and so whether a power fired during the muster can break a muster knit. First guess: on the clash's first tick, so a power hits the merged units and can't break a muster knit; the muster's 1 s shows the knits (tethers, glow, pop).
+- **When the merged units replace their parts** (R2a S0, 2026-11-02, §18.2 #25, made exact by R2-Q11): inside Begin, before the clash's first tick. The muster resolves at once, before any tick or power, so a power hits the merged units and can't break a muster knit. The muster's 1 s shows the knits (tethers, glow, pop), and its 20 ticks skip targeting, movement, separation and attacks.
 - **The muster counts toward the 45 s clash cap** (§6.7; R1's review gate, 2026-11-02, §18.2 #13): the clash clock starts on the clash's first tick. In R1 the two readings capped 5.8% and 5.5% of clashes, with the same median length.
 
 **The toggle is a planning choice.** Each spawner has a merge toggle, on by default. It's set in planning (`M`, §10.3), and every unit the building fields that round takes its value.
@@ -777,6 +779,12 @@ The sim records deterministic counters per side. It keeps them for each round, a
 - commander power use (§6.6)
 - the maximum number of Elders alive at once
 - the maximum gold banked
+- the stats feats read (M6-Q1, R2a S0, 2026-11-02), recorded now so that M6 adds no stat and moves no golden (§9.2, §14.2):
+  - economy buildings planted;
+  - the most economy buildings on loam plots at once;
+  - buildings sold after they had fielded (selling in the phase a building was planted is free, §4.4);
+  - each Heartcap's lowest HP fraction in the battle;
+  - damage by unit tag in the round a Heartcap fell.
 
 **Gone:** buildings lost and destroyed (buildings can't be hit), and columns owned per lane, which drove v1's front-line graph. The report's round chart takes that graph's place (§10.4). See Appendix A.
 
@@ -852,12 +860,13 @@ Starting gold for round 1 is `300 + 75 × (battleIndex − 1)`, the same for bot
 |---|---|
 | Heartcap stipend | 100 |
 | Each economy building | its gold per round (Truffle Cellar: 50; Spore Exchange: 12), × 1.5 on a loam plot (§4.6), rounded down |
-| Interest | `min(interestCap, floor(gold / 20))`, on the gold the side held when the last clash began. The base `interestCap` is 10; Deep Cellars and the Spore Exchange each add 10 |
+| Interest | `min(interestCap, floor(gold / interestPer))`, on the gold the side held when the last clash began. `interestPer` is 10 and the base `interestCap` 30 (R2a S0, 2026-11-02, R2-Q2; the first guess was 20 and 10); Deep Cellars and the Spore Exchange each add 10 to the cap |
 | Comeback gold | +40 to the side that lost the last round (§6.7); nothing after a drawn round |
 | Pending gold | Gold an effect earned in the last clash for the next planning phase, held as the side's `pendingGold` (§14.4): Rhizome Tithe (§11.10) and the Truffle Hunters combo (§11.14). It's lost if the battle ends first (first guess) |
 
 - **Round 1 has no income.** Starting gold takes its place (§6.1).
-- **Interest gets a moment.** You plan with your gold in front of you, and the gold chip shows what the next round will pay if you Begin now: hold 140 for +7, or 200 for the cap of +10 (§10.2). Both round 3 testers found v1's interest confusing; planning makes the choice between banking and spending visible.
+- **Interest gets a moment.** You plan with your gold in front of you, and the gold chip shows what the next round will pay if you Begin now: hold 140 for +14, or 300 for the cap of +30 (§10.2). Both round 3 testers found v1's interest confusing; planning makes the choice between banking and spending visible.
+- **Why it was raised** (R2a S0, 2026-11-02, R2-Q2): +10 against a stipend of 100 is no choice, since one more building beats it (A205). A real stake gives the Trade pack's banking build a point. R2a's reports show banked gold per round (§10.4, §15.2), and if R2a's playtest still finds interest confusing, cut it.
 - **Comeback gold** is v1's comeback income, paid once a round, like the loss-streak gold in Teamfight Tactics. Winning a round pays nothing extra, so income never snowballs.
 - **The general's income** follows the same rules, times a data value of **1.0**. It gets no extra gold for planning first (§1.3 #3). A blight MAY raise the value later (§9.6, §17 #14).
 - Relics and traits may modify any source (§11.7).
@@ -889,7 +898,7 @@ Each battle is a Heartcap race (§4.5). The sim checks for the end after scoring
 
 - **Rout:** a Heartcap reaches 0 HP; the other side wins. If both reach 0 in the same round (possible only when lanes split, §6.7), the player loses.
 - **Decision:** round 9 ends with both Heartcaps standing. The winner is decided by these tiebreakers, in order:
-  1. a larger share of the other Heartcap's max HP dealt in the battle (the HP it lost, after the Sporestorm and the cap, over its max HP; X5, R1's review gate, 2026-11-02),
+  1. a larger share of the other Heartcap's max HP dealt in the battle: the sum of each round's damage as applied in §6.7 step 4, over that Heartcap's max HP (X5, R1's review gate, 2026-11-02). That damage is recorded capped, before the HP floor, so a heal never subtracts from it (R2a S0, 2026-11-02, R2-Q11),
   2. higher Heartcap HP fraction,
   3. otherwise, the general wins.
 
@@ -915,6 +924,7 @@ Each battle is a Heartcap race (§4.5). The sim checks for the end after scoring
 - Activate it with `Q` or the bottom band's button, then click a target. Aiming works while the clash is paused, and the command executes on the next tick. In planning and the aftermath it's refused (§10.3).
 - Buildings can't be hit, so a power that hit buildings in v1 now hits units only. It hits emplacements as units (§6.7).
 - A power that kills a side's last units and emplacements in a lane ends that lane's clash like any other kill (§6.7).
+- A power aimed at a lane whose clash has already ended is refused, since that lane is frozen (R2a S0, 2026-11-02, R2-Q11; §6.7). A power still queued when the clash ends is dropped, not rejected (§14.5).
 - Powers are ordinary deterministic commands (§14.5).
 - Rhizome Tithe (gold per column held) and Sporestorm Sigil (a shorter cooldown) were tied to retired systems and get new effects. Rhizome Tithe pays gold at the next planning phase (§6.2, §11.10). The Sigil keeps the once-per-clash rule: from round 5, your power's effect is 50% stronger (§11.7).
 - Generals have no active power; each has a passive instead (§7.7).
@@ -937,8 +947,11 @@ Each battle is a Heartcap race (§4.5). The sim checks for the end after scoring
 
 **A lane's clash ends** on the first tick when one side has no units and no emplacements left in the lane, or at **45 s** (900 ticks) of the clash clock. Its result locks on that tick:
 - The side with units or emplacements left wins the lane. At 45 s, the side with more surviving supply wins it.
-- **The margin** is what the winner's damage counts. A wiped-out loser has 0, so the margin is all the winner's damage supply; at 45 s only the difference counts. **Open:** the margin when siege units are in play. First guess: the winner's damage supply minus the loser's, never below 0.
-- On Twin Roots each lane is its own clash, and a lane that ends first holds still while the other fights on.
+- **The margin** is what the winner's damage counts. A wiped-out loser has 0, so the margin is all the winner's damage supply; at 45 s only the difference counts. With siege units in play (R2a S0, 2026-11-02, §18.2 #22), it is the winner's damage supply minus the loser's, never below 0. Siege units count once to decide a lane at 45 s and double for damage, so subtracting damage supply keeps a close siege win small, and the floor stops a negative margin when the loser fields more siege.
+- On Twin Roots each lane is its own clash. A lane that ends first **freezes** (R2a S0, 2026-11-02, R2-Q11) while the other fights on:
+  - its result is locked in the clash's state: the winner, each side's surviving supply and damage supply, the margin and the end tick (§14.4);
+  - its units don't move or attack, hits in flight and spore clouds there are dropped, and nothing heals or merges there;
+  - a commander power aimed at it is refused (§6.6).
 - The 1 s muster (§5.6) counts toward the 45 s: the clash clock starts at the muster's first tick (R1's review gate, 2026-11-02, §18.2 #13).
 
 **The clash ends** when every lane's clash has ended. A clash typically lasts 20–40 s.
@@ -954,9 +967,9 @@ Each battle is a Heartcap race (§4.5). The sim checks for the end after scoring
 
 The aftermath then shows the round (§10.2).
 
-**The round's result.** The side that dealt more Heartcap damage this round, as applied in step 4, wins the round, and the other side loses it; equal damage (including none) is a **drawn** round. The round's loser gets +40 comeback gold next round (§6.2), and the round tally shows the result (§10.2).
+**The round's result.** The side that dealt more Heartcap damage this round, as applied in step 4, wins the round, and the other side loses it; equal damage (including none) is a **drawn** round. The round's loser gets +40 comeback gold next round (§6.2), and the round tally shows the result (§10.2). `RoundResult.damage` records that damage capped, before the HP floor (R2a S0, 2026-11-02, R2-Q11), so the round's result and a Decision (§6.5) read the same number, and a heal never subtracts from it.
 
-**Edge cases.** **Open:** these are first guesses, to confirm in R2. Each has an ID that §15.7's tests cite:
+**Edge cases** (R2a S0, 2026-11-02, §18.2 #23: the table as written). Each has an ID that §15.7's tests cite, and one rule scenario each (§16 R2 step 4):
 
 | ID | Case | Result |
 |---|---|---|
@@ -993,7 +1006,7 @@ Where it differs:
 - **It plans first.** At the start of every planning phase it takes its turn (§7.2) before the player's begins, and the player then plans seeing its whole colony and the army it will field (§7.5). It never sees what the player plants in the same planning phase; it reacts to the squads the player fielded in earlier rounds (§7.4) and to its intel file (§7.6). The information edge is the player's by design (§1.3 #3).
 - It has a personality **passive** and no active power (§7.7, §17 #13).
 - Its kit, copies and augments grow with the battle index, as a player's kit grows through drafts (§7.8). It takes no drafts during a battle.
-- It draws all randomness from the `ai` RNG stream.
+- It draws all randomness from its own AI stream, `ai.enemy`; a bot or general on the player's side draws from `ai.player` (§13.3). So its plan depends only on the record and its own state (A052).
 
 **No extra gold for going first.** The general's income is multiplied by a data value, the enemy income multiplier, which is ×1.0. A blight MAY raise it later (§9.6); that is M7's opt-in difficulty ladder. There is no Easy / Normal / Hard (§17 #14).
 
@@ -1006,7 +1019,10 @@ Where it differs:
 - **its kit grows each battle,** with augments, like the player's (§7.8);
 - **bigger Heartcaps** for later generals: 2000 + 250 × (battle index − 1), and 3600 for the boss (§4.5).
 
-The same AI framework also drives the **strategy bots** used in headless testing on the player side: `bot:balanced`, `bot:balanced-nomerge`, `bot:rush`, `bot:turtle`, `bot:greedy`, `bot:slayer`, `bot:slayer-nomerge` and `bot:mono:<buildingId>` (`data/bots.json`). A bot plans in the player's turn with §7.2's loop and doesn't read the general's army. Bots never adapt unless a flag enables it.
+The same AI framework also drives the **strategy bots** used in headless testing on the player side: `bot:balanced`, `bot:balanced-nomerge`, `bot:rush`, `bot:turtle`, `bot:greedy`, `bot:slayer`, `bot:slayer-nomerge`, `bot:mono:<buildingId>` and `bot:answer` (`data/bots.json`). A bot plans in the player's turn, after the general, with §7.2's loop. A fixed-weight bot doesn't read the general's army; `bot:answer` does, as a player does (X7, §12.2). Bots never adapt unless a flag enables it.
+
+- **`bot:rush` and `bot:turtle`** (R2a S0, 2026-11-02, R2-Q6) are weight profiles. v1's `placement` knob, a depth into territory, means nothing under plots and goes. Rush buys no economy and swarm first; turtle buys Capguards, Mortars and Cellars, and its description is reworded to say so.
+- **A bot's `limits`** stay in its record and are read in rounds through `afterRound` (§7.2, §14.2).
 
 ### 7.2 Decision loop
 
@@ -1015,7 +1031,7 @@ The general takes one turn in every planning phase. It comes after income, the r
 1. **Apply a doctrine change** if one is due: in round 1, the opening doctrine from the intel file (§7.6); at a counter cycle, the counter's activation, which may add a counter card to its kit and sell for room (§7.4). This is the only time it sells.
 2. **Buy and plant in a loop:**
    - **Round 1:** work through the opener list first (§7.7, §11.11), skipping a building it can't afford or has no free copy of. Then go on as below with the gold left.
-   - **Pick a target purchase:** a weighted pick (`ai` stream) from the cards in its kit, with `doctrine weight × situational multipliers × counter multipliers` (§7.4, §7.6). A card with no free copy, or with no free plot for it, weighs 0. A weight MAY carry limits from the data: at most so many owned (`maxOwned`), or only from a given round. Until R3 brings copies, those limits are the only cap on a card (§7.8).
+   - **Pick a target purchase:** a weighted pick (its AI stream, §7.1) from the cards in its kit, with `doctrine weight × situational multipliers × counter multipliers` (§7.4, §7.6). A card with no free copy, or with no free plot for it, weighs 0. A weight MAY carry limits from the data: at most so many owned (`maxOwned`), or only from a given round. Until R3 brings copies, those limits are the only cap on a card (§7.8).
 
      | Multiplier | Condition |
      |---|---|
@@ -1028,9 +1044,13 @@ The general takes one turn in every planning phase. It comes after income, the r
    - **Stop** when the target is out of reach or no plot is free. A target out of reach stays its target into the next planning phase, once, so it can save for a dear building; then it picks afresh.
 3. **Set merge toggles:** on by default. It switches off merging on its `swarm` buildings while `slayer` units made up more than 25% of the supply the player fielded last round (the `fielded` record, §14.4). The decision reads only last round's record, so step 2's placement score (§7.3) already knows which buildings will merge.
 
-**Banking.** The loop spends whatever it can, so the general banks only what is left over. Interest counts the gold a side holds at Begin (§6.2), which for the general is what its turn left. **Open:** a bank reserve, the gold it keeps back for interest (first guess: 0, which is the loop above).
+**Banking.** The loop spends whatever it can, so the general banks only what is left over. Interest counts the gold a side holds at Begin (§6.2), which for the general is what its turn left. It keeps no reserve for interest (R2a S0, 2026-11-02, §18.2 #29): the reserve is 0, which is the loop above. X8's readouts show what it banks anyway, and since R2-Q2 raised interest, R2a's measurements revisit this.
 
-Limits that v1 keyed to the clock (`afterSeconds` in `data/generals.json`) are read in rounds, one round per minute: "after 3:00" becomes "from round 4".
+**Between counter cycles** (X8, R2a S0, 2026-11-02). Once its plots fill, the general changes its army only at a counter's activation, so its army can sit fixed for several rounds, and with no colony change and no power a clash replays exactly (A049, A206). The rule stands: it sells only at a counter's activation (step 1). R2a measures first, and its sim summary reports, per round, the general's banked gold, its free plots, what it planted and sold, and whether the clash replayed the last one exactly (§15.2). Two default-off data knobs are there for the playtest (under `balance.rounds.ai` in R2a):
+- `leanToLastAnswer`: a light lean from round 2 toward the answer to last round's army;
+- `replaceWhenFull`: when its colony is full, it sells its lowest-weighted fielded spawner at 60% for a heavier card.
+
+Limits that v1 keyed to the clock (`afterSeconds` in `data/generals.json` and `data/bots.json`) are read in rounds as `afterRound`, one round per minute: "after 3:00" becomes "from round 4" (R2a S0, 2026-11-02, R2-Q6; §14.2).
 
 The turn issues all its commands before any draft opens and before the player's planning begins, so everything it planted and sold is on the field when the player drafts and plans (§4.7, §7.5).
 
@@ -1047,12 +1067,13 @@ Score each candidate:
 | Building | Score |
 |---|---|
 | front-line spawner | `−10 × depth − 1 × offCentre + 2 if beside a plot holding the same building with merging on` |
-| back-line spawner or tower | `−10 × abs(depth − 1) − 1 × offCentre + 3 if the plot in front (same file, one rank forward) holds one of its front-line buildings + 2 if beside the same building with merging on` |
+| back-line spawner or tower | `−10 × max(0, 1 − depth) − 2 × max(0, depth − 1) − 1 × offCentre + 3 if the plot in front (same file, one rank forward) holds one of its front-line buildings + 2 if beside the same building with merging on` |
 | economy | `+10 × depth + 8 if on loam + 1 × offCentre` |
 | utility | `+10 × depth + 1 × offCentre` |
 
 - **What it gives:** shield walls in front and archers behind them, squads of the same unit side by side so they can knit into Elders (§5.6), and economy buildings at the back, where their holes in the line cost least.
-- **Noise:** add seeded noise of ±0.5 from the `ai` stream before tie-breaking. Ties then go to the front rank, then the lower file.
+- **The back-line term** (R2a S0, 2026-11-02, A043): a back-liner takes the back rank first and prefers the third rank to the front, which the earlier `abs(depth − 1)` tied.
+- **Noise:** add seeded noise of ±0.5 from its AI stream (§7.1) before tie-breaking. Ties then go to the front rank, then the lower file.
 - **Ties between buildings** go by building id, wherever the general chooses among buildings on equal terms (such as which spawner to sell for room, §7.4). **The cheapest counter building** (§7.4) breaks ties by cost, then by id.
 - The weights are first guesses. R2 tunes them, and R3 adds a term for combos (§11.14).
 
@@ -1063,7 +1084,7 @@ Score each candidate:
 - **Aggressive personalities** (the Blightwright, `laneStyle: aggressive`) send spawners instead to the lane where the player fielded the least supply last round.
 - **Economy and utility** go to a lane with a free loam plot, else to the lane with more free back-rank plots.
 - A full lane falls back to the other.
-- **Open:** the lane rule. First guess: the starting rule above. Twin Roots is where mono Sporeling escaped its answers in the counter-matrix check, because `bot:balanced` splits its army ([docs/archive/v1/ideas/combat-rework.md](docs/archive/v1/ideas/combat-rework.md#the-counter-matrix-check); [docs/archive/v1/ideas/rounds.md](docs/archive/v1/ideas/rounds.md), "The general (§7)").
+- **The lane rule** (R2a S0, 2026-11-02, §18.2 #30) is the starting rule above. Each fielded squad in the `fielded` record carries its lane (§14.4), so the rule and its aggressive variant read only the record. Twin Roots is where mono Sporeling escaped its answers in the counter-matrix check, because `bot:balanced` splits its army ([docs/archive/v1/ideas/combat-rework.md](docs/archive/v1/ideas/combat-rework.md#the-counter-matrix-check); [docs/archive/v1/ideas/rounds.md](docs/archive/v1/ideas/rounds.md), "The general (§7)"), so G12 on Twin Roots tests this rule directly.
 
 ### 7.4 Counter cycle (Milestone 4, in rounds)
 
@@ -1081,13 +1102,13 @@ The boss also gets an early cycle in round 3's planning, reading rounds 1–2.
 - Each cycle analyses and activates in the same planning phase. v1 warned two waves ahead; with the vague telegraph retired there is no pending counter to hide (§7.5, Appendix A). The activation rounds are those of [docs/archive/v1/ideas/rounds.md](docs/archive/v1/ideas/rounds.md).
 - A cycle runs in the general's turn (§7.2, step 1), so the counter's buildings are planted before the player plans.
 - A battle that ends sooner never reaches its later cycles.
-- **Open:** whether a counter should land a round after its analysis instead, so the player's build gets a round to pay off. First guess: no, it activates in the planning phase of its analysis, as above.
+- **A counter lands in the phase of its analysis, not a round later** (R2a S0, 2026-11-02, §18.2 #31). You see the counter before you plan anyway (§7.5), so a delay would only weaken a general that may already be too easy (A198). R2-Q1's "last fielded" A/B (§7.5) covers the worry that a build never paid off.
 
 **Analysis: the squads the player fielded.** Under rounds the general reads the squads the player actually fielded, which is exact; v1 estimated them from spawn rates and merged fractions. The analysis reads only the `fielded` record (§14.4): per side and per round, each unit type with its tier, count and augments.
 
-1. Take every unit in the player's `fielded` record for the rounds read, at its base supply.
+1. Take every unit in the player's `fielded` record for the rounds read, at its parts' base supply: a Bloomed unit counts its 3 parts' tier-1 supply and an Elder its 9.
 2. Turn the supply into shares of the total: Light, Medium and Heavy armor; ranged; and `eliteShare`.
-3. `eliteShare` counts only real merging: the share of the fielded supply that the record shows as Bloomed or Elder units (§5.6). A merge toggle left on with no merges therefore reads as no threat. A unit of 1 supply counts by its armor whether or not it merged: that is the combat rework's swarm read (the balance key `ai.counter.swarmMaxSupply`, absent from `data/balance.json` and set to 1 by the `swarmread` and `rework` presets in `src/data/proto.ts`), since a merged Sporeling swarm otherwise reads as Elite. R1 found that counting only Elder parts keeps `bot:balanced` from reading Elite (at most 10% of its armies, against 100% counted plainly); R2a S0 settles it (R2-Q3).
+3. `eliteShare` is the share of the fielded supply that sits in Elder units, every unit counted at its parts' base supply (R2a S0, 2026-11-02, R2-Q3). An Elder counts its 9 parts' tier-1 supply; a Bloomed unit counts its 3 parts' in the total, though a Bloomed unit isn't elite. A merge toggle left on with no merges therefore reads as no threat. The combat rework's swarm read (the balance key `ai.counter.swarmMaxSupply`, absent from `data/balance.json` and set to 1 by the `swarmread` and `rework` presets in `src/data/proto.ts`) isn't v2's rule: this reading replaces it. In R1's records it is the one reading that keeps `bot:balanced` from reading Elite (0–10% of its armies from 300 to 1,500 gold, against 100% counted plainly and 10–66% with the swarm read), and it lets Anti-Ranged bite. It departs from the first guess, under which Bloomed and Elder units counted.
 4. Score the five counter kinds:
 
 | Kind | Score | Counter set (buildings in the general's faction roster whose unit has…) |
@@ -1113,7 +1134,7 @@ If the player fielded nothing in the rounds read, the cycle passes.
 | Veilstalkers | Sporelings with Gill Archers (95%) |
 
 - The counter sets above match most of these: slash for the swarm (Capguards, Amanita Knights), crush for heavy armor (Hammercaps), pierce for medium (Veilstalkers against Morel Runners).
-- They missed archers: the analysis computes a ranged share, but no v1 kind scored it, and the check's answer to archers is a swarm. So v2 adds **Anti-Ranged** (R1's review gate, 2026-11-02, §18.2 #14), which scores `rangedShare` with `swarm` spawners as its set: in R1's clashes mono Sporeling Burrow beat mono Gill Nest 100% at every budget. It bites only once `eliteShare` counts Elder parts (R2-Q3): counted plainly, mono Gill Nest reads Elite, since its knitted archers count at their parts' supply.
+- They missed archers: the analysis computes a ranged share, but no v1 kind scored it, and the check's answer to archers is a swarm. So v2 adds **Anti-Ranged** (R1's review gate, 2026-11-02, §18.2 #14), which scores `rangedShare` with `swarm` spawners as its set: in R1's clashes mono Sporeling Burrow beat mono Gill Nest 100% at every budget. It bites now that `eliteShare` counts Elder parts (R2a S0, 2026-11-02, R2-Q3): counted plainly, mono Gill Nest reads Elite, since its knitted archers count at their parts' supply.
 - **The counter sets stay by damage type and tag** (R1's review gate, 2026-11-02, §18.2 #15), not from R1's clash matrix, which would move with every retune. Three fixes: `swarm` units are in neither the Anti-Swarm nor the Anti-Line set; when the roster has no building in the chosen set, the general takes the cheapest building whose unit beats the dominant armor; and a unit that deals no damage is in no set (A055, A056). The clash matrix checks the sets: in R1, with the swarm read, they held its best answer to mono Sporeling (Capguard Hall) and to mono Veilstalker (the swarm builds), and missed for mono Capguard, which reads Elite from 600 gold while Gill Nest answers it.
 - **Open:** an Anti-Air kind for flyers, which come later (§1.3 #11). First guess: none until flyers arrive.
 - **Open:** (settled in R3) how the analysis reads an augment that flips a matchup, so the general can answer it as §1.3 #7 requires. First guess: the general rates its counter set against the player's squads as augmented (the compiled matchup, §5.3), skips a building that loses, and reaches for the next answer.
@@ -1134,11 +1155,12 @@ If the player fielded nothing in the rounds read, the cycle passes.
 The player sees the general's whole army before planning. Nothing about the general is hidden; its next move is unknown only because it hasn't made it yet (§17 #9).
 
 - **Its colony and the army it will field:** every round, once the general has planned, its colony and its formation preview are on the field: squad types, formation positions, merge previews and augment icons (§10.2). Its opener in round 1 is included, so the opener is no longer a guess.
+- **The full reveal stays the default** (R2a S0, 2026-11-02, R2-Q1): from round 2 you still see the general's whole current plan, not only the army it fielded last round (§1.3 #3). The cost is that you always move last and see its counters first, and X7's `bot:answer` measures that risk (§12.2). R2a's playtest A/Bs a view option, **last fielded**, from round 2 (`reveal=last`, §15.6): the general's colony and squads are drawn as it fielded them last round, and this round's plantings appear at Begin with their sprout. It is a view rule, so no hash and no golden moves.
 - **Matchup marks:** choosing a card or hovering a squad marks the general's squads with the class of the hits between them (§10.4).
 - **General's Intent panel** (top right, §10.2):
   - its portrait, name and doctrine: what it remembers about the player (§7.6), or the counter it's running (§7.4);
   - its income this round and the gold it banked, which are public because it plays by the player's rules (§7.1);
-  - what it changed this round: the buildings it planted and sold;
+  - what it changed this round: the buildings it planted and sold, read from its plan for the round (`ai.plans`, §14.4), so the panel survives later commands and a fast-forward to a round (R2a S0, 2026-11-02, A070);
   - in its tooltip, its passive (§7.7) and its kit, each card with its copies and augments (§7.8).
 - **Callouts:** when a counter lands (§7.4), and round 1's "The Gray Rot remembers your **SWARM**." (§7.6).
 - **Its kit on the route node:** a battle node on the route map shows its general, any elite modifier and the general's kit for that battle, each card with its copies and augments, so the player can plan a run around who's coming (§8.2, §10.5). The kit is fixed by the run seed and the battle index (§7.8), except the boss's first extra cards, which follow the intel file and can change until the boss battle starts. The boss node says so.
@@ -1189,7 +1211,7 @@ The general has a kit of its own, by the same rule as the player's (§8.10): car
 - **Copies (from R3):** the player's rule (§8.10): 2 copies of each opener card, and 1 of each card added after it, including a counter card added in battle (§7.4). Until R3 there are no copies, and v1's `limits.*.maxOwned` in `data/generals.json` apply (for example, at most 3 Truffle Cellars).
 - **Open:** whether the general needs more copies because it takes no drafts. First guess: no, the player's rule above.
 - **Plots:** how many plots its colony opens in a battle is §4.6's (**Open** there).
-- **Augments** (from R3) replace v1's random upgrade levels: one per battle index above 1 (§1.3 #7). Each is drawn for a spawner card in its kit from the `ai` stream, sub-seeded per battle index, so the kit doesn't depend on the path the player takes and its route node can show it (§7.5). An augment attaches as the player's do (§11.13). Every augment shows on its squad and its card. Until R3, *i* − 1 random upgrade levels on units in its kit (`ai` stream) stand in for them, as in v1 (`enemyKit` in `data/balance.json`).
+- **Augments** (from R3) replace v1's random upgrade levels: one per battle index above 1 (§1.3 #7). Each is drawn for a spawner card in its kit from its AI stream (`ai.enemy`, §7.1), sub-seeded per battle index, so the kit doesn't depend on the path the player takes and its route node can show it (§7.5). An augment attaches as the player's do (§11.13). Every augment shows on its squad and its card. Until R3, *i* − 1 random upgrade levels on units in its kit (`ai` stream) stand in for them, as in v1 (`enemyKit` in `data/balance.json`).
 
 ### 7.9 Milestone 1's scripted general
 
@@ -1244,6 +1266,8 @@ The route map has six rows. You pick one node per row, and every node connects t
 
 - **Battles per run:** 4 or 5, including the boss. A battle of 6–8 rounds takes about 6–8 minutes if planning averages about 30 s a round ([docs/archive/v1/ideas/rounds.md](docs/archive/v1/ideas/rounds.md)), which matches the 25–35 minute target.
 - **Run length under lives:** a lost battle no longer ends the run (§8.5), so more runs reach the boss and a run grows longer. With lives, an emulation under v1's waves put a run at about 35–45 minutes for a person at 1× ([docs/archive/v1/ideas/after-the-rework.md](docs/archive/v1/ideas/after-the-rework.md), Tier 1 item 2). The route's shape (its rows and the node kinds in each) SHOULD live in data, so a shorter run can be measured.
+- **Is 25–35 minutes binding?** (X6, R2a S0, 2026-11-02) Not yet: measure first. R2a's report shows planning seconds per round (on the play clock below), R2b's playtest reads the run's minutes, and the target is re-set after R2b's playtest. If runs are long, the levers go in order: rounds per battle (the scoring curve, §6.7), then the route's length, with its shape in data.
+- **Active play time** (RB-Q3, R2a S0, 2026-11-02) is wall time with the tab visible on a run or battle screen, paused while the tab is hidden and after 60 s without input. Help and settings count, and a paused clash counts until the idle cutoff. The app computes it, and it never enters the run state or the hash (§13.3 rule 6). R2a's play clock is the one module for it, and records-2 extends it with the run's total (§16 M6).
 - **Battle nodes** show:
   - the map name and lane count;
   - the general's portrait, name and title, and any elite modifier (§7.7);
@@ -1476,7 +1500,7 @@ Each feat is a data record: `id`, `name`, `description`, `scope` (`battle` or `r
 
 - Operators: `eq`, `gte`, `lte`.
 - Combinators: `all`, `any`.
-- Stat paths are whitelisted.
+- Stat paths are whitelisted, and §14.2 lists them. R2a records the stats feats need now (M6-Q1, R2a S0, 2026-11-02; §5.7), so M6 adds no stat and moves no golden.
 
 **The unlock ladder (M6).** A new profile starts with the six core archetypes and the Truffle Cellar (§11.2). Feats unlock the rest of the roster a few buildings at a time, so a new player meets each role once they know the ones before it: the roster is taught by gating, not by text.
 - A locked building's card shows the feat that unlocks it, so the quest is printed where the player sees it.
@@ -1632,7 +1656,7 @@ A battle is a series of rounds (§4.7), and the battle screen keeps one layout t
 
     The gold chip pulses when income lands at the start of planning. If the row would run into the Heartcap labels (a narrow window, big late-run numbers), it first closes up, then hides its small words (screen readers still read them).
   - **Chip tooltips** (playtest round 3): each chip, the round tally and the lane tug has a real tooltip in the card-tooltip style, on hover or keyboard focus, closed by leaving or Esc; `I` puts focus on the gold chip and Tab moves along the band. They are computed from render-side state and content; nothing joins the sim state.
-    - *Gold:* next round's income by source (Heartcap stipend, each economy building with any loam bonus, the Spore Exchange's trickle), totalling the chip's figure, and the comeback gold a lost round would add; interest in plain words ("1 gold for every 20 you're holding when you Begin, up to 10"), what your gold now would pay, with an example of a partial amount ("bank 140 for +7"), and how much to hold for the full cap (200 for +10 at the base cap, more when the cap is raised); what the Spore Exchange adds (with its hotkey) or that yours raises the cap.
+    - *Gold:* next round's income by source (Heartcap stipend, each economy building with any loam bonus, the Spore Exchange's trickle), totalling the chip's figure, and the comeback gold a lost round would add; interest in plain words ("1 gold for every 10 you're holding when you Begin, up to 30"), what your gold now would pay, with an example of a partial amount ("bank 140 for +14"), and how much to hold for the full cap (300 for +30 at the base cap, more when the cap is raised); what the Spore Exchange adds (with its hotkey) or that yours raises the cap.
     - *Plots:* your plots by rank and file, which are free, which are loam or stumps, and how the colony gains plots over a run (§4.6).
     - *Round:* a round's three phases; how a lane's clash ends and what happens at the 45 s cap; what the loser's Heartcap takes (§6.7); the drafts in the planning phases of rounds 3, 5 and 7, after rounds 2, 4 and 6 (§8.3); and the Decision after round 9, with the Heartcap damage each side has dealt so far (§6.5).
     - *Storm:* what the round escalation is, its multiplier now and in each round to come, the cap on a round's damage, and whether an event moved it.
@@ -1640,7 +1664,7 @@ A battle is a series of rounds (§4.7), and the battle screen keeps one layout t
   - Under the chips, the **round tally**: one pip per round, up to round 9.
     - A pip is violet for a round you won, ash for one the general won, a dash for a round nobody won (§6.7) and hollow for a round to come. The current round's pip is outlined.
     - On Twin Roots, where each lane is its own clash, each pip has one half per lane. A half is violet or ash for the lane's winner, and a dash for a drawn lane (§6.7).
-    - Under the tally's ends sit the Heartcap damage you've dealt in this battle and the damage you've taken. A Decision goes to the bigger number (§6.5).
+    - Under the tally's ends sit the Heartcap damage you've dealt in this battle and the damage you've taken. A Decision goes to the larger share of the other Heartcap's max HP dealt (§6.5).
     - A past pip's tooltip gives that round: each lane's result and survivors, the damage both ways, and your squads that dealt the most ("what killed what").
   - **In a clash, the lane tug** takes the tally's place: one bar per lane, your surviving supply striped violet from the left and the general's striped ash from the right, with both numbers under its ends. It's the clash's "who's winning" readout, because surviving supply is what the aftermath counts (§6.7). A lane whose clash has ended locks and names its result: won, lost or drawn. A drawn lane's tug goes neutral, with neither side's stripes lit.
   - The **General's Intent** panel at the top right shows what §7.5 lists:
@@ -1661,13 +1685,13 @@ A battle is a series of rounds (§4.7), and the battle screen keeps one layout t
     - interest, the first time it pays.
 
     Each is shown once, ever, and remembered under `spore-sprawl/tips/v1` (through `storageKey()`); the settings screen turns tips off or shows them all again. The ids of v1's retired tips (the frontier, Hold) stay in old records and are ignored. The economy tip waits in the same queue but isn't remembered. A tip is cream on its panel with a lilac "Tip" word and names its key with a keycap; tips never use gold, which means money. R4b rewrites their words (§16).
-  - **Pinned callouts** come before the timed ones and stay until they no longer apply: the planning hint, the empty-lane warning at Begin (see the planning view), "Paused" while a clash is paused, the commander power's aim while aiming, and a notice when a saved battle couldn't be restored. Nothing else sits on the field.
+  - **Pinned callouts** come before the timed ones and stay until they no longer apply: the planning hint, the empty-lane warning at Begin (see the planning view), "Paused" while a clash is paused, the commander power's aim while aiming, the round's result banner through the aftermath (R2a S0, 2026-11-02, A071), and a notice when a saved battle couldn't be restored. Nothing else sits on the field.
 - **Field frame** (docs/archive/v1/ui-ux-plan.md, Phase 1a): the void between the bands, above, below and beside the battlefield, is drawn as the earth the field sits in.
   - What it shows: a roots ceiling, a soil bed with each side's buried threads (lilac under your half, ash under theirs), roots down each side, and each Heartcap's crown rising into the ceiling.
   - How it's drawn: text sprites from `data/sprites/frame.json`, baked onto a canvas behind the field and the bands at the field's own pixel scale, with its pixels lined up with the field's. It stays darker than the field and takes no input.
   - **Ambient spores** drift across it, thicker with each round of the Sporestorm from round 5. They drift at 1× in planning, move at the game's speed in a clash, stop while a clash is paused and once the battle is over, and hold still under `prefers-reduced-motion` and `?test=1`.
 - **Bottom band:**
-  - **Controls** (left): the commander power, lit only in a clash, from its first tick (§6.6); **Begin** in planning, then, in a clash, one segmented control for 1×, 2×, 3× and pause; then the speaker (§13.9), the **settings** cog, which opens the settings screen (§10.5), and Help.
+  - **Controls** (left): the commander power, lit only in a clash, from its first tick (§6.6); **Begin** in planning, then, in a clash, one segmented control for 1×, 2×, 3× and pause (in the aftermath it stays, with pause hidden); then the speaker (§13.9), the **settings** cog, which opens the settings screen (§10.5), and Help.
   - **The kit tray** (centre): your kit's cards (§8.10), grouped by role: economy first, then army, defense and utility, each group in kit order. The `1`–`9` hotkeys follow this order.
     - **Each card shows** a cap-shaped band across its top in its role's colour, its hotkey, its price as a gold chip, its **copies** (one pip per copy, lit while the copy is free and dim once it's planted), the building at 2× (64 px), its name and its role word (§11.2). An army card also shows its squad: the unit's sprite (its body and silhouette, §5.8), the squad's size ("×8") and matchup marks for the shapes it's strong and weak against (§10.4). An economy card shows what it earns a round. Every other detail goes in the tooltip, so a card carries no sentences. The art and the words are milestone R4b's card-text pass (§16); this list is the rule they follow.
     - A card you can't afford is **unlit**: the sprite desaturates, the price turns danger red, and the line under the name becomes a bar filling toward the price and "need N". A card with no copy left is unlit the same way and says "all planted". The name stays readable; nothing fades.
@@ -1677,10 +1701,11 @@ A battle is a series of rounds (§4.7), and the battle screen keeps one layout t
   - **The inspect panel** (right). Empty, it shows a short tip; the hotkeys live in Help.
 - **Planning view.** Round 1's planning takes the place of v1's deploy phase, and every round opens with one.
   - **When:** at the start of every round, once the general has planned, in §4.7's order. Income has landed (from round 2) and the general has taken its turn, so its whole army is on the field before you plan, its opener included (§7.5). In rounds 3, 5 and 7 the draft opens next, over that army (see the draft overlay), and you plan once it's resolved. Planning is untimed, and the clock is stopped (§4.2).
-  - **Begin** is the bottom band's one primary button (its keycap shows `Space`; `Enter` works too). It ends planning and starts the clash running: a pause never carries into a clash. The planning hint is pinned in the callout lane: the round, your gold and "plan, then press Begin" (round 1: "place your opener"). In round 9 the hint says it's the last round and who leads on damage for the Decision.
+  - **Begin** is the bottom band's one primary button (its keycap shows `Space`; `Enter` works too). It ends planning and starts the clash running: a pause never carries into a clash. The planning hint is pinned in the callout lane: the round, your gold and "plan, then press Begin" (round 1: "place your opener"). In round 9 the hint says it's the last round and who leads on the Decision, by the share of max HP dealt (§6.5).
+    - **Begin by key** (R2a S0, 2026-11-02, R2-Q12) needs a fresh keydown after planning opens, ignores auto-repeat and waits about 400 ms; the button stays instant. Space means Begin, pause and skip in turn, so without this one held key could start a clash with no planning (A065).
     - **While a draft is open,** Begin is unlit, and its tooltip says the draft must be picked or skipped first (§8.3).
     - **An empty lane warns.** If you'd field nothing in a lane (no squad and no emplacement) where the general fields something, your whole formation on a one-lane map, the first press of Begin doesn't start the clash. It pins a warning in the callout lane ("The general takes this lane unopposed"; on Twin Roots it names the lane), and Begin reads "Begin anyway". A second press begins; planting or `Esc` clears the warning. The lane would go to the general with its whole surviving supply (§6.7).
-  - **Both colonies** show their plots as a faint grid of 2×2 squares, yours on the left and the general's on the right (§4.6). A loam plot keeps the loam look and a stump plot shows its stump, so a formation's holes show before the clash. The general's buildings planted this round carry a "New" sprout: that's how its counters land on the field (§7.4).
+  - **Both colonies** show their plots as a faint grid of 2×2 squares, yours on the left and the general's on the right (§4.6). A loam plot keeps the loam look and a stump plot shows its stump, so a formation's holes show before the clash. A **closed plot** (a third-rank plot not yet gained, §4.6) is dark, unlit soil with no grid and a small mark (R2a S0, 2026-11-02, A072): the ghost refuses it with "this plot is closed", and the plots chip counts open plots only. The general's buildings planted this round carry a "New" sprout: that's how its counters land on the field (§7.4).
   - **The formation preview:** both armies stand in the arena where they will appear on the clash's first tick, front ranks 6 tiles apart (§4.6).
     - Each squad is drawn as its units in the shape language (§5.8), dimmed so it reads as a plan, inside a faint outline of its slot (the plot's place in the formation box, §4.6). The preview MUST come from the same formation rule the clash uses, so the squads appear where you saw them.
     - It updates as you plant, sell or toggle merging, so the formation you're building is always in front of you.
@@ -1688,7 +1713,7 @@ A battle is a series of rounds (§4.7), and the battle screen keeps one layout t
   - **Each squad's slot carries:**
     - its **merge preview** (§5.6): pips for the Bloomed and Elder units it knits into at the muster, then the count of base units left over. Its tooltip and the inspect panel say it in words ("fields as 2 Bloomed + 2"). The preview is the muster's own knitting rule run on the formation (§5.6), so it shows what fields: neighboring squads of the same unit that combine, such as two Burrows side by side making an Elder, show it.
     - its **augment icons** (§11.13), the general's included;
-    - **matchup marks** (§10.4) while a card is chosen or a squad is hovered: choosing a card or hovering one of your squads marks every enemy squad with the class of your hits on it, and hovering an enemy squad marks your squads and cards with the class of its hits on them.
+    - **matchup marks** (§10.4) while a card is chosen or a squad is hovered: choosing a card or hovering one of your squads marks every enemy squad with the class of your hits on it, and hovering an enemy squad marks your squads and cards with the class of its hits on them. A squad shows the mark of your hits on its base-tier units, plus a pips mark when its merged units take a different class (R2a S0, 2026-11-02, A069). R2a's basic marks show only your hits on enemy squads; the reverse direction and the marks on cards come with R4b (R2-Q12).
   - **Selling:** `X` twice. The first press shows the refund: the full price for a building planted in this planning phase, 60% for one that has fielded (§4.4). The copy goes back to your kit and the preview drops its squad.
   - **Twin Roots:** each lane has its own colony and its own formation preview (§4.6).
 - **Clash view.**
@@ -1702,17 +1727,18 @@ A battle is a series of rounds (§4.7), and the battle screen keeps one layout t
   - When every lane's clash has ended, the field holds still, and in each lane the winner's survivors surge toward the loser's Heartcap and burst into spores on it. At the 45 s cap both sides have survivors: the loser's wilt where they stand. A drawn lane has no surge, and any survivors in it wilt (§6.7).
   - The loser's bar in the top band drains by the round's damage and pulses, and the number rises over its Heartcap on the field, with the Sporestorm's multiplier and "capped" beside it when they apply. At the cap it shows the difference that counts.
   - A result banner then names the round (won, lost, drawn, or split by lane on Twin Roots), the damage both ways, and your squad that dealt the most damage. The tally takes the round's pip, and the next planning phase opens.
-  - It lasts about 3 s at 1×, and less at 2× and 3×. `Space`, `Enter` or a click skips it. Under reduced motion there's no surge: the bars change within a fade of 120 ms or less, and the banner shows. `?test=1` makes it instant.
+  - It lasts about 3 s at 1×, and less at 2× and 3×. It plays at the speed the clash ended at, and the speed control stays live there, with pause hidden. It holds while Help or the settings screen is open, as a clash pauses (R2a S0, 2026-11-02, R2-Q12, A078). `Space`, `Enter` or a click skips it. Under reduced motion there's no surge: the bars change within a fade of 120 ms or less, and the banner shows.
+  - **Under `?test=1`** the aftermath jumps to its final frame (bars drained, banner up, the round's pip filled) and holds there: it waits for `Space`, `Enter` or a click, or, with no `phase=` hold set, for the usual duration (R2a S0, 2026-11-02, A061; §15.6).
   - **The end of a battle:** when a Heartcap reaches 0, or round 9's aftermath ends (§6.5), the field holds for about a second on the fallen Heartcap (it bursts into lilac spores, or wilts to ash). Then the report arrives behind the spore wipe (§10.5).
   - The in-field Heartcaps MAY show their damage in stages, render only: cracks below ⅔ of their HP, and a wilting cap below ⅓.
 - **Placing:** while a card is chosen in planning, every free plot where it could go gets a soft lilac grid (gold isn't considered; a hover you can't afford still says so).
-  - The ghost snaps to a plot, and the formation preview shows its squad in that slot.
+  - The ghost snaps to a plot, and the formation preview shows its squad in that slot. Hovering a formation slot snaps the ghost to that slot's plot, and a click there plants (R2a S0, 2026-11-02, R2-Q12).
   - Each planted neighbor it would link with lights up, with the combo's icon (§10.4, §11.14).
   - The ghost's tip sits beside its footprint inside the field, flipping to the left near the right edge, so it never covers the ghost, a band or the callout lane. It gives the price, the plot's rank and file, the loam bonus for an economy card and the combos it would make, or the reason it can't go there.
 - **Draft overlay:** a draft opens in the planning phases that hold one (§8.3), after the general has planned. The battlefield dims, except the general's formation preview, which stays lit so the cards can be weighed against its army. Three large cards show type (blueprint, copy, augment or relic), rarity, effect text and an "owned" context line: the copies you own, or the building an augment changes. Reroll shows its cost; Skip shows "+40 gold".
 - **Gone with their systems** (Appendix A): spawn timers, the supply chip, the territory tug and capture progress, the Hold / Advance switches and rally lines, the forward price on the ghost and on cards, the besieged and "waiting for supply" glyphs, and the warning countdown.
 - **By milestone** (§16):
-  - **R2** builds the three views, the formation and merge previews, the round tally and the lane tug, lives, and basic matchup marks (the class against each enemy squad), on today's sprites.
+  - **R2** builds the three views, the formation and merge previews, the round tally and the lane tug, lives, and basic matchup marks (the class against each enemy squad), on today's sprites. R2a builds the views for a single battle, with no lives and no draft; R2b adds lives, the run bar, the draft in planning and the rest of the run's screens (X1).
   - **R3** adds copies, augments and combos to the cards, the formation preview and the ghost, with placeholder icons.
   - **R4** comes in two parts (X3, agreed 2026-11-01):
     - **R4a**, before R2's first playtest, draws the shape language on the field: silhouettes, body sizes, and pips and the Elder's rim without the bigger sprite. Units carry no weapon mark (§5.8).
@@ -1723,8 +1749,8 @@ A battle is a series of rounds (§4.7), and the battle screen keeps one layout t
 | Input | Action |
 |---|---|
 | `1`–`9` or click a tray card | In planning: choose a building to plant |
-| Mouse move (placing) | Free plots where it can go show a lilac grid. The ghost snaps to a plot and shows legality (with a reason when illegal), the price, the loam bonus, its rank and file and the neighbors it would link with. The formation preview shows its squad in place |
-| Left click (placing) | Plant it. Hold `Shift` to keep planting the same building while copies and gold last |
+| Mouse move (placing) | Free plots where it can go show a lilac grid. The ghost snaps to a plot and shows legality (with a reason when illegal), the price, the loam bonus, its rank and file and the neighbors it would link with. The formation preview shows its squad in place. Over a formation slot the ghost snaps to that slot's plot |
+| Left click (placing) | Plant it, on a hovered formation slot's plot too. Hold `Shift` to keep planting the same building while copies and gold last |
 | Mouse over a plot or a squad (planning) | Lights the plot's squad, or the squad's plot, and shows matchup marks against the other army (§10.4) |
 | Right click / `Esc` | Cancel placement or aiming, or deselect |
 | Left click a building, unit or squad | Inspect it, yours or the general's |
@@ -1742,12 +1768,13 @@ A battle is a series of rounds (§4.7), and the battle screen keeps one layout t
 | `S`, or the speaker button | Sound on or off, anywhere in the game. Hovering or focusing the speaker opens the volume sliders (§13.9) |
 | `F3` | Debug overlay (only with `?debug=1`): plots, the formation box and its slots, aggro radii, ids |
 
+- **Begin by key** (`Space` or `Enter`) needs a fresh keydown after planning opens, ignores auto-repeat and waits about 400 ms. The Begin button stays instant. So one held or double-tapped key can't skip the aftermath and start the next clash with no planning (R2a S0, 2026-11-02, R2-Q12, A065).
 - **Planning keys in a clash:** planting, selling and `M` are planning actions. During a clash they're refused with a callout that says so, and so is `Q` outside a clash.
 - **Gone:** `F` and the Hold / Advance switches went with Hold (§5.2, Appendix A).
 
 ### 10.4 Feedback rules (clean field, rich inspection)
 
-- **Plain words** (playtest round 3): player-facing text avoids jargon ("touching on a side, not just a corner", "half as much extra", "while it is hit"). Data text is copied into every battle's state, so rewording it moves the golden hashes; until the next golden refresh the plain wording lives in `src/ui/words.ts`, and a unit test keeps its numbers in step with the data. R2 regenerates the goldens (§15.5), so the plain wording SHOULD move into `data/*.json` then. A layout rule gets a small picture: every combo shows its positions (in front of, behind, beside) as one (§11.14).
+- **Plain words** (playtest round 3): player-facing text avoids jargon ("touching on a side, not just a corner", "half as much extra", "while it is hit"). Data text is copied into every v1 battle's state, so rewording it moves v1's golden hashes; until R4b the plain wording lives in `src/ui/words.ts`, and a unit test keeps its numbers in step with the data. From R2a a round battle's state holds ids and numbers only (R2a S0, 2026-11-02, R2-Q8): the UI reads names and text from content by id, so rewording never moves a round golden, and R4b deletes `src/ui/words.ts` (§14.4). A layout rule gets a small picture: every combo shows its positions (in front of, behind, beside) as one (§11.14).
 - **The shape language** (§5.8): a unit's look says its job, so the field teaches matchups without text. This answers the P3 playtest's "a wall of text" (docs/playtest-feedback.md, F17).
   - *Body size shows armor:* light units are small, medium are medium and heavy are big, in three height bands (§14.3). Size means armor and nothing else, so a merged unit keeps its body. v1 drew Bloomed units at ×1.25 and Elders at ×1.5 (`TIER_SCALE` in `src/render/renderer.ts`); R4a drops that.
   - *No weapon marks* (the user, 2026-11-01): no unit or emplacement carries a mark glyph for its damage type, and none is to be added. A unit's silhouette tells it apart. Its damage type shows in the hit sparks, in the matchup marks on its card and on the planning screen, and in the inspect panel (§5.8).
@@ -1763,7 +1790,8 @@ A battle is a series of rounds (§4.7), and the battle screen keeps one layout t
   - Marks show the matrix and the tags (§5.3), which the shapes always tell. An augment or combo that changes a matchup adds its icon to the mark, and the tooltip gives the changed number.
   - **On a card:** the shapes its unit is strong against and weak against. In planning, a mark lights while the general's army fields that shape, so a card that answers its army stands out at a glance.
   - **On the planning screen:** while a card is chosen or one of your squads is hovered, each enemy squad shows the class of your hits on it. Hovering an enemy squad shows the class of its hits on your squads and cards.
-  - R2's planning screen needs basic marks to be playtestable; R4b draws them in full (§16).
+  - R2's planning screen needs basic marks to be playtestable; R4b draws them in full (§16). R2a's basic marks show your hits on the enemy's squads; the reverse direction and the marks on cards come with R4b (R2a S0, 2026-11-02, R2-Q12).
+  - **Per tier** (R2a S0, 2026-11-02, A069): a squad can hold tiers a slayer treats differently, so it shows the mark of your hits on its base-tier units, plus a pips mark when its merged units take a different class.
 - **Augment icons:** an augment shows on its card and on its squad in the formation preview, the general's included (§11.13). In a clash a unit carries no augment icon. An augment shows its icon where and when it acts (spores bursting from a dying Sporeling, a shield stopping an arrow), and inspecting the unit lists its augments.
 - **Combo highlights:** while placing, the ghost lights each neighbor it would link with and shows the combo's icon. In planning, linked buildings are joined by a hypha with the combo's icon at its middle ("mycelium connects", docs/archive/v1/ui-ux-plan.md). In a clash, a combo shows its icon when it acts, as an augment does.
 - **Damage numbers:** none by default. The setting offers *off*, *big hits only* (30 or more) and *all*. It lives on the settings screen (§10.5), which the cog in the battle's bottom band opens, and is saved with the other settings.
@@ -1787,10 +1815,10 @@ A battle is a series of rounds (§4.7), and the battle screen keeps one layout t
   - *Buildings:* its squad (unit and size) with its merge preview ("fields as 2 Bloomed + 2"), its plot (rank, file, loam), its combos and augments, its squad's damage and survivors in the current or last clash, gold produced (economy), the merge toggle, the sell value and its copy ("copy 1 of 2"). The general's buildings show the same, without the buttons.
 - **Post-battle report** (by round):
   - the outcome and how it was decided: the round a Heartcap fell in, or the Decision after round 9 with each side's damage dealt (§6.5); in a run, a life lost on a loss (§8.5)
-  - the **round chart:** one column per round, the Heartcap damage you dealt rising in violet and the damage you took hanging in ash, with each Heartcap's HP after the round as a line. Sporestorm rounds are marked, and on Twin Roots each column splits by lane
-  - damage by building (a bar list), over the battle's clashes
+  - the **round chart:** one column per round, the Heartcap damage you dealt rising in violet and the damage you took hanging in ash, with each Heartcap's HP after the round as a line. Sporestorm rounds are marked. On Twin Roots a column stays one bar, the capped total, since the cap applies to the sum over lanes, and each lane's result sits under it as a half-pip (R2a S0, 2026-11-02, A068)
+  - damage by building (a bar list), over the battle's clashes, and each building's survivors in a clash, kept per round so the report and the inspect panel can read them after the units are cleared (§14.4; A064)
   - units fielded and merged
-  - gold by source
+  - gold by source, and the gold banked at Begin each round (R2-Q2)
   - the general's counters by round, with the buildings it planted for them
 - **Puffs:** a unit's arrival at the clash and its death are puffs of spores, the one particle: a few spore-white motes, 1–2 px, that drift up and fade (arrival 320 ms, death 420 ms). The Sporestorm's specks on the field are spore-white too.
 - **Accessibility:**
@@ -1825,10 +1853,10 @@ Milestone R2 (§16) needs the battle's three views and the report by round. The 
 - **Battle report and run summary:** an outcome banner (on a win the Heartcap blooms in lilac spores, on a loss the cap wilts to ash) with the MVP building beside it, then a staged reveal: the banner, the round chart, then the bars. Every table stays. The report's banner names what the battle earned: gold, and in a run its Spores and any Amber (an elite's Amber is shown as a chance, since it is rolled on Continue). On a loss in a run, it also names the life lost and the lives left (§8.5). Rewards roll up from 0 (600 ms, ease-out, then one bump): the report's gold and gold bars, and the summary's Spores, Amber and Commander XP.
 - **Help:** six tabs (Matrix · Merging · The general · Economy · Rounds · Keys), each fitting 1280×720; keys are drawn as keycaps.
   - Matrix shows the shape language (§5.8) beside the matrix and the tags.
-  - Economy covers income per round by source, interest in plain words with an example ("bank 140 for +7"), the Spore Exchange and comeback gold.
+  - Economy covers income per round by source, interest in plain words with an example ("bank 140 for +14"), the Spore Exchange and comeback gold.
   - Rounds covers a round's three phases, how a clash ends and what it costs the loser, the Sporestorm's escalation with a round-by-round table, the Decision and lives. It replaces v1's Sporestorm tab.
   - R4 rewrites Help's words (§16).
-- **Motion:** things grow in (from 0.96, ease-out) and nothing bounces more than once. Every screen change (title, route, spoils, event, Grove, battle, report, summary) is a spore-burst wipe of 360 ms: a veil of the void rises over the old screen on a band of spore-white motes (150 ms, ease-in), the screen swaps, and the veil lifts off the new one from the bottom up (210 ms, ease-out). Clicks and keys wait while it runs; the page's first screen appears at once. A battle's phases aren't screen changes: planning, clash and aftermath share the battle screen, and only the report arrives behind the wipe. Under reduced motion (§10.4) there's no wipe, stagger, lift, tilt, sparkle, roll-up, drift or surge, and fades take 120 ms or less. `?test=1` holds every screen still and makes every change instant.
+- **Motion:** things grow in (from 0.96, ease-out) and nothing bounces more than once. Every screen change (title, route, spoils, event, Grove, battle, report, summary) is a spore-burst wipe of 360 ms: a veil of the void rises over the old screen on a band of spore-white motes (150 ms, ease-in), the screen swaps, and the veil lifts off the new one from the bottom up (210 ms, ease-out). Clicks and keys wait while it runs; the page's first screen appears at once. A battle's phases aren't screen changes: planning, clash and aftermath share the battle screen, and only the report arrives behind the wipe. Under reduced motion (§10.4) there's no wipe, stagger, lift, tilt, sparkle, roll-up, drift or surge, and fades take 120 ms or less. `?test=1` holds every screen still and makes every change instant; in a battle's aftermath it jumps to the final frame and holds there (§10.2, A061).
 
 **Settings screen as built (docs/archive/v1/ui-ux-plan.md, Phase 3).** An overlay sheet that opens from the title's Settings button, the battle's cog (a clash pauses while it is open, and the sheet says so) and the run bar's cog. Esc, Close or a press on the scrim closes it; while it is open, keys reach nothing behind it (except `S`, which still mutes) and Tab stays inside. The speakers keep their quick mute. Two columns:
 - **Sound:** mute, and master, effects and ambience volume (§13.9).
@@ -1864,6 +1892,7 @@ Key names for new constants are first guesses; §14.2 fixes them.
 | `heartcapPlayerHp` | 3000, every battle | §4.5 |
 | `heartcapEnemyHp` base / per battle / boss | 2000 / +250 / 3600, every battle | §4.5 |
 | `lives` | 3 | §8.5 |
+| `ai.leanToLastAnswer` / `ai.replaceWhenFull` | both off: the playtest knobs for the general between counter cycles (X8, R2a S0, 2026-11-02) | §7.2 |
 
 **Economy per round** (§1.3 #12):
 
@@ -1873,7 +1902,7 @@ Key names for new constants are first guesses; §14.2 fixes them.
 | `stipendPerRound` | 100 (was 8 per 5 s tick) | §6.2 |
 | A Truffle Cellar's `goldPerRound` | 50, or 75 on a loam plot (was 4 per tick) | §6.2, §11.2 |
 | `loamBonus` | 0.5 (kept) | §6.2 |
-| `interestPer` / `interestCap` | 20 / 10 (kept), on gold banked at the end of planning | §6.2 |
+| `interestPer` / `interestCap` | 10 / 30 (R2a S0, 2026-11-02, R2-Q2; v1's and the first guess were 20 / 10), on gold banked at the end of planning | §6.2 |
 | `comebackGold` | 40 to the last round's loser | §6.2 |
 | `enemyIncomeMult` | 1.0. A blight may raise it (§11.8) | §7.1 |
 | `draftRounds` | [2, 4, 6]: a draft opens in the planning phase after each | §8.3 |
@@ -1918,7 +1947,7 @@ Key names for new constants are first guesses; §14.2 fixes them.
 | Arrival shield | Each lane's army of 2 or more unit types arrives with shields of 20% of each unit's max HP | §5.3 |
 | Flyers (later) | Rule C: melee hits a flyer for ×0.5; lobbed shells and bursts can't hit it | §5.3 |
 | The Elder Sporeling's splash | Kept, 0.6 tiles (R1's review gate, 2026-11-02); off only under `?proto=rework`, which R2 deletes | §5.6 |
-| The general's swarm read | `ai.counter.swarmMaxSupply` 1, the `swarmread` preset in `src/data/proto.ts` (not in `data/balance.json`): a unit of 1 supply reads by its armor, not as Elite, even when merged. R1 found that counting Elder parts replaces it; R2a S0 settles it (R2-Q3) | §7.4 |
+| The general's swarm read | `ai.counter.swarmMaxSupply` 1, the `swarmread` preset in `src/data/proto.ts` (not in `data/balance.json`): a unit of 1 supply reads by its armor, not as Elite, even when merged. Not v2's rule: counting Elder parts replaces it (R2a S0, 2026-11-02, R2-Q3) | §7.4 |
 
 **Retired in v2** (Appendix A). The values are the data's at `aa37365`:
 
@@ -2217,6 +2246,7 @@ All maps are point-symmetric and hand-authored, and map files sit next to the ot
 
 - **A loam plot** is a 2×2 of loam tiles: an economy building there yields +50% (§6.2). **A stump plot** can't be built on, so it leaves a hole in the formation (§4.6).
 - **Plots the colony gains** over a run (the third rank, §4.6) are plain soil on every map (first guess).
+- **Home columns and open ranks** (R2a S0, 2026-11-02, §18.2 #19): each map reserves homeCols 6 and says which ranks start open with a `startRanks` field (2; `colony.startRanks` in R2a's map files), since `homeCols` alone can't. The third rank's two columns are drawn into every map and stay closed until gained (§4.6).
 - **Map files:** R2 moves each map's `$` and `o` tiles into its home columns to match these layouts, and the contested middle becomes plain soil.
 - **Three Hollows** keeps v1's character, but v1's lanes of 5 rows and 3 home columns can't hold whole 2×2 plots. **Open:** its shape under plots. First guess: 3 lanes of 4 rows and 4 home columns, so 12 plots in all.
 
@@ -2232,6 +2262,7 @@ Each commander's starter kit is its 3 starter cards with 2 copies each (copies f
 
 - **Cores and the core six.** A commander's core pool isn't limited to the six core archetypes: Vesper's and Armilla's bring the Rootbreaker Den and the Puffball Mortar, Armilla's the Rhizome Vault, and Cordis's the Scythecap Grove, the Veilstalker Hollow and Tender's Ring (§8.4).
 - **Armilla's starter** holds one unit type plus the Mortar, which fields itself as an emplacement (§11.2).
+- **Puppet Bloom and Cordis's knit bonuses under the muster** (R2a S0, 2026-11-02, R2-Q7). The muster already knits every reachable group, so few trios are left for Puppet Bloom, and a knit-time bonus acts only after the muster (§5.6). R1 found a median of 0 trios after the muster at 300 and 600 gold (rounds 1–3) and 1 from 900. R2a measures it again in real rounds. If the median stays below 1, R2b's S0 gives Puppet Bloom a v2 job (such as lifting same-type units within 3 tiles one tier) and turns Cordis's knit-time bonus into something the muster uses (such as merged units starting at +10% HP). Until then both are kept as written.
 - **v1's powers** (for the record): Spore Burst also hit buildings, with a 75 s cooldown, first ready at 0:45. Rhizome Tithe paid per column with a 75 s cooldown, first ready at 1:00; M5 reworked it from Rhizome Surge, which captured the frontier column in every lane (docs/archive/v1/m5-plan.md). Puppet Bloom had an 80 s cooldown, first ready at 1:00.
 
 ### 11.11 Generals' doctrine weights (Milestone 4)
@@ -2246,12 +2277,13 @@ These use the Velvet Bloom's building ids (`data/generals.json`); the Gray Rot e
 | The Pale Sovereign | Capguard, Gill, Cellar | Even weights over its kit; driven mostly by its dual doctrine | Burrow, Mortar, Scythecap, Rootbreaker, Hammercap, Veilstalker, Amanita Lodge, Morel Warren |
 
 - **Weights pick kit cards** in the general's planning (§7.2). It can plant only what its kit holds, within its copies (§7.8). Until R3 there are no copies, and v1's `limits.*.maxOwned` apply (`data/generals.json`: 3 Truffle Cellars for every general, and 4 Puffball Mortars for the Lichen Baron).
-- **A kit card its weights don't list** gets weight 1, as the rework's three buildings do today (`aiWeight`). **Open:** whether each general gets its own weights for the Burster Pod and the other v2 cards. First guess: no, they keep weight 1 until tuning says otherwise.
-- **Counter sets** are §7.4's, chosen by damage type and tag (Open there: whether R1's clash matrix replaces them).
+- **A kit card its weights don't list** gets weight 1 only when §7.8 adds it to a run kit, or a counter adds it as a missing answer (§7.4) (R2a S0, 2026-11-02, R2-Q4). In a single battle, where the general's kit is the whole roster, it buys only its listed weights, as today: read literally, weight 1 for every kit card would have G4's scripted opponent buy every building in the roster.
+- **The Burster Pod and the Rhizomorph Tunnel** (R2a S0, 2026-11-02, R2-Q5) get weight 1 in `bot:balanced`, `bot:rush`, `bot:turtle`, `bot:greedy` and each general's weights, written in data, as R1 measured them. v1's `aiWeight` and its kit append retire, and a kit test pins that a battle-1 general's kit holds no Burster Pod. **Open:** whether each general gets its own weights for the Burster Pod and the other v2 cards (§18.2 #49, with #48, in R3). First guess: no, they keep weight 1 until tuning says otherwise.
+- **Counter sets** are §7.4's, chosen by damage type and tag (§18.2 #15, settled at R1's review gate).
 
 ### 11.12 Gray Rot roster (Milestone 7)
 
-The Gray Rot mirrors the Velvet Bloom's roles under its own names. Faction trait: units have **+10% HP and −10% speed**. Each Gray Rot unit MUST keep its role's body and damage type, so the shape language reads the same on both sides (§5.8). ★ marks the core six.
+The Gray Rot mirrors the Velvet Bloom's roles under its own names. It has **no faction trait** (R2a S0, 2026-11-02, M7-Q1, departing from the earlier +10% HP and −10% speed): R2a's enemy seat plays its units' stats unchanged, so the bands R2–R4 set carry no hidden edge, and the Gray Rot's identity is its names, art and doctrines. Each Gray Rot unit MUST keep its role's body and damage type, so the shape language reads the same on both sides (§5.8). ★ marks the core six.
 
 | Role | Gray Rot building → unit |
 |---|---|
@@ -2397,12 +2429,14 @@ These are defined in §15. Every tool is headless, deterministic and seeded, and
 - **Not `rework`.** `?proto=rework` is v1's P3 package: waves with `matchPace`, mixed-wave shields, call for help, storm-grown waves, flyers, the swarm read and the Elder's splash off, without spore clouds or cleave. It isn't R1's variant.
 - **Each distinct clash is played once.** Armies are built in the main thread and sent to the workers as clash jobs (`tools/lib/pool.ts`), and cells that would play the same clash share one (A007). Without jitter a mono's army is the same on every seed, so the jitter-free baseline plays 70,698 clashes for its 169,000 cells.
 - **Measured cost** (R1, 2026-11-02; 6 workers on a 12-core laptop doing other work too): about 4 ms of a worker per clash, the army building included, against the 10–30 ms first estimated. The 50-seed baseline with the full matrix and the merge mirror played 299,150 clashes for 362,200 cells in about 3 minutes, the jitter-free run 47 s, and a 20-seed screen about 70 s.
-- **What it settles:** squad sizes, whether mixed armies need the shield, the Elder Sporeling's splash, how an emplacement counts, and the most a full colony fields, with a measure for each other §18.2 row settled by R1 (#11–#15, listed in §16), and the evidence for two calls at its review: copies before R3 (§8.10) and the scoring curve (§6.7). A bench case, one clash of two full colonies, comes with it (§15.4). **Open:** each of those is R1's result, and the user decides what to adopt (§16).
+- **What it settles:** squad sizes, whether mixed armies need the shield, the Elder Sporeling's splash, how an emplacement counts, and the most a full colony fields, with a measure for each other §18.2 row settled by R1 (#11–#15, listed in §16), and the evidence for two calls at its review: copies before R3 (§8.10) and the scoring curve (§6.7). A bench case, one clash of two full colonies, comes with it (§15.4). R1's review gate settled each of them on 2026-11-02 (§16 R1, §18.2 #7–#15).
 
 **The round loop.** The clash check can't judge the economy, the general's planning or the counter cycle. Those need whole battles of rounds.
 - [rounds.md](docs/archive/v1/ideas/rounds.md) suggests chaining clashes in the same tool next, with gold by round and one of two planning policies: fixed weights, or "buy the answer to what you saw". In v2 the round loop is R2's work instead (§16), so the clash check stays a check of single clashes.
-- **From R2,** the round loop is the sim itself (§4.7). `npm run sim` plays battles of rounds and whole runs with lives, and every tool below measures the real loop.
-- **How bots plan.** A strategy bot plans by its fixed weights and doesn't read the general's army (§7.1), which is what G3 and G12 need. [rounds.md](docs/archive/v1/ideas/rounds.md)'s second policy, "buy the answer to what you saw", MAY be added to the tools as a planning policy. **Open:** whether to add it, and whether the run guardrails (G14, G15) use it. The information edge is the player's by design (§1.3 #3), so a bot that ignores it understates the player.
+- **From R2,** the round loop is the sim itself (§4.7). `npm run sim` plays battles of rounds and whole runs with lives, and every tool below measures the real loop. R2a builds the loop beside v1's, so its tools take a temporary `--rounds` option until R2b's switch-over makes the loop the default and removes the option (§15).
+- **How bots plan.** A strategy bot plans by its fixed weights and doesn't read the general's army (§7.1), which is what G3 and G12 need. [rounds.md](docs/archive/v1/ideas/rounds.md)'s second policy, "buy the answer to what you saw", is added to the tools (R2a S0, 2026-11-02, X7, §18.2 #34; it departs from the first guess, fixed weights only). The information edge is the player's by design (§1.3 #3), so a bot that ignores it understates the player, and under the full reveal (§7.5) only a bot that reads the army can show whether the general is too easy (A198).
+  - **`bot:answer`** plans after the general, as every player-side bot does, and leans toward the answer to the army it sees: it scores each card in its kit by the class of its unit's hits (`matchupClass`, §14.6) against the general's planned squads, weighted by their supply.
+  - **Which guardrails use it:** G8 reports under both policies in R2a, and G14 and G15 under both in R2b (§12.3). G3 and G12 stay on fixed weights.
 
 **The tools that persist,** rewritten in round form by R2:
 - `npm run balance -- duel`: two kinds of duels.
@@ -2421,6 +2455,8 @@ These run as the slow test suite, `npm run test:slow`. Their thresholds live in 
 
 **v1's guardrails keep running on v1 code until R2 replaces them.** Until R2 lands, `test:slow` runs G1–G8 and G11 as the [v1 spec](https://github.com/Swalliso/Sambattler/blob/aa37365/SPEC.md) defines them, against v1's live battle. R1's clash check reports G3, G12 and G13 on clashes, outside the suite. R2 retires the v1 forms with the code they test, puts the round forms below into the suite, and moves their thresholds in `data/balance-targets.json` in the same change (§1.3 #13).
 
+**The round forms in the suite** (R2a S0, 2026-11-02, R2-Q9). R2a builds them beside v1's, in `tests/slow/rounds/` on a `rounds` block of `data/balance-targets.json`, and R2b retires v1's. `npm run test:slow` asserts every round guardrail as its milestone builds it (R2a: G1–G8, G11, G12, G13 and G16; R2b adds G14 and G15), split across files, with G3, G12 and the runs on worker pools, in about 15 minutes on the dev machine. The runtimes go in `docs/balance-backlog.md`. Past 20 minutes, G12 screens in the suite and is confirmed through `--checks counters` (A102).
+
 A guardrail keeps its number where its check persists in round form. New ones take G12 onward.
 
 | # | Guardrail | In v2 | From |
@@ -2430,17 +2466,17 @@ A guardrail keeps its number where its check persists in round form. New ones ta
 | G3 | Every `bot:mono:<buildingId>` bot plays `bot:balanced` on every map in the run pool (the §11.9 maps shipped so far, never test maps; a new map joins when it ships), 50 seeds per seat: 100 games per map (honest, symmetric). A bot passes if its mean win rate over those maps is ≤ 55% and its worst map ≤ 60%. R1 measures it on clashes, pooled over the five budgets (§12.2); from R2 the games are battles of rounds. It stays beside G12: G12 says every build has an answer, and G3 says a mixed army holds up against committed builds | **Kept**, in round form | M1; rewritten after step A (2026-10-30); round form R1–R2 |
 | G4 | Rounds per battle: `bot:balanced` against the scripted general (§7.9) on Bogwater Hollow over 40 seeds. Median 6–8 rounds; ≤ 15% of battles reach round 9; the bot wins 30–70% | **Rewritten:** v1's band of a 5:30–8:30 median length and ≤ 15% Decisions can't be read under rounds, because planning isn't on the clock | M1; round form R2 |
 | G5 | Snowball: a side given +150 starting gold wins 55–75% of battles | **Kept**, in round form | M1; round form R2 |
-| G6 | Comeback: starting round 4 from a scenario in which the behind side lost rounds 1–3 (its Heartcap 700 below full, with equal colonies and gold), the behind side still wins ≥ 20%. And in G4's games, the winner's Heartcap takes damage in at least half of the battles | **Rewritten:** v1's scenario, a 6-column deficit at 3:00, went with territory | M1; round form R2 |
+| G6 | Comeback: starting round 4 from a scenario in which the behind side lost rounds 1–3 (its Heartcap 700 below full, with equal colonies, gold and max HP), played in both seats, the behind side wins within a band (first guess 20–45%: v1's G6 read up to 88%, where falling behind was an edge, A111, A107). And in G4's games, the winner's Heartcap takes damage in at least half of the battles | **Rewritten:** v1's scenario, a 6-column deficit at 3:00, went with territory | M1; round form R2 |
 | G7 | Merging: in a merge-on vs merge-off mirror, merge-on wins 55–70%. Against an opponent fielding 25% of its supply as Slayers, merge-on wins ≤ 50%. R1 also measures the Elder Sporeling's splash (§1.3 #11) | **Kept**, in round form (v1 read a 25% Slayer spawn share) | M2; round form R2 |
-| G8 | Adaptation: every mono bot's win rate drops by ≥ 20 points against the adaptive general compared with the same general with adaptation off. `bot:balanced` wins 40–65% against the adaptive general at battle index 1. Under rounds the general reads the squads you fielded and answers with new buildings in its colony (§7.4) | **Kept**, in round form | M4; round form R2 |
+| G8 | Adaptation: every mono bot's win rate drops by ≥ 20 points against the adaptive general compared with the same general with adaptation off. `bot:balanced` wins 40–65% against the adaptive general at battle index 1. Under rounds the general reads the squads you fielded and answers with new buildings in its colony (§7.4). R2a reports it under both planning policies, `bot:balanced` and `bot:answer` (X7, §12.2), and sets its band; R2b re-reads that band beside G14's, with the drafts' lift stated (#35) | **Kept**, in round form | M4; round form R2 |
 | G9 | Meta ceiling: a full 12-capacity trait loadout raises `bot:balanced`'s win rate by ≤ 15 points | **Kept** | M6 |
 | G10 | Blights: Decay 6 lowers `bot:balanced`'s run win rate by 25–50 points against Decay 0 | **Kept** | M7 |
-| G11 | Performance budgets (§13.7). From R1 the bench includes a clash between two full colonies, and R2 adds the clash's first tick, the planning command and the general's planning turn (§15.4) | **Kept**, extended | M1 |
+| G11 | Performance budgets (§13.7). From R1 the bench includes a clash between two full colonies, and R2 adds the clash's first tick, the sim part of a planning command (`formationOf` and `mergePreview` after a plant, under a Node budget) and the general's planning turn (§15.4). The 4 ms figure for the whole command, page update included, is measured in a Chromium browser test (§13.7, §15.6) (A113) | **Kept**, extended | M1 |
 | G12 | **The strict counter bar, the main bar.** Every mono build whose G3 mean is above 40% has an answer that wins ≥ 60% on every map in the run pool; an answer that fails G3 itself doesn't count. R1 reads it on clashes, pooled over the five budgets; from R2 the games are battles of rounds. From R3 the builds under test include the augment and combo builds the bots can draft (§11.13, §11.14), so a build that flips a matchup passes only if it still has an answer | **New** (the counter matrix of 2026-10-30, made a guardrail) | R1 (report); R2 (suite) |
 | G13 | Clash stalls: ≤ 15% of clashes reach the 45 s cap (§6.7). The report also gives the median clash length against the 20–40 s target. R1 reads it over the clash check's clashes; from R2, over G4's games | **New** (the round form of v1 G4's Decision limit) | R1 (report); R2 (suite) |
-| G14 | Battle 1: the run bot (`bot:balanced`, greedy drafts, the auto power policy) wins 70–90% of battle 1s for each commander, over 100 runs per commander. A lost battle costs a life, not the run (§8.5), so battle 1 can bite without ending runs | **New** | R2 |
-| G15 | The boss: in the same runs, at least 40% reach the boss, and the bot wins 40–70% of its boss fights | **New** | R2 |
-| G16 | Formation: a colony planted by the formation rule (melee in front, ranged and area behind, economy at the back, §7.3) beats the same colony with its front and back ranks swapped in ≥ 60% of clashes, pooled over the clash check's budgets and the even pairs of army buildings. Placement must matter (§1 pillar 2, §4.6) | **New** (the round form of the placement-spread measurement) | R2 |
+| G14 | Battle 1: the run bot (`bot:balanced`, greedy drafts, the auto power policy) wins 70–90% of battle 1s for each commander, over 100 runs per commander. A lost battle costs a life, not the run (§8.5), so battle 1 can bite without ending runs. R2b reports it under both planning policies (X7) and sets its band with G8's (#35) | **New** | R2 (R2b) |
+| G15 | The boss: in the same runs, at least 40% reach the boss, and the bot wins 40–70% of its boss fights. R2b reports it under both policies (X7) and adds a bound on boss reach, such as ≤ 85% (#35) | **New** | R2 (R2b) |
+| G16 | Formation: a colony planted by the formation rule (melee in front, ranged and area behind, economy at the back, §7.3) beats the same colony with its front and back ranks swapped in ≥ 60% of clashes, pooled over role-split pairs only: one front-line and one back-line building, at the budgets where both fit, with a column per budget. Same-role pairs are reported only. With a third rank, the swap trades the front and back ranks and leaves the third in place (R2a S0, 2026-11-02, R2-Q10, A108, A120; the first guess was every even pair). Placement must matter (§1 pillar 2, §4.6) | **New** (the round form of the placement-spread measurement) | R2 |
 
 **Retired v1 forms.** No guardrail number is retired outright. These parts go with their systems (Appendix A):
 - G1's 3-minute production duels (spawn timers);
@@ -2449,7 +2485,7 @@ A guardrail keeps its number where its check persists in round form. New ones ta
 - G7's Slayer spawn share (spawn timers);
 - G3's and G8's games as live battles, the `lanes` traces, and the placement spread in seconds of live battle.
 
-**Open:** the bands of G6's second clause and of G14–G16 are first guesses, and so is G6's 700-HP deficit. R2's first full measurement and its playtest set them.
+**Open:** the bands of G6's second clause and of G14–G16 are first guesses, and so is G6's 700-HP deficit (§18.2 #35). R2's first full measurement and its playtest set them. The approach is agreed (R2a S0, 2026-11-02, #35): every band comes from one measurement, and G4 and G6 start from X5's race model. G6's first clause becomes a band, such as 20–45%; G6 gives both sides equal max HP and plays both seats; G15 bounds boss reach, such as ≤ 85%; and G8's and G14's bands are set together, with the drafts' lift stated. R2a measures and sets the bands of G4, G6 (both clauses, single battle), G8 under both policies, G13 and G16. R2b sets G14's and G15's and re-reads G8 beside G14.
 
 **Open:** what "mono" means once copies apply (R3, §8.10). Copies make massing one card impossible by construction (§1.3 #5), so G3's and G12's mono bots need a rule for how many copies of their card they hold.
 
@@ -2502,7 +2538,7 @@ tools (Node CLIs) ──► run, meta, sim, data
 - **`src/sim`** is pure. It MUST NOT import from `render`, `ui`, `app`, `run` or `meta`. It MUST NOT touch `window`, `document`, timers, `Math.random`, `Date`, `performance` or async APIs.
 - **`src/run` and `src/meta`** are pure too. Persistence is injected through a `Storage` interface. `src/meta` starts with Run it back's records-1, whose `records.ts` keeps the profile record (§9.7, §16 M6), and M6 adds the rest of the profile.
 - **`src/render` and `src/ui`** read sim state but never mutate it. They consume per-tick events, and in planning the events of each command.
-- **One rule, one place.** Whatever the planning screen shows about the coming clash comes from the sim's own functions, never from a copy of the rule in `render` or `ui`. The formation preview calls the same formation function the clash's arrival uses (§13.4, §14.6), and prices, refunds, copies, merge previews and combos come from the sim too.
+- **One rule, one place.** Whatever the planning screen shows about the coming clash comes from the sim's own functions, never from a copy of the rule in `render` or `ui`. The formation preview calls the same formation function the clash's arrival uses (§13.4, §14.6), and prices, refunds, copies, merge previews, matchup classes (`matchupClass`) and combos come from the sim too.
 - **`src/audio`** uses `Math.random` and WebAudio, so it sits outside the pure layers and imports nothing but data types (§13.9).
 - **Enforcement:** ESLint rules (`no-restricted-imports`, `no-restricted-globals`, `no-restricted-properties`) scoped by directory, plus a unit test that scans import graphs.
 
@@ -2510,12 +2546,13 @@ tools (Node CLIs) ──► run, meta, sim, data
 
 1. **Fixed timestep.** In a clash, `step(state)` advances exactly one tick and takes no time delta. Planning has no ticks: there, `step` only runs the queued commands. In the aftermath, `step` opens the next round, or ends the battle after its last round. §14.6 gives the order within each.
 2. **Seeded randomness only.** The PRNG is sfc32. Each stream is seeded through splitmix32 from `hash32(runSeed, streamName, battleIndex)`, and stream state lives in the sim state.
-   - Streams: `combat` (randomness in a clash), `ai`, `draft`, `route`, `events`, `meta`.
+   - Streams: `combat` (randomness in a clash), `ai.player` and `ai.enemy`, `draft`, `route`, `events`, `meta`.
+   - Each side has its own AI stream, so the general's plan depends only on the record and its own state, never on a bot's draws on the other side (R2a S0, 2026-11-02, A052). v1 keeps its single `ai` stream until R2b.
    - Streams are separate so that variance in one system never shifts another's sequence. For example, combat outcomes don't change which draft offers come next.
    - **The formation draws on no stream.** `formationOf` is a pure function of the colony: its plots, buildings, squad sizes and merge toggles (§4.6). Where a squad's units stand when they arrive is fixed by §4.6's layout, so recomputing the preview never moves a stream. R1's clash check MAY add a seeded jitter to arrival positions as a measurement option of its own; it isn't a game rule (§12.2, §16).
 3. **Restricted math.** Allowed: `+ − × ÷`, `Math.sqrt`, `floor`/`ceil`/`round`/`trunc`/`abs`/`min`/`max`/`sign`/`imul`, and integer bit ops. **Banned:** `Math.sin`/`cos`/`tan`/`atan2`/`exp`/`log`/`pow`/`hypot`/`random` and `**` with non-integer exponents. These aren't guaranteed bit-identical across JavaScript engines. Directions use normalized vectors; if angles are ever needed, use lookup tables.
 4. **Ordered iteration.** Entities live in arrays sorted by id. Every sort comparator ends with an id comparison. Never base a gameplay decision on object-key order. Plots are ordered by lane, then rank, then file.
-5. **Number types.** HP, gold, timers, supply and Heartcap damage are integers. Only positions and velocities are floats. A round's Heartcap damage is integer at every step, in §6.7's order: the Sporestorm's multiplier and the loser's damage-taken modifiers are basis points (10000 = ×1.0), each product is floored, and the 500 cap comes last (§6.4, §6.7).
+5. **Number types.** HP, gold, timers, supply and Heartcap damage are integers. Only positions and velocities are floats. A round's Heartcap damage is integer at every step, in §6.7's order: the Sporestorm's multiplier and the loser's damage-taken modifiers are basis points (10000 = ×1.0), each product is floored, and the round cap (a share of the loser's max HP, also in basis points) comes last (§6.4, §6.7).
 6. **No wall clock.** Speed and pause exist only in the app loop. Planning is untimed: nothing in the sim measures how long the player plans, and the aftermath's animation isn't simulated.
 7. **Commands are the only input.** Every input is a stamped command, and AI commands go through the same queue.
    - A **planning command** carries its round and executes when it's queued, in the order queued. The general's commands for a round run when the round opens, before the player can queue any (§4.7, §7.2), so its plan never depends on the player's.
@@ -2592,12 +2629,12 @@ The tree is the code as built under v1 (Milestones 1–5 and the combat rework's
 
 | Change | Files | What happens |
 |---|---|---|
-| **Retired** (R2) | `systems/spawning.ts`, `systems/territory.ts`, `systems/stance.ts` | Spawn timers and waves, column capture and frontiers, and Hold / Advance go (Appendix A). Squads are fielded fresh each round instead |
+| **Retired** (R2) | `systems/spawning.ts`, `systems/territory.ts`, `systems/stance.ts` | Spawn timers and waves, column capture and frontiers, and Hold / Advance go (Appendix A). Squads are fielded fresh each round instead. `movement.ts`, `combat.ts` and `commands.ts` import from `spawning.ts` and `stance.ts`, and lose those imports (A103) |
 | **Retired** (R2), inside files that stay | `world.ts`, `placement.ts`, `powers.ts`, `data/proto.ts` | Besieged spawners and suppression; the forward price; the column powers (`surge`, and `tithe`'s gold per column); the `?proto=` presets whose systems retire or that R1 doesn't keep, such as the mixed-wave preset, with their schema keys and tests (§16's R2 lists them). R1's chosen set of the rework's pieces (pinning, spore clouds, cleave, the Burster and the Rhizomorph, as R1 decides) moves from presets into the data (§1.3 #11, §11.1, §11.2) |
-| **Kept, with v1 parts removed** (R2) | `systems/movement.ts`, `systems/targeting.ts`, `systems/combat.ts` | **Movement** loses Hold and waves (with its imports from `spawning.ts` and `stance.ts`), rush, fall-back and dive, and the Rhizomorph's surfacing at spawners and its check for Heartcap turrets. **Targeting** loses buildings and Heartcaps as targets (emplacements stay targets, §6.7), call for help, and dive's preference for ranged units. **Combat** loses Heartcap turrets and damage to buildings and the Heartcap; siege's ×2 stays, against emplacements (§11.1). What stays follows §5.2 and §5.3 |
+| **Kept, with v1 parts removed** (R2) | `systems/movement.ts`, `systems/targeting.ts`, `systems/combat.ts`, `systems/merging.ts`, `systems/clouds.ts`; `targets.ts`, `effects.ts` | **Movement** loses Hold and waves (with its imports from `spawning.ts` and `stance.ts`), rush, fall-back and dive, and the Rhizomorph's surfacing at spawners and its check for Heartcap turrets. **Targeting** loses buildings and Heartcaps as targets (emplacements stay targets, §6.7), call for help, and dive's preference for ranged units. **Combat** loses Heartcap turrets and damage to buildings and the Heartcap; siege's ×2 stays, against emplacements (§11.1). **Merging** runs the muster's mode (§5.6) and loses v1's supply wait and wave tracking. **Clouds** keep their shield soaking, since R1's review gate adopted the arrival shield (§5.3, #8). **`targets.ts`** has units only to target. **`effects.ts`** gains R2's selectors (`rank`, `onLoam`) and triggers (`roundStart`, `clashStart`, `roundWon`; §14.2). What stays follows §5.2 and §5.3 (A027, A103) |
 | **Rewritten** (R2) | `step.ts` | The step by phase: planning, clash and aftermath (§14.6) |
 | **Rewritten** (R2) | `systems/economy.ts` | Income once a round, at the round's opening: the stipend, economy buildings with the loam bonus, interest on the gold banked at the end of planning, comeback gold (§6.2), and gold a clash left pending (`pendingGold`, §14.4) |
-| **Rewritten** (R2) | `systems/victory.ts` | The Heartcap race: a Heartcap at 0, or a Decision on damage dealt after round 9 (§6.5) |
+| **Rewritten** (R2) | `systems/victory.ts` | The Heartcap race: a Heartcap at 0, or a Decision after round 9 by the share of max HP dealt (§6.5) |
 | **Rewritten** (R2) | `ai/controller.ts` | The general's planning turn, after income and the Sporestorm in the round's opening (§4.7): any due doctrine or counter change, selling for room if a counter needs it, buying from its kit, planting by its formation rule and picking a lane per building, then its merge toggles (§7.2, §7.3) |
 | **Rewritten** (R2) | `ai/counter.ts` | The counter cycle on a schedule in rounds, reading the squads the player actually fielded (§7.4) |
 | **Reworked** (R2) | `draft.ts`, `powers.ts`, `placement.ts` | Drafts open in the planning phases after rounds 2, 4 and 6 (§8.3); the power fires once per clash, from the clash's first tick (§6.6); placing is on plots, with no columns (§4.6) |
@@ -2608,7 +2645,9 @@ The tree is the code as built under v1 (Milestones 1–5 and the combat rework's
 | **New** (R1; extended in R2) | `formation.ts` | R1: the formation box, its slots and the units' places in each slot (§4.6), and the muster's knitting in place to a fixed point (§5.6), as pure functions for the clash check: `formationBox`, `slotGrid`, `slotPositions`, `emplacementPosition` and `overflows` for the layout, `findTrios` and `musterKnits` for the muster. R2: plots to the formation box and each squad's slot, `formationOf` and both sides' merge previews (`mergePreview`) on them, and the arrival. Pure functions with no random stream (§13.3). The clash, the planning preview and the general all use them |
 | **New** (R2; copies R3) | `kit.ts` | Kit cards: what is free to plant, and what selling returns (§8.10). In R2 a card has no copy limit and plots are the build limit; R3 adds copies and augments (§11.13) |
 | **New** (R3) | `combos.ts` | Combos: which planted neighbors link (in front of, behind, beside), resolved per squad when a clash begins (§11.14) |
-| **Carries over** | `systems/merging.ts`, `healing.ts`, `clouds.ts`; `hits.ts`, `targets.ts`, `spatial.ts`, `effects.ts`, `rng.ts`, `hash.ts` | Unchanged |
+| **Carries over** | `systems/healing.ts`; `hits.ts`, `spatial.ts`, `rng.ts`, `hash.ts` | Unchanged, except that `rng.ts` names two AI streams, `ai.player` and `ai.enemy`, in place of `ai` (§13.3) |
+
+**Until R2b, R2a builds all of this beside v1** (X2, R2a S0, 2026-11-02). Its new modules sit in `rounds/` folders next to v1's (`src/sim/rounds/`, `src/app/rounds/`, `src/render/rounds/`, `src/ui/rounds/`, `tools/lib/rounds/`, `tests/unit/rounds/`, `tests/browser/rounds/`, `tests/slow/rounds/` and `data/scenarios/rounds/`), under the names this section gives. The kept modules above are copies, stripped of v1's parts and typed on the round state, so v1's originals stay as they are and a bug fix in a kept rule lands in both copies until then (A025, A027, A103). R2a edits outside `rounds/` only for data and its schemas, a few lines in `src/sim/compile.ts` and `rng.ts`, the rework's adopted pieces and the weights that go with them (§16, R2-Q5), the preview entry (§15.6) and the tools' temporary `--rounds` option (§15). R2b moves each `…/rounds/X` to `…/X`, replacing v1's file of the same name, and deletes v1's.
 
 **Outside `src/sim`:**
 - **`src/run`** (R2): `runState.ts` and `flow.ts` swap the run's Heartcap for lives, keep the kit (its copies from R3) and the plot count, and turn the Grove's repair into regaining a life (§8.5, §8.7). `resume.ts` saves between rounds (§8.9, §13.8), and its `loadRun` handles runs saved before R2 as §8.9 decides, where today it returns null on a version mismatch. `intel.ts` builds the profile from the squads fielded (§7.6). R3 adds `packs.ts`, which deals each run's 4 of 10 packs (§8.4).
@@ -2627,14 +2666,15 @@ The loop treats each phase of a round differently (§4.2, §4.7). The constant i
   - Render every frame with `alpha = 1`. The ambient spores drift at 1× (§10.2).
   - The formation preview is recomputed only when a command changes the colony or a merge toggle, never per frame.
   - A draft that opens in planning (§8.3) needs no hold, because planning has no clock. The overlay waits for the pick, and the clash can't begin until the draft is picked or skipped (§14.5).
+  - With a bot on the player's side, planning opens with its plan made and `beginClash` queued (§14.6), and the loop would run it on the first frame. A hold (`phase=planning` or `paused=1`, §15.6) keeps that last command unrun until input (R2a S0, 2026-11-02, A059).
 - **Clash: 20 Hz with interpolation.**
   1. Each `requestAnimationFrame`: `accumulator += min(realDt, 250 ms) × speed`.
   2. While `accumulator ≥ 50 ms` and the clash isn't paused: `step()`, then `accumulator −= 50 ms`. At most 12 steps run in one frame; past that, the accumulator resets.
   3. Render with `alpha = accumulator / 50 ms`, interpolating each unit between its previous and current positions.
 
-  A clash command (the power) is queued with `tick = state.tick + 1`. Pause and speed (1×, 2×, 3×) apply only here, and a pause never carries into the next clash (§10.2).
+  A clash command (the power) is queued with `tick = state.tick + 1`. Pause applies only here, and a pause never carries into the next clash; speed (1×, 2×, 3×) applies here and in the aftermath (§10.2).
 - **Aftermath: render only.**
-  - The clash's last tick has already scored the round (§6.7, §14.6). The loop runs no steps while the view plays the aftermath from the round's result in state: about 3 s at 1×, shorter at 2× and 3×, skipped by `Space`, `Enter` or a click, and instant under `?test=1` (§10.2).
+  - The clash's last tick has already scored the round (§6.7, §14.6). The loop runs no steps while the view plays the aftermath from the round's result in state: about 3 s at 1×, shorter at 2× and 3×, at the speed the clash ended at, skipped by `Space`, `Enter` or a click, and under `?test=1` jumping to its final frame and holding there (§10.2). The speed control stays live in the aftermath, with pause hidden, and the aftermath holds while Help or the settings screen is open (R2a S0, 2026-11-02, R2-Q12, A078).
   - When the animation ends (or is skipped), the loop calls `step()` once. That opens the next round in §4.7's order, which ends in planning. After the battle's last round, which has an aftermath like any other, that step ends the battle instead (`battleEnded`, §6.5), and the report follows (§10.5).
 
 Headless tools call `step()` in a tight loop with no rendering. A bot playing the player's side plans and begins inside the planning step (§14.6), so `runHeadless` plays a whole battle with no input.
@@ -2685,11 +2725,11 @@ v2 has no supply cap, so plots (and copies, from R3) bound a clash: its size is 
 | Hot-loop allocations | none: pooled objects and reused arrays |
 | Shipped JS + data | ≤ 300 KB gzipped (the first release) |
 
-The tick and full-battle budgets are G11's in `data/balance-targets.json` today. The full colony, the arrival, the planning command and the general's turn are new in v2. From R1 the bench plays a clash of two full colonies and reports it without failing on it (§15.4). R2's bench measures all four and adds them to G11 (§12.3).
+The tick and full-battle budgets are G11's in `data/balance-targets.json` today. The full colony, the arrival, the planning command and the general's turn are new in v2. From R1 the bench plays a clash of two full colonies and reports it without failing on it (§15.4). R2's bench measures all four and adds them to G11 (§12.3). The 4 ms figure covers the whole command and the page's update of the preview, so a Chromium browser test measures it (§15.6). The Node bench times only the sim part, `formationOf` and `mergePreview` after a plant, under a budget of its own (R2a S0, 2026-11-02, A113).
 
 **Techniques:**
 
-- **A bounded clash.** The bench covers 300 live units: two full colonies at the budget. A change to squad sizes, to the most plots a colony can hold, or an augment or combo that adds units MUST be checked against it with `npm run bench`. R2 rewrites the `bench-300` scenario as a clash: both armies in formation, merging off so all 300 stay live.
+- **A bounded clash.** The bench covers 300 live units: two full colonies at the budget. A change to squad sizes, to the most plots a colony can hold, or an augment or combo that adds units MUST be checked against it with `npm run bench`. R2 rewrites the `bench-300` scenario as a clash of placed units in formation-like blocks, with no plots (the 3-lane test map can't hold them), merging off so all 300 stay live (A112). A clash ends within 900 ticks and, with no spawners, its units die from first contact, so the bench plays repeated fresh clashes and times every tick, weighted by live units (A119; §15.4). R1's full-colony clash is the case that forms from plots.
 - **Ticks only in a clash.** Planning and the aftermath cost only rendering, and a clash ends within 45 s (900 ticks), so a battle is at most 9 × 900 = 8,100 ticks.
 - **Merging removes entities.**
 - A uniform-grid spatial hash with 2-tile cells, rebuilt every tick.
@@ -2754,7 +2794,7 @@ The game has sound. Every sound is synthesized with WebAudio from parameters in 
 
 ## 14. Data model
 
-The types below are v2's target. Until milestone R2 lands, `src/data/schema.ts` and `src/sim/state.ts` hold v1's shapes (§0). Fields marked R2 or R3 arrive with that milestone (§16), and a retired field is removed with its system. Shapes marked **first guess** are starting points for R3's content, to be settled when it's built.
+The types below are v2's target. Until milestone R2 lands, `src/data/schema.ts` and `src/sim/state.ts` hold v1's shapes (§0); R2a builds the round state beside them, in `src/sim/rounds/state.ts` (§13.4), and R2b moves it into place. Fields marked R2 or R3 arrive with that milestone (§16), and a retired field is removed with its system. Shapes marked **first guess** are starting points for R3's content, to be settled when it's built.
 
 ### 14.1 Principles
 
@@ -2949,6 +2989,15 @@ interface StrainDef { id: Id; building: Id; name: string; unlockedBy: Id;
                       rankEffect?: EffectBundle }      // default: +4% unit hp & damage per rank
 interface TraitDef  { id: Id; name: string; cost: 0 | 1 | 2 | 3; sporePrice: number; effects: EffectBundle }
 interface BlightDef { id: Id; name: string; ranks: { decay: number; effects: EffectBundle }[] }
+/** The stat paths a feat's condition may read (§9.2). Whitelisted; `battle.*` are one battle's counters (§5.7).
+ *  R2a records the feat stats now (M6-Q1, R2a S0, 2026-11-02); M6 adds the rest of its feats' paths. Names are first guesses. */
+type StatPath =
+  | 'battle.won' | 'battle.maxEldersAlive' | 'battle.maxGoldBanked'                      // §5.7
+  | 'battle.economyBuildingsBuilt'                       // economy buildings planted
+  | 'battle.maxEconomyOnLoam'                            // the most economy buildings on loam plots at once
+  | 'battle.soldAfterFielding'                           // buildings sold once they had fielded (§4.4)
+  | 'battle.lowestHeartcapFraction.player' | 'battle.lowestHeartcapFraction.enemy'   // basis points of max HP
+  | `battle.fallRoundDamage.${Tag}`;                     // damage by unit tag in the round a Heartcap fell
 type Condition = { all: Condition[] } | { any: Condition[] }
                | { stat: StatPath; eq?: number | boolean; gte?: number; lte?: number };
 interface FeatDef { id: Id; name: string; description: string; scope: 'battle' | 'run';
@@ -2992,11 +3041,15 @@ interface EliteDef { id: Id; name: string; text: string; effects?: EffectBundle;
 interface EventDef { id: Id; title: string; text: string;
                      choices: { label: string; text: string; outcome: RunEffect[] }[] }
 interface BotDef { id: Id; description?: string; opener: Id[]; weights: Record<Id, number>;
-                   mergePolicy: 'on' | 'off' | 'auto'; adaptive?: boolean }
+                   limits?: Record<Id, { maxOwned?: number; afterRound?: number }>;   // R2: read in rounds (§7.2); v1's
+                                                            //   `placement` is retired with territory (R2-Q6, §7.1)
+                   mergePolicy: 'on' | 'off' | 'auto'; adaptive?: boolean;
+                   policy?: 'weights' | 'answer' }          // R2a, first guess: 'answer' reads the general's army (X7, §12.2)
 
 // ---- maps & sprites ----
 interface MapDef { id: Id; name: string; width: number; height: number; milestone: number; testOnly?: boolean;
-                   homeCols: number;                    // each colony's columns; cut into 2×2 plots (§4.6)
+                   homeCols: number;                    // each colony's columns; cut into 2×2 plots (§4.6); 6 with the closed third rank
+                   startRanks: number;                  // R2: the ranks open at the start (2); the rest open as the colony gains plots
                    lanes: { rowStart: number; rowEnd: number }[];
                    tiles: string[] }                    // H strings × W chars: . $ o #
 interface SpriteDef { id: Id; w: number; h: number; anchor: [number, number];
@@ -3081,7 +3134,8 @@ interface BattleState {
   tick: number;                      // clash ticks so far this battle; doesn't move in planning or the aftermath
   clash?: ClashState;                // from Begin until the next round opens
   rounds: RoundResult[];             // one per finished round, in order, with what each side fielded
-  rng: Record<'combat' | 'ai' | 'draft', [number, number, number, number]>;
+  rng: { combat: Rng4; draft: Rng4; ai: Record<Side, Rng4> };   // Rng4 = [number, number, number, number]; an AI stream a side,
+                                     //   'ai.player' and 'ai.enemy', seeded from the battle index (§13.3; A052)
   nextId: number; nextSeq: Record<Side, number>;
   rules: Rules; library: Library; map: MapState;
   sides: Record<Side, SideState>;
@@ -3114,8 +3168,12 @@ interface SideState {
                                                     //   at the next planning phase, lost if the battle ends first
   powerUsed: boolean;                               // in this clash (§6.6)
   draft?: OpenDraft; draftsOpened: number;
-  ai?: AiState;                                     // doctrine, counter schedule in rounds, noise
+  ai?: AiState;                                     // doctrine, counter schedule in rounds, noise, and `plans`
 }
+/** What the general planned in one round, kept in `ai.plans` (one a round) so the Intent panel survives later
+ *  commands and a fast-forward to a round (§7.5; A070). Each entry names its building and plot. */
+interface AiPlan { round: number; planted: { building: Id; plot: number }[]; sold: { building: Id; plot: number }[];
+                   income: number; banked: number; counter?: CounterKind }
 // Retired in R2: supplyUsed, supplyCap, turretCooldowns, powerCooldown, stance, heartcapShield.
 
 interface PlotState {
@@ -3142,20 +3200,29 @@ interface SquadState {
 }
 interface ClashState {
   startTick: number;                                // the 45 s cap is startTick + 900
-  lanes: { ended: boolean; endTick: number; winner: Side | null; survivors: Record<Side, number> }[];
+  lanes: { ended: boolean; endTick: number; winner: Side | null; survivors: Record<Side, number>;
+           damageSupply: Record<Side, number>; margin: number }[];   // a lane's lock, written the tick it ends; the lane then
+                                                                     //   freezes and scoring reads the lock, not the units (§6.7; A030)
 }
 interface RoundResult {
   round: number;
-  lanes: { winner: Side | null; survivors: Record<Side, number>; capped: boolean; ticks: number }[];
+  lanes: { winner: Side | null; survivors: Record<Side, number>; capped: boolean; ticks: number;
+           damage: number }[];                     // damage: what the lane's win dealt to the loser's Heartcap, after the
+                                                   //   storm and the loser's modifiers, before the round cap (A068)
   damage: Record<Side, number>;                    // Heartcap damage this side dealt, after the storm, the
-                                                   //   loser's damage-taken modifiers and the cap (§6.7)
+                                                   //   loser's damage-taken modifiers and the cap, recorded before
+                                                   //   the HP floor, so a heal never subtracts (§6.7; R2-Q11)
   stormBp: number; capped: boolean;                // the round escalation in basis points, 10000–20000 (§6.4),
-                                                   //   and the 500 cap (§6.7)
+                                                   //   and whether the round cap cut any damage (§6.7)
   heartcaps: Record<Side, number>;                 // each Heartcap's HP after the round
   fielded: Record<Side, FieldedSquad[]>;           // R2: what each side fielded this round, recorded at Begin
+  damageByBuilding: Record<Side, Record<number, number>>;      // R2: each side's damage by building (§5.7)
+  survivorsByBuilding: Record<Side, Record<number, number>>;   //   and its units left standing at the clash's end, so inspect
+                                                               //   and the report read them once the units are cleared (A064)
 }
 /** One entry of the fielded record: the counter cycle (§7.4) and the intel file (§7.6) read it. */
-interface FieldedSquad { unitId: Id; tier: 1 | 2 | 3; count: number; augments: Id[] }
+interface FieldedSquad { unitId: Id; tier: 1 | 2 | 3; count: number; augments: Id[];
+                         lane: number }           // the lane it stood in, so the general's lane rule reads only the record (§7.3; A047)
 
 interface UnitState {
   id: number; side: Side; lane: number; unitId: Id; tier: 1 | 2 | 3;
@@ -3174,8 +3241,9 @@ interface PendingHit { tick: number; sourceId: number; seq: number; side: Side; 
 ```
 
 - **Surviving supply** in `ClashState`, `RoundResult` and the events is plain supply: merged units count their own supply, and siege units count once. It decides the 45 s comparison. Siege units count double only in the Heartcap damage (§6.7).
-- **The fielded record.** At Begin the sim writes each side's `fielded` entries from `formationOf` and `mergePreview` (§14.6), which equal what fields once the muster's knits are made (§5.6): one entry per unit type, tier and augment set, with its count. It's stored in that round's `RoundResult`, and the battle record carries it into the run, so the counter cycle, the general's merge toggle and the intel file all read this one record (§4.7, §7.2, §7.4, §7.6).
+- **The fielded record.** At Begin the sim writes each side's `fielded` entries from `formationOf` and `mergePreview` (§14.6), which equal what fields once the muster's knits are made (§5.6): one entry per unit type, tier, augment set and lane, with its count. It's stored in that round's `RoundResult`, and the battle record carries it into the run, so the counter cycle, the general's merge toggle and the intel file all read this one record (§4.7, §7.2, §7.4, §7.6).
 - **Squads are fielded fresh.** Units exist only in a clash. When the next round opens, `units`, `squads`, `hits` and `clouds` are cleared, and only buildings and gold carry (§4.7).
+- **Ids and numbers only** (R2a S0, 2026-11-02, R2-Q8; A152). A round battle's `library` and `compiled` sides hold ids and numbers: no `name`, `description` or `text`. The UI reads names and text from `content` by id, so rewording a card never moves a round golden. v1's battle state still copies the data's text, and R4b deletes `src/ui/words.ts` (§10.4).
 - **Pending gold** (first guess). Gold that an effect pays "at the next planning phase" goes to `pendingGold`. It's paid as part of the next round's income (§4.7, §6.2) and lost if the battle ends first.
 - **Per-battle Heartcaps.** Both sides' `heartcapHp` start at `heartcapMaxHp` when the battle is created. Heartcap damage is taken only when a round is scored (§6.7), and `rounds` keeps what each side dealt, which a Decision after round 9 compares (§6.5).
 
@@ -3258,6 +3326,7 @@ type SimEvent =
   | { t: 'power'; side: Side; power: Id; x?: number; y?: number; hits: number; merges: number }
   | { t: 'augmentActed' | 'comboActed'; side: Side; id: Id; x: number; y: number }   // R3: icon flashes (§13.6)
   | { t: 'laneWon'; lane: number; winner: Side | null; survivors: Record<Side, number>; capped: boolean }
+  | { t: 'commandDropped'; side: Side; seq: number }   // a clash command still queued when its clash ended; not a rejection
   // scoring: on the clash's last tick
   | { t: 'heartcapDamaged'; side: Side; amount: number; stormBp: number; capped: boolean }   // `side` took it
   // the aftermath's step, after the battle's last round
@@ -3268,12 +3337,13 @@ type SimEvent =
 // roundStarted.stormBp), ended (now battleEnded).
 ```
 
-- **Stamps.** A planning command carries the round and the tick at which that planning phase stands (`state.tick`, which doesn't move in planning); it executes when queued. A clash command carries `state.tick + 1`. The queue sorts by (round, tick, side: player first, seq), and sequence numbers are per side.
+- **Stamps.** A planning command carries the round and the tick at which that planning phase stands (`state.tick`, which doesn't move in planning); it executes when queued. A clash command carries `state.tick + 1`. The queue sorts by (round, tick, side: player first, seq), and sequence numbers are per side. A command has no phase field, since its type implies the phase, and `tick` is `state.tick`, cumulative over the battle's clashes (R2a S0, 2026-11-02, A036, A121).
 - **Validation happens at execution time.** The state may change between queueing and execution, so a command is re-validated when it runs. An illegal command becomes a `commandRejected` event. Because validation is deterministic, replaying the full log reproduces identical rejections. Among the checks:
-  - **the phase:** plant, sell, `toggleMerge` and `beginClash` only in planning; `power` only in a clash, and only once in it;
+  - **the phase:** plant, sell, `toggleMerge` and `beginClash` only in planning; `power` only in a clash, only once in it, and not at a lane whose clash has ended (R2-Q11);
   - **the kit:** `plant` needs a free copy of the card (§8.10), the price in gold and a free plot of the side's colony that isn't a stump (§4.6);
   - **the draft:** `beginClash` is refused while the side's draft is open, and draft commands only run while one is. **Open:** whether `plant`, `sell` and `toggleMerge` are refused too while the side's draft is open. First guess: yes, since you plan once the draft is resolved (§4.7, §10.2);
-  - **the side:** a side can't sell, toggle or target the other side's buildings.
+  - **the side:** a side can't sell, toggle or target the other side's buildings. The general plans only in the round's opening (§14.6), so an enemy-side `plant`, `sell` or `toggleMerge` after it is refused (`enemyPlanAfterOpening`), and so is `beginClash` from the enemy side (`beginClashNotPlayer`): the player's side begins the clash, a bot or general on that side included (R2a S0, 2026-11-02, A034). Tests build enemy colonies through scenarios, never commands.
+- **Dropped clash commands** (R2a S0, 2026-11-02, A046). A clash command still queued when the clash ends is dropped with a `commandDropped` event. It isn't a rejection, and `rejectedCommands` doesn't count it. The auto power policy thinks every 20 ticks of the clash clock.
 - **A lane drawn.** `laneWon` with `winner: null` is a lane both sides emptied on the same tick, or one level on surviving supply at the 45 s cap. It deals no damage (§6.7).
 - **Render timing.** Events are emitted when the sim decides them. The aftermath's animation and sounds play `heartcapDamaged` later, at the pace of the animation. `battleEnded` comes from the step that closes the last round's aftermath (§13.5, §13.9, §14.6).
 
@@ -3284,8 +3354,10 @@ loadContent(raw: RawContent): Content                       // zod-validate, ind
 createBattle(content: Content, config: BattleConfig): BattleState   // in round 1's planning, the general's plan made
 queueCommand(state: BattleState, cmd: Omit<Command, 'seq'>): Command
 step(state: BattleState): void                              // by phase: see below
-runHeadless(state: BattleState, opts: { until: 'end' | number; commands?: Command[];
+runHeadless(state: BattleState, opts: { until: 'end' | { round: number; tick?: number }; commands?: Command[];
             hashEvery?: number; onTick?: (s: BattleState) => void }): HeadlessResult
+                                                            // until: the battle's end, a round's end, or a tick of that
+                                                            //   round's clash counted from its start, as `--until r<n>:<tick>` does
 hashState(state: BattleState): string                       // 16 hex chars
 snapshot(state: BattleState): string;  restore(json: string): BattleState
 legalPlots(state: BattleState, side: Side, buildingId: Id): number[]   // UI ghost + AI; replaces legalPlacements
@@ -3293,14 +3365,27 @@ plantProblem(state: BattleState, side: Side, buildingId: Id, plot: number): stri
 priceOf(state: BattleState, side: Side, buildingId: Id): number        // no column term; replaces priceAt
 sellValue(state: BattleState, entityId: number): number
 freeCopies(state: BattleState, side: Side, buildingId: Id): number   // R3; until then, no copy limit
-formationOf(state: BattleState, side: Side): SquadPlan[]    // the arrival, the planning preview and the AI
-mergePreview(state: BattleState, side: Side): Record<number, { elders: number; bloomed: number; base: number }>
-                                                            // by building: "fields as 2 Bloomed + 2" (§5.6)
+formationOf(state: BattleState, side: Side, change?: PlanChange): SquadPlan[]   // the arrival, the planning preview and the AI
+mergePreview(state: BattleState, side: Side, change?: PlanChange): MergePreview
+                                                            // by building: "fields as 2 Bloomed + 2" (§5.6), and the muster's trios
+matchupClass(state: BattleState, side: Side, unitId: Id, tier: 1 | 2 | 3,
+             targetSide: Side, targetUnitId: Id, targetTier: 1 | 2 | 3): 'strong' | 'normal' | 'weak'   // the class of a hit (§5.3)
+survivingSupply(state: BattleState, side: Side, lane: number): number   // the lane tug's number (§6.7)
 combosAt(state: BattleState, side: Side, buildingId: Id, plot: number): Id[]       // R3: the ghost's links
 incomePreview(state: BattleState, side: Side): IncomeBreakdown   // next round's income if planning ended now
+
+/** A hypothetical change to a colony, previewed without touching the state: the ghost before a plant, a sale, a toggle. */
+type PlanChange = { plant: { buildingId: Id; plot: number } } | { sell: number } | { toggle: { id: number; on: boolean } };
+interface MergePreview {
+  byBuilding: Record<number, { elders: number; bloomed: number; base: number }>;   // keyed by building id
+  trios: { parts: { building: number; j: number }[]; tier: 2 | 3; x: number; y: number; pass: number }[];
+}                                          // each trio the muster knits: its parts (a building and the unit's index in its squad),
+                                           //   the tier it makes, where, and in which pass of the fixed point
 ```
 
-`formationOf` is the one formation rule (§4.6): a pure function of the colony (plots, buildings, squad sizes and merge toggles) that draws on no random stream (§13.3). A `SquadPlan` is a squad's building, lane, rank, file, slot and each unit's starting position, by §4.6's layout. The clash's arrival places units exactly there, so the preview and the clash can't disagree. `mergePreview` is the muster's own knitting (§5.6), run on `formationOf`'s positions to a fixed point with no enemies, so it shows what fields after the muster, neighboring squads that combine included. Both build on the pure functions R1 adds to `formation.ts` for the clash check: the slot layout and the muster's knitting (§13.4, §16). Retired with their systems: `legalPlacements`, `priceAt`, `depthOf`, `heldColumns`, `surgeLanes`, `lanePresence`, `frontier`, `frontierBlocked`, `isBesieged`, `isSuppressed`, `turretPos`, `holdsLane`, `rallyX` and `incomePerMinute`.
+`formationOf` is the one formation rule (§4.6): a pure function of the colony (plots, buildings, squad sizes and merge toggles) that draws on no random stream (§13.3). A `SquadPlan` is a squad's building, lane, rank, file, slot and each unit's starting position, by §4.6's layout. The clash's arrival places units exactly there, so the preview and the clash can't disagree. `mergePreview` is the muster's own knitting (§5.6), run on `formationOf`'s positions to a fixed point with no enemies, so it shows what fields after the muster, neighboring squads that combine included. Both build on the pure functions R1 adds to `formation.ts` for the clash check: the slot layout and the muster's knitting (§13.4, §16).
+
+With a `change`, both preview the colony as it would be after that plant, sale or toggle (R2a S0, 2026-11-02, A060). They write nothing and draw on no stream, so `hashState` and every stream are the same after the call, and a preview equals the state after the change. `mergePreview`'s trios (A039) let the view show a knit across squads ("shares an Elder with file 2") and animate the muster. `matchupClass` is the one classifier behind the marks and the answer bot, following a hit's rule on the matrix and the tag multipliers, without merge-perk resistances (§5.3), so no UI copies it. `survivingSupply` is the lane tug's number (§10.2). Retired with their systems: `legalPlacements`, `priceAt`, `depthOf`, `heldColumns`, `surgeLanes`, `lanePresence`, `frontier`, `frontierBlocked`, `isBesieged`, `isSuppressed`, `turretPos`, `holdsLane`, `rallyX` and `incomePerMinute`.
 
 **The step, by phase.** The order is fixed and covered by tests. §4.7 owns a round's order of events; the steps below implement it.
 
@@ -3310,20 +3395,20 @@ incomePreview(state: BattleState, side: Side): IncomeBreakdown   // next round's
 2. Income for both sides, from round 2, with any `pendingGold` (§6.2). In round 1 a side has its starting gold (§6.1).
 3. Set the Sporestorm's multiplier for the round (§6.4). Emit `roundStarted`.
 4. Fire `roundStart` triggers, such as relics' (and `battleStart` in round 1).
-5. The general plans (§7.2): it applies any due doctrine or counter change, sells for room if a counter needs it, buys from its kit and plants, then sets its merge toggles. Its commands execute at once, in order, then `generalPlanned`.
+5. The general plans (§7.2): it applies any due doctrine or counter change, sells for room if a counter needs it, buys from its kit and plants, then sets its merge toggles. Its commands execute at once, in order, then `generalPlanned`, and the round's plan goes in `ai.plans` (§14.4).
 6. On rounds 3, 5 and 7, open a draft for each drafting side (§8.3), after the general has planned. AI sides pick at once.
-7. A bot or general on the player's side plans here, and queues `beginClash`. Enter planning.
+7. A bot or general on the player's side plans here, and queues `beginClash`. Enter planning. This state is the **planning checkpoint** (R2a S0, 2026-11-02, A059; §15.6): the general has planned, a bot's plant, sell and toggle commands have run, and only its `beginClash` is left in the queue.
 
 *Planning* (`step` with commands queued):
 
 1. Clear events.
 2. Execute queued commands in queue order. Each is validated as it runs.
-3. On `beginClash`: record each side's gold as `bankedAtBegin`, mark every planted building as fielded, write the round's `fielded` record (§14.4), compile combos per squad, and run the arrival: both formations' units appear on the same tick at the positions `formationOf` gives (`clashStarted`, `arrived`). Fire `clashStart` triggers. Enter the clash.
+3. On `beginClash`: record each side's gold as `bankedAtBegin`, mark every planted building as fielded, write the round's `fielded` record (§14.4), compile combos and unit stats per squad, and run the arrival: both formations' units appear on the same tick at the positions `formationOf` gives, in plot order (lane, rank, file, then unit), taking their ids in that order (`clashStarted`, `arrived`). Then resolve the muster at once (R2a S0, 2026-11-02, R2-Q11, #25): the knitting runs to a fixed point within each lane, and the merged units replace their parts, with their `merged` events, `stats.merges` and merge triggers. A unit knit from two squads takes the lowest-id parent's squad stats (§5.6). Fire `clashStart` triggers. Enter the clash.
 
 *Clash* (`step`: exactly one tick):
 
 1. Clear events; `tick++`; snapshot previous positions.
-2. Execute queued commands for this tick (the power), sorted by (side: player first, then seq).
+2. Execute queued commands for this tick (the power), sorted by (side: player first, then seq). A power aimed at a lane whose clash has ended is refused (§6.7).
 3. The clash clock against the 45 s cap.
 4. AI think (every 20 ticks): only the power, for a side with `powerPolicy: 'auto'`. Nobody buys in a clash.
 5. Targeting (staggered).
@@ -3333,11 +3418,11 @@ incomePreview(state: BattleState, side: Side): IncomeBreakdown   // next round's
 9. Healing.
 10. Deaths and removals: fire `unitDeath` triggers.
 11. Merging (every 10 ticks for new trios; every tick for active knits).
-12. Lane ends (§6.7): a lane where one side has no units and no emplacements left ends (`laneWon`). At the cap, every lane still fighting is decided on surviving supply.
-13. When every lane has ended, score the round in §6.7's integer order: per lane 25 × the margin, with siege units counting double, then the Sporestorm's multiplier and the loser's damage-taken modifiers in basis points, each floored, then the sum over lanes capped at 25% of each Heartcap's max HP; `heartcapDamaged`; push the `RoundResult`. Then check the battle's end (§6.5): a Heartcap at 0, or round 9 scored (a Decision). If it has ended, set `outcome`. Enter the aftermath either way.
+12. Lane ends (§6.7): a lane where one side has no units and no emplacements left ends (`laneWon`). At the cap, every lane still fighting is decided on surviving supply. A lane's lock is written to `ClashState` (§14.4), and from then on the lane is frozen: the steps above skip its units, hits in flight and clouds (R2a S0, 2026-11-02, R2-Q11).
+13. When every lane has ended, score the round in §6.7's integer order: per lane 25 × the margin, with siege units counting double, then the Sporestorm's multiplier and the loser's damage-taken modifiers in basis points, each floored, then the sum over lanes capped at 25% of each Heartcap's max HP; `heartcapDamaged`; push the `RoundResult`, with its per-lane damage, `damageByBuilding` and `survivorsByBuilding` (§14.4). Then check the battle's end (§6.5): a Heartcap at 0, or round 9 scored (a Decision). If it has ended, set `outcome`. Enter the aftermath either way.
 14. Stats sampling (every 20 ticks).
 
-During the muster that opens a clash (§5.6), nobody moves or attacks, and squads set to merge knit in place by §5.6's rule. A power command may run from the first tick, the muster included (§6.6).
+The muster has already resolved inside Begin (planning step 3), so the clash's first tick has the merged units. The muster's 20 ticks (`startTick + 1` to `startTick + 20`) skip steps 5 to 7: nobody targets, moves, separates or attacks (R2a S0, 2026-11-02, R2-Q11). The clash clock counts them, and runs against `startTick + 900` (§6.7). A power command may run from the first tick, the muster included, and hits the merged units (§6.6). A clash command still queued when the clash ends is dropped (§14.5).
 
 *Aftermath* (`step`): if `outcome` is set, emit `battleEnded` and enter `ended`; the last round has its aftermath like any other (§4.7, §6.5). Otherwise open the next round, as above. Nothing is simulated in the aftermath itself.
 
@@ -3354,6 +3439,12 @@ Everything here is runnable by Claude, headlessly, from the project root.
 - adds tests for rounds, planning, clashes, formation and lives, and R3 adds them for the kit (§15.7);
 - regenerates the golden replays for the round loop (§15.5);
 - moves the guardrails to their round forms (§12.3).
+
+**R2a's two temporary options** (X2, R2a S0, 2026-11-02). R2a builds the round tools and the battle screen beside v1's, so it adds two options that R2b removes when the round loop becomes the default (§16 R2):
+- **`scene=rounds`**, the preview entry (§15.6). It loads on every build, through a dynamic `import()` of the battle-in-rounds code, and the title shows its button only on the dev site. There is no dev-only gate, no "not part of this build" message and no separate mode in the screenshot tool. It's never a `?proto=` knob (§1.3 #13).
+- **`--rounds`** on `npm run sim`, `balance`, `bench` and `experiment` (§15.2–§15.4), which plays that tool's work on single battles in rounds instead of v1's.
+
+R2a's round goldens (§15.5) and its smoke tests in `verify` (§15.1) sit beside v1's too, and v1's stay green: `npm run verify` passes on every PR.
 
 ### 15.1 npm scripts
 
@@ -3376,20 +3467,21 @@ Everything here is runnable by Claude, headlessly, from the project root.
 | `golden` | Verify or update golden replays (§15.5) |
 | `screenshot` | Playwright browser check (§15.6) |
 | `og-image` | Render the link-preview image `public/og-image.png` (1200×630) from the title screen (§13.8) |
-| `verify` | `typecheck` → `lint` → `validate:data` → `test` → `golden verify` → sim smoke tests (a battle against the general over 3 seeds, the adaptive general over 2, and Armilla's and Cordis's powers) → `bench --quick`. One command, non-zero exit on any failure. R2 rewrites the smoke tests' asserts in round form (§15.2) |
+| `verify` | `typecheck` → `lint` → `validate:data` → `test` → `golden verify` → sim smoke tests (a battle against the general over 3 seeds, the adaptive general over 2, and Armilla's and Cordis's powers) → `bench --quick`. One command, non-zero exit on any failure. R2 rewrites the smoke tests' asserts in round form (§15.2). R2a adds round smokes beside v1's (`sim --rounds` for a battle against the general, the adaptive general and the powers, and `bench --rounds --quick`), and R2b retires v1's |
 
 ### 15.2 Headless simulator: `npm run sim -- [options]`
 
-From R2, a battle is a series of rounds (§4.7), and the simulator plays planning, clash and aftermath for both sides. Ticks run only in clashes (§4.2), so the options and the output count rounds, and ticks within a round's clash. Until R2, the options and output are v1's.
+From R2, a battle is a series of rounds (§4.7), and the simulator plays planning, clash and aftermath for both sides. Ticks run only in clashes (§4.2), so the options and the output count rounds, and ticks within a round's clash. Until R2, the options and output are v1's. R2a adds the round form for single battles behind a temporary `--rounds` option, with no `--run` or `--meta-progress` (R2b, M6); R2b makes it the default and removes the option.
 
 | Option | Meaning |
 |---|---|
+| `--rounds` | R2a, temporary: play single battles in rounds on the round sim (§15 intro). Gone in R2b, when rounds are the default |
 | `--map <id>` | Map (default `bogwater-hollow`) |
 | `--seed <n>` / `--seeds <a>..<b>` | One seed or a range (multi-seed prints a summary table) |
 | `--player <ctl>` / `--enemy <ctl>` | `bot:<id>` · `general:<id>` · `general:scripted` (v1's Milestone 1 general, §7.9) · `replay` |
-| `--scenario <id>` | Start from `data/scenarios/<id>.json`: each side's planted colony, kit, gold and Heartcap, and the round to start in; or units already placed for a clash, for rule tests. Until R2: v1's pre-placed buildings, units, gold and clock |
+| `--scenario <id>` | Start from `data/scenarios/<id>.json`: each side's planted colony, kit, gold and Heartcap, and the round to start in; or units already placed for a clash, for rule tests. A scenario from round n also gives, per side, the Heartcap damage it has `dealt` (by default the other side's max HP minus its HP), the last round's result (each lane's winner and the round's loser) and, if wanted, a `rounds` history, so the counter cycle and the comeback gold see consistent state (R2a S0, 2026-11-02, A106). Until R2: v1's pre-placed buildings, units, gold and clock |
 | `--replay <file>` | Replay a command log |
-| `--until <end \| r<n> \| r<n>:<tick>>` | When to stop: the battle's end (the default), the end of round n, or tick t of round n's clash. Until R2: `end`, ticks or `mm:ss` |
+| `--until <end \| r<n> \| r<n>:<tick>>` | When to stop: the battle's end (the default), the end of round n, or tick t of round n's clash, counted from the clash's start (`runHeadless`'s `until`, §14.6). Until R2: `end`, ticks or `mm:ss` |
 | `--battle-index <n>` | Battle index for scaling (default 1) |
 | `--flags <list>` | Feature flags: `merging`, `drafts`, `adaptive`, `powers` (defaults follow the milestone) |
 | `--auto-draft <first \| random \| greedy>` | Draft policy for bots |
@@ -3397,7 +3489,7 @@ From R2, a battle is a series of rounds (§4.7), and the simulator plays plannin
 | `--bot <id>` | Bot used by `--meta-progress` (M6) |
 | `--run` / `--auto-route <policy>` | Simulate a whole run: route, battles, drafts, events and lives |
 | `--meta-progress --runs <n>` | Simulate profile progression over N runs (M6) |
-| `--hash-every <ticks>` | Record state hashes at checkpoints: the end of every phase of every round, plus every n ticks of each clash |
+| `--hash-every <ticks>` | Record state hashes at checkpoints: `r<n>.planning`, `r<n>.clash` and `r<n>.aftermath` for every round, plus `r<n>:<t>` every n ticks of each clash, with t counted from the clash's start. `r<n>` alone is an alias for the end of round n's aftermath (R2a S0, 2026-11-02, A115) |
 | `--assert <expr>` (repeatable) | `<path>[@<checkpoint>]<op><value>`, with `op` one of `= != < <= > >=`. `path` is a dotted path into the result JSON (indices allowed, e.g. `roundLog[0].lanes[0].winner`); `@r<n>` reads the summary recorded at the end of round n, and `@r<n>:<tick>` at tick t of its clash (assert checkpoints are recorded automatically). Examples: `winner=player`, `by=rout`, `rounds<=9`, `hash@r3=<hex>`, `roundLog[2].lanes[0].capped=false`, `counters[0].kind=swarm`. Exit code 1 on failure. |
 | `--out <file>` / `--summary` | Write JSON to `artifacts/sim/…`, or print a table |
 
@@ -3406,7 +3498,7 @@ Single-battle JSON output:
 ```json
 { "seed": 1, "map": "bogwater-hollow", "winner": "player", "by": "rout",
   "rounds": 7, "clashTicks": 3480, "clashTime": "2:54", "wallMs": 240,
-  "finalHash": "9f2c41d07ab35e18", "hashes": { "r1": "…", "r2": "…" },
+  "finalHash": "9f2c41d07ab35e18", "hashes": { "r1.planning": "…", "r1.clash": "…", "r1.aftermath": "…", "r1:200": "…" },
   "heartcap": { "player": 2450, "enemy": 0 }, "dealt": { "player": 2000, "enemy": 550 },
   "roundLog": [
     { "round": 1, "storm": 1.0, "taken": { "player": 225, "enemy": 0 },
@@ -3422,10 +3514,12 @@ Single-battle JSON output:
 - **`dealt`** totals each side's Heartcap damage for the battle, which decides a Decision after round 9 (§6.5).
 - **The result also carries** `events` (counts per event type), `stats` (the §5.7 counters per side, per round), `fielded` (units fielded over the battle, by type, summed from the state's per-round `fielded` record, §14.4) and `counters` (each counter cycle's kind and the round its buildings first stood in the general's colony, §7.4).
 - **The multi-seed summary** shows win rate per side, the median, min and max rounds, the share of battles that reach round 9, the share of clashes that reach the 45 s cap, the median clash length, the mean `wallMs` and any failed asserts.
+- **The readouts** (R2a S0, 2026-11-02): the summary reports, per round, the gold each side banked at Begin (R2-Q2) and, for the general, its free plots, what it planted and sold, and whether the clash replayed the last one exactly (X8, §7.2).
 - **A run** (`--run`) adds each battle's result, lives lost and left (§8.5), and how the run ended.
 
 ### 15.3 Balance and meta tools
 
+- **`--rounds`** (R2a, temporary; §15 intro): `balance` and `experiment` take it to play their duels, tournament, guardrail evaluators and checks on single battles in rounds. Squad duels, G12's clash rows and G16's swaps play each clash on the round sim, never on R1's clash runner, which plays on v1's sim (§12.2). `engagement`, `runs`, `lanes` and `spread` stay v1's until R2b. R2b removes the option.
 - `npm run balance -- duel [--seeds 5] [--supply 60]`: squad and supply duel matrices (§12.2). `--supply 60` re-runs the supply duels at army scale (G2 itself stays at its data value).
 - `npm run balance -- tournament [--seeds 40] [--commanders all | <a>,<b>]`: win-rate tables and length distributions for the strategy bots against the general. The bots are `bot:balanced`, `bot:rush`, `bot:turtle` and `bot:greedy`, against the scripted general on Bogwater Hollow; from R2 they play battles of rounds, and the table reports rounds per battle (§12.2). `--commanders` plays whole runs per commander instead.
 - `npm run balance -- guardrails [--seeds n]`: the guardrail verdicts on their own.
@@ -3444,19 +3538,20 @@ Single-battle JSON output:
 
 ### 15.4 Benchmark: `npm run bench [-- --quick]`
 
-- **Scenario `bench-300`:** the 3-lane test map with 150 units per side placed mid-field and 20 buildings per side, with merging off so all 300 units stay live. R2 rewrites it as a clash: both armies in formation, merging still off (§13.7).
+- **`--rounds`** (R2a, temporary; §15 intro): `npm run bench -- --rounds` runs the cases below in round form. R2b removes the option.
+- **Scenario `bench-300`:** the 3-lane test map with 150 units per side placed mid-field and 20 buildings per side, with merging off so all 300 units stay live. R2 rewrites it as a clash of placed units in formation-like blocks, with no plots (the 3-lane test map can't hold them) and merging still off (§13.7). A clash can't run 2,000 ticks, since it ends within 900 and, with no spawners, its units die from first contact. So the bench plays repeated fresh clashes of at most 900 ticks, times every tick and weights the figures by live units, and `G11.benchTicks` counts the ticks timed over them (R2a S0, 2026-11-02, A112, A119). R1's full-colony clash, below, is the case that forms from plots.
 - **The full-colony clash (from R1):** one whole clash, to its end, of two full colonies at the true worst case: every plot a colony can hold (12 on one lane, 16 on Twin Roots, §4.6), each with the biggest squad (today the Burrow's upgraded 12 Sporelings), merging off. It times the arrival and every tick, and checks that a full colony fits the performance budget, at most 150 live units a side when the armies arrive (§1.3 #4, §13.7). If one doesn't fit, the report names the lever that brings it inside: squads, the upgrade's +1 per batch, or plots. For each field it prints the colony (plots, squad, and units and supply a side against the 150), the arrival's time against 5 ms, the ticks to the clash's end, and the tick mean, p95 and p99 against G11's. Until R2 adds it to G11 it's report-only: it doesn't change the exit code, and `--quick` skips it.
 - **The full battle:** one headless battle, timed against §13.7's wall-time budget. From R2 it's a battle of rounds, bots on both sides.
 - **Run length:** 2,000 ticks (400 with `--quick`).
-- **Output:** mean, p95 and p99 ms per tick, peak unit count, and heap growth. From R2 it also times a clash's first tick, when both armies arrive, and the general's planning turn (§13.7).
+- **Output:** mean, p95 and p99 ms per tick, peak unit count, and heap growth. From R2 it also times a clash's first tick, when both armies arrive, the sim part of a planning command (`formationOf` and `mergePreview` after a plant, under a Node budget of its own) and the general's planning turn (§13.7). The 4 ms Chromium figure for the whole command is a browser test (§15.6) (A113).
 - **Pass/fail:** exits 1 if a §13.7 budget is exceeded (G11).
 - **Before M7:** until the 3-lane map ships, the bench uses an internal test map, `data/maps/test-3lane.json`, which is excluded from play.
 
 ### 15.5 Golden replays
 
-- **Files:** `tests/golden/<name>.replay.json` contains `{ config, commands, expected: { "<checkpoint>": "<hash>", "final": "<hash>" } }`. From R2 each command carries the round and phase it was issued in, and the checkpoints are the end of every planning phase, clash and aftermath. A run replay (`kind: "run"`) holds a seed and autoplay policies, and pins every battle's checkpoint hashes plus the final run-state hash.
+- **Files:** `tests/golden/<name>.replay.json` contains `{ config, commands, expected: { "<checkpoint>": "<hash>", "final": "<hash>" } }`. From R2 each command carries the round and, for a clash command, its tick (`state.tick`, cumulative over the battle's clashes), since the phase follows from the command's type (§14.5; R2a S0, 2026-11-02, A036, A121). The checkpoints are `r<n>.planning`, `r<n>.clash` and `r<n>.aftermath` for every round, plus `r<n>:<t>` every 200 ticks of a clash, with t counted from the clash's start; `r<n>` alone is an alias for the end of round n's aftermath (A115). A run replay (`kind: "run"`) holds a seed and autoplay policies, and pins every battle's checkpoint hashes plus the final run-state hash.
 - **`npm run golden -- verify`** replays every file and reports the **first** checkpoint that diverges.
-- **`npm run golden -- update`** rewrites the expected hashes. Run it only after an *intentional* behavior change, and say so in the commit message. Data changes move the hashes too, display text included, because every battle copies the data's text into its state.
+- **`npm run golden -- update`** rewrites the expected hashes. Run it only after an *intentional* behavior change, and say so in the commit message. Data changes move the hashes too. v1's battles copy the data's text into their state, so rewording moves their hashes; a round battle's state holds ids and numbers only, so rewording never moves a round golden (R2-Q8, §14.4).
 - **R2 regenerates the set for the round loop.**
   - **Until R2,** the v1 replays (`m1-…` to `m5-…`: two M1 battles against the scripted general, M2's merge mirror, M3's run, M4's adaptive Old Mother Mold and one M5 replay per commander's power) pin v1's battle.
   - **R2 retires them** with v1's battle code, and records replays named the same way (`<milestone>-<what>-s<seed>`). They MUST cover:
@@ -3466,7 +3561,8 @@ Single-battle JSON output:
     - a whole run with drafts after rounds 2, 4 and 6 and a life lost;
     - each commander's power, once per clash.
   - **R3 adds replays** for the kit's copies, augments, combos and run packs.
-  - R2's regeneration is when the plain wording kept in `src/ui/words.ts` SHOULD move into `data/*.json` (§10.4).
+  - **R2a records its round replays beside v1's** (named `r2-…`, `kind: "rounds"`), and a round rule or data change refreshes them with `npm run golden -- update` without moving v1's eight. R2b retires v1's with its battle.
+  - From R2a the UI reads text by id from content, so rewording moves no round golden, and R4b deletes `src/ui/words.ts` (R2-Q8, §10.4).
 - **Determinism tests** in the unit suite:
   - running the same config and commands twice gives equal hashes at every phase boundary and every 200 ticks of each clash;
   - snapshot at any checkpoint or clash tick → restore → continue gives the same final hash as an uninterrupted run;
@@ -3487,13 +3583,14 @@ Script options: `--name <file>` (it may hold folders: `phase4/1280x720/title`), 
 
 | Param | Meaning |
 |---|---|
-| `scene` | `title` (the default: with no `scene` and no battle parameters the page opens on the title), `run` (resume the saved run or start one, skipping the title), `battle` (the default when battle parameters are given), `draft`, `report`, `route`, `summary`, `underroot`, and the tool `sounds` (the sound board, §13.9). Until R2, `deploy` opens v1's deploy phase; from R2 a battle opens in round 1's planning, and `deploy` is retired |
+| `scene` | `title` (the default: with no `scene` and no battle parameters the page opens on the title), `run` (resume the saved run or start one, skipping the title), `battle` (the default when battle parameters are given), `draft`, `report`, `route`, `summary`, `underroot`, and the tool `sounds` (the sound board, §13.9). Until R2, `deploy` opens v1's deploy phase; from R2 a battle opens in round 1's planning, and `deploy` is retired. R2a adds `rounds`, its temporary preview entry (below) |
 | `map`, `seed`, `battleIndex` | Battle setup |
 | `player`, `enemy` | Controllers: `human`, `bot:<id>`, `general:<id>` |
 | `scenario` | Start from a scenario file |
-| `round`, `phase` | From R2: play the earlier rounds headlessly with the controllers, then open round n in `planning` (the default), `clash` or `aftermath` |
-| `ticks` | Fast-forward the sim headlessly to this tick (or `end`) before the first frame. From R2, a tick of the clash in `round` |
-| `paused` | `1` = start paused (stable screenshots) |
+| `round`, `phase` | From R2: play the earlier rounds headlessly with the controllers, then open round n in `planning` (the default), `clash` or `aftermath`; `phase=ended` opens the report. `phase=planning` is the planning checkpoint (below) |
+| `ticks` | Fast-forward the sim headlessly to this tick (or `end`) before the first frame. From R2, a tick of the clash in `round`, counted from the clash's start. The bridge reports the cumulative `state.tick`. A `round` or tick past the battle's end fails the capture with a message (R2a S0, 2026-11-02, A075) |
+| `paused` | `1` = start paused (stable screenshots). In planning it also holds the loop, so a bot's queued `beginClash` doesn't run until input; a pause never carries into a clash |
+| `reveal` | R2a, `scene=rounds` only: `last` draws the general's colony and squads as it fielded them last round, from round 2 (§7.5). A view rule: no hash moves |
 | `flags` | Feature flags, as in the CLI |
 | `proto` | A balance prototype spec (§12.4). On the dev site a prototype run saves under keys of its own; elsewhere it never saves |
 | `debug` | `1` = debug overlay and the `window.__GAME__` bridge |
@@ -3503,19 +3600,23 @@ Script options: `--name <file>` (it may hold folders: `phase4/1280x720/title`), 
 | `tab`, `profile` | Underroot tab; `profile=fixture:<name>` loads a test profile from `tests/fixtures/` |
 | `targeting`, `measure` | `targeting=1` opens power targeting (in a clash, from R2); `measure=frames` records frame times into the bridge |
 
-**Bridge** (`window.__GAME__`, only with `debug=1` or `test=1`): `{ ready, scene, tick, hash, summary(), run(), battle(), errors[] }`. R2 adds `round` and `phase`. `battle()` is the live state, for browser tests that stage a HUD case (a smaller kit, less gold); changing it gives up the hash check.
+**Bridge** (`window.__GAME__`, only with `debug=1` or `test=1`): `{ ready, scene, tick, hash, summary(), run(), battle(), errors[] }`. R2 adds `round`, `phase` and `preview()`. `preview()` returns what the formation preview drew, per side (its squads and each unit's position), or `null` before the first draw, so a capture can check the preview against the clash's first tick (R2a S0, 2026-11-02, A076). `battle()` is the live state, for browser tests that stage a HUD case (a smaller kit, less gold); changing it gives up the hash check.
+
+**The planning checkpoint** (R2a S0, 2026-11-02, A059). `phase=planning` stops at the state after the round's opening, once the general has planned and a player-side bot's plant, sell and toggle commands have run, with only its `beginClash` left queued (§14.6). The browser and Node both stop there, so the hash can be matched, and `phase=planning` (or `paused=1`) holds the loop until input.
+
+**The preview entry, `scene=rounds`** (R2a, temporary; §15 intro). It plays one battle in rounds, with no run, drafts, lives or saves, and it loads on every build; the title shows its button, "A battle in rounds (preview)", only on the dev site. Its parameters are `map`, `seed`, `battleIndex`, `player`, `enemy`, `commander`, `scenario`, `round`, `phase`, `ticks`, `paused`, `flags`, `test`, `debug`, `targeting`, `measure` and `reveal`. With `player=human` it refuses a `round` above 1, or a `phase` other than `planning`, unless a `scenario` is set, since a human's planning can't be played headlessly. Its defaults, which the title's button opens, are `map=bogwater-hollow`, `battleIndex=1`, `player=human`, `enemy=general:mother-mold`, `flags=merging,adaptive,powers` and `commander=vesper`, with a random seed written into the URL (R2a S0, 2026-11-02, A059). They are URL defaults only, kept in one place. R2b deletes the entry: the battle scenes then play rounds.
 
 **Assertions** the script makes before saving:
 
 1. No console errors and no page errors.
 2. `__GAME__.hash` equals the hash from headless `npm run sim` with the same parameters at the same checkpoint (from R2, the same round, phase and tick). This cross-checks Node against the browser.
 3. The canvas isn't blank: at least 12 distinct colors in a sampled grid, and both team tints present in their colonies.
-4. The HUD agrees with the state. For example, `#hud-gold` equals `summary().gold.player`. From R2 the plots chip, the round chip, both Heartcaps and the lives agree with the summary, and in planning the general's whole colony and formation are drawn before the player's first command (§7.5, §10.2). On run screens the DOM agrees with the run: the route's six rows and node icons, the draft's cards, the summary's battles, the intel bars, and on the title the wordmark, a primary button, How to play and Settings. The title holds no run or battle yet, so its hash check compares empty hashes.
+4. The HUD agrees with the state. For example, `#hud-gold` equals `summary().gold.player`. From R2 the plots chip, the round chip, both Heartcaps and the lives agree with the summary (R2a's single battle has no lives chip), and in planning the general's whole colony and formation are drawn before the player's first command (§7.5, §10.2). On run screens the DOM agrees with the run: the route's six rows and node icons, the draft's cards, the summary's battles, the intel bars, and on the title the wordmark, a primary button, How to play and Settings. The title holds no run or battle yet, so its hash check compares empty hashes.
 5. It writes `artifacts/screenshots/<name>.png` and a matching `<name>.json` summary.
 
 Claude then **opens the PNG with the Read tool** and checks the milestone's visual checklist. For interactive spot checks it can also open `npm run dev` in its built-in browser pane.
 
-**Browser tests** (`npm run test:browser`, `tests/browser/`) drive the real UI in Playwright Chromium against a Vite server, for what a screenshot can't show: the HUD's layout and tooltips, the run screens, settings and their saves, sound under `?test=1`, UI scale, resume, and prototype saves. R2 retires the cases for retired controls (deploy, Hold and its `F` key, forward plots and their price) and adds the planning screen: the general's army shown before planning, placing and selling on plots, the merge preview, Begin, and the power once per clash (§10.2, §10.3). It also adds resuming a battle saved before R2, which restarts round 1's planning with its notice (§8.9).
+**Browser tests** (`npm run test:browser`, `tests/browser/`) drive the real UI in Playwright Chromium against a Vite server, for what a screenshot can't show: the HUD's layout and tooltips, the run screens, settings and their saves, sound under `?test=1`, UI scale, resume, and prototype saves. R2 retires the cases for retired controls (deploy, Hold and its `F` key, forward plots and their price) and adds the planning screen: the general's army shown before planning, placing and selling on plots, the merge preview, Begin, and the power once per clash (§10.2, §10.3). It times, in Chromium, a plant and the preview update it causes (≤ 4 ms) and the render frame at 300 units (≤ 8 ms) (§13.7; A113). It also adds resuming a battle saved before R2, which restarts round 1's planning with its notice (§8.9).
 
 ### 15.7 Unit test map (fast suite)
 
@@ -3529,23 +3630,23 @@ Claude then **opens the PNG with the Read tool** and checks the milestone's visu
 | Rounds (R2) | The order of a round's steps (§4.7): income from round 2, the Sporestorm multiplier, `roundStart` triggers, the general plans, the draft on rounds 3, 5 and 7 (after the general has planned), the player plans, Begin, the clash, the aftermath; nothing but the colony and gold carries between rounds; every squad is fielded fresh; the last round has its aftermath, then the battle ends at a Heartcap at 0 or after round 9 | New |
 | Planning (R2) | No ticks pass while planning (§4.2); the general's plan is complete before the player's first command is accepted; the general's plan doesn't change with what the player plants in the same phase; planting and selling happen only in planning; the merge preview equals what fields (see Merging) | New |
 | Formation (R2) | A plot's rank and file set its squad's slot; the formation box is set mid-lane with front ranks 6 tiles apart; economy plots leave holes; `formationOf` is a pure function of the colony and draws on no random stream; each slot's k × k grid fills front to back, then top to bottom, with front toward the enemy, and a squad too large for its slot packs tighter (§4.6); the preview's positions equal the arrival positions; the general's formation rule and lane choice (§7.3); the colony mirrors for the general | New |
-| Clash and aftermath (R2) | Both armies appear on the same tick; nobody moves or attacks in the 1 s muster (§5.6); a lane ends when one side has no units and no emplacements left in it, and an emplacement counts 0 supply; at 45 s the side with more surviving supply wins and its damage counts only the difference; on Twin Roots each lane is its own clash; round damage in integers by §6.7's steps, with the Sporestorm from round 5 up to ×2.0 (§6.4) and the 500 cap. §6.7's edge cases get one rule scenario each, named by its ID: E1 only one side fields units in a lane, E2 neither side does, E3 a tie at 45 s, E4 both sides wiped out on the same tick, E5 both sides left with only emplacements at 45 s, E6 a win with only emplacements left (0 surviving supply), E7 two lanes with different winners, E8 both Heartcaps at 0 in the same round. Each asserts the winner, the margin, the damage and who gets comeback gold | New |
+| Clash and aftermath (R2) | Both armies appear on the same tick; nobody moves or attacks in the 1 s muster (§5.6); a lane ends when one side has no units and no emplacements left in it, and an emplacement counts 0 supply; at 45 s the side with more surviving supply wins and its damage counts only the difference; on Twin Roots each lane is its own clash; round damage in integers by §6.7's steps, with the Sporestorm from round 5 up to ×2.0 (§6.4) and the round cap (25% of the loser's max HP). §6.7's edge cases get one rule scenario each, named by its ID: E1 only one side fields units in a lane, E2 neither side does, E3 a tie at 45 s, E4 both sides wiped out on the same tick, E5 both sides left with only emplacements at 45 s, E6 a win with only emplacements left (0 surviving supply), E7 two lanes with different winners, E8 both Heartcaps at 0 in the same round. Each asserts the winner, the margin, the damage and who gets comeback gold | New |
 | Kit (R3) | Copies limit what's planted at once; selling returns the copy; a blueprint adds a card with 1 copy and a drafted owned card adds a copy; augments compile onto squads and show; combos fire on in front of, behind and beside; the run deals 4 of 10 packs and the always-in set (§8.4, §8.10, §11.13–11.15) | New |
 | Territory | Frontier-only capture; the 1.5× rule; 60-tick flip; decay; forts block; home columns never flip; a single neutral column contested by both sides | Retired (§4.3) |
 | Economy | Stipend, Truffle Cellars and loam plots, interest floor and cap on gold banked at the end of planning, comeback gold to the last round's loser (§6.2). v1's besieged halving and supply-line price go | Rewritten |
 | Buildings | Placement only on free plots, never on stumps; sell refunds (100% in the planning phase it was planted, 60% once it has fielded); the squad each spawner fields; the tray's price is one you can plant for now. v1's first-spawn timing, holding at the supply cap, no selling while besieged and the forward plot's price go | Rewritten |
-| Combat | Target choice, stickiness and tie-breaks; siege and slayer preferences; projectile delay; splash falloff; healing | Kept, minus the tests of the v1 parts §13.4 removes (buildings and Heartcaps as targets, turrets, call for help, rush, fall-back and dive) |
+| Combat | Target choice, stickiness and tie-breaks; slayer and tunneler preferences (siege units have no preference, §5.2); projectile delay; splash falloff; healing | Kept, minus the tests of the v1 parts §13.4 removes (buildings and Heartcaps as targets, turrets, call for help, rush, fall-back and dive, and siege's preference for buildings) |
 | Powers (M5) | Each power's effect, targeting validation, the auto policy and determinism. From R2: ready from the clash's first tick, during the muster too, and at most once per clash; the cooldown and first-ready time are retired (§14.2); new effects where a power was tied to a retired system (§6.6, §11.10) | Rewritten |
-| Rule scenarios | The `data/scenarios/` files assert their outcomes in the fast suite too. v1's territory and besieged scenarios (`fort-blocks-flip`, `home-never-flips`, `besieged-control`, `besieged-half-speed`) and `comeback-6` go. R2 adds round scenarios, such as the general planning first, the formation from plots, the 45 s cap, the round-damage cap, the Decision after round 9, and one per §6.7 edge case, E1 onward (§16) | Rewritten |
-| Endings and lives | A Heartcap at 0 (Rout); the Decision after round 9 by Heartcap damage dealt, and its tiebreakers; both Heartcaps reaching 0 in the same aftermath (E8, §6.7); both Heartcaps full and both colonies empty at each battle's start (§4.6); a lost battle costs one life and a won battle none; the run ends at 0 lives (§6.5, §8.5) | Rewritten |
+| Rule scenarios | The `data/scenarios/` files assert their outcomes in the fast suite too. v1's territory and besieged scenarios (`fort-blocks-flip`, `home-never-flips`, `besieged-control`, `besieged-half-speed`) and `comeback-6` go. v1's merge and power scenarios (`merge-trio`, `knit-cancel`, `merge-under-fire`, `elder-ladder` and `power-demo`) are written for v1's battle, with pre-placed buildings, a clock, borders or turret switches, so R2 rewrites them in clash form (`merge-under-fire` fights enemy units rather than a hall; R4a's lineups replaced `elder-showcase`) (A104). R2 adds round scenarios, such as the general planning first, the formation from plots, the 45 s cap, the round-damage cap, the Decision after round 9, and one per §6.7 edge case, E1 onward (§16) | Rewritten |
+| Endings and lives | A Heartcap at 0 (Rout); the Decision after round 9 by the share of max HP dealt, and its tiebreakers; both Heartcaps reaching 0 in the same aftermath (E8, §6.7); both Heartcaps full and both colonies empty at each battle's start (§4.6); a lost battle costs one life and a won battle none; the run ends at 0 lives (§6.5, §8.5) | Rewritten |
 | Merging (M2) | Eligibility; radius; knit cancel; HP carry; supply ⅔; toggle propagation. From R2: squads set to merge knit in place during the muster, on `formationOf`'s positions, to a fixed point; `mergePreview` is the same function, so the preview equals what fields, with two Burrows side by side and three in a row as cases; after the muster v1's rule applies on the field (§5.6). v1's presence goes | Kept, extended; presence retired |
 | AI (M4) | Analysis scores for the squads fielded, read only from the per-round `fielded` record (§14.4); doctrine weights; buying from its kit under the plot rules, and from R3 the copy rules; selling for space; intel decay. v1's warning and activation ticks go with the telegraph | Rewritten |
-| Run (M3) | Route constraints; draft weights and exclusions; effect compilation order; rewards; the commanders' pools, starter kits and bans; save round-trip between rounds. From R2: a run saved before R2 migrates or ends with a visible notice, never silently (§8.9) | Kept, extended |
+| Run (M3) | Route constraints; draft weights and exclusions; effect compilation order; rewards; the commanders' pools, starter kits and bans; save round-trip between rounds. From R2: a run saved before R2 migrates or ends with a visible notice, never silently (§8.9) | Rewritten in part: the drafts, effects and resume cases change with rounds (§8.3, §11.7, §8.9); the rest is kept and extended |
 | Report | The battle report's gold rows add up to the gold the banner shows. From R2 it reports by round: each round's result and the damage by building (§10.5) | Kept, extended |
 | Meta (M6) | Feat conditions; strain patching; trait capacity; mastery thresholds; migrations | Kept |
-| Sound | The sound bank's schema and references; cooldowns per key; the voice cap and priority stealing; speed thinning; the engine as a no-op in Node; which battle events make sounds, at whose gain; settings migration | Kept |
+| Sound | The sound bank's schema and references; cooldowns per key; the voice cap and priority stealing; speed thinning; the engine as a no-op in Node; which battle events make sounds, at whose gain; settings migration | Rewritten in part: v1's battle sounds and `REQUIRED_SOUNDS` change with R2's events (§13.9); the rest is kept |
 | Settings and contrast | Older settings records load with new fields at their defaults; unknown values fall back; listeners hear each change. Every text pair the UI uses is 4.5:1 or better and every control edge 3:1 or better, read from the tokens in `styles.css` | Kept |
-| Plain words | Every rewording in `src/ui/words.ts` names a real id and keeps every number the data's own text gives | Kept until the wording moves into data (§15.5) |
+| Plain words | Every rewording in `src/ui/words.ts` names a real id and keeps every number the data's own text gives | Kept until R4b deletes `src/ui/words.ts` (§10.4, R2-Q8) |
 | Teaching text | What Help, the first-time tips and the top band's tooltips teach agrees with the rules and the data | Rewritten in R2, and again with R4's Help |
 | Prototypes | Each `src/data/proto.ts` knob is absent from `data/balance.json`, so the shipped rules are unchanged; with the knob set, the prototype behaves as described. Knobs tied to retired systems go with them in R2, as §16's R2 lists (for example `waves`, `stormwaves`, `callforhelp`, `hold` and `nohold`, and `mixedwave` unless R1 keeps the shields); the pieces R1's chosen set keeps (pinning, spore clouds, cleave, the Burster, the Rhizomorph) move to the areas above when R2 adopts them | Rewritten |
 | Counter matrix | Its answer bots join the content through a proto spec without touching the shipped bots; a tiny run screens and confirms | Kept |
@@ -3555,7 +3656,7 @@ Claude then **opens the PNG with the Read tool** and checks the milestone's visu
 
 ## 16. Milestone plan
 
-**The first release = Milestones 1–5, R1–R4 and 6–8,** in that order. Milestones 1–5 were built under v1. R1–R4 rebuild the battle for v2 (§1.3), and Milestones 6–8 keep their numbers and are rewritten for v2. R4 comes in two parts: R4a runs beside R1 and lands before R2's first playtest, and R4b follows R3 (X3, Milestone R4 below).
+**The first release = Milestones 1–5, R1–R4 and 6–8,** in that order. Milestones 1–5 were built under v1. R1–R4 rebuild the battle for v2 (§1.3), and Milestones 6–8 keep their numbers and are rewritten for v2. R2 comes in two parts (X1, Milestone R2 below): R2a, a battle in rounds, and R2b, the run in rounds. R4 comes in two parts: R4a runs beside R1 and lands before R2's first playtest, and R4b follows R3 (X3, Milestone R4 below).
 
 Every milestone:
 
@@ -3565,7 +3666,7 @@ Every milestone:
 
 From R2 on, every milestone also:
 
-- is built on feature branches and merged into `develop` as the new default, never as a `?proto=` knob (§1.3 #13);
+- is built on feature branches and merged into `develop` as the new default, never as a `?proto=` knob (§1.3 #13). R2 is the exception on timing: R2a lands beside v1, and rounds become the default with R2b's switch-over (X2, R2a S0, 2026-11-02, Milestone R2 below);
 - removes the tests, goldens and guardrails of any system it retires, in the same change. Tests follow the spec, not the other way round (§12.3, §15).
 
 The verification blocks below are written so Claude can run them unattended. Screenshot checks always end with Claude opening the PNGs and walking the visual checklist. Commands and URL parameters that a milestone adds (for example the clash check, or `round` and `phase` in a screenshot) are built in that milestone and documented in §15.
@@ -3632,7 +3733,7 @@ Its goldens are `m1-balanced-vs-scripted-s1` and `m1-turtle-vs-scripted-s2`. Its
   - This adds code but no rule, so no golden hash moves.
 - **Jitter, as a measurement option only:** the check MAY add a seeded jitter to where units stand at the start, to see how much a result depends on exact positions. It's the tool's own variation, not a game rule: the game's formation stays deterministic (§4.6). The jitter moves units after the muster's knits, so the muster gives what the game's preview would. Numbers are quoted at a jitter of ±0.2 tiles, with the jitter-free run beside them.
 - **The clash:** both armies appear on the same tick at their slot positions, front ranks 6 tiles apart, on a flat field with the map's lanes, with merging on.
-  - **It opens with §5.6's muster:** for 1 s nobody moves or attacks, and squads with merging on knit in place, by merging's rule, to a fixed point. The knits land on the clash's first tick (§5.6's first guess; R1 has no powers, so the timing inside the muster changes nothing). After the muster, v1's rule applies on the field. The archived prototype's knitting on the approach isn't R1's rule.
+  - **It opens with §5.6's muster:** for 1 s nobody moves or attacks, and squads with merging on knit in place, by merging's rule, to a fixed point. The knits land on the clash's first tick (R1 has no powers, so the timing inside the muster changes nothing; in the game they land inside Begin, §5.6, §18.2 #25). After the muster, v1's rule applies on the field. The archived prototype's knitting on the approach isn't R1's rule.
   - R1 builds the muster's knitting as a pure function in `src/sim`, beside the slot layout, and R2's `mergePreview` reuses it (§14.6). Like the layout, it adds code but no rule.
   - **The clash clock includes the muster** (§18.2 #13). The clash runs until one side is gone in every lane, or 45 s pass (§6.7).
   - **v2's targeting and movement:** the check turns on two tool-only flags. They live in `config.test` and are absent in every battle, so no golden moves. With `noBuildingPreference`, siege units fight the nearest enemy, as §5.2 says for rounds, rather than going for buildings first. With `idleSeek`, a unit with no target walks toward the nearest enemy in its lane that it could target, enemy towers included, rather than marching to the far edge (§5.2). Each can be turned off for a diagnostic screen, and R2 writes both as the rule.
@@ -3698,6 +3799,12 @@ Its goldens are `m1-balanced-vs-scripted-s1` and `m1-turtle-vs-scripted-s2`. Its
 
 **Goal:** the new battle. A battle is a series of rounds (planning, clash, aftermath) against one general that plans first, scored as a race between two Heartcaps, inside a run with lives. Placement means position, because the colony is the formation.
 
+**In two parts** (X1, R2a S0, 2026-11-02). R2 is several milestones in one (A101, A195), and one gate at its end would put the first test of "plan, then fight" after all of it. Each part has its own plan and its own playtest gate:
+- **R2a, a battle in rounds,** builds one battle: the round loop, scoring, the colony's plots (the third rank built, and closed), the general that plans first with its counter cycle, the economy per round, the commander power, the battle screen, the adopted pieces, and the tools and guardrails for single battles. It has no run, lives, drafts or saves. Its plan is `docs/r2a-plan.md`, and its gate asks step 10's questions 1, 2, 3, 6 and 7.
+- **R2b, the run in rounds,** builds lives and the run, drafts in planning, saves between rounds, the content tied to retired systems, the route's and the run's screens, the migration of runs saved before R2, the round Help and tips (a first wording that R4b rewords, A156) and the switch-over that deletes v1. Its plan is `docs/r2b-plan.md`, and its gate asks questions 4 and 5.
+
+**How it lands** (X2, R2a S0, 2026-11-02). R2a is built beside v1 on `develop`: new modules in `rounds/` folders (§13.4), copies of the kept systems typed on the round state, and data fields v1 ignores. So v1's code and game stay as they are, apart from the rework's adopted pieces (below), and `npm run verify` is green on every PR. It ends in a temporary preview entry, `scene=rounds`, which loads on every build and shows its title button on the dev site only (§15). The user's decision lets `develop` switch wholly to v2: R2b switches the game over and deletes v1 on `develop`, with `npm run verify` green on every PR, and its S0 settles its branches. So §16's "merged into `develop` as the new default" holds for R2 from R2b's switch-over, and `main` keeps the v1 game until the user asks for a release. R2b deletes the preview entry and the tools' `--rounds` option before any release, so `main` never sees them.
+
 **Scope:**
 
 - **The round loop** (§4.2, §4.7): phases `planning`, `clash` and `aftermath`, opening in §4.7's order; ticks only during a clash; squads fielded fresh each round with R1's sizes; both armies appearing on the same tick, in formation; the 45 s cap and how a lane's clash ends (§6.7); merging at the clash's opening muster, with the toggle set in planning and the preview equal to what fields (§5.6).
@@ -3712,15 +3819,15 @@ Its goldens are `m1-balanced-vs-scripted-s1` and `m1-turtle-vs-scripted-s2`. Its
 - **Saves** at the start of each planning phase and at Begin (§8.9).
 - **Runs and battles saved before R2** (§8.9, §18.2 #32): get the user's call on migrating a saved run or ending it with a notice. Then `loadRun` (`src/run/resume.ts`) handles the old `RUN_VERSION` (1) as decided, instead of returning null: today a version mismatch drops the run silently, with no Continue and no notice. A v1 battle save in a run that goes on restarts round 1's planning with the notice for an incompatible save, instead of being ignored (today `src/app/run.ts` resumes a battle save only when its config matches). The keys stay (§13.8).
 - **UI** (§10.2, §10.5): the planning, clash and aftermath views; both colonies' plots; the formation and merge previews; the round tally and the lane tug; both Heartcaps and your lives; basic matchup marks (the class of your hits against each enemy squad); the report by round; lives on the run bar; the general's kit on its route node. All on today's sprites.
-- **Retiring v1's battle in code** (Appendix A; files in §13.4, tests in §15.7 and §15.6): spawn timers, besieged spawners, territory and presence, forward building and the supply-line price, Hold / Advance, Heartcap turrets, the timed Sporestorm, the 10:00 Decision, the income tick, the supply cap, the vague telegraph, the run's Heartcap and its repairs, the deploy phase and placing while live. Their tests, goldens, guardrails, UI, Help and tips go with them. The systems R2 keeps lose their v1 parts as §13.4 lists (movement, targeting and combat).
-- **The rework's pieces become the default** (§1.3 #11): R2 adopts R1's chosen set as default data. R1's review gate (2026-11-02) chose all of `kept` (pinning, spore clouds, cleave, the Burster and the Rhizomorph), the arrival shield (§5.3) and Capguard Hall's squad at 3 (§11.2), with the Elder Sporeling keeping its splash. Its rules (pinning, spore clouds, cleave, the Burster's burst and the arrival shield, under its own key) move from `src/data/proto.ts` into `data/balance.json` (§11.1), and its units and buildings (the Burster Pod and the Rhizomorph Tunnel) into the faction files, for both rosters (§11.2). Until R3 the new buildings join the roster like any other; R3 gives each its place in a run, a core archetype or a pack (§11.2, §11.15).
+- **Retiring v1's battle in code,** at R2b's switch-over (Appendix A; files in §13.4, tests in §15.7 and §15.6): spawn timers, besieged spawners, territory and presence, forward building and the supply-line price, Hold / Advance, Heartcap turrets, the timed Sporestorm, the 10:00 Decision, the income tick, the supply cap, the vague telegraph, the run's Heartcap and its repairs, the deploy phase and placing while live. Their tests, goldens, guardrails, UI, Help and tips go with them. The systems R2 keeps lose their v1 parts as §13.4 lists (movement, targeting, combat, merging and clouds, with `targets.ts` and `effects.ts`).
+- **The rework's pieces become the default** (§1.3 #11): R2 adopts R1's chosen set as default data. R1's review gate (2026-11-02) chose all of `kept` (pinning, spore clouds, cleave, the Burster and the Rhizomorph), the arrival shield (§5.3) and Capguard Hall's squad at 3 (§11.2), with the Elder Sporeling keeping its splash. Its rules (pinning, spore clouds, cleave, the Burster's burst and the arrival shield, under its own key) move from `src/data/proto.ts` into `data/balance.json` (§11.1), and its units and buildings (the Burster Pod and the Rhizomorph Tunnel) into the faction files, for both rosters (§11.2). Until R3 the new buildings join the roster like any other, with weight 1 in the bots' and the generals' weights, written in data; v1's `aiWeight` and its kit append retire (R2a S0, 2026-11-02, R2-Q5; §11.11). R3 gives each its place in a run, a core archetype or a pack (§11.2, §11.15).
 - **Deleting the `?proto=` presets whose systems retire,** with their schema keys (`src/data/schema.ts`) and tests (`tests/unit/prototypes.test.ts`, `combatRework.test.ts`, `battleFeel.test.ts`, and the cases elsewhere that set them). In `src/data/proto.ts`:
   - **They go in R2:** `b1` (`approachRush`), `a3` (counter cycles in seconds), `b4` (`unitLifespan`), `hold` and `nohold` (`laneStance`), `t1` (`rangedFirstSpawnFraction`), `t2` (`fallBack`), `diver` and `diverleap` (`diveRanged`), `hotstart` (`hotStart`), `breach` (`sideTriggers` and the `heartcapBreach` trigger), `bigdrafts` (`bigDrafts`), `t3` (`spawnerDefense`), `callforhelp` (`callForHelp`), `waves` (`waves`), `stormwaves` (`stormWaves`) and `rework`. `hotstart` and `breach` stay undecided proposals (Appendix A), and MAY come back in round form.
-  - **R1's outcomes** (A109, R1's review gate, 2026-11-02): `pinned`, `sporecloud`, `cleave`, `burster`, `rhizomorph` and `clashshield` become default data, the shield as v2's rule under its own key, so their presets go, with `kept` and `mixedwave`. Deleted: `noeldersplash` and the Elder's splash off inside `rework`, `clashpace`, and `swarmread` (`ai.counter.swarmMaxSupply`), which counting Elder parts replaces if R2a S0 settles R2-Q3 that way. R2a writes the tool-only switches `noBuildingPreference` and `idleSeek` as v2's targeting and movement (§5.2), and R2b deletes the flags.
+  - **R1's outcomes** (A109, R1's review gate, 2026-11-02): `pinned`, `sporecloud`, `cleave`, `burster`, `rhizomorph` and `clashshield` become default data, the shield as v2's rule under its own key, so their presets go, with `kept` and `mixedwave`. Deleted: `noeldersplash` and the Elder's splash off inside `rework`, `clashpace`, and `swarmread` (`ai.counter.swarmMaxSupply`), which counting Elder parts replaces (R2a S0, 2026-11-02, R2-Q3; §7.4). R2a writes the tool-only switches `noBuildingPreference` and `idleSeek` as v2's targeting and movement (§5.2), and R2b deletes the flags.
   - **They stay as default-off knobs:** `a2` and `b3`, which tune systems that stay, and `flyers`, for the later flyer (§1.3 #11), without `holdsGround`, which only territory reads.
-- **Settle §18.2's rows "Settled by R2"** (#16–#35) with the user in `docs/r2-plan.md` before building. The two that R2's playtest settles (#17, #33) start from their first guesses.
+- **Settle §18.2's rows "Settled by R2"** (#16–#35) with the user in `docs/r2a-plan.md` and `docs/r2b-plan.md` before building each part. R2a's S0 settled #19, #22, #23, #25 and #29–#31 and #34, and agreed #35's approach (2026-11-02); R2b's S0 settles the rest (#16–#18, #20, #21, #24, #26–#28 and #32, and #35's G14 and G15). The two that R2's playtest settles (#17, #33) start from their first guesses.
 - **Link previews** (§13.8): `index.html`'s `description`, `og:description` and `twitter:description` describe the round-based game. Today they describe v1's tug-of-war; their text stays as it is until R2.
-- **Tools:** `npm run sim` and `npm run balance` play rounds (§15.2); new goldens replace v1's eight (§15.5); the guardrails in round form (§12.3); screenshot parameters for a round and a phase (§15.6). §15.7 says which unit tests are kept, rewritten, retired or new, and §15.6 which browser tests go and come.
+- **Tools:** `npm run sim` and `npm run balance` play rounds (§15.2); new goldens replace v1's eight (§15.5); the guardrails in round form (§12.3); screenshot parameters for a round and a phase (§15.6). R2a builds them beside v1's, behind `--rounds` and `scene=rounds` (§15), for single battles; R2b adds the run parts and removes the options. §15.7 says which unit tests are kept, rewritten, retired or new, and §15.6 which browser tests go and come.
 
 **Not in R2:**
 
@@ -3729,12 +3836,10 @@ Its goldens are `m1-balanced-vs-scripted-s1` and `m1-turtle-vs-scripted-s2`. Its
 
 **Done when:**
 
-- a human can play a whole run in rounds on the dev site, from round 1's planning to the run summary;
-- nothing from the retired list remains in the game, its tests or its tools;
-- every verification step below passes;
-- the playtest gate questions have been put to the user.
+- **R2a:** a human can play a single battle in rounds on the dev site through `scene=rounds`, from round 1's planning to the report; verification steps 1–4 and 7–9 pass on single battles; and the gate's questions 1, 2, 3, 6 and 7 have been put to the user;
+- **R2b:** a human can play a whole run in rounds on the dev site, from round 1's planning to the run summary; nothing from the retired list remains in the game, its tests or its tools; every verification step below passes; and the gate's questions 4 and 5 have been put to the user.
 
-**Verification:**
+**Verification:** R2a runs steps 1–4 and 7–9 on single battles, with `--rounds` on the tools and `scene=rounds` for the captures (§15). Steps 5 and 6, and the run parts of the others (lives, the run's save round trip, the route capture), are R2b's, which runs every step in the final forms below.
 
 1. `npm run verify`. The unit suite covers the round rows of §15.7: the order of a round's events; income by round; the formation from the plots; how a clash ends (a lane wiped, the 45 s cap, the difference in supply); the damage formula (merged supply, siege counting double, the cap, the storm); merging at the muster, with the preview equal to what fields (§5.6); the Heartcap race and the Decision after round 9; lives; refunds by phase; the general planning first and never reading what the player plants in the same phase; and a save round-trip between rounds.
 2. The new goldens are created and passing (§15.5), one single battle and one run at least.
@@ -3756,7 +3861,7 @@ Its goldens are `m1-balanced-vs-scripted-s1` and `m1-turtle-vs-scripted-s2`. Its
    - `formation-from-plots`: a Capguard Hall planted in front of a Gill Archer Nest fields its Capguards in the front rank and the archers behind them;
    - `clash-cap`: two armies that can't finish each other in 45 s; the lane goes to the side with more surviving supply, and the damage counts only the difference;
    - `round-damage-cap`: an overwhelming win deals exactly the per-round cap;
-   - `decision-round-9`: a battle with both Heartcaps standing after round 9 goes to the side that dealt more Heartcap damage;
+   - `decision-round-9`: a battle with both Heartcaps standing after round 9 goes to the side that dealt the larger share of the other Heartcap's max HP;
    - one scenario for each edge case in §6.7's table, citing its ID there: `lane-empty-one-side` (E1), `lane-empty-both` (E2), `cap-tie` (E3), `double-wipe` (E4), `emplacements-only-draw` (E5), `emplacement-only-win` (E6), `split-lanes` (E7) and `both-heartcaps-zero` (E8). Each asserts the lane's winner, the margin, the Heartcap damage and who gets the comeback gold.
 5. Whole runs:
 
@@ -3766,38 +3871,39 @@ Its goldens are `m1-balanced-vs-scripted-s1` and `m1-turtle-vs-scripted-s2`. Its
 
    Expect every run to complete with 4–5 battles, no run to lose a life in a won battle, and the run's results (runs won, the boss reached, lives left) reported against §12.3's run guardrails (G14 for battle 1, G15 for the boss).
 6. Saves from before R2 (§8.9): a unit test loads a run saved under `RUN_VERSION` 1 and gets it migrated, or ended with a visible notice, as the user decided, never null; a browser test (§15.6) loads a v1 battle save in a run that goes on and sees round 1's planning with the restart notice, the run's progress kept.
-7. `npm run test:slow`: the guardrails in round form (§12.3), asserting and passing, among them G4 (rounds per battle), G13 (stalls) and G16 (formation). The retired ones are gone.
+7. `npm run test:slow`: the guardrails in round form (§12.3), asserting and passing, among them G4 (rounds per battle), G13 (stalls) and G16 (formation). The retired ones are gone. It takes about 15 minutes on the dev machine, split across files, with G3, G12 and the runs on worker pools; the runtimes go in `docs/balance-backlog.md`, and past 20 minutes G12 screens in the suite and is confirmed through `--checks counters` (R2a S0, 2026-11-02, R2-Q9).
 8. `npm run bench`: R1's full-colony clash inside the §13.7 budget.
 9. Browser checks (the parameters are §15.6's):
 
    ```bash
    npm run screenshot -- --name r2-planning-1 --params "scene=battle&seed=1&player=bot:balanced&enemy=general:scripted&round=1&phase=planning"
-   npm run screenshot -- --name r2-planning-4 --params "scene=battle&seed=1&player=bot:balanced&enemy=general:scripted&round=4&phase=planning"
+   npm run screenshot -- --name r2-planning-4 --params "scene=battle&seed=1&player=bot:balanced&enemy=general:scripted&round=4&phase=planning" --click '[data-building=sporelingBurrow]'
+   npm run screenshot -- --name r2-clash-start --params "scene=battle&seed=1&player=bot:balanced&enemy=general:scripted&round=4&phase=clash&ticks=1&paused=1"
    npm run screenshot -- --name r2-clash     --params "scene=battle&seed=1&player=bot:balanced&enemy=general:scripted&round=4&phase=clash&ticks=200&paused=1"
    npm run screenshot -- --name r2-report    --params "scene=report&seed=1&player=bot:balanced&enemy=general:scripted"
    npm run screenshot -- --name r2-route     --params "scene=route&seed=7"
    ```
 
-   The automatic assertions are §15.6's, including the browser hash equal to the Node hash. Visual checklist:
+   The `--click` chooses the Sporeling Burrow's tray card, so the marks show in the capture (R2a S0, 2026-11-02, A076). The automatic assertions are §15.6's, including the browser hash equal to the Node hash and `preview()` against the clash's first tick, which `r2-clash-start` holds. Visual checklist:
    - Both colonies show their plots, with loam and stump plots drawn as themselves.
-   - In planning, the general's whole army stands in formation before any player command, and both formation previews match where the clash's first tick puts the units.
+   - In planning, the general's whole army stands in formation before any player command, and both formation previews match where the clash's first tick puts the units (`r2-clash-start`).
    - The top band shows both Heartcaps, your lives, the round of 9 and the round tally; the clash shows the lane tug.
-   - Basic matchup marks show on the general's squads while a card is chosen.
+   - Basic matchup marks show on the general's squads while a card is chosen (`r2-planning-4`).
    - Nothing from the retired list shows: no territory, frontier, Hold switches, spawn timers, supply chip or telegraph countdown.
    - The report shows the round chart. The route's battle node shows its general's kit.
    - Nothing is clipped at 1280×720.
-10. **Playtest gate (human):** the user plays at least one full run on the dev site and answers:
-    - Did seeing the general's army first turn the opener into a plan rather than a gamble?
-    - Did where you planted change how a clash went?
-    - Did rounds read as "plan, then fight"?
-    - Did a close battle leave a mark, and did a lost battle feel like a setback rather than the end?
-    - About how long did planning take each round, and how long was the run (target 25–35 minutes)?
-    - When were you bored, and when did you feel clever?
-    - Did you miss placing or Hold during a clash, with only the commander power live?
+10. **Playtest gate (human), in two parts** (X1, R2a S0, 2026-11-02). R2a's gate has the user play single battles on the dev site through `scene=rounds`, at least one on Twin Roots and one with `reveal=last` (R2-Q1's A/B), and asks questions 1, 2, 3, 6 and 7. R2b's has the user play at least one full run, and asks 4 and 5. The questions:
+    - Did seeing the general's army first turn the opener into a plan rather than a gamble? (R2a)
+    - Did where you planted change how a clash went? (R2a)
+    - Did rounds read as "plan, then fight"? (R2a)
+    - Did a close battle leave a mark, and did a lost battle feel like a setback rather than the end? (R2b)
+    - About how long did planning take each round, and how long was the run (target 25–35 minutes)? (R2b; R2a's report already shows planning seconds per round, X6, §8.2)
+    - When were you bored, and when did you feel clever? (R2a)
+    - Did you miss placing or Hold during a clash, with only the commander power live? (R2a)
 
-    Tune the data before starting R3. The answers go in `docs/playtest-feedback.md`.
+    Tune the data after each part's gate, before R2b and before R3. The answers go in `docs/playtest-feedback.md`.
 
-    **A rough playtest comes first** (agreed 2026-11-01). Once a single battle in rounds is properly playable on the dev site, with the planning screen, the clash chrome and the report, and before the counter cycle and the commander power land, the user plays it rough and answers questions 1, 2, 3 and 6. Its notes steer the rest of R2, and this gate stays.
+    **A rough playtest comes first** (agreed 2026-11-01). Once a single battle in rounds is properly playable on the dev site, with the planning screen, the clash chrome and the report, and before the counter cycle and the commander power land, the user plays it rough and answers questions 1, 2, 3 and 6. Its notes steer the rest of R2a, and R2a's gate stays.
 
 ### Milestone R3 — The kit
 
@@ -3878,7 +3984,7 @@ Elsewhere in this spec, "R4" means both parts, and a part is named where its tim
 
 - An icon for each augment and each combo (§11.13, §11.14).
 - **Matchup marks** drawn in full on cards and on the planning screen, with a glyph for Structure targets (§10.4).
-- **The card-text pass:** no sentences on a card face; the tooltip holds the detail (§10.2). Player-facing words move from `src/ui/words.ts` into the data, since R2 already regenerated the goldens (§10.4).
+- **The card-text pass:** no sentences on a card face; the tooltip holds the detail (§10.2). R4b deletes `src/ui/words.ts`: from R2a the UI reads names and text from content by id, and a round battle's state holds none (R2-Q8, §10.4).
 - **Help and tooltips** rewritten for rounds, and the first-time tips reworded (§10.2, §10.5).
 
 **Not in R4:** new rules or numbers. The merged radius (§18.2 #53) changes in R2, not here. The Gray Rot's own sprites are M7's.
@@ -3946,6 +4052,7 @@ It comes in two parts (X10, 2026-11-01). The plan is `docs/run-it-back-plan.md`,
 Where it lives (RB-Q1, RB-Q2):
 - The records live in the profile, `spore-sprawl/profile/v1` (§9.7), as its version 1, which M6 migrates in place.
 - Play time and what beat you live in the records. `src/app` and `src/meta` work them out, and they never enter `RunState` or a battle's state, so no hash moves (§13.3 rule 6, §15.6).
+- **Active play time** is wall time with the tab visible on a run or battle screen, paused while the tab is hidden and after 60 s without input; Help and settings count, and a paused clash counts until the idle cutoff (RB-Q3, R2a S0, 2026-11-02; §8.2). R2a's play clock is the one module for it, and records-2 extends it with the run's total.
 - Prototype runs write no records and no remembered setup. Run it back still works in one, from the run that ended.
 
 **Verification:**
@@ -4023,7 +4130,7 @@ Where it lives (RB-Q1, RB-Q2):
 3. `npm run bench` passes. A render benchmark (`npm run screenshot -- --name m8-perf --params "scenario=bench-300&test=1&measure=frames"`), and the same on the full-colony clash, reports a p95 frame time ≤ 8 ms.
 4. A cross-engine check: `npm run screenshot -- --browser firefox --name m8-ff --params "<the r2-clash params>"` gives the same hash as Node and Chromium.
 5. Production preview screenshots of every screen; Claude reviews all of them.
-6. A run with a person at 1× lasts 25–35 minutes (§8.2).
+6. A run with a person at 1× lasts 25–35 minutes (§8.2), or whatever target R2b's playtest re-sets (X6, R2a S0, 2026-11-02).
 7. Deployment: Claude verifies that the Pages workflow run succeeds and that the live URL loads (built-in browser pane screenshot).
 
 ---
@@ -4085,20 +4192,20 @@ Each default is deliberate and easy to change. D1–D24 are v1's, from the desig
 | D26 | Heartcap damage per lane: 25 for each supply in the winner's margin, merged units counting their own supply and siege units double (for damage only, not the 45 s comparison); then the Sporestorm and the loser's damage-taken modifiers, in basis points, floored; no Heartcap takes more than 25% of its max HP a round (§6.7; a flat 500 until X5, 2026-11-02) | Only survivors count, so a close loss costs little. The cap is a quarter of the Heartcap at every size, so no Heartcap falls to one bad round. Siege units get a job with no buildings to break |
 | D27 | The Sporestorm raises round damage 20% a round from round 5, up to ×2.0 at round 9 | It stays the stalemate breaker, now across rounds |
 | D28 | Your Heartcap is 3000 in every battle; the general's is 2000 + 250 × (battle index − 1), and the boss's 3600 | v1's numbers, now per battle. Later generals are harder by their Heartcaps, not by an AI edge |
-| D29 | After round 9, the side that dealt more Heartcap damage in the battle wins by Decision, with half rewards. Target: a median of 6–8 rounds, with at most 15% of battles reaching round 9 | v1's tiebreak without columns. Seven rounds take about 3 minutes on the sim clock and 6–8 minutes in all, which fits 25–35 minutes a run |
+| D29 | After round 9, the side that dealt the larger share of the other Heartcap's max HP in the battle wins by Decision, with half rewards (X5, 2026-11-02). Target: a median of 6–8 rounds, with at most 15% of battles reaching round 9 | v1's tiebreak without columns. Seven rounds take about 3 minutes on the sim clock and 6–8 minutes in all, which fits 25–35 minutes a run |
 | D30 | The run has 3 lives, a first-guess number tuned like any other. Losing the boss battle ends the run (**Open:** §18.2 #16) | 9 Kings uses three. A lost battle becomes a setback, not the end |
 | D31 | One-lane colonies hold 8 plots, 2 ranks × 4 files; on Twin Roots each lane's colony holds 6, 2 ranks × 3 files | The home zone of 4 columns × 8 rows (v1's D6) divides into 2×2 plots that way |
-| D32 | The colony gains 1 plot for each battle won, up to 4 more, as a third rank behind (**Open:** §18.2 #18, #19) | Sprawl you can see: each plot gained is another squad and another place in the formation |
+| D32 | The colony gains 1 plot for each battle won, up to 4 more, as a third rank behind (**Open:** §18.2 #18; where the third rank's tiles come from and the order its plots open, #19, were settled at R2a's S0, 2026-11-02) | Sprawl you can see: each plot gained is another squad and another place in the formation |
 | D33 | A full colony fields at most 150 live units a side when the armies arrive, checked on the bench (§18.2 #7). Until 2026-11-01 it read about 100 supply a side, which the spec's own first guesses already passed (144 supply from 12 upgraded Burrows) | No supply cap, so squad sizes and the most plots MUST keep the biggest clash inside the §13.7 budget. A tick's cost follows live units, so the budget counts them |
 | D34 | From R3, the starting kit is the commander's 3 starter buildings, 2 copies each. A blueprint adds a card with 1 copy, and drafting a card you own adds 1 copy | Enough copies to field a real army in round 1, and few enough that answers have to be drafted |
 | D35 | Selling refunds 100% in the planning phase a building was planted, and 60% once it has fielded. From R3 the copy returns to the kit | Forgiving for misclicks; changing course after a clash has a real cost |
-| D36 | Income each round: the Heartcap stipend of 100, +50 per Truffle Cellar (+50% on loam), interest of 1 per 20 gold banked at the end of planning up to 10 (Deep Cellars and the Spore Exchange add 10 to the cap, and the Exchange's trickle becomes +12 a round), and +40 to the last round's loser | `docs/archive/v1/ideas/rounds.md`'s numbers, close to v1's per-minute rates. About one new spawner a round after the opener |
+| D36 | Income each round: the Heartcap stipend of 100, +50 per Truffle Cellar (+50% on loam), interest of 1 per 10 gold banked at the end of planning up to 30 (R2a S0, 2026-11-02, R2-Q2: it was 1 per 20 up to 10; Deep Cellars and the Spore Exchange add 10 to the cap, and the Exchange's trickle becomes +12 a round), and +40 to the last round's loser | `docs/archive/v1/ideas/rounds.md`'s numbers, close to v1's per-minute rates. About one new spawner a round after the opener |
 | D37 | Drafts after rounds 2, 4 and 6, in the next planning phase, plus spoils after a won battle. A draft opens after the general has planned, so you draft seeing its army (§4.7). Skipping a draft gives +40 gold | Three a battle. [Step B](docs/archive/v1/ideas/one-more-run-review.md#step-b-results-2026-10-30) found that a bigger draft has to mean more picks, not rarer cards |
 | D38 | From R3, each run deals the commander's core, an always-in set with an answer to the swarm, and 4 of 10 themed packs of one building and two relics. Neither the core nor the always-in set can be banned (**Open:** §18.2 #44, #45) | Runs differ before battle 1. The swarm has been the hardest army to answer in every measurement, so its answer is in every run |
 | D39 | An augment attaches to a building type, for the run (**Open:** §18.2 #37) | Simplest to show and to read: every copy of a building plays the same |
 | D40 | From R3, the general's kit has copies by the player's rule and gains one augment for each battle index above 1 (§7.8). Until R3, v1's `limits.*.maxOwned` and random upgrade levels stand in | It replaces v1's random upgrade levels, and the player sees each one |
 | D41 | The general's income is a data value at ×1.0. It gets no extra gold for planning first | The information edge is the player's by design. A blight MAY raise the income (§17 #14) |
-| D42 | The general's formation: melee in front, ranged and area behind, economy at the back, by a short greedy rule, with ties going by building id (§7.3). On two-lane maps it sends each building to the lane where it lost the most last round (**Open:** §18.2 #30) | Simple, readable, and the same rule the player's colony follows |
+| D42 | The general's formation: melee in front, ranged and area behind, economy at the back, by a short greedy rule, with ties going by building id (§7.3). On two-lane maps it sends each building to the lane where it lost the most last round (§18.2 #30, settled 2026-11-02) | Simple, readable, and the same rule the player's colony follows |
 | D43 | The Grove regains a life, up to the run's maximum | Repairs have no target once Heartcaps are per battle |
 | D44 | The sixth core archetype is the Burster Pod; the alternative is the Puffball Mortar as an emplacement (**Open:** §18.2 #36; R1's core-six check supports the Burster Pod) | Area damage that travels with the army is what a packed formation needs to fear |
 | D45 | Until R3 builds copies, a kit card has no copy limit, so plots are R2's only build limit. The general's cards follow v1's `limits.*.maxOwned` until then | R2 can then retire the supply cap with the rest of v1's battle, and R3 adds copies on top. R1's review gate kept it (X4, 2026-11-02): copies didn't fix mono Sporeling (57–63% at 2–4 copies), and at 2 and 3 copies more builds lost their answer |
@@ -4128,7 +4235,7 @@ Each default is deliberate and easy to change. D1–D24 are v1's, from the desig
 | D14 | Active pause with full building and selling; 1×/2×/3× speeds | Strategy over APM for a single-player game | **Changed:** planning is untimed and the only time to build; speeds and pause apply to a clash (§4.2) |
 | D15 | Desktop only, no audio in v1 | Focus on proving the gameplay first | **Changed:** desktop only stays; sound exists (§13.9, §17 #18) |
 | D16 | Milestone 1's enemy is a gray mirror of the Velvet Bloom roster; the distinct Gray Rot roster comes in M7 | The smallest slice that still has a real opponent | **Kept** (§16, M7) |
-| D17 | Interest: +1 per 20 banked, capped at 10. Comeback: +1 per 2 columns behind per income tick, capped at 6. | Noticeable but not dominant; the Sporestorm punishes banking passively | **Changed:** interest stays, paid each round; comeback gold is +40 to a round's loser (D36) |
+| D17 | Interest: +1 per 20 banked, capped at 10. Comeback: +1 per 2 columns behind per income tick, capped at 6. | Noticeable but not dominant; the Sporestorm punishes banking passively | **Changed:** interest stays, paid each round, at 1 per 10 banked up to 30; comeback gold is +40 to a round's loser (D36) |
 | D18 | Selling refunds 100% during deploy or within 10 s before a building produces units, gold or a shot; otherwise 60%; no selling while besieged | Forgiving for misclicks, prevents free-production cycles, and blocks selling a building just before it dies | **Changed:** by phase (D35) |
 | D19 | One input per meta system: feats unlock content, Spores buy traits and capacity, Amber buys strain ranks, XP feeds mastery | Four systems without currency soup | **Kept** (§9) |
 | D20 | Spores are kept on failed runs | Progress never feels wasted | **Kept** |
@@ -4164,23 +4271,23 @@ Items from 7 on are v2's, one row per question: each is a rule the user hasn't d
 | 16 | Does losing the boss battle end the run, or cost a life like any other battle? | It ends the run, as in v1 (D30) | §1.3 #2, §6.5, §8.5 | R2 |
 | 17 | A clean-win bonus: should a battle won with little or no Heartcap damage pay a bonus, such as extra Spores or a better pick, so a close call costs a bonus rather than health? | Not adopted | §1.3 #2, §6.5, §8.6 | R2 (its playtest) |
 | 18 | Sprawl: how many plots the colony gains, and when. Some relics or nodes may add plots | +1 per battle won, up to 4 more, as a third rank (D32) | §1.3 #4, §4.6, §8.6, §11.1 | R2 |
-| 19 | Where the third rank's tiles come from, and the order its plots open | R2's maps reserve homeCols 6, the back two columns closed until gained, and the arena shrinks to match. One lane: files 2, 3, 1, then 4. Twin Roots: each lane's third rank in turn, top lane first | §4.6 | R2 |
+| 19 | **(closed 2026-11-02)** Where the third rank's tiles come from, and the order its plots open | Decided: maps reserve homeCols 6, the back two columns closed until gained, and the arena shrinks to match, with a `startRanks` field (2) saying which ranks start open. One lane opens files 2, 3, 1, then 4; Twin Roots opens files 2, 1, 3, alternating lanes from the top. Armilla's Landholder opens the first third-rank plot from battle 1 | §4.6, §11.9 | R2a (S0) |
 | 20 | Do planted buildings carry between battles? | No: each battle is a new map, with both colonies empty and every copy free (D49) | §4.6 (§1.2, §4.4, §8, §8.10 and §14.4 point there) | R2 |
 | 21 | How many plots the general's colony opens in a battle | The map's plots plus as many as your colony has gained from sprawl; your relics', traits' and commander's plots don't count (D49) | §4.6 (§7.1 and §7.8 point there) | R2 |
-| 22 | The margin a lane's winner scores when siege units are in play | The winner's damage supply minus the loser's, never below 0 | §6.7 | R2 |
-| 23 | The clash's edge cases E1–E8: one side or neither fields in a lane, a tie at 45 s, both wiped on one tick, only emplacements left on both sides at 45 s, a win with only emplacements left, split lanes, both Heartcaps at 0 | §6.7's table | §6.7 | R2 |
+| 22 | **(closed 2026-11-02)** The margin a lane's winner scores when siege units are in play | Decided: the first guess, the winner's damage supply minus the loser's, never below 0 | §6.7 | R2a (S0) |
+| 23 | **(closed 2026-11-02)** The clash's edge cases E1–E8: one side or neither fields in a lane, a tie at 45 s, both wiped on one tick, only emplacements left on both sides at 45 s, a win with only emplacements left, split lanes, both Heartcaps at 0 | Decided: §6.7's table as written, with one rule scenario each (§16 R2 step 4). E5 and E6 follow #10, and E7 reads "each capped" under X5 | §6.7 | R2a (S0) |
 | 24 | When an effect that heals on a round's result lands, such as Mending Moss | After the round's damage is applied, never above the Heartcap's max HP | §6.7 | R2 |
-| 25 | When, inside the muster, merged units replace their parts, and so whether a power fired during the muster can break a muster knit | On the clash's first tick, so a power hits the merged units and can't break a muster knit | §5.6 | R2 |
+| 25 | **(closed 2026-11-02)** When, inside the muster, merged units replace their parts, and so whether a power fired during the muster can break a muster knit | Decided: the first guess, made exact by R2-Q11: inside Begin, before the clash's first tick, so a power hits the merged units and can't break a muster knit | §5.6 | R2a (S0) |
 | 26 | The Rhizome Vault's new effect, since the supply cap it raised is gone | Each spawner beside it fields 1 more unit | §4.4 | R2 |
 | 27 | What v1's upgrade levels do in R2, before augments replace them | A level that adds a unit per spawn adds one per batch to the squad; gold per tick becomes +12 a round; levels on building HP, the supply cap or spawn speed do nothing and stop being offered | §11.6 | R2 |
 | 28 | Are `plant`, `sell` and `toggleMerge` refused while your draft is open, as `beginClash` is? | Yes: you pick, reroll or skip before planning goes on | §4.7, §14.5 | R2 |
-| 29 | A bank reserve: gold the general keeps back for interest | 0: it spends whatever it can | §7.2 | R2 |
-| 30 | The general's lane rule on Twin Roots | The lane where it lost the most last round, its need lowered by each squad it plans there (D42) | §7.3 | R2 |
-| 31 | Should a counter land a round after its analysis, so the player's build gets a round to pay off? | No: it activates in the planning phase of its analysis | §7.4 | R2 |
+| 29 | **(closed 2026-11-02)** A bank reserve: gold the general keeps back for interest | Decided: 0, so it spends whatever it can. X8's readouts show what it banks anyway, and R2a's measurements revisit it now that interest is raised (R2-Q2) | §7.2 | R2a (S0) |
+| 30 | **(closed 2026-11-02)** The general's lane rule on Twin Roots | Decided: the first guess, the lane where it lost the most last round, its need lowered by each squad it plans there (D42), with a lane on each fielded squad, so the rule and its aggressive variant read only the record | §7.3, §14.4 | R2a (S0) |
+| 31 | **(closed 2026-11-02)** Should a counter land a round after its analysis, so the player's build gets a round to pay off? | Decided: no, it activates in the planning phase of its analysis | §7.4 | R2a (S0) |
 | 32 | What a run saved before R2 becomes. It MUST NOT be lost silently, and its key stays | It migrates, keeping its kit, relics and progress, with 3 lives; the alternative is to end it with a notice | §8.9 (§13.8 points there) | R2 |
 | 33 | Does the battle-1 economy tip still help, now that the general plans first and can punish a greedy opener? | Keep it as it is | §10.2 | R2 (its playtest) |
-| 34 | Should the tools add `docs/archive/v1/ideas/rounds.md`'s second bot policy, "buy the answer to what you saw", and should the run guardrails (G14, G15) use it? | Bots plan by fixed weights | §12.2 | R2 |
-| 35 | The bands of G6's second clause and of G14–G16, and G6's 700-HP deficit | §12.3's numbers, set by R2's first full measurement and its playtest | §12.3 | R2 |
+| 34 | **(closed 2026-11-02)** Should the tools add `docs/archive/v1/ideas/rounds.md`'s second bot policy, "buy the answer to what you saw", and should the run guardrails (G14, G15) use it? | Decided: yes (X7), departing from the first guess of fixed weights only. `bot:answer` plans after the general and leans toward the answer to the army it sees. G8 reports under both policies in R2a, and G14 and G15 under both in R2b. G3 and G12 stay on fixed weights | §12.2, §12.3 | R2a (S0) |
+| 35 | The bands of G6's second clause and of G14–G16, and G6's 700-HP deficit | §12.3's numbers, set by R2's first full measurement and its playtest. The approach was agreed on 2026-11-02 (R2a S0): every band comes from one measurement, and G4 and G6 start from X5's race model; G6's first clause becomes a band (such as 20–45%), and G6 gives both sides equal max HP and plays both seats; G15 bounds boss reach (such as ≤ 85%); G8's and G14's bands are set together, with the drafts' lift stated. R2a sets the bands of G4, G6, G8, G13 and G16 after its measurement; R2b sets G14's and G15's | §12.3 | R2a, R2b |
 | 36 | The sixth core archetype, and the core six as a whole, which the user wants to discuss further | The Burster Pod; the alternative is the Puffball Mortar as an emplacement (D44). R1's reading (2026-11-02): the Burster Pod, whose core six fails G3 on two monos, the Mortar's on four | §1.3 #6, §11.2, §14.2, Appendix A | R3 (R1 measured both candidates) |
 | 37 | Does an augment attach to a building type (all its copies) or to one card? | The type, for the run (D39) | §1.3 #7, §8.10, §11.13, §14.2 | R3 |
 | 38 | How many augments one building type may hold, and do merged units keep their squad's augments? | 2; yes | §11.13 | R3 |
@@ -4194,7 +4301,7 @@ Items from 7 on are v2's, one row per question: each is a rule the user hasn't d
 | 46 | What a ban does to a run pack | A pack whose building is banned isn't dealt, and the next pack is dealt in its place | §8.4 | R3 |
 | 47 | A pack swap at run setup, one dealt pack traded for another (`docs/archive/v1/ideas/after-the-rework.md` Tier 4 #3) | No swap | §8.4 | R3 |
 | 48 | Do the general's extra blueprints come only from the run's packs and the always-in set? | Yes, so a run without the Air pack meets no enemy Driftlings | §11.15 | R3 |
-| 49 | Does each general get its own weights for the Burster Pod and the other v2 cards? | No: weight 1 for any card its weights don't list, until tuning says otherwise | §11.11 | R3 |
+| 49 | Does each general get its own weights for the Burster Pod and the other v2 cards? | No: they keep weight 1 until tuning says otherwise. R2a S0 (2026-11-02, R2-Q4, R2-Q5) decided that the Burster Pod and the Rhizomorph Tunnel get weight 1 in data (R2a S1 writes it), and gives a card its weights don't list weight 1 only when §7.8 adds it to a run kit or a counter adds it | §11.11 | R3 |
 | 50 | Do plots from relics, traits and commanders (Mycelial Web, Root Pressure, Armilla) count toward the most plots a colony can hold? | Yes, so no source takes a colony past that limit or the performance budget | §11.7 | R3 |
 | 51 | What "mono" means for G3's and G12's mono bots once copies apply: how many copies of their card they hold | None yet. In R1's copies variants a capped mono filled its other plots by `bot:balanced`'s weights, so the builds converged and few answers cleared 60%: R3 should revisit how G12 reads a capped mono | §12.3 | R3 |
 | 52 | Does the shape language read at the field's scale in a 1280×720 window (2×, and about 1.78× on Twin Roots), or does a clash need a closer view? | It reads, with no closer view. The plan, agreed 2026-11-01: Twin Roots is the worst case, with a lineup capture of its own, and pips are at least 2 native px wide (units carry no weapon mark since 2026-11-01, §5.8) | §10.4 | R4 (R4b's playtest gate); R2's first playtest reads it first |
@@ -4262,7 +4369,7 @@ Most of the systems below served the continuous battle, and rounds do their jobs
 | Placing while live | Planting and selling at any time, with an active pause | §4.4, §10.3, §18.1 D14 | Placing and selling are planning actions only. Planning is untimed (§4.2) | The user asked for "a build phase, then a fight phase" (F19) |
 | Hold / Advance | Per-lane stance: a held lane gathered at a rally line behind its border (adopted 2026-10-28) | §5.2, §10.3 | Both whole armies start every clash at once, which is what Hold was for (§5.2). The commander power is the one live action (§6.6) | Nothing trickles under rounds, so there's nothing to group. Under waves Hold became routine ([after-the-rework.md](docs/archive/v1/ideas/after-the-rework.md#where-the-fun-stands-on-develop), problem 7) |
 | Power cooldowns | A commander power recharged on a cooldown, first ready after a delay | §6.6 | At most once per clash (§6.6) | A clash lasts 20–40 s, so a cooldown would mean once anyway |
-| The income tick | Income every 5 s: the stipend and economy buildings | §6.2 | Income once a round, at the start of planning (§6.2) | You plan with your gold in front of you, which gives interest a moment ("bank 140 for +7"). Round 3's testers found interest confusing (F4) |
+| The income tick | Income every 5 s: the stipend and economy buildings | §6.2 | Income once a round, at the start of planning (§6.2) | You plan with your gold in front of you, which gives interest a moment ("bank 140 for +14"). Round 3's testers found interest confusing (F4) |
 
 **Territory**
 

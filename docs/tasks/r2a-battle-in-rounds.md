@@ -2,9 +2,9 @@
 
 R2a builds the first half of SPEC §16 R2's Goal, split off by X1: a single battle as a series of rounds (planning, clash, aftermath) against one general that plans first, scored as a race between two Heartcaps, where placement is position because the colony is the formation. Under X2 it lands on `develop` beside v1, one green PR at a time, and ends with a temporary dev-only entry the user playtests. The run, lives, saves, drafts, the switch-over and v1's deletion are R2b's.
 
-This list is a draft of 2026-11-01, made from SPEC v2 and `docs/tasks/spec-analysis.md` before R1's results, R1's review gate and the R2a decisions in `docs/tasks/clarify.md`.
+Drafted 2026-11-01 from SPEC v2 and `docs/tasks/spec-analysis.md`, and refreshed on 2026-11-02 at S0, after R1's results ([#65](https://github.com/Swalliso/Sambattler/pull/65)), R1's review gate ([#66](https://github.com/Swalliso/Sambattler/pull/66)) and R2a's decisions in `docs/tasks/clarify.md`.
 
-**Status:** Draft, not agreed · **Spec:** SPEC §16 "Milestone R2 — Rounds" and the sections it cites · **Plan:** `docs/r2a-plan.md` (written in S0, for R2a only; R2b writes `docs/r2b-plan.md`) · **Gate in:** R1's review gate passed (§16 R1 step 4, R1/T049, R1/T050); X1 and X2 put to the user at S0 (T001) · **Gate out:** every task ticked; `npm run verify`, `npm run test:browser` and `npx vitest run tests/slow/rounds` green; the R2a playtest (§16 R2 gate questions 1, 2, 3, 6 and 7) answered in `docs/playtest-feedback.md` (S21); then R2b may start
+**Status:** Agreed 2026-11-02 (S0) · **Spec:** SPEC §16 "Milestone R2 — Rounds" and the sections it cites · **Plan:** `docs/r2a-plan.md` (agreed 2026-11-02, for R2a only; R2b writes `docs/r2b-plan.md`) · **Gate in:** R1's review gate passed (§16 R1 step 4, R1/T049, R1/T050); X1 and X2 decided 2026-11-02 · **Gate out:** every task ticked; `npm run verify`, `npm run test:browser` and `npx vitest run tests/slow/rounds` green; the R2a playtest (§16 R2 gate questions 1, 2, 3, 6 and 7) answered in `docs/playtest-feedback.md` (S21); then R2b may start
 
 ## Read first
 
@@ -16,37 +16,39 @@ This list is a draft of 2026-11-01, made from SPEC v2 and `docs/tasks/spec-analy
 
 ## Before you start
 
-**Decisions** (refs in `docs/tasks/clarify.md`; this file assumes each recommendation):
+**Decisions** (refs in `docs/tasks/clarify.md`). Every call R2a's tasks need was settled by 2026-11-02, and the tasks follow them:
 
-- **X1** (R2a and R2b) and **X2** (beside v1) block S0 and every session. If X1 is no: this file and R2b's merge into one list and the playtest task (T137) moves to the end of R2. If X2 is no: every branch here targets `feature/r2-rounds` instead of `develop`, T075's dev-only entry is dropped, and the playtest runs from a local build.
-- **X3** (R4a first), agreed 2026-11-01: R4a merges before R2a's playtest, so T137 and S21 wait for R4a's review gate (R4/T039).
-- **R2-Q25** (a rough playtest after S14), agreed 2026-11-01: S14b (T145, T146) has the user play the battle as S14 leaves it, before S15 and S16 start. T137 and S21 stay the gate.
-- **X4** (copies before R3) blocks T009 (squad sizes measured with copies), T032, T033 (the kit and mono bots) and T093 (the copy count), with **#51** (what "mono" means) and **#43** (a cap on copies of one card, first guess 4), which then block T032 and T033 too, and **R3-Q8** (a count, not pips), which then blocks T093. If no, `plant` has no copy refusal and #43, #51 and R3-Q8 stay R3's.
-- **X5** (the scoring curve) blocks T008, T050–T052 and T119. If the user keeps the flat 500, nothing in code changes (the cap is data) and G4's miss is reported, not tuned.
-- **X6** and **RB-Q3** (play time) block T126 and T128. If X6 sets a hard target now, T128 is the same and T137 reads against it.
-- **X10** (Run it back in two parts) puts play time in records-2, so R2a builds the one play-time module first (T126, T128) and records-2 adds the run total to it (run-it-back.md T015, T016). It blocks T126 and T128. If the user moves play time into records-1 instead, records-1 builds `src/app/playTime.ts`, and T126 and T128 extend that module and its test rather than making their own.
-- **X7** (the answer bot, §18.2 #34) blocks T120, T121 and T124's second reading. If no, T120 and T121 are dropped and G8 reads on fixed weights only.
-- **X8** (the general between cycles) blocks T100 and T101. If "replace when full" becomes default data now, T101's knob is on by default and the round goldens move with it.
-- **R2-Q1** (what you see from round 2) blocks T127.
-- **R2-Q2** (interest) blocks T008 and T055.
-- **R2-Q3** (eliteShare), **#14**, **#15**, **#31** block T099 and T103.
-- **R2-Q4** (the single battle's kit), **#29** (bank reserve), **#30** (lane rule) block T067 and T068.
-- **R2-Q5** (who buys the Burster Pod and the Rhizomorph Tunnel) blocks T012.
-- **R2-Q6** (rush and turtle) blocks T069.
-- **R2-Q7** (Cordis and Puppet Bloom) blocks T107 and T110. **#25** (a power in the muster) blocks T043 and T105.
-- **R2-Q8** (display text out of the hashed state) blocks T025.
-- **R2-Q9** (test:slow runtime) and **R2-Q10** (G16 pairs) block T119, T122 and T123. **#35** (bands): S0 agrees its approach (T004); its battle-level bands are measured in T124 and set in T125, which wait on it.
-- **R2-Q11** (clash-rule details) blocks T019, T020, T042–T044 and T046.
-- **R2-Q12** (planning-screen details) blocks T078, T084 and T097.
-- **#7–#13** (R1's gate) block T009 and T011 (#7–#9), T040 (#8), T041 (#10), T019 (#11), and T038 and T044 (#12, #13). **#19** blocks T015–T018. **#22** and **#23** block T047, T048 and T050. **#53** was decided at R4a-S0 (2026-11-01): `tierRadiusMult` becomes 1.0, in T011.
-- **M6-Q1** (feat stats) blocks T056 and T057. **M7-Q1** (the Gray Rot trait) blocks T025 only if the trait stays.
+- **X1** (R2a and R2b) and **X2** (beside v1): decided 2026-11-02. `develop` may switch wholly to v2, as long as `npm run verify` stays green on every PR. X2's R2a part (S0): the preview entry loads on every build, with the title's button on the dev site only, and there's no `--dev` mode (Call 2).
+- **X3** (R4a first): R4a merged, and its review gate (R4/T039) passed on 2026-11-02, so T137 runs on its sprites.
+- **R2-Q25** (a rough playtest after S14), agreed 2026-11-01: S14b (T145, T146), before S15 and S16. T137 and S21 stay the gate.
+- **R1's review gate** (2026-11-02):
+  - #7 (squads per building, Capguard Hall at 3), #8 (the arrival shield, Call 30), #9 (the Elder keeps its splash), #10 (emplacements with A029's rules), #11 (D47), #12 (no pace rule), #13 (the muster counts), #14 (Anti-Ranged) and #15 (type and tag, with three fixes);
+  - each knob's outcome (A109);
+  - **X4**: no copies before R3. D45 stands, so `plant` has no copy refusal, and #43, #51 and R3-Q8 stay R3's;
+  - **X5**: the cap is 25% of the loser's max HP, and a Decision goes by share.
+- **R2a's S0** (2026-11-02, every recommendation): X6, X7, X8, RB-Q3, R2-Q1 to R2-Q12, #19, #22, #23, #25, #29, #30, #31, M6-Q1, M7-Q1's trait (dropped) and #35's approach. T124 measures #35's battle-level bands and T125 sets them. #53 (`tierRadiusMult` 1.0) was decided at R4a-S0.
+- **X10** (records in two parts), 2026-11-01: R2a builds the one play-time module (T126, T128), and records-2 adds the run total (run-it-back.md T015, T016).
+- **Still open for R2a:** #35's bands (T125), the rough playtest (T145) and the gate (T137, T139).
 
-**Results it needs** (from R1, in `docs/balance-backlog.md`, agreed by the user at R1's gate):
+**Results it builds on** (R1's entry in `docs/balance-backlog.md`, agreed at R1's review gate on 2026-11-02):
 
-- squad sizes per building (#7), and the most units and supply a full colony fields, with its bench time (§13.7);
-- the chosen set of kept pieces, and the verdicts on mixed-wave shields (#8), the Elder Sporeling's splash (#9), emplacements (#10), overflow (#11), pace (#12), the muster and the cap (#13), Anti-Ranged (#14) and counter sets (#15), each knob with one outcome (A109);
-- eliteShare as R2-Q3 reads it, both ways; G3 and G12 under 2, 3 and 4 copies (X4); the race model (X5); `--proto kept --checks duels,g8` (A116);
-- on `develop`: `src/sim/formation.ts` (the slot layout and the muster's knitting to a fixed point), `tools/lib/clash.ts` (the army builder, which R2a reuses, and the clash runner on v1's sim, which it doesn't), `tools/lib/pool.ts`'s clash jobs and the race model (`tools/lib/roundRace.ts`).
+- **Squads and the colony:**
+  - squads per building: §11.2's Squad column, with Capguard Hall at 3;
+  - the full colony is at most 150 live units a side at the arrival (§13.7, R1-Q5). With no upgrade's +1 per batch, Twin Roots fields 128.
+- **The chosen set:** all of `kept` with the arrival shield, and the Elder's splash on. Also the verdicts on #10–#15, and each knob's outcome (A109).
+- **Readings:**
+  - eliteShare: counting Elder parts keeps `bot:balanced` under 10% Elite (R2-Q3);
+  - Puppet Bloom's trios: a median of 0 at 300 and 600 gold (R2-Q7);
+  - the race model (X5);
+  - `--proto kept --checks duels,g8` (A116): v1's G2 newly fails on the Gill Archer.
+- **For R2a to watch:**
+  - Capguard Hall at 3 won 92% at 300 gold and 2% at 1,500;
+  - `pinned` alone weakened the answers to the Sporeling and the Capguard;
+  - the Rhizomorph Tunnel won 1% as a mono.
+- **On `develop`:**
+  - `src/sim/formation.ts`: the slot layout, and the muster's knitting to a fixed point;
+  - `tools/lib/clash.ts`: the army builder, which R2a reuses, and the clash runner on v1's sim, which it doesn't;
+  - `tools/lib/pool.ts`'s clash jobs, and the race model (`tools/lib/roundRace.ts`).
 
 **Findings it must handle** (A-IDs; the Coverage table says where):
 
@@ -58,7 +60,7 @@ This list is a draft of 2026-11-01, made from SPEC v2 and `docs/tasks/spec-analy
 - **A101** (high), **A066** (medium): both loops have to coexist while R2 is built. X2.
 - **A193** (high), **A208** (medium), **A197** (medium), **A022** (medium), **A097** (medium): the flat 500 cap sends battles to round 9. X5, T050.
 - **A195** (high): R2 is several milestones in one. X1.
-- **A196** (high): R1 and R2 test the copy-free mass build. X4, T033.
+- **A196** (high): R1 and R2 test the copy-free mass build. X4 (no: R1's set passes without copies, and R3 brings them); T033.
 - **A021** (high), **A008** (medium): v1's idle march and siege preferences aren't v2's §5.2. T037, T038.
 - **A026** (medium): no step resolves the muster, and nothing says what skips its 20 ticks. T043, T044.
 - **A027**, **A103** (medium): §13.4 calls kept systems "unchanged". T005; the copies in T036–T040.
@@ -88,9 +90,9 @@ This list is a draft of 2026-11-01, made from SPEC v2 and `docs/tasks/spec-analy
 - **A175** (medium): feat stats missing from §5.7. M6-Q1, T057.
 - **A198** (medium): the full reveal may make the general easy. R2-Q1, X7; T121, T127.
 - **A096** (medium): Cordis's knit bonuses under the muster. R2-Q7 (R2a measures in T107; R2b's content).
-- **A200** (medium): the full colony already exceeds about 100 supply. #7 at R1's gate; T114.
-- **A145** (medium, R3): copies are defined only for run kits, not single battles. X4, #43, #51; T033.
-- **A194** (high, R3): the general's copies (#42) can't follow the player's rule with §7.8's battle-1 kits. They're R3's. Under X4, T033 keeps the general on `maxOwned`, so R2a doesn't meet it.
+- **A200** (medium): the full colony already exceeds about 100 supply. #7 and R1-Q5 (at most 150 live units a side); T114.
+- **A145** (medium, R3): copies are defined only for run kits, not single battles. X4 (no), so R2a's single battles have no copies; T033.
+- **A194** (high, R3): the general's copies (#42) can't follow the player's rule with §7.8's battle-1 kits. They're R3's. T033 keeps the general on `maxOwned`, so R2a doesn't meet it.
 - **R2b's, not handled here:** A042 (R2-Q18), A058 (R2-Q17), A062 (R2-Q24), A063 (lives in captures), A080 and A105 (#27), A081 (R2-Q22), A082 (R2-Q21), A083 (R2-Q19, #26), A084 (#32), A085 (R2-Q15), A199 (#16, #35's G15), A207 (#17), A156 (Help and tips).
 - **Lows, grouped:** the muster and formation (A031, A032, A040, A047); commands and checkpoints (A034, A036, A075, A115, A121); scoring (A035, A209); the economy (A205: interest is no choice, R2-Q2); the general (A049, A051, A052, A055, A206); powers (A053); the screen (A067, A068, A069, A071, A072, A078); tools (A110, A113, A116, A118); the playtest (A202: X3; A204: #35; A162: R4a's Elders question); and R2b's (A037, A050, A054, A073, A074, A079, A114, A117, A201). The Coverage table's second part lists them.
 
@@ -132,12 +134,12 @@ v1 stays wired to the game, unchanged, until R2b. Every v2 file lands under a `r
 - `src/sim/compile.ts`: `buildLibrary` leaves v2's fields out of v1's library (T008, T009, Call 27), and v1 skips a unit modifier carrying `rank` or `onLoam` (T046).
 - `src/sim/rng.ts`: two stream names, `ai.player` and `ai.enemy` (T027). v1 keeps `ai`.
 - the adopted pieces (T011–T013) change v1's default data on `develop` too, as §16 R2 wants. They touch `src/data/proto.ts`, `src/run/flow.ts`, `src/sim/ai/profiles.ts`, `src/sim/ai/controller.ts` and their tests.
-- the entry (T075): `src/app/channel.ts` (`ROUNDS_PREVIEW`), `src/app/main.ts` (one branch, a dynamic `import()`), `src/ui/screens/title.ts` (a dev-only button).
+- the entry (T075): `src/app/main.ts` (one branch, a dynamic `import()`) and `src/ui/screens/title.ts` (a button on the dev site only, under `DEV_SITE` from `src/app/channel.ts`).
 - the unit drawer: R4a's `src/render/unitSprite.ts` (R4/T011), or T081 creates it with R4a's signature if R4a hasn't landed.
-- tools: a temporary `--rounds` switch on `tools/sim.ts`, `tools/balance.ts`, `tools/bench.ts` and `tools/experiment.ts`; a `ROUND_REPLAYS` list of `kind: "rounds"` replays in `tools/golden.ts`; round smokes in `tools/verify.ts`; `--dev` and the round assertions in `tools/screenshot.ts`; `@r<n>` checkpoints in `tools/lib/asserts.ts`; a `rounds` job kind in `tools/lib/pool.ts`.
+- tools: a temporary `--rounds` switch on `tools/sim.ts`, `tools/balance.ts`, `tools/bench.ts` and `tools/experiment.ts`; a `ROUND_REPLAYS` list of `kind: "rounds"` replays in `tools/golden.ts`; round smokes in `tools/verify.ts`; the round assertions in `tools/screenshot.ts`; `@r<n>` checkpoints in `tools/lib/asserts.ts`; a `rounds` job kind in `tools/lib/pool.ts`.
 - docs at the end (T138): `CLAUDE.md`'s "Dev-site builds" and `.claude/rules/v1-code.md`.
 
-**What R2b deletes:** v1's files, the `--rounds` switch, `--dev`, `ROUNDS_PREVIEW` and `scene=rounds` (the battle scenes play rounds), and the `rounds` data blocks once folded. The switch is never a URL or `?proto=` knob (§1.3 #13).
+**What R2b deletes:** v1's files, the `--rounds` switch, `scene=rounds` and its title button (the battle scenes play rounds), and the `rounds` data blocks once folded. The switch is never a URL or `?proto=` knob (§1.3 #13).
 
 ### What's reused
 
@@ -161,7 +163,7 @@ v1 stays wired to the game, unchanged, until R2b. Every v2 file lands under a `r
 Each is reversible. S0 writes the ones that change SPEC text into SPEC (T005).
 
 1. **Staging and data blocks** as above (A025, A066, A101). v2-only keys sit under `rounds` in `data/balance.json`, keys that keep their v1 meaning stay at the top level and both read them (`startingGold`, `loamBonus`, `sellRefund` 0.6, merge keys, `matrix`, `tagMult`, `effectiveness`, `heartcapPlayerHp`, `heartcapEnemyHp`).
-2. **The dev-only entry** is `scene=rounds`, accepted when `ROUNDS_PREVIEW = DEV_SITE || import.meta.env.DEV`: the dev site, `npm run dev` and the browser tests' Vite server. A production build answers it with the "not part of" message. On dev builds the title shows a button, "A battle in rounds (preview)". The preview never saves a battle (saves are R2b's).
+2. **The preview entry** is `scene=rounds`, taken on every build through a dynamic `import()` of `src/app/rounds/main.ts`, so the round battle loads as its own chunk. The title shows a button, "A battle in rounds (preview)", on the dev site only (`DEV_SITE`). Captures and browser tests reach it as they reach v1's scenes, so there's no `--dev` mode. The preview never saves a battle (saves are R2b's). This is X2's R2a part, agreed 2026-11-02.
 3. **Kept systems are copies** (above), so v1 isn't parameterized for rounds (A027, A103).
 4. **The muster as plain data** (A032): R1's `musterKnits(units, opts)` (R1/T006) works on `MusterUnit` records `{key, side, lane, unitId, tier, x, y, mergeOn, eligible, source}`, with `opts = {firstKey, mergeRadius, radiusOf, lanes, width}`, and returns `{passes, units}`. Begin passes `firstKey = state.nextId`, so each merged unit's id equals its key (A024). Begin applies the passes once, in `passes`'s order, with real ids, `merged` events, `stats.merges` and merge triggers.
 5. **`mergePreview`'s shape** (A039): `{ byBuilding: Record<id, {elders, bloomed, base}>, trios: { parts: {building, j}[]; tier; x; y; pass }[] }`. The view's "shares an Elder with file 2" cue and the muster's animation read it.
@@ -188,7 +190,8 @@ Each is reversible. S0 writes the ones that change SPEC text into SPEC (T005).
 26. **No drafts in R2a.** `flags.drafts` is refused in a round battle, `draftRounds` is data only, and the opening's draft step is an empty hook. R2b builds the draft in planning, its dock (R2-Q24, A062) and #28's refusals.
 27. **v1's library leaves out v2's fields** (A101). `buildLibrary` in `src/sim/compile.ts` copies `content.balance` without `rounds`, and each building without `squad` and `economy.goldPerRound` (T008, T009). v1 never reads them, so rounds data never moves a v1 golden. Reversible: if the user would rather not touch v1's compile, drop the strip and the claim, and every task that edits those fields runs `npm run golden -- update` for v1's goldens and says so.
 28. **The preview's defaults** (A059): `map=bogwater-hollow`, `battleIndex=1`, `player=human`, `enemy=general:mother-mold`, `flags=merging,adaptive,powers`, `commander=vesper`, a random seed written into the URL (T076). The title button opens them. They're URL defaults only, changed in one place.
-29. **Copies in a single battle under X4** (A145, A196): each side's kit is the faction roster, the opener cards ×2 and every other card ×1, at most #43's cap; a mono bot holds its card at the cap; the general keeps `maxOwned` (T033). The keys sit under `balance.rounds.kit` until R2b folds them into §11.1's `kit` (Call 1). Reversible with X4's "no".
+29. **No copies in a single battle** (A145, A196). X4 was decided no at R1's gate (2026-11-02), so each side's kit is the faction roster with no copy limit (D45), and the general keeps `maxOwned` (T033). R3 adds copies.
+30. **The arrival shield** (#8) is `balance.rounds.arrivalShield {minTypes 2, shieldFrac 0.2}`, v2's own key; v1's `mixedWave` stays as it is. Begin shields each lane's army of 2 or more unit types before the muster, as R1's `clashshield` did (`tools/lib/clash.ts`): a merged form counts as its base type, emplacements neither count as a type nor take a shield, and a knit keeps shields in proportion.
 
 ## Stories
 
@@ -206,18 +209,18 @@ Each is reversible. S0 writes the ones that change SPEC text into SPEC (T005).
 
 S0, the plan and the decisions. No code.
 
-- [ ] T001 [USER] Confirm X1 and X2 with the user and write both Decision lines, dated, in `docs/tasks/clarify.md`; if either goes the other way, re-cut this file by the "If … no" lines under Before you start (§16 R2) ⛔ X1, X2
-- [ ] T002 Check that R1's results (the list under "Results it needs") are in `docs/balance-backlog.md`, that `docs/status.md` records R1's review gate, and that R1's `src/sim/formation.ts` and `tools/lib/clash.ts` are on `develop`; if not, stop and ask (§16 R1 step 4, §16 R2) ⛔ R1 results
-- [ ] T003 Write `docs/r2a-plan.md` (new) in CLAUDE.md's format, for R2a only (§16 R2)
+- [x] T001 [USER] Confirm X1 and X2 with the user and write both Decision lines, dated, in `docs/tasks/clarify.md`; if either goes the other way, re-cut this file by the "If … no" lines under Before you start (§16 R2)
+- [x] T002 Check that R1's results (the list under "Results it builds on") are in `docs/balance-backlog.md`, that `docs/status.md` records R1's review gate, and that R1's `src/sim/formation.ts` and `tools/lib/clash.ts` are on `develop`; if not, stop and ask (§16 R1 step 4, §16 R2)
+- [x] T003 Write `docs/r2a-plan.md` (new) in CLAUDE.md's format, for R2a only (§16 R2)
   - Goal: §16 R2's first half (X1).
   - Scope: X1's R2a boundary, pointing to `docs/tasks/r2b-run-in-rounds.md` for the rest.
-  - Stand-ins: the preview entry, `--rounds`, `--dev`, the `rounds` data blocks and Call 19's content.
+  - Stand-ins: the preview entry, `--rounds`, the `rounds` data blocks and Call 19's content.
   - Steps: this file's Sessions.
   - Verification: §16 R2 steps 1–4 and 7–9 on single battles, and gate questions 1, 2, 3, 6 and 7.
   - Open questions for the user: the refs under Before you start.
   - As built: empty.
-- [ ] T004 [USER] Settle R2a's refs with the user from `docs/tasks/clarify.md`, in its index order: X4 and X5 if R1's gate left them open, X6, X7, X8, X10 if records-1's S0 hasn't settled it, and RB-Q3, R2-Q1 to R2-Q12, #19, #22, #23, #25, #29, #30, #31, #35's approach (its battle-level bands come from T124's measurement), #53, M6-Q1, M7-Q1, and #43, #51 and R3-Q8 if X4 is yes. Write each Decision line with the date (§18.2)
-- [ ] T005 Write the decisions and the Calls that change SPEC text into `SPEC.md` (§0, §13.4, §15, §16):
+- [x] T004 [USER] Settle R2a's refs with the user from `docs/tasks/clarify.md`, in its index order: X4 and X5 if R1's gate left them open, X6, X7, X8, X10 if records-1's S0 hasn't settled it, and RB-Q3, R2-Q1 to R2-Q12, #19, #22, #23, #25, #29, #30, #31, #35's approach (its battle-level bands come from T124's measurement), #53, M6-Q1, M7-Q1, and #43, #51 and R3-Q8 if X4 is yes. Write each Decision line with the date (§18.2)
+- [x] T005 Write the decisions and the Calls that change SPEC text into `SPEC.md` (§0, §13.4, §15, §16):
   - close the settled §18.2 rows and drop their **Open:** markers;
   - §16 R2: X1's split (R2a's gate asks step 10's questions 1, 2, 3, 6 and 7, R2b's asks 4 and 5), X2's landing (beside v1 behind a dev-only entry, then R2b's cutover on `feature/r2b-cutover`, so L3510's "as the new default" holds from R2b's merge), and the plan names `docs/r2a-plan.md` and `docs/r2b-plan.md`: the first row of spec-analysis.md's "SPEC wording fixes · R2a" table;
   - add R2-Q11's rules to §5.6, §6.5, §6.7 and §14.6, and R2-Q12's to §10.2 and §10.3;
@@ -226,8 +229,8 @@ S0, the plan and the decisions. No code.
   - §14.5: the refusals `enemyPlanAfterOpening` and `beginClashNotPlayer` (Call 8);
   - §14.6: `runHeadless`'s `until` (Call 7); `formationOf` and `mergePreview` with `change?` and the new preview shape (Calls 5 and 6); the `matchupClass` and `survivingSupply` exports (Call 6); dropped clash commands (Call 9);
   - §7.3: the back-line term (Call 11); §15.2: the scenario fields (Call 18); §10.2: Calls 21–23;
-  - document `scene=rounds`, `--rounds` and `--dev` in §15 as R2a's temporary options, gone in R2b.
-- [ ] T006 [USER] Agree `docs/r2a-plan.md` with the user. Then update `docs/status.md` (R2a's sessions, what waits on the user), and open the S0 PR into `develop` when the user asks (§16 R2, CLAUDE.md "How we work")
+  - document `scene=rounds` and `--rounds` in §15 as R2a's temporary options, gone in R2b. There's no `--dev` (X2's R2a part, 2026-11-02).
+- [x] T006 [USER] Agree `docs/r2a-plan.md` with the user. Then update `docs/status.md` (R2a's sessions, what waits on the user), and open the S0 PR into `develop` when the user asks (§16 R2, CLAUDE.md "How we work")
 
 **Checkpoint:** `docs/r2a-plan.md` is agreed, every ref under Before you start has a dated Decision line in `docs/tasks/clarify.md` (or is marked as waiting for the measurement that sets it), and `npm run verify` passes on the docs PR.
 
@@ -243,27 +246,27 @@ S1 to S4: the data, the colony, the round state machine and the planning command
   - `balance.rounds` validates, and a limit with `afterRound` validates;
   - both rosters list each adopted building;
   - in `tests/unit/determinism.test.ts`: changing `balance.rounds.maxRounds`, or a building's `squad.count` or `economy.goldPerRound`, leaves a v1 battle's `hashState` unchanged (Call 27).
-- [ ] T008 Add a `rounds` block to `BalanceSchema` in `src/data/schema.ts` and to `data/balance.json`, and keep it out of v1's library (§6.2, §6.4, §6.5, §6.7, §7.2–§7.4, §11.1) ⛔ X5, R2-Q2 (A205)
-  - Rounds: `maxRounds` 9, `clashCapSeconds` 45, `musterSeconds` 1, `formationGapTiles` 6, `heartcapDamagePerSupply` 25, `siegeHeartcapMult` 2.
-  - The cap, the Decision and interest: write the values the user decided (X5 at R1's gate, R2-Q2 at T004). By the recommendations these are `roundDamageCap {maxHpBp: 2500}`, `decision {by: 'shareOfMaxHp'}`, `interestPer` 10 and `interestCap` 30. The schema still accepts the other shapes: `roundDamageCap {flat: 500}` and `{stormScales: true}`, and `decision {by: 'damage'}`. SPEC's first guesses are the flat 500, `'damage'`, 20 and 10.
+- [ ] T008 Add a `rounds` block to `BalanceSchema` in `src/data/schema.ts` and to `data/balance.json`, and keep it out of v1's library (§6.2, §6.4, §6.5, §6.7, §7.2–§7.4, §11.1) (A205)
+  - Rounds: `maxRounds` 9, `clashCapSeconds` 45, `musterSeconds` 1, `formationGapTiles` 6, `heartcapDamagePerSupply` 25, `siegeHeartcapMult` 2, and the arrival shield `arrivalShield {minTypes 2, shieldFrac 0.2}` (#8, Call 30).
+  - The cap, the Decision and interest, as the user decided (X5 at R1's gate, R2-Q2 at S0): `roundDamageCap {maxHpBp: 2500}`, `decision {by: 'shareOfMaxHp'}`, `interestPer` 10 and `interestCap` 30. The schema also accepts `roundDamageCap {flat: 500}` and `{stormScales: true}`, and `decision {by: 'damage'}`, for T124's measurements.
   - The storm: `sporestorm {startRound 5, stepBp 2000, maxBp 20000}`.
   - The rest of the economy: `stipendPerRound` 100, `comebackGold` 40, `enemyIncomeMult` 1.0, `sellRefundPlanted` 1.0.
   - Later work: `draftRounds` [2, 4, 6] (R2b), `lives` 3 (R2b), `plotGrowth {perWin 1, max 4}` (R2b).
   - The AI: `ai {economyEarly {beforeRound 3, mult 1.5}, economyLate {fromRound 7, mult 0.3}, towerAfterLossMult 2, score {depth 10, offCentre 1, besideSame 2, frontSupport 3, loam 8, backThird 2, noise 0.5}, counter {cycles [{round 4, from 1}, {round 7, from 4}], bossCycles [{round 3, from 1}], freePlots 2}}`.
   - In `src/sim/compile.ts`'s `buildLibrary`, copy `content.balance` without its `rounds` key (Call 27). v1 never reads it.
-- [ ] T009 Add `squad {unit, count}` and `economy.goldPerRound` to `BuildingSchema` in `src/data/schema.ts`, beside v1's `spawn` and `goldPerTick`. Cross-check `squad.unit` in `src/data/registry.ts`, and fill both in `data/factions/velvet-bloom/buildings.json` from R1's table (§4.4, §11.2, §14.2) ⛔ R1 results (#7), X4
+- [ ] T009 Add `squad {unit, count}` and `economy.goldPerRound` to `BuildingSchema` in `src/data/schema.ts`, beside v1's `spawn` and `goldPerTick`. Cross-check `squad.unit` in `src/data/registry.ts`, and fill both in `data/factions/velvet-bloom/buildings.json` from §11.2's Squad column, with Capguard Hall at 3 (#7) (§4.4, §11.2, §14.2)
   - In `src/sim/compile.ts`'s `buildLibrary`, copy each building without `squad` and `economy.goldPerRound` (Call 27). v1 never reads them. T007's determinism case proves it.
 - [ ] T010 Add an optional `afterRound` to the limit schema and to `BotSchema` in `src/data/schema.ts`. Write it beside every `afterSeconds` in `data/generals.json` and `data/bots.json`, one round per minute: `rootbreakerDen` 180 s becomes round 4, turtle's 240 s round 5 (§7.2, §7.9) (A038, A044)
-- [ ] T011 Adopt R1's chosen set as default data in `data/balance.json` and the faction files (§1.3 #11, §11.1, §11.2, §16 R2) ⛔ R1 results, #8, #9, #53
-  - Rules into `data/balance.json`, each only if R1 keeps it:
+- [ ] T011 Adopt R1's chosen set as default data in `data/balance.json` and the faction files (§1.3 #11, §5.3, §11.1, §11.2, §16 R2)
+  - Rules into `data/balance.json`, all of `kept` (R1's gate):
     - `pinned {radius 1, rateMult 0.35}`;
     - `sporeCloud {buildings [puffballMortar], range 7, radius 1.5, seconds 6, damagePerSecond 10}`, without `aiCover` (A118);
     - `cleave {units [scythecap]}`, with the Scythecap's splash 1.0, 1.2 and 1.4;
     - `burst {cloud {radius 1.5, seconds 4, damagePerSecond 10}}`.
-  - Units and buildings: the Burster, Burster Pod, Rhizomorph and Rhizomorph Tunnel into `data/factions/velvet-bloom/units.json` and `data/factions/velvet-bloom/buildings.json`, with R1's squads (§11.2's first guess: 6 Bursters, 3 Rhizomorphs). Add both ids to `data/factions/velvet-bloom/faction.json` and `data/factions/gray-rot/faction.json`.
-  - Mixed-wave shields and the Elder Sporeling's splash follow #8 and #9. A knob that R1's gate adopted becomes data here, and one it kept default-off stays in `src/data/proto.ts`. Deleting the rest is R2b/T059's (A109).
+  - Units and buildings: the Burster, Burster Pod, Rhizomorph and Rhizomorph Tunnel into `data/factions/velvet-bloom/units.json` and `data/factions/velvet-bloom/buildings.json`, with §11.2's squads (6 Bursters, 3 Rhizomorphs). Add both ids to `data/factions/velvet-bloom/faction.json` and `data/factions/gray-rot/faction.json`.
+  - The arrival shield goes into `balance.rounds` (T008's block, Call 30), not v1's `mixedWave`. The Elder Sporeling keeps its splash (#9), so its data doesn't change. The presets R1's gate deleted (`noeldersplash`, `clashpace`, `swarmread`) and R1's measuring presets (`clashshield`, `mixedwave`) stay in `src/data/proto.ts` until R2b/T059 deletes them with R1's clash tool on v1's sim (A109).
   - Set `tierRadiusMult` to 1.0 in `data/balance.json` (#53, decided 2026-11-01 at R4a-S0), inside S1's one golden refresh, so a merged unit's collision radius no longer grows. Log it in `data/CHANGELOG-balance.md` with the decision it rests on.
-- [ ] T012 Write R2-Q5's weights into `data/bots.json` and `data/generals.json` and retire `aiWeight` (§11.11, §16 R2) ⛔ R2-Q5 (A048, A118)
+- [ ] T012 Write R2-Q5's weights into `data/bots.json` and `data/generals.json` and retire `aiWeight` (§11.11, §16 R2) (A048, A118)
   - Weight 1 for each adopted building in `bot:balanced`, rush, turtle and greedy in `data/bots.json`, and in each general's `weights` in `data/generals.json`.
   - Remove `aiWeight` from `src/data/schema.ts` (`:459`), the kit append in `src/run/flow.ts` (`:169-170`) and the weight join in `src/sim/ai/profiles.ts` (`:58-64`). Replace `content.buildings[id]!.aiWeight ?? 1` with `1` at `src/run/flow.ts:106`.
   - Strip `aiWeight` from the `RHIZOMORPH`, `BURSTER` and `FLYERS` constants in `src/data/proto.ts` (`:38`, `:87`, `:128`), so `rework` (kept until R2b) and `flyers` (a default-off knob, §16 R2) still validate. Give the Drift Stalk weight 1 inside the `flyers` preset through `bot.<id>.weights.driftStalk` and `general.<id>.weights.driftStalk` paths for the four bots and five generals above, so `?proto=flyers` still buys it.
@@ -276,32 +279,32 @@ S1 to S4: the data, the colony, the round state machine and the planning command
 - [ ] T014 Run `npm run golden -- update` once for S1, and log the change in `data/CHANGELOG-balance.md`: the adopted set with the user's approval, and the round damage cap, the Decision and interest as the user's decisions (X5, R2-Q2), not as hash-only. The rounds fields move no v1 hash (Call 27), and the commit says the refresh comes from the adopted set (§12.4, §15.5)
   - If the adopted set moved a v1 smoke assert's value in `tools/verify.ts`, adjust it and say why.
   - Run v1's `npm run test:slow` and record its result in `docs/balance-backlog.md`. A v1 miss isn't open work (`.claude/rules/balance.md`).
-  - Check that `npm run experiment -- --checks clash`, with no `--proto`, gives R1's `--proto kept` report on the same seeds.
+  - Check that `npm run experiment -- --checks clash`, with no `--proto`, gives R1's `--proto kept` report on the same seeds. The arrival shield and the squads are rounds data, which R1's tool on v1's sim doesn't read.
   - Run `npm run experiment -- --checks duels,g8` on the adopted default, with no `--proto`, and record it beside R1's `--proto kept` reading (A116).
 
 **S2: the colony and the formation's pure core** (may run beside S1; both edit `src/data/schema.ts`, in different schemas)
 
-- [ ] T015 [P] Write `tests/unit/rounds/colony.test.ts` (new) (§4.6, §11.9, §13.3) ⛔ #19
+- [ ] T015 [P] Write `tests/unit/rounds/colony.test.ts` (new) (§4.6, §11.9, §13.3)
   - Ranks and files on both sides: rank 0 borders the arena, and the general's file 1 mirrors your last file.
   - Loam and stump detection; a stump plot is never legal.
   - Neighbors are in front of, behind and beside, never at a corner or across lanes; plots are ordered lane, rank, file.
   - The third rank is closed until opened. It opens files 2, 3, 1, 4 on one lane, and on Twin Roots files 2, 1, 3, alternating lanes from the top (A031).
   - Buildable counts are 8, 6 and 11.
-- [ ] T016 Add an optional `colony` block to `MapSchema` in `src/data/schema.ts`: `{homeCols, startRanks, tiles}` (§4.1, §4.6, §11.9) (A031) ⛔ #19
+- [ ] T016 Add an optional `colony` block to `MapSchema` in `src/data/schema.ts`: `{homeCols, startRanks, tiles}` (§4.1, §4.6, §11.9) (A031)
   - The schema checks that `homeCols` is even, that the tiles are point-symmetric, that lane rows pair up (a leftover row holds no plot), and that loam and stumps lie only in colony columns.
   - `colony` stays optional, so the four test maps that get none (`data/maps/test-bogwater-2lane.json`, `data/maps/test-bogwater-2lane-tall.json`, `data/maps/test-stumpfield-2lane.json`, `data/maps/test-stumpfield-2lane-tall.json`) still validate. `createBattle` in rounds (T027) refuses a map without one, with a message.
-- [ ] T017 Draw the `colony` block in `data/maps/bogwater-hollow.json`, `data/maps/stumpfield.json`, `data/maps/twin-roots.json`, `data/maps/test-flat.json` and `data/maps/test-3lane.json` (§4.1, §11.9) ⛔ #19
+- [ ] T017 Draw the `colony` block in `data/maps/bogwater-hollow.json`, `data/maps/stumpfield.json`, `data/maps/twin-roots.json`, `data/maps/test-flat.json` and `data/maps/test-3lane.json` (§4.1, §11.9)
   - The layouts are §11.9's: Bogwater front `····`, back `·$··`; Stumpfield front `·o·$`, back `··o·`; Twin Roots' upper front `·o·`, lower back `$·$`.
   - `homeCols` 6 and `startRanks` 2, with the arena plain soil.
   - v1 keeps reading `tiles` and `homeCols`, so no hash moves. `test-3lane`'s colony (homeCols 6, 4-row lanes) is for tests and the bench only.
 - [ ] T018 Build `colonyPlots(map, side, plotCount)`, `plotNeighbors(plots, i)` and `openOrder(map)` in `src/sim/rounds/colony.ts` (new): pure functions of the map's `colony` block that return `PlotState`-shaped records `{lane, rank, file, col, row, terrain, open}` (§4.6, §13.3 rule 4)
-- [ ] T019 Write `tests/unit/rounds/formation.test.ts` (new) for the pure core (§4.6, §5.6, §15.7 Formation, Merging) ⛔ R2-Q11, #11
+- [ ] T019 Write `tests/unit/rounds/formation.test.ts` (new) for the pure core (§4.6, §5.6, §15.7 Formation, Merging)
   - Bogwater's slots: the player's in columns 9–12, the general's in 19–22, the third rank 2 columns further back.
   - The k × k grid fills front to back, then top to bottom, with front toward the enemy. Holes stay holes, and an emplacement stands at its slot's centre. An overflowing squad packs tighter (#11).
   - Arrival order is plot order, then j (A024).
   - A Burrow's 8 come to 2 Bloomed and 2 base. Two Burrows side by side, and three in a row, give the same result whichever was planted first.
   - Nothing knits across Twin Roots' root wall, even with a merge-radius bonus (A040).
-- [ ] T020 Build `formationFor(input)` and `musterFor(input)` in `src/sim/rounds/formation.ts` (new) on R1's `src/sim/formation.ts` (§4.6, §5.6, §14.6) (A024, A039, A040) ⛔ R2-Q11
+- [ ] T020 Build `formationFor(input)` and `musterFor(input)` in `src/sim/rounds/formation.ts` (new) on R1's `src/sim/formation.ts` (§4.6, §5.6, §14.6) (A024, A039, A040)
   - The input is plain: the map's geometry, the side, and each plot's building `{id, squad {unitId, count, radius}, kind, mergeOn}`, plus `firstKey`, the side's `mergeRadius` (with any bonus), `radiusOf(unitId, tier)` and the map's width, passed straight to R1's `musterKnits`.
   - `formationFor` gives one slot per plot in the same rank and file, and squads in plot order with each unit's absolute position.
   - `musterFor` runs R1's knitting to a fixed point on those positions, in arrival order, within each lane. It returns Call 5's shape.
@@ -320,8 +323,8 @@ S1 to S4: the data, the colony, the round state machine and the planning command
   - a modifier on a retired stat compiles to nothing and is listed;
   - Cordis's `side.knitTicks` and `side.mergeRadius` apply;
   - the library holds no `name`, `description` or `text`.
-- [ ] T025 Build `buildRoundLibrary` and `compileRoundSides` in `src/sim/rounds/compile.ts` (new). The library holds ids and numbers only (R2-Q8). The compiled sides hold squads, `goldPerRound`, emplacement units, rules from `balance.rounds` and the list of ignored retired stats; v1's helpers that take only data, such as `perkAt`, are imported (§11.1, §11.2, §14.2) ⛔ R2-Q8, M7-Q1 (A152)
-  - M7-Q1: by its recommendation, nothing. If the Gray Rot's trait stays, give the enemy seat its +10% HP and −10% speed from `data/factions/gray-rot/faction.json`, so R2a's bands include it.
+- [ ] T025 Build `buildRoundLibrary` and `compileRoundSides` in `src/sim/rounds/compile.ts` (new). The library holds ids and numbers only (R2-Q8). The compiled sides hold squads, `goldPerRound`, emplacement units, rules from `balance.rounds` and the list of ignored retired stats; v1's helpers that take only data, such as `perkAt`, are imported (§11.1, §11.2, §14.2) (A152)
+  - M7-Q1 dropped the Gray Rot's trait (2026-11-02), so the enemy seat gets no HP or speed change.
 - [ ] T140 Write `tests/unit/rounds/effects.test.ts` (new) first, on a compiled side from T025 (§14.2, §14.6) (A028):
   - `src/data/schema.ts` accepts `roundStart`, `clashStart` and `roundWon` triggers and a `rank` selector, and still refuses any `where` on a `side.*` or `battle.*` stat;
   - a `gainGold` action pays its own side once per firing;
@@ -359,7 +362,7 @@ S1 to S4: the data, the colony, the round state machine and the planning command
 **S4: planning commands, the kit and the formation on state**
 
 - [ ] T030 Write `tests/unit/rounds/planning.test.ts` (new) (§4.2, §4.4, §4.7, §14.5) (A034):
-  - one case per refusal: the wrong phase; another side's plot or building; a taken plot; a stump plot; a closed plot; a card not in the kit; no free copy (X4 only); not enough gold; an enemy-side command after the opening; `beginClash` from the enemy;
+  - one case per refusal: the wrong phase; another side's plot or building; a taken plot; a stump plot; a closed plot; a card not in the kit; not enough gold; an enemy-side command after the opening; `beginClash` from the enemy;
   - a refund of 100% in the planting phase if unfielded, else floor(60%); the plot frees at once;
   - `toggleMerge` works only on your own spawner;
   - `state.tick` doesn't move over N planning steps;
@@ -367,18 +370,15 @@ S1 to S4: the data, the colony, the round state machine and the planning command
 - [ ] T031 Build the planning executors and checks in `src/sim/rounds/planning.ts` (new): `plant`, `sell`, `toggleMerge` and `beginClash`'s planning half, plus `legalPlots`, `plantProblem`, `priceOf` and `sellValue` (§4.4, §4.7, §14.5, §14.6) (A034)
   - Each command is checked again when it runs; a refusal is a `commandRejected` with a reason, counted in `stats.rejectedCommands`.
   - Events: `buildingPlanted`, `buildingSold {refund}`, `mergeToggled`.
-- [ ] T032 Write the kit cases in `tests/unit/rounds/planning.test.ts` (§4.4, §8.10, §18.1) ⛔ X4, #43, #51
-  - With no copy limit (D45): a card plants until the plots run out.
-  - Under X4: a single battle's kit gives each opener card 2 copies and every other card 1; a copy past the card's copies is refused; a sell returns the copy; a mono bot holds its card at #43's cap and fills its other plots by `bot:balanced`'s weights (#51); the general plants by `maxOwned`, not copies.
-- [ ] T033 Build `KitCard` and `freeCopies` in `src/sim/rounds/kit.ts` (new) (§4.4, §8.10, §14.6) ⛔ X4, #43, #51 (A033, A145, A194, A196)
-  - Under D45, `freeCopies` has no limit.
-  - Under X4: a kit card carries `copies`, and `plant` refuses a card with no free copy. A single battle at battle index i gives each side its kit by A145's rule: the faction roster, with the opener cards (the commander's three starters when a commander is set, else the controller's `opener`) ×2 and every other card ×1. The keys are `balance.rounds.kit.starterCopies` 2, `blueprintCopies` 1 and `maxCopies` (#43's cap, first guess 4), under `rounds` until R2b folds them into §11.1's `kit` (Call 29).
-  - A mono bot holds its card at `maxCopies` and fills the rest by `bot:balanced`'s weights (#51).
-  - The general keeps `maxOwned` (§7.8): its copies are #42's, in R3 (A194).
+- [ ] T032 Write the kit cases in `tests/unit/rounds/planning.test.ts` (§4.4, §18.1 D45):
+  - a single battle's kit is the faction roster, and a card outside it is refused;
+  - with no copy limit (D45; X4 decided no, 2026-11-02), a card plants until the plots run out;
+  - the general plants by `maxOwned`.
+- [ ] T033 Build the kit in `src/sim/rounds/kit.ts` (new): `kitOf(content, side, config)`, a single battle's faction roster, and `inKit`, which `plant` checks. There are no copies (D45, Call 29), and the general keeps `maxOwned` (§7.8); R3 adds copies here, and the general's are #42's (§4.4, §14.6, §18.1 D45) (A033, A145, A194, A196)
 - [ ] T034 Build `formationOf(state, side, change?)` and `mergePreview(state, side, change?)` in `src/sim/rounds/formation.ts` on T020's core, and export both with `survivingSupply` from `src/sim/rounds/index.ts` (§4.6, §5.6, §14.6) (A032, A060)
   - Add cases to `tests/unit/rounds/formation.test.ts`: a `change` preview equals the state after that change; `hashState` and every rng stream are unchanged after either call.
 
-**Checkpoint:** `npm run verify` is green with only S1's v1 golden refresh; `npx vitest run tests/unit/rounds` passes; the v1 game still plays on `npm run dev`.
+**Checkpoint:** `npm run verify` is green with only S1's v1 golden refresh; `npx vitest run tests/unit/rounds` passes.
 
 ## Phase 3: US1 — A round's clash from your colony, scored (P1)
 
@@ -394,11 +394,11 @@ S1 to S4: the data, the colony, the round state machine and the planning command
 - [ ] T036 [US1] Copy `world.ts`, `targets.ts`, `spatial.ts` and `hits.ts` into `src/sim/rounds/world.ts` (new), `src/sim/rounds/targets.ts` (new), `src/sim/rounds/spatial.ts` (new) and `src/sim/rounds/hits.ts` (new), typed on rounds' state (§13.4) (A027, A103)
   - Removed: buildings and `HEARTCAP_ID` as targets, besieged, suppression, `columnsOwned` and `supplyCapOf`. `MAX_RADIUS` 0.8 stays.
 - [ ] T037 [US1] Copy targeting into `src/sim/rounds/systems/targeting.ts` (new), without buildings or Heartcaps as targets, call for help, dive, or siege's preference. Keep slayer's and the tunneler's rules; the tower path becomes the emplacement's firing band and the Mortar's cloud aim (§5.2, §13.4) (A008, A110)
-- [ ] T038 [US1] Copy movement into `src/sim/rounds/systems/movement.ts` (new), without Hold, waves, rush, fall-back, dive, surfacing at spawners, turret checks, or the imports from `spawning.ts` and `stance.ts` (§5.2, §13.4) ⛔ #12 (A021)
-  - Idle units seek per §5.2; emplacements are immovable in separation, and the other unit takes the whole overlap. Pace on the approach only if #12 adopted it, under its own key, reading the lane's army (A109).
+- [ ] T038 [US1] Copy movement into `src/sim/rounds/systems/movement.ts` (new), without Hold, waves, rush, fall-back, dive, surfacing at spawners, turret checks, or the imports from `spawning.ts` and `stance.ts` (§5.2, §13.4) (A021)
+  - Idle units seek per §5.2; emplacements are immovable in separation, and the other unit takes the whole overlap. There's no pace rule (#12): each unit moves at its own speed.
 - [ ] T039 [US1] Copy combat into `src/sim/rounds/systems/combat.ts` (new), without turrets, damage to buildings and the Heartcap, `spawnerDefense`, the storm's unit and tower multiplier, or `releaseStored`. Siege's ×2 stays, against structure armor only (§5.3, §11.1, §13.4)
-- [ ] T040 [US1] Copy merging, healing and clouds into `src/sim/rounds/systems/merging.ts` (new), `src/sim/rounds/systems/healing.ts` (new) and `src/sim/rounds/systems/clouds.ts` (new). Merging's v1 rule holds on the field after the muster, without the supply wait, `noteMerged` or wave tracking. Clouds keep `soakShield` only if #8 adopted the shields (§5.6, §13.4) ⛔ #8
-- [ ] T041 [US1] Compile and field emplacements in `src/sim/rounds/compile.ts` and `src/sim/rounds/formation.ts` (§4.4, §6.7) ⛔ #10 (A029)
+- [ ] T040 [US1] Copy merging, healing and clouds into `src/sim/rounds/systems/merging.ts` (new), `src/sim/rounds/systems/healing.ts` (new) and `src/sim/rounds/systems/clouds.ts` (new). Merging's v1 rule holds on the field after the muster, without the supply wait, `noteMerged` or wave tracking. Clouds keep `soakShield`, and merging keeps shields in proportion, since #8 adopted the arrival shield (§5.3, §5.6, §13.4)
+- [ ] T041 [US1] Compile and field emplacements in `src/sim/rounds/compile.ts` and `src/sim/rounds/formation.ts` (§4.4, §6.7) (A029)
   - Each tower becomes one unit with its attack, `hp`, `minRange` and cloud aim, structure armor and 0 supply. It stands at its slot's centre, with a radius of at most 0.8, its range measured from its centre as a tower's was, and it's restored each round.
 
 **S6: Begin, the muster and a lane's end**
@@ -408,22 +408,24 @@ S1 to S4: the data, the colony, the round state machine and the planning command
   - with no power queued, for 20 ticks no unit's position or HP changes, separation included;
   - the fielded record equals the units standing after the muster, by lane, type, tier and count;
   - a muster merge pays its side effects once;
+  - the arrival shield (#8, Call 30): each lane's army of 2 or more unit types arrives with shields of 20% of each unit's max HP, before the muster; emplacements neither count as a type nor take one, and a knit keeps shields in proportion;
   - `clashStart` triggers fire once, after `musterKnit` and before the clash's first tick (T026);
   - lane ends: E1 and E2 resolve on the first tick, a double wipe is drawn (E4), and the cap falls at exactly `startTick + 900` with the muster counted (#13);
   - at the cap, more surviving supply wins; a tie is drawn (E3), and so is emplacements only on both sides (E5);
   - on Twin Roots an ended lane holds still while the other fights: no moves, hits in flight dropped, clouds stopped, no heals or merges;
   - per-squad stats: a front-rank-only modifier reaches rank-0 squads only, and a knit of front and back parts takes the lowest-id parent's squad stats, with HP carried by the ratio.
-- [ ] T046 [US1] Compile per-squad stats in `src/sim/rounds/compile.ts` and `src/sim/rounds/effects.ts`, and allow them in data (§5.6, §14.2, §14.6) ⛔ R2-Q11 (A028, A131)
+- [ ] T046 [US1] Compile per-squad stats in `src/sim/rounds/compile.ts` and `src/sim/rounds/effects.ts`, and allow them in data (§5.6, §14.2, §14.6) (A028, A131)
   - In `src/data/schema.ts`, allow `rank` and `onLoam` on `unit.*` stats, beside `POSITIONAL_STATS`. Make v1's `src/sim/compile.ts` skip a unit modifier carrying `rank` or `onLoam`, so v1 never applies one to every unit.
   - At Begin, the `rank` and `onLoam` selectors on `unit.*` stats build a tier table per squad, and units resolve their stats through `sourceBuildingId`. A unit knit from two squads takes the lowest-id parent's squad (R2-Q11).
   - Shape the table as base stats plus a list of patches per squad, so R3 adds augment and combo patches to it instead of building a second path (A131).
-- [ ] T043 [US1] Build Begin as `beginClash`'s clash half in `src/sim/rounds/round.ts` (new) (§4.7 steps 12–14, §5.6, §14.6) ⛔ R2-Q11, #25 (A024, A026, A032, A047)
+- [ ] T043 [US1] Build Begin as `beginClash`'s clash half in `src/sim/rounds/round.ts` (new) (§4.7 steps 12–14, §5.6, §14.6) (A024, A026, A032, A047)
   - It records `bankedAtBegin` and marks every planted building fielded.
   - It compiles stats per squad (T046, above) and places the arrival: every squad's units at `formationOf`'s positions, in plot order, then j.
+  - It shields each lane's army of 2 or more unit types (`balance.rounds.arrivalShield`, Call 30) before the muster, as R1's `clashshield` did in `tools/lib/clash.ts`.
   - It resolves the muster's fixed point at once and applies the trios once (Call 4).
   - It writes `RoundResult.fielded` from the units as they then stand, with their lane.
   - It emits `clashStarted`, `arrived` and `musterKnit {parts, tier, x, y}` (the view animates the 1 s from it), then fires `clashStart` triggers and enters the clash.
-- [ ] T044 [US1] Build the clash step in `src/sim/rounds/systems/clash.ts` (new): §14.6's clash steps 1–14 (§5.6, §6.7, §14.6) ⛔ #12, #13 (A026, A030)
+- [ ] T044 [US1] Build the clash step in `src/sim/rounds/systems/clash.ts` (new): §14.6's clash steps 1–14 (§5.6, §6.7, §14.6) (A026, A030)
   - Muster ticks (`startTick + 1` to `+ 20`) skip targeting, movement, separation and attacks. The clock runs against `startTick + 900`.
   - A lane ends on the first tick one side has no units and no emplacements left, or at the cap on surviving supply; its lock record is stored, `laneWon` emitted, and the lane frozen.
   - When every lane has ended, the step hands over to scoring (T051).
@@ -441,12 +443,12 @@ S1 to S4: the data, the colony, the round state machine and the planning command
   - `roundWon` triggers fire once, for the round's winner only, and not after a drawn round (T026);
   - `RoundResult.damage` is capped and recorded before the HP floor;
   - a Decision follows `decision.by` (X5): `damage` sums `RoundResult.damage`, `shareOfMaxHp` compares each side's damage taken over its max HP by cross-multiplication; its tiebreaks run in order, and E8 goes to the general.
-- [ ] T048 [US1] Write the rule scenarios in `data/scenarios/rounds/` (new): `formation-from-plots`, `clash-cap`, `round-damage-cap`, `decision-round-9`, `lane-empty-one-side` (E1), `lane-empty-both` (E2), `cap-tie` (E3), `double-wipe` (E4), `emplacements-only-draw` (E5), `emplacement-only-win` (E6), `split-lanes` (E7, Twin Roots), `both-heartcaps-zero` (E8) and `comeback-r4` (G6) (§6.7, §16 R2 step 4) ⛔ #23
+- [ ] T048 [US1] Write the rule scenarios in `data/scenarios/rounds/` (new): `formation-from-plots`, `clash-cap`, `round-damage-cap`, `decision-round-9`, `lane-empty-one-side` (E1), `lane-empty-both` (E2), `cap-tie` (E3), `double-wipe` (E4), `emplacements-only-draw` (E5), `emplacement-only-win` (E6), `split-lanes` (E7, Twin Roots), `both-heartcaps-zero` (E8) and `comeback-r4` (G6) (§6.7, §16 R2 step 4)
   - Also clash-form copies of v1's `merge-trio`, `knit-cancel`, `elder-ladder`, and R4a's `unit-lineup` and `unit-lineup-twin` (R4/T009, which deletes `elder-showcase`; if X3 is no, copy `elder-showcase` instead), and `merge-under-fire` fighting enemy units rather than a hall. v1's own files stay until R2b.
 - [ ] T049 [US1] Write `tests/unit/rounds/scenarios.test.ts` (new). It asserts each scenario exactly: each lane's winner, the margin, the Heartcap damage and who gets the comeback gold. `clash-cap` asserts `capped` and damage = difference × 25; `round-damage-cap` exactly the cap; `decision-round-9` the winner by `decision.by`'s rule (X5); `formation-from-plots` Capguards in rank 0 ahead of the archers (§15.7 Rule scenarios, §16 R2 step 4)
-- [ ] T050 [US1] Build the pure scoring helpers in `src/sim/rounds/systems/victory.ts` (new): `laneDamage(margin, perSupply)`, `stormed(raw, stormBp)`, `takenMods(x, bps)`, `capFor(def, loserMaxHp, stormBp)` and `roundOutcome(damage)` (§6.4, §6.7, §13.3 rule 5) ⛔ X5, #22
-- [ ] T051 [US1] Build `scoreRound` in `src/sim/rounds/round.ts`. Per lane it takes 25 × the margin, the storm, the loser's damage-taken modifiers, then the cap on each Heartcap's sum. It emits `heartcapDamaged {side, amount, stormBp, capped}` and pushes the `RoundResult`, with per-lane damage, `damageByBuilding` and `survivorsByBuilding`, applying damage down to 0 (§6.7, §14.4, §14.6 clash step 13) ⛔ X5 (A064, A068)
-- [ ] T052 [US1] Build the end check and the aftermath step in `src/sim/rounds/round.ts` and `src/sim/rounds/step.ts` (§4.7 steps 18–19, §6.5, §14.6) ⛔ X5 (A035, A209)
+- [ ] T050 [US1] Build the pure scoring helpers in `src/sim/rounds/systems/victory.ts` (new): `laneDamage(margin, perSupply)`, `stormed(raw, stormBp)`, `takenMods(x, bps)`, `capFor(def, loserMaxHp, stormBp)` and `roundOutcome(damage)` (§6.4, §6.7, §13.3 rule 5)
+- [ ] T051 [US1] Build `scoreRound` in `src/sim/rounds/round.ts`. Per lane it takes 25 × the margin, the storm, the loser's damage-taken modifiers, then the cap on each Heartcap's sum. It emits `heartcapDamaged {side, amount, stormBp, capped}` and pushes the `RoundResult`, with per-lane damage, `damageByBuilding` and `survivorsByBuilding`, applying damage down to 0 (§6.7, §14.4, §14.6 clash step 13) (A064, A068)
+- [ ] T052 [US1] Build the end check and the aftermath step in `src/sim/rounds/round.ts` and `src/sim/rounds/step.ts` (§4.7 steps 18–19, §6.5, §14.6) (A035, A209)
   - A Heartcap at 0 is a Rout; both at 0 means the player loses (E8).
   - After `maxRounds`, a Decision by `decision.by`: with `damage`, the sum of `RoundResult.damage` (gross); with `shareOfMaxHp`, the smaller share of max HP lost, by cross-multiplication. Then the higher HP fraction by cross-multiplication, then the general.
   - `outcome {winner, by, round}` is set. The aftermath's step emits `battleEnded` and enters `ended`, or opens the next round, clearing units, squads, hits and clouds.
@@ -467,7 +469,7 @@ S1 to S4: the data, the colony, the round state machine and the planning command
   - `pendingGold` is paid once, then zeroed; the enemy's income is × `enemyIncomeMult`;
   - `incomePreview` equals the next round's income.
 - [ ] T054 [US2] Add the round-order cases to `tests/unit/rounds/rounds.test.ts` (§15.7 Rounds row): income, interest, `roundStarted {stormBp}`, `roundStart` triggers, `generalPlanned`, then the player's planning; only the colony and gold carry between rounds; every squad is fielded fresh; the last round has its aftermath, then the battle ends
-- [ ] T055 [US2] Build `openRound` in `src/sim/rounds/round.ts` and the economy in `src/sim/rounds/systems/economy.ts` (new), following §14.6's opening steps 1–7 (§4.7 steps 5–10, §6.2, §6.4, §14.6) ⛔ R2-Q2 (A205)
+- [ ] T055 [US2] Build `openRound` in `src/sim/rounds/round.ts` and the economy in `src/sim/rounds/systems/economy.ts` (new), following §14.6's opening steps 1–7 (§4.7 steps 5–10, §6.2, §6.4, §14.6) (A205)
   - Clear the field and advance the round; pay income from round 2, with any `pendingGold`; set the storm and emit `roundStarted`; fire `roundStart`.
   - The general's turn (T068), an empty draft hook (Call 26), and a player-side bot's turn (T069); then enter planning.
   - Export `incomePreview(state, side)` from `src/sim/rounds/index.ts`.
@@ -478,7 +480,7 @@ S1 to S4: the data, the colony, the round state machine and the planning command
   - Heartcap damage dealt and taken after the cap and the storm; gold by source summing to the income;
   - buildings planted and sold (sold after fielding counted apart); power use; the most Elders alive at once; the most gold banked; M6-Q1's feat stats;
   - the report's gold rows add up.
-- [ ] T057 [US2] Build stats per round in `src/sim/rounds/stats.ts` (new) and `summarize` in `src/sim/rounds/summary.ts` (new) (§5.7, §14.4) ⛔ M6-Q1 (A064, A175)
+- [ ] T057 [US2] Build stats per round in `src/sim/rounds/stats.ts` (new) and `summarize` in `src/sim/rounds/summary.ts` (new) (§5.7, §14.4) (A064, A175)
   - The stats are §5.7's list, plus M6-Q1's: economy buildings planted, the most economy buildings on loam at once, buildings sold after fielding, each Heartcap's lowest HP fraction, and damage by unit tag in the round a Heartcap fell.
   - The summary gives round, phase, both Heartcaps, `dealt`, `roundLog`, gold, plots planted of owned, and the stats.
 
@@ -519,12 +521,12 @@ S1 to S4: the data, the colony, the round state machine and the planning command
   - Every side sees its own state and the round.
   - The enemy side sees the player only through `state.rounds[]` (§7.1).
   - A player-side planner also sees the general's current colony and `formationOf(state, 'enemy')`, as a player does (§7.5). Fixed-weight bots ignore that part; `bot:answer` reads it (T121).
-- [ ] T067 [US2] Build §7.3's scores in `src/sim/rounds/ai/formationScore.ts` (new): Call 11's back-line term, noise of ±0.5 from the side's ai stream, ties to the front rank then the lower file, building ties by id, and the lane rule reading `FieldedSquad.lane` (§7.3) ⛔ #30 (A043, A047)
-- [ ] T068 [US2] Build `planTurn(state, side)` in `src/sim/rounds/ai/controller.ts` (new): step 1, a due doctrine change (T099 fills it in); step 2, the buy loop with placement; step 3, the merge toggles (§7.1, §7.2, §14.6 opening steps 5 and 7) ⛔ R2-Q4, #29, #30 (A045, A070)
+- [ ] T067 [US2] Build §7.3's scores in `src/sim/rounds/ai/formationScore.ts` (new): Call 11's back-line term, noise of ±0.5 from the side's ai stream, ties to the front rank then the lower file, building ties by id, and the lane rule reading `FieldedSquad.lane` (§7.3) (A043, A047)
+- [ ] T068 [US2] Build `planTurn(state, side)` in `src/sim/rounds/ai/controller.ts` (new): step 1, a due doctrine change (T099 fills it in); step 2, the buy loop with placement; step 3, the merge toggles (§7.1, §7.2, §14.6 opening steps 5 and 7) (A045, A070)
   - Its commands run at once through `planning.ts`'s executors and go to the log; then `generalPlanned`, and the plan goes in `ai.plans`.
   - The enemy plans at the opening's step 5, a player-side bot or general at step 7, which queues `beginClash`.
   - A single battle's general buys only its listed weights. `maxOwned` and `afterRound` apply, the bank reserve is 0, and a refused AI command counts in `rejectedCommands`.
-- [ ] T069 [US2] Build the profiles in `src/sim/rounds/ai/profiles.ts` (new): generals and bots read from `data/generals.json` and `data/bots.json`, with limits read in rounds and `fixedWeights`. `placement` is ignored, and rush and turtle are weight profiles. `bot:mono:<id>` opens with as many as its gold buys, then refills each round (§7.1, §7.2) ⛔ R2-Q6 (A044, A052)
+- [ ] T069 [US2] Build the profiles in `src/sim/rounds/ai/profiles.ts` (new): generals and bots read from `data/generals.json` and `data/bots.json`, with limits read in rounds and `fixedWeights`. `placement` is ignored, and rush and turtle are weight profiles. `bot:mono:<id>` opens with as many as its gold buys, then refills each round (§7.1, §7.2) (A044, A052)
 
 **S10b: the general's checks, the first round golden and step 3**
 
@@ -549,11 +551,11 @@ S1 to S4: the data, the colony, the round state machine and the planning command
   - with `player=bot:balanced&phase=planning` the bot's plan has run and its `beginClash` stays queued;
   - `player=bot:balanced&round=4&phase=clash&ticks=200&paused=1` gives the bridge round 4, phase `clash` and tick `clash.startTick + 200`;
   - with `player=bot:balanced`, a round past the battle's end fails with a message; with the default human player, `round=2` without `scenario` is refused with a message.
-- [ ] T075 [US3] Add `ROUNDS_PREVIEW` to `src/app/channel.ts`, a `scene=rounds` branch to `src/app/main.ts` taken only under it, and a dev-only "A battle in rounds (preview)" button to `src/ui/screens/title.ts`. This is X2's temporary entry (Call 2); storage keys don't change (§13.8, `.claude/rules/storage.md`)
-  - The branch loads `src/app/rounds/main.ts` with a dynamic `import()` under `ROUNDS_PREVIEW`, so `npm run build` drops `src/app/rounds/**` and the production bundle stays inside §13.7's 300 KB.
+- [ ] T075 [US3] Add a `scene=rounds` branch to `src/app/main.ts`, taken on every build, and an "A battle in rounds (preview)" button to `src/ui/screens/title.ts`, shown only on the dev site (`DEV_SITE` in `src/app/channel.ts`). This is X2's temporary entry (Call 2); storage keys don't change (§13.8, `.claude/rules/storage.md`)
+  - The branch loads `src/app/rounds/main.ts` with a dynamic `import()`, so `src/app/rounds/**` is its own chunk and the main bundle stays inside §13.7's 300 KB.
 - [ ] T076 [US3] Build `startRounds` in `src/app/rounds/main.ts` (new) and the preview's parameters in `src/app/rounds/urlParams.ts` (new) (§15.6) (A059, A075)
   - The parameters: `map`, `seed`, `battleIndex`, `player`, `enemy`, `commander`, `scenario`, `round`, `phase` (`planning`, `clash`, `aftermath` or `ended`, which opens the report), `ticks` (within the clash), `paused`, `flags`, `test`, `debug`, `targeting` (`1` opens power targeting in a clash, T109), `measure` (`frames` records frame times into the bridge, T115) and `reveal` (T127).
-  - The defaults (Call 28): `map=bogwater-hollow`, `battleIndex=1`, `player=human`, `enemy=general:mother-mold`, `flags=merging,adaptive,powers`, `commander=vesper`. The player's kit is the faction roster (with copies by T033 under X4). The seed is random and written into the URL. The title's button opens these defaults.
+  - The defaults (Call 28): `map=bogwater-hollow`, `battleIndex=1`, `player=human`, `enemy=general:mother-mold`, `flags=merging,adaptive,powers`, `commander=vesper`. The player's kit is the faction roster (T033). The seed is random and written into the URL. The title's button opens these defaults.
   - With `player=human`, a `round` above 1, or a `phase` other than `planning`, is refused with a message unless `scenario` is set, since a human planning phase can't be played headlessly (T059).
   - It plays earlier rounds headlessly with the controllers, stops at Call 14's checkpoint or the asked clash tick, and holds.
 - [ ] T077 [US3] Build the loop by phase in `src/app/rounds/loop.ts` (new), with one controller per phase in `src/app/rounds/phases/planning.ts` (new), `src/app/rounds/phases/clash.ts` (new) and `src/app/rounds/phases/aftermath.ts` (new), so the UI sessions after this one don't collide (§13.5)
@@ -562,13 +564,13 @@ S1 to S4: the data, the colony, the round state machine and the planning command
   - Aftermath: no steps until the view reports done or skipped, then one `step()`.
   - The preview is recomputed only after a colony or toggle command.
   - Create `src/app/rounds/battleView.ts` (new): the canvas T081 draws into, and empty mounts for the top band, the tally, the Intent panel, the tray, inspect and the callouts. Each later UI task fills its own mount with one line, so S12, S13 and S14 each end green and S12 and S13 don't collide.
-- [ ] T078 [US3] Build the session on plots in `src/app/rounds/session.ts` (new) and the keys by phase in `src/app/rounds/input.ts` (new) (§10.2, §10.3) ⛔ R2-Q12 (A065)
+- [ ] T078 [US3] Build the session on plots in `src/app/rounds/session.ts` (new) and the keys by phase in `src/app/rounds/input.ts` (new) (§10.2, §10.3) (A065)
   - Session: choose a card; the ghost snaps to a plot, or to its formation slot; plant `{buildingId, plot}`, with Shift to keep planting; X twice sells, showing the refund; M toggles; Begin, with the empty-lane two-press warning.
   - Keys follow §10.3 by phase. Begin by key needs a fresh keydown after planning opened, ignores auto-repeat and waits about 400 ms; the button is instant. Space and Enter skip the aftermath. Planning keys in a clash are refused with a callout; Esc clears the warning and cancels.
 - [ ] T079 [US3] Build the bridge in `src/app/rounds/bridge.ts` (new): `window.__GAME__` with `ready`, `scene`, `round`, `phase`, `tick`, `hash` (rounds' `hashState`), `summary()`, `battle()`, `preview()` and `errors` (§15.6) (A076)
   - `preview()` returns `{player, enemy}`: per side, the squads and unit positions the preview drew. It's `null` until T083 draws the preview.
   - With `measure=frames`, `frames` holds the last frame times (T115). v1 has no such field yet (A187 marks it M8's), so it lives in this bridge only.
-- [ ] T080 [US3] Build `roundStateForParams` in `tools/lib/rounds/params.ts` (new), matching `src/app/rounds/main.ts`'s checkpoints exactly, and add `--dev` to `tools/screenshot.ts`. With `--dev` the tool serves the app through Vite's dev server instead of `vite preview`, so the preview entry exists, and compares the hash at the same round, phase and tick (§15.6) (A059)
+- [ ] T080 [US3] Build `roundStateForParams` in `tools/lib/rounds/params.ts` (new), matching `src/app/rounds/main.ts`'s checkpoints exactly, and teach `tools/screenshot.ts` to compare a `scene=rounds` capture's hash with it at the same round, phase and tick. The tool's `vite preview` build has the entry (Call 2), so it needs no `--dev` mode (§15.6) (A059)
 - [ ] T141 [US3] Add §15.6's assertions 1–3 and 5 for `scene=rounds` to `tools/screenshot.ts` (§15.6, §16 R2 step 9) (A076)
   - (1) No console or page errors.
   - (2) `__GAME__.hash` equals `roundStateForParams`'s `hashState` at the same round, phase and clash tick (T080's compare, failing the capture with both hashes).
@@ -597,7 +599,7 @@ S1 to S4: the data, the colony, the round state machine and the planning command
   - A slayer's hit (the Veilstalker's) on a Bloomed unit is strong (×3.0 tag multiplier); on a base-tier unit it follows the matrix.
   - Merge-perk resistances never change a class (§5.3).
   - Within a squad that fields as 2 Bloomed and 2 base, the classes per tier can differ (Call 22).
-- [ ] T084 [US3] Build `matchupClass` in `src/sim/rounds/matchups.ts` (new), export it from `src/sim/rounds/index.ts`, and draw basic marks over enemy slots in `src/render/rounds/preview.ts` (§5.3, §10.2, §10.4, §11.1 `effectiveness`) ⛔ R2-Q12 (A060, A069)
+- [ ] T084 [US3] Build `matchupClass` in `src/sim/rounds/matchups.ts` (new), export it from `src/sim/rounds/index.ts`, and draw basic marks over enemy slots in `src/render/rounds/preview.ts` (§5.3, §10.2, §10.4, §11.1 `effectiveness`) (A060, A069)
   - `matchupClass` follows `classify`'s rule (`src/sim/systems/combat.ts:247`) on the matrix and tag multipliers, with `balance.effectiveness`'s `strongAtLeast` 1.5 and `weakAtMost` 0.75, and the post-matrix rules, without merge-perk resistances. R4b extends this module (it finds it with `grep -rn matchupClass src/sim`).
   - Marks show while a card is chosen or one of your squads is hovered: strong at ×1.5 or more, weak at ×0.75 or less, none for normal.
   - Each squad gets Call 22's two marks. The reverse direction and the card's own marks wait for R4b.
@@ -636,10 +638,10 @@ S1 to S4: the data, the colony, the round state machine and the planning command
   - with an empty colony against the scripted general, Begin warns and reads "Begin anyway", a second press starts the clash, and planting clears the warning;
   - the result banner stays pinned through the aftermath;
   - the report's round chart has one column per round equal to `rounds[].damage`, with lane half-pips on Twin Roots; its gold rows add up; the outcome text reads right for a Rout in round 6 and a Decision after round 9.
-- [ ] T093 [US3] Build the tray in `src/ui/rounds/hud/tray.ts` (new) (§10.2, §4.4) ⛔ X4
+- [ ] T093 [US3] Build the tray in `src/ui/rounds/hud/tray.ts` (new) (§10.2, §4.4)
   - The price is `priceOf`. An army card shows its squad (the unit and "×N"), an economy card what it earns a round. Each card carries `data-building="<id>"` for tests and captures.
   - A card you can't afford is unlit with "need N". In a clash the tray takes no clicks, but its tooltips open.
-  - The tooltip gives the squad and unit stats, strong vs, weak vs and armor, merge perks, and an economy card's rounds to pay for itself. Under X4, a free/owned copy count ("2/2", R3-Q8), not pips.
+  - The tooltip gives the squad and unit stats, strong vs, weak vs and armor, merge perks, and an economy card's rounds to pay for itself. There are no copies to show (D45).
   - Mount it in `src/app/rounds/battleView.ts`'s tray mount; T094 fills the inspect mount the same way.
 - [ ] T094 [US3] Build inspect in `src/ui/rounds/inspect.ts` (new) (§10.2, §10.4) (A064)
   - A building shows its squad and merge preview in words, its plot (rank, file, loam), its squad's damage and survivors in the current or last clash, the gold it produced, the merge toggle and its sell value. The general's buildings show the same without buttons.
@@ -653,7 +655,7 @@ S1 to S4: the data, the colony, the round state machine and the planning command
   - The round chart: damage dealt up in violet, taken down in ash, each Heartcap's HP as a line, storm rounds marked, lane half-pips on Twin Roots.
   - Also damage by building over the battle, units fielded and merged from `fielded`, gold by source, the general's counters by round, and a slot for the planning seconds, which the app passes in (T128).
   - It has no lives line (R2b). Its buttons are Again (same seed) and Rematch (new seed), both reopening `scene=rounds` with the same parameters.
-- [ ] T097 [US3] Wire the three phase views into `src/app/rounds/battleView.ts`: planning, clash and aftermath, each switching its chrome on and off. The aftermath holds while Help or settings is open, and the speed control stays live there, without pause. The bands and panels are already mounted (T088–T094), and Space, Enter or a click already skip the aftermath (T078) (§10.2, §13.5) ⛔ R2-Q12 (A078)
+- [ ] T097 [US3] Wire the three phase views into `src/app/rounds/battleView.ts`: planning, clash and aftermath, each switching its chrome on and off. The aftermath holds while Help or settings is open, and the speed control stays live there, without pause. The bands and panels are already mounted (T088–T094), and Space, Enter or a click already skip the aftermath (T078) (§10.2, §13.5) (A078)
 - [ ] T143 [US3] Add §15.6's assertion 4 for `scene=rounds` to `tools/screenshot.ts` (§15.6, §16 R2 step 9) (A076)
   - `#hud-gold`, `#hud-plots`, `#hud-round` and both Heartcap values equal `summary()`, and there's no `#hud-lives`.
   - With `phase=planning`, `preview().enemy` equals Node's `formationOf(state, 'enemy')` from `roundStateForParams`, unit for unit: the general's whole colony and formation are drawn before the player's first command (§7.5, §10.2).
@@ -678,23 +680,24 @@ S1 to S4: the data, the colony, the round state machine and the planning command
 
 - [ ] T098 [US4] Add the counter-cycle cases to `tests/unit/rounds/ai.test.ts` (§7.4, §7.6, §15.7 AI) (A041, A051, A055, A056):
   - cycles at rounds 4 and 7, the boss also at 3, stored as `{round, from}`;
-  - from hand-built records: Amanita reads Armor, Capguard Line, Sporelings Swarm;
+  - from hand-built records: Amanita reads Armor, Capguard Line, Sporelings Swarm, Gill Archers Ranged (#14);
+  - eliteShare counts Elder units only, at their parts' base supply, with no swarm read (R2-Q3);
   - `bot:balanced`'s round-4 colony with default toggles doesn't read Elite;
-  - ties go Elite, Armor, Line, Swarm; rounds with nothing fielded pass;
+  - ties go Elite, Armor, Line, Ranged, Swarm (Ranged's place is #14's first guess); rounds with nothing fielded pass;
   - activation is ×3 on the set and ×0.6 on the rest, in the same phase (#31);
   - a missing answer adds the cheapest roster counter that beats the dominant armor; no `swarm` unit is in the Anti-Swarm or Anti-Line set, and no unit without damage is in any set; Mold's Anti-Swarm activation adds a non-swarm card;
   - with fewer than 2 free plots it sells up to 2 spawners outside the set, worst against the dominant armor, rearmost first, then the lower file, then the id, at 60%;
   - `generalPlanned.counter` and `ai.plans[round].counter` are set, and the state survives a snapshot round trip;
   - with `config.intel` set, the opening doctrine is ×2 and ×0.8 until the first activation, and the boss's dual doctrine is ×2.5 for the whole battle.
-- [ ] T099 [US4] Build the counter cycle in `src/sim/rounds/ai/counter.ts` (new), called from `planTurn`'s step 1 in `src/sim/rounds/ai/controller.ts` (§7.2, §7.4, §7.6) ⛔ R2-Q3, #14, #15, #31 (A041, A051, A055, A056)
+- [ ] T099 [US4] Build the counter cycle in `src/sim/rounds/ai/counter.ts` (new), called from `planTurn`'s step 1 in `src/sim/rounds/ai/controller.ts` (§7.2, §7.4, §7.6) (A041, A051, A055, A056)
   - The parts: the schedule, `analyzeFielded` (R2-Q3's reading), the scores with noise of ±0.03, activation, the missing answer, selling for room, and a record by round.
   - Also the opening doctrine from `config.intel` and the boss's dual doctrine. A single battle carries no intel unless a test sets it; R2-Q18's opener swap is R2b's.
-  - An Anti-Ranged kind only if #14 adopts one.
-- [ ] T100 [US4] Add X8's readouts to `tools/lib/rounds/run.ts`'s summary: per round, the general's banked gold, its free plots, what it planted and sold, and whether the clash replayed the last one exactly (§7.2) ⛔ X8 (A049, A206)
-- [ ] T101 [US4] Add X8's two default-off knobs to `balance.rounds.ai` in `data/balance.json` (`leanToLastAnswer`, a light lean from round 2 toward the answer to last round's army; `replaceWhenFull`, which sells its lowest-weighted fielded spawner at 60% for a heavier card when the colony is full). Read both in `src/sim/rounds/ai/controller.ts`, with a case each in `tests/unit/rounds/ai.test.ts` (§7.2, §12.4) ⛔ X8 (A049)
+  - The Anti-Ranged kind (#14): it scores `rangedShare`, with `swarm` spawners as its set.
+- [ ] T100 [US4] Add X8's readouts to `tools/lib/rounds/run.ts`'s summary: per round, the general's banked gold, its free plots, what it planted and sold, and whether the clash replayed the last one exactly (§7.2) (A049, A206)
+- [ ] T101 [US4] Add X8's two default-off knobs to `balance.rounds.ai` in `data/balance.json` (`leanToLastAnswer`, a light lean from round 2 toward the answer to last round's army; `replaceWhenFull`, which sells its lowest-weighted fielded spawner at 60% for a heavier card when the colony is full). Read both in `src/sim/rounds/ai/controller.ts`, with a case each in `tests/unit/rounds/ai.test.ts` (§7.2, §12.4) (A049)
   - Add its entry to `data/CHANGELOG-balance.md` in this PR. `balance.rounds` stays out of v1's library (Call 27), so v1's goldens don't move; if the round goldens move, refresh them with `npm run golden -- update` and say so in the commit.
 - [ ] T102 [US4] Show counters in `src/ui/rounds/doctrine.ts` and `src/app/rounds/phases/planning.ts`: "Countering SWARM" and "New: Capguard Hall" in the Intent panel, a counter callout in the activation round, and round 1's "The Gray Rot remembers your SWARM" when intel is set (§7.4, §7.5, §10.2)
-- [ ] T103 [US4] Add the adaptive round smoke to `tools/verify.ts`: `npm run sim -- --rounds --seeds 4..5 --player bot:mono:sporelingBurrow --enemy general:mother-mold --flags merging,adaptive --summary --assert rejectedCommands=0 --assert counters[0].round=4`, with `counters[0].kind` asserted per R2-Q3's reading (§15.1, §7.4) ⛔ R2-Q3
+- [ ] T103 [US4] Add the adaptive round smoke to `tools/verify.ts`: `npm run sim -- --rounds --seeds 4..5 --player bot:mono:sporelingBurrow --enemy general:mother-mold --flags merging,adaptive --summary --assert rejectedCommands=0 --assert counters[0].round=4`, with `counters[0].kind` asserted as T098's cases read that army (R2-Q3) (§15.1, §7.4)
 
 **Checkpoint:** the independent test passes; `npm run verify` is green; X8's readouts for 40 seeds against Mold and the Baron are in `docs/balance-backlog.md`.
 
@@ -715,14 +718,14 @@ S1 to S4: the data, the colony, the round state machine and the planning command
   - Rhizome Tithe is refused with `notInRoundsYet`;
   - the auto policy is deterministic and thinks every 20 ticks of the clash clock from its first tick;
   - Cordis's merge radius of 2.0 widens the muster's reach, and its knit-time bonus acts only after the muster.
-- [ ] T105 [US5] Build powers in `src/sim/rounds/powers.ts` (new) (§6.6, §11.10, §14.5) ⛔ #25 (A046, A053)
+- [ ] T105 [US5] Build powers in `src/sim/rounds/powers.ts` (new) (§6.6, §11.10, §14.5) (A046, A053)
   - `powerUsed` resets at the arrival, and the refusals are T104's. Burst and Bloom keep their effects. The Tithe is a stand-in (Call 19). Clash commands still queued when a clash ends are dropped (Call 9).
   - The auto policy: Burst fires at the best point worth at least 180 damage, emplacements included; Bloom at 2 or more trios, or one blocked.
 - [ ] T106 [US5] Wire powers into `src/sim/rounds/step.ts` (clash steps 2 and 4) and `src/sim/rounds/round.ts` (the arrival's reset) (§14.6)
-- [ ] T107 [US5] Measure R2-Q7: Puppet Bloom's trios available per clash for Cordis's starter kits, over 40 seeds against Mold and the Baron, with `npm run sim -- --rounds --commander cordis --power-policy auto`. Record the median in `docs/balance-backlog.md`, with the recommendation for R2b's knit content if it's below 1 (§11.10, §12.4) ⛔ R2-Q7 (A057, A096)
+- [ ] T107 [US5] Measure R2-Q7: Puppet Bloom's trios available per clash for Cordis's starter kits, over 40 seeds against Mold and the Baron, with `npm run sim -- --rounds --commander cordis --power-policy auto`. Record the median in `docs/balance-backlog.md` beside R1's (0 at 300 and 600 gold, 1 from 900), with the recommendation for R2b's knit content if it's below 1 (§11.10, §12.4) (A057, A096)
 - [ ] T108 [US5] Write `tests/browser/rounds/commanders.test.ts` (new): Q aims during a paused muster and fires on the next tick; the button then shows "used this clash"; Q again is refused with a callout; the next clash allows it again; no tooltip mentions a cooldown (§6.6, §10.2, §10.3)
 - [ ] T109 [US5] Build the power's controls in `src/app/rounds/battleView.ts` and `src/app/rounds/phases/clash.ts`: Ready, Aiming, Next tick, Used this clash, and unlit outside a clash. The reticle previews Burst's targets and damage, and Bloom's trios. Q is refused outside a clash or once spent (§6.6, §10.2, §10.3)
-- [ ] T110 [US5] Add the power smokes to `tools/verify.ts`: Vesper with `--assert stats.player.powerUses>=1`, and Cordis with `--assert stats.player.powerMerges>=1` if T107 found trios, else `powerUses>=1`. Armilla's round smoke is R2b's (§15.1)
+- [ ] T110 [US5] Add the power smokes to `tools/verify.ts`: Vesper with `--assert stats.player.powerUses>=1`, and Cordis with `--assert stats.player.powerMerges>=1` on a seed where T107 found trios. If no seed in 40 has one, Cordis's smoke waits for R2b's v2 job (R2-Q7), and T104's Bloom case covers the power. Armilla's round smoke is R2b's (§15.1)
 - [ ] T111 [US5] Record `tests/golden/r2-vesper-power-s3.replay.json` (new) and `tests/golden/r2-cordis-power-s3.replay.json` (new); Armilla's replay is R2b's (§15.5)
   - Add both entries to `ROUND_REPLAYS` in `tools/golden.ts`, run `npm run golden -- update`, then check that `git diff --stat tests/golden/m*` shows no change.
 
@@ -739,7 +742,7 @@ S1 to S4: the data, the colony, the round state machine and the planning command
 - [ ] T113 [US6] Write `tests/slow/rounds/perf.test.ts` (new). It asserts G11's round budgets: arrival ≤ 5 ms, the general's planning turn ≤ 20 ms, one battle of rounds with bots on both sides ≤ 3 s, and a tick mean ≤ 1.0 ms and p99 ≤ 2.5 ms at 300 live units. It also asserts the sim part of a planning command under its Node budget, and peak units ≥ 300 (§13.7, §15.4) (A113)
 - [ ] T114 [US6] Build `tools/lib/rounds/bench.ts` (new) and a `--rounds` switch in `tools/bench.ts`, with Call 24's cases (§13.7, §15.4) (A112, A113, A119, A200)
   - The cases: R1's full-colony clash on the round loop, its arrival tick timed; bench-300 as `data/scenarios/rounds/bench-300.json` (new); the general's planning turn; one full battle.
-  - The output: mean, p95 and p99 per tick, peak units, heap growth, first-tick ms and general-turn ms. A full colony's units and supply are checked against about 100 a side.
+  - The output: mean, p95 and p99 per tick, peak units, heap growth, first-tick ms and general-turn ms. A full colony's live units at the arrival are checked against §13.7's budget of at most 150 a side (R1-Q5, #7).
 - [ ] T115 [US6] Write the Chromium checks in `tests/browser/rounds/perf.test.ts` (new), on a Vite dev server as `tests/browser/frame.test.ts` starts one (§13.7) (A113)
   - A plant and the preview update it causes take ≤ 4 ms, timed in the page.
   - `scene=rounds&scenario=bench-300&phase=clash&measure=frames` keeps the render frame at 300 units ≤ 8 ms, read from the bridge's `frames` (T079).
@@ -752,19 +755,19 @@ S1 to S4: the data, the colony, the round state machine and the planning command
 
 **S18: the guardrails in round form**
 
-- [ ] T119 [US6] Add a `rounds` block to `data/balance-targets.json` and to `BalanceTargetsSchema` in `src/data/schema.ts`, with §12.3's numbers; v1's blocks stay (§12.3) ⛔ #35, X5 (A107, A108)
+- [ ] T119 [US6] Add a `rounds` block to `data/balance-targets.json` and to `BalanceTargetsSchema` in `src/data/schema.ts`, with §12.3's numbers; v1's blocks stay (§12.3) ⛔ #35 (A107, A108)
   - G1 {seeds, goldBudget, maxPairingWinShare 0.8, clearLossRatio 1.3}; G3 {seeds 50, maxMeanWinRate 0.55, maxMapWinRate 0.60}.
   - G4 {seeds 40, medianMinRounds 6, medianMaxRounds 8, maxRound9Share 0.15, botWinMin 0.3, botWinMax 0.7}.
   - G5 {bonusGold 150, 0.55–0.75}; G6 {scenario `comeback-r4`, equal max HP, both seats, minBehindWinRate 0.2, maxBehindWinRate per #35, winnerHitShare 0.5}.
   - G7 {Slayer share 0.25 read from `fielded`}; G8 {general lichen-baron, minDrop 0.2, balanced band per #35}; G11 (round form).
   - G12 {screenSeeds, confirmSeeds, top 3, minBuildMean 0.4, minAnswerRate 0.6}; G13 {maxCappedShare 0.15, clashSeconds [20, 40]}; G16 {minWinRate 0.6, pairs `roleSplit`}.
-- [ ] T120 [US6] Add the answer bot's case to `tests/unit/rounds/ai.test.ts`: shown a general army of mono Sporelings, `bot:answer` plants a Capguard Hall when its kit has one, and its plan follows the general's this round, not last round's (§7.1, §12.2, §18.2 #34) ⛔ X7 (A198)
-- [ ] T121 [US6] Build the answer policy in `src/sim/rounds/ai/answer.ts` (new), with `bot:answer` in `data/bots.json` and an optional `policy` in `BotSchema` (`src/data/schema.ts`) (§12.2, §18.2 #34) ⛔ X7 (A198)
+- [ ] T120 [US6] Add the answer bot's case to `tests/unit/rounds/ai.test.ts`: shown a general army of mono Sporelings, `bot:answer` plants a Capguard Hall when its kit has one, and its plan follows the general's this round, not last round's (§7.1, §12.2, §18.2 #34) (A198)
+- [ ] T121 [US6] Build the answer policy in `src/sim/rounds/ai/answer.ts` (new), with `bot:answer` in `data/bots.json` and an optional `policy` in `BotSchema` (`src/data/schema.ts`) (§12.2, §18.2 #34) (A198)
   - It plans after the general, as every player-side bot does, and reads the general's current colony through `planningView` (T066). It scores each kit card by its unit's `matchupClass` (T084) against the general's planned squads, weighted by their supply, and leans ×3 toward the best.
   - G8 reports under both policies (T123); G3 and G12 stay on fixed weights.
   - Add the new bot's entry to `data/CHANGELOG-balance.md` in this PR. A new bot reaches no v1 state, so no golden moves.
-- [ ] T122 [US6] Write the guardrail tests in `tests/slow/rounds/duels.test.ts` (new), `tests/slow/rounds/battles.test.ts` (new), `tests/slow/rounds/counters.test.ts` (new) and `tests/slow/rounds/formation.test.ts` (new). They assert G1–G8, G12, G13 and G16 from `rounds` targets. G3 and G12 cells play on the worker pool, and timeouts per file come from measured runtimes; v1's `tests/slow/guardrails.test.ts` stays as it is (§12.3) ⛔ R2-Q9, R2-Q10 (A102)
-- [ ] T123 [US6] Build the evaluators in `tools/lib/rounds/balance.ts` (§12.3, §7.3) ⛔ #35, R2-Q10 (A107, A108, A120)
+- [ ] T122 [US6] Write the guardrail tests in `tests/slow/rounds/duels.test.ts` (new), `tests/slow/rounds/battles.test.ts` (new), `tests/slow/rounds/counters.test.ts` (new) and `tests/slow/rounds/formation.test.ts` (new). They assert G1–G8, G12, G13 and G16 from `rounds` targets. G3 and G12 cells play on the worker pool, and timeouts per file come from measured runtimes; v1's `tests/slow/guardrails.test.ts` stays as it is (§12.3) (A102)
+- [ ] T123 [US6] Build the evaluators in `tools/lib/rounds/balance.ts` (§12.3, §7.3) ⛔ #35 (A107, A108, A120)
   - `evaluateG1` (squad duels through `playRoundClash`) and G2.
   - G3 (round battles, 50 a seat on each run-pool map).
   - G4; G5; G6 (`comeback-r4` with equal max HP in both seats, and the winner's hit share in G4's games).
@@ -773,8 +776,9 @@ S1 to S4: the data, the colony, the round state machine and the planning command
   - G12 (the strict bar on round battles: every clash through `playRoundClash` or a whole round battle, never R1's `playClash`); G13 (the capped share over G4's games and the median clash length).
   - G16 (role-split pairs through `playRoundClash`, swapping ranks 0 and 1 with any third rank left in place, a column per budget).
   - Wire them into `tools/experiment.ts`'s `--rounds` checks (`g3`, `g5`–`g8`, `g11`, `counters` for G12, and a new `formation` check for G16) and into `npm run balance -- guardrails --rounds` in `tools/balance.ts`.
-- [ ] T124 [US6] Run `npx vitest run tests/slow/rounds` and `npm run balance -- guardrails --rounds`, and `npm run sim -- --rounds --seeds 1..40 --player bot:answer --enemy general:lichen-baron --flags merging,adaptive --summary` beside `bot:balanced` (§12.3, §12.4, §18.2 #34) ⛔ #35, X7
+- [ ] T124 [US6] Run `npx vitest run tests/slow/rounds` and `npm run balance -- guardrails --rounds`, and `npm run sim -- --rounds --seeds 1..40 --player bot:answer --enemy general:lichen-baron --flags merging,adaptive --summary` beside `bot:balanced` (§12.3, §12.4, §18.2 #34) ⛔ #35
   - Record each guardrail's numbers, each file's runtime (R2-Q9), both bots' readings as the full reveal's risk, and a proposal for #35's battle-level bands (G4, G6 both clauses, G8 under both policies, G13, G16) in `docs/balance-backlog.md` (A204).
+  - Read R1's watch items on round battles: Capguard Hall at 3 by round (R1: 92% at 300 gold, 2% at 1,500), the answers to the Sporeling and the Capguard with `pinned` on, and G2's Gill Archer under the adopted set (A116).
   - Report a miss with its numbers; a retune across several units waits for the user.
 - [ ] T125 [US6] [USER] Agree the bands with the user, write them into `data/balance-targets.json`'s `rounds` block, and close #35's battle-level part in `SPEC.md` §12.3 (§12.3, §18.2 #35) ⛔ #35 (A204)
   - The split with R2b: R2a sets G4, G6 (both clauses, single battle), G8 under both policies, G13 and G16. R2b sets G14 and G15 and re-reads G8 beside G14 (A204). Say so in #35's Decision line.
@@ -787,14 +791,14 @@ S1 to S4: the data, the colony, the round state machine and the planning command
 
 **S19: the playtest's measures**
 
-- [ ] T126 [US7] Write the cases first in `tests/unit/rounds/playTime.test.ts` (new) and `tests/browser/rounds/reveal.test.ts` (new) (§7.5, §10.2, §16 R2 gate) ⛔ X6, X10, RB-Q3 (A198, A203):
+- [ ] T126 [US7] Write the cases first in `tests/unit/rounds/playTime.test.ts` (new) and `tests/browser/rounds/reveal.test.ts` (new) (§7.5, §10.2, §16 R2 gate) (A198, A203):
   - play time, with an injected clock: planning seconds are kept per round, and the planning, clash and aftermath seconds add up; the clock stops while the tab is hidden and after 60 s without input; Help and settings count; a paused clash counts until the idle cutoff; nothing enters the state or the hash. records-2 adds its run-total cases to this file (run-it-back.md T015);
   - the reveal: with `reveal=last`, round 2's planning shows no "New" sprout before Begin and draws the general's last fielded formation; the clash's first tick puts its units where its real formation says; `round=4&reveal=last` (with `player=bot:balanced`) draws round 3's fielded colony after a headless fast-forward; `general-plans-first` hashes equal in both modes.
-- [ ] T127 [US7] Build the "last fielded" view in `src/app/rounds/urlParams.ts` and `src/render/rounds/preview.ts` (§7.5, §10.2) ⛔ R2-Q1 (A198)
+- [ ] T127 [US7] Build the "last fielded" view in `src/app/rounds/urlParams.ts` and `src/render/rounds/preview.ts` (§7.5, §10.2) (A198)
   - With `reveal=last`, from round 2 the general's colony and squads are drawn as it fielded last round, and this round's plantings appear at Begin with their sprout.
   - The last fielded colony is derived from state, so it works after a `round=` fast-forward: the current colony minus `ai.plans[round].planted`, plus `ai.plans[round].sold` (Call 12; each entry carries its building id and plot).
   - It's view only: the sim and its hash don't change.
-- [ ] T128 [US7] Build `PlayClock` in `src/app/rounds/playTime.ts` (new), the one play-time module: planning seconds per round, and clash and aftermath seconds, by RB-Q3's rule (§8.2, §9.8, §16 R2 gate) ⛔ X6, X10, RB-Q3 (A203)
+- [ ] T128 [US7] Build `PlayClock` in `src/app/rounds/playTime.ts` (new), the one play-time module: planning seconds per round, and clash and aftermath seconds, by RB-Q3's rule (§8.2, §9.8, §16 R2 gate) (A203)
   - The shape: `new PlayClock(now: () => number, opts: { idleMs?: number })`, with `idleMs` 60 000 by default; `setVisible(v)`, `input()` and `phase(round, p)`; readouts `planningSecondsByRound()`, `clashSeconds()` and `aftermathSeconds()`. records-2 adds `total()`, `restore(ms)` and `still` to this module (run-it-back.md T016); R2b moves it to `src/app/playTime.ts` and shows it on the summary (R2b/T109).
   - `src/app/rounds/main.ts` feeds it the phase changes, and passes the readout (the median planning seconds and the battle's minutes) to `src/ui/rounds/report.ts`, which can't import `src/app` (the lint's layering). It also logs the readout to the dev console.
   - It never saves, and nothing in it enters the state or the hash.
@@ -813,7 +817,7 @@ S1 to S4: the data, the colony, the round state machine and the planning command
 - [ ] T132 Step 4: every scenario in `data/scenarios/rounds/` asserts its outcome exactly in `tests/unit/rounds/scenarios.test.ts`, and `npm run sim -- --rounds --scenario clash-cap --until r1 --assert roundLog[0].lanes[0].capped=true` passes from the CLI (§16 R2 step 4)
 - [ ] T133 Step 7: `npx vitest run tests/slow/rounds` asserts and passes the round guardrails, G4, G13 and G16 among them. v1's `tests/slow/guardrails.test.ts` still runs until R2b retires it (§16 R2 step 7)
 - [ ] T134 Step 8: `npm run bench -- --rounds`: R1's full-colony clash inside §13.7's budget (§16 R2 step 8, `tools/bench.ts`)
-- [ ] T135 Step 9: capture with `npm run screenshot -- --dev` (`tools/screenshot.ts`), so T141's and T143's assertions run on each capture (§15.6's assertions 1–5), then Read each PNG against §16 R2 step 9's checklist, minus lives and the route (R2b) (§16 R2 step 9, §15.6) (A076, A077). The captures, each on `scene=rounds&seed=1&player=bot:balanced&enemy=general:scripted` plus the parameters given:
+- [ ] T135 Step 9: capture with `npm run screenshot` (`tools/screenshot.ts`), so T141's and T143's assertions run on each capture (§15.6's assertions 1–5), then Read each PNG against §16 R2 step 9's checklist, minus lives and the route (R2b) (§16 R2 step 9, §15.6) (A076, A077). The captures, each on `scene=rounds&seed=1&player=bot:balanced&enemy=general:scripted` plus the parameters given:
   - `r2a-planning-1`: `round=1&phase=planning`;
   - `r2a-planning-4`: `round=4&phase=planning`, with `--click '[data-building=sporelingBurrow]'` on its tray card, so the marks show;
   - `r2a-clash-start`: `round=4&phase=clash&ticks=1&paused=1`;
@@ -827,20 +831,20 @@ S1 to S4: the data, the colony, the round state machine and the planning command
   - `docs/status.md`: R2a built, the preview link, what waits on the user (the playtest, S21), what R2b needs;
   - `docs/balance-backlog.md`: the measurements, misses and candidates;
   - `data/CHANGELOG-balance.md`: check that every R2a data change has its entry (T014, T101, T121 and T123 each add their own), with the user's approval where it needed one;
-  - `docs/r2a-plan.md`'s As built, recording every name R2b/T001 replaces its placeholders with: the staging folders (`src/sim/rounds/`, `src/app/rounds/`, `src/render/rounds/`, `src/ui/rounds/`, `tools/lib/rounds/`, `tests/unit/rounds/`, `tests/browser/rounds/`, `tests/slow/rounds/`, `tests/roundHelpers.ts`, `data/scenarios/rounds/`); the entry (`ROUNDS_PREVIEW`, `scene=rounds`, the title button); the switches (`--rounds`, `--dev`); the `r2-…` goldens and `ROUND_REPLAYS`; the play-time module (`src/app/rounds/playTime.ts`) and its test (`tests/unit/rounds/playTime.test.ts`), which records-2 extends; where T136's test inventory is; and any name a session changed from the Technical context table;
+  - `docs/r2a-plan.md`'s As built, recording every name R2b/T001 replaces its placeholders with: the staging folders (`src/sim/rounds/`, `src/app/rounds/`, `src/render/rounds/`, `src/ui/rounds/`, `tools/lib/rounds/`, `tests/unit/rounds/`, `tests/browser/rounds/`, `tests/slow/rounds/`, `tests/roundHelpers.ts`, `data/scenarios/rounds/`); the entry (`scene=rounds`, the title's dev-site button); the switch (`--rounds`); the `r2-…` goldens and `ROUND_REPLAYS`; the play-time module (`src/app/rounds/playTime.ts`) and its test (`tests/unit/rounds/playTime.test.ts`), which records-2 extends; where T136's test inventory is; and any name a session changed from the Technical context table;
   - `CLAUDE.md`'s "Dev-site builds": `scene=rounds` opens R2a's preview on dev builds;
   - `.claude/rules/v1-code.md`: one line saying `rounds/` folders are v2's staging and never import v1's `BattleState`;
   - this file's ticks.
 
 **S21: the playtest gate** (docs, plus any data tuning T139 agrees; once S20's PR is merged and deployed to the dev site)
 
-- [ ] T137 [USER] The playtest gate. X3: R4a has merged first and passed its review (R4/T039). The user plays battles on the dev site, at least one on Twin Roots and one with `reveal=last` (R2-Q1's A/B), and answers §16 R2 gate questions 1, 2, 3, 6 and 7 (§16 R2 gate, §18.2 #52) ⛔ X3 (A202)
+- [ ] T137 [USER] The playtest gate. X3: R4a merged first and passed its review (R4/T039, 2026-11-02). The user plays battles on the dev site, at least one on Twin Roots and one with `reveal=last` (R2-Q1's A/B), and answers §16 R2 gate questions 1, 2, 3, 6 and 7 (§16 R2 gate, §18.2 #52) (A202)
   - The links: `https://swalliso.github.io/Sambattler/dev/?scene=rounds` (the title's preview button opens the same: Old Mother Mold, adaptive, with powers, Call 28), `…/dev/?scene=rounds&map=twin-roots&enemy=general:lichen-baron`, and `…/dev/?scene=rounds&reveal=last`.
   - Under X3 (R4/T039) it also asks "Could you spot the Elders, and tell a Bloomed unit from a base one?" (A162; R4-Q3 gave only Elders a rim) and takes #52's first reading on Twin Roots: does the shape language read at its scale (about 1.78× in a 1280×720 window, A077)?
   - Planning seconds per round are read off the report (X6).
   - Tell the user first: Help still describes v1 until R2b, and the preview plays no battle sounds (R2b/T038).
 - [ ] T144 Write the playtest down: the answers in `docs/playtest-feedback.md`, newest first; the gate's result and the planning seconds per round in `docs/r2a-plan.md`'s As built; and in `docs/status.md`, R2a's gate answered and what R2b's S0 needs (§16 R2 gate, CLAUDE.md "Where things get written down")
-- [ ] T139 [USER] Review with the user: tune the data from the playtest (a rule change or a retune across several units waits for their OK; a data change gets its `data/CHANGELOG-balance.md` entry, and one that moves goldens runs `npm run golden -- update`), decide what R2b changes, record it in `docs/r2a-plan.md` and `docs/status.md`, and agree to start R2b's S0 (§12.4, §16 R2) ⛔ X1
+- [ ] T139 [USER] Review with the user: tune the data from the playtest (a rule change or a retune across several units waits for their OK; a data change gets its `data/CHANGELOG-balance.md` entry, and one that moves goldens runs `npm run golden -- update`), decide what R2b changes, record it in `docs/r2a-plan.md` and `docs/status.md`, and agree to start R2b's S0 (§12.4, §16 R2)
 
 **Checkpoint:** S20: T129–T135's commands pass, with T141's and T143's assertions green on every capture. S21: T137's answers are in `docs/playtest-feedback.md` and the user has agreed R2b's start.
 
@@ -876,30 +880,30 @@ Each session is about a day, ends in one PR into `develop` (opened when the user
 | Session | Tasks | Branch | Gate (true before starting) | Ends with |
 |---|---|---|---|---|
 | S0 | T001–T006 | `feature/r2a-plan` | R1's review gate passed (R1/T049, R1/T050); R1's results in `docs/balance-backlog.md` | `docs/r2a-plan.md` agreed; R2a's decisions in `docs/tasks/clarify.md` and SPEC; `docs/status.md` updated |
-| S1 | T007–T014 | `feature/r2a-data` | S0 merged; #7–#9, X4, X5, R2-Q2, R2-Q5 and #53 decided | The rounds data, kept out of v1's library; R1's set as default data; v1's goldens refreshed once; CHANGELOG entry |
-| S2 | T015–T020 | `feature/r2a-colony` | S0 merged; #11, #19, R2-Q11 decided; R1's `formation.ts` on develop | Map colonies, `colony.ts`, the formation's pure core; no golden moved |
-| S3a | T023–T025, T140, T026 | `feature/r2a-state` | S1 and S2 merged; R2-Q8 and M7-Q1 decided | The round types, the library and compiled sides with no display text, the modifier DSL with its new triggers and `rank` |
+| S1 | T007–T014 | `feature/r2a-data` | S0 merged | The rounds data, kept out of v1's library; R1's set as default data; v1's goldens refreshed once; CHANGELOG entry |
+| S2 | T015–T020 | `feature/r2a-colony` | S0 merged; R1's `formation.ts` on develop | Map colonies, `colony.ts`, the formation's pure core; no golden moved |
+| S3a | T023–T025, T140, T026 | `feature/r2a-state` | S1 and S2 merged | The round types, the library and compiled sides with no display text, the modifier DSL with its new triggers and `rank` |
 | S3b | T021, T022, T027–T029 | `feature/r2a-create` | S3a merged | The round harness, `createBattle` into round 1, the step by phase, hashing, scenarios in round form |
-| S4 | T030–T034 | `feature/r2a-planning` | S3b merged; X4 decided, and #43 and #51 if X4 is yes | Planning commands with refusals and refunds; the kit; `formationOf` and `mergePreview` on state |
-| S5 | T035–T041 | `feature/r2a-combat` | S4 merged; #8, #10, #12 decided | The kept combat rules copied and stripped; emplacements |
-| S6 | T042, T046, T043–T045 | `feature/r2a-clash` | S5 merged; R2-Q11, #12, #13, #25 decided | Per-squad stats; Begin, the arrival and the muster; lane ends and freeze |
-| S7 | T047–T052 | `feature/r2a-scoring` | S6 merged; X5, #22, #23 decided | Scoring, the Heartcap race, the Decision; every rule scenario passing (US1 done) |
-| S8 | T053–T057 | `feature/r2a-economy` | S7 merged; R2-Q2, M6-Q1 decided | Opening a round, income, stats per round, the summary |
+| S4 | T030–T034 | `feature/r2a-planning` | S3b merged | Planning commands with refusals and refunds; the kit; `formationOf` and `mergePreview` on state |
+| S5 | T035–T041 | `feature/r2a-combat` | S4 merged | The kept combat rules copied and stripped; emplacements |
+| S6 | T042, T046, T043–T045 | `feature/r2a-clash` | S5 merged | Per-squad stats; Begin, the arrival with its shield, and the muster; lane ends and freeze |
+| S7 | T047–T052 | `feature/r2a-scoring` | S6 merged | Scoring, the Heartcap race, the Decision; every rule scenario passing (US1 done) |
+| S8 | T053–T057 | `feature/r2a-economy` | S7 merged | Opening a round, income, stats per round, the summary |
 | S9 | T058–T064 | `feature/r2a-headless` | S8 merged | `runHeadless` by phase, `npm run sim -- --rounds`, round asserts, `ROUND_REPLAYS` in the golden tool, determinism tests |
-| S10a | T065–T069 | `feature/r2a-general` | S9 merged; R2-Q4, R2-Q6, #29, #30 decided | The general plans first through `planningView`; its scores, turn and profiles; bots plan after it |
+| S10a | T065–T069 | `feature/r2a-general` | S9 merged | The general plans first through `planningView`; its scores, turn and profiles; bots plan after it |
 | S10b | T070–T073 | `feature/r2a-general-check` | S10a merged | `general-plans-first`, the round smoke, the first round golden, step 3's reading (US2 done) |
-| S11 | T074–T080, T141, T081 | `feature/r2a-ui-loop` | S10b merged; R2-Q12 decided | The dev-only entry with its defaults, the loop by phase with `battleView.ts`'s mounts, input, the bridge, params, `--dev` and assertions 1–3; plots on the field |
-| S12 | T082, T083, T142, T084–T086 | `feature/r2a-ui-field` | S11 merged; R2-Q12 decided | The formation and merge previews, `matchupClass` and its marks, the aftermath, the field's details |
+| S11 | T074–T080, T141, T081 | `feature/r2a-ui-loop` | S10b merged | The preview entry with its defaults, the loop by phase with `battleView.ts`'s mounts, input, the bridge, params and assertions 1–3; plots on the field |
+| S12 | T082, T083, T142, T084–T086 | `feature/r2a-ui-field` | S11 merged | The formation and merge previews, `matchupClass` and its marks, the aftermath, the field's details |
 | S13 | T087–T091 | `feature/r2a-ui-bands` | S11 merged | Both Heartcaps, chips, tally, lane tug, tooltips, the Intent panel, each in its mount |
-| S14 | T092–T097, T143 | `feature/r2a-ui-panels` | S12 and S13 merged; X4 and R2-Q12 decided | Tray, inspect, the planning and clash chrome, the report by round, assertion 4 (US3 done) |
+| S14 | T092–T097, T143 | `feature/r2a-ui-panels` | S12 and S13 merged | Tray, inspect, the planning and clash chrome, the report by round, assertion 4 (US3 done) |
 | S14b | T145, T146 | `feature/r2a-rough-playtest` | S14 merged and deployed to the dev site | The user's rough-playtest notes in `docs/playtest-feedback.md`, and any change to S15–S20 written into this list (docs only); S15 and S16 may start |
-| S15 | T098–T103 | `feature/r2a-counters` | S14b done; R2-Q3, #14, #15, #31, X8 decided | The counter cycle in rounds; X8's readouts and knobs; the adaptive smoke (US4 done) |
-| S16 | T104–T111 | `feature/r2a-powers` | S14b done; #25 and R2-Q7 decided | The power once per clash, its controls, its smokes and replays (US5 done) |
+| S15 | T098–T103 | `feature/r2a-counters` | S14b done | The counter cycle in rounds; X8's readouts and knobs; the adaptive smoke (US4 done) |
+| S16 | T104–T111 | `feature/r2a-powers` | S14b done | The power once per clash, its controls, its smokes and replays (US5 done) |
 | S17 | T112–T118 | `feature/r2a-tools` | S15 and S16 merged | Twin Roots and merge-mirror replays, the round bench and frame check, balance and experiment in rounds with `playRoundClash` |
-| S18 | T119–T125 | `feature/r2a-guardrails` | S17 merged; X5, X7, R2-Q9, R2-Q10 decided; #35's approach agreed in T004 (its battle-level bands are set in T124–T125) | The round guardrails in `tests/slow/rounds/`, the answer bot, the bands agreed (US6 done) |
-| S19 | T126–T128 | `feature/r2a-measures` | S18 merged; R2-Q1, X6, X10 and RB-Q3 decided | The "last fielded" view and planning seconds per round on the report (US7 done) |
+| S18 | T119–T125 | `feature/r2a-guardrails` | S17 merged; #35's approach agreed at S0 (T124 and T125 set its battle-level bands) | The round guardrails in `tests/slow/rounds/`, the answer bot, the bands agreed (US6 done) |
+| S19 | T126–T128 | `feature/r2a-measures` | S18 merged | The "last fielded" view and planning seconds per round on the report (US7 done) |
 | S20 | T129–T136, T138 | `feature/r2a-verify` | S19 merged | Steps 1–4 and 7–9 passing; T136's inventory; the docs and As built before the playtest |
-| S21 | T137, T144, T139 | `feature/r2a-gate` | S20 merged and deployed to the dev site; R4/T039 passed (X3) | The playtest answered and written down; the user's tuning calls; R2b may start |
+| S21 | T137, T144, T139 | `feature/r2a-gate` | S20 merged and deployed to the dev site; R4/T039 passed (2026-11-02) | The playtest answered and written down; the user's tuning calls; R2b may start |
 
 ## Coverage
 
@@ -929,7 +933,7 @@ Each session is about a day, ends in one PR into `develop` (opened when the user
 | Scope: settling §18.2 #16–#35 in R2's plan | `docs/r2a-plan.md` (T003–T005) for #19, #22, #23, #25, #29–#31, #34 (X7), and #35's battle-level bands (T124, T125); `docs/r2b-plan.md` (R2b's S0) for the rest, #35's G14 and G15 among them |
 | Scope: link previews | R2b |
 | Scope: tools (`sim` and `balance` play rounds, new goldens, round guardrails, screenshot params) | T058–T064, T071–T073, T076, T080, T112–T125, T135, T141, T143; the run parts are R2b's |
-| Not in R2: copies until R3 | X4 may bring them into R2a: T032, T033, T093 |
+| Not in R2: copies until R3 | R3 (X4 decided no, 2026-11-02): T032 and T033 build the kit without copies |
 | Not in R2: the shape language's art, the card text, the rewritten Help | R4a (X3) before T137; R4b |
 | Done when: a human can play a whole run in rounds on the dev site | R2b; R2a's single battle in T074–T097 and T137 |
 | Done when: nothing from the retired list remains | R2b |
@@ -959,8 +963,8 @@ Each session is about a day, ends in one PR into `develop` (opened when the user
 | A101 both loops must coexist (high) | X2 |
 | A193 the flat cap sends battles to round 9 (high) | X5; T008, T050, T119 |
 | A195 R2 is several milestones (high) | X1 |
-| A196 copy-free mass builds (high, R1) | X4; T032, T033 |
-| A194 the general's copies can't follow the player's rule (high, R3) | R3 (#42); under X4, T033 keeps the general on `maxOwned` |
+| A196 copy-free mass builds (high, R1) | X4 (no: R1's set passes without copies); R3 |
+| A194 the general's copies can't follow the player's rule (high, R3) | R3 (#42); T033 keeps the general on `maxOwned` |
 | A021 v1's idle march (high, R1) | Call 20; T035, T038 |
 | A026 the muster's step and skipped systems (medium) | R2-Q11; T042–T044 |
 | A027 §13.4's "unchanged" rows (medium) | T005; T036–T040 |
@@ -1006,8 +1010,8 @@ Each session is about a day, ends in one PR into `develop` (opened when the user
 | A022 Twin Roots draws under the cap (medium, R1) | X5 |
 | A096 Cordis's knit bonuses under the muster (medium) | R2-Q7; T104, T107; content is R2b's |
 | A097 the boss is mechanically long (medium) | X5; R2b |
-| A145 copies in single battles (medium, R3) | X4, #43, #51; Call 29; T032, T033 |
+| A145 copies in single battles (medium, R3) | X4 (no); Call 29; R3 |
 | A156 who writes the round Help and tips (medium) | R2b; R2a ships no tips or round Help |
-| A200 the full colony over 100 supply (medium) | #7 at R1's gate; T114 |
-| Lows: A031 (T015, T016), A032 (Call 4; T019, T034, T042), A033 (X4), A034 (Call 8; T030, T031), A035 and A209 (R2-Q11; T047, T052), A036 and A121 (Call 7; T059, T060), A038 (T010), A040 (R2-Q11; T019), A047 (#30; T023, T042, T067), A049 and A206 (X8; T064, T100, T101), A051 (T098), A052 (Call 10; T027, T069), A053 (R2-Q11; T104), A055 (#15; T098), A068 (Call 13; T051, T092, T096), A069 (Call 22; T084), A070 (Call 12; T023, T068, T091), A071 (Call 23; T092, T095), A072 (Call 21; T081), A075 (Call 16; T074, T076), A078 (R2-Q12; T085, T097), A110 (Call 20; T035), A112 (Call 24; T114), A113 (Call 24; T113, T115), A115 (Call 17; T060, T063, T112), A116 (R1's gate; T002, T014), A118 (T011, T012), A120 (R2-Q10; T123), A162 (R4/T039; T137), A187 (`measure=frames` in the preview's bridge only; T079, T115), A202 (X3; T137), A203 (X6, X10; T126, T128), A204 (#35; T124, T125), A205 (R2-Q2; T008, T053, T055) | as listed |
+| A200 the full colony over 100 supply (medium) | #7 and R1-Q5 (at most 150 live units a side); T114 |
+| Lows: A031 (T015, T016), A032 (Call 4; T019, T034, T042), A033 (X4: no copies in R2a), A034 (Call 8; T030, T031), A035 and A209 (R2-Q11; T047, T052), A036 and A121 (Call 7; T059, T060), A038 (T010), A040 (R2-Q11; T019), A047 (#30; T023, T042, T067), A049 and A206 (X8; T064, T100, T101), A051 (T098), A052 (Call 10; T027, T069), A053 (R2-Q11; T104), A055 (#15; T098), A068 (Call 13; T051, T092, T096), A069 (Call 22; T084), A070 (Call 12; T023, T068, T091), A071 (Call 23; T092, T095), A072 (Call 21; T081), A075 (Call 16; T074, T076), A078 (R2-Q12; T085, T097), A110 (Call 20; T035), A112 (Call 24; T114), A113 (Call 24; T113, T115), A115 (Call 17; T060, T063, T112), A116 (R1's gate; T002, T014), A118 (T011, T012), A120 (R2-Q10; T123), A162 (R4/T039; T137), A187 (`measure=frames` in the preview's bridge only; T079, T115), A202 (X3; T137), A203 (X6, X10; T126, T128), A204 (#35; T124, T125), A205 (R2-Q2; T008, T053, T055) | as listed |
 | Lows that are R2b's: A037 (R2-Q20), A050 (R2-Q17), A054 (the Sigil), A067 (tips), A073 (the run summary's columns), A074 (the title blurb and og image), A079 (`scene=draft`), A114 (Appendix A's tags), A117 (old `?proto=` links), A201 (R2-Q13) | R2b |

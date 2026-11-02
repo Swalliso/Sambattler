@@ -1,6 +1,6 @@
 # Where things stand
 
-Updated 2026-11-02, on `feature/r1-gate` (a docs PR into `develop`). This is the hand-over page. It covers what we're working on, what's waiting on the user's decision, and where each piece lives. Update it when work lands or the user decides something. Keep the detail in the docs it links to.
+Updated 2026-11-02, on `feature/r2a-plan` (a docs PR into `develop`). This is the hand-over page. It covers what we're working on, what's waiting on the user's decision, and where each piece lives. Update it when work lands or the user decides something. Keep the detail in the docs it links to.
 
 ## In short
 
@@ -18,19 +18,51 @@ Updated 2026-11-02, on `feature/r1-gate` (a docs PR into `develop`). This is the
   See [SPEC §0.1](../SPEC.md#01-what-changed-in-v2), [§1.3](../SPEC.md#13-v2-decisions-2026-10-31) and the [P3 notes](playtest-feedback.md#2026-10-31-p3-the-combat-rework-the-user).
 - **SPEC v2 is on `develop`** ([#39](https://github.com/Swalliso/Sambattler/pull/39)). **Nothing in v2 is built yet.** Until milestone R2 lands, the code follows v1: the M5 battle, with the rework's pieces behind `?proto=rework` on the dev site.
 - **The spec is broken into task lists** in [docs/tasks/](tasks/README.md) ([#40](https://github.com/Swalliso/Sambattler/pull/40), on `develop`), spec-kit style: one list per milestone, one session per row of its Sessions table. The decisions each milestone needs from the user are in [clarify.md](tasks/clarify.md), and the problems the breakdown found in SPEC v2 are in [spec-analysis.md](tasks/spec-analysis.md). Lists after R1's are drafts, refreshed when each milestone's plan is agreed.
-- **Milestone R1, the clash check, is done** ([SPEC §16](../SPEC.md#16-milestone-plan)). A headless tool fought whole armies at equal gold, with no rule change, to set squad sizes and check that every strong army has an answer before the round loop is built. At its review gate on 2026-11-02 you took every recommendation (below). **Next: R2a S0,** R2a's plan.
+- **Milestone R1, the clash check, is done** ([SPEC §16](../SPEC.md#16-milestone-plan)). A headless tool fought whole armies at equal gold, with no rule change, to set squad sizes and check that every strong army has an answer before the round loop is built. At its review gate on 2026-11-02 you took every recommendation (below). **R2a's plan is agreed** (S0, 2026-11-02), and **R2a S1 and S2 are next**, side by side.
 - **Then:**
-  - R2: rounds, the general plans first, lives, and the planning screen. R1's results are in `docs/balance-backlog.md` and agreed, so R2a may start. The task lists split it in two (X1): R2a, a single battle in rounds, then R2b, the run in rounds. R2a gets a rough playtest after S14, as soon as a battle in rounds is properly playable and before its counter cycle and powers (R2-Q25, agreed 2026-11-01), and S21's playtest stays the gate;
+  - R2: rounds, the general plans first, lives, and the planning screen. R2a's plan, [r2a-plan.md](r2a-plan.md), was agreed on 2026-11-02. The task lists split it in two (X1): R2a, a single battle in rounds, then R2b, the run in rounds. R2a gets a rough playtest after S14, as soon as a battle in rounds is properly playable and before its counter cycle and powers (R2-Q25, agreed 2026-11-01), and S21's playtest stays the gate;
   - R3: the kit, the six archetypes, augments, combos and run packs;
   - R4: readable armies and the card-text pass, in two parts (X3, agreed 2026-11-01): R4a, the shapes on the field, now beside R1 (below), and R4b, the cards, after R3;
   - then M6–M8, rewritten for v2.
 
   [docs/tasks/README.md](tasks/README.md) has the full order and every milestone's sessions.
 
-## Next session: R2a S0, R2a's plan
+## Next sessions: R2a S1 and S2, side by side
 
-- **Work from** [docs/tasks/r2a-battle-in-rounds.md](tasks/r2a-battle-in-rounds.md), row S0 (T001–T006, `feature/r2a-plan`): write `docs/r2a-plan.md` and agree it with you, settle R2a's calls in [clarify.md](tasks/clarify.md) (R2-Q3 among them), and refresh R2a's task list. Its gate has passed: R1's review gate (R1/T049, R1/T050), and X1 and X2.
-- **What R2a starts from** (R2a/T009–T011, then S1 writes the data): R1's chosen set as default data, that is all of `kept`, the arrival shield under its own key and Capguard Hall's squad at 3, with the Elder's splash on; the scoring curve from X5; no copies before R3 (D45); and the Anti-Ranged kind with the three fixes to the counter sets (§7.4).
+- **Work from** [docs/tasks/r2a-battle-in-rounds.md](tasks/r2a-battle-in-rounds.md). Each waits only for S0 to merge.
+  - **S1** (`feature/r2a-data`, T007–T014): the `rounds` data, kept out of v1's library; R1's set as default data (all of `kept`, the arrival shield under `balance.rounds.arrivalShield`, the squads with Capguard Hall at 3, `tierRadiusMult` 1.0); R2-Q5's weights, with `aiWeight` retired. v1's goldens move once, with a CHANGELOG entry.
+  - **S2** (`feature/r2a-colony`, T015–T020): the maps' colonies with `startRanks` (#19), `colony.ts`, and the formation's pure core on R1's `formation.ts`. No golden moves.
+- Then S3a, once both have merged.
+
+## R2a, a battle in rounds
+
+- **S0** (`feature/r2a-plan`, T001–T006): the plan, [docs/r2a-plan.md](r2a-plan.md), agreed on 2026-11-02.
+  - **The calls:** you took every recommendation for R2a's 26 open calls. Each is dated in [clarify.md](tasks/clarify.md) and written into SPEC.
+  - **Eight depart from or add to SPEC's first guess:**
+    - interest at 1 per 10 gold, up to 30 (R2-Q2);
+    - eliteShare counting Elder parts only (R2-Q3);
+    - a single battle's general on its listed weights (R2-Q4);
+    - G16 on role-split pairs (R2-Q10);
+    - the answer bot (X7);
+    - no Gray Rot trait (M7-Q1);
+    - `colony.startRanks` (#19);
+    - #35's approach to the bands.
+  - **Under X2,** the preview entry `scene=rounds` loads on every build, with its title button on the dev site only, so there's no dev-only gate and no `--dev` mode.
+  - **The task list is refreshed:**
+    - R1's set and the decisions are in its tasks;
+    - Call 30 places the arrival shield before the muster, as R1 measured it;
+    - the copy tasks are gone (X4).
+    - R2b's list no longer names `ROUNDS_PREVIEW` or `--dev`.
+- **What R2a starts from:** R1's chosen set as default data (all of `kept`, the arrival shield, Capguard Hall's squad at 3, the Elder's splash on); X5's cap and Decision by share; no copies before R3 (D45); the Anti-Ranged kind and the three fixes to the counter sets (§7.4); and eliteShare by Elder parts.
+- **For R2a to watch** (R1):
+  - Capguard Hall at 3 still won 92% at 300 gold and 2% at 1,500;
+  - `pinned` alone weakened the answers to the Sporeling and the Capguard;
+  - v1's G2 newly failed on the Gill Archer under `kept`;
+  - no scoring rule brought R1's race model inside G4's band.
+- **Open for you in R2a:**
+  - the rough playtest after S14 (S14b, T145);
+  - the battle-level bands at S18 (T125);
+  - the playtest gate at S21 (T137, T139).
 
 ## R1, the clash check: done (2026-11-02)
 
@@ -100,13 +132,14 @@ Updated 2026-11-02, on `feature/r1-gate` (a docs PR into `develop`). This is the
 
 ## Waiting on the user
 
-1. **R2a's plan (R2a S0):** agreeing `docs/r2a-plan.md` and settling R2a's calls in [clarify.md](tasks/clarify.md), R2-Q3 (how eliteShare counts merged units) among them. R1's review gate passed on 2026-11-02.
+1. **R2a's next calls:** none until S14b, the rough playtest after S14 (T145). Then #35's battle-level bands at S18 (T125), and the playtest gate at S21. R2a's plan and its 26 calls were settled at S0 on 2026-11-02.
 2. **The decisions that shape the milestones**, X1–X10 in [clarify.md](tasks/clarify.md#index). Each has a recommendation. The task lists assume them and say what changes otherwise.
    - X1 and X2 were decided on 2026-11-02. R2 splits into R2a and R2b, and R2a is built beside v1 on `develop`. You also said `develop` may switch wholly to v2 from now on, so R2b's switch-over needn't go through `feature/r2b-cutover`. Verify still stays green on every PR, since a failing `develop` blocks every deploy. X3 (split R4, the field's shapes first) and X10 (Run it back in two parts) were agreed on 2026-11-01.
    - X4 and X5 were decided at R1's review gate on 2026-11-02: no copies before R3, and a cap of 25% of the loser's max HP with a Decision by share.
-   - Later: X6 (run length), X7 (an "answer what you see" bot), X8 (measuring the general), X9 (flyers out of the first release).
+   - X6, X7 and X8 were decided at R2a S0 on 2026-11-02: measure the run's length first, add the answer bot, and measure the general before changing §7.2.
+   - Later: X9 (flyers out of the first release).
 3. **The six core archetypes** are a first cut the user wants to discuss further. The sixth slot is open: the Burster Pod, or the Puffball Mortar ([§11.2](../SPEC.md#112-velvet-bloom-buildings)). It's §18.2 #36 in clarify.md: R1's reading (2026-11-02) supports the Burster Pod, and the call comes at R3's plan.
-4. **The open rules in §18.2** now each have a block in [clarify.md](tasks/clarify.md) with a recommendation, filed under the milestone that needs them. Some recommendations disagree with SPEC's first guess and say why. The rows R2 needs (#16–#35) include #32: what happens to runs saved before R2.
+4. **The open rules in §18.2** now each have a block in [clarify.md](tasks/clarify.md) with a recommendation, filed under the milestone that needs them. Some recommendations disagree with SPEC's first guess and say why. R2a's rows (#19, #22, #23, #25, #29–#31 and #34) were settled at its S0, with #35's approach. R2b's (#16–#18, #20, #21, #24, #26–#28, #32 and #33) wait for R2b S0, #32 among them: what happens to runs saved before R2.
 5. **A release to `main`:** only when the user asks.
 
 ## Where things live
@@ -128,7 +161,8 @@ Updated 2026-11-02, on `feature/r1-gate` (a docs PR into `develop`). This is the
 
 | Work | Where | State |
 |---|---|---|
-| R1 S8: R1's review gate (2026-11-02) | [#66](https://github.com/Swalliso/Sambattler/pull/66), [clarify.md](tasks/clarify.md) #7–#15, X4, X5 and #36, SPEC §4.6, §5.2, §5.3, §5.6, §6.5, §6.7, §7.4, §11.2, §11.6, §13.7, §16 R2 and §18.2 | Every recommendation taken. R1 is done, and R2a S0 is next |
+| R2a S0: R2a's plan and its calls (2026-11-02) | The `feature/r2a-plan` PR, [r2a-plan.md](r2a-plan.md), [clarify.md](tasks/clarify.md) (26 calls), SPEC, [r2a-battle-in-rounds.md](tasks/r2a-battle-in-rounds.md) | Plan agreed, every recommendation taken. R2a S1 and S2 are next |
+| R1 S8: R1's review gate (2026-11-02) | [#66](https://github.com/Swalliso/Sambattler/pull/66), [clarify.md](tasks/clarify.md) #7–#15, X4, X5 and #36, SPEC §4.6, §5.2, §5.3, §5.6, §6.5, §6.7, §7.4, §11.2, §11.6, §13.7, §16 R2 and §18.2 | Merged. Every recommendation taken. R1 is done |
 | R1 S7: R1's runs and write-up (2026-11-02) | [#65](https://github.com/Swalliso/Sambattler/pull/65), [balance-backlog.md](balance-backlog.md#r1--the-clash-check-2026-11-02), [r1-plan.md](r1-plan.md#as-built) | Merged. In 65 runs four monos beat `bot:balanced`, and `kept` with the arrival shield and Capguard Hall at 3 is the only set that passes every bar |
 | R4a's review gate passed, and X1 and X2 decided (2026-11-02) | [#64](https://github.com/Swalliso/Sambattler/pull/64), [r4a-plan.md](r4a-plan.md#as-built), [clarify.md](tasks/clarify.md) X1 and X2 | Done. R4a is finished. R2 splits into R2a and R2b, R2a goes beside v1, and `develop` may switch wholly to v2 |
 | R4a-S5: the sides' contrast, and R4a's verification (2026-11-02) | [#63](https://github.com/Swalliso/Sambattler/pull/63), `tests/unit/contrast.test.ts`, [r4a-plan.md](r4a-plan.md#as-built) | Merged. The Gray Rot is a light bone, and the sides differ by 1.51–2.13:1 under both filters |
