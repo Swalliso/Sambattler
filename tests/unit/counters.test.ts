@@ -7,7 +7,7 @@ import { SIDES, other } from '../../src/sim/index.ts';
 import type { Side } from '../../src/sim/index.ts';
 import {
   armyIds, clashCache, clashG13, clashRace, counterAnswers, counterBots, counterBotSpec, evaluateClashCounters, evaluateClashG3, evaluateClashG4Row, evaluateCounters,
-  evaluateG3, g3Row, uniqueCells,
+  evaluateG3, evaluatePairings, g3Row, pairingBotSpec, uniqueCells,
 } from '../../tools/lib/balance.ts';
 import type { Cell, CellRecord, ClashRunner } from '../../tools/lib/balance.ts';
 import { armyFromBot, playClash } from '../../tools/lib/clash.ts';
@@ -339,5 +339,25 @@ describe("the race section: the G4 row, the cap-binding share and drawn rounds (
     expect(v.all).toMatchObject({ clashes: 6, binds: 1 / 6, bindsStorm: 4 / 6, drawn: 2 / 6 });
     expect(v.details.join('\n')).toMatch(/900 \(round 5, ×1\.2\): one 25% → 75%, drawn 25%/);
     expect(v.race.groups).toEqual([]);
+  });
+});
+
+describe("battle 1's pairing table (SPEC §16 R1, §12.3 G14; R2-Q13)", () => {
+  it("plays each starter's candidates against each battle-1 general's army in the enemy seat, and reports the best and the pairings with no answer at 60%", async () => {
+    const pc = protoContent([counterBotSpec(content), pairingBotSpec(content)].join(','));
+    const seen: ClashJob[] = [];
+    // mono Capguard always wins; everything else loses
+    const v = await evaluatePairings(pc, { cache: clashCache(pc, scripted((job) => (job.armies[0].controller === 'bot:mono:capguardHall' ? 'a' : 'b'), seen), { jitter: 0.2 }), seeds: 2 });
+    expect(seen.every((j) => j.seat === 'player' && j.armies[1].controller.startsWith('bot:kit1-'))).toBe(true);
+    expect(new Set(seen.map((j) => j.armies[0].budget))).toEqual(new Set([300, 600, 900]));
+    expect(new Set(seen.map((j) => j.field))).toEqual(new Set(['one', 'twin']));
+    expect(v.rows.map((r) => `${r.commander} ${r.general} ${r.pooled.best} ${r.pooled.rate} ${r.answered}`)).toEqual([
+      'vesper mother-mold bot:mono:capguardHall 1 true', 'vesper lichen-baron bot:mono:capguardHall 1 true',
+      'armilla mother-mold bot:mono:capguardHall 1 true', 'armilla lichen-baron bot:mono:capguardHall 1 true',
+      'cordis mother-mold bot:mono:sporelingBurrow 0 false', 'cordis lichen-baron bot:mono:sporelingBurrow 0 false',
+    ]);
+    expect(v.unanswered).toBeCloseTo(1 / 3);
+    expect(v.budgets.map((b) => b.unanswered)).toEqual([2 / 6, 2 / 6, 2 / 6]);
+    expect(v.details.join('\n')).toMatch(/jitter ±0\.2/);
   });
 });

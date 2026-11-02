@@ -8,7 +8,8 @@ import { findTrios, formationBox, musterKnits, slotPositions } from '../../src/s
 import type { MusterUnit } from '../../src/sim/formation.ts';
 import { createBattle, makeConfig } from '../../src/sim/index.ts';
 import type { BattleState, Side, UnitState } from '../../src/sim/index.ts';
-import { counterBotSpec } from '../../tools/lib/balance.ts';
+import { createRun, generalKit } from '../../src/run/index.ts';
+import { battleOneGenerals, battleOneKit, battleOnePairings, counterBotSpec, pairingBotSpec, starterCandidates } from '../../tools/lib/balance.ts';
 import {
   CLASH, MIRROR_SEED, armyFromBot, armyOf, assignSlots, clashArmyIds, clashField, lineOf, pairLine, pairScore, placeArmy, playClash, playPair, squadSize,
 } from '../../tools/lib/clash.ts';
@@ -564,5 +565,42 @@ describe("a matchup in both seats (`--checks clash --pair`, SPEC §12.2)", () =>
     const [r] = playPair(content, { a: 'bot:balanced', b: 'bot:balanced', budgets: [900], fields: ['one'], seeds: 1 });
     expect(r!.armies.enemy.entries).toEqual(armyFromBot(content, 'bot:balanced', 900, MIRROR_SEED + 1, 8).entries);
     expect(r!.armies.enemy.entries).not.toEqual(r!.armies.player.entries);
+  });
+});
+
+describe("battle 1's pairings (`--checks pairings`, SPEC §7.8, §8.1, §11.10; R2-Q13)", () => {
+  it("pair each commander's starter with each adaptive, non-boss general that appears in battle 1: Old Mother Mold and the Lichen Baron", () => {
+    expect(battleOneGenerals(content)).toEqual(['mother-mold', 'lichen-baron']);
+    expect(battleOnePairings(content).map((p) => `${p.commander} ${p.general}`)).toEqual([
+      'vesper mother-mold', 'vesper lichen-baron', 'armilla mother-mold', 'armilla lichen-baron', 'cordis mother-mold', 'cordis lichen-baron',
+    ]);
+  });
+
+  it("a general's battle-1 kit is its opener's cards, economy filtered, as generalKit gives it at index 1", () => {
+    expect(battleOneKit(content, 'mother-mold')).toEqual(['sporelingBurrow']);
+    expect(battleOneKit(content, 'lichen-baron')).toEqual(['capguardHall']);
+    const run = createRun(content, { seed: 1, commander: 'vesper' });
+    for (const id of battleOneGenerals(content)) {
+      const kit = generalKit(content, run, { kind: 'battle', map: 'bogwater-hollow', general: id }, 1).kit;
+      expect(battleOneKit(content, id)).toEqual(kit.filter((b) => content.buildings[b]!.kind !== 'economy'));
+    }
+  });
+
+  it("a starter's candidates are the monos and even pairs of its army cards", () => {
+    expect(starterCandidates(content, 'vesper')).toEqual(['bot:mono:sporelingBurrow', 'bot:mono:capguardHall', 'bot:pair-sporelingBurrow-capguardHall']);
+    expect(starterCandidates(content, 'armilla')).toEqual(['bot:mono:capguardHall', 'bot:mono:puffballMortar', 'bot:pair-capguardHall-puffballMortar']);
+    expect(starterCandidates(content, 'cordis')).toEqual(['bot:mono:sporelingBurrow', 'bot:mono:gillNest', 'bot:pair-sporelingBurrow-gillNest']);
+  });
+
+  it("the general's battle-1 army builds from its opener and weights limited to its kit, merging as the general does", () => {
+    const pc = protoContent([counterBotSpec(content), pairingBotSpec(content)].join(','));
+    for (const [general, card] of [['mother-mold', 'sporelingBurrow'], ['lichen-baron', 'capguardHall']] as const) {
+      for (const budget of [300, 600, 900]) {
+        const a = armyFromBot(pc, `bot:kit1-${general}`, budget, 1, 8);
+        expect(a.entries.length).toBeGreaterThan(0);
+        expect(a.entries.every((e) => e.buildingId === card && e.mergeOn)).toBe(true);
+      }
+    }
+    for (const c of battleOnePairings(content).flatMap((p) => starterCandidates(content, p.commander))) expect(armyFromBot(pc, c, 600, 1, 8).entries.length).toBeGreaterThan(0);
   });
 });

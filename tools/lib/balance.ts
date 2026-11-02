@@ -8,7 +8,7 @@ import { addBuilding, addUnit } from '../../src/sim/create.ts';
 import { COUNTER_KINDS, SIDES, buildLibrary, counterKindsOf, counterSets, createBattle, makeConfig, other, runHeadless, summarize } from '../../src/sim/index.ts';
 import type { BattleConfig, BattleState, CounterKind, Side, Tier } from '../../src/sim/index.ts';
 import { buildingDef } from '../../src/sim/world.ts';
-import { mapPool, simulateRun } from '../../src/run/index.ts';
+import { createRun, generalKit, mapPool, simulateRun } from '../../src/run/index.ts';
 import { CLASH, MIRROR_SEED, armyFromBot, clashArmyIds, clashField, clashOpts } from './clash.ts';
 import type { Army, ArmyEntry, ClashField, ClashJob, ClashOpts, ClashRecord, FieldId, Reading } from './clash.ts';
 import { rosterIds } from './roster.ts';
@@ -1499,6 +1499,137 @@ export function clashRace(records: readonly CellRecord[], race: readonly ClashRe
   }
   details.push(`     pooled: ${pct(all.binds)} → ${pct(all.bindsStorm)}, drawn ${pct(all.drawn)}`);
   return { cells, all, race: report, details: [...details, ...report.lines] };
+}
+
+// ---- battle 1's pairings (§16 R1, §12.3 G14; R2-Q13, A201) ----
+
+/** The generals a run meets in battle 1: adaptive (runs use no other, `assignGenerals`), not the boss, with 1 in `appearsIn`. */
+export function battleOneGenerals(content: Content): string[] {
+  return Object.values(content.generals).filter((g) => g.adaptive && !g.boss && g.appearsIn.includes(1)).map((g) => g.id);
+}
+
+/** Each commander's starter against each battle-1 general, commanders in the data's order. */
+export function battleOnePairings(content: Content): { commander: string; general: string }[] {
+  const generals = battleOneGenerals(content);
+  return Object.keys(content.commanders).flatMap((commander) => generals.map((general) => ({ commander, general })));
+}
+
+/** A general's battle-1 kit (§7.8 at index 1): `generalKit`'s, its economy and utility cards filtered (R1-Q2). */
+export function battleOneKit(content: Content, general: string): string[] {
+  const cards = new Set(clashArmyIds(content));
+  const run = createRun(content, { seed: 1, commander: Object.keys(content.commanders)[0]! });
+  return generalKit(content, run, { kind: 'battle', map: 'bogwater-hollow', general }, 1).kit.filter((id) => cards.has(id));
+}
+
+/** A starter's candidate armies: each of its army cards' mono, then each even pair, as the counter check names them. */
+export function starterCandidates(content: Content, commander: string): string[] {
+  const order = armyIds(content), mine = new Set(clashArmyIds(content));
+  const cards = content.commanders[commander]!.starter.filter((id) => mine.has(id));
+  const sorted = [...cards].sort((a, b) => order.indexOf(a) - order.indexOf(b));
+  const pairs: string[] = [];
+  for (let i = 0; i < sorted.length; i++) for (let j = i + 1; j < sorted.length; j++) pairs.push(`bot:pair-${sorted[i]}-${sorted[j]}`);
+  return [...cards.map((id) => `bot:mono:${id}`), ...pairs];
+}
+
+/** Each battle-1 general as a bot, `bot:kit1-<id>`: its opener, weights and limits on its battle-1 kit alone, and its merge policy. */
+export function pairingBots(content: Content): Record<string, Omit<BotDef, 'id'>> {
+  const bots: Record<string, Omit<BotDef, 'id'>> = {};
+  for (const id of battleOneGenerals(content)) {
+    const g = content.generals[id]!, kit = new Set(battleOneKit(content, id));
+    const only = <T>(r: Record<string, T> | undefined): Record<string, T> => Object.fromEntries(Object.entries(r ?? {}).filter(([k]) => kit.has(k)));
+    bots[`kit1-${id}`] = {
+      description: `${g.name}'s battle-1 army: its opener and weights on its battle-1 kit (§7.8)`,
+      opener: g.opener.filter((b) => kit.has(b)), weights: only(g.weights), limits: only(g.limits), mergePolicy: g.mergePolicy ?? 'auto', fixedWeights: true,
+    };
+  }
+  return bots;
+}
+
+/** The proto spec that adds `pairingBots`: the pairing check's content is `protoContent` of it with `counterBotSpec`'s pairs. */
+export function pairingBotSpec(content: Content): string {
+  return Object.entries(pairingBots(content)).map(([id, def]) => `bot.${id}:${JSON.stringify(def)}`).join(',');
+}
+
+/** A pairing's answer bar: a candidate that wins this share or more answers the general (§16 R1). */
+const PAIRING_ANSWER = 0.6;
+
+export interface PairingOptions {
+  cache: ClashCache;
+  /** Budgets (default 300, 600 and 900 gold: battle 1's rounds 1, 3 and 5). */
+  budgets?: readonly number[];
+  /** Fields (default the one-lane field and Twin Roots; the one-lane field counts twice in the mean). */
+  fields?: readonly FieldId[];
+  /** Seeds (default 20), the general in the enemy seat only. */
+  seeds?: number;
+}
+
+/** A pairing's reading: per budget and pooled, the best candidate by its mean over the fields, and its rate. */
+export interface PairingRow {
+  commander: string;
+  general: string;
+  budgets: { budget: number; best: string; rate: number }[];
+  pooled: { best: string; rate: number };
+  /** The pooled best wins 60% or more. */
+  answered: boolean;
+  /** Each candidate's mean per budget, then pooled. */
+  candidates: { controller: string; budgets: number[]; pooled: number }[];
+}
+
+export interface PairingVerdict {
+  rows: PairingRow[];
+  /** The share of pairings with no answer at 60% or more, pooled over the budgets. */
+  unanswered: number;
+  budgets: { budget: number; unanswered: number }[];
+  fields: FieldId[];
+  seeds: number;
+  jitter: number;
+  details: string[];
+}
+
+/**
+ * Battle 1's pairing table (§16 R1, R2-Q13's measurement, A201): each commander's starter candidates (its army
+ * cards' monos and even pairs) against each battle-1 general's army, built from its opener and weights on its
+ * battle-1 kit, the general in the enemy seat, seeds 1 to n on each field, at 300, 600 and 900 gold. Both
+ * controllers are `human` in a clash, so no passive applies (R2-Q17 decides their v2 form). It reports each
+ * pairing's best candidate and its rate, per budget and pooled, and the share of pairings with no answer at 60%.
+ */
+export async function evaluatePairings(content: Content, o: PairingOptions): Promise<PairingVerdict> {
+  const budgets = [...(o.budgets ?? [300, 600, 900])], fields = [...(o.fields ?? CLASH_CHECK.fields)], seeds = o.seeds ?? 20;
+  const counted = countedFields(fields);
+  const pairs = battleOnePairings(content);
+  const rows: PairingRow[] = [];
+  // the cache's jitter, as its records carry it
+  let jitter = 0;
+  for (const { commander, general } of pairs) {
+    const b = `bot:kit1-${general}`;
+    const candidates = starterCandidates(content, commander);
+    const cells: Cell[] = candidates.flatMap((a) => fields.flatMap((field) => budgets.flatMap((budget) =>
+      Array.from({ length: seeds }, (_, s): Cell => ({ a, b, field, budget, seed: s + 1, seat: 'player' })))));
+    const records = await o.cache.slim(cells);
+    jitter = records[0]?.jitter ?? 0;
+    const per = fields.length * budgets.length * seeds;
+    const reads = candidates.map((controller, i) => {
+      const at = byBudget(records.slice(i * per, (i + 1) * per), 'a', budgets, fields, 'lowest');
+      return { controller, budgets: at.map((x) => x.mean), pooled: overFields(pooled(at, fields), counted, 'lowest').mean };
+    });
+    const bestOf = (rate: (r: (typeof reads)[number]) => number) => reads.reduce((best, r) => (rate(r) > rate(best) ? r : best));
+    const top = bestOf((r) => r.pooled);
+    rows.push({
+      commander, general, candidates: reads,
+      budgets: budgets.map((budget, k) => { const r = bestOf((x) => x.budgets[k]!); return { budget, best: r.controller, rate: r.budgets[k]! }; }),
+      pooled: { best: top.controller, rate: top.pooled }, answered: top.pooled >= PAIRING_ANSWER,
+    });
+  }
+  const share = (n: number) => n / rows.length;
+  const unanswered = share(rows.filter((r) => !r.answered).length);
+  const perBudget = budgets.map((budget, k) => ({ budget, unanswered: share(rows.filter((r) => r.budgets[k]!.rate < PAIRING_ANSWER).length) }));
+  const name = (c: string) => c.replace(/^bot:/, '');
+  const details = [
+    `battle-1 pairings (§16 R1, §12.3 G14; R2-Q13): each starter's candidates (its army cards' monos and even pairs) against each battle-1 general's army (its opener and weights on its battle-1 kit), the general in the enemy seat, ${seeds} seeds on ${fields.join(', ')}, jitter ${jitter ? `±${jitter}` : 'off'}; passives off (both sides human, R2-Q17). The best candidate's win % (a draw half; the one-lane field twice in the mean)`,
+    ...rows.map((r) => `    ${r.answered ? 'ok  ' : 'none'} ${r.commander} against ${r.general}: ${r.budgets.map((x) => `${x.budget} ${name(x.best)} ${whole(x.rate)}`).join(' · ')} · pooled ${name(r.pooled.best)} ${whole(r.pooled.rate)}`),
+    `no answer at ${pct(PAIRING_ANSWER)} or more: ${rows.filter((r) => !r.answered).length} of ${rows.length} pairings pooled (${pct(unanswered)}); per budget ${perBudget.map((x) => `${x.budget} ${pct(x.unanswered)}`).join(' · ')}`,
+  ];
+  return { rows, unanswered, budgets: perBudget, fields, seeds, jitter, details };
 }
 
 function pct(x: number): string {

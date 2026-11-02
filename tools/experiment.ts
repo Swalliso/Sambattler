@@ -72,12 +72,20 @@
 // when it was capped; the clash winner and §6.7's round result; and the merges at the muster (to Bloomed
 // + to Elder). Then a's score per field and budget, draws worth half. Every record goes in the report,
 // whose label defaults to `clash-pair-<a>-<b>`, with `-<proto>` when `--proto` is set.
+//
+// Battle 1's pairings (pairings, SPEC §16 R1, §12.3 G14, R2-Q13, opt-in): each commander's starter
+// candidates (the monos and even pairs of its army cards) against each battle-1 general's army (its opener
+// and weights on its battle-1 kit, §7.8), the general in the enemy seat, at `--budgets` (default
+// 300,600,900) on `--fields` (default one,twin), `--seeds n` (default 20), `--jitter j` as given, on
+// `--workers n`. Passives are off: a clash plays both sides as human. It prints each pairing's best
+// candidate and its win %, and the share of pairings with no answer at 60% or more.
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { protoContent, ROOT } from './lib/content.ts';
 import {
   CLASH_CHECK, clashCache, clashG13, clashRace, counterBotSpec, evaluateClashCounters, evaluateClashG3, evaluateClashG4Row, evaluateCounters, evaluateG1, evaluateG2,
-  evaluateG3, evaluateG4, evaluateG5, evaluateG6, evaluateG7, evaluateG8, g3Setup, g3Verdict, inProcessRows, rosterIds, supplyDuel, uniqueCells,
+  evaluateG3, evaluateG4, evaluateG5, evaluateG6, evaluateG7, evaluateG8, evaluatePairings, g3Setup, g3Verdict, inProcessRows, pairingBotSpec, rosterIds, supplyDuel,
+  uniqueCells,
 } from './lib/balance.ts';
 import type { G3Verdict, Verdict } from './lib/balance.ts';
 import { runBench } from './lib/bench.ts';
@@ -100,7 +108,7 @@ const ALL = ['duels', 'g3', 'g4', 'g5', 'g6', 'g7', 'g8', 'g11', 'boss'];
 const checks = new Set((opt('--checks') ?? ALL.join(',')).split(','));
 /** The clash check's one matchup (`--pair a,b`). */
 const pair = opt('--pair')?.split(',');
-const defaultLabel = checks.has('clash') ? `clash${pair ? `-pair-${pair.join('-')}` : ''}${proto ? `-${proto}` : ''}` : proto || 'baseline';
+const defaultLabel = checks.has('clash') ? `clash${pair ? `-pair-${pair.join('-')}` : ''}${proto ? `-${proto}` : ''}` : checks.has('pairings') ? `pairings${proto ? `-${proto}` : ''}` : proto || 'baseline';
 const label = opt('--label') ?? defaultLabel.replace(/[^a-zA-Z0-9.=-]+/g, '_');
 /** G3's opponent: `bot:balanced` (the guardrail), or a one-off diagnostic bot added with `--proto bot.<id>:{…}`. */
 const defender = opt('--defender') ?? 'bot:balanced';
@@ -407,6 +415,27 @@ if (checks.has('clash')) {
     } finally {
       await pool?.close();
     }
+  }
+}
+
+if (checks.has('pairings')) {
+  // battle 1's pairings (SPEC §16 R1, R2-Q13): the counter check's pairs and the generals' battle-1 armies join the content
+  if (specPresets(proto).includes('rework')) throw new Error("rework is v1's P3 package, not R1's variant (SPEC §16 R1)");
+  const spec = [proto, counterBotSpec(content), pairingBotSpec(content)].filter(Boolean).join(',');
+  const pc = protoContent(spec);
+  const budgets = (opt('--budgets')?.split(',') ?? ['300', '600', '900']).map(Number);
+  const fields = (opt('--fields')?.split(',') ?? CLASH_CHECK.fields) as FieldId[];
+  const options = { budgets, fields, seeds: Number(opt('--seeds') ?? 20), jitter: Number(opt('--jitter') ?? 0), workers };
+  const pool = workers > 1 ? clashPool(spec, workers) : undefined;
+  try {
+    const t0 = Date.now();
+    const cache = clashCache(pc, pool?.run ?? inProcessClashes(pc), { jitter: options.jitter });
+    const v = await evaluatePairings(pc, { cache, budgets, fields, seeds: options.seeds });
+    const ms = Date.now() - t0;
+    lines.push(...v.details, `pairings: ${cache.stats().played} clashes played for ${cache.stats().cells} cells in ${(ms / 1000).toFixed(1)} s`);
+    out.pairings = { options, rows: v.rows, unanswered: v.unanswered, budgets: v.budgets, timing: { ms, ...cache.stats() } };
+  } finally {
+    await pool?.close();
   }
 }
 
