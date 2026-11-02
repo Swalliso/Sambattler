@@ -14,6 +14,7 @@ import { SIDES, other } from './state.ts';
 import type {
   BattleConfig, BattleModifier, BattleState, BuildingState, Controller, RoundResult, Side, SideConfig, SideState, SideStats, Tier, UnitState,
 } from './state.ts';
+import { squadOf } from './world.ts';
 
 export type Flags = BattleConfig['flags'];
 
@@ -340,13 +341,16 @@ export function addBuilding(state: BattleState, side: Side, buildingId: string, 
   return b;
 }
 
-/** Puts a unit on the field at (x, y), at full HP. Ids rise, so `units` stays sorted by id. */
+/**
+ * Puts a unit on the field at (x, y), at full HP: its squad's own stats if its building's squad has them
+ * (T046), else its side's. Ids rise, so `units` stays sorted by id.
+ */
 export function addUnit(
   state: BattleState, side: Side, unitId: string, lane: number, x: number, y: number, sourceBuildingId: number, tier: Tier = 1,
 ): UnitState {
   const def = state.compiled[side].units[unitId];
   if (!def) throw new Error(`${side} fields no ${unitId}`);
-  const t = def.tiers[tier - 1]!;
+  const t = (squadOf(state, sourceBuildingId)?.stats ?? def).tiers[tier - 1]!;
   const u: UnitState = {
     id: state.nextId++,
     side, lane, unitId, tier,

@@ -45,6 +45,12 @@ export const BATTLE_STATS = ['battle.sporestormStart'] as const;
 export const StatKey = z.enum([...UNIT_STATS, ...BUILDING_STATS, ...SIDE_STATS, ...BATTLE_STATS]);
 /** Building stats that may use positional selectors; they are evaluated when used, not compiled once. */
 export const POSITIONAL_STATS: readonly string[] = ['building.spawnInterval', 'building.goldPerTick'];
+/**
+ * Unit stats may also select by a plot's `rank` and `onLoam`: a battle in rounds compiles them per squad at
+ * Begin (§14.2, T046). v1's compile skips them, since v1 has no ranks and its units stand on no plot.
+ */
+const byPlot = (stat: string, w: { zone?: unknown; adjacentOwnBuildingsGte?: unknown }): boolean =>
+  stat.startsWith('unit.') && w.zone === undefined && w.adjacentOwnBuildingsGte === undefined;
 
 const TierSel = z.union([z.literal(1), z.literal(2), z.literal(3)]);
 export const SelectorSchema = z.object({
@@ -65,8 +71,8 @@ export const ModifierSchema = z.object({
   const scope = m.stat.split('.')[0];
   const positional = w.zone !== undefined || w.onLoam !== undefined || w.adjacentOwnBuildingsGte !== undefined || w.rank !== undefined;
   if ((scope === 'side' || scope === 'battle') && m.where) ctx.addIssue({ code: 'custom', message: `${m.stat} applies to the whole ${scope}; it takes no "where"` });
-  if (positional && !POSITIONAL_STATS.includes(m.stat)) {
-    ctx.addIssue({ code: 'custom', message: `positional selectors (zone, onLoam, adjacentOwnBuildingsGte, rank) only work on ${POSITIONAL_STATS.join(' and ')}` });
+  if (positional && !POSITIONAL_STATS.includes(m.stat) && !byPlot(m.stat, w)) {
+    ctx.addIssue({ code: 'custom', message: `positional selectors (zone, onLoam, adjacentOwnBuildingsGte, rank) only work on ${POSITIONAL_STATS.join(' and ')}, and rank and onLoam on unit stats` });
   }
   if (w.tier !== undefined && scope !== 'unit') ctx.addIssue({ code: 'custom', message: 'a tier selector only applies to unit stats' });
 });

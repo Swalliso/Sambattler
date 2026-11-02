@@ -10,6 +10,7 @@ import {
 } from '../../../src/sim/rounds/index.ts';
 import type { BattleState, CommandBody, SimEvent } from '../../../src/sim/rounds/index.ts';
 import { plant as plantAtOnce } from '../../../src/sim/rounds/planning.ts';
+import { newClash } from '../../../src/sim/rounds/round.ts';
 import { command, content, plant, planningState, plotAt, sell, toggle } from '../../roundHelpers.ts';
 
 const reasons = (events: SimEvent[]): string[] => events.flatMap((e) => (e.t === 'commandRejected' ? [e.reason] : []));
@@ -25,10 +26,7 @@ const enemyBurrow = (): BattleState => createFromScenario(content, scenario({ pl
 
 function toClash(s: BattleState): void {
   s.phase = 'clash';
-  s.clash = {
-    startTick: s.tick,
-    lanes: s.lanes.map(() => ({ ended: false, endTick: 0, winner: null, survivors: { player: 0, enemy: 0 }, damageSupply: { player: 0, enemy: 0 }, margin: 0 })),
-  };
+  s.clash = newClash(s);
 }
 
 describe('planning commands and their refusals (§4.4, §14.5, plan Call 8)', () => {
@@ -109,10 +107,10 @@ describe('planning commands and their refusals (§4.4, §14.5, plan Call 8)', ()
     expect([s.phase, s.buildings, theirs.mergeOn, s.sides.enemy.gold, s.stats.enemy.rejectedCommands]).toEqual(['planning', [theirs], true, 300, 4]);
   });
 
-  it("lets the player's beginClash through its planning half; until Begin's clash half (T043), that half refuses it", () => {
+  it("lets the player's beginClash through its planning half, and its clash half begins the clash (T043)", () => {
     const s = planningState();
-    expect(reasons(command(s, 'player', { type: 'beginClash' }))).toEqual(['notInRoundsYet']);
-    expect(s.phase).toBe('planning');
+    expect(reasons(command(s, 'player', { type: 'beginClash' }))).toEqual([]);
+    expect(s.phase).toBe('clash');
   });
 
   it('refunds 100% in the planning phase a building was planted in, and frees its plot at once', () => {

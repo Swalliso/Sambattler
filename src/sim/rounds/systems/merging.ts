@@ -9,7 +9,7 @@ import { addUnit } from '../create.ts';
 import { fireTriggers } from '../effects.ts';
 import { SIDES } from '../state.ts';
 import type { BattleState, Side, Tier, UnitState } from '../state.ts';
-import { clampToLane, unitDef, unitRadius } from '../world.ts';
+import { clampToLane, frozen, placeOf, unitDef, unitRadius } from '../world.ts';
 
 // Reused scratch (no allocation in the hot loop once warm). `eligible` may hold stale entries past
 // the count in use; they are overwritten on the next pass.
@@ -42,6 +42,7 @@ function resolveKnits(state: BattleState): void {
   for (let i = 0; i < knitting.length; i++) {
     const lead = knitting[i]!;
     if (!lead.knit || (i > 0 && isMember(knitting, i, lead.knit.group))) continue;
+    if (frozen(state, lead.lane)) continue; // a trio shares a lane, and an ended lane's knit holds (§6.7)
     const g = lead.knit.group;
     group.length = 0;
     for (let j = i; j < knitting.length; j++) if (knitting[j]!.knit?.group === g) group.push(knitting[j]!);
@@ -125,13 +126,15 @@ function complete(state: BattleState, trio: UnitState[]): number {
   state.stats[side].merges[tier === 2 ? '2' : '3']++;
   state.events.push({ t: 'merged', side, id: m.id, unitId: m.unitId, tier: tier as 2 | 3, x: m.x, y: m.y });
   const def = state.compiled[side].units[m.unitId]!;
-  fireTriggers(state, side, 'merge', { x: m.x, y: m.y, lane: m.lane, unitId: m.unitId, tier, tags: def.tags, sourceBuildingId: m.sourceBuildingId });
+  fireTriggers(state, side, 'merge', {
+    x: m.x, y: m.y, lane: m.lane, unitId: m.unitId, tier, tags: def.tags, sourceBuildingId: m.sourceBuildingId, place: placeOf(state, m),
+  });
   return tier;
 }
 
 function detectTrios(state: BattleState, side: Side): void {
   let n = 0;
-  for (const u of state.units) if (u.side === side && canMerge(state, u)) eligible[n++] = u;
+  for (const u of state.units) if (u.side === side && !frozen(state, u.lane) && canMerge(state, u)) eligible[n++] = u;
   if (n < 3) return;
   if (reserved.length < n) reserved = new Uint8Array(n * 2);
   reserved.fill(0, 0, n);

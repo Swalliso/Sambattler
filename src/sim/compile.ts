@@ -8,7 +8,7 @@
 // compiled set covers its kit, with every unit resolved at all three merge tiers. Everything reads
 // from the battle's `library`, never from content, so `step` can recompile.
 import type { Content } from '../data/registry.ts';
-import type { BalanceDef, BuildingDef, ModifierDef, UnitDef } from '../data/schema.ts';
+import type { BalanceDef, BuildingDef, ModifierDef, SelectorDef, UnitDef } from '../data/schema.ts';
 import { battleModifiers, buildingStat, collectEffects, resolveStat, unitMatcher } from './effects.ts';
 import { SIDES } from './state.ts';
 import type {
@@ -319,7 +319,15 @@ export function compileBuilding(lib: Library, id: string, mods: readonly Modifie
   return out;
 }
 
-export function compileSide(lib: Library, lo: Loadout, mods: readonly ModifierDef[], triggers: CompiledSide['triggers'] = []): CompiledSide {
+/**
+ * A selector on a plot of a battle in rounds (T046): a `rank`, or `onLoam` on a unit stat. v1 has no ranks
+ * and its units stand on no plot, so it skips such a modifier or trigger rather than apply it to every unit
+ * or building, or fire it whatever its condition.
+ */
+const roundsOnly = (w: SelectorDef | undefined, unitStat: boolean): boolean => !!w && (w.rank !== undefined || (unitStat && w.onLoam !== undefined));
+
+export function compileSide(lib: Library, lo: Loadout, all: readonly ModifierDef[], triggers: CompiledSide['triggers'] = []): CompiledSide {
+  const mods = all.filter((m) => !roundsOnly(m.where, m.stat.startsWith('unit.')));
   const bal = lib.balance;
   const m = (stat: string, base: number) => resolveStat(base, mods, stat);
   const buildings: Record<string, CompiledBuilding> = {};
@@ -355,7 +363,7 @@ export function compileSide(lib: Library, lo: Loadout, mods: readonly ModifierDe
       perLane: bal.turret.perLane,
     },
     // the Heartcap breach prototype's triggers come after the loadout's (absent by default)
-    triggers: [...triggers, ...(bal.sideTriggers ?? [])],
+    triggers: [...triggers, ...(bal.sideTriggers ?? [])].filter((t) => !roundsOnly(t.if, false)),
   };
   // absent at ×1, so sides without a cooldown relic compile (and hash) as before powers existed
   const powerCooldown = m('side.powerCooldown', 1);

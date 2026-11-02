@@ -30,7 +30,13 @@ Updated 2026-11-02, on `docs/r2a-s5` (the hub's docs PR into `develop`). This is
 ## Next session: R2a S6
 
 - **Work from** [docs/tasks/r2a-battle-in-rounds.md](tasks/r2a-battle-in-rounds.md).
-  - **S6** (`feature/r2a-clash`, T042, T046, T043–T045): per-squad stats, Begin with the arrival and its shield, the muster, a lane's end and the frozen lane, and the clash wired into `step`. Its gate (S5 merged) is met, and it started on 2026-11-02.
+  - **S6** (`feature/r2a-clash`, T042, T046, T043–T045, [#80](https://github.com/Swalliso/Sambattler/pull/80)): built, and waiting for the hub's review.
+    - **Begin** (`startClash` in `round.ts`) fields both armies at `formationOf`'s positions, in plot order and then j. It shields each lane's mixed army and applies the muster's passes once (Call 4). It then writes the fielded record to `clash.fielded`, and `clashStart` fires last.
+    - **The clash step:** `systems/clash.ts` skips targeting, movement and attacks on the muster's 20 ticks. It ends each lane on a wipe or at `startTick + 900`, and the ended lane freezes. `step.ts` runs the clash tick in §14.6's order.
+    - **Per-squad stats** (T046): a `rank` or `onLoam` modifier on a unit stat gives its squad its own tiers (`SquadState.stats`), and units read them through `sourceBuildingId`. v1's compile skips such modifiers, and no golden moved.
+    - **For S7:** scoring goes in `endClash` in `round.ts`, which reads each lane's lock and `clash.fielded`.
+    - **For S20's As built:** `LaneLock.capped`, `ClashState.fielded` and `SquadState.stats` aren't in §14.4's listing.
+    - Verify and the browser tests are green.
 - Then S7, once S6 has merged.
 
 ## R2a, a battle in rounds
