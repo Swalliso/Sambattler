@@ -178,4 +178,29 @@ Also, outside §16's steps: `npm run test:slow` gives the same v1 verdicts as `d
 
 ## As built
 
-_Empty until R1 lands._
+R1 was built in six sessions on 2026-11-01 and run in S7 on 2026-11-02. No rule or data changed, and no golden hash moved at any PR. The results and the calls for the gate are R1's entry in [docs/balance-backlog.md](balance-backlog.md).
+
+**What was built, against the steps**
+- **Step 2, `formation.ts`** (S1, [#46](https://github.com/Swalliso/Sambattler/pull/46)): the slot layout (`formationBox`, `slotGrid`, `slotPositions`, `emplacementPosition`, `overflows`) and the muster's knitting (`findTrios`, `musterKnits`), pure, with a test that the muster finds the sim's own trios.
+- **Steps 3 and 4** (S2, [#45](https://github.com/Swalliso/Sambattler/pull/45)): the tool-only switches `noBuildingPreference` and `idleSeek` in `config.test`, and the army builder in `tools/lib/clash.ts` (`armyFromBot`, `armyOf`, `squadSize`).
+- **Step 5** (S3, [#50](https://github.com/Swalliso/Sambattler/pull/50)): `playClash`, with the fields (`clashField`), formation by role (`lineOf`, `assignSlots`), the arrival (`placeArmy`), the muster, §6.7's lane ends and scoring in both cap readings, R1-Q3's winner and the record; and `--pair`.
+- **Step 6** (S4, [#54](https://github.com/Swalliso/Sambattler/pull/54)): clash jobs on the worker pool with each distinct clash played once (`clashCache`), clash G3, the strict counter matrix (G12), the clash matrix and G13. T053 made the muster's ties exact: S3 had found 15 of 310 armies mustering differently by seat.
+- **Step 7** (S5, [#60](https://github.com/Swalliso/Sambattler/pull/60)): the presets `kept`, `noeldersplash`, `clashpace` and `clashshield`, and every variant option, with §11.4's squad table. From S4's review: clash G3 plays every mono, so G12 counts no untested answer, and G13 counts only the counted fields.
+- **Step 8** (S6, [#59](https://github.com/Swalliso/Sambattler/pull/59)): `tools/lib/roundRace.ts` and the G4 row, the cap-binding and drawn shares, `--checks pairings`, the full-colony and overflow tables, and `npm run bench`'s full-colony case.
+- **Step 9** (S7): the runs and the write-up, with SPEC §12.2, §13.4, §15.3 and §15.4 written as built (T040).
+
+**Calls that changed in the building**
+- **The cost (A013):** a clash takes about 4 ms of a worker, not 10–30 ms, since `playClash` no longer hashes its final state (S4). The plan's 8–12 hours of background compute took 93 minutes on 6 workers for 65 runs, plus about 20 minutes for the two slow suites.
+- **Extra runs beyond the plan:**
+  - a 20-seed baseline (`r1-baseline-20`), so each screen is read against the same seeds;
+  - small `--records` runs on G3's clashes alone, for eliteShare, Puppet Bloom's trios, parking and emplacement holds. A record is about 9 KB, so a full run's records would be hundreds of MB;
+  - two leads on Capguard Hall's squad, the strongest mono, which no preset tames;
+  - the v1 checks on the shipped data beside `kept`'s (A116), to tell a new miss from an old one.
+- **G13's scope:** `--matrix all` adds every mono's matrix rows, so `r1-baseline` caps 5.8% against 1.2–1.3% without it. Screens are read against the 20-seed baseline.
+- **Workers:** 6 instead of the plan's 8, to leave the machine usable for another session. Pooled runs give the same results on any count.
+
+**Wall times** (6 workers, 12 cores shared with another session's builds and tests)
+- The 50-seed runs (T042): `r1-baseline` 183 s, `r1-baseline-j0` 48 s, `r1-kept` 121 s, `r1-kept-fixedref` 91 s. `npm run bench`: 2 s.
+- The 20-seed screens: 50–125 s each, most about 70 s; merging off 251 s, since nothing knits and armies stay large. Copies on `kept,clashshield`: 205–253 s.
+- The 50-seed confirmations (T044, T052): 28–136 s, merging off 276 s. They take about as long as the screens, since G12's 20-seed screen dominates a run.
+- The checks (T041): `npm run test:slow` 605 s on `develop` before R1 and 584 s now, `npm run verify` 15 s.
