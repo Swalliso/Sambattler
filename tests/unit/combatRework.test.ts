@@ -538,6 +538,8 @@ describe('the Burster (default data since R2a)', () => {
     expect(weight(battle(bc, 'bot:mono:gillNest'))).toBeUndefined();
     const tc = protoContent('bot.pairtest:{"opener":["gillNest"],"weights":{"gillNest":1},"mergePolicy":"on","fixedWeights":true}');
     expect(weight(battle(tc, 'bot:pairtest'))).toBeUndefined();
+    // every data bot and every general, as R1 measured them under aiWeight
+    for (const p of [...Object.values(bc.bots), ...Object.values(bc.generals)]) expect([p.weights.bursterPod, p.weights.rhizomorphTunnel], p.id).toEqual([1, 1]);
   });
 
   it('heads for the enemy unit in its aggro range with the most enemy units within 1.5 tiles', () => {
@@ -723,7 +725,7 @@ describe('flyers (preset flyers)', () => {
     const battle = (c: Content, player: string) => createBattle(c, makeConfig(c, { seed: 1, mapId: 'bogwater-hollow', player, enemy: 'bot:balanced' }));
     expect(weight(battle(fc, 'bot:balanced'))).toBe(1);
     expect(weight(battle(fc, 'bot:mono:gillNest'))).toBeUndefined();
-    for (const g of Object.values(fc.generals)) expect(g.weights.driftStalk, g.id).toBe(1);
+    for (const p of [...Object.values(fc.bots), ...Object.values(fc.generals)]) expect(p.weights.driftStalk, p.id).toBe(1);
   });
 
   it('under rule C every unit targets a flyer, the small fry too', () => {

@@ -97,7 +97,7 @@ const SWARM_READ: Json = { 'ai.counter.swarmMaxSupply': 1 };
  * other flyers, clouds, commander powers and melee types of 2 or more supply):
  * `flying.reachSupply:2,flying.meleeMult:1` brings reach back.
  * Its Drift Stalk costs 160 and makes two every 18 s. The bots and generals that weigh the Tunnel and the
- * Pod in data buy it at weight 1 (R2-Q5's four bots and the five generals); mono bots and the counter
+ * Pod in data buy it at weight 1 (every data bot and every general, R2-Q5); mono bots and the counter
  * check's test bots don't.
  */
 const FLYERS: Json = {
@@ -117,7 +117,7 @@ const FLYERS: Json = {
   'faction.velvet-bloom.buildings+': 'driftStalk',
   'faction.gray-rot.buildings+': 'driftStalk',
   ...Object.fromEntries([
-    ...['balanced', 'rush', 'turtle', 'greedy'].map((id) => `bot.${id}.weights.driftStalk`),
+    ...['balanced', 'balanced-nomerge', 'slayer', 'slayer-nomerge', 'rush', 'turtle', 'greedy'].map((id) => `bot.${id}.weights.driftStalk`),
     ...['scripted', 'mother-mold', 'lichen-baron', 'blightwright', 'pale-sovereign'].map((id) => `general.${id}.weights.driftStalk`),
   ].map((path) => [path, 1])),
 };
