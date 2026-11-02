@@ -328,14 +328,14 @@ The armies (T011–T012) need nothing from `formation.ts` or the switches, so S2
 
 **Goal:** every variant §16 R1 lists, plus the ones the plan's calls add, runs through `--checks clash` with its own spec or option. **Independent test:** the US3 run in the Stories table.
 
-- [ ] T025 [P] [US3] Write the `kept` preset's tests in `tests/unit/combatRework.test.ts`, as "the kept preset (R1)" beside "the package (preset rework)" (§1.3 #11, §16 R1)
+- [x] T025 [P] [US3] Write the `kept` preset's tests in `tests/unit/combatRework.test.ts`, as "the kept preset (R1)" beside "the package (preset rework)" (§1.3 #11, §16 R1)
   - `protoContent('kept')` loads. `rules.pin`, `cloud`, `burst` and `cleave` are set; `rules.waves`, `help`, `mixed`, `flying` and `stormWaves` are absent.
   - Both rosters end with `bursterPod` and `rhizomorphTunnel`; the Elder Sporeling keeps its 0.6 splash; `balance.json` has none of it by default.
-- [ ] T026 [P] [US3] Write the other presets' tests in `tests/unit/prototypes.test.ts` (§16 R1, §12.4)
+- [x] T026 [P] [US3] Write the other presets' tests in `tests/unit/prototypes.test.ts` (§16 R1, §12.4)
   - `noeldersplash` removes `unit.sporeling.mergePerks.3.splashRadius`.
   - `clashpace` compiles `rules.waves` with `rangedGap` 1 and `matchPace` true.
   - `clashshield` sets `balance.mixedWave` (minTypes 2, shieldFrac 0.2) and leaves `rules.mixed` absent, so a 600-tick `bot:balanced` against `general:scripted` battle has the same units, buildings and outcome as without it (compare those, not `hashState`, which covers the balance).
-- [ ] T027 [US3] Add the presets `kept`, `noeldersplash`, `clashpace` and `clashshield` to `PROTO_PRESETS` in `src/data/proto.ts`, each with a doc comment (§16 R1, §1.3 #11, §12.4)
+- [x] T027 [US3] Add the presets `kept`, `noeldersplash`, `clashpace` and `clashshield` to `PROTO_PRESETS` in `src/data/proto.ts`, each with a doc comment (§16 R1, §1.3 #11, §12.4)
   - `kept` = { ...PINNED, ...SPORE_CLOUD, ...BURSTER, ...CLEAVE, ...RHIZOMORPH }, with `faction.velvet-bloom.buildings+` and `faction.gray-rot.buildings+` set to ['bursterPod', 'rhizomorphTunnel'], since spreading keeps only the last append.
   - `noeldersplash` = NO_ELDER_SPLASH. `clashpace` = WAVES; its comment says the pace rule exists only in the clash check, which stamps wave 0 (plan call 9). `clashshield` = MIXED_WAVE alone, read by the clash check (plan call 10).
 - [ ] T028 [US3] Add the variant tests to `tests/unit/clash.test.ts` (§16 R1, §12.2) ⛔ X4, §18.2 #51, R1-Q6

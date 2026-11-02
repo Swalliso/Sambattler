@@ -716,6 +716,23 @@ describe('the Burster (preset burster)', () => {
   });
 });
 
+describe('the kept preset (R1)', () => {
+  it("is SPEC v2's kept pieces (§1.3 #11): pinning, the Mortar's clouds, the Burster, cleave and the Rhizomorph, with no waves, call for help, mixed waves, flyers or storm", () => {
+    const kc = protoContent('kept');
+    const s = protoState(kc);
+    for (const k of ['pin', 'cloud', 'burst', 'cleave'] as const) expect(s.rules[k], k).toBeDefined();
+    for (const k of ['waves', 'help', 'mixed', 'flying', 'stormWaves'] as const) expect(s.rules[k], k).toBeUndefined();
+    // both new spawners stay appended, though spreading the presets keeps only the last one's append
+    for (const f of ['velvet-bloom', 'gray-rot']) expect(kc.factions[f]!.buildings.slice(-2)).toEqual(['bursterPod', 'rhizomorphTunnel']);
+    expect(s.compiled.player.units.sporeling!.tiers[2]!.splashRadius).toBe(0.6); // the Elder keeps its splash
+    // balance.json holds none of it by default
+    const base = liveState();
+    for (const k of ['pin', 'cloud', 'burst', 'cleave'] as const) expect(base.rules[k], k).toBeUndefined();
+    for (const f of ['velvet-bloom', 'gray-rot']) expect(content.factions[f]!.buildings).not.toEqual(expect.arrayContaining(['bursterPod']));
+    for (const f of ['velvet-bloom', 'gray-rot']) expect(content.factions[f]!.buildings).not.toEqual(expect.arrayContaining(['rhizomorphTunnel']));
+  });
+});
+
 describe('the package (preset rework)', () => {
   it("is P1d's base without the Mortar's clouds, plus the storm, the swarm read and flyers under rule C: mixed waves at two types, the Burster, no Elder splash, at 20 s", () => {
     const rc = protoContent('rework');

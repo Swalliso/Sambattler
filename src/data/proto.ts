@@ -222,6 +222,32 @@ export const PROTO_PRESETS: Record<string, Json> = {
     'faction.velvet-bloom.buildings+': ['rhizomorphTunnel', 'bursterPod', 'driftStalk'],
     'faction.gray-rot.buildings+': ['rhizomorphTunnel', 'bursterPod', 'driftStalk'],
   },
+  // R1's clash-check variants (SPEC §16 R1, §12.4); measured by `--checks clash`, never in a battle
+  /**
+   * The pieces SPEC v2 keeps (§1.3 #11): pinning, the Mortar's spore clouds, the Burster, cleave and the
+   * Rhizomorph, without waves, call for help, mixed waves, flyers or the storm that grows waves. R1's
+   * clash check measures them as a set (T042, T044).
+   */
+  kept: {
+    ...PINNED, ...SPORE_CLOUD, ...BURSTER, ...CLEAVE, ...RHIZOMORPH,
+    // both new spawners join both rosters (spreading the presets keeps only the last one's append)
+    'faction.velvet-bloom.buildings+': ['bursterPod', 'rhizomorphTunnel'],
+    'faction.gray-rot.buildings+': ['bursterPod', 'rhizomorphTunnel'],
+  },
+  /** The Elder Sporeling's splash perk off, alone (§18.2 #8; rework's P1d took it off with waves). */
+  noeldersplash: NO_ELDER_SPLASH,
+  /**
+   * The pace rule alone, as `waves` sets it: a lane army marches at its slowest idle unit's pace, ranged
+   * units 1 tile behind their melee front. It exists only in the clash check, which stamps each arriving
+   * unit wave 0 so the rule reads it (plan call 9); in v1's battle this is `waves`, beat and all.
+   */
+  clashpace: WAVES,
+  /**
+   * The mixed shields alone: `balance.mixedWave` without waves, so `rules.mixed` stays absent and v1's
+   * battle is unchanged. The clash check reads it and shields each lane army of 2 or more unit types at
+   * the arrival (plan call 10).
+   */
+  clashshield: MIXED_WAVE,
 };
 
 /**
