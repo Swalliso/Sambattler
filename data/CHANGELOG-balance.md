@@ -8,6 +8,24 @@ replaces. None of it is open work, including headings that say "Open:". From mil
 entries measure or tune v2's round battle (SPEC §11, §12). "The backlog" in the entries below means
 v1's, now [archived](../docs/archive/v1/balance-backlog.md).
 
+## R4a-S5: a lighter Gray Rot (2026-11-02)
+
+**Display only, no golden moved.** It rests on the user's answer to R4-Q4 at R4a-S0 (2026-11-01,
+`docs/tasks/clarify.md`): the colour-vision check moves into R4a, with a lighter, bone body for the Gray Rot. No
+number or rule changed: faction palettes aren't battle state.
+- **`data/factions/gray-rot/faction.json`** (R4/T034): the Gray Rot's swap tones `v #7d8a7a → #b0bcab`,
+  `l #b8c4a8 → #eaf0e2` and `d #4b5649 → #808b7c`, the first guess as agreed. `s`, `t` and the mat are unchanged.
+  Every `factionSwap` sprite (units, buildings, the Heartcap, turrets) bakes its Gray Rot copy from these.
+- **The check** (R4/T033, `tests/unit/contrast.test.ts`, SPEC §2), through `tools/lib/cvd.ts`'s matrices:
+  - team: the sides' `v`, `l` and `d` differed by 1.00–1.10:1 under deuteranopia and protanopia; now 1.51–2.13:1
+    (floor 1.5). The tightest pair is `l` under deuteranopia, at 1.51:1.
+  - soil: the Gray Rot's `v` and `l` stand 3.57:1 or more off every `t-soil` tone, plain and under both filters
+    (floor 1.75). The Velvet Bloom's lowest is 1.77:1, its `v` on `#5e4532`.
+  - outline: the Gray Rot's `d` stands 4.73:1 or more off the `k` outline `#1a1020` (floor 1.5); the Velvet
+    Bloom's, 2.02:1.
+- **Not changed:** the UI's `--rot` tokens, the report's colours, the HP bars and the run-map icons keep v1's ash
+  (`#7d8a7a`, `#b8c4a8`). They aren't bodies, and none of T033's cases reads them.
+
 ## R4a-S4: the other seven redrawn (2026-11-01)
 
 **Display only, no golden moved.** Like R4a-S3, it rests on the silhouette sheet the user approved as drawn
