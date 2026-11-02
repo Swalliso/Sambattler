@@ -389,7 +389,7 @@ S1 to S4: the data, the colony, the round state machine and the planning command
 
 **S5: the kept combat rules and emplacements**
 
-- [ ] T035 [US1] Write `tests/unit/rounds/combat.test.ts` (new), with the kept cases of v1's combat and damage tests in round form (§5.2, §5.3, §6.7) (A008, A021, A029, A110)
+- [x] T035 [US1] Write `tests/unit/rounds/combat.test.ts` (new), with the kept cases of v1's combat and damage tests in round form (§5.2, §5.3, §6.7) (A008, A021, A029, A110)
   - Targeting: the preferred class first, then the nearest by edge, ties to the lower id; stickiness within ×1.25; no building or Heartcap candidates; siege units have no preference; slayer and tunneler preferences hold; a tunneler surfaces at the nearest enemy ranged unit out of an emplacement's reach.
   - Movement: an idle unit seeks the nearest enemy it could target; with none it advances, drifting toward its slot's y at 0.3 tiles a second; positions clamp to [0, W]; separation runs 2 passes.
   - Damage: splash falloff, pinning, clouds, cleave, bursts and healing.
