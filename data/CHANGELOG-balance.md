@@ -8,6 +8,29 @@ replaces. None of it is open work, including headings that say "Open:". From mil
 entries measure or tune v2's round battle (SPEC §11, §12). "The backlog" in the entries below means
 v1's, now [archived](../docs/archive/v1/balance-backlog.md).
 
+## R2a-S1: R1's chosen set as default data, and the rounds data (2026-11-02)
+
+**v1's goldens moved once, from the adopted set** (`npm run golden -- update`, T014). Every change rests on a
+decision the user made: R1's review gate (S8, 2026-11-02: #7, #8, #9), R2a's S0 (2026-11-02: R2-Q2, R2-Q5, R2-Q6)
+and R4a-S0 (2026-11-01: #53), all dated in `docs/tasks/clarify.md`. Measured: `docs/balance-backlog.md`, R2a S1.
+- **Adopted, all of `kept`** (`data/balance.json`, the faction files; T011): `pinned {radius 1, rateMult 0.35}`;
+  `sporeCloud` on the Puffball Mortar (range 7, 1.5 tiles, 6 s, 10 a second), without `aiCover` (A118);
+  `cleave` on the Scythecap, whose splash goes 0.8 / 1.0 / 1.2 → 1.0 / 1.2 / 1.4; `burst` clouds (1.5 tiles, 4 s, 10
+  a second). The Burster and Burster Pod, and the Rhizomorph and Rhizomorph Tunnel, join `units.json`,
+  `buildings.json` and both rosters, as `kept` defined them. The Elder Sporeling keeps its splash (#9).
+- **`tierRadiusMult` 1.25 → 1.0** (#53): a merged unit's collision radius no longer grows, nor its drawn body.
+- **R2-Q5's weights** (`data/bots.json`, `data/generals.json`; T012): the Burster Pod and the Rhizomorph Tunnel at
+  weight 1 in every data bot (`bot:balanced`, rush, turtle and greedy, and G7's mirrors `balanced-nomerge`, `slayer` and
+  `slayer-nomerge`, as `aiWeight` gave all seven) and in every general's weights. `aiWeight` retires, with
+  the kit append that gave every run kit the rework's spawners (A048): a general's run kit now takes them only
+  through its `preferred` list. The Mortar's `laneCover` placement term goes with `aiCover`.
+- **Rounds data, which moves no v1 hash** (T008–T010; Call 27: `buildLibrary` leaves it out of v1's library, and
+  `tests/unit/determinism.test.ts` checks it): `balance.rounds`, with the arrival shield (#8) under
+  `rounds.arrivalShield {minTypes 2, shieldFrac 0.2}`; the round damage cap `{maxHpBp: 2500}` and a Decision by
+  share of max HP (X5, the user's decision at R1's gate, not hash-only); interest 10 / 30 (R2-Q2). Each spawner's
+  `squad` from §11.2's column, with Capguard Hall at 3 (#7); `economy.goldPerRound` (the Truffle Cellar 50, the
+  Spore Exchange 12); and `afterRound` beside every `afterSeconds`, one round a minute (R2-Q6).
+
 ## R4a-S5: a lighter Gray Rot (2026-11-02)
 
 **Display only, no golden moved.** It rests on the user's answer to R4-Q4 at R4a-S0 (2026-11-01,

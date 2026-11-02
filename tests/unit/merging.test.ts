@@ -187,15 +187,16 @@ describe('merging (SPEC §5.5–5.6)', () => {
     expect(e.stats.player.maxEldersAlive).toBe(1);
   });
 
-  it('merged units get ×tierStatMult stats per tier, a larger body and their tier perks', () => {
+  it('merged units get ×tierStatMult stats per tier and their tier perks, on the same body (§18.2 #53)', () => {
     const s = still();
     const t = s.compiled.player.units;
     const cg = t.capguard!.tiers;
     const k = content.balance.tierStatMult;
     expect([cg[0].hp, cg[1].hp, cg[2].hp]).toEqual([220, Math.round(220 * k), Math.round(220 * k * k)]);
     [14, 14 * k, 14 * k * k].forEach((d, i) => expect(cg[i]!.damage).toBeCloseTo(d, 9));
-    expect(cg[1].radius).toBeCloseTo(0.35 * 1.25, 9);
-    expect(cg[2].radius).toBeCloseTo(0.35 * 1.5625 + 0.1, 9); // Elder perk: radius +0.1
+    expect(content.balance.tierRadiusMult).toBe(1);
+    expect(cg[1].radius).toBeCloseTo(0.35, 9);
+    expect(cg[2].radius).toBeCloseTo(0.35 + 0.1, 9); // Elder perk: radius +0.1
     expect([cg[1].resist.pierce, cg[2].resist.pierce]).toEqual([0.85, 0.7]);
     const ga = t.gillArcher!.tiers;
     expect([ga[1].range, ga[2].range]).toEqual([5.75, 6.5]); // +0.75 / +1.5
@@ -209,7 +210,7 @@ describe('merging (SPEC §5.5–5.6)', () => {
     expect(vs[2].slayerMult).toBe(content.units.veilstalker!.mergePerks['3'].slayerMult); // the Elder perk overrides it
     expect(t.capguard!.tiers[0].slayerMult).toBe(1);
     const sc = t.scythecap!.tiers;
-    expect([sc[0].splashRadius, sc[1].splashRadius, sc[2].splashRadius]).toEqual([0.8, 1.0, 1.2]);
+    expect([sc[0].splashRadius, sc[1].splashRadius, sc[2].splashRadius]).toEqual([1, 1.2, 1.4]); // cleave's (§5.3)
 
     // the Bloomed Capguard's pierce resistance applies: 14 × 1.5 × 0.85 = 17.85 → 18
     const r = still();

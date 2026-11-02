@@ -193,7 +193,7 @@ const clashVariant = checks.has('clash') && !pair ? (() => {
   if (lanesRule !== undefined && lanesRule !== 'line' && lanesRule !== 'general') throw new Error(`--lanes-rule takes line or general, not ${lanesRule}`);
   const core6 = opt('--core6');
   if (core6 !== undefined && (!cards.includes(core6) || (CORE_SPAWNERS as readonly string[]).includes(core6))) {
-    throw new Error(`--core6 takes the sixth archetype's candidate, an army card outside the five core spawners (bursterPod needs --proto burster or kept), not ${core6}`);
+    throw new Error(`--core6 takes the sixth archetype's candidate, an army card outside the five core spawners, not ${core6}`);
   }
   if (core6 && opt('--answers')) throw new Error('--core6 sets the answers: leave out --answers');
   const copies = whole('--copies', 1), extraPlots = whole('--extra-plots', 0);
@@ -491,7 +491,7 @@ if (checks.has('clash')) {
         options,
         squads: squadTable(cc, v.army),
         armies: g3.armies,
-        G3: { ...g3Lines, seeds: g3.seeds, budgets: g3.budgets, fields: g3.fields, defender: g3.defender, ...(g3.reference ? { reference: g3.reference } : {}), appended: g3.appended, bots: g3.bots },
+        G3: { ...g3Lines, seeds: g3.seeds, budgets: g3.budgets, fields: g3.fields, defender: g3.defender, bots: g3.bots },
         G12: {
           ...g12Lines, screenSeeds: g12.screenSeeds, confirmSeeds: g12.confirmSeeds, top: g12.top, sets: g12.sets,
           builds: g12.builds.map(({ matrix: _matrix, ...b }) => b), answers: g12.answers, bots: descriptions,

@@ -20,6 +20,24 @@ v1's backlog is archived at [docs/archive/v1/balance-backlog.md](archive/v1/bala
 
 - **R1's review gate** (S8, T049): the user reads R1's entry below and settles §18.2 #7–#15, X4, X5, #36's reading and each knob's outcome (A109). R2a starts after that.
 
+## R2a S1 · R1's chosen set as default data (2026-11-02)
+
+T014's readings on `feature/r2a-data`, once R1's set, R2-Q5's weights (all seven data bots and the generals) and `tierRadiusMult` 1.0 were default data (`data/CHANGELOG-balance.md`). Nothing was tuned, and a v1 miss isn't open work.
+- **The clash check against R1's `r1-kept`** (`npm run experiment -- --checks clash --budgets 300,600,900,1200,1500 --workers 6 --jitter 0.2 --mirror`, 50 seeds):
+  - **It reproduces `kept`:** with `--proto tierRadiusMult:1.25`, G3 matches cell for cell (Capguard Hall 90%, Sporeling Burrow 62%, Rootbreaker Den 60% on Twin Roots). So do the armies, the merge mirror, the G4 row, the colony and the overflow. G12 and G13 move a little (G13 5.15% against 5.16%). The counter check's bots built from `bot:balanced` (`d1-burrows`, `d1-adaptive`, `diverdef`) now copy its weights for the Pod and the Tunnel, which `fixedWeights` kept from them under `aiWeight`.
+  - **On the default** (`tierRadiusMult` 1.0): G3 fails on Capguard Hall (89%, 93% on Twin Roots) and the Sporeling (60%, 71%), and Rootbreaker Den now passes. G12 fails only on Capguard Hall (best answer 51%), and G13 passes at 5.0%. R1's tool reads neither the squads nor the arrival shield, which are rounds data. 186,780 clashes in 114 s.
+  - **R1's chosen set at `tierRadiusMult` 1.0** (`--proto clashshield --squad capguardHall=3`, as R1's `r1-kept-clashshield-capguard3-50`): G3 fails on the Sporeling's worst field, 62% on Twin Roots (bar 60%; its mean is 50%). At 1.25 it passed (48%, 58%). G12 passes, and G13 is 2.7% (7.5% at 1.25). So #53's radius tips the Sporeling over G3's worst-field bar in R1's tool, the set's only miss.
+- **`--checks duels,g8`** (A116), beside R1's `--proto kept`: the same verdicts. G1 fails on Gill Nest (9 of 10 pairings). G2 fails with the Gill Archer beating no one, and one report-only edge firms up (the Veilstalker over a Bloomed Capguard, 4 → 5 of 5 seeds). G8 fails on seven monos' drops against the Lichen Baron, and `bot:balanced` wins 57% at battle 1 (band 40–65%).
+- **`npm run test:slow`:** G6 and G11 pass; G1, G2, G3, G4, G5, G7 and G8 miss. Before R1's set, G1, G3, G7 and G8 missed, so three misses are new:
+  - G2, on the Gill Archer, as `--proto kept` showed;
+  - G4: Decisions 43% (≤15%), with the median length 8:10 inside its band;
+  - G5: the +150-gold side wins 78% (55–75%).
+
+  G3's misses are Sporeling Burrow (70% mean, 82% on Twin Roots), Gill Nest (79%, 95% on Stumpfield) and Amanita Lodge (68% on Twin Roots). G7's Slayer mirror is 61% (≤50%).
+- **The adaptive-general smoke** (`tools/verify.ts`): on the adopted set Old Mother Mold reads mono Sporeling as Elite on 6 of seeds 1–10 (1, 2, 5, 6, 7, 9), where seeds 4 and 5 read Swarm before. That's v1's merged-swarm read (A041), which counting Elder parts replaces in rounds (R2-Q3, T098, T099). The smoke moved to seeds 3..4, and the warning at 2400 and the activation at 4800 hold on every seed.
+- **The shapes check** (`npx vitest run tests/unit/shapes.test.ts`, R4/T030 on `squad.count`): passes. Only Capguard Hall's squad changed (4 → 3), which widens its bound.
+- **For R2a to watch:** mono Sporeling on Twin Roots, which fails G3's worst field with the chosen set at `tierRadiusMult` 1.0 (above); Capguard Hall, which still leads without its squad and the shield; and G4's Decision share, high in v1's battle too. R2a measures them in rounds (S7, S18).
+
 ## R1 · the clash check (2026-11-02)
 
 R1's runs (S7, T040–T048, T052), measured on `develop` at `fd9621f` (#62), with no rule or data change: no golden hash moved. The check fights whole armies at equal gold in formation on v1's sim, with v2's targeting and movement switched on (SPEC §12.2, §16 R1). A clash's winner is R1-Q3's: more lanes, then more uncapped Heartcap damage, else a draw worth half.

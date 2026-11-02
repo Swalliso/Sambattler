@@ -31,8 +31,8 @@
     "id": "scythecap", "name": "Scythecap", "sprite": "u-scythecap", "milestone": 2,
     "hp": 200, "armor": "medium", "damage": 16, "damageType": "slash", "attackInterval": 1.3,
     "range": 0.6, "projectileSpeed": 0, "speed": 0.9, "supply": 2, "aggroRange": 4, "radius": 0.35,
-    "splashRadius": 0.8, "tags": [],
-    "mergePerks": { "2": { "splashRadius": 1.0 }, "3": { "splashRadius": 1.2 } }
+    "splashRadius": 1.0, "tags": [],
+    "mergePerks": { "2": { "splashRadius": 1.2 }, "3": { "splashRadius": 1.4 } }
   },
   {
     "id": "veilstalker", "name": "Veilstalker", "sprite": "u-veilstalker", "milestone": 2,
@@ -68,6 +68,20 @@
     "hp": 80, "armor": "medium", "damage": 9, "damageType": "pierce", "attackInterval": 0.9,
     "range": 0.4, "projectileSpeed": 0, "speed": 1.8, "supply": 1, "aggroRange": 4, "radius": 0.25,
     "tags": ["swarm"],
+    "mergePerks": { "2": { "speedMult": 1.1 }, "3": { "damageMult": 1.1 } }
+  },
+  {
+    "id": "burster", "name": "Burster", "sprite": "u-burster", "milestone": 5,
+    "hp": 50, "armor": "light", "damage": 40, "damageType": "crush", "attackInterval": 1.0,
+    "range": 0.3, "projectileSpeed": 0, "speed": 1.6, "supply": 1, "aggroRange": 5, "radius": 0.3,
+    "splashRadius": 1.5, "tags": ["burst"],
+    "mergePerks": { "2": { "hpMult": 1.1 }, "3": { "hpMult": 1.2 } }
+  },
+  {
+    "id": "rhizomorph", "name": "Rhizomorph", "sprite": "u-rhizomorph", "milestone": 5,
+    "hp": 140, "armor": "medium", "damage": 16, "damageType": "slash", "attackInterval": 1.0,
+    "range": 0.5, "projectileSpeed": 0, "speed": 1.2, "supply": 2, "aggroRange": 4, "radius": 0.3,
+    "tags": ["burrow"],
     "mergePerks": { "2": { "speedMult": 1.1 }, "3": { "damageMult": 1.1 } }
   }
 ]

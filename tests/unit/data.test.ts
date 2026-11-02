@@ -11,8 +11,8 @@ describe('data', () => {
 
   it('every file validates and references resolve', () => {
     const c = loadContent(raw);
-    expect(Object.keys(c.buildings)).toHaveLength(14); // the M4 roster
-    expect(Object.keys(c.units)).toHaveLength(10);
+    expect(Object.keys(c.buildings)).toHaveLength(16); // the M4 roster, the Burster Pod and the Rhizomorph Tunnel
+    expect(Object.keys(c.units)).toHaveLength(12);
     for (const f of Object.values(c.factions)) expect(f.buildings).toEqual(c.factions['velvet-bloom']!.buildings); // mirror until M7
     expect(c.maps['bogwater-hollow']).toBeDefined();
     for (const b of Object.values(c.buildings)) {
@@ -43,7 +43,9 @@ describe('data', () => {
 
   it('run content: tracks, relics, events, elites and the commanders', () => {
     const c = loadContent(raw);
-    expect(Object.keys(c.upgrades).sort()).toEqual(Object.keys(c.buildings).sort()); // a track for every building
+    // a track for every building but R1's two: v2 replaces tracks with augments in R3 (§11.6)
+    const tracked = Object.keys(c.buildings).filter((id) => id !== 'bursterPod' && id !== 'rhizomorphTunnel');
+    expect(Object.keys(c.upgrades).sort()).toEqual(tracked.sort());
     expect(c.relicOrder).toHaveLength(21);
     expect(c.relicOrder.filter((id) => c.relics[id]!.requires === undefined)).toHaveLength(20);
     expect(c.eventOrder).toHaveLength(8);
@@ -87,6 +89,77 @@ describe('data', () => {
     const bad3 = structuredClone(raw) as Loose;
     bad3['balance-targets.json'].G2.intendedEdges.push(['veilstalker', 'nobody@2']);
     expect(() => loadContent(bad3)).toThrow(/G2: unit "nobody"/);
+  });
+
+  // R2a's rounds data, beside v1's fields (SPEC §11.1, §11.2, §14.2; R2a T007). v1's library leaves it out
+  // (Call 27), so it moves no v1 hash: tests/unit/determinism.test.ts.
+  describe('rounds data', () => {
+    const c = loadContent(raw);
+    /** §11.2's Squad column, with Capguard Hall at 3 (#7, R1's review gate, 2026-11-02). */
+    const SQUADS = {
+      sporelingBurrow: 8, capguardHall: 3, gillNest: 4, rootbreakerDen: 3, scythecapGrove: 3, veilstalkerHollow: 6,
+      tendersRing: 3, hammercapForge: 4, amanitaLodge: 2, morelWarren: 6, bursterPod: 6, rhizomorphTunnel: 3,
+    };
+
+    it("every spawner fields R1's squad of the unit it spawns, and nothing else fields one", () => {
+      const spawners = Object.values(c.buildings).filter((b) => b.kind === 'spawner');
+      expect(Object.fromEntries(spawners.map((b) => [b.id, b.squad?.count]))).toEqual(SQUADS);
+      for (const b of spawners) expect(b.squad!.unit, b.id).toBe(b.spawn!.unit);
+      for (const b of Object.values(c.buildings)) if (b.kind !== 'spawner') expect(b.squad, b.id).toBeUndefined();
+      const bad = structuredClone(raw) as Loose;
+      bad['factions/velvet-bloom/buildings.json'][0].squad.unit = 'nobody';
+      expect(() => loadContent(bad)).toThrow(/building sporelingBurrow: squad unit "nobody" does not exist/);
+    });
+
+    it('every economy building yields gold a round: the Truffle Cellar 50, the Spore Exchange 12', () => {
+      const economy = Object.values(c.buildings).filter((b) => b.kind === 'economy');
+      expect(Object.fromEntries(economy.map((b) => [b.id, b.economy!.goldPerRound]))).toEqual({ truffleCellar: 50, sporeExchange: 12 });
+    });
+
+    it("the rounds block validates, with the user's cap, Decision and interest (X5, R2-Q2)", () => {
+      expect(c.balance.rounds).toEqual({
+        maxRounds: 9, clashCapSeconds: 45, musterSeconds: 1, formationGapTiles: 6, heartcapDamagePerSupply: 25, siegeHeartcapMult: 2,
+        arrivalShield: { minTypes: 2, shieldFrac: 0.2 },
+        roundDamageCap: { maxHpBp: 2500 }, decision: { by: 'shareOfMaxHp' }, interestPer: 10, interestCap: 30,
+        sporestorm: { startRound: 5, stepBp: 2000, maxBp: 20000 },
+        stipendPerRound: 100, comebackGold: 40, enemyIncomeMult: 1, sellRefundPlanted: 1,
+        draftRounds: [2, 4, 6], lives: 3, plotGrowth: { perWin: 1, max: 4 },
+        ai: {
+          economyEarly: { beforeRound: 3, mult: 1.5 }, economyLate: { fromRound: 7, mult: 0.3 }, towerAfterLossMult: 2,
+          score: { depth: 10, offCentre: 1, besideSame: 2, frontSupport: 3, loam: 8, backThird: 2, noise: 0.5 },
+          counter: { cycles: [{ round: 4, from: 1 }, { round: 7, from: 4 }], bossCycles: [{ round: 3, from: 1 }], freePlots: 2 },
+        },
+      });
+      // T124 measures the other caps and the Decision by damage; a cap names one base
+      const withCap = (cap: unknown, by = 'damage') => {
+        const r = structuredClone(raw) as Loose;
+        Object.assign(r['balance.json'].rounds, { roundDamageCap: cap, decision: { by } });
+        return loadContent(r).balance.rounds;
+      };
+      for (const cap of [{ flat: 500 }, { flat: 500, stormScales: true }, { maxHpBp: 2500, stormScales: true }]) {
+        expect(withCap(cap)).toMatchObject({ roundDamageCap: cap, decision: { by: 'damage' } });
+      }
+      for (const cap of [{}, { stormScales: true }, { flat: 500, maxHpBp: 2500 }]) expect(() => withCap(cap), JSON.stringify(cap)).toThrow(ContentError);
+      expect(() => withCap({ maxHpBp: 2500 }, 'lanes')).toThrow(ContentError);
+    });
+
+    it('a limit by round sits beside every limit by seconds, one round a minute (§7.2, §7.9)', () => {
+      const limits = [...Object.values(c.bots), ...Object.values(c.generals)].flatMap((p) => Object.values(p.limits ?? {}));
+      const timed = limits.filter((l) => l.afterSeconds !== undefined);
+      expect(timed.length).toBeGreaterThan(0);
+      for (const l of timed) expect(l.afterRound).toBe(l.afterSeconds! / 60 + 1);
+      expect(c.bots.balanced!.limits!.rootbreakerDen).toEqual({ afterSeconds: 180, afterRound: 4 });
+      expect(c.bots.turtle!.limits!.rootbreakerDen).toEqual({ afterSeconds: 240, afterRound: 5 });
+      const alone = structuredClone(raw) as Loose;
+      alone['bots.json'][0].limits.rootbreakerDen = { afterRound: 3 };
+      expect(loadContent(alone).bots.balanced!.limits!.rootbreakerDen).toEqual({ afterRound: 3 });
+      alone['bots.json'][0].limits.rootbreakerDen = { afterRound: 0 };
+      expect(() => loadContent(alone)).toThrow(ContentError);
+    });
+
+    it("both rosters list R1's adopted buildings, the Burster Pod and the Rhizomorph Tunnel", () => {
+      for (const f of Object.values(c.factions)) expect(f.buildings, f.id).toEqual(expect.arrayContaining(['bursterPod', 'rhizomorphTunnel']));
+    });
   });
 
   it('merge perks only use whitelisted patch keys and scenario units may start merged', () => {

@@ -3,39 +3,39 @@
     "id": "balanced",
     "description": "A bit of everything from the whole roster, economy early (the reference bot for guardrails).",
     "opener": ["sporelingBurrow", "truffleCellar"],
-    "weights": { "sporelingBurrow": 3, "capguardHall": 3, "gillNest": 2, "truffleCellar": 2, "rootbreakerDen": 1, "puffballMortar": 1, "scythecapGrove": 2, "veilstalkerHollow": 1 },
-    "limits": { "truffleCellar": { "maxOwned": 3 }, "rootbreakerDen": { "afterSeconds": 180 } },
+    "weights": { "sporelingBurrow": 3, "capguardHall": 3, "gillNest": 2, "truffleCellar": 2, "rootbreakerDen": 1, "puffballMortar": 1, "scythecapGrove": 2, "veilstalkerHollow": 1, "bursterPod": 1, "rhizomorphTunnel": 1 },
+    "limits": { "truffleCellar": { "maxOwned": 3 }, "rootbreakerDen": { "afterSeconds": 180, "afterRound": 4 } },
     "mergePolicy": "on"
   },
   {
     "id": "balanced-nomerge",
     "description": "bot:balanced with every merge toggle switched off (the G7 merge-off mirror).",
     "opener": ["sporelingBurrow", "truffleCellar"],
-    "weights": { "sporelingBurrow": 3, "capguardHall": 3, "gillNest": 2, "truffleCellar": 2, "rootbreakerDen": 1, "puffballMortar": 1, "scythecapGrove": 2, "veilstalkerHollow": 1 },
-    "limits": { "truffleCellar": { "maxOwned": 3 }, "rootbreakerDen": { "afterSeconds": 180 } },
+    "weights": { "sporelingBurrow": 3, "capguardHall": 3, "gillNest": 2, "truffleCellar": 2, "rootbreakerDen": 1, "puffballMortar": 1, "scythecapGrove": 2, "veilstalkerHollow": 1, "bursterPod": 1, "rhizomorphTunnel": 1 },
+    "limits": { "truffleCellar": { "maxOwned": 3 }, "rootbreakerDen": { "afterSeconds": 180, "afterRound": 4 } },
     "mergePolicy": "off"
   },
   {
     "id": "slayer",
     "description": "bot:balanced with extra Veilstalker Hollows for about a 25% Slayer spawn share (G7).",
     "opener": ["sporelingBurrow", "truffleCellar"],
-    "weights": { "sporelingBurrow": 3, "capguardHall": 3, "gillNest": 2, "truffleCellar": 2, "rootbreakerDen": 1, "puffballMortar": 1, "scythecapGrove": 2, "veilstalkerHollow": 8 },
-    "limits": { "truffleCellar": { "maxOwned": 3 }, "rootbreakerDen": { "afterSeconds": 180 } },
+    "weights": { "sporelingBurrow": 3, "capguardHall": 3, "gillNest": 2, "truffleCellar": 2, "rootbreakerDen": 1, "puffballMortar": 1, "scythecapGrove": 2, "veilstalkerHollow": 8, "bursterPod": 1, "rhizomorphTunnel": 1 },
+    "limits": { "truffleCellar": { "maxOwned": 3 }, "rootbreakerDen": { "afterSeconds": 180, "afterRound": 4 } },
     "mergePolicy": "on"
   },
   {
     "id": "slayer-nomerge",
     "description": "bot:slayer with every merge toggle switched off (the G7 Slayer mirror).",
     "opener": ["sporelingBurrow", "truffleCellar"],
-    "weights": { "sporelingBurrow": 3, "capguardHall": 3, "gillNest": 2, "truffleCellar": 2, "rootbreakerDen": 1, "puffballMortar": 1, "scythecapGrove": 2, "veilstalkerHollow": 8 },
-    "limits": { "truffleCellar": { "maxOwned": 3 }, "rootbreakerDen": { "afterSeconds": 180 } },
+    "weights": { "sporelingBurrow": 3, "capguardHall": 3, "gillNest": 2, "truffleCellar": 2, "rootbreakerDen": 1, "puffballMortar": 1, "scythecapGrove": 2, "veilstalkerHollow": 8, "bursterPod": 1, "rhizomorphTunnel": 1 },
+    "limits": { "truffleCellar": { "maxOwned": 3 }, "rootbreakerDen": { "afterSeconds": 180, "afterRound": 4 } },
     "mergePolicy": "off"
   },
   {
     "id": "rush",
     "description": "No economy; floods forward spawners.",
     "opener": ["sporelingBurrow", "sporelingBurrow"],
-    "weights": { "sporelingBurrow": 4, "capguardHall": 3, "gillNest": 1, "rootbreakerDen": 1 },
+    "weights": { "sporelingBurrow": 4, "capguardHall": 3, "gillNest": 1, "rootbreakerDen": 1, "bursterPod": 1, "rhizomorphTunnel": 1 },
     "limits": {},
     "placement": { "spawnerDepthWeight": 3 },
     "mergePolicy": "on"
@@ -44,8 +44,8 @@
     "id": "turtle",
     "description": "Towers and line troops held close to home.",
     "opener": ["capguardHall", "truffleCellar"],
-    "weights": { "capguardHall": 3, "puffballMortar": 3, "gillNest": 2, "truffleCellar": 2, "rootbreakerDen": 1 },
-    "limits": { "truffleCellar": { "maxOwned": 4 }, "puffballMortar": { "maxOwned": 4 }, "rootbreakerDen": { "afterSeconds": 240 } },
+    "weights": { "capguardHall": 3, "puffballMortar": 3, "gillNest": 2, "truffleCellar": 2, "rootbreakerDen": 1, "bursterPod": 1, "rhizomorphTunnel": 1 },
+    "limits": { "truffleCellar": { "maxOwned": 4 }, "puffballMortar": { "maxOwned": 4 }, "rootbreakerDen": { "afterSeconds": 240, "afterRound": 5 } },
     "placement": { "spawnerDepthWeight": 0 },
     "mergePolicy": "on"
   },
@@ -53,7 +53,7 @@
     "id": "greedy",
     "description": "Economy first, then a late army.",
     "opener": ["truffleCellar", "truffleCellar"],
-    "weights": { "truffleCellar": 4, "capguardHall": 2, "sporelingBurrow": 2, "gillNest": 2, "rootbreakerDen": 1, "puffballMortar": 1 },
+    "weights": { "truffleCellar": 4, "capguardHall": 2, "sporelingBurrow": 2, "gillNest": 2, "rootbreakerDen": 1, "puffballMortar": 1, "bursterPod": 1, "rhizomorphTunnel": 1 },
     "limits": { "truffleCellar": { "maxOwned": 5 } },
     "mergePolicy": "on"
   }

@@ -95,8 +95,9 @@ describe('targeting and combat (SPEC §5.2–5.3)', () => {
   it('splash: full damage to the primary target, 50% to others in radius', () => {
     const s = frozen();
     const mortar = building(s, 'player', 'puffballMortar', 4, 3); // centre (5, 4)
+    // the Mortar aims at the densest knot within its cloud's 1.5 tiles (§5.3), ties to the nearer: the primary
     const primary = unit(s, 'enemy', 'capguard', 9.0, 4);
-    const side = unit(s, 'enemy', 'capguard', 9.0, 4.8);
+    const side = unit(s, 'enemy', 'capguard', 9.0, 3.2);
     const outside = unit(s, 'enemy', 'capguard', 9.0, 6.5);
     void mortar;
     for (let i = 0; i < 60 && primary.hp === primary.maxHp; i++) steps(s, 1);
@@ -225,9 +226,7 @@ describe("R1's tool-only switches for v2's targeting and movement (SPEC §5.2, �
   });
 
   it('idleSeek: a burst unit seeks only the units it aims at, never a tower', () => {
-    const c = protoContent('burster');
-    const s = createBattle(c, makeConfig(c, { seed: 1, mapId: 'test-flat', player: 'human', enemy: 'human', test: { noTurrets: true, idleSeek: true } }));
-    s.phase = 'live';
+    const s = liveState({ test: { noTurrets: true, idleSeek: true } });
     const bu = unit(s, 'player', 'burster', 10, 2);
     building(s, 'enemy', 'puffballMortar', 20, 4);
     steps(s, 1);
@@ -246,5 +245,41 @@ describe("R1's tool-only switches for v2's targeting and movement (SPEC §5.2, �
     steps(s, 1);
     expect(front.x).toBeCloseTo(10 + s.compiled.player.units.capguard!.tiers[0].speedPerTick, 12);
     expect(archer.x).toBe(9.2);
+  });
+});
+
+// Pinning (§5.3), default data since R2a S1: a ranged unit with an enemy unit within 1 tile attacks at ×0.35.
+describe('pinning (SPEC §5.3)', () => {
+  /** Shots `shooter` fires at a sturdy frozen Capguard in 400 ticks, with a frozen enemy Capguard `gap` tiles away (edge distance), or none. */
+  function shots(gap: number | null, shooter = 'gillArcher'): number {
+    const s = liveState({ test: { noTurrets: true, noTerritory: true, noHeartcapTargets: true }, flags: { merging: false } });
+    const a = unit(s, 'player', shooter, 10, 2);
+    const target = unit(s, 'enemy', 'capguard', shooter === 'gillArcher' ? 13.6 : 10.85, 2);
+    target.hp = target.maxHp = 1e6;
+    if (gap !== null) {
+      const p = unit(s, 'enemy', 'capguard', 10 + 0.25 + 0.35 + gap, 3.2);
+      p.hp = p.maxHp = 1e6;
+      p.y = 2; // straight ahead, so the edge distance is exactly `gap`
+    }
+    for (const t of s.compiled.enemy.units.capguard!.tiers) t.speedPerTick = 0;
+    for (const u of s.units) if (u.side === 'enemy') u.cooldown = 1e9;
+    s.compiled.player.units[shooter]!.tiers[0].speedPerTick = 0;
+    let n = 0;
+    for (let i = 0; i < 400; i++) { steps(s, 1); if (a.lastAttackTick === s.tick) n++; }
+    return n;
+  }
+
+  it('a ranged unit with an enemy unit within 1 tile attacks at ×0.35 its rate', () => {
+    expect(liveState().rules.pin).toEqual({ radius: 1, permille: 350 });
+    const free = shots(null);
+    expect(free).toBe(17); // every 24 ticks over 20 s
+    const held = shots(0.5);
+    expect(held / free).toBeGreaterThan(0.3);
+    expect(held / free).toBeLessThan(0.4);
+  });
+
+  it('only within the radius, and only ranged units', () => {
+    expect(shots(1.5)).toBe(shots(null));
+    expect(shots(0.5, 'capguard')).toBe(shots(null, 'capguard'));
   });
 });

@@ -589,7 +589,7 @@ export function counterBots(content: Content): Record<string, Omit<BotDef, 'id'>
       weights: { gillNest: 3, veilstalkerHollow: 2, capguardHall: 2, puffballMortar: 1, truffleCellar: 1 }, limits: cellar, mergePolicy: 'on',
     },
   } satisfies Record<string, Omit<BotDef, 'id'>>);
-  // each answer stays what it's named: a prototype building's `aiWeight` (the combat rework's Rhizomorph) skips them
+  // each answer stays what it's named: it buys only what its weights list
   for (const def of Object.values(bots)) def.fixedWeights = true;
   return bots;
 }
@@ -1075,10 +1075,6 @@ export type ClashG3Verdict = Verdict & {
   seeds: number;
   /** The reference army the monos play. */
   defender: string;
-  /** `bot:balanced` with `fixedWeights` set (A023): the spawners a spec appends don't join it. */
-  reference?: 'data weights';
-  /** The builds whose card a spec appended (its building carries `aiWeight`), listed apart on a fixed reference. */
-  appended: string[];
   /** Each mono's armies and `bot:balanced`'s, per field and budget. */
   armies: ClashArmies[];
   /** Every cell's record, by build, field, budget, seed, then seat. */
@@ -1093,15 +1089,12 @@ const G3_DEFENDER = 'bot:balanced';
  * in both seats, seeds 1 to n. A build passes if its rate, pooled over the budgets, has a mean over the
  * fields of at most `maxMeanWinRate` (55%), with the one-lane field counted twice, and a worst field of at
  * most `maxMapWinRate` (60%). A budget over either while the pool passes is flagged, so a build that
- * dominates only early or only late shows. On a fixed reference (`bot.balanced.fixedWeights:true`, A023)
- * the report says so and lists the monos of the spawners a spec appended apart.
+ * dominates only early or only late shows.
  */
 export async function evaluateClashG3(content: Content, o: ClashG3Options): Promise<ClashG3Verdict> {
   const t = content.targets.G3;
   const ids = o.ids ?? clashArmyIds(content);
   const defender = o.defender ?? G3_DEFENDER;
-  const fixed = defender === G3_DEFENDER && !!content.bots.balanced?.fixedWeights;
-  const appended = ids.filter((id) => content.buildings[id]?.aiWeight !== undefined);
   const budgets = [...(o.budgets ?? CLASH_CHECK.budgets)], fields = [...(o.fields ?? CLASH_CHECK.fields)], seeds = o.seeds ?? t.seeds;
   const counted = countedFields(fields);
   const cells: Cell[] = [];
@@ -1134,12 +1127,9 @@ export async function evaluateClashG3(content: Content, o: ClashG3Options): Prom
   const fieldName = (f: string) => (counted.includes(f as FieldId) ? f : `${f}*`).padEnd(5);
   const details = [
     `mono win % against ${defender}'s army with the same gold (a draw half), ${2 * seeds} games per field and budget (both seats). Limits: mean ≤${pct(t.maxMeanWinRate)} (the one-lane field twice), worst field ≤${pct(t.maxMapWinRate)}, pooled over the budgets`,
-    ...(fixed ? [`     the reference on its data weights (bot.balanced.fixedWeights, A023): the spawners the spec appends don't join it`] : []),
     `     ${'build'.padEnd(idWidth)}  field${[...budgets.map(String), 'pooled'].map((h) => h.padStart(7)).join('')}`,
   ];
-  const apart = fixed ? bots.filter((b) => appended.includes(b.id)) : [];
-  for (const b of [...bots.filter((x) => !apart.includes(x)), ...apart]) {
-    if (b === apart[0]) details.push(`     the monos of the spawners the spec appended, against the reference on its data weights (A023):`);
+  for (const b of bots) {
     fields.forEach((f, k) => {
       const lead = k === 0 ? `${b.pass ? 'ok  ' : 'FAIL'} ${b.id.padEnd(idWidth)}` : `     ${''.padEnd(idWidth)}`;
       details.push(`${lead}  ${fieldName(f)}${col([...b.budgets.map((x) => x.fields[f]!.rate), b.fields[f]!.rate])}`);
@@ -1151,7 +1141,7 @@ export async function evaluateClashG3(content: Content, o: ClashG3Options): Prom
   }
   if (fields.some((f) => !counted.includes(f))) details.push('* a lead (the three-lane screen): outside the mean and the worst field');
   return {
-    id: 'clash G3', pass: bots.every((b) => b.pass), bots, budgets, fields, seeds, defender, ...(fixed ? { reference: 'data weights' as const } : {}), appended, armies, records,
+    id: 'clash G3', pass: bots.every((b) => b.pass), bots, budgets, fields, seeds, defender, armies, records,
     summary: `every mono army against ${defender}'s with the same gold, in clashes (both seats): mean ≤${pct(t.maxMeanWinRate)} over the fields, the one-lane field twice, and worst field ≤${pct(t.maxMapWinRate)}, pooled over the budgets`,
     details,
   };

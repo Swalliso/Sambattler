@@ -1,13 +1,12 @@
-// The combat rework's settings (docs/archive/v1/ideas/combat-rework.md, P1 to P2): pinned, call for help,
-// spore clouds, the Rhizomorph, waves, mixed waves, cleave and the Burster. Every setting is absent from data/balance.json
-// and its content exists only under its preset, so the shipped rules are unchanged; with a setting
-// on, it behaves as described.
+// The combat rework's settings (docs/archive/v1/ideas/combat-rework.md, P1 to P2): call for help, waves,
+// mixed waves, the storm that grows waves, the swarm read and flyers. Each is absent from data/balance.json and
+// its content exists only under its preset, so the shipped rules are unchanged; with a setting on, it behaves
+// as described. R1's chosen set (pinning, spore clouds, cleave, the Burster and the Rhizomorph) is default data
+// since R2a S1 (SPEC §15.7): its damage cases are in damage.test.ts and combat.test.ts, and the rest run here on
+// the shipped content.
 import { describe, expect, it } from 'vitest';
 import { applyProto, applyProtoToBalance } from '../../src/data/proto.ts';
 import { loadContent } from '../../src/data/registry.ts';
-import { createRun } from '../../src/run/index.ts';
-import { generalKit } from '../../src/run/flow.ts';
-import { laneCover } from '../../src/sim/ai/controller.ts';
 import { analyzeMix, createBattle, hashState, makeConfig, queueCommand, runHeadless, topKind } from '../../src/sim/index.ts';
 import type { BattleState, Content, CounterState } from '../../src/sim/index.ts';
 import { addBuilding } from '../../src/sim/create.ts';
@@ -18,7 +17,7 @@ import { shownEffectiveness } from '../../src/render/renderer.ts';
 import { flyerHitters, versusFlyers } from '../../src/ui/matrixHints.ts';
 import { protoContent, readRawContent } from '../../tools/lib/content.ts';
 import { runBattle } from '../../tools/lib/run.ts';
-import { building, content, liveState, setBorders, steps, unit } from '../helpers.ts';
+import { building, content, liveState, steps, unit } from '../helpers.ts';
 import type { SimEvent, Tier, UnitState } from '../../src/sim/index.ts';
 
 const NO_FIELD = { noTurrets: true, noTerritory: true, noHeartcapTargets: true };
@@ -36,70 +35,44 @@ function freeze(s: BattleState, side: 'player' | 'enemy', id: string): void {
   for (const u of s.units) if (u.side === side && u.unitId === id) u.cooldown = 1e9;
 }
 
-describe('the combat rework settings are off by default', () => {
+describe("the combat rework's other settings are off by default", () => {
   it("leaves today's battles exactly as on develop: a unit Vesper's Spore Burst kills still gets that tick's attack", () => {
-    // P1c gated nothing here at first, and this battle's final hash moved (d1d1102d0bb7c0d6); develop's is below
+    // P1c gated nothing here at first, and this battle's final hash moved (d1d1102d0bb7c0d6); develop's is below.
+    // R2a S1 moved it once more, with R1's chosen set as default data (T014)
     const { state } = runBattle(content, {
       seed: 24, map: 'bogwater-hollow', player: 'bot:balanced', commander: 'vesper', powerPolicy: 'auto',
       flags: { merging: true, adaptiveGeneral: true, powers: true },
     });
-    expect(hashState(state)).toBe('c22ff682dd1bf0a8');
+    expect(hashState(state)).toBe('deb526d3e6620de7');
   });
 
   it('balance.json sets none of them, so compiled rules carry none', () => {
     const b = content.balance;
-    expect(b.pinned).toBeUndefined();
-    expect(b.callForHelp).toBeUndefined();
-    expect(b.sporeCloud).toBeUndefined();
+    for (const k of ['callForHelp', 'waves', 'mixedWave', 'stormWaves', 'flying'] as const) expect(b[k], k).toBeUndefined();
     const s = liveState();
-    expect(s.rules.pin).toBeUndefined();
-    expect(s.rules.help).toBeUndefined();
-    expect(s.rules.cloud).toBeUndefined();
+    for (const k of ['help', 'waves', 'mixed', 'stormWaves', 'flying'] as const) expect(s.rules[k], k).toBeUndefined();
   });
 
   it('the presets compile', () => {
-    for (const p of ['pinned', 'callforhelp', 'sporecloud', 'rhizomorph', 'waves', 'mixedwave', 'cleave', 'burster', 'stormwaves', 'rework']) expect(() => protoContent(p)).not.toThrow();
+    for (const p of ['callforhelp', 'waves', 'mixedwave', 'stormwaves', 'swarmread', 'flyers', 'rework']) expect(() => protoContent(p)).not.toThrow();
     const all = protoState(protoContent('rework'));
     expect([all.rules.pin, all.rules.help, all.rules.waves, all.rules.mixed, all.rules.burst, all.rules.stormWaves].every(Boolean)).toBe(true);
     expect(all.compiled.player.buildings.rhizomorphTunnel).toBeDefined();
-    expect(protoState(protoContent('pinned')).rules.pin).toEqual({ radius: 1, permille: 350 });
     expect(protoState(protoContent('callforhelp')).rules.help).toEqual({ radius: 5 });
   });
 });
 
-describe('pinned (balance pinned)', () => {
-  /** Shots an archer fires at a sturdy frozen Capguard 3 tiles away in `ticks`, with a frozen enemy `pinner` at `gap` tiles (edge distance). */
-  function shots(pinned: boolean, gap: number | null, ticks = 400, shooter = 'gillArcher'): number {
-    const s = liveState({ test: NO_FIELD, flags: { merging: false } });
-    if (pinned) s.rules.pin = { radius: 1, permille: 350 };
-    const a = unit(s, 'player', shooter, 10, 2);
-    const target = unit(s, 'enemy', 'capguard', shooter === 'gillArcher' ? 13.6 : 10.85, 2);
-    target.hp = target.maxHp = 1e6;
-    if (gap !== null) {
-      const p = unit(s, 'enemy', 'capguard', 10 + 0.25 + 0.35 + gap, 3.2);
-      p.hp = p.maxHp = 1e6;
-      p.y = 2; // straight ahead, so the edge distance is exactly `gap`
-    }
-    freeze(s, 'enemy', 'capguard');
-    s.compiled.player.units[shooter]!.tiers[0].speedPerTick = 0;
-    let n = 0;
-    for (let i = 0; i < ticks; i++) { steps(s, 1); if (a.lastAttackTick === s.tick) n++; }
-    return n;
-  }
-
-  it('a ranged unit with an enemy unit within 1 tile attacks at 0.35× its rate', () => {
-    const free = shots(true, null);
-    expect(free).toBe(shots(false, null));
-    expect(free).toBe(17); // every 24 ticks over 20 s
-    const held = shots(true, 0.5);
-    expect(held / free).toBeGreaterThan(0.3);
-    expect(held / free).toBeLessThan(0.4);
-    expect(shots(false, 0.5)).toBe(free); // off: the same as today
-  });
-
-  it('only within the radius, and only ranged units', () => {
-    expect(shots(true, 1.5)).toBe(shots(false, 1.5));
-    expect(shots(true, 0.5, 400, 'capguard')).toBe(shots(false, 0.5, 400, 'capguard'));
+describe("R1's chosen set, default data since R2a (SPEC §1.3 #11, §16 R2)", () => {
+  it("is pinning, the Mortar's clouds, the Burster, cleave and the Rhizomorph, with no waves, call for help, mixed waves, flyers or storm", () => {
+    const s = protoState(content);
+    for (const k of ['pin', 'cloud', 'burst', 'cleave'] as const) expect(s.rules[k], k).toBeDefined();
+    for (const k of ['waves', 'help', 'mixed', 'flying', 'stormWaves'] as const) expect(s.rules[k], k).toBeUndefined();
+    expect(s.rules.pin).toEqual({ radius: 1, permille: 350 });
+    expect(s.rules.cloud).toEqual({ buildings: ['puffballMortar'], radius: 1.5, ticks: 120, pulseTicks: 20, damage: 10 });
+    expect(s.compiled.player.buildings.puffballMortar!.attack!.range).toBe(7);
+    expect(s.clouds).toEqual([]);
+    for (const f of ['velvet-bloom', 'gray-rot']) expect(content.factions[f]!.buildings.slice(-2)).toEqual(['bursterPod', 'rhizomorphTunnel']);
+    expect(s.compiled.player.units.sporeling!.tiers[2]!.splashRadius).toBe(0.6); // the Elder keeps its splash
   });
 });
 
@@ -149,94 +122,52 @@ describe('call for help (balance callForHelp)', () => {
   });
 });
 
-describe('spore clouds (balance sporeCloud)', () => {
-  it('the Mortar reaches 7 tiles under the setting, 6 without; battles without it carry no clouds', () => {
-    expect(liveState().compiled.player.buildings.puffballMortar!.attack!.range).toBe(6);
-    expect(liveState().clouds).toBeUndefined();
-    const s = protoState(protoContent('sporecloud'));
-    expect(s.compiled.player.buildings.puffballMortar!.attack!.range).toBe(7);
-    expect(s.rules.cloud).toEqual({ buildings: ['puffballMortar'], radius: 1.5, ticks: 120, pulseTicks: 20, damage: 10, aiCover: 1 });
-    expect(s.clouds).toEqual([]);
-  });
-
-  it('a cloud deals 10 a second for 6 s, ignoring armor, to the enemy units inside it only', () => {
-    const s = protoState(protoContent('sporecloud'));
+describe('spore clouds (default data since R2a)', () => {
+  it("a Mortar's shell leaves a cloud where it lands", () => {
+    const s = protoState(content);
+    building(s, 'player', 'puffballMortar', 4, 2);
     const knight = unit(s, 'enemy', 'amanitaKnight', 10, 3);
-    const archer = unit(s, 'enemy', 'gillArcher', 10.8, 3.6);
-    const outside = unit(s, 'enemy', 'sporeling', 13, 3);
-    const friend = unit(s, 'player', 'capguard', 9.2, 2.2);
-    const cellar = building(s, 'enemy', 'truffleCellar', 9, 4);
-    for (const [side, id] of [['enemy', 'amanitaKnight'], ['enemy', 'gillArcher'], ['enemy', 'sporeling'], ['player', 'capguard']] as const) freeze(s, side, id);
-    addCloud(s, 'player', 0, 10, 3, 0, s.rules.cloud!);
-    steps(s, 200);
-    expect(knight.maxHp - knight.hp).toBe(60); // heavy armor doesn't matter
-    expect(archer.maxHp - archer.hp).toBe(60);
-    expect(outside.hp).toBe(outside.maxHp);
-    expect(friend.hp).toBe(friend.maxHp);
-    expect(cellar.hp).toBe(cellar.maxHp);
-    expect(s.clouds).toEqual([]);
-    expect(s.stats.player.damageBySource.sporeCloud).toBe(120);
+    freeze(s, 'enemy', 'amanitaKnight');
+    steps(s, 60);
+    expect(s.clouds).toHaveLength(1);
+    expect(s.clouds![0]).toMatchObject({ side: 'player', lane: 0, x: knight.x, y: knight.y });
   });
 
-  it("a Mortar's shell leaves a cloud where it lands; without the setting it leaves none", () => {
-    for (const on of [true, false]) {
-      const s = on ? protoState(protoContent('sporecloud')) : liveState({ test: NO_FIELD });
-      building(s, 'player', 'puffballMortar', 4, 2);
-      const knight = unit(s, 'enemy', 'amanitaKnight', 10, 3);
-      freeze(s, 'enemy', 'amanitaKnight');
-      steps(s, 60);
-      if (!on) { expect(s.clouds).toBeUndefined(); continue; }
-      expect(s.clouds).toHaveLength(1);
-      expect(s.clouds![0]).toMatchObject({ side: 'player', lane: 0, x: knight.x, y: knight.y });
-    }
-  });
-
-  it('a cloud tower aims each shell at the densest cluster in range; without the setting, at the nearest unit', () => {
-    for (const on of [true, false]) {
-      const s = on ? protoState(protoContent('sporecloud')) : liveState({ test: NO_FIELD });
-      building(s, 'player', 'puffballMortar', 1, 3); // centre (2, 4)
-      const lone = unit(s, 'enemy', 'sporeling', 5, 4);
-      const pack = [[7.5, 3], [7.5, 4], [7.5, 5], [8.2, 4]].map(([x, y]) => unit(s, 'enemy', 'sporeling', x!, y!));
-      freeze(s, 'enemy', 'sporeling');
-      steps(s, 1);
-      const shell = s.hits.find((h) => h.sourceType === 'puffballMortar')!;
-      expect(shell.targetId).toBe(on ? pack[1]!.id : lone.id);
-    }
-  });
-
-  it('the AI scores a cloud tower by the lane it reaches past its border', () => {
-    const s = protoState(protoContent('sporecloud'));
-    setBorders(s, 6, 25);
-    expect(laneCover(s, 'player', 0, 5, 7)).toBe(5);
-    expect(laneCover(s, 'player', 0, 1, 3)).toBe(0);
-    expect(laneCover(s, 'enemy', 0, 27, 7)).toBe(5);
+  it('a cloud tower aims each shell at the densest cluster in range, not the nearest unit', () => {
+    const s = protoState(content);
+    building(s, 'player', 'puffballMortar', 1, 3); // centre (2, 4)
+    unit(s, 'enemy', 'sporeling', 5, 4); // the nearest, alone
+    const pack = [[7.5, 3], [7.5, 4], [7.5, 5], [8.2, 4]].map(([x, y]) => unit(s, 'enemy', 'sporeling', x!, y!));
+    freeze(s, 'enemy', 'sporeling');
+    steps(s, 1);
+    expect(s.hits.find((h) => h.sourceType === 'puffballMortar')!.targetId).toBe(pack[1]!.id);
   });
 });
 
 describe('proto specs can add content', () => {
   it('presets carry content paths; new units and buildings are added and validate; + appends once', () => {
-    const { raw, problems } = applyProto(readRawContent(), 'rhizomorph,faction.velvet-bloom.buildings+:["rhizomorphTunnel","gillNest"]');
+    const { raw, problems } = applyProto(readRawContent(), 'flyers,faction.velvet-bloom.buildings+:["driftStalk","gillNest"]');
     expect(problems).toEqual([]);
     const c = loadContent(raw);
-    expect(c.units.rhizomorph).toMatchObject({ hp: 140, armor: 'medium', damage: 16, damageType: 'slash', attackInterval: 1, speed: 1.2, supply: 2, tags: ['burrow'] });
-    expect(c.buildings.rhizomorphTunnel).toMatchObject({ cost: 160, spawn: { unit: 'rhizomorph', count: 1, interval: 18 }, aiWeight: 1 });
+    expect(c.units.driftling).toMatchObject({ hp: 70, armor: 'light', damage: 8, damageType: 'slash', attackInterval: 1, speed: 1.4, supply: 1, tags: ['flying'] });
+    expect(c.buildings.driftStalk).toMatchObject({ cost: 160, spawn: { unit: 'driftling', count: 2, interval: 18 }, squad: { unit: 'driftling', count: 6 } });
     const roster = c.factions['velvet-bloom']!.buildings;
-    expect(roster.filter((id) => id === 'rhizomorphTunnel')).toHaveLength(1);
+    expect(roster.filter((id) => id === 'driftStalk')).toHaveLength(1);
     expect(roster.filter((id) => id === 'gillNest')).toHaveLength(1);
     expect(c.factions['gray-rot']!.buildings).toEqual(roster);
     expect(raw['factions/velvet-bloom/faction.json']).not.toBe(readRawContent()['factions/velvet-bloom/faction.json']);
     // without the preset, none of it exists
-    expect(content.units.rhizomorph).toBeUndefined();
-    expect(content.buildings.rhizomorphTunnel).toBeUndefined();
-    expect(content.factions['velvet-bloom']!.buildings).not.toContain('rhizomorphTunnel');
-    expect(applyProtoToBalance(content.balance, 'rhizomorph').problems[0]).toMatch(/patches content/);
+    expect(content.units.driftling).toBeUndefined();
+    expect(content.buildings.driftStalk).toBeUndefined();
+    expect(content.factions['velvet-bloom']!.buildings).not.toContain('driftStalk');
+    expect(applyProtoToBalance(content.balance, 'flyers').problems[0]).toMatch(/patches content/);
   });
 });
 
-describe('the Rhizomorph (preset rhizomorph)', () => {
-  const rc = protoContent('rhizomorph');
+describe('the Rhizomorph (default data since R2a)', () => {
+  const rc = content;
 
-  it('bots and generals buy its tunnel at weight 1, mono bots never; generals field it in runs', () => {
+  it("bots and generals weigh its tunnel 1 in data (R2-Q5); mono and test bots don't", () => {
     const weight = (s: BattleState, side: 'player' | 'enemy') => s.sides[side].ai!.weights.find((w) => w.building === 'rhizomorphTunnel')?.weight;
     const b = createBattle(rc, makeConfig(rc, { seed: 1, mapId: 'bogwater-hollow', player: 'bot:balanced', enemy: 'general:mother-mold' }));
     expect(weight(b, 'player')).toBe(1);
@@ -244,16 +175,9 @@ describe('the Rhizomorph (preset rhizomorph)', () => {
     expect(b.sides.player.kit).toContain('rhizomorphTunnel');
     const mono = createBattle(rc, makeConfig(rc, { seed: 1, mapId: 'bogwater-hollow', player: 'bot:mono:gillNest', enemy: 'bot:balanced' }));
     expect(weight(mono, 'player')).toBeUndefined();
-    const plain = createBattle(content, makeConfig(content, { seed: 1, mapId: 'bogwater-hollow', player: 'bot:balanced', enemy: 'bot:balanced' }));
-    expect(weight(plain, 'player')).toBeUndefined();
     // a test bot (the counter check's answers) keeps to its own weights
-    const tc = protoContent('rhizomorph,bot.pairtest:{"opener":["gillNest"],"weights":{"gillNest":1,"sporelingBurrow":1},"mergePolicy":"on","fixedWeights":true}');
+    const tc = protoContent('bot.pairtest:{"opener":["gillNest"],"weights":{"gillNest":1,"sporelingBurrow":1},"mergePolicy":"on","fixedWeights":true}');
     expect(weight(createBattle(tc, makeConfig(tc, { seed: 1, mapId: 'bogwater-hollow', player: 'bot:pairtest', enemy: 'bot:balanced' })), 'player')).toBeUndefined();
-    const run = createRun(rc, { seed: 3, commander: 'vesper' });
-    for (const node of run.route.flat().filter((n) => n.general)) {
-      expect(generalKit(rc, run, node, 2).kit).toContain('rhizomorphTunnel');
-      expect(generalKit(content, run, node, 2).kit).not.toContain('rhizomorphTunnel');
-    }
   });
 
   /** A Rhizomorph burrowed at x 5 with frozen enemy Capguards in a wall at x 12, plus what `extra` adds. */
@@ -568,7 +492,7 @@ describe('mixed waves (balance mixedWave)', () => {
   });
 
   it('a shield takes damage of every kind before HP, and breaks once spent', () => {
-    const s = protoState(protoContent('mixedwave,sporecloud'));
+    const s = protoState(protoContent('mixedwave'));
     const v = unit(s, 'enemy', 'capguard', 10, 3);
     freeze(s, 'enemy', 'capguard');
     v.shield = 15;
@@ -599,61 +523,23 @@ describe('mixed waves (balance mixedWave)', () => {
   });
 });
 
-describe('cleave (preset cleave)', () => {
-  const radii = (s: BattleState) => s.compiled.player.units.scythecap!.tiers.map((t) => t.splashRadius);
+describe('the Burster (default data since R2a)', () => {
+  const bc = content;
 
-  it('is off by default; the preset widens the Scythecap to 1, 1.2 and 1.4 tiles at full damage', () => {
-    expect(content.balance.cleave).toBeUndefined();
-    expect(liveState().rules.cleave).toBeUndefined();
-    expect(radii(liveState())).toEqual([0.8, 1, 1.2]);
-    const s = protoState(protoContent('cleave'));
-    expect(s.rules.cleave).toEqual({ units: ['scythecap'] });
-    expect(radii(s)).toEqual([1, 1.2, 1.4]);
-  });
-
-  it("a Scythecap's swing hits the units within 1 tile of its target at full damage; buildings still take the falloff", () => {
-    const swing = (on: boolean) => {
-      const s = on ? protoState(protoContent('cleave')) : liveState({ test: NO_FIELD });
-      const scy = unit(s, 'player', 'scythecap', 9, 4);
-      freeze(s, 'player', 'scythecap');
-      scy.cooldown = 0;
-      const target = unit(s, 'enemy', 'sporeling', 9.8, 4);
-      const near = unit(s, 'enemy', 'sporeling', 10.5, 4); // 0.45 tiles from the target's edge
-      const far = unit(s, 'enemy', 'sporeling', 11.6, 4); // 1.55 tiles
-      const cellar = building(s, 'enemy', 'truffleCellar', 10, 4); // 0.2 tiles from the target
-      freeze(s, 'enemy', 'sporeling');
-      steps(s, 2);
-      return { target: target.maxHp - target.hp, near: near.maxHp - near.hp, far: far.maxHp - far.hp, cellar: cellar.maxHp - cellar.hp };
-    };
-    const on = swing(true), off = swing(false);
-    expect(on.target).toBeGreaterThan(0);
-    expect(on.near).toBe(on.target);
-    expect(off.near).toBe(Math.max(1, Math.round(off.target * 0.5)));
-    expect(on.far).toBe(0);
-    expect(on.cellar).toBe(off.cellar);
-    expect(on.cellar).toBeGreaterThan(0);
-  });
-});
-
-describe('the Burster (preset burster)', () => {
-  const bc = protoContent('burster');
-
-  it('is off by default; the preset adds the Burster, its Pod and burst clouds; bots buy the Pod, mono and test bots never', () => {
-    expect(content.units.burster).toBeUndefined();
-    expect(content.balance.burst).toBeUndefined();
-    expect(liveState().rules.burst).toBeUndefined();
+  it("its Pod, which bots and generals weigh 1 in data (R2-Q5); mono and test bots don't", () => {
     expect(bc.units.burster).toMatchObject({ hp: 50, armor: 'light', damage: 40, speed: 1.6, supply: 1, aggroRange: 5, splashRadius: 1.5, tags: ['burst'] });
-    expect(bc.buildings.bursterPod).toMatchObject({ cost: 130, spawn: { unit: 'burster', count: 1, interval: 10 }, aiWeight: 1 });
+    expect(bc.buildings.bursterPod).toMatchObject({ cost: 130, spawn: { unit: 'burster', count: 1, interval: 10 }, squad: { unit: 'burster', count: 6 } });
     const s = protoState(bc);
     expect(s.rules.burst).toEqual({ cloud: { radius: 1.5, ticks: 80, damage: 10, pulseTicks: 20 } });
-    expect(s.rules.cloud).toBeUndefined();
-    expect(s.clouds).toEqual([]);
-    const weight = (st: BattleState) => st.sides.player.ai!.weights.find((w) => w.building === 'bursterPod')?.weight;
-    const battle = (c: Content, player: string) => createBattle(c, makeConfig(c, { seed: 1, mapId: 'bogwater-hollow', player, enemy: 'bot:balanced' }));
+    const weight = (st: BattleState, side: 'player' | 'enemy' = 'player') => st.sides[side].ai!.weights.find((w) => w.building === 'bursterPod')?.weight;
+    const battle = (c: Content, player: string) => createBattle(c, makeConfig(c, { seed: 1, mapId: 'bogwater-hollow', player, enemy: 'general:mother-mold' }));
     expect(weight(battle(bc, 'bot:balanced'))).toBe(1);
+    expect(weight(battle(bc, 'bot:balanced'), 'enemy')).toBe(1);
     expect(weight(battle(bc, 'bot:mono:gillNest'))).toBeUndefined();
-    const tc = protoContent('burster,bot.pairtest:{"opener":["gillNest"],"weights":{"gillNest":1},"mergePolicy":"on","fixedWeights":true}');
+    const tc = protoContent('bot.pairtest:{"opener":["gillNest"],"weights":{"gillNest":1},"mergePolicy":"on","fixedWeights":true}');
     expect(weight(battle(tc, 'bot:pairtest'))).toBeUndefined();
+    // every data bot and every general, as R1 measured them under aiWeight
+    for (const p of [...Object.values(bc.bots), ...Object.values(bc.generals)]) expect([p.weights.bursterPod, p.weights.rhizomorphTunnel], p.id).toEqual([1, 1]);
   });
 
   it('heads for the enemy unit in its aggro range with the most enemy units within 1.5 tiles', () => {
@@ -664,28 +550,6 @@ describe('the Burster (preset burster)', () => {
     freeze(s, 'enemy', 'sporeling');
     steps(s, 1);
     expect(b.targetId).toBe(knot[1]!.id); // the knot's nearest member
-  });
-
-  it('bursts on reaching it: 40 damage through any armor within 1.5 tiles, then a 4 s cloud; never buildings or friends', () => {
-    const s = protoState(bc);
-    const b = unit(s, 'player', 'burster', 8, 4);
-    const knight = unit(s, 'enemy', 'amanitaKnight', 8.9, 4);
-    const capguard = unit(s, 'enemy', 'capguard', 9.9, 4.5);
-    const far = unit(s, 'enemy', 'sporeling', 12.5, 4); // past 1.5 tiles of both, so the Knight (nearer) is the knot's pick
-    const friend = unit(s, 'player', 'capguard', 9.4, 3.2);
-    const cellar = building(s, 'enemy', 'truffleCellar', 9, 5);
-    for (const [side, id] of [['enemy', 'amanitaKnight'], ['enemy', 'capguard'], ['enemy', 'sporeling'], ['player', 'capguard']] as const) freeze(s, side, id);
-    let at = -1;
-    for (let i = 0; i < 20 && at < 0; i++) { steps(s, 1); if (s.events.some((e) => e.t === 'burst')) at = s.tick; }
-    expect(at).toBeGreaterThan(0);
-    expect(s.units.includes(b)).toBe(false);
-    expect([knight.maxHp - knight.hp, capguard.maxHp - capguard.hp, far.maxHp - far.hp, friend.maxHp - friend.hp]).toEqual([40, 40, 0, 0]);
-    expect(cellar.hp).toBe(cellar.maxHp);
-    expect(s.clouds).toHaveLength(1);
-    expect(s.clouds![0]).toMatchObject({ side: 'player', radius: 1.5, damage: 10, untilTick: at + 80, x: knight.x, y: knight.y });
-    steps(s, 80);
-    expect([knight.maxHp - knight.hp, capguard.maxHp - capguard.hp, far.maxHp - far.hp]).toEqual([80, 80, 0]);
-    expect(s.clouds).toEqual([]);
   });
 
   it('bursts where it dies, and a burst can set off another Burster', () => {
@@ -716,25 +580,8 @@ describe('the Burster (preset burster)', () => {
   });
 });
 
-describe('the kept preset (R1)', () => {
-  it("is SPEC v2's kept pieces (§1.3 #11): pinning, the Mortar's clouds, the Burster, cleave and the Rhizomorph, with no waves, call for help, mixed waves, flyers or storm", () => {
-    const kc = protoContent('kept');
-    const s = protoState(kc);
-    for (const k of ['pin', 'cloud', 'burst', 'cleave'] as const) expect(s.rules[k], k).toBeDefined();
-    for (const k of ['waves', 'help', 'mixed', 'flying', 'stormWaves'] as const) expect(s.rules[k], k).toBeUndefined();
-    // both new spawners stay appended, though spreading the presets keeps only the last one's append
-    for (const f of ['velvet-bloom', 'gray-rot']) expect(kc.factions[f]!.buildings.slice(-2)).toEqual(['bursterPod', 'rhizomorphTunnel']);
-    expect(s.compiled.player.units.sporeling!.tiers[2]!.splashRadius).toBe(0.6); // the Elder keeps its splash
-    // balance.json holds none of it by default
-    const base = liveState();
-    for (const k of ['pin', 'cloud', 'burst', 'cleave'] as const) expect(base.rules[k], k).toBeUndefined();
-    for (const f of ['velvet-bloom', 'gray-rot']) expect(content.factions[f]!.buildings).not.toEqual(expect.arrayContaining(['bursterPod']));
-    for (const f of ['velvet-bloom', 'gray-rot']) expect(content.factions[f]!.buildings).not.toEqual(expect.arrayContaining(['rhizomorphTunnel']));
-  });
-});
-
 describe('the package (preset rework)', () => {
-  it("is P1d's base without the Mortar's clouds, plus the storm, the swarm read and flyers under rule C: mixed waves at two types, the Burster, no Elder splash, at 20 s", () => {
+  it("is P1d's base, plus the storm, the swarm read and flyers under rule C: mixed waves at two types, the Burster, no Elder splash, at 20 s", () => {
     const rc = protoContent('rework');
     const s = protoState(rc);
     expect(s.rules.pin).toBeDefined();
@@ -743,26 +590,27 @@ describe('the package (preset rework)', () => {
     expect(s.compiled.player.waveBeatTicks).toBe(400);
     expect(s.rules.burst).toBeDefined();
     expect(s.rules.stormWaves).toEqual({ perStack: 0.2 });
-    expect(s.rules.cloud).toBeUndefined();
-    expect(s.rules.cleave).toBeUndefined();
+    // P3 played it without the Mortar's clouds and cleave, which are default data since R2a
+    expect(s.rules.cloud).toBeDefined();
+    expect(s.rules.cleave).toEqual({ units: ['scythecap'] });
     expect(s.compiled.player.units.sporeling!.tiers.map((t) => t.splashRadius)).toEqual([0, 0, 0]);
     expect(s.rules.flying).toEqual({ reachSupply: 1, meleeMult: 0.5, mergedReach: false, cloudsReach: true, holdsGround: false });
-    for (const f of ['velvet-bloom', 'gray-rot']) expect(rc.factions[f]!.buildings.slice(-3)).toEqual(['rhizomorphTunnel', 'bursterPod', 'driftStalk']);
+    for (const f of ['velvet-bloom', 'gray-rot']) expect(rc.factions[f]!.buildings.slice(-3)).toEqual(['bursterPod', 'rhizomorphTunnel', 'driftStalk']);
     // the shipped unit keeps its Elder splash
     expect(liveState().compiled.player.units.sporeling!.tiers[2]!.splashRadius).toBe(0.6);
   });
 
-  it("the Burster's bursts still leave clouds; the Mortar's shells don't, at its own 6 tiles", () => {
+  it("the Burster's bursts leave clouds, and since R2a the Mortar's shells do too, at 7 tiles", () => {
     const rc = protoContent('rework');
     const s = protoState(rc);
-    expect(s.compiled.player.buildings.puffballMortar!.attack!.range).toBe(6);
+    expect(s.compiled.player.buildings.puffballMortar!.attack!.range).toBe(7);
     expect(s.clouds).toEqual([]);
     building(s, 'player', 'puffballMortar', 4, 2);
     const shelled = unit(s, 'enemy', 'amanitaKnight', 10, 3);
     freeze(s, 'enemy', 'amanitaKnight');
     steps(s, 60);
     expect(shelled.hp).toBeLessThan(shelled.maxHp);
-    expect(s.clouds).toEqual([]);
+    expect(s.clouds).toHaveLength(1);
 
     const b = protoState(rc);
     const knight = unit(b, 'enemy', 'amanitaKnight', 10, 3);
@@ -862,12 +710,12 @@ describe('flyers (preset flyers)', () => {
   // the design's first pick, reach, which the preset's rule C replaced for the playtest
   const REACH = 'flyers,flying.reachSupply:2,flying.meleeMult:1';
 
-  it('is off by default; the preset adds the Driftling and its Drift Stalk, which bots buy at weight 1 and mono and test bots never', () => {
+  it("is off by default; the preset adds the Driftling and its Drift Stalk, which R2-Q5's bots and the generals buy at weight 1, and mono bots never", () => {
     expect(content.units.driftling).toBeUndefined();
     expect(content.balance.flying).toBeUndefined();
     expect(liveState().rules.flying).toBeUndefined();
     expect(fc.units.driftling).toMatchObject({ hp: 70, armor: 'light', damage: 8, damageType: 'slash', range: 1, speed: 1.4, supply: 1, aggroRange: 5, tags: ['flying'] });
-    expect(fc.buildings.driftStalk).toMatchObject({ cost: 160, spawn: { unit: 'driftling', count: 2, interval: 18 }, aiWeight: 1 });
+    expect(fc.buildings.driftStalk).toMatchObject({ cost: 160, spawn: { unit: 'driftling', count: 2, interval: 18 }, squad: { unit: 'driftling', count: 6 } });
     for (const f of ['velvet-bloom', 'gray-rot']) expect(fc.factions[f]!.buildings).toContain('driftStalk');
     const s = protoState(fc);
     expect(s.rules.flying).toEqual({ reachSupply: 1, meleeMult: 0.5, mergedReach: false, cloudsReach: true, holdsGround: false });
@@ -877,6 +725,7 @@ describe('flyers (preset flyers)', () => {
     const battle = (c: Content, player: string) => createBattle(c, makeConfig(c, { seed: 1, mapId: 'bogwater-hollow', player, enemy: 'bot:balanced' }));
     expect(weight(battle(fc, 'bot:balanced'))).toBe(1);
     expect(weight(battle(fc, 'bot:mono:gillNest'))).toBeUndefined();
+    for (const p of [...Object.values(fc.bots), ...Object.values(fc.generals)]) expect(p.weights.driftStalk, p.id).toBe(1);
   });
 
   it('under rule C every unit targets a flyer, the small fry too', () => {
@@ -906,7 +755,7 @@ describe('flyers (preset flyers)', () => {
     expect([bloomed.targetId, base.targetId]).toEqual([d2.id, 0]);
   });
 
-  it("Heartcap turrets reach a flyer; the Mortar's lob neither targets one nor splashes it", () => {
+  it("Heartcap turrets reach a flyer; the Mortar's lob neither targets one nor splashes it, though its cloud does", () => {
     const t = protoState(fc, { noTerritory: true, noHeartcapTargets: true });
     const d = unit(t, 'enemy', 'driftling', 3, 4);
     freeze(t, 'enemy', 'driftling');
@@ -921,9 +770,12 @@ describe('flyers (preset flyers)', () => {
     for (const id of ['driftling', 'capguard'] as const) freeze(s, 'enemy', id);
     steps(s, 1);
     expect(mortar.targetId).toBe(cap.id);
-    steps(s, 80);
+    for (let i = 0; i < 80 && cap.hp === cap.maxHp; i++) steps(s, 1);
     expect(cap.hp).toBeLessThan(cap.maxHp);
     expect([near.hp, beside.hp]).toEqual([near.maxHp, beside.maxHp]);
+    // the shell's cloud, the shipped rule since R2a, reaches a flyer in it (cloudsReach)
+    steps(s, 40);
+    expect([near.hp < near.maxHp, beside.hp < beside.maxHp]).toEqual([false, true]);
   });
 
   it("splash follows its attacker's reach: under reach an Elder Sporeling's skips a flyer, a Scythecap's catches one", () => {
@@ -943,14 +795,14 @@ describe('flyers (preset flyers)', () => {
 
   it('spore clouds reach a flyer unless cloudsReach is off; a burst never does', () => {
     for (const reach of [true, false]) {
-      const s = protoState(protoContent(`burster,flyers${reach ? '' : ',flying.cloudsReach:false'}`));
+      const s = protoState(protoContent(`flyers${reach ? '' : ',flying.cloudsReach:false'}`));
       const d = unit(s, 'enemy', 'driftling', 10, 3);
       freeze(s, 'enemy', 'driftling');
       addCloud(s, 'player', 0, 10, 3, 0, s.rules.burst!.cloud);
       steps(s, 100);
       expect(d.maxHp - d.hp).toBe(reach ? 40 : 0);
     }
-    const s = protoState(protoContent('burster,flyers'));
+    const s = protoState(protoContent('flyers'));
     const b = unit(s, 'player', 'burster', 10, 4);
     const flyer = unit(s, 'enemy', 'driftling', 10.6, 4);
     const ground = unit(s, 'enemy', 'sporeling', 10, 4.8);
@@ -1100,11 +952,11 @@ describe('flyers (preset flyers)', () => {
 
   it('the cards say who can hit a flyer, under rule C or reach', () => {
     const vs = (st: BattleState, ids: string[]) => ids.map((id) => versusFlyers(st, st.compiled.player.units[id]!));
-    const c = protoState(protoContent('burster,flyers'));
+    const c = protoState(protoContent('flyers'));
     expect(flyerHitters(c)).toBe("melee hits it for ×0.5, and lobbed shells and bursts can't hit it");
     expect(vs(c, ['sporeling', 'capguard', 'gillArcher', 'driftling', 'burster'])).toEqual(
       ['hits them for ×0.5', 'hits them for ×0.5', 'can hit them', 'can hit them', "its burst can't hit them, its cloud can"]);
-    const r = protoState(protoContent(`burster,${REACH}`));
+    const r = protoState(protoContent(REACH));
     expect(flyerHitters(r)).toBe('only units of 2+ supply, archers, turrets, other flyers, spore clouds and powers can hit it');
     expect(vs(r, ['sporeling', 'capguard', 'gillArcher', 'burster'])).toEqual(["can't reach them", 'can hit them', 'can hit them', "its burst can't hit them, its cloud can"]);
   });

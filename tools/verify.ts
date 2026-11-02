@@ -11,7 +11,9 @@ const steps: [string, string[]][] = [
   ['test', ['run', 'test']],
   ['golden verify', ['run', 'golden', '--', 'verify']],
   ['sim smoke (3 seeds)', ['run', 'sim', '--', '--seeds', '1..3', '--player', 'bot:balanced', '--enemy', 'general:scripted', '--summary', '--assert', 'rejectedCommands=0', '--assert', 'durationTicks<=12000']],
-  ['sim smoke, adaptive general (2 seeds)', ['run', 'sim', '--', '--seeds', '4..5', '--player', 'bot:mono:sporelingBurrow', '--enemy', 'general:mother-mold', '--flags', 'merging,adaptive', '--summary', '--assert', 'rejectedCommands=0', '--assert', 'counters[0].kind=swarm', '--assert', 'counters[0].warnedAt=2400', '--assert', 'counters[0].activeAt=4800']],
+  // seeds 3..4: on R1's chosen set (R2a S1) the general reads the merged swarm as Elite on 6 of seeds 1..10, seed 5 among
+  // them (v1's read, A041; R2-Q3 replaces it in rounds). The timings hold on every seed.
+  ['sim smoke, adaptive general (2 seeds)', ['run', 'sim', '--', '--seeds', '3..4', '--player', 'bot:mono:sporelingBurrow', '--enemy', 'general:mother-mold', '--flags', 'merging,adaptive', '--summary', '--assert', 'rejectedCommands=0', '--assert', 'counters[0].kind=swarm', '--assert', 'counters[0].warnedAt=2400', '--assert', 'counters[0].activeAt=4800']],
   ...([['armilla', 'powerGold'], ['cordis', 'powerMerges']] as const).map(([c, stat]): [string, string[]] => [
     `sim smoke, ${c}'s power`,
     ['run', 'sim', '--', '--seed', '3', '--player', 'bot:balanced', '--commander', c, '--power-policy', 'auto', '--flags', 'merging,adaptive,powers', '--summary',

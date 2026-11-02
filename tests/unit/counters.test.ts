@@ -22,11 +22,11 @@ const cc = protoContent(counterBotSpec(content));
 describe('counter matrix answers', () => {
   it('pairs every two army buildings evenly, with an opener the starting gold covers', () => {
     const army = armyIds(content);
-    expect(army).toHaveLength(10);
+    expect(army).toHaveLength(12); // with R1's Burster Pod and Rhizomorph Tunnel
     expect(army).toContain('puffballMortar');
     expect(army).not.toContain('tendersRing');
     const pairs = Object.entries(counterBots(content)).filter(([id]) => id.startsWith('pair-'));
-    expect(pairs).toHaveLength(45);
+    expect(pairs).toHaveLength(66);
     for (const [, bot] of pairs) {
       const [a, b] = Object.keys(bot.weights);
       expect(bot.weights).toEqual({ [a!]: 1, [b!]: 1 });
@@ -43,7 +43,7 @@ describe('counter matrix answers', () => {
     expect(cc.bots['d1-adaptive']).toEqual({ ...balanced, id: 'd1-adaptive', adaptive: true, fixedWeights: true, description: expect.stringContaining('D1') });
   });
 
-  it("keeps every answer bot to its own weights (a prototype building's aiWeight skips them)", () => {
+  it('keeps every answer bot to its own weights', () => {
     for (const id of Object.keys(counterBots(content))) expect(cc.bots[id]!.fixedWeights).toBe(true);
     for (const id of Object.keys(content.bots)) expect(cc.bots[id]!.fixedWeights).toBeUndefined();
   });
@@ -51,8 +51,8 @@ describe('counter matrix answers', () => {
   it('tries every other mono bot, the pairs, bot:balanced, the counter bots and the other data bots', () => {
     const answers = counterAnswers(cc, 'gillNest');
     expect(answers).not.toContain('bot:mono:gillNest');
-    expect(answers.filter((a) => a.startsWith('bot:mono:'))).toHaveLength(13);
-    expect(answers.filter((a) => a.startsWith('bot:pair-'))).toHaveLength(45);
+    expect(answers.filter((a) => a.startsWith('bot:mono:'))).toHaveLength(15);
+    expect(answers.filter((a) => a.startsWith('bot:pair-'))).toHaveLength(66);
     expect(answers).toEqual(expect.arrayContaining(['bot:balanced', 'bot:d1-burrows', 'bot:diverdef', 'bot:counter-swarm', 'bot:rush']));
     expect(answers).not.toContain('bot:balanced-nomerge');
   });
@@ -394,8 +394,8 @@ describe("the clash check's variants (SPEC §16 R1; T030, T031)", () => {
   });
 
   it("limits the core-six check to the six: their monos, the 15 even pairs and bot:core6, and reads §11.4's graph (T030, R1-Q6)", async () => {
-    const bc = protoContent(['burster', core6Spec('bursterPod')].join(','));
-    const six = protoContent(['burster', counterBotSpec(bc), core6Spec('bursterPod')].join(','));
+    const bc = protoContent(core6Spec('bursterPod'));
+    const six = protoContent([counterBotSpec(bc), core6Spec('bursterPod')].join(','));
     const answers = core6Answers(six, 'bursterPod');
     expect(answers).toHaveLength(6 + 15 + 1);
     expect(answers).toContain('bot:core6');
@@ -419,17 +419,6 @@ describe("the clash check's variants (SPEC §16 R1; T030, T031)", () => {
     expect(rows.scythecapGrove!.roleFactor).toBe(1.4);
     expect(rows.tendersRing!.perGold).toBeUndefined(); // the heuristic can't value a healer
     expect(squadTable(content, { squad: { sporelingBurrow: 7 } }).find((r) => r.buildingId === 'sporelingBurrow')!.perGold).toBeCloseTo(1.6, 2);
-  });
-
-  it('labels G3 on a fixed reference and lists the monos of appended spawners apart (T030, A023)', async () => {
-    const fc = protoContent(['burster', 'bot.balanced.fixedWeights:true'].join(','));
-    const g3 = await evaluateClashG3(fc, { cache: clashCache(fc, scripted(() => 'b'), { jitter: 0.2 }), ids: ['bursterPod', 'sporelingBurrow'], budgets: [300], fields: ['one'], seeds: 1 });
-    expect([g3.reference, g3.appended]).toEqual(['data weights', ['bursterPod']]);
-    const text = g3.details.join('\n');
-    expect(text).toMatch(/reference on its data weights/);
-    expect(text.indexOf('bursterPod')).toBeGreaterThan(text.indexOf('sporelingBurrow')); // apart, after the others
-    const plain = await evaluateClashG3(cc, { cache: clashCache(cc, scripted(() => 'b'), { jitter: 0.2 }), ids: ['sporelingBurrow'], budgets: [300], fields: ['one'], seeds: 1 });
-    expect(plain.reference).toBeUndefined();
   });
 });
 

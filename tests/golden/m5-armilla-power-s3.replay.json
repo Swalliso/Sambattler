@@ -25,7 +25,9 @@
         "amanitaLodge",
         "morelWarren",
         "rhizomeVault",
-        "sporeExchange"
+        "sporeExchange",
+        "bursterPod",
+        "rhizomorphTunnel"
       ],
       "heartcapHp": 3000,
       "heartcapMaxHp": 3000,
@@ -54,7 +56,9 @@
         "amanitaLodge",
         "morelWarren",
         "rhizomeVault",
-        "sporeExchange"
+        "sporeExchange",
+        "bursterPod",
+        "rhizomorphTunnel"
       ],
       "heartcapHp": 2000,
       "heartcapMaxHp": 2000,
@@ -91,18 +95,22 @@
     }
   ],
   "expected": {
-    "600": "409737c62d7bc13c",
-    "1200": "449da2db8a11ac23",
-    "1800": "944c7ccbeaec71cd",
-    "2400": "6aa7fddce23e454b",
-    "3000": "b10d7bace8240f2a",
-    "3600": "896a72c7329c3db1",
-    "4200": "f489d191999404c9",
-    "4800": "a2ce2491639e79f9",
-    "5400": "71a5f65ae127fcb4",
-    "6000": "9e25be05431e4bb6",
-    "6600": "121151aca3c051e1",
-    "7200": "def15186105bc2c0",
-    "final": "c3e5db956f674ea7"
+    "600": "57150c32697559b9",
+    "1200": "2029a71bfc30b6c7",
+    "1800": "be079baa0348edc0",
+    "2400": "3f89b9c7b03b7286",
+    "3000": "75d4b7cbaed807d0",
+    "3600": "be015b35682b2797",
+    "4200": "4d2d68ec340796ac",
+    "4800": "5e77298dbc0e29d7",
+    "5400": "c79fa2ac1a87accd",
+    "6000": "bc127a3e4636ea23",
+    "6600": "a70dfcf8561c1234",
+    "7200": "2253c42aa3afb077",
+    "7800": "80a7c4677d600b27",
+    "8400": "7ca4b8ae8b3bd403",
+    "9000": "89ddcc03f33dd33b",
+    "9600": "e47a2a054a287796",
+    "final": "47ae928447b938fd"
   }
 }

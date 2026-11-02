@@ -2,27 +2,23 @@
 // log new v2 knobs in docs/balance-backlog.md. Which pieces SPEC v2 keeps or retires: SPEC §1.3 #11, §13.4, Appendix A.
 // Named presets and `path:value` overrides
 // applied to the raw balance.json before validation, so a prototype can be measured by the tools
-// (`--proto`) or playtested in the browser (`?proto=`) without editing data. Every knob is absent
-// from balance.json by default, so without a spec the rules are unchanged.
+// (`--proto`) or playtested in the browser (`?proto=`) without editing data. Every knob here is absent
+// from balance.json by default, so without a spec the rules are unchanged. R1's chosen set (pinning, the
+// Mortar's spore clouds, cleave, the Burster and the Rhizomorph) is default data since R2a S1, and its
+// presets are gone; `rework` still builds on the constants below until R2b deletes it.
 import type { RawContent } from './registry.ts';
 
 type Json = Record<string, unknown>;
 
 // ---- the combat rework's settings (docs/archive/v1/ideas/combat-rework.md, P1 to P1d); `rework` is P2's package ----
 
-/** Pinned: a ranged unit with an enemy unit within 1 tile attacks at 0.35× its rate. */
+/** Pinned: a ranged unit with an enemy unit within 1 tile attacks at 0.35× its rate (default data since R2a). */
 const PINNED: Json = { pinned: { radius: 1, rateMult: 0.35 } };
 /** Call for help: friendly units within 5 tiles of a unit or building that takes damage, and have no target, take the attacker. */
 const CALL_FOR_HELP: Json = { callForHelp: { radius: 5 } };
 /**
- * Spore clouds: the Puffball Mortar reaches 7 tiles, and each shell leaves a cloud (radius 1.5,
- * 6 s) that deals 10 damage a second, ignoring armor, to the enemy units inside it.
- */
-const SPORE_CLOUD: Json = { sporeCloud: { buildings: ['puffballMortar'], range: 7, radius: 1.5, seconds: 6, damagePerSecond: 10, aiCover: 1 } };
-/**
- * The Rhizomorph: a burrowing unit (the `burrow` tag) and its spawner, which exist only under this
- * preset. It joins both rosters (the Gray Rot mirrors the Velvet Bloom until M7), and every bot and
- * general that doesn't list it buys it at weight 1 (`aiWeight`; mono bots never do).
+ * The Rhizomorph: a burrowing unit (the `burrow` tag) and its spawner, in both rosters. Default data
+ * since R2a, where bots and generals weigh it (R2-Q5); this copy matches the data.
  */
 const RHIZOMORPH: Json = {
   'unit.rhizomorph': {
@@ -35,7 +31,7 @@ const RHIZOMORPH: Json = {
     name: 'Rhizomorph Tunnel', sprite: 'b-rhizomorphTunnel', milestone: 5, rarity: 'uncommon',
     description: 'Rhizomorphs tunnel under the front line and surface beside the archers or spawners behind it.',
     kind: 'spawner', footprint: { w: 2, h: 2 }, cost: 160, hp: 450,
-    spawn: { unit: 'rhizomorph', count: 1, interval: 18 }, aiWeight: 1,
+    spawn: { unit: 'rhizomorph', count: 1, interval: 18 }, squad: { unit: 'rhizomorph', count: 3 },
   },
   'faction.velvet-bloom.buildings+': 'rhizomorphTunnel',
   'faction.gray-rot.buildings+': 'rhizomorphTunnel',
@@ -56,21 +52,11 @@ const WAVES: Json = { waves: { beatSeconds: 20, rangedGap: 1, matchPace: true } 
 const MIXED_WAVE: Json = { mixedWave: { minTypes: 2, shieldFrac: 0.2 } };
 
 /**
- * Cleave (P1c): a Scythecap's swing hits every enemy unit within 1 tile of its target at full damage
- * (from 0.8 tiles at the global half). Its merge perks keep their steps, so 1.2 and 1.4 tiles.
- */
-const CLEAVE: Json = {
-  cleave: { units: ['scythecap'] },
-  'unit.scythecap.splashRadius': 1,
-  'unit.scythecap.mergePerks.2.splashRadius': 1.2,
-  'unit.scythecap.mergePerks.3.splashRadius': 1.4,
-};
-/**
  * The Burster (P1c; a working name): a fast 1-supply unit with no attack. It rolls at the thickest
  * knot of enemy units in its aggro range and bursts on reaching it or on dying: 40 damage, ignoring
  * armor, to every enemy unit within 1.5 tiles, and a spore cloud there (1.5 tiles, 4 s, 10 a second).
- * Its Burster Pod costs 130 and makes one every 10 s. Bots and generals buy it at weight 1, as they
- * do the Rhizomorph Tunnel; mono bots and the counter check's test bots don't.
+ * Its Burster Pod costs 130 and makes one every 10 s. Default data since R2a, where bots and generals
+ * weigh it (R2-Q5); this copy matches the data.
  */
 const BURSTER: Json = {
   burst: { cloud: { radius: 1.5, seconds: 4, damagePerSecond: 10 } },
@@ -84,7 +70,7 @@ const BURSTER: Json = {
     name: 'Burster Pod', sprite: 'b-bursterPod', milestone: 5, rarity: 'uncommon',
     description: 'Bursters roll at the thickest knot of enemy units and burst: damage through any armor, and a spore cloud.',
     kind: 'spawner', footprint: { w: 2, h: 2 }, cost: 130, hp: 450,
-    spawn: { unit: 'burster', count: 1, interval: 10 }, aiWeight: 1,
+    spawn: { unit: 'burster', count: 1, interval: 10 }, squad: { unit: 'burster', count: 6 },
   },
   'faction.velvet-bloom.buildings+': 'bursterPod',
   'faction.gray-rot.buildings+': 'bursterPod',
@@ -110,8 +96,9 @@ const SWARM_READ: Json = { 'ai.counter.swarmMaxSupply': 1 };
  * mono Drift Stalk took over G3 under the design's first pick, reach (only ranged units, turrets,
  * other flyers, clouds, commander powers and melee types of 2 or more supply):
  * `flying.reachSupply:2,flying.meleeMult:1` brings reach back.
- * Its Drift Stalk costs 160 and makes two every 18 s. Bots and generals buy it at weight 1, as they do
- * the Tunnel and the Pod; mono bots and the counter check's test bots don't.
+ * Its Drift Stalk costs 160 and makes two every 18 s. The bots and generals that weigh the Tunnel and the
+ * Pod in data buy it at weight 1 (every data bot and every general, R2-Q5); mono bots and the counter
+ * check's test bots don't.
  */
 const FLYERS: Json = {
   flying: { reachSupply: 1, meleeMult: 0.5, mergedReach: false, cloudsReach: true, holdsGround: false },
@@ -125,10 +112,14 @@ const FLYERS: Json = {
     name: 'Drift Stalk', sprite: 'b-driftStalk', milestone: 5, rarity: 'uncommon',
     description: "Driftlings float over the front and hold no ground. Melee hits them for half damage, and lobbed shells and bursts can't hit them.",
     kind: 'spawner', footprint: { w: 2, h: 2 }, cost: 160, hp: 450,
-    spawn: { unit: 'driftling', count: 2, interval: 18 }, aiWeight: 1,
+    spawn: { unit: 'driftling', count: 2, interval: 18 }, squad: { unit: 'driftling', count: 6 },
   },
   'faction.velvet-bloom.buildings+': 'driftStalk',
   'faction.gray-rot.buildings+': 'driftStalk',
+  ...Object.fromEntries([
+    ...['balanced', 'balanced-nomerge', 'slayer', 'slayer-nomerge', 'rush', 'turtle', 'greedy'].map((id) => `bot.${id}.weights.driftStalk`),
+    ...['scripted', 'mother-mold', 'lichen-baron', 'blightwright', 'pale-sovereign'].map((id) => `general.${id}.weights.driftStalk`),
+  ].map((path) => [path, 1])),
 };
 
 /** Presets: the settings each prototype was measured with (see the backlog's results tables). */
@@ -194,26 +185,20 @@ export const PROTO_PRESETS: Record<string, Json> = {
   bigdrafts: { draftWaves: [2, 5], 'draft.cards': 4, bigDrafts: { picks: 2, rareBonus: 10 } },
   /** T3: home-column spawners shoot the nearest enemy unit within 6 tiles (12 Pierce per second). */
   t3: { spawnerDefense: { damage: 12, damageType: 'pierce', interval: 1, range: 6, projectileSpeed: 12, homeOnly: true } },
-  // the combat rework (above)
-  pinned: PINNED,
+  // the combat rework (above); its pieces in R1's chosen set are default data since R2a
   callforhelp: CALL_FOR_HELP,
-  sporecloud: SPORE_CLOUD,
-  rhizomorph: RHIZOMORPH,
   waves: WAVES,
   /** Mixed waves on top of waves (mixedWave means nothing without them). */
   mixedwave: { ...WAVES, ...MIXED_WAVE },
-  /** P1c's two area-damage counters to the swarm, measured on their own and with `rework`. */
-  cleave: CLEAVE,
-  burster: BURSTER,
   stormwaves: STORM_WAVES,
   swarmread: SWARM_READ,
   flyers: FLYERS,
   /**
-   * The combat rework's package for the P3 playtest: P2's (P1d's base without the Mortar's clouds,
-   * plus the storm that grows waves), the general's swarm read and flyers. Pinned, call for help, the
-   * Rhizomorph, waves on a 20 s beat with mixed waves at two types, the Burster (whose bursts still
-   * leave clouds), the Elder Sporeling's splash off, `stormwaves`, `swarmread` and `flyers`. The
-   * Mortar's clouds stay the `sporecloud` preset, and cleave its own.
+   * The combat rework's package for the P3 playtest: P2's (P1d's base plus the storm that grows waves),
+   * the general's swarm read and flyers. Pinned, call for help, the Rhizomorph, waves on a 20 s beat with
+   * mixed waves at two types, the Burster (whose bursts leave clouds), the Elder Sporeling's splash off,
+   * `stormwaves`, `swarmread` and `flyers`. P3 played it without the Mortar's clouds and cleave; since
+   * R2a they're default data, so they apply under it too.
    */
   rework: {
     ...PINNED, ...CALL_FOR_HELP, ...RHIZOMORPH, ...WAVES, ...MIXED_WAVE, ...BURSTER, ...NO_ELDER_SPLASH, ...STORM_WAVES, ...SWARM_READ,
@@ -222,18 +207,8 @@ export const PROTO_PRESETS: Record<string, Json> = {
     'faction.velvet-bloom.buildings+': ['rhizomorphTunnel', 'bursterPod', 'driftStalk'],
     'faction.gray-rot.buildings+': ['rhizomorphTunnel', 'bursterPod', 'driftStalk'],
   },
-  // R1's clash-check variants (SPEC §16 R1, §12.4); measured by `--checks clash`, never in a battle
-  /**
-   * The pieces SPEC v2 keeps (§1.3 #11): pinning, the Mortar's spore clouds, the Burster, cleave and the
-   * Rhizomorph, without waves, call for help, mixed waves, flyers or the storm that grows waves. R1's
-   * clash check measures them as a set (T042, T044).
-   */
-  kept: {
-    ...PINNED, ...SPORE_CLOUD, ...BURSTER, ...CLEAVE, ...RHIZOMORPH,
-    // both new spawners join both rosters (spreading the presets keeps only the last one's append)
-    'faction.velvet-bloom.buildings+': ['bursterPod', 'rhizomorphTunnel'],
-    'faction.gray-rot.buildings+': ['bursterPod', 'rhizomorphTunnel'],
-  },
+  // R1's clash-check variants (SPEC §16 R1, §12.4); measured by `--checks clash`, never in a battle.
+  // R1's chosen set, `kept`, is default data since R2a; R2b/T059 deletes the rest with R1's clash tool.
   /** The Elder Sporeling's splash perk off, alone (§18.2 #8; rework's P1d took it off with waves). */
   noeldersplash: NO_ELDER_SPLASH,
   /**

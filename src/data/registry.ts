@@ -193,6 +193,7 @@ export function loadContent(raw: RawContent): Content {
   for (const b of Object.values(buildings)) {
     spriteRef(`building ${b.id}`, b.sprite);
     if (b.spawn && !(b.spawn.unit in units)) problems.push(`building ${b.id}: spawn unit "${b.spawn.unit}" does not exist`);
+    if (b.squad && !(b.squad.unit in units)) problems.push(`building ${b.id}: squad unit "${b.squad.unit}" does not exist`);
   }
   for (const f of Object.values(factions)) for (const id of f.buildings) buildingRef(`faction ${f.id}`, id);
   for (const s of Object.values(sprites)) {

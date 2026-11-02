@@ -8,7 +8,7 @@
 // compiled set covers its kit, with every unit resolved at all three merge tiers. Everything reads
 // from the battle's `library`, never from content, so `step` can recompile.
 import type { Content } from '../data/registry.ts';
-import type { BalanceDef, ModifierDef, UnitDef } from '../data/schema.ts';
+import type { BalanceDef, BuildingDef, ModifierDef, UnitDef } from '../data/schema.ts';
 import { battleModifiers, buildingStat, collectEffects, resolveStat, unitMatcher } from './effects.ts';
 import { SIDES } from './state.ts';
 import type {
@@ -99,7 +99,6 @@ export function compileRules(b: BalanceDef, config: BattleConfig): Rules {
         buildings: [...b.sporeCloud.buildings], radius: b.sporeCloud.radius, ticks: secToTicks(b.sporeCloud.seconds, tr),
         pulseTicks: Math.max(1, secToTicks(b.sporeCloud.pulseSeconds ?? 1, tr)),
         damage: Math.max(1, Math.round(b.sporeCloud.damagePerSecond * (b.sporeCloud.pulseSeconds ?? 1))),
-        aiCover: b.sporeCloud.aiCover ?? 1,
       },
     } : {}),
     timeLimitTicks: secToTicks(test.timeLimitSeconds ?? b.timeLimitSeconds, tr),
@@ -175,16 +174,26 @@ export function compileRules(b: BalanceDef, config: BattleConfig): Rules {
   };
 }
 
+/** A building as v1 reads it: without R2a's `squad` and `economy.goldPerRound` (R2a Call 27). */
+function v1Building(b: BuildingDef): BuildingDef {
+  const { squad: _squad, economy, ...rest } = b;
+  if (!economy) return rest;
+  const { goldPerRound: _goldPerRound, ...v1Economy } = economy;
+  return { ...rest, economy: v1Economy };
+}
+
 /**
  * The library a battle needs: the given buildings (both kits plus any draft pool), the units they
- * spawn, their upgrade tracks, the given relics and the balance constants.
+ * spawn, their upgrade tracks, the given relics and the balance constants. R2a's rounds data (the
+ * `rounds` block, squads and gold a round) stays out, so it never moves a v1 hash (R2a Call 27).
  */
 export function buildLibrary(content: Content, buildingIds: Iterable<string>, relicIds: Iterable<string>): Library {
-  const lib: Library = { balance: content.balance, buildings: {}, units: {}, upgrades: {}, relics: {} };
+  const { rounds: _rounds, ...balance } = content.balance;
+  const lib: Library = { balance, buildings: {}, units: {}, upgrades: {}, relics: {} };
   for (const id of buildingIds) {
     const b = content.buildings[id];
     if (!b) throw new Error(`unknown building ${id}`);
-    lib.buildings[id] = b;
+    lib.buildings[id] = v1Building(b);
     if (b.spawn) {
       const u = content.units[b.spawn.unit];
       if (!u) throw new Error(`unknown unit ${b.spawn.unit}`);

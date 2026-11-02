@@ -59,7 +59,8 @@ async function clipped(p: Page): Promise<string[]> {
 }
 
 const content = nodeContent();
-const mid = (): RunState => simulateRun(content, 3, AUTOPLAY, { maxBattles: 2 }).run;
+// seed 4: on R1's chosen set (R2a S1), seed 3's run ends in its first battle
+const mid = (): RunState => simulateRun(content, 4, AUTOPLAY, { maxBattles: 2 }).run;
 
 describe('the title', () => {
   it('opens with no scene; without a save the primary button is New run', async () => {
@@ -103,8 +104,8 @@ describe('the title', () => {
 
 describe('the route', () => {
   it('joins every node to every node in the next row, and lights a pod’s threads on hover', async () => {
-    const p = await open('/?scene=route&seed=3&autoplay=battles:2&test=1');
-    const run = simulateRun(content, 3, AUTOPLAY, { maxBattles: 2 }).run;
+    const p = await open('/?scene=route&seed=4&autoplay=battles:2&test=1');
+    const run = simulateRun(content, 4, AUTOPLAY, { maxBattles: 2 }).run;
     const sizes = run.route.map((r) => r.length);
     const want = sizes[0]! + sizes.slice(1).reduce((n, s, i) => n + s * sizes[i]!, 0);
     expect(await p.locator('.hyphae .thread').count()).toBe(want);
@@ -162,7 +163,7 @@ describe('spoils, events and the Grove', () => {
 describe('fit at small windows', () => {
   for (const [w, hgt] of [[1280, 720], [1366, 650]] as const) {
     it(`no run screen clips at ${w}×${hgt}`, async () => {
-      for (const q of ['/?test=1', '/?scene=route&seed=3&autoplay=battles:2&test=1', '/?scene=summary&seed=7&autoplay=run&test=1']) {
+      for (const q of ['/?test=1', '/?scene=route&seed=4&autoplay=battles:2&test=1', '/?scene=summary&seed=7&autoplay=run&test=1']) {
         const p = await open(q, { width: w, height: hgt });
         expect(await clipped(p), q).toEqual([]);
         await p.close();

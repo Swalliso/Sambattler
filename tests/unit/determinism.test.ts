@@ -5,6 +5,9 @@ import {
 import type { BattleState } from '../../src/sim/index.ts';
 import type { QueuedCommand } from '../../src/sim/commands.ts';
 import { hashValue } from '../../src/sim/hash.ts';
+import { loadContent } from '../../src/data/registry.ts';
+import type { Content } from '../../src/data/registry.ts';
+import { readRawContent } from '../../tools/lib/content.ts';
 import { content } from '../helpers.ts';
 
 const config = () => makeConfig(content, { seed: 11, player: 'bot:balanced', enemy: 'general:scripted' });
@@ -55,6 +58,20 @@ describe('determinism (SPEC §13.3, §15.5)', () => {
     const resumed = createBattle(content, human);
     runHeadless(resumed, { until: 2400, commands: log });
     expect(hashState(resumed)).toBe(hashState(live));
+  });
+
+  it("rounds data never reaches a v1 battle's state (R2a Call 27)", () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const raw = readRawContent() as Record<string, any>;
+    const building = (id: string) => raw['factions/velvet-bloom/buildings.json'].find((b: { id: string }) => b.id === id);
+    raw['balance.json'].rounds.maxRounds = 12;
+    building('sporelingBurrow').squad.count = 9;
+    building('truffleCellar').economy.goldPerRound = 60;
+    raw['bots.json'].find((b: { id: string }) => b.id === 'balanced').limits.rootbreakerDen.afterRound = 6;
+    const changed = loadContent(raw);
+    const battle = (c: Content) => createBattle(c, makeConfig(c, { seed: 11, player: 'bot:balanced', enemy: 'general:scripted' }));
+    expect(hashState(battle(changed))).toBe(hashState(battle(content)));
+    expect(hashesEvery(battle(changed), 500, 2000)).toEqual(hashesEvery(battle(content), 500, 2000));
   });
 
   it('hashState is canonical: key order, -0 and undefined fields do not matter', () => {
