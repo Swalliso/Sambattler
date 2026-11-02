@@ -43,15 +43,18 @@
 // clash is played once, on `--workers n` threads (default half the machine's; 1 plays them in process,
 // with the same results). The check plays, at each of `--budgets` (default 300,600,900,1200,1500) on each
 // of `--fields` (default one,twin; `three` is the three-lane screen, a lead outside the means):
-// - clash G3: every mono army (or `--mono a,b`) against bot:balanced's, both seats, `--g3seeds n` a seat
-//   (default G3's 50). The mean counts the one-lane field twice;
+// - clash G3: every mono army against bot:balanced's, both seats, `--g3seeds n` a seat (default G3's 50).
+//   The mean counts the one-lane field twice;
 // - G12, the strict counter matrix: the monos with a clash G3 mean above 40% (every mono G3 played with
-//   `--matrix all`) against every answer the counter check tries but the economy and utility monos (or
-//   `--answers a,b`). A screen on `--screen-seeds n` a seat (default 20) ranks them by the worst field,
+//   `--matrix all`, or the `--mono a,b` builds whatever their mean; G3 still plays every mono, so every
+//   mono answer is tested) against every answer the counter check tries but the economy and utility monos
+//   (or `--answers a,b`). A screen on `--screen-seeds n` a seat (default 20) ranks them by the worst field,
 //   and the best `--top n` answers that count (default 3) are confirmed on `--confirm-seeds n` more
 //   (default 50). A mono answer that fails clash G3 doesn't count;
-// - the clash matrix (#14, #15): each build's best 3 answers per budget, beside §7.4's counter sets;
-// - G13: the share of every clash that reached the 45 s cap, both cap readings, and the median length.
+// - the clash matrix (#14, #15): each build's best 3 answers per budget, beside §7.4's counter sets, and
+//   how many of the answers that count tied for the best against mono Gill Nest field only swarm spawners;
+// - G13: the share of every clash that reached the 45 s cap, both cap readings, and the median length,
+//   over the counted fields (the three-lane screen is reported beside it).
 // `--jitter j` moves each unit up to ±j tiles per axis after the muster (default 0, no jitter; numbers
 // are quoted at 0.2). It prints the bars per budget beside the pooled result, then the clashes played and
 // the wall time. The report, labelled `clash` (or `clash-<proto>`), holds the options, each mono's and
@@ -119,6 +122,16 @@ const commanders: (string | undefined)[] = commanderOpt === 'all' ? Object.keys(
 /** How the bot uses the commander power in runs and engagement battles (default none, as before M5). */
 const power = (opt('--power-policy') ?? 'none') as PowerPolicy;
 if (power !== 'none' && power !== 'auto') throw new Error(`--power-policy must be none or auto, not ${String(power)}`);
+if (checks.has('clash')) {
+  // the clash check refuses a bad spec or number before any check runs, so it throws away no other check's work (T055)
+  if (specPresets(proto).includes('rework')) throw new Error("rework is v1's P3 package, not R1's variant (SPEC §16 R1)");
+  for (const k of ['--top', '--screen-seeds', '--g3seeds', '--confirm-seeds', ...(pair ? ['--seeds'] : [])]) {
+    const v = opt(k);
+    if (v !== undefined && !(Number.isInteger(Number(v)) && Number(v) >= 1)) throw new Error(`${k} must be a whole number of at least 1, not ${v}`);
+  }
+  const j = opt('--jitter');
+  if (j !== undefined && !(Number(j) >= 0)) throw new Error(`--jitter must be at least 0, not ${j}`);
+}
 const out: Record<string, unknown> = { proto, label };
 const lines: string[] = [`experiment ${label} (proto: ${proto || 'none'}${defender !== 'bot:balanced' ? `, G3 defender ${defender}` : ''})`];
 const pct = (x: number) => `${Math.round(x * 100)}%`;
@@ -321,7 +334,6 @@ if (checks.has('spread')) {
 
 if (checks.has('clash')) {
   // R1's clash check (SPEC §12.2, §16 R1): the bars on clashes, or one matchup with --pair
-  if (specPresets(proto).includes('rework')) throw new Error("rework is v1's P3 package, not R1's variant (SPEC §16 R1)");
   const budgets = (opt('--budgets')?.split(',') ?? CLASH_CHECK.budgets).map(Number);
   if (budgets.some((n) => !Number.isFinite(n) || n <= 0)) throw new Error(`--budgets must be gold amounts, not ${opt('--budgets')}`);
   const fields = (opt('--fields')?.split(',') ?? CLASH_CHECK.fields) as FieldId[];
@@ -364,10 +376,11 @@ if (checks.has('clash')) {
       const t0 = Date.now();
       const cache = clashCache(cc, pool?.run ?? inProcessClashes(cc), { jitter, keep: options.records });
       lines.push(`clash check: ${budgets.join(', ')} gold on ${fields.join(', ')}, jitter ${jitter ? `±${jitter}` : 'off'}; a draw is half a win; the cap reading (the muster counted)`);
-      const g3 = await evaluateClashG3(cc, { cache, budgets, fields, seeds: g3Seeds, ...(monoIds ? { ids: monoIds } : {}) });
+      // G3 plays every mono, so G12 can count every mono answer; --mono picks only G12's builds, as in v1 (T054)
+      const g3 = await evaluateClashG3(cc, { cache, budgets, fields, seeds: g3Seeds });
       const g12 = await evaluateClashCounters(cc, {
         cache, g3, screenSeeds: options.screenSeeds, confirmSeeds: options.confirmSeeds, top: options.top,
-        ...(matrix ? { matrix: 'all' as const } : {}), ...(answers ? { answers } : {}),
+        ...(matrix ? { matrix: 'all' as const } : {}), ...(answers ? { answers } : {}), ...(monoIds ? { builds: monoIds } : {}),
       });
       // G13 reads every cell the check played, each once (plan call 15)
       const g13 = clashG13(uniqueCells(g3.records, g12.records), g3.records);
@@ -387,7 +400,7 @@ if (checks.has('clash')) {
           builds: g12.builds.map(({ matrix: _matrix, ...b }) => b), answers: g12.answers, bots: descriptions,
         },
         matrix: g12.builds.map((b) => ({ build: b.build, rows: b.matrix })),
-        G13: { ...g13Lines, all: g13.all, g3: g13.g3, cells: g13.cells },
+        G13: { ...g13Lines, all: g13.all, g3: g13.g3, ...(g13.three ? { three: g13.three } : {}), cells: g13.cells },
         timing: { ms, clashes: played, cells },
         ...(options.records ? { records: cache.records() } : {}),
       };

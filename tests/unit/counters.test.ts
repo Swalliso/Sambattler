@@ -261,6 +261,41 @@ describe('the strict clash counter matrix (G12, SPEC §12.3)', () => {
     expect(row.answers[0]).toMatchObject({ cards: ['capguardHall'], kinds: ['swarm'], failsG3: true, swarm: false });
     expect(v.sets.swarm).toContain('capguardHall');
   });
+
+  // mono Gill Nest wins everything in clash G3; the swarm monos pass it and mono Capguard fails it
+  const t054Rates: Record<string, Partial<Record<FieldId, number>>> = {
+    'bot:mono:gillNest': { one: 1, twin: 1 }, 'bot:mono:sporelingBurrow': { one: 0.5, twin: 0.5 },
+    'bot:mono:morelWarren': { one: 0.5, twin: 0.5 }, 'bot:mono:capguardHall': { one: 0, twin: 0.75 },
+  };
+  const t054G3 = () => evaluateClashG3(cc, {
+    cache: clashCache(cc, scripted((job) => (game(job, 1) < 4 * t054Rates[job.armies[0].controller]![job.field]! ? 'a' : 'b')), { jitter: 0.2 }),
+    ids: Object.keys(t054Rates).map((c) => c.slice(9)), budgets: [600], fields: ['one', 'twin'], seeds: 2,
+  });
+
+  it('counts no mono answer clash G3 never played, and takes the builds it is given whatever their mean (T054)', async () => {
+    const g3 = await t054G3();
+    const cache = clashCache(cc, scripted(() => 'b'), { jitter: 0.2 });
+    const v = await evaluateClashCounters(cc, { cache, g3, builds: ['capguardHall'], answers: ['bot:mono:sporelingBurrow'], screenSeeds: 1, confirmSeeds: 1, top: 1 });
+    expect(v.builds.map((b) => [b.build, b.pass])).toEqual([['capguardHall', true]]); // its mean is 25%, under the 40% a build needs by default
+    await expect(evaluateClashCounters(cc, { cache, g3, builds: ['gillNest'], answers: ['bot:mono:hammercapForge'], screenSeeds: 1, confirmSeeds: 1, top: 1 }))
+      .rejects.toThrow(/bot:mono:hammercapForge is a mono clash G3 didn't play/);
+    await expect(evaluateClashCounters(cc, { cache, g3, builds: ['amanitaLodge'], screenSeeds: 1, confirmSeeds: 1, top: 1 })).rejects.toThrow(/amanitaLodge isn't a mono clash G3 played/);
+  });
+
+  it("reports #15's ties: how many answers that count share the best result, and how many field only swarm spawners (T054)", async () => {
+    const g3 = await t054G3();
+    const mono = (id: string) => `bot:mono:${id}`, pair = 'bot:pair-capguardHall-gillNest', knights = 'bot:counter-knights';
+    const rates: Record<string, number> = { [mono('capguardHall')]: 1, [mono('sporelingBurrow')]: 1, [mono('morelWarren')]: 1, [pair]: 1, [knights]: 0.5 };
+    const cache = clashCache(cc, scripted((job) => (game(job, job.seed > 2 ? 3 : 1) < 4 * rates[job.armies[1].controller]! ? 'b' : 'a')), { jitter: 0.2 });
+    const v = await evaluateClashCounters(cc, { cache, g3, builds: ['gillNest'], answers: Object.keys(rates), screenSeeds: 2, confirmSeeds: 2, top: 2 });
+    const row = v.builds[0]!.matrix[0]!;
+    // mono Capguard ties too, but it fails clash G3, so it's left out
+    expect(row.answers.map((a) => [a.answer, a.failsG3])).toEqual([[mono('capguardHall'), true], [mono('sporelingBurrow'), false], [mono('morelWarren'), false]]);
+    expect(row.best).toEqual({ worst: 1, mean: 1, answers: [mono('sporelingBurrow'), mono('morelWarren'), pair], swarm: [mono('sporelingBurrow'), mono('morelWarren')] });
+    const line = v.matrixLines.at(-1)!;
+    expect(line).toMatch(/600: 2 of 3 tied at 100% \(bot:mono:sporelingBurrow, bot:mono:morelWarren\)/);
+    expect(line).not.toContain(mono('capguardHall'));
+  });
 });
 
 describe('G13, clash stalls (SPEC §12.3)', () => {
@@ -286,5 +321,20 @@ describe('G13, clash stalls (SPEC §12.3)', () => {
     const twice = uniqueCells(g3, [{ ...g3[0]! }, ...matrix]);
     expect(twice).toHaveLength(10);
     expect(clashG13(twice, g3).all).toEqual(v.all);
+  });
+
+  it('counts the bar over the counted fields, with the three-lane screen beside it (T054, R1-Q9)', () => {
+    const two = [cell('one', 300, 400), cell('twin', 300, 500)];
+    const three = [cell('three', 300, 900, 920), cell('three', 300, 900, 920)];
+    const v = clashG13([...two, ...three], two);
+    expect(v.all.cap).toMatchObject({ clashes: 2, capped: 0, share: 0 });
+    expect(v.pass).toBe(true);
+    expect(v.three!.cap).toMatchObject({ clashes: 2, capped: 2, share: 1 });
+    expect(v.three!.capAfterMuster).toMatchObject({ clashes: 2, capped: 2 });
+    expect(v.cells.map((c) => c.field)).toEqual(['one', 'twin', 'three']);
+    expect(v.details.join('\n')).toMatch(/three-lane screen, a lead outside the bar: 100.0% of 2/);
+    // the three-lane screen alone is the bar, as in G3 and G12
+    const alone = clashG13(three);
+    expect([alone.pass, alone.all.cap.clashes, alone.three]).toEqual([false, 2, undefined]);
   });
 });

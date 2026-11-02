@@ -553,6 +553,8 @@ export function playClash(content: Content, job: ClashJob, hooks: ClashHooks = {
     },
   }));
   state.phase = 'live';
+  // without jitter a clash must draw nothing, since the cache plays it once for every seed (T055)
+  const streams = (job.jitter ?? 0) > 0 ? undefined : JSON.stringify(state.rng);
   const armies = { [job.seat]: job.armies[0], [other(job.seat)]: job.armies[1] } as Record<Side, Army>;
   for (const side of SIDES) placeArmy(state, side, assignSlots(content, armies[side], field, { lanesRule: opts.lanesRule }));
   hooks.stage?.(state);
@@ -599,6 +601,7 @@ export function playClash(content: Content, job: ClashJob, hooks: ClashHooks = {
       if (!lane.capAfterMuster && (end || state.tick >= CAP_TICK.capAfterMuster)) lane.capAfterMuster = end ?? capped(t, state.tick);
     });
   }
+  if (streams !== undefined && JSON.stringify(state.rng) !== streams) throw new Error('playClash: a clash at jitter 0 drew a random number, so its seed matters and the cache would merge clashes that differ');
   const laneRecords = lanes.map((l, lane): LaneRecord => ({ lane, cap: l.cap!, capAfterMuster: l.capAfterMuster!, emplacementsHeld: l.held ?? false }));
   const armyRecord = (side: Side): ArmyRecord => {
     const army = armies[side], all = state.stats[side].merges, m = atMuster[side];

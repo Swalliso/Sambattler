@@ -6,7 +6,7 @@ import type { Content } from '../../src/data/registry.ts';
 import { addBuilding, addUnit } from '../../src/sim/create.ts';
 import { findTrios, formationBox, musterKnits, slotPositions } from '../../src/sim/formation.ts';
 import type { MusterUnit } from '../../src/sim/formation.ts';
-import { createBattle, makeConfig } from '../../src/sim/index.ts';
+import { createBattle, makeConfig, nextFloat } from '../../src/sim/index.ts';
 import type { BattleState, Side, UnitState } from '../../src/sim/index.ts';
 import { counterBotSpec } from '../../tools/lib/balance.ts';
 import {
@@ -447,6 +447,13 @@ describe('one clash: the muster, the lane ends and the clock (SPEC §5.6, §6.7,
     expect(at(0.2)).toEqual(moved);
     expect(at(0.2, 'player', 2)).not.toEqual(moved);
     expect(at(0, 'player', 2)).toEqual(still); // the seed moves nothing without jitter
+  });
+
+  it("fails loudly if a clash at jitter 0 draws a random number, since the cache plays it once for every seed (T055)", () => {
+    const j = job(one, army(['sporelingBurrow']), army(['capguardHall']));
+    const draw = { mustered: (s: BattleState) => { nextFloat(s.rng.combat); } };
+    expect(() => playClash(content, j, draw)).toThrow(/at jitter 0 drew a random number/);
+    expect(() => playClash(content, { ...j, jitter: 0.2 }, draw)).not.toThrow(); // with jitter the seed is in the cache's key
   });
 
   it("the clash runs on v1's sim with no AI side, turrets, territory or Heartcap targets, to tick 920, with v2's two switches on unless asked", () => {

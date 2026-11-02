@@ -308,14 +308,19 @@ The armies (T011–T012) need nothing from `formation.ts` or the switches, so S2
     - Stdout prints the clash matrix between G12 and G13.
     - `--pair` keeps S3's mode, and the `rework` refusal covers both modes, through `specPresets` in `src/data/proto.ts`.
     - The small run plays 108 clashes for 600 cells in under a second, since with no jitter a mono's army is one clash a seat. Its `--workers 1` JSON matches `--workers 2`'s apart from `options.workers` and `timing`. So does a jittered run of every mono at 300, 900 and 1,500 gold: 7,202 clashes for 9,276 cells, 22 s on one worker and 6 s on four.
-- [ ] T054 [US2] Fix three of the bars' reports in `tools/lib/balance.ts` and `tools/experiment.ts`, test first, from the hub's review of S4 (2026-11-01, at `f9a579b`) (§12.2, §12.3 G12, G13)
+- [x] T054 [US2] Fix three of the bars' reports in `tools/lib/balance.ts` and `tools/experiment.ts`, test first, from the hub's review of S4 (2026-11-01, at `f9a579b`) (§12.2, §12.3 G12, G13)
   - **G12 counts no untested mono.** With `--mono`, clash G3 plays only the named monos, so G12 can name an answer that never faced G3, marked "clash G3 not played". A build whose only 60% answer is a mono that fails G3 then passes, and nothing says so. v1's `evaluateCounters` never has this case: its `--mono` limits only the builds. Do as v1 does. When G12 runs, clash G3 plays every mono of `clashArmyIds`, and `--mono` picks only the builds. This replaces T023's "clash G3 not played" rule.
   - **#15's line reports ties.** In a 20-seed jittered screen at 300 gold, 10 of mono Gill Nest's 71 answers tie at 100%, and the line answers "yes" from whichever ranks first. It should say how many tie and how many of them are swarm-only, and leave out answers that fail clash G3 (⚑), or label them.
   - **G13 counts only the counted fields.** G3 and G12 drop the three-lane screen through `countedFields` (R1-Q9), but G13's share and PASS/FAIL take it in with `--fields one,twin,three`. Count the bar over the counted fields, and report `three` beside it.
-- [ ] T055 [US2] Guard the clash tools in `tools/lib/clash.ts`, `tools/lib/balance.ts` and `tools/experiment.ts`, from the same review (§12.2, §15.3)
+  - As built (S5):
+    - `evaluateClashCounters` takes `builds` (what `--mono` passes) and refuses a build or a mono answer that clash G3 didn't play, so `ClashAnswer.untested` is gone. `--checks clash` plays G3 on every mono of `clashArmyIds`.
+    - `ClashMatrixRow.best` holds the answers that count tied for the best at its budget (by the worst field, then the mean), and the swarm-only ones among them. The #15 line reads, for example, "300: 7 of 10 tied at 100%", and names the swarm-only answers, or the best ones when none is swarm-only.
+    - `clashG13` counts the bar over `countedFields` of the fields in its records, and reports the three-lane screen as `three`, beside the bar.
+- [x] T055 [US2] Guard the clash tools in `tools/lib/clash.ts`, `tools/lib/balance.ts` and `tools/experiment.ts`, from the same review (§12.2, §15.3)
   - `playClash` fails loudly if a clash at jitter 0 draws a random number. The cache merges clashes on that assumption, and only one test guards it today.
   - `--checks clash` checks its numbers: `--top`, `--screen-seeds`, `--g3seeds` and `--confirm-seeds` at least 1, and `--jitter` at least 0. Today `--top 0` fails every build, `--screen-seeds 0` ranks NaN, and a negative jitter prints "on" but applies none.
   - The `rework` refusal runs before any check in the command, so it doesn't throw away their work.
+  - As built (S5): at jitter 0, `playClash` compares `state.rng` at the clash's end with its value after `createBattle`, and throws if a stream moved. The CLI's refusals and number checks run before any check, `--seeds` included in `--pair` mode.
 
 **Checkpoint:** `npm run verify` is green with no moved hash. The small run in the Stories table finishes in about a minute, and the same run with `--workers 1` writes JSON identical apart from `options.workers` and `timing` (this is the pooled-equals-in-process check).
 

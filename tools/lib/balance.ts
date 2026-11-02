@@ -1108,8 +1108,6 @@ export interface ClashAnswer {
   worstField: FieldId;
   /** A mono answer that fails clash G3 itself: it's flagged, and it doesn't count. */
   failsG3: boolean;
-  /** A mono answer clash G3 didn't play (a run with `--mono`): it counts. */
-  untested: boolean;
 }
 
 /** One budget of the clash matrix (#14, #15): how §7.4 reads the build there, and the screen's best answers. */
@@ -1129,6 +1127,11 @@ export interface ClashMatrixRow {
     /** It fields only `swarm` spawners (the Burrow, the Morel Warren). */
     swarm: boolean;
   }[];
+  /**
+   * The answers that count which share the best result here, by the worst field then the mean, and those
+   * of them that field only `swarm` spawners (#15), each best first. Undefined when no answer counts.
+   */
+  best?: { worst: number; mean: number; answers: string[]; swarm: string[] };
 }
 
 export interface ClashCounterBuild {
@@ -1149,6 +1152,8 @@ export interface ClashCounterOptions {
   g3: ClashG3Verdict;
   /** `all`: every mono G3 played is a build, whatever its mean. */
   matrix?: 'all';
+  /** The mono builds, whatever their mean (`--mono`), in place of the ones G3 picks. Each must be a mono G3 played. */
+  builds?: string[];
   /** Answers to try against every build (default `counterAnswers` without the economy and utility monos). */
   answers?: string[];
   screenSeeds?: number;
@@ -1172,25 +1177,34 @@ export type ClashCounterVerdict = Verdict & {
 
 /**
  * The strict counter bar on clashes (G12, §12.3) and the clash matrix (#14, #15). The builds are the monos
- * with a clash G3 mean above `minBuildMean` (40%), or every mono G3 played with `matrix: 'all'`. Each plays
- * every answer, in both seats, on G3's fields and budgets. A screen at `screenSeeds` per seat ranks the
- * answers by their worst field pooled over the budgets, then their mean. The best `top` answers that count
- * are confirmed on the next `confirmSeeds` seeds. A mono answer that fails clash G3 is flagged and doesn't
- * count; every other answer counts, as in `evaluateCounters`. A build passes if its best confirmed answer
- * wins at least `minAnswerRate` (60%) on its worst field. Content must hold the bots from `counterBotSpec`.
+ * with a clash G3 mean above `minBuildMean` (40%), every mono G3 played with `matrix: 'all'`, or `builds`.
+ * Each plays every answer, in both seats, on G3's fields and budgets. A screen at `screenSeeds` per seat
+ * ranks the answers by their worst field pooled over the budgets, then their mean. The best `top` answers
+ * that count are confirmed on the next `confirmSeeds` seeds. Clash G3 must have played every mono answer
+ * (T054): one that fails it is flagged and doesn't count, and every other answer counts, as in
+ * `evaluateCounters`. A build passes if its best confirmed answer wins at least `minAnswerRate` (60%) on
+ * its worst field. Content must hold the bots from `counterBotSpec`.
  */
 export async function evaluateClashCounters(content: Content, o: ClashCounterOptions): Promise<ClashCounterVerdict> {
   const c = CLASH_CHECK;
   const { budgets, fields } = o.g3;
   const counted = countedFields(fields);
   const screenSeeds = o.screenSeeds ?? c.screenSeeds, confirmSeeds = o.confirmSeeds ?? c.confirmSeeds, top = o.top ?? c.top;
-  const builds = o.g3.bots.filter((b) => o.matrix === 'all' || b.mean > c.minBuildMean).map((b) => b.id);
+  const played = new Set(o.g3.bots.map((b) => b.id));
+  const builds = o.builds ?? o.g3.bots.filter((b) => o.matrix === 'all' || b.mean > c.minBuildMean).map((b) => b.id);
+  for (const b of builds) if (!played.has(b)) throw new Error(`clash G12: build ${b} isn't a mono clash G3 played`);
   const cards = clashArmyIds(content);
   const answers = Object.fromEntries(builds.map((b) => [b, (o.answers ?? counterAnswers(content, b).filter((a) => !a.startsWith('bot:mono:') || cards.includes(a.slice(9))))
     .filter((a) => a !== `bot:mono:${b}`)]));
   for (const a of new Set(Object.values(answers).flat())) {
-    const m = a.match(/^bot:(.+)$/);
-    if (m && !m[1]!.startsWith('mono:') && !content.bots[m[1]!]) throw new Error(`clash answer ${a} isn't in the content (build it with counterBotSpec)`);
+    const id = a.match(/^bot:(.+)$/)?.[1];
+    if (id === undefined) continue;
+    if (!id.startsWith('mono:')) {
+      if (!content.bots[id]) throw new Error(`clash answer ${a} isn't in the content (build it with counterBotSpec)`);
+    } else if (!played.has(id.slice(5))) {
+      // an untested mono could be a build's only answer, unflagged (T054)
+      throw new Error(`clash G12: answer ${a} is a mono clash G3 didn't play, so G12 can't count it (play G3 on every mono of clashArmyIds)`);
+    }
   }
   const g3Of = (controller: string) => o.g3.bots.find((b) => `bot:mono:${b.id}` === controller);
   const records: CellRecord[] = [];
@@ -1198,10 +1212,7 @@ export async function evaluateClashCounters(content: Content, o: ClashCounterOpt
     const at = byBudget(cells, 'b', budgets, fields, 'lowest');
     const all = pooled(at, fields);
     const g = g3Of(answer);
-    return {
-      answer, kind: answerKind(answer), budgets: at, fields: all, ...overFields(all, counted, 'lowest'),
-      failsG3: !!g && !g.pass, untested: answer.startsWith('bot:mono:') && !g,
-    };
+    return { answer, kind: answerKind(answer), budgets: at, fields: all, ...overFields(all, counted, 'lowest'), failsG3: !!g && !g.pass };
   };
   const play = async (pairs: [string, string][], seeds: number, first: number): Promise<ClashAnswer[]> => {
     const cells: Cell[] = [];
@@ -1227,21 +1238,31 @@ export async function evaluateClashCounters(content: Content, o: ClashCounterOpt
     const sp = content.buildings[id]!.spawn;
     return !!sp && content.units[sp.unit]!.tags.includes('swarm');
   });
+  /** The army cards an answer's armies fielded at a budget, over the screen's fields and seeds. */
+  const fieldedBy = (answer: string, budget: number): string[] => {
+    const fielded = new Set<string>();
+    for (const f of fields) for (let s = 1; s <= screenSeeds; s++) for (const e of o.cache.army(answer, budget, s, f).entries) fielded.add(e.buildingId);
+    return cards.filter((id) => fielded.has(id));
+  };
+  const swarmOnly = (used: readonly string[]) => used.length > 0 && used.every((id) => swarmSpawners.includes(id));
   const matrixOf = (build: string, screen: readonly ClashAnswer[]): ClashMatrixRow[] => budgets.map((budget, k) => {
     const r = o.g3.records.find((x) => x.budget === budget && x.field === counted[0] && x.armies[x.seat].controller === `bot:mono:${build}`);
     const kinds = r?.armies[r.seat].kinds;
+    const ranked = rank(screen.map((a) => ({ a, worst: a.budgets[k]!.worst, mean: a.budgets[k]!.mean })));
+    // #15 asks what tops the answers, so a tie for the best is counted, among the answers that count (T054)
+    const counting = ranked.filter((x) => !x.a.failsG3);
+    const first = counting[0];
+    const tied = first ? counting.filter((x) => x.worst === first.worst && x.mean === first.mean).map((x) => x.a.answer) : [];
     return {
       budget, ...(kinds ? { read: { plain: kinds.plain.top, swarmRead: kinds.swarmRead.top } } : {}),
-      answers: rank(screen.map((a) => ({ a, worst: a.budgets[k]!.worst, mean: a.budgets[k]!.mean }))).slice(0, c.matrixAnswers).map(({ a }) => {
-        const fielded = new Set<string>();
-        for (const f of fields) for (let s = 1; s <= screenSeeds; s++) for (const e of o.cache.army(a.answer, budget, s, f).entries) fielded.add(e.buildingId);
-        const used = cards.filter((id) => fielded.has(id));
+      answers: ranked.slice(0, c.matrixAnswers).map(({ a }) => {
+        const used = fieldedBy(a.answer, budget);
         return {
           answer: a.answer, worst: a.budgets[k]!.worst, worstField: a.budgets[k]!.worstField, mean: a.budgets[k]!.mean, failsG3: a.failsG3,
-          cards: used, kinds: COUNTER_KINDS.filter((kind) => used.some((id) => counterKindsOf(lib, id).includes(kind))),
-          swarm: used.length > 0 && used.every((id) => swarmSpawners.includes(id)),
+          cards: used, kinds: COUNTER_KINDS.filter((kind) => used.some((id) => counterKindsOf(lib, id).includes(kind))), swarm: swarmOnly(used),
         };
       }),
+      ...(first ? { best: { worst: first.worst, mean: first.mean, answers: tied, swarm: tied.filter((a) => swarmOnly(fieldedBy(a, budget))) } } : {}),
     };
   });
   const results = builds.map((build, i): ClashCounterBuild => {
@@ -1262,7 +1283,7 @@ export async function evaluateClashCounters(content: Content, o: ClashCounterOpt
     details.push(`       ${'answer'.padEnd(ansWidth)}  ${heads.map((h) => h.padStart(5)).join(' ')}  worst   mean   per budget, worst field`);
     for (const t of r.top) {
       details.push(`       ${t.answer.padEnd(ansWidth)}  ${fields.map((f, i) => whole(t.fields[f]!.rate).padStart(Math.max(5, heads[i]!.length))).join(' ')}  ${whole(t.worst).padStart(5)}  ${whole(t.mean).padStart(5)}`
-        + `   ${t.budgets.map((x) => `${x.budget} ${whole(x.worst)}`).join(' · ')}${t.untested ? '  (clash G3 not played)' : ''}`);
+        + `   ${t.budgets.map((x) => `${x.budget} ${whole(x.worst)}`).join(' · ')}`);
     }
     const next = r.screen.filter((s) => !s.failsG3).slice(top, top + 5);
     details.push(`       screen, next best: ${next.map((s) => `${s.answer} ${whole(s.worst)}`).join(', ') || 'none'}`);
@@ -1285,12 +1306,14 @@ export async function evaluateClashCounters(content: Content, o: ClashCounterOpt
   }
   const gill = results.find((r) => r.build === 'gillNest');
   const swarm = swarmSpawners.map(name).join(' and ');
-  const best = (row: ClashMatrixRow) => {
-    const a = row.answers[0];
-    return `${row.budget} ${a?.swarm ? 'yes' : 'no'} (${a ? `${a.answer}${a.failsG3 ? ' ⚑' : ''}` : 'none'})`;
+  const names = (xs: readonly string[]) => `${xs.slice(0, 3).join(', ')}${xs.length > 3 ? ', …' : ''}`;
+  const best = ({ budget, best: b }: ClashMatrixRow) => {
+    if (!b) return `${budget}: no answer counts`;
+    const at = `${b.swarm.length} of ${b.answers.length}${b.answers.length > 1 ? ' tied' : ''} at ${whole(b.worst)}%`;
+    return `${budget}: ${at} (${b.swarm.length ? names(b.swarm) : `best ${names(b.answers)}`})`;
   };
   matrixLines.push(gill
-    ? `    swarm spawners (${swarm}) top the answers to mono Gill Nest: ${gill.matrix.map(best).join(', ')}`
+    ? `    swarm spawners (${swarm}) among the best answers to mono Gill Nest that count (⚑ left out): at each budget, how many of the answers tied for the best field only them · ${gill.matrix.map(best).join(' · ')}`
     : `    mono Gill Nest isn't a build in this run, so the matrix doesn't say whether swarm spawners (${swarm}) answer it`);
 
   return {
@@ -1309,10 +1332,12 @@ export interface StallRead {
 }
 
 export type ClashG13Verdict = Verdict & {
-  /** Every clash: the `cap` reading (the bar) and the cap after the muster (#13). */
+  /** Every clash on the counted fields: the `cap` reading (the bar) and the cap after the muster (#13). */
   all: Record<Reading, StallRead>;
-  /** G3's clashes alone. */
+  /** G3's clashes alone, on the counted fields. */
   g3: Record<Reading, StallRead>;
+  /** The three-lane screen's clashes, a lead outside the bar (R1-Q9), when they were played beside the counted fields. */
+  three?: Record<Reading, StallRead>;
   /** Per budget and field, budgets ascending. */
   cells: ({ budget: number; field: FieldId } & Record<Reading, StallRead>)[];
 };
@@ -1322,8 +1347,9 @@ const FIELD_ORDER: readonly FieldId[] = ['one', 'twin', 'three'];
 /**
  * G13 on clashes (§12.3, §16 R1, plan call 15): the share of clashes that reached the 45 s cap, against
  * `CLASH.g13StallShare` (15%), in the `cap` reading (the muster counted, the first guess). Pass every cell
- * the check played, each once. The cap after the muster (#13), G3's clashes alone, the median length
- * against 20–40 s (report only) and each budget and field are reported beside it.
+ * the check played, each once. The bar counts the fields G3 and G12 count (T054): the three-lane screen is
+ * a lead beside it, unless it's all there is. The cap after the muster (#13), G3's clashes alone, the
+ * median length against 20–40 s (report only) and each budget and field are reported beside it.
  */
 export function clashG13(records: readonly CellRecord[], g3: readonly CellRecord[] = []): ClashG13Verdict {
   const read = (rs: readonly CellRecord[], reading: Reading): StallRead => {
@@ -1344,7 +1370,10 @@ export function clashG13(records: readonly CellRecord[], g3: readonly CellRecord
   }
   const cells = [...groups.values()].map((rs) => ({ budget: rs[0]!.budget, field: rs[0]!.field, ...both(rs) }))
     .sort((p, q) => p.budget - q.budget || FIELD_ORDER.indexOf(p.field) - FIELD_ORDER.indexOf(q.field));
-  const all = both(records), mine = both(g3);
+  const counted = countedFields(FIELD_ORDER.filter((f) => records.some((r) => r.field === f)));
+  const inBar = (rs: readonly CellRecord[]) => rs.filter((r) => counted.includes(r.field));
+  const leads = records.filter((r) => !counted.includes(r.field));
+  const all = both(inBar(records)), mine = both(inBar(g3)), three = leads.length ? both(leads) : undefined;
   const pass = !(all.cap.share > CLASH.g13StallShare);
 
   const share = (x: StallRead) => (Number.isFinite(x.share) ? `${(100 * x.share).toFixed(1)}%` : '–');
@@ -1355,13 +1384,15 @@ export function clashG13(records: readonly CellRecord[], g3: readonly CellRecord
     `${pass ? 'ok  ' : 'FAIL'} the cap reading (the muster counted): ${share(all.cap)} of ${all.cap.clashes} clashes reached the cap; median length ${sec(all.cap)}, ${band(all.cap)} the ${lo}–${hi} s target (report only)`,
     `     the cap after the muster (#13): ${share(all.capAfterMuster)} reached it; median ${sec(all.capAfterMuster)}`,
     `     G3's clashes: ${share(mine.cap)} of ${mine.cap.clashes} reached the cap (after the muster ${share(mine.capAfterMuster)}); median ${sec(mine.cap)}`,
-    '     per budget and field, the share capped and the median, then after the muster:',
+    ...(three ? [`     the three-lane screen, a lead outside the bar: ${share(three.cap)} of ${three.cap.clashes} reached the cap (after the muster ${share(three.capAfterMuster)}); median ${sec(three.cap)}`] : []),
+    `     per budget and field, the share capped and the median, then after the muster${three ? ' (* a lead)' : ''}:`,
   ];
   for (const budget of [...new Set(cells.map((x) => x.budget))]) {
-    details.push(`     ${String(budget).padStart(6)}: ${cells.filter((x) => x.budget === budget).map((x) => `${x.field} ${share(x.cap)} ${sec(x.cap)} (${share(x.capAfterMuster)} ${sec(x.capAfterMuster)})`).join(' · ')}`);
+    details.push(`     ${String(budget).padStart(6)}: ${cells.filter((x) => x.budget === budget)
+      .map((x) => `${counted.includes(x.field) ? x.field : `${x.field}*`} ${share(x.cap)} ${sec(x.cap)} (${share(x.capAfterMuster)} ${sec(x.capAfterMuster)})`).join(' · ')}`);
   }
   return {
-    id: 'G13', pass, all, g3: mine, cells,
+    id: 'G13', pass, all, g3: mine, ...(three ? { three } : {}), cells,
     summary: `clash stalls: ≤${pct(CLASH.g13StallShare)} of clashes reach the 45 s cap (the muster counted), over every clash the check played`,
     details,
   };
