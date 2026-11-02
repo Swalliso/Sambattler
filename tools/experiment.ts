@@ -57,7 +57,10 @@
 // - the race section (X5, tools/lib/roundRace.ts): per budget and field, the share of clashes whose loser's
 //   damage passes the 500 cap, at storm ×1.0 and at the budget's round storm, and the share of drawn rounds;
 //   then the race model, which chains the G4 row's clashes (first) and G3's into battles of up to 9 rounds
-//   under the 500 cap and its alternatives. It's crude, and not a guardrail.
+//   under the 500 cap and its alternatives. It's crude, and not a guardrail;
+// - the full colony (§13.7, R1-Q5): the most units and supply a colony fields a side on 12 and 16 plots,
+//   against 150 live units a side, with the levers when it's over and A200's sensitivity rows; and the
+//   overflow table (#11): each squad at 45, 60 and 75 s and +1 and +2, flagged when it overflows its slot.
 // `--jitter j` moves each unit up to ±j tiles per axis after the muster (default 0, no jitter; numbers
 // are quoted at 0.2). It prints the bars per budget beside the pooled result, then the clashes played and
 // the wall time. The report, labelled `clash` (or `clash-<proto>`), holds the options, each mono's and
@@ -89,7 +92,7 @@ import {
 } from './lib/balance.ts';
 import type { G3Verdict, Verdict } from './lib/balance.ts';
 import { runBench } from './lib/bench.ts';
-import { pairLine, pairScore, playPair } from './lib/clash.ts';
+import { fullColony, overflowTable, pairLine, pairScore, playPair } from './lib/clash.ts';
 import type { FieldId } from './lib/clash.ts';
 import { clashPool, defaultWorkers, inProcessClashes, rowPool } from './lib/pool.ts';
 import { engagement, engagementLines, runEndingLines, runEndings } from './lib/engagement.ts';
@@ -396,6 +399,8 @@ if (checks.has('clash')) {
       lines.push(...g12.matrixLines);
       const g13Lines = verdict(g13);
       lines.push(...g4row.details, ...race.details);
+      const colony = fullColony(cc), overflow = overflowTable(cc);
+      lines.push(...colony.lines, ...overflow.lines);
       lines.push(`clash check: ${played} clashes played for ${cells} cells in ${(ms / 1000).toFixed(1)} s on ${workers} worker${workers > 1 ? 's' : ''}`);
       out.clash = {
         options,
@@ -409,6 +414,8 @@ if (checks.has('clash')) {
         G13: { ...g13Lines, all: g13.all, g3: g13.g3, cells: g13.cells },
         G4row: { budgets: g4row.budgets, seeds: g4row.seeds, scores: g4row.scores },
         race: { cells: race.cells, all: race.all, groups: race.race.groups },
+        colony: { squads: colony.squads, fields: colony.fields, sensitivity: colony.sensitivity },
+        overflow: overflow.rows,
         timing: { ms, clashes: played, cells },
         ...(options.records ? { records: cache.records() } : {}),
       };

@@ -391,10 +391,10 @@ The armies (T011–T012) need nothing from `formation.ts` or the switches, so S2
 
 **Goal:** the most a full colony fields is known, and the bench times a clash of two full colonies. **Independent test:** `npm run bench` prints the full-colony case beside `bench-300`, and its exit code depends only on `bench-300` and the full battle, as today.
 
-- [ ] T037 [US5] Add the full-colony and overflow tests to `tests/unit/clash.test.ts` (§13.7, §4.6, §18.2 #7, #11) ⛔ R1-Q5
+- [x] T037 [US5] Add the full-colony and overflow tests to `tests/unit/clash.test.ts` (§13.7, §4.6, §18.2 #7, #11) ⛔ R1-Q5
   - `fullColony`: at the first-guess sizes the biggest one-lane colony is 12 plots. 12 Burrows at the level-3 squad of 12 field 144 units and 144 supply a side; 12 Dens field 36 units and 108 supply; 12 Burrows of 8 field 96. Twin Roots' 16 plots field 192 units a side at 12 per squad.
   - The overflow table lists each squad at 45, 60 and 75 s and with +1 (the Vault's first guess) and +2 (the Shrine's), and flags the overflows (for example Hall 5, Forge 5, Den 5) (A020).
-- [ ] T038 [US5] Build `fullColony(content, opts)` and `overflowTable(content, opts)` in `tools/lib/clash.ts`, and print both as sections of the clash report in `tools/experiment.ts` (§13.7, §4.6) ⛔ R1-Q5
+- [x] T038 [US5] Build `fullColony(content, opts)` and `overflowTable(content, opts)` in `tools/lib/clash.ts`, and print both as sections of the clash report in `tools/experiment.ts` (§13.7, §4.6) ⛔ R1-Q5
   - `fullColony`: per building, its squad, its squad with the v1 upgrade levels that add units (`building.spawnCount` in `data/upgrades.json`: the Burrow's 12, the Warren's 9), supply and units; per field, the biggest colony by units and by supply, against "about 100 supply" and against 150 live units a side at the arrival (A004, A200).
   - Sensitivity rows for SPEC's other unit-adding first guesses (A200): every squad +1 (the Rhizome Vault's "each spawner beside it fields 1 more unit", §11.2, as an upper bound that ignores the Vault's own plot); the squad in front +2 (the Velvet Shrine's); and Old Mother Mold's passive (§7.7's first guess: `swarm` squads +10%, rounded up, so a Burrow's 12 become 14). Each row gives the biggest colony's units and supply a side.
 - [ ] T039 [US5] Add the full-colony clash to `tools/lib/bench.ts` as `runClashBench(content)`, and print it in `tools/bench.ts` (§13.7, §15.4) ⛔ R1-Q5
