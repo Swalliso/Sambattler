@@ -292,7 +292,7 @@ This list was drafted on 2026-11-01 from SPEC v2 and `docs/tasks/spec-analysis.m
   - Every unit sprite's width, measured by `bodyBox` in `src/data/shapes.ts` (every frame), is at most floor(32 / k) native px, where k = ceil(sqrt n) (A165).
   - n = the building's base squad (its `squad` once R2a has added it, else `spawn.count × Math.round(60 / spawn.interval)`, §11.2) + 1 for every spawner: the Rhizome Vault (§11.2, R3/T085, call 8). Today that gives 10 px for the Capguard, Gill Archer, Hammercap, Sporeling, Veilstalker, Morel Runner, Burster and Driftling, and 16 px for the rest.
   - The Velvet Shrine's +2 overflows under #11's first guess. `tools/sprite-sheet.ts` lists it, and the test doesn't fail it.
-- [ ] T031 [US4] Redraw the other seven in `data/sprites/units.json`, as T028 does: `u-tender`, `u-veilstalker`, `u-scythecap`, `u-morelRunner`, `u-rootbreaker` (a medium body, though its radius is 0.45), `u-rhizomorph` (its burrowed mound stays `mound()`'s) and `u-driftling` (floating over its shadow) (§5.8, §11.3, §17 #20)
+- [x] T031 [US4] Redraw the other seven in `data/sprites/units.json`, as T028 does: `u-tender`, `u-veilstalker`, `u-scythecap`, `u-morelRunner`, `u-rootbreaker` (a medium body, though its radius is 0.45), `u-rhizomorph` (its burrowed mound stays `mound()`'s) and `u-driftling` (floating over its shadow) (§5.8, §11.3, §17 #20)
 - [ ] T032 [US4] Make the shape block required for every `u-` sprite in `src/data/registry.ts`, and delete `docs/r4a-silhouettes.json` now that it's drawn (§14.3)
 
 **Checkpoint:** `npx vitest run tests/unit/shapes.test.ts`, `npm run verify` and `npm run golden -- verify` (unchanged). `npm run sprite-sheet` lists no problem, and the r4-lineup PNG shows every unit with its own silhouette.

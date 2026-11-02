@@ -8,6 +8,23 @@ replaces. None of it is open work, including headings that say "Open:". From mil
 entries measure or tune v2's round battle (SPEC §11, §12). "The backlog" in the entries below means
 v1's, now [archived](../docs/archive/v1/balance-backlog.md).
 
+## R4a-S4: the other seven redrawn (2026-11-01)
+
+**Display only, no golden moved.** Like R4a-S3, it rests on the silhouette sheet the user approved as drawn
+(R4/T026, `docs/r4a-plan.md`) and on their decision that units carry no weapon mark (T077, SPEC §5.8). No number
+or rule changed: sprites aren't battle state, and no sprite id changed.
+- **`data/sprites/units.json`** (R4/T031): `u-tender`, `u-veilstalker`, `u-scythecap`, `u-morelRunner`,
+  `u-rootbreaker`, `u-rhizomorph` and `u-driftling` are redrawn, each with a shape block (`{ body }`) and three
+  frames: the approved sheet's frame 0, a second walk frame and an attack frame. The attacks: the Tender's lantern
+  flares, the Veilstalker lunges, the Scythecap dips into its sweep, the Morel Runner leans into a jab, the
+  Rootbreaker crouches into a smash, the Rhizomorph's jaw drops open and the Driftling's pod swings forward.
+  - Heights: the Tender, the Veilstalker and the Driftling 9 px; the Scythecap and the Rootbreaker 12 (11 in the
+    attack frame), the Morel Runner and the Rhizomorph 12. Widths: the Veilstalker 9 (10 in its lunge), the Morel
+    Runner and the Driftling 9, the Tender and the Rhizomorph 12, the Scythecap 15 (16) and the Rootbreaker 16, all
+    within their squads' bounds at base + 1. The Veilstalker's and the Scythecap's sprites are 1 px wider than the
+    sheet's, for the attack frame.
+  - The Rhizomorph's burrowed mound is still `mound()`'s, and the Driftling still draws no shadow of its own.
+
 ## R4a-S3: the core six and the Mortar's emplacement redrawn (2026-11-01)
 
 **Display only, no golden moved.** It rests on the silhouette sheet the user approved as drawn on 2026-11-01
