@@ -8,6 +8,8 @@ export {
 export type { Flags, RoundBattleOptions, RoundScenarioOverrides } from './create.ts';
 export { queueCommand, commandStamp } from './commands.ts';
 export type { QueuedCommand } from './commands.ts';
+export { legalPlots, plantProblem, priceOf, sellValue } from './planning.ts';
+export { inKit, kitOf } from './kit.ts';
 export { step } from './step.ts';
 export { hashState, snapshot, restore } from './snapshot.ts';
 export * from './state.ts';

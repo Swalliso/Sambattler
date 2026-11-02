@@ -18,7 +18,12 @@ export type {
 };
 
 /** A kit card (§8.10): a building the side owns. R3 adds how many of it may stand at once. */
-export interface KitCard { building: string; copies?: number }
+export interface KitCard {
+  building: string;
+  copies?: number;
+  /** A general's cap on how many of it stand at once, v1's `limits.*.maxOwned`, until R3 gives it copies (§7.8, D45). */
+  maxOwned?: number;
+}
 
 export interface SideConfig {
   faction: string;

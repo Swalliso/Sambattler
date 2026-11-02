@@ -1,0 +1,131 @@
+// Planning in rounds (SPEC §4.4, §4.7 steps 11–12, §14.5, §14.6): the executors of `plant`, `sell`,
+// `toggleMerge` and `beginClash`'s planning half, and the checks the UI's ghost and the AI read. Each
+// executor checks its command again as it runs and returns why it's refused, or null once it has run, so a
+// refusal becomes the queue's `commandRejected` and a replay reproduces it (§13.3 rule 7). The general's
+// turn (T068) runs the executors at once in the round's opening; a queued enemy plan comes after it and is
+// refused (plan Call 8). Reasons are codes, which the UI words. It stands beside v1's `src/sim/commands.ts`
+// and `placement.ts` until R2b moves it to `src/sim/planning.ts`.
+import { addBuilding } from './create.ts';
+import { atMaxOwned, inKit } from './kit.ts';
+import type { BattleState, Command, Side } from './state.ts';
+
+/** The planning commands, which run in the planning phase only (§4.2). */
+export type PlanningCommand = Extract<Command, { type: 'plant' | 'sell' | 'toggleMerge' | 'beginClash' }>;
+
+/**
+ * Runs a planning command from the queue, or returns why it's refused; the queue has checked its phase. The
+ * general plans only in the round's opening, so a queued enemy `plant`, `sell` or `toggleMerge` comes after
+ * it, and only the player's side begins the clash (§14.5, plan Call 8, A034).
+ */
+export function executePlanning(state: BattleState, cmd: PlanningCommand): string | null {
+  if (cmd.side === 'enemy' && cmd.type !== 'beginClash') return 'enemyPlanAfterOpening';
+  switch (cmd.type) {
+    case 'plant': return plant(state, cmd.side, cmd.buildingId, cmd.plot);
+    case 'sell': return sell(state, cmd.side, cmd.entityId);
+    case 'toggleMerge': return toggleMerge(state, cmd.side, cmd.entityId, cmd.on);
+    case 'beginClash': return beginClash(state, cmd.side);
+  }
+}
+
+/** Plants a building on one of the side's plots for its price, at once (§4.4), or returns why it can't. */
+export function plant(state: BattleState, side: Side, buildingId: string, plot: number): string | null {
+  const problem = plantProblem(state, side, buildingId, plot);
+  if (problem) return problem;
+  const price = priceOf(state, side, buildingId);
+  state.sides[side].gold -= price;
+  const b = addBuilding(state, side, buildingId, plot, price);
+  state.stats[side].buildingsPlanted++;
+  state.events.push({ t: 'buildingPlanted', id: b.id });
+  return null;
+}
+
+/** Sells one of the side's buildings for `sellValue`, freeing its plot at once (§4.4), or returns why it can't. */
+export function sell(state: BattleState, side: Side, entityId: number): string | null {
+  const problem = sellProblem(state, side, entityId);
+  if (problem) return problem;
+  const refund = sellValue(state, entityId);
+  const i = state.buildings.findIndex((b) => b.id === entityId);
+  const b = state.buildings[i]!;
+  state.sides[side].gold += refund;
+  state.sides[side].plots[b.plot]!.building = 0;
+  state.buildings.splice(i, 1);
+  state.stats[side].buildingsSold++;
+  state.events.push({ t: 'buildingSold', id: b.id, side, refund });
+  return null;
+}
+
+/** Sets one of the side's spawners' merge toggle (§4.4, §5.6), or returns why it can't. */
+export function toggleMerge(state: BattleState, side: Side, entityId: number, on: boolean): string | null {
+  const problem = toggleProblem(state, side, entityId);
+  if (problem) return problem;
+  state.buildings.find((b) => b.id === entityId)!.mergeOn = on;
+  state.events.push({ t: 'mergeToggled', id: entityId, on });
+  return null;
+}
+
+/**
+ * `beginClash`'s planning half (§4.7 step 12, §14.5): only the player's side begins the clash, a bot or
+ * general there included (plan Call 8). R2b also refuses it while the side's draft is open; R2a has no
+ * drafts (plan Call 26).
+ */
+export function beginClash(_state: BattleState, side: Side): string | null {
+  if (side !== 'player') return 'beginClashNotPlayer';
+  // Begin, its clash half, lands with T043 in `round.ts`; until then a Begin is refused there
+  return 'notInRoundsYet';
+}
+
+/**
+ * Why `plant` would refuse the building on the side's plot now, or null (§4.4, §14.5): a card not in the
+ * kit; a plot number outside the side's own colony, so never another side's plot; a closed, stump or
+ * taken plot; a general's card at its `maxOwned` (§7.8); or too little gold. There's no copy check until
+ * R3 (D45).
+ */
+export function plantProblem(state: BattleState, side: Side, buildingId: string, plot: number): string | null {
+  if (!inKit(state, side, buildingId)) return 'notInKit';
+  const p = state.sides[side].plots[plot];
+  if (!p) return 'noSuchPlot';
+  if (!p.open) return 'plotClosed';
+  if (p.terrain === 'stump') return 'stumpPlot';
+  if (p.building) return 'plotTaken';
+  if (atMaxOwned(state, side, buildingId)) return 'maxOwned';
+  if (state.sides[side].gold < priceOf(state, side, buildingId)) return 'notEnoughGold';
+  return null;
+}
+
+/** Why `sell` would refuse the entity now, or null: it must be one of the side's buildings. */
+export function sellProblem(state: BattleState, side: Side, entityId: number): string | null {
+  const b = state.buildings.find((x) => x.id === entityId);
+  if (!b) return 'noSuchBuilding';
+  return b.side === side ? null : 'notYourBuilding';
+}
+
+/** Why `toggleMerge` would refuse the entity now, or null: it must be one of the side's spawners (§4.4). */
+export function toggleProblem(state: BattleState, side: Side, entityId: number): string | null {
+  const problem = sellProblem(state, side, entityId);
+  if (problem) return problem;
+  const b = state.buildings.find((x) => x.id === entityId)!;
+  return state.compiled[side].buildings[b.buildingId]?.kind === 'spawner' ? null : 'notASpawner';
+}
+
+/** Every plot of the side's colony `plant` would take the building on now, in plot order (the UI's ghost and the AI). */
+export function legalPlots(state: BattleState, side: Side, buildingId: string): number[] {
+  const out: number[] = [];
+  state.sides[side].plots.forEach((_, i) => { if (plantProblem(state, side, buildingId, i) === null) out.push(i); });
+  return out;
+}
+
+/** A building's price for the side: its cost, wherever it stands, with no column term (§4.4, §6.3). */
+export function priceOf(state: BattleState, side: Side, buildingId: string): number {
+  return state.compiled[side].buildings[buildingId]?.cost ?? Number.MAX_SAFE_INTEGER;
+}
+
+/**
+ * What selling a building refunds now (§4.4): 100% of its price in the planning phase it was planted in,
+ * before it has fielded, and otherwise 60%, rounded down. 0 for no building.
+ */
+export function sellValue(state: BattleState, entityId: number): number {
+  const b = state.buildings.find((x) => x.id === entityId);
+  if (!b) return 0;
+  const c = state.compiled[b.side];
+  return Math.floor((b.pricePaid * (b.fielded ? c.sellRefundPct : c.sellRefundPlantedPct)) / 100);
+}
