@@ -314,14 +314,14 @@ This list was drafted on 2026-11-01 from SPEC v2 and `docs/tasks/spec-analysis.m
 
 ## Phase 8: Polish and verification (R4a)
 
-- [ ] T035 §16 R4 verification step 1, R4a's part: `npm run verify`, with the body checks running in `validate:data` through `src/data/registry.ts`. Put the summary in the PR and the commit (§16 R4 step 1, §15.1)
-- [ ] T036 §16 R4 verification step 2, R4a's part: open each PNG with Read and walk the checklist items R4a owns: silhouettes at the field's scale on both sides; bodies ordered by armor, with merged units at their body plus pips, and Elders with a gold rim; no mark glyph on any unit (T077); the sides apart under both filters. Note #52's first reading for Twin Roots in `docs/r4a-plan.md` (§16 R4 step 2, §15.6)
+- [x] T035 §16 R4 verification step 1, R4a's part: `npm run verify`, with the body checks running in `validate:data` through `src/data/registry.ts`. Put the summary in the PR and the commit (§16 R4 step 1, §15.1)
+- [x] T036 §16 R4 verification step 2, R4a's part: open each PNG with Read and walk the checklist items R4a owns: silhouettes at the field's scale on both sides; bodies ordered by armor, with merged units at their body plus pips, and Elders with a gold rim; no mark glyph on any unit (T077); the sides apart under both filters. Note #52's first reading for Twin Roots in `docs/r4a-plan.md` (§16 R4 step 2, §15.6)
   - `npm run screenshot -- --name r4-lineup --params "scenario=unit-lineup&paused=1"`
   - `npm run screenshot -- --name r4-lineup-d --params "scenario=unit-lineup&paused=1" --filter deuteranopia`
   - `npm run screenshot -- --name r4-lineup-p --params "scenario=unit-lineup&paused=1" --filter protanopia`
   - `npm run screenshot -- --name r4-lineup-twin --params "scenario=unit-lineup-twin&paused=1"` (A158)
-- [ ] T037 Run `npm run test:browser`, `npm run test:slow` (v1's guardrails, unchanged) and `npm run golden -- verify`, and confirm in the PR that R4a moved no golden (`src/sim/state.ts:189-197`) (§15.5, §16)
-- [ ] T038 Update the docs: `docs/r4a-plan.md` (As built), `docs/status.md` (R4a done, with R2a's playtest now on the new sprites once T039 passes) and `docs/playtest-feedback.md` (F17's status: R4a drew the shape language on the field). `docs/balance-backlog.md` needs none, since R4a measures no balance (CLAUDE.md "Where things get written down", §16)
+- [x] T037 Run `npm run test:browser`, `npm run test:slow` (v1's guardrails, unchanged) and `npm run golden -- verify`, and confirm in the PR that R4a moved no golden (`src/sim/state.ts:189-197`) (§15.5, §16)
+- [x] T038 Update the docs: `docs/r4a-plan.md` (As built), `docs/status.md` (R4a done, with R2a's playtest now on the new sprites once T039 passes) and `docs/playtest-feedback.md` (F17's status: R4a drew the shape language on the field). `docs/balance-backlog.md` needs none, since R4a measures no balance (CLAUDE.md "Where things get written down", §16)
   - `data/CHANGELOG-balance.md` has one entry per R4a PR that changed `data/` (S1's lineups and `i-pip`, S2's `marks.json`, S2b's removal of it (T077), S3's and S4's sprites, S5's palette): what changed, "display only, no golden moved", and the approval it rests on (T007's plan, T026's sheet or T034's R4-Q4). Check that each is there.
 - [ ] T039 [USER] R4a's review gate: the user looks at T036's PNGs and at the dev site after R4a-S5 merges, and agrees that R2a's playtest can run on these sprites. Record the answer in `docs/r4a-plan.md` and `docs/status.md` in a docs-only follow-up PR, or at R2a S21's start. R2a/T137 then asks "Could you spot the Elders, and tell a Bloomed unit from a base one?" (A162, R4-Q3) and takes #52's reading on Twin Roots (§16 R4, §18.2 #52)
 

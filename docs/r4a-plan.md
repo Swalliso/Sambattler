@@ -217,4 +217,31 @@ The user approved `docs/r4a-silhouettes.json` as drawn ("Approve as drawn"), on 
 
 ## As built
 
-_Empty until R4a lands._
+**Built 2026-11-01 to 11-02,** in seven PRs into `develop`: the plan (S0, [#43](https://github.com/Swalliso/Sambattler/pull/43)), S1 ([#47](https://github.com/Swalliso/Sambattler/pull/47)), S2 ([#49](https://github.com/Swalliso/Sambattler/pull/49)), S2b ([#55](https://github.com/Swalliso/Sambattler/pull/55)), S3 ([#58](https://github.com/Swalliso/Sambattler/pull/58)), S4 ([#62](https://github.com/Swalliso/Sambattler/pull/62)) and S5 (`feature/r4a-contrast`). R4a changed how units are drawn, not how they fight: every session ran `npm run golden -- verify`, and no hash moved. The decisions held as agreed, except that decision 9 (no weapon marks), made at T026's review, superseded decision 2 and calls 1 and 10.
+
+**What it built**
+- **One unit drawer** (S1, T008–T016): `src/render/unitSprite.ts` draws every unit in v1's battle, and R2a's views import the same functions (`drawUnitSprite`, `drawPips`, `emplacementSprite`). `src/render/compose.ts` is the pure bake (palette swap, Elder rim, mirroring) and the atlas's layout, shared by the atlas and the sheet tool. `TIER_SCALE` and `TIER_PIPS` are gone: a merged unit keeps its body, with one `i-pip` for Bloomed and two for Elder, on the field and in the inspect panel, and only Elders get the gold `#f0c85a` rim. `unit-lineup` and `unit-lineup-twin` replace `elder-showcase`, and `tools/lib/cvd.ts` holds the colour-vision matrices.
+- **The shape checks** (S2, T017–T023): a sprite's `shape` block and a sheet's `bands` (small 8–9, medium 11–12, big 15–16 px) in the schema. `src/data/shapes.ts` has `bodyOf`, `bodyBox`, `baseSquad`, `widthBound` and the problem lists, and the registry runs them when data loads. `npm run sprite-sheet` draws a sheet with its measurements, squad strips and problems.
+- **No weapon marks** (S2b, T077): S2's glyphs (`data/sprites/marks.json`) and the shape block's mark fields are gone, and a block that names a mark fails to load.
+- **The silhouettes** (S2b to S4, T024–T032): the sheet, approved as drawn (T026). S3 redrew the core six and drew `e-puffballMortar`, and S4 redrew the other seven, three frames each. The registry requires a shape on every unit sprite, and an `e-<id>` emplacement for every tower with an attack. `tests/unit/shapes.test.ts` holds the roster to distinct silhouettes (the highest IoU is 0.69, the Capguard and the Scythecap) and to the width bound at base squad + 1.
+- **Team contrast** (S5, T033–T034): `tests/unit/contrast.test.ts` holds SPEC §2's three cases, and the Gray Rot's swap tones are the bone first guess: `v #b0bcab`, `l #eaf0e2`, `d #808b7c`. Under both filters, the sides' tones differ by 1.51–2.13:1, where v1's ash differed by 1.00–1.10:1. The Gray Rot's tones stand 3.57:1 or more off the soil, and 4.73:1 or more off the outline. The tightest pair is `l` under deuteranopia, at 1.51:1.
+
+**Where it differs from the plan**
+- Decision 9 superseded decision 2 and calls 1 and 10, as above. S2 built the glyphs, and S2b retired them.
+- R1 hadn't proposed squad sizes by S4, so the width bound uses today's spawn-derived squads. R2a S1 re-runs it on R1's sizes, and a sprite that fails is narrowed (Scope, "What R4a hands on").
+- The Veilstalker's and the Scythecap's sprites are 1 px wider than the sheet's, for their attack frames. Frame 0 is the sheet's.
+- Only the Gray Rot's body tones changed. The UI's `--rot` tokens, the battle report's colours, the HP bars, the colour-blind team mark's dashes and the run-map icons keep v1's ash (`#7d8a7a`, `#b8c4a8`). None is a body, and none of T033's cases reads them.
+
+**Verification** (SPEC §16 R4, R4a's part, run on `feature/r4a-contrast` on 2026-11-02)
+1. **`npm run verify`** (T035): all ok, with 642 unit tests. `validate:data` loads 102 sprites through `src/data/registry.ts`, body checks included. Golden verify: all 8 pass, none moved.
+2. **The captures** (T036), each PNG read at 2× zoom:
+   - `r4-lineup`: all ten default-data units stand on both sides, at tiers 1, 2 and 3, each its own silhouette. Bodies follow armor, with the Amanita Knight tallest. Merged units keep their body: Bloomed ones carry one pip, and Elders two pips and the gold rim. No unit carries a mark glyph.
+   - `r4-lineup-d` and `r4-lineup-p`: the Velvet Bloom reads as a darker blue-violet and the Gray Rot as a light bone-gray, apart in lightness under both filters. Both stand off the soil, which turns olive.
+   - Two things for the gate to look at. The Amanita Knight's cap is a fixed red (`R #c8423a`), not a swap tone, so the cap looks the same on both sides; the Knight's side reads from its band, its stalk and its facing. Under both filters, the Rootbreaker's brown log turns olive like the soil, though its outline keeps it visible.
+   - `r4-lineup-twin`, **#52's first reading:** at Twin Roots' scale (about 1.78×), every silhouette still differs, and the pips and Elder rims still read. The smallest bodies (8–9 px tall, about 15 px on screen) are the hardest to read, but they stay apart. R2a's playtest gives the human reading (R2a/T137).
+3. **`npm run sprite-sheet`**: PASS, 13 sprites, no problem. It lists four overflows at base + 2 (the Velvet Shrine's): the Tender, the Scythecap, the Rootbreaker and the Rhizomorph. The check lists those and doesn't fail them (call 8).
+4. **`npm run test:browser`, `npm run test:slow` and `npm run golden -- verify`** (T037):
+   - the browser suite: 94 tests in 12 files pass;
+   - golden verify: all 8 pass, and none moved;
+   - the slow suite: 5 of v1's 9 guardrails pass, and 4 miss (G1, G3, G7 and G8). R4a changed no input the battle reads: no sim or bot code reads a palette, and every golden replay is unchanged. So these are `develop`'s verdicts, not re-run there, and a v1 miss isn't open work (CLAUDE.md).
+5. **The review gate** (T039, the user): open. The user looks at the four captures and at the dev site once S5 has merged, at `?scenario=unit-lineup&paused=1` and `?scenario=unit-lineup-twin&paused=1`, and in a normal battle.
