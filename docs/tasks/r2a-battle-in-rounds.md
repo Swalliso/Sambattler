@@ -287,27 +287,27 @@ S1 to S4: the data, the colony, the round state machine and the planning command
 
 **S2: the colony and the formation's pure core** (may run beside S1; both edit `src/data/schema.ts`, in different schemas)
 
-- [ ] T015 [P] Write `tests/unit/rounds/colony.test.ts` (new) (§4.6, §11.9, §13.3)
+- [x] T015 [P] Write `tests/unit/rounds/colony.test.ts` (new) (§4.6, §11.9, §13.3)
   - Ranks and files on both sides: rank 0 borders the arena, and the general's file 1 mirrors your last file.
   - Loam and stump detection; a stump plot is never legal.
   - Neighbors are in front of, behind and beside, never at a corner or across lanes; plots are ordered lane, rank, file.
   - The third rank is closed until opened. It opens files 2, 3, 1, 4 on one lane, and on Twin Roots files 2, 1, 3, alternating lanes from the top (A031).
   - Buildable counts are 8, 6 and 11.
-- [ ] T016 Add an optional `colony` block to `MapSchema` in `src/data/schema.ts`: `{homeCols, startRanks, tiles}` (§4.1, §4.6, §11.9) (A031)
+- [x] T016 Add an optional `colony` block to `MapSchema` in `src/data/schema.ts`: `{homeCols, startRanks, tiles}` (§4.1, §4.6, §11.9) (A031)
   - The schema checks that `homeCols` is even, that the tiles are point-symmetric, that lane rows pair up (a leftover row holds no plot), and that loam and stumps lie only in colony columns.
   - `colony` stays optional, so the four test maps that get none (`data/maps/test-bogwater-2lane.json`, `data/maps/test-bogwater-2lane-tall.json`, `data/maps/test-stumpfield-2lane.json`, `data/maps/test-stumpfield-2lane-tall.json`) still validate. `createBattle` in rounds (T027) refuses a map without one, with a message.
-- [ ] T017 Draw the `colony` block in `data/maps/bogwater-hollow.json`, `data/maps/stumpfield.json`, `data/maps/twin-roots.json`, `data/maps/test-flat.json` and `data/maps/test-3lane.json` (§4.1, §11.9)
+- [x] T017 Draw the `colony` block in `data/maps/bogwater-hollow.json`, `data/maps/stumpfield.json`, `data/maps/twin-roots.json`, `data/maps/test-flat.json` and `data/maps/test-3lane.json` (§4.1, §11.9)
   - The layouts are §11.9's: Bogwater front `····`, back `·$··`; Stumpfield front `·o·$`, back `··o·`; Twin Roots' upper front `·o·`, lower back `$·$`.
   - `homeCols` 6 and `startRanks` 2, with the arena plain soil.
   - v1 keeps reading `tiles` and `homeCols`, so no hash moves. `test-3lane`'s colony (homeCols 6, 4-row lanes) is for tests and the bench only.
-- [ ] T018 Build `colonyPlots(map, side, plotCount)`, `plotNeighbors(plots, i)` and `openOrder(map)` in `src/sim/rounds/colony.ts` (new): pure functions of the map's `colony` block that return `PlotState`-shaped records `{lane, rank, file, col, row, terrain, open}` (§4.6, §13.3 rule 4)
-- [ ] T019 Write `tests/unit/rounds/formation.test.ts` (new) for the pure core (§4.6, §5.6, §15.7 Formation, Merging)
+- [x] T018 Build `colonyPlots(map, side, plotCount)`, `plotNeighbors(plots, i)` and `openOrder(map)` in `src/sim/rounds/colony.ts` (new): pure functions of the map's `colony` block that return `PlotState`-shaped records `{lane, rank, file, col, row, terrain, open}` (§4.6, §13.3 rule 4)
+- [x] T019 Write `tests/unit/rounds/formation.test.ts` (new) for the pure core (§4.6, §5.6, §15.7 Formation, Merging)
   - Bogwater's slots: the player's in columns 9–12, the general's in 19–22, the third rank 2 columns further back.
   - The k × k grid fills front to back, then top to bottom, with front toward the enemy. Holes stay holes, and an emplacement stands at its slot's centre. An overflowing squad packs tighter (#11).
   - Arrival order is plot order, then j (A024).
   - A Burrow's 8 come to 2 Bloomed and 2 base. Two Burrows side by side, and three in a row, give the same result whichever was planted first.
   - Nothing knits across Twin Roots' root wall, even with a merge-radius bonus (A040).
-- [ ] T020 Build `formationFor(input)` and `musterFor(input)` in `src/sim/rounds/formation.ts` (new) on R1's `src/sim/formation.ts` (§4.6, §5.6, §14.6) (A024, A039, A040)
+- [x] T020 Build `formationFor(input)` and `musterFor(input)` in `src/sim/rounds/formation.ts` (new) on R1's `src/sim/formation.ts` (§4.6, §5.6, §14.6) (A024, A039, A040)
   - The input is plain: the map's geometry, the side, and each plot's building `{id, squad {unitId, count, radius}, kind, mergeOn}`, plus `firstKey`, the side's `mergeRadius` (with any bonus), `radiusOf(unitId, tier)` and the map's width, passed straight to R1's `musterKnits`.
   - `formationFor` gives one slot per plot in the same rank and file, and squads in plot order with each unit's absolute position.
   - `musterFor` runs R1's knitting to a fixed point on those positions, in arrival order, within each lane. It returns Call 5's shape.

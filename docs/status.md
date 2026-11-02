@@ -31,7 +31,7 @@ Updated 2026-11-02, on `feature/r2a-plan` (a docs PR into `develop`). This is th
 
 - **Work from** [docs/tasks/r2a-battle-in-rounds.md](tasks/r2a-battle-in-rounds.md). Each waits only for S0 to merge.
   - **S1** (`feature/r2a-data`, T007–T014): the `rounds` data, kept out of v1's library; R1's set as default data (all of `kept`, the arrival shield under `balance.rounds.arrivalShield`, the squads with Capguard Hall at 3, `tierRadiusMult` 1.0); R2-Q5's weights, with `aiWeight` retired. v1's goldens move once, with a CHANGELOG entry.
-  - **S2** (`feature/r2a-colony`, T015–T020): the maps' colonies with `startRanks` (#19), `colony.ts`, and the formation's pure core on R1's `formation.ts`. No golden moves.
+  - **S2** (`feature/r2a-colony`, T015–T020, [#69](https://github.com/Swalliso/Sambattler/pull/69)): built, and waiting for the hub's review. The five maps have a `colony` block (homeCols 6, `startRanks` 2, §11.9's layouts) that `MapSchema` checks. `src/sim/rounds/colony.ts` gives the plots, their neighbours and #19's open order. `src/sim/rounds/formation.ts` gives `formationFor` and `musterFor` (Call 5's shape), built on R1's `formation.ts`, whose `knit` is now exported. No golden moved.
 - Then S3a, once both have merged.
 
 ## R2a, a battle in rounds

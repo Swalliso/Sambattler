@@ -521,12 +521,64 @@ export const FactionSchema = z.object({
   buildings: z.array(Id).min(1), note: z.string().optional(),
 }).strict();
 
+/**
+ * A map's colonies in rounds (SPEC §4.1, §4.6, §11.9): its tiles with the terrain moved into the colonies,
+ * the home columns (2 a rank, so homeCols 6 holds a closed third rank) and how many ranks start open
+ * (§18.2 #19). v1 reads none of it, only the map's own `tiles` and `homeCols` (`src/sim/create.ts`), so it
+ * moves no v1 golden. R2b folds it into the map's own fields.
+ */
+const ColonySchema = z.object({
+  homeCols: z.number().int().min(2), startRanks: z.number().int().min(1),
+  tiles: z.array(z.string().regex(/^[.$o#]+$/, 'tiles use . $ o #')),
+}).strict();
+type ColonyDef = z.infer<typeof ColonySchema>;
+type LaneRows = { rowStart: number; rowEnd: number };
+
+/**
+ * The colony block's checks: even home columns, point-symmetric tiles on mirrored lanes, lanes that hold
+ * pairs of rows, and loam and stumps only on plots. A lane of odd rows leaves a row out of its plots,
+ * your colony's bottom row and the general's top row (its point mirror), so that row holds no terrain.
+ */
+function colonyProblems(m: { id: string; width: number; height: number; lanes: LaneRows[] }, c: ColonyDef): string[] {
+  const W = m.width, H = m.height, out: string[] = [];
+  const ranks = Math.floor(c.homeCols / 2);
+  if (c.homeCols % 2 !== 0) out.push(`${m.id}: colony.homeCols ${c.homeCols} must be even, 2 columns a rank`);
+  if (c.startRanks > ranks) out.push(`${m.id}: colony.startRanks ${c.startRanks} is more than its ${ranks} ranks`);
+  if (c.homeCols * 2 >= W) out.push(`${m.id}: the colonies overlap`);
+  if (c.tiles.length !== H || c.tiles.some((row) => row.length !== W)) return [...out, `${m.id}: colony.tiles must be ${H} rows of ${W}`];
+  symmetry: for (let r = 0; r < H; r++) {
+    for (let col = 0; col < W; col++) {
+      if (c.tiles[r]![col] !== c.tiles[H - 1 - r]![W - 1 - col]) { out.push(`${m.id}: colony.tiles are not point-symmetric at (${col}, ${r})`); break symmetry; }
+    }
+  }
+  const terrain = (row: number, from: number, to: number): boolean => /[$o]/.test(c.tiles[row]!.slice(from, to));
+  m.lanes.forEach((lane, i) => {
+    if (lane.rowEnd < lane.rowStart || lane.rowEnd >= H) return; // the map's own checks report it
+    const mirror = m.lanes[m.lanes.length - 1 - i]!;
+    if (lane.rowStart + mirror.rowEnd !== H - 1) out.push(`${m.id}: lane ${i} doesn't mirror lane ${m.lanes.length - 1 - i}, so the colonies can't`);
+    const rows = lane.rowEnd - lane.rowStart + 1;
+    if (rows < 2) out.push(`${m.id}: lane ${i} has no pair of rows for a plot`);
+    else if (rows % 2 === 1 && (terrain(lane.rowEnd, 0, c.homeCols) || terrain(lane.rowStart, W - c.homeCols, W))) {
+      out.push(`${m.id}: lane ${i}'s leftover row holds no plot, so it holds no loam or stump`);
+    }
+    for (let r = lane.rowStart; r <= lane.rowEnd; r++) if (c.tiles[r]!.includes('#')) out.push(`${m.id}: colony root wall inside lane ${i} (row ${r})`);
+  });
+  c.tiles.forEach((row, r) => {
+    const col = row.slice(c.homeCols, W - c.homeCols).search(/[$o]/);
+    if (col >= 0) out.push(`${m.id}: colony terrain at (${c.homeCols + col}, ${r}) lies outside the colonies`);
+  });
+  return out;
+}
+
 export const MapSchema = z.object({
   id: Id, name: z.string(), width: z.number().int().min(8), height: z.number().int().min(3),
   homeCols: z.number().int().min(1), milestone: z.number().int().positive(), testOnly: z.boolean().optional(),
   lanes: z.array(z.object({ rowStart: z.number().int().nonnegative(), rowEnd: z.number().int().nonnegative() }).strict()).min(1).max(3),
   tiles: z.array(z.string().regex(/^[.$o#]+$/, 'tiles use . $ o #')),
+  /** Rounds' colonies (R2a). Optional, so the two-lane test maps that have none still validate. */
+  colony: ColonySchema.optional(),
 }).strict().superRefine((m, ctx) => {
+  if (m.colony) for (const message of colonyProblems(m, m.colony)) ctx.addIssue({ code: 'custom', message });
   if (m.tiles.length !== m.height) ctx.addIssue({ code: 'custom', message: `${m.id}: ${m.tiles.length} tile rows, expected ${m.height}` });
   m.tiles.forEach((row, r) => {
     if (row.length !== m.width) ctx.addIssue({ code: 'custom', message: `${m.id}: row ${r} has ${row.length} chars, expected ${m.width}` });
