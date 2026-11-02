@@ -406,7 +406,7 @@ S1 to S4: the data, the colony, the round state machine and the planning command
 
 **S6: Begin, the muster and a lane's end**
 
-- [ ] T042 [US1] Write `tests/unit/rounds/clash.test.ts` (new) (§4.7 steps 12–17, §5.6, §6.7, §14.6) (A024, A026, A028, A030, A032, A047):
+- [x] T042 [US1] Write `tests/unit/rounds/clash.test.ts` (new) (§4.7 steps 12–17, §5.6, §6.7, §14.6) (A024, A026, A028, A030, A032, A047):
   - both armies appear on the same tick, with ids in plot order, then j;
   - with no power queued, for 20 ticks no unit's position or HP changes, separation included;
   - the fielded record equals the units standing after the muster, by lane, type, tier and count;

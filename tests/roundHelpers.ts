@@ -1,7 +1,7 @@
 // Shared fixtures for the round-form unit suite (SPEC §15.7, §4.6, §4.7, §14.4): a battle in rounds in its
 // planning phase, or one built from a round scenario. v1's tests keep `tests/helpers.ts` and its
 // `liveState` until R2b folds this file into it. Each later helper lands with the task that builds its
-// command: `plant`, `sell` and `toggle` came with T031; `begin` and `stepClash` come with T043, `finishRound`
+// command: `plant`, `sell` and `toggle` came with T031, `begin` and `stepClash` with T043; `finishRound` comes
 // with T052.
 import { nodeContent } from '../tools/lib/content.ts';
 import { commandStamp, createFromScenario, queueCommand, SIDES, step } from '../src/sim/rounds/index.ts';
@@ -70,3 +70,16 @@ export const plant = (s: BattleState, side: Side, buildingId: string, at: PlotPl
 export const sell = (s: BattleState, side: Side, entityId: number): SimEvent[] => command(s, side, { type: 'sell', entityId });
 export const toggle = (s: BattleState, side: Side, entityId: number, on: boolean): SimEvent[] =>
   command(s, side, { type: 'toggleMerge', entityId, on });
+
+/** The player's Begin through the queue, which fields both armies and resolves the muster (T043). It returns Begin's step's events. */
+export const begin = (s: BattleState): SimEvent[] => command(s, 'player', { type: 'beginClash' });
+
+/** Steps a clash `ticks` ticks, or until it ends, and returns every event of those steps in order. */
+export function stepClash(s: BattleState, ticks = 1): SimEvent[] {
+  const out: SimEvent[] = [];
+  for (let i = 0; i < ticks && s.phase === 'clash'; i++) {
+    step(s);
+    out.push(...s.events);
+  }
+  return out;
+}
