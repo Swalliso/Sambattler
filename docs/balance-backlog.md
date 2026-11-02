@@ -65,6 +65,46 @@ R1's runs (S7, T040–T048, T052), measured on `develop` at `fd9621f` (#62), wit
 
 **The merge mirror** (G7's round form, #9; `--mirror`, 20 seeds a seat): each army with merging on against its own twin with merging off. Merging wins 97–100% for Sporeling Burrow, Capguard Hall, Gill Nest, Rootbreaker Den, Scythecap Grove and Hammercap Forge, 91% for Morel Warren and 90% for `bot:balanced`. It loses every game for Veilstalker Hollow and Tender's Ring (0%). Only Amanita Lodge (56%) is inside G7's 55–70% band; the Mortar never merges (50%). Under `kept` the same, plus the Burster Pod 52% and the Rhizomorph Tunnel 69%. In a clash the muster's knitting decides more than v1's G7 band allows, and for the Veilstalker and the Tender it always hurts.
 
+**The variant screens** (T043, T045, and two leads on Capguard Hall's squad)
+- 20 seeds a seat, jitter 0.2, against `r1-baseline-20`, the baseline on the same seeds (so differences aren't seed noise). Labels are `r1-<variant>`.
+- **G3** lists the monos that fail, with their mean (a worst-field-only fail says so). **G12** lists the builds with no answer at 60%, with the best answer's worst field. **G13** is the share of clashes capped.
+- G13 here isn't comparable to the 5.8% above: `r1-baseline`'s `--matrix all` adds every mono's matrix rows, and the lopsided ones cap more. Without it the 50-seed jitter-free run caps 1.2%, and this 20-seed baseline 1.3%.
+
+| Variant | G3 fails | G12 fails | G13 |
+| --- | --- | --- | --- |
+| Baseline (20 seeds) | Capguard 90, Sporeling 79, Gill 73, Veilstalker 65 | Sporeling 45, Capguard 56 | 1.3% |
+| `--merging off` | Capguard 83, Gill 75, Scythecap 70, Amanita 64 | none | **17.7%, fails** (median 26 s) |
+| `noeldersplash` | Capguard 93, Gill 73, Veilstalker 68, Sporeling 61 | Capguard 56 | 1.3% |
+| `--squad-seconds 45` | Veilstalker 86, Capguard 84, Amanita 69, Sporeling 68, Gill 60, Morel 60 | Veilstalker 40 | 3.7% |
+| `--squad-scale 45` | Capguard 94, Sporeling 80, Amanita 80, Veilstalker 74, Gill 68 | none | 4.0% |
+| `--squad-seconds 75`, `--squad-scale 75` | Capguard 78, Amanita 75, Gill 71, Veilstalker 70, Sporeling 68 | Veilstalker 48 | 5.9%, 6.1% |
+| `--squad sporelingBurrow=6` | Capguard 96, Gill 94, Veilstalker 81, Hammercap 58, Rootbreaker (Twin Roots 61) | Capguard 56 | 3.6% |
+| `--squad sporelingBurrow=7` | Capguard 95, Gill 80, Veilstalker 73 (Sporeling 55 passes) | Capguard 56 | 1.4% |
+| `--squad capguardHall=3` (lead) | Sporeling 80, Gill 76, Veilstalker 69 (Capguard 48 passes) | Sporeling 34 | 1.4% |
+| `pinned` | Capguard 92, Sporeling 80, Veilstalker 66 (Gill passes) | Sporeling 40, Capguard 36, **Veilstalker 59** | 1.6% |
+| `sporecloud` | Capguard 86, Sporeling 73, Gill 72, Veilstalker 60 | Sporeling 45, Capguard 56 | 3.8% |
+| `burster` | Capguard 88, Gill 68, Sporeling 60 (Veilstalker 49) | Capguard 56 | 1.1% |
+| `burster`, fixed reference | as the baseline; mono Burster Pod 47 | Capguard 56 | 3.1% |
+| `cleave` | Capguard 89, Gill 72, Sporeling 72, Veilstalker 62 | Sporeling 47, Capguard 56 | 1.2% |
+| `rhizomorph` | Capguard 92, Sporeling 81, Gill 77, Veilstalker 61 | Sporeling 52, Capguard 56 | 1.5% |
+| `rhizomorph`, fixed reference | as the baseline; mono Rhizomorph Tunnel passes | Sporeling 52, Capguard 56 | 1.4% |
+| `clashpace` | Capguard 85, Sporeling 72, Gill 71, Veilstalker 57 | Sporeling 44, Capguard 53 | 1.2% (median 17.6 s) |
+| `--lanes-rule general` (Twin Roots only) | Capguard 90, Sporeling 79, Gill 70, Veilstalker 55 | Sporeling 54, Capguard 57 | 3.1% |
+| `clashshield` | Capguard 80, Sporeling 61, Veilstalker (one lane 61) (Gill 48) | none | 1.8% |
+| `--v1-movement` | Capguard 91, Sporeling 82, Gill 74, Veilstalker 62 | Sporeling 46 | 1.4% |
+| `--v1-targeting` | as the baseline, cell for cell | as the baseline | 1.3% |
+| `--fields three` (a lead, outside the bars) | Capguard 96, Sporeling 82, Veilstalker 71, Gill 63 | Sporeling 46, Capguard 50 | 5.3% (median 25 s) |
+| `--extra-plots 4`, 1,200 and 1,500 gold only | Veilstalker 95, Gill 92, Sporeling 89, Capguard 87 | Sporeling 46, Veilstalker 30 | 2.3% |
+
+- **What moves the bars:**
+  - Nothing screened passes G3. Every variant leaves Capguard Hall failing, except its own squad at 3.
+  - G12 passes with merging off, with `--squad-scale 45`, and with the arrival shield (`clashshield`).
+  - Merging off fails G13: clashes with nothing knitted stall (17.7% capped).
+  - Each piece alone: `pinned` adds a G12 fail (Veilstalker Hollow, 59%) and weakens the answers to the Sporeling and the Capguard; `burster` is the one piece that gives the Sporeling an answer; `sporecloud` lifts the Mortar from 0% to 45%, since its shots leave clouds; `burster` and `rhizomorph` each lift Rootbreaker Den on Twin Roots (48% → 57%), which is why `kept` fails it there (64%).
+  - The squad options trade one fail for another. Smaller Burrow squads weaken `bot:balanced`'s army, which buys Sporelings, so Capguard Hall, Gill Nest and Veilstalker Hollow win more. 75 s squads cut the Capguard but lift the Amanita.
+  - `--squad-seconds 75` and `--squad-scale 75` differ only in Hammercap Forge's squad (4 or 5), so they read alike. At 45 s they differ in Scythecap Grove, Veilstalker Hollow and Morel Warren (A010).
+- **The squads and §11.4's value per gold** (target 1.45 ± 0.15). At 60 s: Sporeling Burrow 8 (1.83, over the band), Capguard Hall 4 (1.48), Gill Nest 4 (1.53), Rootbreaker Den 3 (1.56), Scythecap Grove 3 (1.23, under), Veilstalker Hollow 6 (1.33), Hammercap Forge 4 (1.54), Amanita Lodge 2 (0.77, far under), Morel Warren 6 (1.31). The value model flags the Burrow and misses the Capguard, the strongest mono in clashes: within the band at 4, and 1.11 at 3. At 45 s the Burrow's 6 is 1.37; at 75 s its 10 is 2.28. A Burrow of 7 would be 1.60.
+
 **X5, the scoring curve** (the race section of `r1-baseline`)
 - **The cap binds.** The share of clashes whose loser's uncapped Heartcap damage passes 500, at storm ×1.0 → at the storm of the round each budget stands for (A208): 0% at 300 gold, 14–18% at 600, 38–42% → 53–58% at 900, 53–60% → 78–84% at 1,200 and 55–72% → 86–95% at 1,500; 35% → 48% pooled. Drawn rounds (A022): 3% pooled, the most at 300 gold on Twin Roots (12%), where the two lanes split.
 - **The race model** chains each case's clashes into battles of up to 9 rounds (crude: no income, no comeback gold, no counters; one seed's armies stand in for a growing colony). G4's band is a median of 6–8 rounds, at most 15% reaching round 9 and the bot winning 30–70%. The median rounds and the share reaching round 9, battle 1 → battle 5 (the Fortified elite and the boss beside):
