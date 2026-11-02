@@ -1,6 +1,6 @@
 # Where things stand
 
-Updated 2026-11-02, on `feature/r2a-plan` (a docs PR into `develop`). This is the hand-over page. It covers what we're working on, what's waiting on the user's decision, and where each piece lives. Update it when work lands or the user decides something. Keep the detail in the docs it links to.
+Updated 2026-11-02, on `docs/r2a-s1-s2` (the hub's docs PR into `develop`). This is the hand-over page. It covers what we're working on, what's waiting on the user's decision, and where each piece lives. Update it when work lands or the user decides something. Keep the detail in the docs it links to.
 
 ## In short
 
@@ -18,7 +18,7 @@ Updated 2026-11-02, on `feature/r2a-plan` (a docs PR into `develop`). This is th
   See [SPEC §0.1](../SPEC.md#01-what-changed-in-v2), [§1.3](../SPEC.md#13-v2-decisions-2026-10-31) and the [P3 notes](playtest-feedback.md#2026-10-31-p3-the-combat-rework-the-user).
 - **SPEC v2 is on `develop`** ([#39](https://github.com/Swalliso/Sambattler/pull/39)). **Nothing in v2 is built yet.** Until milestone R2 lands, the code follows v1: the M5 battle, with the rework's pieces behind `?proto=rework` on the dev site.
 - **The spec is broken into task lists** in [docs/tasks/](tasks/README.md) ([#40](https://github.com/Swalliso/Sambattler/pull/40), on `develop`), spec-kit style: one list per milestone, one session per row of its Sessions table. The decisions each milestone needs from the user are in [clarify.md](tasks/clarify.md), and the problems the breakdown found in SPEC v2 are in [spec-analysis.md](tasks/spec-analysis.md). Lists after R1's are drafts, refreshed when each milestone's plan is agreed.
-- **Milestone R1, the clash check, is done** ([SPEC §16](../SPEC.md#16-milestone-plan)). A headless tool fought whole armies at equal gold, with no rule change, to set squad sizes and check that every strong army has an answer before the round loop is built. At its review gate on 2026-11-02 you took every recommendation (below). **R2a's plan is agreed** (S0, 2026-11-02), and **R2a S1 and S2 are next**, side by side.
+- **Milestone R1, the clash check, is done** ([SPEC §16](../SPEC.md#16-milestone-plan)). A headless tool fought whole armies at equal gold, with no rule change, to set squad sizes and check that every strong army has an answer before the round loop is built. At its review gate on 2026-11-02 you took every recommendation (below). **R2a's plan is agreed** (S0, 2026-11-02), **R2a S1 and S2 have merged**, and **S3a is next**.
 - **Then:**
   - R2: rounds, the general plans first, lives, and the planning screen. R2a's plan, [r2a-plan.md](r2a-plan.md), was agreed on 2026-11-02. The task lists split it in two (X1): R2a, a single battle in rounds, then R2b, the run in rounds. R2a gets a rough playtest after S14, as soon as a battle in rounds is properly playable and before its counter cycle and powers (R2-Q25, agreed 2026-11-01), and S21's playtest stays the gate;
   - R3: the kit, the six archetypes, augments, combos and run packs;
@@ -27,12 +27,11 @@ Updated 2026-11-02, on `feature/r2a-plan` (a docs PR into `develop`). This is th
 
   [docs/tasks/README.md](tasks/README.md) has the full order and every milestone's sessions.
 
-## Next sessions: R2a S1 and S2, side by side
+## Next session: R2a S3a
 
-- **Work from** [docs/tasks/r2a-battle-in-rounds.md](tasks/r2a-battle-in-rounds.md). Each waits only for S0 to merge.
-  - **S1** (`feature/r2a-data`, T007–T014, [#70](https://github.com/Swalliso/Sambattler/pull/70)): built, and waiting for the hub's review. The `rounds` data is kept out of v1's library (Call 27), and R1's set is default data: all of `kept`, the arrival shield under `balance.rounds.arrivalShield`, the squads with Capguard Hall at 3, and `tierRadiusMult` 1.0. R2-Q5's weights are in data for all seven bots and the generals, and `aiWeight` is retired. v1's goldens moved once, with a CHANGELOG entry, and verify is green. T014's readings are in [balance-backlog.md](balance-backlog.md): at `tierRadiusMult` 1.0, R1's chosen set fails G3 on the Sporeling's worst field (62% on Twin Roots).
-  - **S2** (`feature/r2a-colony`, T015–T020, [#69](https://github.com/Swalliso/Sambattler/pull/69)): built, and waiting for the hub's review. The five maps have a `colony` block (homeCols 6, `startRanks` 2, §11.9's layouts) that `MapSchema` checks. `src/sim/rounds/colony.ts` gives the plots, their neighbours and #19's open order. `src/sim/rounds/formation.ts` gives `formationFor` and `musterFor` (Call 5's shape), built on R1's `formation.ts`, whose `knit` is now exported. No golden moved.
-- Then S3a, once both have merged.
+- **Work from** [docs/tasks/r2a-battle-in-rounds.md](tasks/r2a-battle-in-rounds.md).
+  - **S3a** (`feature/r2a-state`, T023–T025, T140, T026): the round types in `src/sim/rounds/state.ts`, the library and compiled sides with no display text, and the modifier DSL in rounds with its new triggers and `rank`. Its gate (S1 and S2 merged) is met, and it started on 2026-11-02.
+- Then S3b, once S3a has merged.
 
 ## R2a, a battle in rounds
 
@@ -53,12 +52,19 @@ Updated 2026-11-02, on `feature/r2a-plan` (a docs PR into `develop`). This is th
     - Call 30 places the arrival shield before the muster, as R1 measured it;
     - the copy tasks are gone (X4).
     - R2b's list no longer names `ROUNDS_PREVIEW` or `--dev`.
+- **S1** (`feature/r2a-data`, T007–T014, [#70](https://github.com/Swalliso/Sambattler/pull/70)): merged.
+  - The `rounds` data is kept out of v1's library (Call 27). R1's set is default data: all of `kept`, the arrival shield under `balance.rounds.arrivalShield`, the squads with Capguard Hall at 3, and `tierRadiusMult` 1.0.
+  - R2-Q5's weights are in data for all seven data bots and the five generals. G7's three mirrors are among the bots, since R1 measured them that way (the hub's reading of the decision, 2026-11-02). `aiWeight` is retired.
+  - v1's eight goldens moved once, with a CHANGELOG entry. T014's readings are in [balance-backlog.md](balance-backlog.md).
+  - Two CI fixes let the tray hold 16 cards: it picks one row or two at the styles' 88 px card minimum, and a name that still overflows sets a size smaller.
+- **S2** (`feature/r2a-colony`, T015–T020, [#69](https://github.com/Swalliso/Sambattler/pull/69)): merged. The five maps have a `colony` block (homeCols 6, `startRanks` 2, §11.9's layouts) that `MapSchema` checks. `src/sim/rounds/colony.ts` gives the plots, their neighbours and #19's open order. `src/sim/rounds/formation.ts` gives `formationFor` and `musterFor` (Call 5's shape), built on R1's `formation.ts`, whose `knit` is now exported. No golden moved.
 - **What R2a starts from:** R1's chosen set as default data (all of `kept`, the arrival shield, Capguard Hall's squad at 3, the Elder's splash on); X5's cap and Decision by share; no copies before R3 (D45); the Anti-Ranged kind and the three fixes to the counter sets (§7.4); and eliteShare by Elder parts.
-- **For R2a to watch** (R1):
+- **For R2a to watch** (R1, and S1's readings):
   - Capguard Hall at 3 still won 92% at 300 gold and 2% at 1,500;
   - `pinned` alone weakened the answers to the Sporeling and the Capguard;
   - v1's G2 newly failed on the Gill Archer under `kept`;
-  - no scoring rule brought R1's race model inside G4's band.
+  - no scoring rule brought R1's race model inside G4's band;
+  - at `tierRadiusMult` 1.0 (S1), R1's chosen set fails G3 on the Sporeling's worst field in R1's tool: 62% on Twin Roots against a 60% bar, where 1.25 passed. Nothing changed for it; S17 and S18 read G3 in rounds.
 - **Open for you in R2a:**
   - the rough playtest after S14 (S14b, T145);
   - the battle-level bands at S18 (T125);
@@ -161,7 +167,9 @@ Updated 2026-11-02, on `feature/r2a-plan` (a docs PR into `develop`). This is th
 
 | Work | Where | State |
 |---|---|---|
-| R2a S0: R2a's plan and its calls (2026-11-02) | [#67](https://github.com/Swalliso/Sambattler/pull/67), [r2a-plan.md](r2a-plan.md), [clarify.md](tasks/clarify.md) (26 calls), SPEC, [r2a-battle-in-rounds.md](tasks/r2a-battle-in-rounds.md) | Plan agreed, every recommendation taken. R2a S1 and S2 are next |
+| R2a S1: the rounds data, and R1's set as default data (2026-11-02) | [#70](https://github.com/Swalliso/Sambattler/pull/70), `data/balance.json`, `src/data/schema.ts`, `src/sim/compile.ts`, `data/CHANGELOG-balance.md`, [balance-backlog.md](balance-backlog.md) | Merged after the hub's review. v1's goldens moved once, and the tray holds 16 cards. At `tierRadiusMult` 1.0 the Sporeling misses clash G3 on Twin Roots (62%), for S17 and S18 to read in rounds |
+| R2a S2: the colony and the formation's pure core (2026-11-02) | [#69](https://github.com/Swalliso/Sambattler/pull/69), `src/sim/rounds/colony.ts`, `src/sim/rounds/formation.ts`, the maps' `colony` blocks | Merged after the hub's review. No golden moved. S3a is next |
+| R2a S0: R2a's plan and its calls (2026-11-02) | [#67](https://github.com/Swalliso/Sambattler/pull/67), [r2a-plan.md](r2a-plan.md), [clarify.md](tasks/clarify.md) (26 calls), SPEC, [r2a-battle-in-rounds.md](tasks/r2a-battle-in-rounds.md) | Merged. Plan agreed, every recommendation taken |
 | R1 S8: R1's review gate (2026-11-02) | [#66](https://github.com/Swalliso/Sambattler/pull/66), [clarify.md](tasks/clarify.md) #7–#15, X4, X5 and #36, SPEC §4.6, §5.2, §5.3, §5.6, §6.5, §6.7, §7.4, §11.2, §11.6, §13.7, §16 R2 and §18.2 | Merged. Every recommendation taken. R1 is done |
 | R1 S7: R1's runs and write-up (2026-11-02) | [#65](https://github.com/Swalliso/Sambattler/pull/65), [balance-backlog.md](balance-backlog.md#r1--the-clash-check-2026-11-02), [r1-plan.md](r1-plan.md#as-built) | Merged. In 65 runs four monos beat `bot:balanced`, and `kept` with the arrival shield and Capguard Hall at 3 is the only set that passes every bar |
 | R4a's review gate passed, and X1 and X2 decided (2026-11-02) | [#64](https://github.com/Swalliso/Sambattler/pull/64), [r4a-plan.md](r4a-plan.md#as-built), [clarify.md](tasks/clarify.md) X1 and X2 | Done. R4a is finished. R2 splits into R2a and R2b, R2a goes beside v1, and `develop` may switch wholly to v2 |
