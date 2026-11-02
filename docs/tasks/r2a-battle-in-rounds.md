@@ -364,7 +364,7 @@ S1 to S4: the data, the colony, the round state machine and the planning command
 
 **S4: planning commands, the kit and the formation on state**
 
-- [ ] T030 Write `tests/unit/rounds/planning.test.ts` (new) (§4.2, §4.4, §4.7, §14.5) (A034):
+- [x] T030 Write `tests/unit/rounds/planning.test.ts` (new) (§4.2, §4.4, §4.7, §14.5) (A034):
   - one case per refusal: the wrong phase; another side's plot or building; a taken plot; a stump plot; a closed plot; a card not in the kit; not enough gold; an enemy-side command after the opening; `beginClash` from the enemy;
   - a refund of 100% in the planting phase if unfielded, else floor(60%); the plot frees at once;
   - `toggleMerge` works only on your own spawner;
@@ -373,7 +373,7 @@ S1 to S4: the data, the colony, the round state machine and the planning command
 - [ ] T031 Build the planning executors and checks in `src/sim/rounds/planning.ts` (new): `plant`, `sell`, `toggleMerge` and `beginClash`'s planning half, plus `legalPlots`, `plantProblem`, `priceOf` and `sellValue` (§4.4, §4.7, §14.5, §14.6) (A034)
   - Each command is checked again when it runs; a refusal is a `commandRejected` with a reason, counted in `stats.rejectedCommands`.
   - Events: `buildingPlanted`, `buildingSold {refund}`, `mergeToggled`.
-- [ ] T032 Write the kit cases in `tests/unit/rounds/planning.test.ts` (§4.4, §18.1 D45):
+- [x] T032 Write the kit cases in `tests/unit/rounds/planning.test.ts` (§4.4, §18.1 D45):
   - a single battle's kit is the faction roster, and a card outside it is refused;
   - with no copy limit (D45; X4 decided no, 2026-11-02), a card plants until the plots run out;
   - the general plants by `maxOwned`.
