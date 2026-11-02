@@ -18,9 +18,9 @@ export function bodyOf(armor: ArmorTypeT): Body {
   return BODY[armor];
 }
 
-/** A spawner's base squad: until R2a writes R1's sizes into the data, a minute's spawns (§11.2, R4a call 8). */
+/** A spawner's base squad: its `squad.count`, R1's size (§11.2, R4a call 8). A building with no squad fields none. */
 export function baseSquad(building: BuildingDef): number {
-  return building.spawn ? building.spawn.count * Math.round(60 / building.spawn.interval) : 0;
+  return building.squad?.count ?? 0;
 }
 
 /** The widest a unit may be drawn in a squad of n: floor(32 / k), k = ceil(sqrt n) (§4.6, §14.3). */

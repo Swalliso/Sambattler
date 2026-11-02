@@ -3,6 +3,6 @@
   "name": "the Gray Rot",
   "palette": { "v": "#b0bcab", "l": "#eaf0e2", "d": "#808b7c", "s": "#d9d3c1", "t": "#a49d88" },
   "mat": { "base": "#2f3a30", "strand": "#7f8f7a", "glow": "#b8c4a8" },
-  "buildings": ["sporelingBurrow", "capguardHall", "gillNest", "rootbreakerDen", "puffballMortar", "truffleCellar", "scythecapGrove", "veilstalkerHollow", "tendersRing", "hammercapForge", "amanitaLodge", "morelWarren", "rhizomeVault", "sporeExchange"],
+  "buildings": ["sporelingBurrow", "capguardHall", "gillNest", "rootbreakerDen", "puffballMortar", "truffleCellar", "scythecapGrove", "veilstalkerHollow", "tendersRing", "hammercapForge", "amanitaLodge", "morelWarren", "rhizomeVault", "sporeExchange", "bursterPod", "rhizomorphTunnel"],
   "note": "Mirror match until M7: the Gray Rot plays the Velvet Bloom roster in its own palette. Its distinct roster arrives in M7."
 }

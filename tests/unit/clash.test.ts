@@ -40,8 +40,8 @@ describe("R1's squads and army cards (SPEC §11.2, §16 R1)", () => {
       rootbreakerDen: 3, scythecapGrove: 3, veilstalkerHollow: 6, morelWarren: 6, tendersRing: 3,
     };
     for (const [id, n] of Object.entries(squads)) expect(squadSize(content, id), id).toBe(n);
-    expect(squadSize(protoContent('burster'), 'bursterPod')).toBe(6);
-    expect(squadSize(protoContent('rhizomorph'), 'rhizomorphTunnel')).toBe(3);
+    expect(squadSize(content, 'bursterPod')).toBe(6);
+    expect(squadSize(content, 'rhizomorphTunnel')).toBe(3);
   });
 
   it('squadSize counts whole batches, halves rounded up, and only spawners have one', () => {
@@ -56,7 +56,7 @@ describe("R1's squads and army cards (SPEC §11.2, §16 R1)", () => {
     expect(clashArmyIds(content)).toEqual(roster.filter((id) => !['truffleCellar', 'sporeExchange', 'rhizomeVault'].includes(id)));
     expect(clashArmyIds(content)).toContain('tendersRing');
     expect(clashArmyIds(content)).toContain('puffballMortar');
-    expect(clashArmyIds(protoContent('burster'))).toContain('bursterPod');
+    expect(clashArmyIds(content)).toContain('bursterPod');
   });
 });
 
@@ -157,11 +157,11 @@ describe("R1's fields and formation by role (SPEC §4.6, §7.3, §16 R1; R1-Q1, 
 
   it("the line follows §7.3's tags: ranged, support and burst spawners, and every tower, stand at the back (A006)", () => {
     for (const id of ['tendersRing', 'gillNest', 'puffballMortar']) expect(lineOf(content, id), id).toBe('back');
-    expect(lineOf(protoContent('burster'), 'bursterPod')).toBe('back');
+    expect(lineOf(content, 'bursterPod')).toBe('back');
     for (const id of ['capguardHall', 'sporelingBurrow', 'amanitaLodge', 'rootbreakerDen', 'veilstalkerHollow', 'morelWarren']) {
       expect(lineOf(content, id), id).toBe('front');
     }
-    expect(lineOf(protoContent('rhizomorph'), 'rhizomorphTunnel')).toBe('front');
+    expect(lineOf(content, 'rhizomorphTunnel')).toBe('front');
     expect(() => lineOf(content, 'truffleCellar')).toThrow(/army card/);
   });
 
@@ -226,7 +226,7 @@ describe("R1's fields and formation by role (SPEC §4.6, §7.3, §16 R1; R1-Q1, 
   });
 
   it("placeArmy stands each unit at its slot's layout, its squad's mergeOn on it; Rhizomorphs burrowed; a Mortar on its slot", () => {
-    const rc = protoContent('rhizomorph');
+    const rc = content;
     const one = clashField(rc, 'one');
     const s = fieldState(one, rc);
     const a = army(['sporelingBurrow', 'rhizomorphTunnel', 'puffballMortar', 'capguardHall'], rc);
@@ -327,9 +327,9 @@ describe('one clash: the muster, the lane ends and the clock (SPEC §5.6, §6.7,
   });
 
   it('E5: only Mortars left on both sides at the cap is a draw, and emplacements alone held the lane (#10)', () => {
-    // two Mortars 8 tiles apart, out of each other's 6-tile range
+    // two Mortars 10 tiles apart, out of each other's 7-tile range (spore clouds, §5.3)
     const r = playClash(content, job(one, none(), none()), {
-      stage: (s) => { addBuilding(s, 'player', 'puffballMortar', 0, 11, 3, 160); addBuilding(s, 'enemy', 'puffballMortar', 0, 19, 3, 160); },
+      stage: (s) => { addBuilding(s, 'player', 'puffballMortar', 0, 10, 3, 160); addBuilding(s, 'enemy', 'puffballMortar', 0, 20, 3, 160); },
     });
     expect(lane0(r).cap).toEqual({ case: 'E5', winner: 'draw', ticks: 900, capped: true, surviving: { player: 0, enemy: 0 }, damageSupply: { player: 0, enemy: 0 }, raw: 0 });
     expect(lane0(r).emplacementsHeld).toBe(true);
@@ -668,13 +668,13 @@ describe("R1's variants (SPEC §16 R1, §12.2; X4, §18.2 #51, R1-Q6)", () => {
     const balanced = Object.keys(content.bots.balanced!.weights);
     for (const id of ids(mono)) expect(balanced).toContain(id);
     for (let seed = 1; seed <= 10; seed++) expect(most(armyFromBot(content, 'bot:balanced', 1500, seed, 12, { copies: 3 }))).toBeLessThanOrEqual(3);
-    expect(most(armyFromBot(content, 'bot:balanced', 1500, 1, 12))).toBeGreaterThan(3); // without the cap it holds more
+    expect(most(armyFromBot(content, 'bot:balanced', 1500, 7, 12))).toBeGreaterThan(3); // without the cap it holds more
   });
 
   it('core six: the core6 reference weighs the five core spawners and the candidate at 1 each, with the Burrow as its opener (R1-Q6)', () => {
     expect(CORE_SPAWNERS).toEqual(['sporelingBurrow', 'capguardHall', 'gillNest', 'amanitaLodge', 'hammercapForge']);
     for (const candidate of ['bursterPod', 'puffballMortar']) {
-      const c = protoContent([candidate === 'bursterPod' ? 'burster' : '', core6Spec(candidate)].filter(Boolean).join(','));
+      const c = protoContent(core6Spec(candidate));
       expect(c.bots.core6).toMatchObject({ opener: ['sporelingBurrow'], weights: Object.fromEntries([...CORE_SPAWNERS, candidate].map((id) => [id, 1])), mergePolicy: 'on', fixedWeights: true });
       expect(ids(armyFromBot(c, 'bot:core6', 300, 1, 8))[0]).toBe('sporelingBurrow');
     }

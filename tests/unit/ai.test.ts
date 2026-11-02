@@ -103,9 +103,9 @@ describe('spawn-mix analysis (SPEC §7.4)', () => {
   it('counter sets hold spawners by their unit; towers, economy, utility and healers are in none', () => {
     const s = liveState();
     const sets = counterSets(s.library, content.factions['gray-rot']!.buildings);
-    expect(sets.swarm).toEqual(['sporelingBurrow', 'capguardHall', 'scythecapGrove', 'amanitaLodge']);
+    expect(sets.swarm).toEqual(['sporelingBurrow', 'capguardHall', 'scythecapGrove', 'amanitaLodge', 'bursterPod', 'rhizomorphTunnel']);
     expect(sets.line).toEqual(['gillNest', 'veilstalkerHollow', 'morelWarren']);
-    expect(sets.armor).toEqual(['rootbreakerDen', 'hammercapForge']);
+    expect(sets.armor).toEqual(['rootbreakerDen', 'hammercapForge', 'bursterPod']); // the Burster's burst is crush
     expect(sets.elite).toEqual(['veilstalkerHollow']);
     for (const id of ['puffballMortar', 'truffleCellar', 'tendersRing', 'rhizomeVault', 'sporeExchange']) {
       expect(Object.values(sets).flat()).not.toContain(id);
@@ -169,11 +169,11 @@ describe('the counter cycle (SPEC §7.4)', () => {
     counterTick(s, 'enemy');
     expect(events(s, 'counterWarned')).toEqual([{ t: 'counterWarned', side: 'enemy', kind: 'armor', activatesAtTick: 4800 }]);
     const ai = s.sides.enemy.ai!;
-    expect(ai.counter!.history[0]!.drafted).toBe('hammercapForge'); // 170 < Rootbreaker Den's 200
-    expect(s.sides.enemy.kit).toContain('hammercapForge');
-    expect(s.compiled.enemy.buildings.hammercapForge).toBeDefined();
-    // it keeps its doctrine weight (the Baron's Hammercap 2) and would get 1 if it had none
-    expect(ai.weights.find((w) => w.building === 'hammercapForge')!.weight).toBe(content.generals['lichen-baron']!.weights.hammercapForge);
+    expect(ai.counter!.history[0]!.drafted).toBe('bursterPod'); // 130 < Hammercap Forge's 170 < Rootbreaker Den's 200
+    expect(s.sides.enemy.kit).toContain('bursterPod');
+    expect(s.compiled.enemy.buildings.bursterPod).toBeDefined();
+    // it keeps its doctrine weight (the Baron's 1 for the Pod, R2-Q5) and would get 1 if it had none
+    expect(ai.weights.find((w) => w.building === 'bursterPod')!.weight).toBe(content.generals['lichen-baron']!.weights.bursterPod);
     expect(s.sides.enemy.gold).toBe(s.config.enemy.startingGold); // drafting costs nothing and grants nothing
   });
 

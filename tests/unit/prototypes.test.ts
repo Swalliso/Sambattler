@@ -258,8 +258,9 @@ describe('E1 lane stance (balance laneStance)', () => {
 
   it('AI sides muster through ordinary stance commands, deterministically', () => {
     const c = protoContent('hold');
+    // seed 4: on R1's chosen set (R2a S1), seed 3's general holds once by 3:00, and its hold runs out on its own
     const run = () => {
-      const s = createBattle(c, makeConfig(c, { seed: 3, player: 'bot:balanced', enemy: 'general:mother-mold' }));
+      const s = createBattle(c, makeConfig(c, { seed: 4, player: 'bot:balanced', enemy: 'general:mother-mold' }));
       runHeadless(s, { until: 3600 });
       return s;
     };
@@ -291,6 +292,11 @@ describe('proto overrides of buildings, units and bots', () => {
     expect(c.bots.balanced).toEqual(content.bots.balanced);
     expect(content.buildings.gillNest!.spawn!.interval).toBe(15); // the shared content is untouched
     expect(raw['balance.json']).toEqual(readRawContent()['balance.json']);
+  });
+
+  it("flyers and rework still validate with aiWeight retired, and R1's adopted pieces have no preset (R2a T012, T013)", () => {
+    for (const p of ['flyers', 'rework']) expect(() => protoContent(p), p).not.toThrow();
+    for (const p of ['pinned', 'sporecloud', 'rhizomorph', 'cleave', 'burster', 'kept']) expect(PROTO_PRESETS[p], p).toBeUndefined();
   });
 });
 

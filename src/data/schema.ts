@@ -94,6 +94,58 @@ export const EffectBundleSchema = z.object({
   triggers: z.array(TriggerSchema).optional(),
 }).strict();
 
+const Bp = z.number().int().positive();
+const Round = z.number().int().positive();
+const RoundCycle = z.object({ round: Round, from: Round }).strict();
+
+/**
+ * R2a's battle in rounds (SPEC §4.2, §6, §7.2–§7.4, §11.1): v2's keys, beside v1's until R2b folds them into
+ * §11.1's names. v1's library leaves this block out (R2a Call 27), so it never moves a v1 golden.
+ */
+export const RoundsSchema = z.object({
+  maxRounds: Round,
+  clashCapSeconds: Pos,
+  musterSeconds: Seconds,
+  formationGapTiles: z.number().int().positive(),
+  heartcapDamagePerSupply: z.number().int().positive(),
+  siegeHeartcapMult: z.number().int().positive(),
+  /** Each lane's army of `minTypes` or more unit types arrives with shields of `shieldFrac` × each unit's max HP (§5.3, #8). */
+  arrivalShield: z.object({ minTypes: z.number().int().min(2), shieldFrac: z.number().gt(0).max(1) }).strict(),
+  /**
+   * The most a Heartcap takes in a round (§6.7): `maxHpBp` of the loser's max HP (X5), or a `flat` amount;
+   * `stormScales` multiplies it by the storm (A208). The other shapes are for T124's measurements.
+   */
+  roundDamageCap: z.object({ maxHpBp: Bp.optional(), flat: z.number().int().positive().optional(), stormScales: z.boolean().optional() })
+    .strict().refine((c) => (c.maxHpBp === undefined) !== (c.flat === undefined), 'a round damage cap names one base: maxHpBp or flat'),
+  /** After `maxRounds`, a Decision by the share of max HP dealt (X5), or by damage dealt (§6.5). */
+  decision: z.object({ by: z.enum(['shareOfMaxHp', 'damage']) }).strict(),
+  /** Interest on the gold banked at the end of planning (§6.2, R2-Q2). */
+  interestPer: z.number().int().positive(),
+  interestCap: z.number().int().nonnegative(),
+  /** The storm by round (§6.4): from `startRound`, +`stepBp` a round, at most `maxBp`. */
+  sporestorm: z.object({ startRound: Round, stepBp: Bp, maxBp: Bp }).strict(),
+  stipendPerRound: z.number().int().nonnegative(),
+  comebackGold: z.number().int().nonnegative(),
+  enemyIncomeMult: Pos,
+  /** Selling a building in the planning phase it was planted refunds this share (§4.4). */
+  sellRefundPlanted: z.number().min(0).max(1),
+  /** R2b's, data only in R2a: the drafts, lives and plot growth (§8.3, §8.5, §4.6). */
+  draftRounds: z.array(Round),
+  lives: z.number().int().positive(),
+  plotGrowth: z.object({ perWin: z.number().int().nonnegative(), max: z.number().int().nonnegative() }).strict(),
+  /** The planning AI (§7.2, §7.3), and the counter cycle by round (§7.4): in `round`'s planning it reads rounds `from` to `round` − 1. */
+  ai: z.object({
+    economyEarly: z.object({ beforeRound: Round, mult: z.number().nonnegative() }).strict(),
+    economyLate: z.object({ fromRound: Round, mult: z.number().nonnegative() }).strict(),
+    towerAfterLossMult: z.number().nonnegative(),
+    score: z.object({
+      depth: z.number(), offCentre: z.number(), besideSame: z.number(), frontSupport: z.number(), loam: z.number(),
+      backThird: z.number(), noise: z.number().nonnegative(),
+    }).strict(),
+    counter: z.object({ cycles: z.array(RoundCycle), bossCycles: z.array(RoundCycle), freePlots: z.number().int().nonnegative() }).strict(),
+  }).strict(),
+}).strict();
+
 export const BalanceSchema = z.object({
   tickRate: z.literal(20),
   waveSeconds: Pos,
@@ -210,8 +262,8 @@ export const BalanceSchema = z.object({
    */
   bigDrafts: z.object({ picks: z.number().int().positive().optional(), rareBonus: z.number().nonnegative().optional() }).strict().optional(),
   /**
-   * Combat rework `pinned` (docs/archive/v1/ideas/combat-rework.md, P1), absent by default: a `ranged` unit with
-   * an enemy unit within `radius` tiles (edge distance) attacks at `rateMult` × its normal rate.
+   * Pinning (§5.3; the combat rework's P1, default data since R2a): a `ranged` unit with an enemy unit
+   * within `radius` tiles (edge distance) attacks at `rateMult` × its normal rate.
    */
   pinned: z.object({ radius: Pos, rateMult: z.number().gt(0).max(1) }).strict().optional(),
   /**
@@ -222,16 +274,15 @@ export const BalanceSchema = z.object({
    */
   callForHelp: z.object({ radius: Pos }).strict().optional(),
   /**
-   * Combat rework `sporeCloud`, absent by default: every shell from a listed tower (the Puffball
-   * Mortar) leaves a spore cloud of `radius` tiles where it lands, for `seconds`. Every
+   * Spore clouds (§5.3; the combat rework's, default data since R2a): every shell from a listed tower (the
+   * Puffball Mortar) leaves a spore cloud of `radius` tiles where it lands, for `seconds`. Every
    * `pulseSeconds` (default 1) on the battle clock, a cloud deals `damagePerSecond` × pulseSeconds,
    * ignoring armor, to every enemy unit whose body is inside it; buildings and friendly units are
-   * untouched. `range` replaces the listed towers' base range. When the AI places a listed tower, each
-   * tile of lane it reaches past the side's border adds `aiCover` to the spot's score (default 1).
+   * untouched. `range` replaces the listed towers' base range.
    */
   sporeCloud: z.object({
     buildings: z.array(z.string()).min(1), radius: Pos, seconds: Pos, damagePerSecond: Pos,
-    pulseSeconds: Pos.optional(), range: Pos.optional(), aiCover: z.number().nonnegative().optional(),
+    pulseSeconds: Pos.optional(), range: Pos.optional(),
   }).strict().optional(),
   /**
    * Combat rework `waves`, absent by default: a spawner's units wait inside it (still counting toward
@@ -255,14 +306,14 @@ export const BalanceSchema = z.object({
    */
   mixedWave: z.object({ minTypes: z.number().int().min(2), shieldFrac: z.number().gt(0).max(1) }).strict().optional(),
   /**
-   * Combat rework `cleave` (P1c), absent by default: a listed unit's splash (the Scythecap's swing)
-   * hits every enemy unit within its splash radius of its target at full damage, instead of at
-   * `splashFalloff`; buildings in it still take the falloff share. The `cleave` preset also widens
-   * the Scythecap's splash to 1, 1.2 and 1.4 tiles by tier.
+   * Cleave (§5.3; the combat rework's P1c, default data since R2a): a listed unit's splash (the Scythecap's
+   * swing) hits every enemy unit within its splash radius of its target at full damage, instead of at
+   * `splashFalloff`; buildings in it still take the falloff share. The Scythecap's splash is 1, 1.2 and
+   * 1.4 tiles by tier.
    */
   cleave: z.object({ units: z.array(z.string()).min(1) }).strict().optional(),
   /**
-   * Combat rework `burster` (P1c), absent by default: a `burst` unit has no normal attack. It heads for
+   * Bursts (§5.3; the combat rework's P1c, default data since R2a): a `burst` unit has no normal attack. It heads for
    * the enemy unit in its aggro range with the most enemy units within its splash radius, and when it
    * reaches that unit, or when it dies, it bursts: its damage, ignoring armor, to every enemy unit within
    * its splash radius, and a spore cloud of `cloud.radius` tiles for `cloud.seconds` that deals
@@ -382,6 +433,7 @@ export const BalanceSchema = z.object({
       towerFront: z.number(), towerThreat: z.number(),
     }).strict(),
   }).strict(),
+  rounds: RoundsSchema,
 }).strict();
 
 export const BalanceTargetsSchema = z.object({
@@ -445,18 +497,18 @@ export const BuildingSchema = z.object({
   footprint: z.object({ w: z.number().int().positive(), h: z.number().int().positive() }).strict(),
   cost: z.number().int().positive(), hp: z.number().int().positive(),
   spawn: z.object({ unit: Id, count: z.number().int().positive(), interval: Pos, mergeForced: z.boolean().optional(), knitMult: Pos.optional() }).strict().optional(),
+  /** R2a: the squad a spawner fields every round (§4.4, §11.2), beside v1's `spawn` until R2b replaces it. v1 never reads it. */
+  squad: z.object({ unit: Id, count: z.number().int().positive() }).strict().optional(),
   attack: z.object({
     damage: Pos, damageType: DamageType, interval: Pos, range: Pos,
     minRange: z.number().nonnegative().optional(), splashRadius: Pos.optional(), projectileSpeed: z.number().nonnegative(),
   }).strict().optional(),
-  economy: z.object({ goldPerTick: z.number().int().nonnegative(), interestCapAdd: z.number().int().optional() }).strict().optional(),
+  /** `goldPerRound` is R2a's, beside v1's `goldPerTick` until R2b replaces it (§6.2, §11.2). v1 never reads it. */
+  economy: z.object({
+    goldPerTick: z.number().int().nonnegative(), interestCapAdd: z.number().int().optional(), goldPerRound: z.number().int().nonnegative().optional(),
+  }).strict().optional(),
   /** Utility effects while the building stands (Rhizome Vault: +supply cap, at most `maxCount` count). */
   utility: z.object({ supplyCapAdd: z.number().int().positive(), maxCount: z.number().int().positive() }).strict().optional(),
-  /**
-   * Prototype content (the combat rework's Rhizomorph): the purchase weight of every bot and general
-   * whose weights don't list this building (mono bots never buy it), and generals field it in runs.
-   */
-  aiWeight: Pos.optional(),
 }).strict().superRefine((b, ctx) => {
   const need = { spawner: 'spawn', tower: 'attack', economy: 'economy', utility: null } as const;
   const key = need[b.kind];
@@ -607,7 +659,8 @@ export const SoundBankSchema = z.object({
   sounds: z.array(SoundSchema).min(1),
 }).strict();
 
-const Limit = z.object({ maxOwned: z.number().int().nonnegative().optional(), afterSeconds: Seconds.optional() }).strict();
+/** `afterRound` is R2a's reading of `afterSeconds`, one round a minute (§7.2, §14.2); v1's profiles never copy it. */
+const Limit = z.object({ maxOwned: z.number().int().nonnegative().optional(), afterSeconds: Seconds.optional(), afterRound: Round.optional() }).strict();
 
 export const GeneralSchema = z.object({
   id: Id, name: z.string(), sprite: Id, faction: Id, milestone: z.number().int().positive(), description: z.string().optional(),
@@ -631,7 +684,7 @@ export const BotSchema = z.object({
   id: Id, description: z.string().optional(), opener: z.array(Id), weights: z.record(Id, z.number().nonnegative()),
   limits: z.record(Id, Limit).optional(), mergePolicy: MergePolicy, adaptive: z.boolean().optional(),
   placement: z.object({ spawnerDepthWeight: z.number().optional() }).strict().optional(),
-  /** Buys only what `weights` lists: a prototype building's `aiWeight` skips it (the counter check's test bots). */
+  /** Buys only what `weights` lists (the counter check's test bots). */
   fixedWeights: z.boolean().optional(),
 }).strict();
 

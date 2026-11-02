@@ -137,6 +137,15 @@ describe('battle setup and rewards (SPEC §6.1, §6.5, §8.5–8.6)', () => {
     expect(generalKit(content, run, { kind: 'battle', map: 'stumpfield', general: 'scripted' }, 3)).toEqual(k3); // deterministic
   });
 
+  it("no general's battle-1 kit holds R1's Burster Pod or Rhizomorph Tunnel: the kit append retired with aiWeight (R2-Q5, A048)", () => {
+    const run = createRun(content, { seed: 12 });
+    for (const general of Object.keys(content.generals)) {
+      const { kit } = generalKit(content, run, { kind: 'battle', map: 'stumpfield', general }, 1);
+      expect(kit, general).not.toContain('bursterPod');
+      expect(kit, general).not.toContain('rhizomorphTunnel');
+    }
+  });
+
   it('the boss can purchase every kit building and every allocated upgrade, without changing single-battle profiles', () => {
     for (let seed = 1; seed <= 20; seed++) {
       const run = createRun(content, { seed });

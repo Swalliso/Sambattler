@@ -199,10 +199,10 @@ export interface CompiledSide {
 /**
  * The plain base definitions a battle can need (both kits, the draft pool, their units, upgrade
  * tracks and relics, and the balance constants), copied into state so `step` can recompile a side
- * after a draft pick without content lookups (SPEC §14.1).
+ * after a draft pick without content lookups (SPEC §14.1). R2a's rounds data stays out (`buildLibrary`).
  */
 export interface Library {
-  balance: BalanceDef;
+  balance: Omit<BalanceDef, 'rounds'>;
   buildings: Record<string, BuildingDef>;
   units: Record<string, UnitDef>;
   upgrades: Record<string, UpgradeTrackDef>;
@@ -273,7 +273,7 @@ export interface Rules {
    * radius and lifetime, the damage per pulse and the pulse cadence, and the AI's cover score per
    * tile; absent by default.
    */
-  cloud?: CloudSpec & { buildings: string[]; aiCover: number };
+  cloud?: CloudSpec & { buildings: string[] };
   /**
    * Combat rework `waves` (balance `waves`): spawns wait in their building until their side's beat
    * (`CompiledSide.waveBeatTicks`), spawners behind a lane's front one leaving early; idle wave units
