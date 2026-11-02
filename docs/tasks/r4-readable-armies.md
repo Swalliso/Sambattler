@@ -301,12 +301,12 @@ This list was drafted on 2026-11-01 from SPEC v2 and `docs/tasks/spec-analysis.m
 
 **Goal:** the sides differ in lightness, not only in hue, under both filters, and neither body sinks into the clash ground. **Independent test:** see Stories.
 
-- [ ] T033 [US5] Add cases to `tests/unit/contrast.test.ts`, reading `data/factions/*/faction.json`, `data/sprites/terrain.json` and `tools/lib/cvd.ts` (§2, §10.4)
+- [x] T033 [US5] Add cases to `tests/unit/contrast.test.ts`, reading `data/factions/*/faction.json`, `data/sprites/terrain.json` and `tools/lib/cvd.ts` (§2, §10.4)
   - Team: the two factions' `v`, `l` and `d` tones differ by at least 1.5:1 in luminance under deuteranopia and under protanopia (A159).
   - Soil: each faction's `v` and `l` tones keep at least 1.75:1 against every `t-soil` tone (`#4a3526`, `#3b2a1e`, `#5e4532`), plain and under both filters. 1.75:1 is the Velvet Bloom's own floor today (its `v` is 1.77:1 on `#5e4532`).
   - Outline: each faction's `d` tone keeps at least 1.5:1 against the `k` outline `#1a1020`, plain and under both filters.
   - No marks case: units carry no mark glyph since T077.
-- [ ] T034 [US5] Retune the Gray Rot's body tones in `data/factions/gray-rot/faction.json`, in the direction the user chose with R4-Q4 (T006), until every T033 case passes and the sides look apart on the r4-lineup PNGs. Log it in `data/CHANGELOG-balance.md` as display-only, with no golden moved, and write the new values into SPEC §2's palette (§2, §10.4) ⛔ R4-Q4
+- [x] T034 [US5] Retune the Gray Rot's body tones in `data/factions/gray-rot/faction.json`, in the direction the user chose with R4-Q4 (T006), until every T033 case passes and the sides look apart on the r4-lineup PNGs. Log it in `data/CHANGELOG-balance.md` as display-only, with no golden moved, and write the new values into SPEC §2's palette (§2, §10.4) ⛔ R4-Q4
   - Recommended start, lighter: `v #b0bcab`, `l #eaf0e2`, `d #808b7c`. In T008's linear maths it gives team 1.51–2.13:1 under both filters, soil 3.57:1 or more and outline 4.7:1 or more.
   - A darker body can't pass. The darker start (`v #56614f`, `l #87937a`, `d #2c3329`) passes the team case (1.65–1.91:1) but fails the soil floor (`v` 1.07:1 on `#5e4532` under the filters) and the outline (`d` 1.32:1 on `k`). Under deuteranopia, any `v` 1.5:1 darker than the Velvet Bloom's sits below 1.75:1 on that soil, so no darker `v` passes both cases.
 

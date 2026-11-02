@@ -234,14 +234,14 @@ In rules text, lives are called "lives". **Open:** an in-world name for them; *R
 
 The unit and building roster is in §11.2–11.3, and §11.2 marks the six core archetypes.
 
-**Palette direction.** Velvet Bloom: violet and lilac (#8a4fd8, #c9a2ff) with cream stalks. Gray Rot: ash, moss and bone, with pale bone-gray bodies (first guess #b0bcab, #eaf0e2 and a dark #808b7c, from milestone R4a; until then the data's #7d8a7a and #b8c4a8). Soil: dark brown. Rich Loam: near-black with gold flecks.
+**Palette direction.** Velvet Bloom: violet and lilac (#8a4fd8, #c9a2ff) with cream stalks. Gray Rot: ash, moss and bone, with pale bone-gray bodies (#b0bcab, #eaf0e2 and a dark #808b7c, since milestone R4a; v1 had #7d8a7a, #b8c4a8 and #4b5649). Soil: dark brown. Rich Loam: near-black with gold flecks.
 
 Both team colors MUST stay distinguishable under deuteranopia and protanopia simulation, in lightness as well as hue (R4-Q4, agreed 2026-11-01). A unit test checks it from R4a on, with three cases:
 - under both filters, the two sides' body tones differ by at least 1.5:1 in luminance;
 - each side's body tones stand at least 1.75:1 off every soil tone, plain and under both filters, so neither army sinks into the clash ground;
 - each side's dark tone stands at least 1.5:1 off the dark outline.
 
-Violet against the first ash tones differs by only 1.00–1.10:1 under the filters, a hue difference with almost no lightness difference (A159). So R4a lightens the Gray Rot's bodies. A darker body would sink into the soil. M7 checks the Gray Rot's own sprites the same way (§16).
+Violet against v1's ash tones differed by only 1.00–1.10:1 under the filters, a hue difference with almost no lightness difference (A159). So R4a lightened the Gray Rot's bodies: the bone tones differ from the Velvet Bloom's by 1.51–2.13:1 under the filters, and stand 3.57:1 or more off the soil and 4.73:1 or more off the outline (`tests/unit/contrast.test.ts`). A darker body would sink into the soil. M7 checks the Gray Rot's own sprites the same way (§16).
 
 Color is never the only cue: body size, silhouettes, pips and icons carry the rest (§5.8, §10.4).
 
