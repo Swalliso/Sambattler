@@ -3,11 +3,11 @@
 import type { z } from 'zod';
 import {
   BalanceSchema, BalanceTargetsSchema, BotSchema, BuildingSchema, CommanderSchema, EliteSchema, EventSchema,
-  FactionSchema, GeneralSchema, MapSchema, RelicSchema, ScenarioSchema, SoundBankSchema, SpriteSheetSchema, UnitSchema, UpgradeTrackSchema,
+  FactionSchema, GeneralSchema, MapSchema, RelicSchema, RoundScenarioSchema, ScenarioSchema, SoundBankSchema, SpriteSheetSchema, UnitSchema, UpgradeTrackSchema,
 } from './schema.ts';
 import type {
   BalanceDef, BalanceTargets, BotDef, BuildingDef, CommanderDef, EffectBundle, EliteDef, EventDef, FactionDef,
-  GeneralDef, MapDef, RelicDef, ScenarioDef, SoundBankDef, SoundDef, SpriteBands, SpriteDef, UnitDef, UpgradeTrackDef,
+  GeneralDef, MapDef, RelicDef, RoundScenarioDef, ScenarioDef, SoundBankDef, SoundDef, SpriteBands, SpriteDef, UnitDef, UpgradeTrackDef,
 } from './schema.ts';
 import { emplacementShapeProblems, shapeProblems, unitShapeProblems } from './shapes.ts';
 
@@ -32,6 +32,8 @@ export interface Content {
   generals: Record<string, GeneralDef>;
   bots: Record<string, BotDef>;
   scenarios: Record<string, ScenarioDef>;
+  /** A battle in rounds' scenarios, from `scenarios/rounds/` (SPEC §15.2), kept apart from v1's until R2b. */
+  roundScenarios: Record<string, RoundScenarioDef>;
   /** Upgrade tracks keyed by building id (SPEC §11.6). */
   upgrades: Record<string, UpgradeTrackDef>;
   relics: Record<string, RelicDef>;
@@ -105,6 +107,7 @@ export function loadContent(raw: RawContent): Content {
   const generals: Record<string, GeneralDef> = {};
   const bots: Record<string, BotDef> = {};
   const scenarios: Record<string, ScenarioDef> = {};
+  const roundScenarios: Record<string, RoundScenarioDef> = {};
   const upgrades: Record<string, UpgradeTrackDef> = {};
   const relics: Record<string, RelicDef> = {};
   const relicOrder: string[] = [];
@@ -156,6 +159,12 @@ export function loadContent(raw: RawContent): Content {
       if (s) {
         if (s.id !== m[1]) problems.push(`${path}: scenario id "${s.id}" does not match its file name`);
         addUnique(scenarios, s, path, 'scenario');
+      }
+    } else if ((m = path.match(/^scenarios\/rounds\/([^/]+)\.json$/))) {
+      const s = parse(RoundScenarioSchema, path);
+      if (s) {
+        if (s.id !== m[1]) problems.push(`${path}: round scenario id "${s.id}" does not match its file name`);
+        addUnique(roundScenarios, s, path, 'round scenario');
       }
     } else if (path === 'generals.json') {
       for (const g of parse(GeneralSchema.array(), path) ?? []) addUnique(generals, g, path, 'general');
@@ -282,6 +291,18 @@ export function loadContent(raw: RawContent): Content {
       for (const u of side.units ?? []) if (!(u.unit in units)) problems.push(`scenario ${s.id}: unit "${u.unit}" does not exist`);
     }
   }
+  for (const s of Object.values(roundScenarios)) {
+    const owner = `round scenario ${s.id}`;
+    if (!(s.map in maps)) problems.push(`${owner}: map "${s.map}" does not exist`);
+    else if (!maps[s.map]!.colony) problems.push(`${owner}: map "${s.map}" has no colony block`);
+    for (const side of [s.sides.player, s.sides.enemy]) {
+      for (const b of side.colony ?? []) buildingRef(owner, b.building);
+      for (const id of side.kit ?? []) buildingRef(`${owner} kit`, id);
+      if (side.commander && !(side.commander in commanders)) problems.push(`${owner}: commander "${side.commander}" does not exist`);
+    }
+    const unitIds = [...(s.clash?.units ?? []), ...(s.rounds ?? []).flatMap((r) => [...(r.fielded?.player ?? []), ...(r.fielded?.enemy ?? [])])].map((u) => u.unit);
+    for (const id of unitIds) if (!(id in units)) problems.push(`${owner}: unit "${id}" does not exist`);
+  }
   if (audio) {
     for (const s of audio.sounds) addUnique(sounds, s, 'sounds.json', 'sound');
     for (const id of REQUIRED_SOUNDS) if (!(id in sounds)) problems.push(`sounds.json: the game plays "${id}" but it is not defined`);
@@ -314,6 +335,6 @@ export function loadContent(raw: RawContent): Content {
   if (problems.length || !balance || !targets || !audio) throw new ContentError(problems.length ? problems : ['balance or sound files failed to parse']);
   return {
     balance, targets, factions, buildings, buildingOrder, units, maps, sprites, spriteOrder, spriteSheet, bands, generals, bots,
-    scenarios, upgrades, relics, relicOrder, events, eventOrder, elites, eliteOrder, commanders, audio, sounds,
+    scenarios, roundScenarios, upgrades, relics, relicOrder, events, eventOrder, elites, eliteOrder, commanders, audio, sounds,
   };
 }

@@ -340,10 +340,10 @@ S1 to S4: the data, the colony, the round state machine and the planning command
 
 **S3b: `createBattle`, the step by phase and scenarios**
 
-- [ ] T021 Write `tests/roundHelpers.ts` (new), the round-form harness; `tests/helpers.ts`'s `liveState` stays for v1's tests (§15.7, §4.6, §4.7, §14.4)
+- [x] T021 Write `tests/roundHelpers.ts` (new), the round-form harness; `tests/helpers.ts`'s `liveState` stays for v1's tests (§15.7, §4.6, §4.7, §14.4)
   - It starts with `planningState({map, round, kits, gold, flags, battleIndex})` and `fromScenario(id)`, on T027 and T029.
   - Each later helper lands with the task that builds its command: `plant(s, side, buildingId, {lane, rank, file})`, `sell` and `toggle` with T031, `begin(s)` and `stepClash(s, n)` with T043, `finishRound(s)` with T052.
-- [ ] T022 Write `tests/unit/rounds/rounds.test.ts` (new) for creation (§4.7 steps 1–4, §14.4, §14.6):
+- [x] T022 Write `tests/unit/rounds/rounds.test.ts` (new) for creation (§4.7 steps 1–4, §14.4, §14.6):
   - after `createBattle`: phase `planning`, round 1, tick 0, both colonies empty;
   - both Heartcaps full, at 3000 and 2000 + 250 × (index − 1);
   - gold 300 + 75 × (index − 1) for each side;
@@ -351,14 +351,14 @@ S1 to S4: the data, the colony, the round state machine and the planning command
   - a map without a `colony` block is refused with a message;
   - a snapshot round trip gives equal hashes, and `restore` refuses a v1 state;
   - rewording a building's description in content leaves a round battle's hash unchanged (R2-Q8).
-- [ ] T027 Build `createBattle(content, config)` in `src/sim/rounds/create.ts` (new). It returns a battle in round 1's planning through `openRound` (a stub until T055), with hooks for the general's plan (T068) and a player-side bot's plan (T069) (§4.7 steps 1–4, §6.1, §14.6) (A052)
+- [x] T027 Build `createBattle(content, config)` in `src/sim/rounds/create.ts` (new). It returns a battle in round 1's planning through `openRound` (a stub until T055), with hooks for the general's plan (T068) and a player-side bot's plan (T069) (§4.7 steps 1–4, §6.1, §14.6) (A052)
   - It seeds `rng.ai` per side and opens `SideConfig.plots` (the map's base plots by default) in `openOrder`. It refuses a map with no `colony` block (T016).
   - Add `ai.player` and `ai.enemy` to `StreamName` in `src/sim/rng.ts` (`seedStream` at `:31` is typed on it), seeded `hash32(seed, 'ai.player' | 'ai.enemy', battleIndex)` (Call 10). v1 keeps `ai`.
-- [ ] T028 Build the queue in `src/sim/rounds/commands.ts` (new), the step by phase in `src/sim/rounds/step.ts` (new), hashing in `src/sim/rounds/snapshot.ts` (new), and the API in `src/sim/rounds/index.ts` (new) (§13.3 rule 7, §14.5, §14.6)
+- [x] T028 Build the queue in `src/sim/rounds/commands.ts` (new), the step by phase in `src/sim/rounds/step.ts` (new), hashing in `src/sim/rounds/snapshot.ts` (new), and the API in `src/sim/rounds/index.ts` (new) (§13.3 rule 7, §14.5, §14.6)
   - Stamps are `{round, tick = state.tick, side, seq}`, sorted with the player first.
   - Planning runs the queue, a clash advances one tick, the aftermath opens the next round or ends the battle, and `ended` does nothing.
   - `hashState`, `snapshot` and `restore` work on `v: 2`.
-- [ ] T029 Add `RoundScenarioSchema` to `src/data/schema.ts` and a `scenarios/rounds/` branch in `src/data/registry.ts` that fills `content.roundScenarios`. Build `createFromScenario` in `src/sim/rounds/create.ts` (§15.2, §15.7) (A106)
+- [x] T029 Add `RoundScenarioSchema` to `src/data/schema.ts` and a `scenarios/rounds/` branch in `src/data/registry.ts` that fills `content.roundScenarios`. Build `createFromScenario` in `src/sim/rounds/create.ts` (§15.2, §15.7) (A106)
   - Per side: `colony [{building, lane, rank, file, merge?}]`, `kit`, `gold`, `heartcapHp`, `heartcapMaxHp`, `dealt` and the last round's result. A scenario can also carry a `rounds` history and the round to start in.
   - For rule tests, `clash.units` places units for a clash directly.
 

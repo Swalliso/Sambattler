@@ -30,7 +30,7 @@ Updated 2026-11-02, on `docs/r2a-s3a` (the hub's docs PR into `develop`). This i
 ## Next session: R2a S3b
 
 - **Work from** [docs/tasks/r2a-battle-in-rounds.md](tasks/r2a-battle-in-rounds.md).
-  - **S3b** (`feature/r2a-create`, T021, T022, T027–T029): the round-form test harness, `createBattle` into round 1's planning, the per-side AI streams, the queue, the step by phase, hashing and the API, and scenarios in round form. Its gate (S3a merged) is met, and it started on 2026-11-02.
+  - **S3b** (`feature/r2a-create`, T021, T022, T027–T029, [#74](https://github.com/Swalliso/Sambattler/pull/74)): built, and waiting for the hub's review. `tests/roundHelpers.ts` starts the round harness with `planningState` and `fromScenario`. `src/sim/rounds/create.ts` has `createBattle`, `makeRoundConfig` and `createFromScenario`. `createBattle` opens round 1's planning through `openRound`, which stays a stub in `round.ts` until T055; the general's turn and a player-side bot's turn are its hooks. `rng.ts` adds `ai.player` and `ai.enemy`. `commands.ts`, `step.ts`, `snapshot.ts` and `index.ts` hold the queue, the step by phase, hashing and the API. Every command is refused until its executor lands. Round scenarios load from `data/scenarios/rounds/`, and a scenario from a later round makes the rounds before it from `dealt` and `last`. Verify and the browser tests are green, and no golden moved.
 - Then S4, once S3b has merged.
 
 ## R2a, a battle in rounds
