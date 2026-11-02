@@ -24,6 +24,15 @@ or rule changed: sprites aren't battle state, and no sprite id changed.
     within their squads' bounds at base + 1. The Veilstalker's and the Scythecap's sprites are 1 px wider than the
     sheet's, for the attack frame.
   - The Rhizomorph's burrowed mound is still `mound()`'s, and the Driftling still draws no shadow of its own.
+- **Every unit sprite declares a shape** (R4/T032, `src/data/registry.ts`): a `u-` sprite, or one a unit draws,
+  with no shape block fails to load. `tests/unit/shapes.test.ts` (R4/T030) holds the whole roster to two rules: no
+  two frame 0s overlap with an IoU of 0.75 or more on their anchors unless their boxes differ by 2 px (the highest
+  pair is 0.69, the Capguard and the Scythecap), and every frame's width fits its spawner's base squad + 1 (the
+  Rhizome Vault). R1 hasn't proposed squad sizes yet, so the squads are today's spawn-derived ones: 10 px for the
+  Sporeling, Capguard, Gill Archer, Hammercap, Burster, Veilstalker, Morel Runner and Driftling, 16 for the rest.
+  The Velvet Shrine's +2 is still only listed: the Tender, Scythecap, Rootbreaker and Rhizomorph overflow it.
+- **`docs/r4a-silhouettes.json` is deleted** (T032), now that every sprite is drawn from it. The approved version
+  stays at `dbd7f09:docs/r4a-silhouettes.json`.
 
 ## R4a-S3: the core six and the Mortar's emplacement redrawn (2026-11-01)
 

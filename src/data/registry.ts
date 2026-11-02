@@ -200,13 +200,17 @@ export function loadContent(raw: RawContent): Content {
       problems.push(`sprite ${s.id}: factionSwap is set but no palette key is swappable`);
     }
   }
-  // the shape language (SPEC §5.8, §14.3; R4a): every shape block against its sheet's bands, and every unit
-  // drawn with the body its armor gives. Units carry no weapon mark (§5.8, 2026-11-01).
+  // the shape language (SPEC §5.8, §14.3; R4a): every unit sprite (`u-`, or one a unit draws) declares a shape,
+  // every shape block against its sheet's bands, and every unit drawn with the body its armor gives. Units carry
+  // no weapon mark (§5.8, 2026-11-01).
   const drawn: Record<string, string[]> = {};
   for (const u of Object.values(units)) (drawn[u.sprite] ??= []).push(u.id);
   for (const s of Object.values(sprites)) {
-    if (!s.shape) continue;
     const who = drawn[s.id] ? `unit ${drawn[s.id]!.join(', ')}: ` : '';
+    if (!s.shape) {
+      if (s.id.startsWith('u-') || drawn[s.id]) problems.push(`${who}sprite ${s.id} declares no shape, and every unit sprite needs one`);
+      continue;
+    }
     for (const p of shapeProblems(s, bands[spriteSheet[s.id]!])) problems.push(who + p);
   }
   for (const u of Object.values(units)) {
