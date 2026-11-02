@@ -8,18 +8,16 @@ SPEC v2, broken into task lists that later sessions work through one row of a Se
 
 | Now | Session | Waits on |
 |---|---|---|
-| 1 | **R1 S7** in [r1-clash-check.md](r1-clash-check.md): R1's runs, about 40 in the background, then R1's entry in `docs/balance-backlog.md`, the plan's As built and SPEC §15's tool docs (T040–T048, T052) | Running since 2026-11-02, on the user's OK (S5 and S6 merged: #60, #59) |
-| 2 | **R1 S8**, R1's review gate: the user's calls R2a needs, recorded in `clarify.md`, SPEC and `docs/status.md` (T049–T050) | S7's PR merged, and the user has read the report |
-| 3 | **R2a S0** in [r2a-battle-in-rounds.md](r2a-battle-in-rounds.md): R2a's plan and its decisions (T001–T006) | R1's review gate passed (R1/T049, R1/T050); X1 and X2 decided (2026-11-02) |
+| 1 | **R2a S0** in [r2a-battle-in-rounds.md](r2a-battle-in-rounds.md): R2a's plan and its decisions (T001–T006) | Ready: R1's review gate passed on 2026-11-02 (R1/T049 and R1/T050, after #65); X1 and X2 decided (2026-11-02) |
 
-R4a and records-1, which ran beside R1, are done. Their doc edits fall in different sections of `SPEC.md`, `clarify.md` and `docs/status.md`, so whichever PR merges second rebases ([r1-plan.md](../r1-plan.md), "Beside R1"). Everything else waits for R1's review gate.
+R1, R4a and records-1 are done. The sessions after R2a S0 are in R2a's Sessions table.
 
 ## Milestones
 
 | Milestone | Task list | Sessions | Starts | Lands |
 |---|---|---|---|---|
-| R1, the clash check | [r1-clash-check.md](r1-clash-check.md), plan [r1-plan.md](../r1-plan.md) | S0–S8 | Now | One PR per session into `develop`. No rule changes, so no golden moves |
-| R2a, a battle in rounds | [r2a-battle-in-rounds.md](r2a-battle-in-rounds.md) | S0–S21 (S3 and S10 in two parts) | After R1's review gate (R1 S8) | Beside v1 on `develop`, behind a dev-build-only entry (X2). Ends with a playtest gate on the dev site |
+| R1, the clash check | [r1-clash-check.md](r1-clash-check.md), plan [r1-plan.md](../r1-plan.md) | S0–S8 | Done 2026-11-02 | One PR per session into `develop`. No rule changes, so no golden moves |
+| R2a, a battle in rounds | [r2a-battle-in-rounds.md](r2a-battle-in-rounds.md) | S0–S21 (S3 and S10 in two parts) | Now: S0 (R1's review gate passed 2026-11-02) | Beside v1 on `develop`, behind a dev-build-only entry (X2). Ends with a playtest gate on the dev site |
 | R2b, the run in rounds | [r2b-run-in-rounds.md](r2b-run-in-rounds.md) | S0–S14 (with S1b and S4b) | After R2a's playtest gate | S1–S4 and S1b as sub-PRs into `feature/r2b-cutover`, merged into `develop` at S4b once a whole run plays and v1 is gone; S5–S14 one PR each into `develop` |
 | R3, the kit | [r3-kit.md](r3-kit.md) | S0–S15 | After R2b | One PR per session into `develop` |
 | R4a, shapes on the field | [r4-readable-armies.md](r4-readable-armies.md), part 1 | R4a-S0–S5 (with S2b) | Now, beside R1 (X3). Lands before R2a's playtest | One PR per session into `develop` |

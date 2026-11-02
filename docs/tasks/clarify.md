@@ -29,8 +29,8 @@ This is the clarify step for SPEC v2. SPEC.md is the spec, `docs/<milestone>-pla
 | X10 | Run it back in two parts? | Now (records-1 S0) | Yes: records-1 now, records-2 after R2b |
 | RB-Q1 | Where records live | records-1 S0 | The profile key, as profile v1, meta only |
 | RB-Q2 | Do prototype runs write records? | records-1 S0 | No |
-| X4 | Copies before R3? | R1 S0 (measure), R1 gate (call) | Lean yes, if R1's swarm fails G3 or G12 |
-| X5 | The scoring curve | R1 S0 (race model), R1 gate (call) | Lean: cap at 25% of the loser's max HP |
+| X4 | Copies before R3? | R1 S0 (measure), R1 gate (call) | No: keep D45 (decided 2026-11-02) |
+| X5 | The scoring curve | R1 S0 (race model), R1 gate (call) | Cap at 25% of the loser's max HP, and a Decision by share (decided 2026-11-02) |
 | R1-Q1 | How the check places squads | R1 S0 | §7.3's tags, centre-out files, lanes by line |
 | R1-Q2 | Spending a budget | R1 S0 | Skip a miss and keep drawing; a stream per army |
 | R1-Q3 | What counts as a clash win | R1 S0 | Lanes won, then uncapped damage; a draw is half |
@@ -49,16 +49,16 @@ This is the clarify step for SPEC v2. SPEC.md is the spec, `docs/<milestone>-pla
 | #52 | Does the shape language read at 2×? | R4a-S0 | Yes, but test Twin Roots at about 1.78× |
 | #53 | Merged units' body radius | R4a-S0 | Keep ×1.25 |
 | #55 | The Tender's mark | R4a-S0 | The heal mark. Superseded 2026-11-01: units carry no marks |
-| #7 | Squad sizes and the full colony | R1 gate | Per building, the Burrow first |
-| #8 | Mixed-wave shields | R1 gate | Not adopted unless the bar needs them |
-| #9 | The Elder Sporeling's splash | R1 gate | Keep, unless the swarm fails with it |
-| #10 | How an emplacement counts | R1 gate | First guess, plus a unit rule list |
-| #11 | Overflow | R1 gate | First guess |
-| #12 | Formation on the approach | R1 gate | No, unless the pace variant clearly helps |
-| #13 | The muster inside the 45 s | R1 gate | Yes |
-| #14 | An Anti-Ranged kind | R1 gate | Yes, if R1 confirms the swarm answers archers |
-| #15 | Counter sets from the clash matrix? | R1 gate | No, but take the swarm out of its own sets |
-| #36 | The sixth archetype | R1 gate (reading), R3 S0 (call) | Lean the Burster Pod |
+| #7 | Squad sizes and the full colony | R1 gate | Per building, Capguard Hall at 3; the 150 stays (decided 2026-11-02) |
+| #8 | Mixed-wave shields | R1 gate | Adopted: the arrival shield (decided 2026-11-02) |
+| #9 | The Elder Sporeling's splash | R1 gate | Keep (decided 2026-11-02) |
+| #10 | How an emplacement counts | R1 gate | First guess, plus A029's unit rules (decided 2026-11-02) |
+| #11 | Overflow | R1 gate | First guess (decided 2026-11-02) |
+| #12 | Formation on the approach | R1 gate | No (decided 2026-11-02) |
+| #13 | The muster inside the 45 s | R1 gate | Yes (decided 2026-11-02) |
+| #14 | An Anti-Ranged kind | R1 gate | Yes (decided 2026-11-02) |
+| #15 | Counter sets from the clash matrix? | R1 gate | No, with the three fixes (decided 2026-11-02) |
+| #36 | The sixth archetype | R1 gate (reading), R3 S0 (call) | Lean the Burster Pod (R1's reading, 2026-11-02: the Burster Pod) |
 | X6 | Is 25–35 minutes binding? | R2a S0 | Measure; re-set after R2b's playtest |
 | X7 | Bots that buy the answer (§18.2 #34) | R2a S0 | Yes; G8, G14, G15 under both policies |
 | X8 | The general between counter cycles | R2a S0 | Measure; two default-off knobs |
@@ -204,7 +204,7 @@ These ten calls set how the work after R1 is cut. The task files assume each rec
 - **Recommendation:** Decide at R1's gate; leaning yes. If yes, take §1.3 #5 whole (starters ×2, a blueprint adds 1 copy, drafting an owned card adds 1) and settle #51 with it; the general keeps `maxOwned` until #42 lands. R1 measures G3 and G12 at 2, 3 and 4 copies beside unlimited, so squad sizes aren't bent to tame a build R3 removes (A196). **Why:** the supply cap went because "mass the cheapest spawner" kept winning (83–86% on mono Sporeling, Appendix A). Plots alone are that configuration again (A196, A033), and single battles need a copy rule too (A145).
 - **Alternatives:** keep D45 and risk a swarm flood in R2a's playtest; or a flat 3 per card for both sides (A196). If no, `plant` has no copy refusal and #51 stays R3's.
 - **Blocks:** R1 S0 (the variants); R1 gate; R2a S0; R2-Q23.
-- **Decision:** _open_
+- **Decision:** 2026-11-02 (R1 S8, the review gate; the user: "Take every recommendation"): no, keep D45. This keeps SPEC's first guess and reverses this block's earlier lean. The condition was met (mono Sporeling failed G3 and G12 without copies), but copies didn't fix it (57–63% at 2–4 copies, 50 seeds), and at 2 and 3 copies more builds lost their answer (7 and 3 failed G12): a capped mono fills its other plots by `bot:balanced`'s weights, so the builds converge. The chosen set passes without copies. So `plant` has no copy refusal, and #51 stays R3's, which should revisit how G12 reads a capped mono. In SPEC D45 and §18.2 #51.
 - **R1 measures:** agreed 2026-11-01 (R1 S0). G3 and G12 at 2, 3 and 4 copies beside unlimited (`--copies N`). A mono holds N copies of its card, and its other plots and gold go by `bot:balanced`'s weights: #51's recommendation, used provisionally. The call stays open for R1's gate (R1/T049).
 
 ### X5 · The scoring curve
@@ -217,7 +217,7 @@ These ten calls set how the work after R1 is cut. The task files assume each rec
   - the cap binds on most decisive wins from round 4 or 5, so the storm does nothing late (A208), and Twin Roots draws more (A022).
 - **Alternatives:** keep 500 and accept Decision-heavy late battles (G4's miss is then reported, not tuned away); equal Heartcaps (A193); the storm raising the cap (A208).
 - **Blocks:** R1 S0; R1 gate; R2a's scoring; #35; R2-Q14.
-- **Decision:** _open_
+- **Decision:** 2026-11-02 (R1 S8, the review gate; the user: "Take every recommendation"): the lean, departing from SPEC's first guess (a flat 500 cap and a Decision by damage dealt). The cap is 25% of the loser's max HP a round, and a Decision goes by the share of max HP dealt. No rule measured brought even battles inside G4's band: under each, about half or more reached round 9 (G4 allows 15%). The 25% cap cut that by 8–23 points, within a few of the storm cap, the best of the six. G4's band is R2a's measurement on real battles; if they still run long, the next levers (lower Heartcaps, a stronger storm) are untested. In SPEC §6.4, §6.5, §6.7 (step 4 and E7), §11.1, §14.6, §18.3 and D26.
 - **R1 measures:** agreed 2026-11-01 (R1 S0). The race model (`tools/lib/roundRace.ts`), G4's even pairing first, then G3's pairs. It reports rounds to fall per battle index (1–5, a Fortified elite, the boss), the share reaching round 9, Routs and lead changes, under the 500 cap and the alternatives, with the cap-binding and drawn shares per budget. The call stays open for R1's gate (R1/T049).
 
 ### X6 · Is the 25–35 minute run binding?
@@ -356,6 +356,8 @@ The R1 plan settles these itself, with no call from you: A009 (the pace variant 
 
 R1 reports a measure for each row, and you settle it at R1's review gate (§16 R1 step 4). At the gate each knob gets one outcome: adopted as data, kept as a default-off knob, or deleted (A109). Before the kept set is adopted, R1 also runs `npm run experiment -- --proto kept --checks duels,g8` (A116).
 
+**Knob outcomes (A109), decided** 2026-11-02 (R1 S8, the review gate; the user: "Take every recommendation"): the recommendation. Adopted as data: `kept` (`pinned`, `sporecloud`, `burster`, `cleave`, `rhizomorph`) and `clashshield`, written as v2's arrival shield under its own key. Deleted: `noeldersplash` (#9), `clashpace` (#12) and `swarmread`, which counting Elder parts replaces if R2a S0 settles R2-Q3 that way. R2a writes the tool-only switches `noBuildingPreference` and `idleSeek` as v2's targeting and movement, and R2b deletes the flags. For R2a to watch: alone, `pinned` weakens the answers to the Sporeling and the Capguard, and under `kept` v1's G2 newly fails on the Gill Archer. In SPEC §16 R2.
+
 ### #7 · Squad sizes and the full colony
 
 - **Question:** What does each building field a round, and what's the most a full colony fields?
@@ -364,7 +366,7 @@ R1 reports a measure for each row, and you settle it at R1's review gate (§16 R
 - **Recommendation:** Sizes per building, the Burrow first, not one global minute. If a global scale is wanted, use round(squad × S / 60) (A010). **Why:** whole-batch rounding at 45 and 75 s moves some squads by 25–50% and others not at all (A010).
 - **Alternatives:** one global squad minute.
 - **Blocks:** R2a's starting data.
-- **Decision:** _open_
+- **Decision:** 2026-11-02 (R1 S8, the review gate; the user: "Take every recommendation"): the recommendation, departing from §11.2's first guess for one building. Squads are sized per building: §11.2's Squad column, with Capguard Hall at 3 and the Burrow at 8. At 4 Capguard Hall was the strongest mono in clashes (90% against `bot:balanced`, 50 seeds), and `kept` with the arrival shield and Capguard Hall at 3 is the only set that passed G3, G12 and G13 at 50 seeds. The full colony stays at most 150 live units a side, a readability budget, since Twin Roots' 192 ticked inside G11; in rounds an upgrade adds no unit per batch, which brings Twin Roots to 128. For R2a to watch: at 3 Capguard Hall still wins 92% at 300 gold and 2% at 1,500, and its value per gold falls to 1.11 (band 1.45 ± 0.15), so check it round by round, not only the pooled mean. In SPEC §11.2, §11.6, §13.7, §14.2 and §18.2 #7.
 
 ### #8 · Mixed-wave shields
 
@@ -374,7 +376,7 @@ R1 reports a measure for each row, and you settle it at R1's review gate (§16 R
 - **Recommendation:** Agree: not adopted, unless the bar fails without it and the shield fixes it. **Why:** it's a rule from v1's waves, and every system kept is one more to learn (playtest F8).
 - **Alternatives:** adopt it in clash form.
 - **Blocks:** R2a's data.
-- **Decision:** _open_
+- **Decision:** 2026-11-02 (R1 S8, the review gate; the user: "Take every recommendation"): the recommendation, departing from SPEC's first guess (not adopted) by this block's own test: G12 failed without the shield and passed with it, on today's combat and on `kept` (50 seeds). The arrival shield is v2's rule: each lane's army of 2 or more unit types arrives with shields of 20% of each unit's max HP, under its own data key, not v1's `waves`. In the chosen set it carries G3 too: with Capguard Hall at 3 and no shield, G12 passed but G3 failed mono Sporeling (62%), Hammercap Forge (56%) and Rootbreaker Den on Twin Roots (73%; 20-seed screens). In SPEC §5.3, §1.3 #11, §11.1, §16 R2, Appendix A and §18.2 #8.
 
 ### #9 · The Elder Sporeling's splash
 
@@ -384,7 +386,7 @@ R1 reports a measure for each row, and you settle it at R1's review gate (§16 R
 - **Recommendation:** Keep it, unless mono Sporeling fails G3 or G12 with it and passes without it. **Why:** under the muster every big swarm brings Elders, so the splash rides on the build that failed v1's strict bar (§12.3).
 - **Alternatives:** off, as under the rework.
 - **Blocks:** R2a's data.
-- **Decision:** _open_
+- **Decision:** 2026-11-02 (R1 S8, the review gate; the user: "Take every recommendation"): the recommendation. The splash stays: without it mono Sporeling still failed G3 (66%, 50 seeds), and with the arrival shield and Capguard Hall at 3 it passes G3 (48%) and has an answer (95%) with the splash on. `noeldersplash` is deleted. In SPEC §5.6, §11.1, §16 R2, Appendix A and §18.2 #9.
 
 ### #10 · How an emplacement counts
 
@@ -394,7 +396,7 @@ R1 reports a measure for each row, and you settle it at R1's review gate (§16 R
 - **Recommendation:** Agree, and add its unit rules to §6.7: immovable in separation; radius at most 0.8 tiles, range from its centre; hit by clouds, bursts and powers; never healed; pins nothing; never merges (A029). **Why:** "never moves" leaves these open; today's separation would push it, and towers measure range from the centre (A029).
 - **Alternatives:** some supply toward the 45 s comparison.
 - **Blocks:** R2a's clash core; E5, E6.
-- **Decision:** _open_
+- **Decision:** 2026-11-02 (R1 S8, the review gate; the user: "Take every recommendation"): the recommendation. The first guess stands, and A029's body rules join §6.7: separation never moves an emplacement, its radius is at most 0.8 tiles and its range runs from its centre, clouds, bursts and powers hit it, and it's never healed, pins nothing and never merges. Emplacements alone held 0–2% of lanes (20 seeds), the siege units' preference for buildings changed no cell, and the Mortar became a piece only with spore clouds (41–45%), where Rootbreaker Den answers it at 100%. In SPEC §6.7, D50 and §18.2 #10.
 
 ### #11 · Overflow
 
@@ -404,7 +406,7 @@ R1 reports a measure for each row, and you settle it at R1's review gate (§16 R
 - **Recommendation:** Agree. The report should say the answer rests on few cases: at the planned sizes only one squad overflows (A020).
 - **Alternatives:** a bigger grid that spills past the slot.
 - **Blocks:** R2a's `formationOf`.
-- **Decision:** _open_
+- **Decision:** 2026-11-02 (R1 S8, the review gate; the user: "Take every recommendation"): the recommendation. D47's packing stands, though it rests on few cases: no squad overflows at the planned sizes, only grown ones (Capguard Hall at 75 s, Hammercap Forge with one more unit, Rootbreaker Den and Scythecap Grove with two more). In SPEC §4.6, D47 and §18.2 #11.
 
 ### #12 · Formation on the approach
 
@@ -414,7 +416,7 @@ R1 reports a measure for each row, and you settle it at R1's review gate (§16 R
 - **Recommendation:** Agree, unless the pace variant clearly improves G12 or G13. If it's adopted, it needs its own data key and code that reads the lane's army, not v1's `waves` (A109).
 - **Alternatives:** adopt the pace rule.
 - **Blocks:** R2a's clash core.
-- **Decision:** _open_
+- **Decision:** 2026-11-02 (R1 S8, the review gate; the user: "Take every recommendation"): the recommendation. No pace rule: `clashpace` left G12 failing (mono Sporeling 50%, mono Capguard 53%, 50 seeds) and G13 where it was (1.2%). `clashpace` is deleted. In SPEC §5.2, §16 R2 and §18.2 #12.
 
 ### #13 · Does the muster count toward 45 s?
 
@@ -424,7 +426,7 @@ R1 reports a measure for each row, and you settle it at R1's review gate (§16 R
 - **Recommendation:** Agree. **Why:** one clock is simpler to show (the round chip shows it, §10.2), and the muster is 1 s of 45.
 - **Alternatives:** start the cap after the muster.
 - **Blocks:** R2a's clash core.
-- **Decision:** _open_
+- **Decision:** 2026-11-02 (R1 S8, the review gate; the user: "Take every recommendation"): the recommendation. The muster counts: the two readings capped 5.8% and 5.5% of clashes (50 seeds), with the same 19.4 s median. In SPEC §5.6, §6.7 and §18.2 #13.
 
 ### #14 · An Anti-Ranged kind
 
@@ -434,7 +436,7 @@ R1 reports a measure for each row, and you settle it at R1's review gate (§16 R
 - **Recommendation:** Add it if R1 confirms the swarm answers archers in clashes. **Why:** no kind scores the ranged share, and today the Burrow is the general's archer answer only by accident, through the Anti-Swarm set (A056, #15).
 - **Alternatives:** the four kinds.
 - **Blocks:** R2a's counter cycle.
-- **Decision:** _open_
+- **Decision:** 2026-11-02 (R1 S8, the review gate; the user: "Take every recommendation"): the recommendation, departing from SPEC's first guess (the four kinds), as this block proposed if R1 confirmed the swarm answers archers. It did: mono Sporeling Burrow beat mono Gill Nest 100% at every budget, and the Sporeling and Veilstalker pair 95–100% (50 seeds). Anti-Ranged scores `rangedShare`, with `swarm` spawners as its set. It bites only once `eliteShare` counts Elder parts (R2-Q3, R2a S0): counted plainly, mono Gill Nest reads Elite. Ranged's place in the tie order, after Line, is a first guess. In SPEC §7.4 and §18.2 #14.
 
 ### #15 · Counter sets from the clash matrix?
 
@@ -444,7 +446,7 @@ R1 reports a measure for each row, and you settle it at R1's review gate (§16 R
 - **Recommendation:** Keep type and tag, with three fixes: `swarm` units are in neither the Anti-Swarm nor the Anti-Line set; a missing answer is the cheapest counter that beats the dominant armor; a unit that deals no damage is in no set (A056, A055). **Why:** "cheapest" picks the Burrow against a swarm, and the Morel Warren, which loses to Capguards, against a line (A056). A set made from the matrix would move with every retune.
 - **Alternatives:** sets from the matrix; §7.4 as written.
 - **Blocks:** R2a's counter cycle.
-- **Decision:** _open_
+- **Decision:** 2026-11-02 (R1 S8, the review gate; the user: "Take every recommendation"): the recommendation. Type and tag, with the three fixes, and the clash matrix as a check, not the source. With the swarm read, §7.4's sets held the matrix's best answer to mono Sporeling (Capguard Hall) and mono Veilstalker (the swarm builds), and missed for mono Capguard, which reads Elite from 600 gold while Gill Nest answers it. In SPEC §7.4 and §18.2 #15.
 
 ## R2a: a battle in rounds
 
@@ -978,7 +980,7 @@ The R2b plan settles these itself, with no call from you: A063, A073, A074, A079
 - **Recommendation:** Decide from R1's core-six check (R1-Q6), leaning toward the Burster Pod. **Why:** area damage that travels with the army is what a packed formation must fear (D44). An emplacement can't move, so it answers only a swarm that reaches it. The Mortar stays in the Bastion pack and in two commanders' kits.
 - **Alternatives:** the Mortar; the Bastion pack then takes the Burster Pod (§11.15).
 - **Blocks:** R1 gate (the reading); R3's always-in set and packs.
-- **Decision:** _open_
+- **Decision (R1's reading):** 2026-11-02 (R1 S8, the review gate; the user: "Take every recommendation"): the Burster Pod, as leaned and as SPEC's first guess has it. Its core six failed G3 only on mono Capguard (85%) and mono Gill (57%) at 50 seeds, and only on the Capguard (74%, a 20-seed screen) with `kept` and the arrival shield. The Mortar's failed four monos and three G12 builds, and in the core six's graph it won none of its edges. The call itself stays R3 S0's. In SPEC §0.1, §11.2, D44 and §18.2 #36.
 
 ### #37 · Does an augment attach to a building type or one card?
 

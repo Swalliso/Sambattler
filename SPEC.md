@@ -82,13 +82,12 @@ The measurements agree ([docs/archive/v1/ideas/after-the-rework.md](docs/archive
 - of about 155 earlier fun recommendations, the only rule change that shipped was Hold / Advance.
 
 **Open:** §18.2 lists every undecided rule, with its first guess, its section and the milestone that settles it. The main ones:
-- the sixth core archetype (first guess: the Burster Pod; the alternative is the Puffball Mortar as an emplacement), and the core six as a whole;
+- the sixth core archetype (first guess: the Burster Pod, which R1's core-six check supports; the alternative is the Puffball Mortar as an emplacement), and the core six as a whole;
 - how the colony gains plots (first guess: +1 per battle won, up to 4 more);
 - whether an augment attaches to a building type or to one card (first guess: the type, for the run);
 - a bonus for a clean win (not adopted);
 - whether losing the boss battle ends the run (first guess: yes, as in v1);
-- an in-world name for lives (§2);
-- what milestone R1's clash check settles: squad sizes, how an emplacement fights (§6.7), whether mixed armies need the rework's mixed-wave shields, and the Elder Sporeling's splash.
+- an in-world name for lives (§2).
 
 ---
 
@@ -175,7 +174,7 @@ The user made these decisions on 2026-10-31, after the P3 playtest (§0.1). They
 | 8 | Run variety | Each run's draft pool deals from the commander's core, an always-in set that includes an answer to the swarm (§8.4 says what it holds), and 4 of 10 random themed packs (one building and two relics each). Bans stay (§8.4). Most variety comes from builds: augments, combos and relics. | §8.4, §11.15 |
 | 9 | Merging stays for now | v1's rule applies. Squads set to merge knit as the clash opens (§5.6), the merge toggle is a planning choice that the planning screen previews ("fields as 2 Bloomed + 2"), and neighbors can make Elders. Pips mark merge tiers instead of a bigger sprite, so size can mean armor. Slayers stay the counter. | §5.5, §5.6, §5.8 |
 | 10 | The shape language | Body size shows armor, team color stays violet against gray, pips mark merge tiers and icons mark augments. Cards and the planning screen show matchups as marks, not paragraphs. Text-defined sprites stay, but each archetype MUST have a distinct silhouette. Units carry no weapon mark (2026-11-01, §5.8). The art and the card-text pass are milestone R4, in two parts (X3, agreed 2026-11-01): R4a, the shapes on the field, runs beside R1 and lands before R2's first playtest; R4b, matchup marks in full, augment icons and the card-text pass, follows R3 (§16). | §5.8, §10.4, §17 #20 |
-| 11 | The rework's pieces | Kept: pinning, spore clouds, cleave, the Burster (the area candidate) and the Rhizomorph (an unlockable tunneler). Retired: waves, Hold and call for help. Measured in R1: whether mixed armies need the mixed-wave shields, and the Elder Sporeling's splash. Later: flyers, as an unlockable, starting from the rework's rule that melee hits them for half damage and lobbed shells and bursts can't hit them. The general reads the squads you actually fielded. | §5.3, §7.4, §11.2, §11.3, §16 |
+| 11 | The rework's pieces | Kept: pinning, spore clouds, cleave, the Burster (the area candidate) and the Rhizomorph (an unlockable tunneler). Retired: waves, Hold and call for help. R1 measured the mixed-wave shields and the Elder Sporeling's splash, and its review gate (2026-11-02) adopted the shields in clash form, as the arrival shield (§5.3), and kept the splash. Later: flyers, as an unlockable, starting from the rework's rule that melee hits them for half damage and lobbed shells and bursts can't hit them. The general reads the squads you actually fielded. | §5.3, §7.4, §11.2, §11.3, §16 |
 | 12 | The economy per round | Each round: the Heartcap stipend of 100, +50 per Truffle Cellar (+50% on loam), interest of 1 per 20 gold banked at the end of planning (up to 10), and +40 to the last round's loser. Starting gold stays 300 + 75 per battle. Drafts come after rounds 2, 4 and 6, three a battle, opening in the next planning phase once the general has planned (§4.7), plus spoils after a won battle; rerolls and skips stay as in v1. | §6.1, §6.2, §8.3 |
 | 13 | How the work is done, and the tests | Rounds are the new battle, built on feature branches and merged into `develop` as the default, not as a `?proto=` knob. Tests follow the spec: goldens regenerate, and the tests and guardrails of retired systems go with them. Playtests decide what's fun, and bots catch degenerate builds; the main bar is the counter matrix's: "A strong build isn't the bug. A build with no answer is." Milestones R1–R4 (the clash check, rounds, the kit, readable armies) come before M6–M8, which are rewritten for v2. | §12, §15, §16 |
 
@@ -418,7 +417,7 @@ Common fields: footprint (every building is 2×2 and fills one plot), cost, and 
 - **A squad appears in its building's slot,** at the positions `formationOf` gives (§14.6).
 - **`formationOf` is deterministic.** It is a pure function of the colony: its plots, its buildings, their squad sizes and their merge toggles. It draws on no random stream, so the same colony always gives the same formation, and the preview can't differ from the clash. R1's clash check MAY add a seeded jitter as a measurement option; that's not a game rule (§12.2, §16).
 - **The layout inside a slot:** a squad of n units stands on a k × k grid, where k = ceil(sqrt(n)), with a spacing of 2/k tiles, centred in the 2×2 slot. Unit j (from 0) takes the grid's column j mod k, counted from the slot's front, and its row floor(j / k), counted from the top: the grid fills front to back, then top to bottom. "Front" is the side facing the enemy (+x for the player, −x for the general). A tower's emplacement stands at its slot's centre.
-- **Open: overflow** (first guess). A squad too big to stand apart in its slot, whose units are wider than its grid's spacing, packs tighter: it keeps the same k × k grid and spacing, and its units overlap. (An upgraded Burrow's 12 Sporelings stand 0.5 tiles apart, exactly their width, so they still fit.)
+- **Overflow** (R1's review gate, 2026-11-02, §18.2 #11). A squad too big to stand apart in its slot, whose units are wider than its grid's spacing, packs tighter: it keeps the same k × k grid and spacing, and its units overlap. (An upgraded Burrow's 12 Sporelings stand 0.5 tiles apart, exactly their width, so they still fit.) R1 found no squad overflowing at the planned sizes, only grown ones: Capguard Hall at 75 s, Hammercap Forge with one more unit, and Rootbreaker Den and Scythecap Grove with two more. So the rule rests on few cases.
 - **Holes stay holes.** A slot whose plot is empty, a stump, or holds an economy or utility building fields nothing, and the formation doesn't close up around it. So economy buildings belong at the back.
 - **So placement is positioning.** A Capguard Hall in front of a Gill Nest gives you archers behind a shield wall. Two Sporeling Burrows side by side field 16 Sporelings within reach of each other, enough for an Elder when they knit at the muster (§5.6).
 - **On Twin Roots**, each lane has its own colony, its own formation box and its own clash. A building fields in its plot's lane. The general picks a lane for each building (§7.3).
@@ -517,7 +516,7 @@ Units exist only during a clash. On the clash's first tick, each squad appears i
   - With a target out of range: step toward it at `speed`.
   - With no target in reach: move toward the nearest enemy unit in its lane that it could target (by squared edge distance; not a burrowed unit, and not a flyer for a unit that can't hit one, §5.3).
   - With no such enemy: advance along the lane (+x for the player, −x for the enemy) while drifting back toward the y of the unit's slot (its file, §4.6) at 0.3 tiles/s, up to the far edge.
-  - **Open:** whether a squad keeps its place in the formation on the approach. The rework's waves marched at their slowest unit's pace, with ranged units 1 tile behind their melee front. The first guess is no: each unit moves at its own speed, as in v1. R1's pace variant measures it (§16).
+  - **No formation on the approach** (R1's review gate, 2026-11-02, §18.2 #12): each unit moves at its own speed, as in v1. The rework's waves marched at their slowest unit's pace, with ranged units 1 tile behind their melee front. R1's pace variant did that, and left mono Sporeling and mono Capguard without an answer (50% and 53%) and the stall share where it was.
 - **Hold / Advance** (`laneStance`, retired in v2): both whole armies start each clash at once, after the same 1 s muster (§5.6), which is what Hold was for, so no lane holds. See Appendix A.
 - **Tunnelers** (the `burrow` tag; the Rhizomorph, an unlockable, §11.3):
   - A tunneler is fielded **burrowed**. While burrowed it has no target, can't be targeted or hit by anything (attacks, splash, clouds, bursts), passes under every unit, pins nothing and doesn't merge.
@@ -578,7 +577,7 @@ Reading guide: Slash shreds swarms of Light units, Pierce breaks Medium line tro
 | `burst` | Has no ordinary attack. Bursts (below) |
 | `flying` | A flyer (below) |
 
-v2 keeps four rules from the combat rework as rules of the game (§1.3 #11). The numbers below are the rework's, from `src/data/proto.ts`. Until a milestone adopts a rule (§16), it stays a `?proto=` setting there, off by default.
+v2 keeps four rules from the combat rework as rules of the game (§1.3 #11), and R1's review gate added a fifth, the arrival shield (below). The numbers below are the rework's, from `src/data/proto.ts`. Until a milestone adopts a rule (§16), it stays a `?proto=` setting there, off by default.
 
 **Pinning:** a `ranged` unit with an enemy unit within **1 tile** (edge distance) attacks at **×0.35** its rate (`pinned.radius`, `pinned.rateMult`).
 
@@ -619,6 +618,10 @@ v2 keeps four rules from the combat rework as rules of the game (§1.3 #11). The
 - **Chains:** a burst that fells another Burster sets it off in turn, in id order, until none is left.
 - **What it can't hit:** buildings, friends, burrowed units and flyers.
 
+**The arrival shield** (R1's review gate, 2026-11-02, §18.2 #8): when the armies arrive, each lane's army of 2 or more unit types gives each of its units a shield of **20%** of its max HP. It's the rework's mixed-wave shield in clash form, today R1's `clashshield` preset (`balance.mixedWave`: `minTypes` 2, `shieldFrac` 0.2). R2a writes it as v2's rule under its own data key, not v1's `waves` (§16 R2).
+
+- Why: the muster knits a mono army fully and a mixed one only partly, so in R1's clashes four monos beat `bot:balanced` at equal gold. Without the shield the strict counter bar failed; with it, and Capguard Hall's squad at 3 (§11.2), every bar passed at 50 seeds.
+
 **Flyers (later, as an unlockable):** v2 adds flyers as an unlockable role (the Driftling, a working name, §11.3). The starting rule is the rework's **rule C**, from [docs/archive/v1/ideas/flyers.md](docs/archive/v1/ideas/flyers.md): no immunity, a penalty.
 
 - **Who can hit it:** every unit can hit a flyer. A ground unit's melee hit on one deals **×0.5** (`flying.meleeMult`), and ranged hits and other flyers' hits deal full damage.
@@ -635,8 +638,8 @@ v2 keeps four rules from the combat rework as rules of the game (§1.3 #11). The
 |---|---|
 | Waves on a shared beat, Hold, call for help | Retired. See Appendix A |
 | The Rhizomorph's tunnelling | Kept, for the unlockable tunneler (§5.2) |
-| Mixed-wave shields (20% of max HP for a mixed wave) | Not adopted. Milestone R1 measures whether mixed armies need them (§16) |
-| The Elder Sporeling's splash off | Measured in R1 (§5.6) |
+| Mixed-wave shields (20% of max HP for a mixed wave) | Adopted in clash form at R1's review gate (2026-11-02), as the arrival shield (above) |
+| The Elder Sporeling's splash off | Not adopted: the Elder keeps its splash (R1's review gate, 2026-11-02, §5.6) |
 
 **Effectiveness class** (sent to the renderer for hit sparks, `effectiveness` in the data):
 
@@ -728,7 +731,7 @@ With no supply cap, nothing waits on supply. A merged unit counts its own supply
 - **Powers:** a commander power may fire from the clash's first tick, during the muster too (§6.6).
 - **After the muster,** v1's rule applies on the field: units still eligible (leftovers, and units back out of combat) knit when a trio stands within reach, at the usual knit time, and fire can cancel those knits.
 - **Open:** when, inside the muster, the merged units replace their parts in the sim, and so whether a power fired during the muster can break a muster knit. First guess: on the clash's first tick, so a power hits the merged units and can't break a muster knit; the muster's 1 s shows the knits (tethers, glow, pop).
-- **Open:** whether the muster counts toward the 45 s clash cap (§6.7). First guess: yes, the clash clock starts on the clash's first tick.
+- **The muster counts toward the 45 s clash cap** (§6.7; R1's review gate, 2026-11-02, §18.2 #13): the clash clock starts on the clash's first tick. In R1 the two readings capped 5.8% and 5.5% of clashes, with the same median length.
 
 **The toggle is a planning choice.** Each spawner has a merge toggle, on by default. It's set in planning (`M`, §10.3), and every unit the building fields that round takes its value.
 
@@ -751,7 +754,7 @@ With no supply cap, nothing waits on supply. A merged unit counts its own supply
 - `rangeAdd`, `radiusAdd`, `splashRadius`, `slayerMult`, `healTargets`
 - `resist: { slash | pierce | crush: mult }`
 
-**Open:** whether the Elder Sporeling keeps its splash perk (0.6 tiles in today's data). The rework turned it off because, under waves, it was area damage that the swarm brought in numbers, and under rounds merges are common. Milestone R1 measures it (§16). First guess: it keeps it, as today's data does outside `?proto=rework`.
+**The Elder Sporeling keeps its splash perk** (0.6 tiles in today's data; R1's review gate, 2026-11-02, §18.2 #9). The rework turned it off because, under waves, it was area damage that the swarm brought in numbers, and under rounds merges are common. In R1's clashes turning it off didn't fix mono Sporeling (66% against `bot:balanced`), and with the arrival shield and Capguard Hall at 3 it passes G3 (48%) with the splash on.
 
 **Feedback** (renderer only, §10.4):
 
@@ -874,7 +877,7 @@ The Sporestorm is still the stalemate breaker, now across rounds (§1.3 #1). Fro
 | In basis points | 10000 | 12000 | 14000 | 16000 | 18000 | 20000 |
 
 - **The rule:** from the storm's first round s (5), round r multiplies round damage by `min(2.0, 1 + 0.2 × (r − s + 1))`; before round s, by 1.0. The sim holds it as an integer in basis points, `min(20000, 10000 + 2000 × (r − s + 1))`, and applies it as §6.7 says. The first round, the step and the maximum are data.
-- It applies to both Heartcaps alike, to each lane's damage before the round cap of 500 (§6.7). It no longer changes unit damage, and the turrets it weakened are retired.
+- It applies to both Heartcaps alike, to each lane's damage before the round cap (§6.7). It no longer changes unit damage, and the turrets it weakened are retired.
 - **Moving it:** an event or blight may move the first round for one battle. v1's one-minute shifts become one round: Mold Bloom (§8.7) and Early Storm (§11.8) start the storm in round 4. The multiplier still rises 20% a round and stays at ×2.0 once it gets there.
 - The top band shows the multiplier (its tooltip explains the storm and gives the multiplier for each round to come, §10.2), and the renderer thickens a spore haze with each storm round.
 - Inside a clash, the 45 s cap breaks a stall (§6.7).
@@ -886,7 +889,7 @@ Each battle is a Heartcap race (§4.5). The sim checks for the end after scoring
 
 - **Rout:** a Heartcap reaches 0 HP; the other side wins. If both reach 0 in the same round (possible only when lanes split, §6.7), the player loses.
 - **Decision:** round 9 ends with both Heartcaps standing. The winner is decided by these tiebreakers, in order:
-  1. more Heartcap damage dealt in the battle (the HP each Heartcap lost, after the Sporestorm and the cap),
+  1. a larger share of the other Heartcap's max HP dealt in the battle (the HP it lost, after the Sporestorm and the cap, over its max HP; X5, R1's review gate, 2026-11-02),
   2. higher Heartcap HP fraction,
   3. otherwise, the general wins.
 
@@ -899,7 +902,7 @@ Each battle is a Heartcap race (§4.5). The sim checks for the end after scoring
 
 - **Lives:** the run has **3 lives** (§1.3 #2). A lost battle, by Rout or by Decision, costs one, and a won battle never does. The run ends at 0 lives, and losing the boss battle ends the run (first guess, as in v1). §8.5 has the rules, and the Grove can regain a life (§8.7).
 - **No repairs:** HP doesn't carry between battles, so v1's repair after a Rout win (+10%) and the Decision loss's 25% are retired (Appendix A).
-- **Targets:** a median of 6–8 rounds a battle, with at most 15% of battles reaching round 9 (§12.3).
+- **Targets:** a median of 6–8 rounds a battle, with at most 15% of battles reaching round 9 (§12.3). R1's race model, which leaves out income, comebacks and counters, put about half or more of even battles at round 9 under every scoring rule it tried, so R2a measures the band on real battles (X5).
 - **Open:** a bonus for a clean win, such as extra Spores or a better pick, so that a close call costs a bonus rather than health. Not adopted (§18.2).
 - **Open:** whether losing the boss battle ends the run, or costs a life like any other battle (first guess: it ends the run).
 - A single battle outside a run shows only the outcome and the stats (§10.5).
@@ -922,8 +925,9 @@ Each battle is a Heartcap race (§4.5). The sim checks for the end after scoring
 
 **Damage supply** is surviving supply with each `siege` unit counted twice. It's used for Heartcap damage only.
 
-**Emplacements.** A tower fields as an emplacement (§4.4). **Open:** how an emplacement counts. First guesses, to settle in R1:
-- An emplacement is a unit in the clash. It never moves, and it can be attacked and killed. Its armor is `structure` (first guess).
+**Emplacements.** A tower fields as an emplacement (§4.4). How it counts (R1's review gate, 2026-11-02, §18.2 #10):
+- An emplacement is a unit in the clash. It never moves, and it can be attacked and killed. Its armor is `structure`.
+- As a body (A029): separation never moves it; its radius is at most 0.8 tiles, and its range is measured from its centre; clouds, bursts and powers hit it; it's never healed, pins nothing and never merges.
 - It keeps its side alive in its lane: a lane ends only when a side has no units and no emplacements left.
 - It counts 0 supply, toward both Heartcap damage and the 45 s comparison.
 - If both sides have only emplacements left at 45 s, the lane is a draw (E5).
@@ -935,7 +939,7 @@ Each battle is a Heartcap race (§4.5). The sim checks for the end after scoring
 - The side with units or emplacements left wins the lane. At 45 s, the side with more surviving supply wins it.
 - **The margin** is what the winner's damage counts. A wiped-out loser has 0, so the margin is all the winner's damage supply; at 45 s only the difference counts. **Open:** the margin when siege units are in play. First guess: the winner's damage supply minus the loser's, never below 0.
 - On Twin Roots each lane is its own clash, and a lane that ends first holds still while the other fights on.
-- **Open:** whether the 1 s muster (§5.6) counts toward the 45 s. First guess: yes; the clash clock starts at the muster's first tick.
+- The 1 s muster (§5.6) counts toward the 45 s: the clash clock starts at the muster's first tick (R1's review gate, 2026-11-02, §18.2 #13).
 
 **The clash ends** when every lane's clash has ended. A clash typically lasts 20–40 s.
 
@@ -944,7 +948,7 @@ Each battle is a Heartcap race (§4.5). The sim checks for the end after scoring
 1. **Lane damage:** per lane, raw damage = 25 × the margin, to the Heartcap of the lane's loser. Merged units count their own supply, and siege units count double (damage supply).
 2. **The Sporestorm:** × the round's multiplier in basis points (§6.4), floored: `floor(raw × stormBp / 10000)`.
 3. **The loser's damage-taken modifiers,** such as Rot Ward's 15% less (8500 basis points, §11.7): × each modifier in basis points, in turn, floored.
-4. **The cap:** each Heartcap's damage is summed over the lanes it lost, then capped at **500** per Heartcap per round, then applied, down to 0 at the lowest (§6.5). At 500, no Heartcap falls in fewer than four lost rounds, so there's no cliff.
+4. **The cap:** each Heartcap's damage is summed over the lanes it lost, then capped at **25% of its max HP** per round (`floor(maxHp × 2500 / 10000)`: 750 for your 3000, 500 for battle 1's general, 900 for the boss), then applied, down to 0 at the lowest (§6.5). No Heartcap falls in fewer than four lost rounds, so there's no cliff. The cap was a flat 500 until R1's review gate (X5, 2026-11-02): a share keeps D26's intent, a quarter of the Heartcap, at every size.
 
 - **Open:** when an effect that heals on a round's result lands, such as Mending Moss (§11.7). First guess: after step 4, never above the Heartcap's max HP.
 
@@ -962,7 +966,7 @@ The aftermath then shows the round (§10.2).
 | E4 | Both sides wiped out on the same tick | The lane is drawn: no damage either way |
 | E5 | Both sides have only emplacements left at 45 s | The lane is drawn: no damage either way |
 | E6 | A side wins a lane with only emplacements left (the other side has nothing) | It wins the lane with 0 surviving supply and deals no damage |
-| E7 | Two lanes with different winners in one round | Each Heartcap takes the damage of the lane it lost, both in the same round, each capped at 500. The round goes to the side that dealt more, and the tally shows each lane's half (§10.2) |
+| E7 | Two lanes with different winners in one round | Each Heartcap takes the damage of the lane it lost, both in the same round, each capped at 25% of its max HP. The round goes to the side that dealt more, and the tally shows each lane's half (§10.2) |
 | E8 | Both Heartcaps reach 0 in the same round | The player loses (§6.5) |
 
 **Why only survivors count.** A close loss costs little and a rout costs a lot, so the bars say how a round went. Merged units count their own supply (twice the base for Bloomed, four times for Elder), so for the same power a swarm of base units hits harder than a few merged ones. Siege units count double toward damage, which gives the Rootbreaker a job when there are no buildings to break; they count once when a lane is decided at 45 s, so they don't decide who wins.
@@ -1083,8 +1087,8 @@ The boss also gets an early cycle in round 3's planning, reading rounds 1–2.
 
 1. Take every unit in the player's `fielded` record for the rounds read, at its base supply.
 2. Turn the supply into shares of the total: Light, Medium and Heavy armor; ranged; and `eliteShare`.
-3. `eliteShare` counts only real merging: the share of the fielded supply that the record shows as Bloomed or Elder units (§5.6). A merge toggle left on with no merges therefore reads as no threat. A unit of 1 supply counts by its armor whether or not it merged: that is the combat rework's swarm read (the balance key `ai.counter.swarmMaxSupply`, absent from `data/balance.json` and set to 1 by the `swarmread` and `rework` presets in `src/data/proto.ts`), since a merged Sporeling swarm otherwise reads as Elite. R1 measures whether rounds still need it.
-4. Score the four counter kinds:
+3. `eliteShare` counts only real merging: the share of the fielded supply that the record shows as Bloomed or Elder units (§5.6). A merge toggle left on with no merges therefore reads as no threat. A unit of 1 supply counts by its armor whether or not it merged: that is the combat rework's swarm read (the balance key `ai.counter.swarmMaxSupply`, absent from `data/balance.json` and set to 1 by the `swarmread` and `rework` presets in `src/data/proto.ts`), since a merged Sporeling swarm otherwise reads as Elite. R1 found that counting only Elder parts keeps `bot:balanced` from reading Elite (at most 10% of its armies, against 100% counted plainly); R2a S0 settles it (R2-Q3).
+4. Score the five counter kinds:
 
 | Kind | Score | Counter set (buildings in the general's faction roster whose unit has…) |
 |---|---|---|
@@ -1092,8 +1096,9 @@ The boss also gets an early cycle in round 3's planning, reading rounds 1–2.
 | **Anti-Line** | `mediumShare` | `pierce` damage |
 | **Anti-Armor** | `heavyShare` | `crush` damage or `siege` |
 | **Anti-Elite** | `1.2 × eliteShare` | `slayer` |
+| **Anti-Ranged** | `rangedShare` | the `swarm` tag |
 
-5. Add seeded noise of ±0.03 to each score and take the highest. Ties resolve in this order: Elite, Armor, Line, Swarm.
+5. Add seeded noise of ±0.03 to each score and take the highest. Ties resolve in this order: Elite, Armor, Line, Ranged, Swarm (Ranged's place is a first guess).
 
 If the player fielded nothing in the rounds read, the cycle passes.
 
@@ -1108,8 +1113,8 @@ If the player fielded nothing in the rounds read, the cycle passes.
 | Veilstalkers | Sporelings with Gill Archers (95%) |
 
 - The counter sets above match most of these: slash for the swarm (Capguards, Amanita Knights), crush for heavy armor (Hammercaps), pierce for medium (Veilstalkers against Morel Runners).
-- They miss archers: the analysis computes a ranged share, but no kind scores it, and the check's answer to archers is a swarm. **Open:** whether R1 adds an Anti-Ranged kind that scores `rangedShare`, with `swarm` spawners as its set. First guess: no, the four kinds above until R1 measures it.
-- **Open:** whether the counter sets come from R1's clash matrix instead, as [docs/archive/v1/ideas/rounds.md](docs/archive/v1/ideas/rounds.md) suggests. First guess: by damage type and tag, as in the table above.
+- They missed archers: the analysis computes a ranged share, but no v1 kind scored it, and the check's answer to archers is a swarm. So v2 adds **Anti-Ranged** (R1's review gate, 2026-11-02, §18.2 #14), which scores `rangedShare` with `swarm` spawners as its set: in R1's clashes mono Sporeling Burrow beat mono Gill Nest 100% at every budget. It bites only once `eliteShare` counts Elder parts (R2-Q3): counted plainly, mono Gill Nest reads Elite, since its knitted archers count at their parts' supply.
+- **The counter sets stay by damage type and tag** (R1's review gate, 2026-11-02, §18.2 #15), not from R1's clash matrix, which would move with every retune. Three fixes: `swarm` units are in neither the Anti-Swarm nor the Anti-Line set; when the roster has no building in the chosen set, the general takes the cheapest building whose unit beats the dominant armor; and a unit that deals no damage is in no set (A055, A056). The clash matrix checks the sets: in R1, with the swarm read, they held its best answer to mono Sporeling (Capguard Hall) and to mono Veilstalker (the swarm builds), and missed for mono Capguard, which reads Elite from 600 gold while Gill Nest answers it.
 - **Open:** an Anti-Air kind for flyers, which come later (§1.3 #11). First guess: none until flyers arrive.
 - **Open:** (settled in R3) how the analysis reads an augment that flips a matchup, so the general can answer it as §1.3 #7 requires. First guess: the general rates its counter set against the player's squads as augmented (the compiled matchup, §5.3), skips a building that loses, and reaches for the next answer.
 
@@ -1854,7 +1859,7 @@ Key names for new constants are first guesses; §14.2 fixes them.
 | `formationGapTiles` | 6 between the two front ranks | §4.6 |
 | `heartcapDamagePerSupply` | 25 per supply the winner has left in a lane | §6.7 |
 | `siegeHeartcapMult` | 2: `siege` units count double toward Heartcap damage only, not in the 45 s comparison | §6.7 |
-| `roundDamageCap` | 500 | §6.7 |
+| `roundDamageCapBp` | 2500: 25% of the loser's max HP (X5) | §6.7 |
 | `sporestorm` start round / per round / max | 5 / +0.20 / ×2.0 (round 5 ×1.2, rising to ×2.0 at round 9) | §6.4 |
 | `heartcapPlayerHp` | 3000, every battle | §4.5 |
 | `heartcapEnemyHp` base / per battle / boss | 2000 / +250 / 3600, every battle | §4.5 |
@@ -1902,7 +1907,7 @@ Key names for new constants are first guesses; §14.2 fixes them.
 | `effectiveness` | strong at ×1.5 or more, weak at ×0.75 or less: the hit sparks and the matchup marks (§10.4) |
 | `movement.driftSpeed` / `separationPasses` | 0.3 / 2 |
 
-**The combat rework's rules kept in v2** (§1.3 #11). They live in `src/data/proto.ts` today. R2 adopts R1's chosen set as default data: its rules move into `data/balance.json`, and the Burster's and the Rhizomorph's units and buildings into the faction files (§11.2). R3 gives those buildings their place in a run (§11.15):
+**The combat rework's rules kept in v2** (§1.3 #11). They live in `src/data/proto.ts` today. R2 adopts R1's chosen set as default data, all of `kept` plus the arrival shield (R1's review gate, 2026-11-02): its rules move into `data/balance.json`, and the Burster's and the Rhizomorph's units and buildings into the faction files (§11.2). R3 gives those buildings their place in a run (§11.15):
 
 | Rule | Value | Section |
 |---|---|---|
@@ -1910,10 +1915,10 @@ Key names for new constants are first guesses; §14.2 fixes them.
 | Cleave (Scythecap) | Full damage to every enemy within 1.0 tile of its target; Bloomed 1.2, Elder 1.4 | §5.3 |
 | Burst (Burster) | 40 damage, ignoring armor, to every enemy within 1.5 tiles, plus a spore cloud of 1.5 tiles for 4 s at 10 a second | §5.3 |
 | Spore clouds (Puffball Mortar) | Range 7; each shell leaves a cloud of 1.5 tiles for 6 s at 10 a second, ignoring armor | §5.3, §11.2 |
+| Arrival shield | Each lane's army of 2 or more unit types arrives with shields of 20% of each unit's max HP | §5.3 |
 | Flyers (later) | Rule C: melee hits a flyer for ×0.5; lobbed shells and bursts can't hit it | §5.3 |
-| Mixed-wave shields | Not adopted. R1 measures whether mixed armies need them, as a shield at a clash's arrival; R2 adopts them only if R1 keeps them | §16 |
-| The Elder Sporeling's splash | Off under `?proto=rework`. R1 measures it, and R2 follows R1's result | §16 |
-| The general's swarm read | `ai.counter.swarmMaxSupply` 1, the `swarmread` preset in `src/data/proto.ts` (not in `data/balance.json`): a unit of 1 supply reads by its armor, not as Elite, even when merged. R1 measures whether rounds still need it | §7.4 |
+| The Elder Sporeling's splash | Kept, 0.6 tiles (R1's review gate, 2026-11-02); off only under `?proto=rework`, which R2 deletes | §5.6 |
+| The general's swarm read | `ai.counter.swarmMaxSupply` 1, the `swarmread` preset in `src/data/proto.ts` (not in `data/balance.json`): a unit of 1 supply reads by its armor, not as Elite, even when merged. R1 found that counting Elder parts replaces it; R2a S0 settles it (R2-Q3) | §7.4 |
 
 **Retired in v2** (Appendix A). The values are the data's at `aa37365`:
 
@@ -1945,12 +1950,12 @@ All buildings have a 2×2 footprint and fill one plot (§4.6). Buildings aren't 
 
 **Squads.** Each spawner fields one **squad** every round: what it made in a minute under v1's timers, in whole batches, with halves rounded up (`squad = count × round(60 / interval)`). That keeps v1's supply per gold, so the value check (§11.4) still holds. These are starting points: milestone R1's clash check sets squad sizes (§16). A building's `squad` field replaces `count` and `interval` (§14.2).
 
-**The six core archetypes** (★) are a first cut. **Open:** the sixth (§1.3 #6). First guess: the Burster Pod; the alternative is the Puffball Mortar as an emplacement. Every run can draft them (§8.4). The Truffle Cellar is a basic card for everyone. Every other building is **unlockable**: until M6 it enters a run through its run pack (§11.15), and M6 gates it behind unlocks (§9).
+**The six core archetypes** (★) are a first cut. **Open:** the sixth (§1.3 #6). First guess: the Burster Pod; the alternative is the Puffball Mortar as an emplacement. R1's core-six check supports the Burster Pod (2026-11-02): its core six fails G3 on two monos, the Mortar's on four, and in the core six's graph the Mortar wins none of its edges. R3 makes the call. Every run can draft them (§8.4). The Truffle Cellar is a basic card for everyone. Every other building is **unlockable**: until M6 it enters a run through its run pack (§11.15), and M6 gates it behind unlocks (§9).
 
 | M | id | Name | Role | Core | Kind | Cost | Squad | Supply |
 |---|---|---|---|---|---|---|---|---|
 | 1 | `sporelingBurrow` | Sporeling Burrow | Swarm | ★ | spawner | 110 | 8 Sporelings | 8 |
-| 1 | `capguardHall` | Capguard Hall | Shield | ★ | spawner | 150 | 4 Capguards | 8 |
+| 1 | `capguardHall` | Capguard Hall | Shield | ★ | spawner | 150 | 3 Capguards | 8 |
 | 1 | `gillNest` | Gill Archer Nest | Archer | ★ | spawner | 150 | 4 Gill Archers | 8 |
 | 4 | `amanitaLodge` | Amanita Lodge | Heavy | ★ | spawner | 260 | 2 Amanita Knights | 6 |
 | 4 | `hammercapForge` | Hammercap Forge | Crusher | ★ | spawner | 170 | 4 Hammercaps | 8 |
@@ -1970,6 +1975,7 @@ All buildings have a 2×2 footprint and fill one plot (§4.6). Buildings aren't 
 | 6 | `rootgate` | Rootgate (Armilla, mastery 2) | Emplacement | | tower | 140 | itself: a root wall in its slot, 1200 HP, no attack, restored each round. **Open:** its new effect; this is the first guess | – |
 | 6 | `puppetPod` | Puppet Pod (Cordis, mastery 2) | Swarm | | spawner | 150 | 9 Sporelings; merge forced on; knit time −50% | 9 |
 
+- **Squads** (R1's review gate, 2026-11-02, §18.2 #7): the Squad column is R2a's starting data, sized per building. Capguard Hall fields 3: at 4 it was the strongest mono in R1's clashes (90% against `bot:balanced`), and at 3, with `kept` and the arrival shield, every bar passed at 50 seeds. R2a checks it round by round, since at 3 it still won 92% at 300 gold and 2% at 1,500.
 - **The rework's three buildings** (the Burster Pod, the Rhizomorph Tunnel and the Drift Stalk) exist today only as `?proto=` presets (`burster`, `rhizomorph` and `flyers` in `src/data/proto.ts`, all three in `rework`). R2 moves the ones in R1's chosen set into `data/factions/velvet-bloom/buildings.json` and `units.json` as default data (§16). R3 gives each its place in a run: the Burster Pod as the sixth archetype or in a pack, and the Rhizomorph Tunnel in the Deep Roots pack (§11.15). The Drift Stalk waits for flyers (§1.3 #11).
 - **Economy and utility buildings** field nothing, so each leaves a hole in the formation; they belong at the back (§4.6). A Truffle Cellar on a loam plot yields +50% (§11.9). The Spore Exchange's +12 a round is its v1 trickle of 1 gold per 5 s tick. The Rhizome Vault's v1 effect (+6 supply cap, at most 2 Vaults) went with the supply cap; its new effect and the Velvet Shrine's show on the field as combo links do (§10.4, §11.14).
 - **The Puffball Mortar** is the alternative sixth archetype. Until that's decided it's an unlockable emplacement in the Bastion pack (§11.15), and it stays in Vesper's core and Armilla's starter (§11.10). As an **emplacement** (a `tower` building's archetype, §4.4) it fields itself in its plot's slot: it can't move, it fights with its own HP, armor and attack, and it's restored every round. With the kept spore-cloud rule its shells reach 7 tiles and leave clouds (§11.1). Siege units deal ×2.0 to it (Structure armor, a first guess). How an emplacement keeps its lane alive and what it counts toward Heartcap damage are §6.7's (a first guess, Open there).
@@ -2017,7 +2023,7 @@ All buildings have a 2×2 footprint and fill one plot (§4.6). Buildings aren't 
 
 | Unit | Bloomed (tier 2) | Elder (tier 3) |
 |---|---|---|
-| Sporeling | speed ×1.15 | splash 0.6 (off under `?proto=rework`; R1 measures it) |
+| Sporeling | speed ×1.15 | splash 0.6 (kept at R1's review gate; off under `?proto=rework`) |
 | Capguard | resist pierce ×0.85 | resist pierce ×0.7, radius +0.1 |
 | Gill Archer | range +0.75 | range +1.5, attack interval ×0.9 |
 | Amanita Knight | resist slash ×0.85 | resist slash ×0.7 |
@@ -2113,7 +2119,7 @@ v1's drafts offered upgrade levels: 14 tracks of 3 levels, 42 levels in all, 40 
 | Truffle Cellar | +1 gold per tick | Building HP +200 | +1 gold per tick |
 | Others (M2+) | Same pattern: survivability → damage → a signature boost, defined in each building's data | | |
 
-**In R2, before augments.** **Open:** what each upgrade level does in rounds. First guess: a level that adds a unit per spawn adds one unit per batch to the squad (the Burrow's level 3 makes its squad 12, the Morel Warren's 9); a level of gold per tick is +12 gold a round; levels on building HP, the supply cap or spawn speed do nothing, and R2's drafts stop offering them.
+**In R2, before augments.** A level that adds a unit per spawn adds no unit to the squad in rounds (R1's review gate, 2026-11-02, §18.2 #7): with one more unit per batch, Twin Roots' full colony fielded 192 units a side, over §13.7's 150, and without it 128. **Open:** what each upgrade level does in rounds. First guess: a level that added a unit per spawn does nothing, nor do levels on building HP, the supply cap or spawn speed, and R2's drafts stop offering them; a level of gold per tick is +12 gold a round.
 
 ### 11.7 Relics (Milestone 3) and colony traits (Milestone 6)
 
@@ -2669,7 +2675,7 @@ v2 has no supply cap, so plots (and copies, from R3) bound a clash: its size is 
 
 | Metric | Budget |
 |---|---|
-| A full colony | at most **150 live units a side** when the armies arrive, before the muster's knits: every plot planted with the biggest squad its kit allows, augments that add units included. A clash then starts with at most 300 units, `bench-300`'s size. The budget counts units, not supply, since a tick's cost follows live units |
+| A full colony | at most **150 live units a side** when the armies arrive, before the muster's knits: every plot planted with the biggest squad its kit allows, augments that add units included. A clash then starts with at most 300 units, `bench-300`'s size. The budget counts units, not supply, since a tick's cost follows live units. R1 measured the true worst case with today's upgraded Burrow of 12: 144 units a side on one lane (12 plots) and 192 on Twin Roots (16 plots), both ticking inside G11, so the 150 is a readability budget. R1's review gate kept it and took the lever (2026-11-02, §18.2 #7): in rounds an upgrade adds no unit per batch (§11.6), so a Burrow fields 8 and Twin Roots' full colony 128. R3 rechecks augments that add units (A200) |
 | Sim tick, bench clash with 300 live units | mean ≤ 1.0 ms, p99 ≤ 2.5 ms (Node, this machine) |
 | The clash's first tick (both armies arrive) | ≤ 5 ms (Node) |
 | One full battle, headless, bots on both sides | ≤ 3 s wall time |
@@ -3003,7 +3009,7 @@ interface SpriteShape { body: 'small' | 'medium' | 'big' | 'structure' }  // the
 // [min, max] height in native px (§14.3); it's display data, kept out of data/balance.json.
 ```
 
-- **Squads.** A spawner's `squad` is what it fields each round. R1's clash check sets the counts (§1.3 #11, §16); §11.2's Squad column has the starting table, such as 8 Sporelings for a Sporeling Burrow and 4 Capguards for a Capguard Hall.
+- **Squads.** A spawner's `squad` is what it fields each round. R1's clash check set the counts (§1.3 #11, §16): §11.2's Squad column is R2a's starting table, such as 8 Sporelings for a Sporeling Burrow and 3 Capguards for a Capguard Hall (R1's review gate, 2026-11-02, §18.2 #7).
 - **Copies** arrive in R3 (§8.10). Then `data/balance.json` gains a `kit` block: `starterCopies` (2), `blueprintCopies` (1, a drafted blueprint) and `copyCopies` (1, a drafted copy of a card you own). These are the key names §11.1 uses. Until R3 a kit card has no copy limit. `data/balance.json` also gains `packsPerRun` (4) in R3 (§8.4).
 - **Augments and combos** (R3) are first guesses, shaped so that every example in §11.13 and §11.14 can be written: the comment on each `UnitPatch` field, trigger and action names the example that needs it. An augment patches its building's unit and adds triggers to it; a combo does the same to the squad of `a` while `a` stands in its `relation` to a `b`. Timed statuses (slow, sunder) and the counters that `everyNth` and `firstInClash` read live on the unit in a clash (`UnitState`, §14.4). R3 adds a unit test for each example.
 - **Open:** whether an augment attaches to a building type or to one card (§8.10, §11.13). First guess: the type, for the run, so every copy's squad has it.
@@ -3328,7 +3334,7 @@ incomePreview(state: BattleState, side: Side): IncomeBreakdown   // next round's
 10. Deaths and removals: fire `unitDeath` triggers.
 11. Merging (every 10 ticks for new trios; every tick for active knits).
 12. Lane ends (§6.7): a lane where one side has no units and no emplacements left ends (`laneWon`). At the cap, every lane still fighting is decided on surviving supply.
-13. When every lane has ended, score the round in §6.7's integer order: per lane 25 × the margin, with siege units counting double, then the Sporestorm's multiplier and the loser's damage-taken modifiers in basis points, each floored, then the sum over lanes capped at 500 per Heartcap; `heartcapDamaged`; push the `RoundResult`. Then check the battle's end (§6.5): a Heartcap at 0, or round 9 scored (a Decision). If it has ended, set `outcome`. Enter the aftermath either way.
+13. When every lane has ended, score the round in §6.7's integer order: per lane 25 × the margin, with siege units counting double, then the Sporestorm's multiplier and the loser's damage-taken modifiers in basis points, each floored, then the sum over lanes capped at 25% of each Heartcap's max HP; `heartcapDamaged`; push the `RoundResult`. Then check the battle's end (§6.5): a Heartcap at 0, or round 9 scored (a Decision). If it has ended, set `outcome`. Enter the aftermath either way.
 14. Stats sampling (every 20 ticks).
 
 During the muster that opens a clash (§5.6), nobody moves or attacks, and squads set to merge knit in place by §5.6's rule. A power command may run from the first tick, the muster included (§6.6).
@@ -3707,10 +3713,10 @@ Its goldens are `m1-balanced-vs-scripted-s1` and `m1-turtle-vs-scripted-s2`. Its
 - **Runs and battles saved before R2** (§8.9, §18.2 #32): get the user's call on migrating a saved run or ending it with a notice. Then `loadRun` (`src/run/resume.ts`) handles the old `RUN_VERSION` (1) as decided, instead of returning null: today a version mismatch drops the run silently, with no Continue and no notice. A v1 battle save in a run that goes on restarts round 1's planning with the notice for an incompatible save, instead of being ignored (today `src/app/run.ts` resumes a battle save only when its config matches). The keys stay (§13.8).
 - **UI** (§10.2, §10.5): the planning, clash and aftermath views; both colonies' plots; the formation and merge previews; the round tally and the lane tug; both Heartcaps and your lives; basic matchup marks (the class of your hits against each enemy squad); the report by round; lives on the run bar; the general's kit on its route node. All on today's sprites.
 - **Retiring v1's battle in code** (Appendix A; files in §13.4, tests in §15.7 and §15.6): spawn timers, besieged spawners, territory and presence, forward building and the supply-line price, Hold / Advance, Heartcap turrets, the timed Sporestorm, the 10:00 Decision, the income tick, the supply cap, the vague telegraph, the run's Heartcap and its repairs, the deploy phase and placing while live. Their tests, goldens, guardrails, UI, Help and tips go with them. The systems R2 keeps lose their v1 parts as §13.4 lists (movement, targeting and combat).
-- **The rework's pieces become the default** (§1.3 #11): R2 adopts R1's chosen set as default data. Its rules (pinning, spore clouds, cleave and the Burster's burst) move from `src/data/proto.ts` into `data/balance.json` (§11.1), and its units and buildings (the Burster Pod and the Rhizomorph Tunnel, if the set keeps them) into the faction files, for both rosters (§11.2). The mixed-wave shields, in clash form, and the Elder Sporeling's splash follow R1's result. Until R3 the new buildings join the roster like any other; R3 gives each its place in a run, a core archetype or a pack (§11.2, §11.15).
+- **The rework's pieces become the default** (§1.3 #11): R2 adopts R1's chosen set as default data. R1's review gate (2026-11-02) chose all of `kept` (pinning, spore clouds, cleave, the Burster and the Rhizomorph), the arrival shield (§5.3) and Capguard Hall's squad at 3 (§11.2), with the Elder Sporeling keeping its splash. Its rules (pinning, spore clouds, cleave, the Burster's burst and the arrival shield, under its own key) move from `src/data/proto.ts` into `data/balance.json` (§11.1), and its units and buildings (the Burster Pod and the Rhizomorph Tunnel) into the faction files, for both rosters (§11.2). Until R3 the new buildings join the roster like any other; R3 gives each its place in a run, a core archetype or a pack (§11.2, §11.15).
 - **Deleting the `?proto=` presets whose systems retire,** with their schema keys (`src/data/schema.ts`) and tests (`tests/unit/prototypes.test.ts`, `combatRework.test.ts`, `battleFeel.test.ts`, and the cases elsewhere that set them). In `src/data/proto.ts`:
   - **They go in R2:** `b1` (`approachRush`), `a3` (counter cycles in seconds), `b4` (`unitLifespan`), `hold` and `nohold` (`laneStance`), `t1` (`rangedFirstSpawnFraction`), `t2` (`fallBack`), `diver` and `diverleap` (`diveRanged`), `hotstart` (`hotStart`), `breach` (`sideTriggers` and the `heartcapBreach` trigger), `bigdrafts` (`bigDrafts`), `t3` (`spawnerDefense`), `callforhelp` (`callForHelp`), `waves` (`waves`), `stormwaves` (`stormWaves`) and `rework`. `hotstart` and `breach` stay undecided proposals (Appendix A), and MAY come back in round form.
-  - **They stay only if R1 keeps them:** `mixedwave` (`mixedWave`, in clash form without `waves`), `swarmread` (`ai.counter.swarmMaxSupply`), the Elder Sporeling's splash off (inside `rework`), and any of `pinned`, `sporecloud`, `cleave`, `burster` and `rhizomorph` that R1's set leaves out. A piece R1 keeps becomes default data, and its preset (with `kept`) then goes, since the rule is the default.
+  - **R1's outcomes** (A109, R1's review gate, 2026-11-02): `pinned`, `sporecloud`, `cleave`, `burster`, `rhizomorph` and `clashshield` become default data, the shield as v2's rule under its own key, so their presets go, with `kept` and `mixedwave`. Deleted: `noeldersplash` and the Elder's splash off inside `rework`, `clashpace`, and `swarmread` (`ai.counter.swarmMaxSupply`), which counting Elder parts replaces if R2a S0 settles R2-Q3 that way. R2a writes the tool-only switches `noBuildingPreference` and `idleSeek` as v2's targeting and movement (§5.2), and R2b deletes the flags.
   - **They stay as default-off knobs:** `a2` and `b3`, which tune systems that stay, and `flyers`, for the later flyer (§1.3 #11), without `holdsGround`, which only territory reads.
 - **Settle §18.2's rows "Settled by R2"** (#16–#35) with the user in `docs/r2-plan.md` before building. The two that R2's playtest settles (#17, #33) start from their first guesses.
 - **Link previews** (§13.8): `index.html`'s `description`, `og:description` and `twitter:description` describe the round-based game. Today they describe v1's tug-of-war; their text stays as it is until R2.
@@ -4076,7 +4082,7 @@ Each default is deliberate and easy to change. D1–D24 are v1's, from the desig
 | # | Default | Why |
 |---|---|---|
 | D25 | A clash opens with a 1 s muster (D48). A lane's clash ends when one side has no units and no emplacements left in it; at 45 s the side with more surviving supply in the lane wins it, and its damage counts only the difference. Front ranks start 6 tiles apart | Every clash ends, so an answer can't win by stalling. A typical clash lasts 20–40 s, and the first blows land within 2–5 s |
-| D26 | Heartcap damage per lane: 25 for each supply in the winner's margin, merged units counting their own supply and siege units double (for damage only, not the 45 s comparison); then the Sporestorm and the loser's damage-taken modifiers, in basis points, floored; no Heartcap takes more than 500 a round (§6.7) | Only survivors count, so a close loss costs little. The cap is a quarter of battle 1's enemy Heartcap, so no Heartcap falls to one bad round. Siege units get a job with no buildings to break |
+| D26 | Heartcap damage per lane: 25 for each supply in the winner's margin, merged units counting their own supply and siege units double (for damage only, not the 45 s comparison); then the Sporestorm and the loser's damage-taken modifiers, in basis points, floored; no Heartcap takes more than 25% of its max HP a round (§6.7; a flat 500 until X5, 2026-11-02) | Only survivors count, so a close loss costs little. The cap is a quarter of the Heartcap at every size, so no Heartcap falls to one bad round. Siege units get a job with no buildings to break |
 | D27 | The Sporestorm raises round damage 20% a round from round 5, up to ×2.0 at round 9 | It stays the stalemate breaker, now across rounds |
 | D28 | Your Heartcap is 3000 in every battle; the general's is 2000 + 250 × (battle index − 1), and the boss's 3600 | v1's numbers, now per battle. Later generals are harder by their Heartcaps, not by an AI edge |
 | D29 | After round 9, the side that dealt more Heartcap damage in the battle wins by Decision, with half rewards. Target: a median of 6–8 rounds, with at most 15% of battles reaching round 9 | v1's tiebreak without columns. Seven rounds take about 3 minutes on the sim clock and 6–8 minutes in all, which fits 25–35 minutes a run |
@@ -4094,13 +4100,13 @@ Each default is deliberate and easy to change. D1–D24 are v1's, from the desig
 | D41 | The general's income is a data value at ×1.0. It gets no extra gold for planning first | The information edge is the player's by design. A blight MAY raise the income (§17 #14) |
 | D42 | The general's formation: melee in front, ranged and area behind, economy at the back, by a short greedy rule, with ties going by building id (§7.3). On two-lane maps it sends each building to the lane where it lost the most last round (**Open:** §18.2 #30) | Simple, readable, and the same rule the player's colony follows |
 | D43 | The Grove regains a life, up to the run's maximum | Repairs have no target once Heartcaps are per battle |
-| D44 | The sixth core archetype is the Burster Pod; the alternative is the Puffball Mortar as an emplacement (**Open:** §18.2 #36) | Area damage that travels with the army is what a packed formation needs to fear |
-| D45 | Until R3 builds copies, a kit card has no copy limit, so plots are R2's only build limit. The general's cards follow v1's `limits.*.maxOwned` until then | R2 can then retire the supply cap with the rest of v1's battle, and R3 adds copies on top |
+| D44 | The sixth core archetype is the Burster Pod; the alternative is the Puffball Mortar as an emplacement (**Open:** §18.2 #36; R1's core-six check supports the Burster Pod) | Area damage that travels with the army is what a packed formation needs to fear |
+| D45 | Until R3 builds copies, a kit card has no copy limit, so plots are R2's only build limit. The general's cards follow v1's `limits.*.maxOwned` until then | R2 can then retire the supply cap with the rest of v1's battle, and R3 adds copies on top. R1's review gate kept it (X4, 2026-11-02): copies didn't fix mono Sporeling (57–63% at 2–4 copies), and at 2 and 3 copies more builds lost their answer |
 | D46 | Until M6 there's no gating: buildings beyond the core enter runs only through run packs | Every building stays playable before the unlock ladder exists |
-| D47 | The formation is deterministic: `formationOf` is a pure function of the colony (plots, buildings, squad sizes and merge toggles) and draws on no random stream. A squad of n stands on a k × k grid in its slot (k = ceil(sqrt(n)), spacing 2/k tiles), filled front to back, then top to bottom. A squad too big for its slot packs tighter (**Open:** §18.2 #11) | The preview can't differ from the clash, so where you plant is where you fight. R1's clash check MAY jitter positions as a measurement, never as a game rule (§4.6) |
+| D47 | The formation is deterministic: `formationOf` is a pure function of the colony (plots, buildings, squad sizes and merge toggles) and draws on no random stream. A squad of n stands on a k × k grid in its slot (k = ceil(sqrt(n)), spacing 2/k tiles), filled front to back, then top to bottom. A squad too big for its slot packs tighter (§18.2 #11, settled at R1's review gate) | The preview can't differ from the clash, so where you plant is where you fight. R1's clash check MAY jitter positions as a measurement, never as a game rule (§4.6) |
 | D48 | A clash opens with a 1 s muster: nobody moves or attacks, and squads set to merge knit in place, neighbouring squads of the same unit included. The merge preview is the muster's own rule, and the commander power is ready from the clash's first tick (§5.6, §6.6) | The preview equals what fields, so two Burrows side by side make an Elder by placement alone |
 | D49 | Each battle starts with both colonies empty and every copy free. The general's colony opens the map's plots plus as many as yours has gained from sprawl, not your relics', traits' or commander's (**Open:** §18.2 #20, #21) | Each battle is a new map, and the general's colony keeps pace with yours without copying what is yours alone |
-| D50 | An emplacement (a tower fielding itself) is a unit that never moves: it keeps its side alive in its lane and counts 0 supply toward Heartcap damage and the 45 s comparison (**Open:** §18.2 #10) | It can hold a lane but deals no Heartcap damage |
+| D50 | An emplacement (a tower fielding itself) is a unit that never moves: it keeps its side alive in its lane and counts 0 supply toward Heartcap damage and the 45 s comparison (§18.2 #10, settled at R1's review gate, with A029's body rules in §6.7) | It can hold a lane but deals no Heartcap damage |
 
 **v1's defaults (record)**
 
@@ -4146,15 +4152,15 @@ Items from 7 on are v2's, one row per question: each is a rule the user hasn't d
 
 | # | Question | First guess | Section | Settled by |
 |---|---|---|---|---|
-| 7 | Squad sizes: what each building fields a round, and the most a full colony fields | §11.2's Squad column (8 Sporelings for a Burrow, 4 Capguards for a Hall); at most 150 live units a side when the armies arrive (D33) | §11.2, §12.2 | R1 |
-| 8 | Do mixed armies need the rework's mixed-wave shields (20% of max HP for an army of 2 or more unit types) to pass the strict counter bar in clashes? | Not adopted | §12.2 | R1 |
-| 9 | Does the Elder Sporeling keep its splash perk (0.6 tiles), which the rework turned off? | It keeps it, as today's data does outside `?proto=rework` | §5.6, §12.2 | R1 |
-| 10 | How an emplacement counts in a clash | A unit that never moves and can be killed (Structure armor); it keeps its side alive in its lane; 0 supply toward Heartcap damage and the 45 s comparison; only emplacements left at 45 s is a draw (E5); powers hit it as a unit (D50) | §6.7 (§11.2 points there) | R1 |
-| 11 | Overflow: where a squad too big to stand apart in its slot puts its units | It keeps its k × k grid and spacing and packs tighter, its units overlapping (D47) | §4.6 | R1 |
-| 12 | Does a squad keep its place in the formation on the approach, marching at its slowest unit's pace with ranged units 1 tile behind, as the rework's waves did? | No: each unit moves at its own speed, as in v1 | §5.2 | R1 |
-| 13 | Does the 1 s muster count toward the 45 s clash cap? | Yes: the clash clock starts on the muster's first tick | §5.6, §6.7 | R1 |
-| 14 | Does the counter cycle get an Anti-Ranged kind that scores `rangedShare`, with `swarm` spawners as its set? No v1 kind scores the ranged share, and the counter-matrix check's answer to archers is a swarm | No: the four kinds until R1 measures it | §7.4 | R1 |
-| 15 | Do counter sets come from R1's clash matrix instead of damage types and tags? | No: by damage type and tag | §7.4 (§11.11 points there) | R1 |
+| 7 | **(closed 2026-11-02)** Squad sizes: what each building fields a round, and the most a full colony fields | Decided: sizes per building, §11.2's Squad column with Capguard Hall at 3 (at 4 it was the strongest mono in clashes, 90%). The full colony stays at most 150 live units a side, and in rounds an upgrade adds no unit per batch, so Twin Roots' fields 128, not 192 | §11.2, §11.6, §12.2, §13.7 | R1 |
+| 8 | **(closed 2026-11-02)** Do mixed armies need the rework's mixed-wave shields (20% of max HP for an army of 2 or more unit types) to pass the strict counter bar in clashes? | Decided: yes. The arrival shield is v2's rule, under its own data key: G12 failed without it and passed with it | §5.3, §12.2 | R1 |
+| 9 | **(closed 2026-11-02)** Does the Elder Sporeling keep its splash perk (0.6 tiles), which the rework turned off? | Decided: it keeps it. Without it mono Sporeling still failed G3 (66%) | §5.6, §12.2 | R1 |
+| 10 | **(closed 2026-11-02)** How an emplacement counts in a clash | Decided: the first guess (a unit that never moves and can be killed, with Structure armor; it keeps its side alive in its lane; 0 supply toward Heartcap damage and the 45 s comparison; only emplacements left at 45 s is a draw, E5; powers hit it as a unit, D50), with A029's body rules added to §6.7 | §6.7 (§11.2 points there) | R1 |
+| 11 | **(closed 2026-11-02)** Overflow: where a squad too big to stand apart in its slot puts its units | Decided: it keeps its k × k grid and spacing and packs tighter, its units overlapping (D47). It rests on few cases: no squad overflows at the planned sizes | §4.6 | R1 |
+| 12 | **(closed 2026-11-02)** Does a squad keep its place in the formation on the approach, marching at its slowest unit's pace with ranged units 1 tile behind, as the rework's waves did? | Decided: no, each unit moves at its own speed, as in v1. R1's pace variant left G12 failing | §5.2 | R1 |
+| 13 | **(closed 2026-11-02)** Does the 1 s muster count toward the 45 s clash cap? | Decided: yes, the clash clock starts on the muster's first tick. The two readings differed by 0.3 points of capped clashes | §5.6, §6.7 | R1 |
+| 14 | **(closed 2026-11-02)** Does the counter cycle get an Anti-Ranged kind that scores `rangedShare`, with `swarm` spawners as its set? No v1 kind scores the ranged share, and the counter-matrix check's answer to archers is a swarm | Decided: yes. In R1's clashes mono Sporeling beat mono Gill Nest 100% at every budget. It bites once `eliteShare` counts Elder parts (R2-Q3) | §7.4 | R1 |
+| 15 | **(closed 2026-11-02)** Do counter sets come from R1's clash matrix instead of damage types and tags? | Decided: no, by damage type and tag, with three fixes (§7.4). The clash matrix checks the sets | §7.4 (§11.11 points there) | R1 |
 | 16 | Does losing the boss battle end the run, or cost a life like any other battle? | It ends the run, as in v1 (D30) | §1.3 #2, §6.5, §8.5 | R2 |
 | 17 | A clean-win bonus: should a battle won with little or no Heartcap damage pay a bonus, such as extra Spores or a better pick, so a close call costs a bonus rather than health? | Not adopted | §1.3 #2, §6.5, §8.6 | R2 (its playtest) |
 | 18 | Sprawl: how many plots the colony gains, and when. Some relics or nodes may add plots | +1 per battle won, up to 4 more, as a third rank (D32) | §1.3 #4, §4.6, §8.6, §11.1 | R2 |
@@ -4175,7 +4181,7 @@ Items from 7 on are v2's, one row per question: each is a rule the user hasn't d
 | 33 | Does the battle-1 economy tip still help, now that the general plans first and can punish a greedy opener? | Keep it as it is | §10.2 | R2 (its playtest) |
 | 34 | Should the tools add `docs/archive/v1/ideas/rounds.md`'s second bot policy, "buy the answer to what you saw", and should the run guardrails (G14, G15) use it? | Bots plan by fixed weights | §12.2 | R2 |
 | 35 | The bands of G6's second clause and of G14–G16, and G6's 700-HP deficit | §12.3's numbers, set by R2's first full measurement and its playtest | §12.3 | R2 |
-| 36 | The sixth core archetype, and the core six as a whole, which the user wants to discuss further | The Burster Pod; the alternative is the Puffball Mortar as an emplacement (D44) | §1.3 #6, §11.2, §14.2, Appendix A | R3 (R1 measures both candidates) |
+| 36 | The sixth core archetype, and the core six as a whole, which the user wants to discuss further | The Burster Pod; the alternative is the Puffball Mortar as an emplacement (D44). R1's reading (2026-11-02): the Burster Pod, whose core six fails G3 on two monos, the Mortar's on four | §1.3 #6, §11.2, §14.2, Appendix A | R3 (R1 measured both candidates) |
 | 37 | Does an augment attach to a building type (all its copies) or to one card? | The type, for the run (D39) | §1.3 #7, §8.10, §11.13, §14.2 | R3 |
 | 38 | How many augments one building type may hold, and do merged units keep their squad's augments? | 2; yes | §11.13 | R3 |
 | 39 | Do damage-taken changes from augments and combos (`takenMult`) count toward a hit's effectiveness class, its hit sparks and matchup marks, as merge perks' resistances do? | Yes, so a flipped matchup shows as one | §14.2 | R3 |
@@ -4190,7 +4196,7 @@ Items from 7 on are v2's, one row per question: each is a rule the user hasn't d
 | 48 | Do the general's extra blueprints come only from the run's packs and the always-in set? | Yes, so a run without the Air pack meets no enemy Driftlings | §11.15 | R3 |
 | 49 | Does each general get its own weights for the Burster Pod and the other v2 cards? | No: weight 1 for any card its weights don't list, until tuning says otherwise | §11.11 | R3 |
 | 50 | Do plots from relics, traits and commanders (Mycelial Web, Root Pressure, Armilla) count toward the most plots a colony can hold? | Yes, so no source takes a colony past that limit or the performance budget | §11.7 | R3 |
-| 51 | What "mono" means for G3's and G12's mono bots once copies apply: how many copies of their card they hold | None yet | §12.3 | R3 |
+| 51 | What "mono" means for G3's and G12's mono bots once copies apply: how many copies of their card they hold | None yet. In R1's copies variants a capped mono filled its other plots by `bot:balanced`'s weights, so the builds converged and few answers cleared 60%: R3 should revisit how G12 reads a capped mono | §12.3 | R3 |
 | 52 | Does the shape language read at the field's scale in a 1280×720 window (2×, and about 1.78× on Twin Roots), or does a clash need a closer view? | It reads, with no closer view. The plan, agreed 2026-11-01: Twin Roots is the worst case, with a lineup capture of its own, and pips are at least 2 native px wide (units carry no weapon mark since 2026-11-01, §5.8) | §10.4 | R4 (R4b's playtest gate); R2's first playtest reads it first |
 | 53 | **(closed 2026-11-01)** Should a merged unit's body radius still grow ×1.25 per tier now that its sprite doesn't? | Decided: no. `tierRadiusMult` becomes 1.0, and R2 changes the data inside its first golden refresh. R4a, which moves no golden, leaves it | §5.6 | R4a's plan (S0) |
 | 54 | Does area damage get a matchup mark against crowds, since no body size is strong or weak against it? | No: the Burster's own silhouette and its burst are the cue (units carry no weapon mark, §5.8) | §5.8 | R4 |
@@ -4211,7 +4217,7 @@ Items from 7 on are v2's, one row per question: each is a rule the user hasn't d
 
 | Symptom | First knobs (all in data) |
 |---|---|
-| Battles run long, or too many reach round 9 | Damage per surviving supply (`heartcapDamagePerSupply`, 25), the round cap (`roundDamageCap`, 500), the Sporestorm's first round (5) and step (20%), the general's Heartcap (`heartcapEnemyHp`) |
+| Battles run long, or too many reach round 9 | Damage per surviving supply (`heartcapDamagePerSupply`, 25), the round cap (`roundDamageCapBp`, 25% of max HP), the Sporestorm's first round (5) and step (20%), the general's Heartcap (`heartcapEnemyHp`) |
 | A Heartcap falls in too few rounds | The round cap, damage per surviving supply, `siegeHeartcapMult` (2), both Heartcaps' HP |
 | Clashes stall at the 45 s cap | Area damage (the Burster, spore clouds, cleave), the gap between front ranks (`formationGapTiles`, 6), the clash cap (`clashCapSeconds`) |
 | Battles snowball, with no swing back | Comeback gold (`comebackGold`, +40), the round cap, `interestCap` |
@@ -4321,9 +4327,9 @@ Each row here follows from a decision of 2026-10-31, cited as §1.3 #N. Proposal
 | Waves on a 20 s beat | Spawns waited inside their building, and each lane's wave set out together on a shared beat | Retired (§1.3 #1, #11) | A round is the whole army in one wave, and nothing carries over. Waves felt like real time mixed with turns (F19) |
 | Hold under waves | A held lane kept its next wave home for one beat | Retired (§1.3 #11) | Nothing to group |
 | Call for help | Units within 5 tiles of an attacked friend took the attacker | Retired (§1.3 #11) | Its job was buildings shot with no answer; buildings aren't in a clash, and units already fight what's near them. It never had a visual |
-| Mixed-wave shields | A wave of 2 or more unit types set out with shields of 20% of each unit's max HP | Not adopted; R1 measures whether mixed armies need them (§1.3 #11, §18.2) | Under waves they carried the strict counter bar: without them, mono Sporeling's best answer fell from 85% to 47% ([combat-rework.md](docs/archive/v1/ideas/combat-rework.md#p1d-fewer-stalls-and-the-shields-carry-the-strict-bar)). Rounds give a mixed army information, another edge |
+| Mixed-wave shields | A wave of 2 or more unit types set out with shields of 20% of each unit's max HP | Adopted in clash form at R1's review gate (2026-11-02), as the arrival shield (§5.3, §18.2 #8) | Under waves they carried the strict counter bar: without them, mono Sporeling's best answer fell from 85% to 47% ([combat-rework.md](docs/archive/v1/ideas/combat-rework.md#p1d-fewer-stalls-and-the-shields-carry-the-strict-bar)). Rounds give a mixed army information, another edge |
 | Storm-grown waves | Each Sporestorm stack made waves 20% bigger | Retired with waves (§1.3 #1) | The storm raises round damage instead (§6.4) |
-| The Elder Sporeling's splash off | The swarm's Elder lost its splash | Measured in R1 (§1.3 #11, §18.2) | Under waves it was worth 9–18 points to the swarm, because waves doubled merges. Under rounds merges will be common too |
+| The Elder Sporeling's splash off | The swarm's Elder lost its splash | Not adopted: R1's review gate kept the splash (2026-11-02, §5.6, §18.2 #9) | Under waves it was worth 9–18 points to the swarm, because waves doubled merges. Under rounds merges will be common too |
 | Flyers (the Driftling and its Drift Stalk) | Floating units that held no ground, under rule C | Later, as an unlockable flyer, starting from rule C (§1.3 #11, §11.2) | A flyer army took over G3 (mono Drift Stalk 89%, 72% under rule C) |
 | The general's swarm read | A 1-supply unit's spawner read by its armor, merged or not | Simplified: the general reads the squads you fielded (§1.3 #11, §7.4) | Exact under rounds |
 
