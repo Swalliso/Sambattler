@@ -40,7 +40,10 @@ Updated 2026-11-01, on `docs/review-follow-ups` (a docs PR into `develop`). This
     - A clash takes about 3.3 ms, since `playClash` no longer hashes its final state. Verify green, no golden moved.
 - **Next: S5 and S6, side by side,** now that S4 has merged:
   - S5 (`feature/r1-variants`, T054, T055, T025–T031): first the fixes from S4's review (G12's untested monos, ties in #15's line, and G13's fields), then the four presets and every variant option;
-  - S6 (`feature/r1-race-bench`, T032–T039): the race model, the battle-1 pairings, the full colony and the bench case.
+  - S6 (`feature/r1-race-bench`, T032–T039): built, its PR into `develop` next. Verify green, no golden moved.
+    - `tools/lib/roundRace.ts` is the race model for X5. `--checks clash` now plays the G4 row (`--g4seeds`, default 50) and prints after G13 the cap-binding and drawn shares, then the race over the G4 case and G3's, the full colony and the overflow table.
+    - `--checks pairings` is battle 1's pairing table (R2-Q13), and `npm run bench` times the full-colony clash, report only. Twin Roots' full colony fields 192 units a side, over §13.7's 150; the one-lane field's 144 fits.
+    - It also fixed S4's `clashCache` count of a clash played for a slim record and then a full one.
 
   Then S7's runs and S8's review gate, in the order of the task list's Sessions table.
 - **R1's calls, agreed 2026-11-01:** every recommendation. They're dated in [clarify.md](tasks/clarify.md) and written into SPEC §16 R1 and §12.2.
