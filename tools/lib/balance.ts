@@ -9,8 +9,8 @@ import { COUNTER_KINDS, SIDES, buildLibrary, counterKindsOf, counterSets, create
 import type { BattleConfig, BattleState, CounterKind, Side, Tier } from '../../src/sim/index.ts';
 import { buildingDef } from '../../src/sim/world.ts';
 import { mapPool, simulateRun } from '../../src/run/index.ts';
-import { CLASH, MIRROR_SEED, armyFromBot, clashArmyIds, clashField, clashOpts } from './clash.ts';
-import type { Army, ArmyEntry, ClashField, ClashJob, ClashOpts, ClashRecord, FieldId, Reading } from './clash.ts';
+import { CLASH, MIRROR_SEED, armyFromBot, clashArmyIds, clashField, clashOpts, squadSize } from './clash.ts';
+import type { Army, ArmyEntry, ArmyOpts, ClashField, ClashJob, ClashOpts, ClashRecord, FieldId, Reading, SquadOpts } from './clash.ts';
 import { rosterIds } from './roster.ts';
 import { median, runBattle } from './run.ts';
 
@@ -767,8 +767,14 @@ export async function evaluateCounters(content: Content, opts: CounterOptions = 
  * 9; the one-lane field and Twin Roots; the counter matrix's seeds, 20 a seat for a screen; and the
  * answers the clash matrix lists per budget. The pass rules are `COUNTERS`'s and G3's targets.
  */
-export const CLASH_CHECK: typeof COUNTERS & { budgets: readonly number[]; fields: readonly FieldId[]; matrixAnswers: number } = {
+export const CLASH_CHECK: typeof COUNTERS & {
+  budgets: readonly number[]; fields: readonly FieldId[]; matrixAnswers: number; extraPlotsFrom: number; mirrorSeeds: number;
+} = {
   ...COUNTERS, screenSeeds: 20, budgets: [300, 600, 900, 1200, 1500], fields: ['one', 'twin'], matrixAnswers: 3,
+  // R1-Q4's late-run reading: the extra plots at 1,200 and 1,500 gold
+  extraPlotsFrom: 1200,
+  // the merge mirror's seeds per seat (T030)
+  mirrorSeeds: 20,
 };
 
 /** Plays clashes and returns their records in job order (tools/lib/pool.ts plays them in worker threads). */
@@ -782,7 +788,12 @@ export interface Cell {
   budget: number;
   seed: number;
   seat: Side;
+  /** `b`'s army is `a`'s own, built on the same seed, with merging off: the merge mirror's twin (T030). */
+  twin?: true;
 }
+
+/** The controller name a merge-off twin plays under in the records. */
+export const twinName = (controller: string): string => `${controller} (merging off)`;
 
 /**
  * A cell's record as the bars read it: where and when it played, who played it, and its two readings. A
@@ -795,8 +806,12 @@ export type CellRecord = Pick<ClashRecord, 'field' | 'budget' | 'seed' | 'seat' 
 export interface ClashCacheOptions {
   /** Up to ± this many tiles per unit per axis after the muster (default 0, which draws nothing). */
   jitter?: number;
-  /** The clashes' options, the same for every clash (A017). */
+  /** The clashes' options, the same for every clash but the extra plots (A017). */
   opts?: ClashOpts;
+  /** The least budget `opts.extraPlots` applies at; below it a side has the base plots (default 0, every budget; R1-Q4). */
+  extraPlotsFrom?: number;
+  /** The armies' squads and copies, the same for every army (§16 R1's variants). */
+  army?: ArmyOpts;
   /** Keep every record played, for the report (`--records`). */
   keep?: boolean;
 }
@@ -827,20 +842,24 @@ function armyPrint(army: Army): string {
 }
 
 /** The controller a cell's army on `side` comes from. */
-const controllerOn = (c: Cell, side: Side): string => (side === c.seat ? c.a : c.b);
+const controllerOn = (c: Cell, side: Side): string => (side === c.seat ? c.a : c.twin ? twinName(c.b) : c.b);
 
 /**
  * The check's clashes, each distinct one played once (A007). Every army is built in this thread. A clash
- * is its field, its seat and the two armies' fingerprints, and its seed when the jitter is on. With no
- * jitter a clash draws no random number (the sim's draws are the AI's and the spawners', and a clash has
- * neither), so a fixed pair of armies plays the same clash on every seed and budget. A mirror's second
- * army is built on seed 1,000 + s, as `playPair` builds it.
+ * is its field, its extra plots, its seat and the two armies' fingerprints, and its seed when the jitter
+ * is on. With no jitter a clash draws no random number (the sim's draws are the AI's and the spawners',
+ * and a clash has neither; `playClash` checks it), so a fixed pair of armies plays the same clash on every
+ * seed and budget. A mirror's second army is built on seed 1,000 + s, as `playPair` builds it, and a twin
+ * cell's is the first army with merging off. The extra plots vary by budget (`extraPlotsFrom`), and they
+ * can move squads even for the same army, so both the army key and the clash key hold them (T031).
  */
 export function clashCache(content: Content, runner: ClashRunner, o: ClashCacheOptions = {}): ClashCache {
   const jitter = o.jitter ?? 0;
   const opts = clashOpts(o.opts);
-  const fields = new Map<FieldId, ClashField>();
+  const extraAt = (budget: number): number => (budget >= (o.extraPlotsFrom ?? 0) ? opts.extraPlots : 0);
+  const fields = new Map<string, ClashField>();
   const armies = new Map<string, Army>();
+  const twins = new WeakMap<Army, Army>();
   // each distinct fingerprint as a small number, so a long check's keys stay short
   const printIds = new Map<string, number>();
   const done = new Map<string, Pick<ClashRecord, 'cap' | 'capAfterMuster'> & { record?: ClashRecord }>();
@@ -848,18 +867,27 @@ export function clashCache(content: Content, runner: ClashRunner, o: ClashCacheO
   let asked = 0, played = 0;
 
   const army = (controller: string, budget: number, seed: number, id: FieldId): Army => {
-    const key = `${controller}|${budget}|${seed}|${id}`;
+    const extra = extraAt(budget);
+    const key = `${controller}|${budget}|${seed}|${id}|${extra}`;
     let a = armies.get(key);
     if (!a) {
-      let field = fields.get(id);
-      if (!field) fields.set(id, (field = clashField(content, id, { extraPlots: opts.extraPlots })));
-      armies.set(key, (a = armyFromBot(content, controller, budget, seed, field.plots)));
+      let field = fields.get(`${id}|${extra}`);
+      if (!field) fields.set(`${id}|${extra}`, (field = clashField(content, id, { extraPlots: extra })));
+      armies.set(key, (a = armyFromBot(content, controller, budget, seed, field.plots, o.army)));
     }
     return a;
   };
+  const twinOf = (a: Army): Army => {
+    let t = twins.get(a);
+    if (!t) twins.set(a, (t = { ...a, controller: twinName(a.controller), entries: a.entries.map((e) => (e.kind === 'squad' ? { ...e, mergeOn: false } : e)) }));
+    return t;
+  };
   const jobOf = (c: Cell): ClashJob => ({
-    field: c.field, seed: c.seed, seat: c.seat, jitter, opts,
-    armies: [army(c.a, c.budget, c.seed, c.field), army(c.b, c.budget, c.a === c.b ? MIRROR_SEED + c.seed : c.seed, c.field)],
+    field: c.field, seed: c.seed, seat: c.seat, jitter, opts: { ...opts, extraPlots: extraAt(c.budget) },
+    armies: [
+      army(c.a, c.budget, c.seed, c.field),
+      c.twin ? twinOf(army(c.b, c.budget, c.seed, c.field)) : army(c.b, c.budget, c.a === c.b ? MIRROR_SEED + c.seed : c.seed, c.field),
+    ],
   });
   const printId = (a: Army): number => {
     const p = armyPrint(a);
@@ -867,7 +895,7 @@ export function clashCache(content: Content, runner: ClashRunner, o: ClashCacheO
     if (n === undefined) printIds.set(p, (n = printIds.size));
     return n;
   };
-  const keyOf = (j: ClashJob): string => `${j.field}|${j.seat}|${printId(j.armies[0])}|${printId(j.armies[1])}|${jitter > 0 ? j.seed : ''}`;
+  const keyOf = (j: ClashJob): string => `${j.field}|${j.opts!.extraPlots}|${j.seat}|${printId(j.armies[0])}|${printId(j.armies[1])}|${jitter > 0 ? j.seed : ''}`;
 
   /** Each cell's clash, playing the ones not played yet (or, for a full record, not kept yet). */
   async function play(cells: readonly Cell[], full: boolean) {
@@ -1029,6 +1057,8 @@ export interface ClashG3Options {
   fields?: readonly FieldId[];
   /** Seeds per seat (default G3's). */
   seeds?: number;
+  /** The reference army (default `bot:balanced`; the core-six check's is `bot:core6`, R1-Q6). */
+  defender?: string;
 }
 
 export type ClashG3Verdict = Verdict & {
@@ -1036,6 +1066,12 @@ export type ClashG3Verdict = Verdict & {
   budgets: number[];
   fields: FieldId[];
   seeds: number;
+  /** The reference army the monos play. */
+  defender: string;
+  /** `bot:balanced` with `fixedWeights` set (A023): the spawners a spec appends don't join it. */
+  reference?: 'data weights';
+  /** The builds whose card a spec appended (its building carries `aiWeight`), listed apart on a fixed reference. */
+  appended: string[];
   /** Each mono's armies and `bot:balanced`'s, per field and budget. */
   armies: ClashArmies[];
   /** Every cell's record, by build, field, budget, seed, then seat. */
@@ -1050,16 +1086,20 @@ const G3_DEFENDER = 'bot:balanced';
  * in both seats, seeds 1 to n. A build passes if its rate, pooled over the budgets, has a mean over the
  * fields of at most `maxMeanWinRate` (55%), with the one-lane field counted twice, and a worst field of at
  * most `maxMapWinRate` (60%). A budget over either while the pool passes is flagged, so a build that
- * dominates only early or only late shows.
+ * dominates only early or only late shows. On a fixed reference (`bot.balanced.fixedWeights:true`, A023)
+ * the report says so and lists the monos of the spawners a spec appended apart.
  */
 export async function evaluateClashG3(content: Content, o: ClashG3Options): Promise<ClashG3Verdict> {
   const t = content.targets.G3;
   const ids = o.ids ?? clashArmyIds(content);
+  const defender = o.defender ?? G3_DEFENDER;
+  const fixed = defender === G3_DEFENDER && !!content.bots.balanced?.fixedWeights;
+  const appended = ids.filter((id) => content.buildings[id]?.aiWeight !== undefined);
   const budgets = [...(o.budgets ?? CLASH_CHECK.budgets)], fields = [...(o.fields ?? CLASH_CHECK.fields)], seeds = o.seeds ?? t.seeds;
   const counted = countedFields(fields);
   const cells: Cell[] = [];
   for (const id of ids) for (const field of fields) for (const budget of budgets) {
-    for (let seed = 1; seed <= seeds; seed++) for (const seat of SIDES) cells.push({ a: `bot:mono:${id}`, b: G3_DEFENDER, field, budget, seed, seat });
+    for (let seed = 1; seed <= seeds; seed++) for (const seat of SIDES) cells.push({ a: `bot:mono:${id}`, b: defender, field, budget, seed, seat });
   }
   const records = await o.cache.full(cells);
   const per = fields.length * budgets.length * seeds * 2;
@@ -1071,7 +1111,7 @@ export async function evaluateClashG3(content: Content, o: ClashG3Options): Prom
     return { id, budgets: at, fields: all, ...read, pass: read.mean <= t.maxMeanWinRate && read.worst <= t.maxMapWinRate };
   });
 
-  const armies = [...ids.map((id) => `bot:mono:${id}`), G3_DEFENDER].flatMap((controller) => fields.flatMap((field) => budgets.map((budget): ClashArmies => {
+  const armies = [...ids.map((id) => `bot:mono:${id}`), defender].flatMap((controller) => fields.flatMap((field) => budgets.map((budget): ClashArmies => {
     const all = Array.from({ length: seeds }, (_, s) => o.cache.army(controller, budget, s + 1, field));
     const first = all[0]!;
     const mean = (f: (a: Army) => number) => all.reduce((n, a) => n + f(a), 0) / all.length;
@@ -1086,10 +1126,13 @@ export async function evaluateClashG3(content: Content, o: ClashG3Options): Prom
   const col = (xs: number[]) => xs.map((x) => whole(x).padStart(7)).join('');
   const fieldName = (f: string) => (counted.includes(f as FieldId) ? f : `${f}*`).padEnd(5);
   const details = [
-    `mono win % against ${G3_DEFENDER}'s army with the same gold (a draw half), ${2 * seeds} games per field and budget (both seats). Limits: mean ≤${pct(t.maxMeanWinRate)} (the one-lane field twice), worst field ≤${pct(t.maxMapWinRate)}, pooled over the budgets`,
+    `mono win % against ${defender}'s army with the same gold (a draw half), ${2 * seeds} games per field and budget (both seats). Limits: mean ≤${pct(t.maxMeanWinRate)} (the one-lane field twice), worst field ≤${pct(t.maxMapWinRate)}, pooled over the budgets`,
+    ...(fixed ? [`     the reference on its data weights (bot.balanced.fixedWeights, A023): the spawners the spec appends don't join it`] : []),
     `     ${'build'.padEnd(idWidth)}  field${[...budgets.map(String), 'pooled'].map((h) => h.padStart(7)).join('')}`,
   ];
-  for (const b of bots) {
+  const apart = fixed ? bots.filter((b) => appended.includes(b.id)) : [];
+  for (const b of [...bots.filter((x) => !apart.includes(x)), ...apart]) {
+    if (b === apart[0]) details.push(`     the monos of the spawners the spec appended, against the reference on its data weights (A023):`);
     fields.forEach((f, k) => {
       const lead = k === 0 ? `${b.pass ? 'ok  ' : 'FAIL'} ${b.id.padEnd(idWidth)}` : `     ${''.padEnd(idWidth)}`;
       details.push(`${lead}  ${fieldName(f)}${col([...b.budgets.map((x) => x.fields[f]!.rate), b.fields[f]!.rate])}`);
@@ -1101,8 +1144,8 @@ export async function evaluateClashG3(content: Content, o: ClashG3Options): Prom
   }
   if (fields.some((f) => !counted.includes(f))) details.push('* a lead (the three-lane screen): outside the mean and the worst field');
   return {
-    id: 'clash G3', pass: bots.every((b) => b.pass), bots, budgets, fields, seeds, armies, records,
-    summary: `every mono army against ${G3_DEFENDER}'s with the same gold, in clashes (both seats): mean ≤${pct(t.maxMeanWinRate)} over the fields, the one-lane field twice, and worst field ≤${pct(t.maxMapWinRate)}, pooled over the budgets`,
+    id: 'clash G3', pass: bots.every((b) => b.pass), bots, budgets, fields, seeds, defender, ...(fixed ? { reference: 'data weights' as const } : {}), appended, armies, records,
+    summary: `every mono army against ${defender}'s with the same gold, in clashes (both seats): mean ≤${pct(t.maxMeanWinRate)} over the fields, the one-lane field twice, and worst field ≤${pct(t.maxMapWinRate)}, pooled over the budgets`,
     details,
   };
 }
@@ -1333,6 +1376,200 @@ export async function evaluateClashCounters(content: Content, o: ClashCounterOpt
     summary: `the strict counter bar on clashes: every mono build with a clash G3 mean above ${pct(c.minBuildMean)} has an answer that wins ≥${pct(c.minAnswerRate)} on its worst field, among answers that pass clash G3`,
     details,
   };
+}
+
+// ---------------------------------------------------------------- R1's variants on the bars (T030)
+
+/**
+ * §11.4's intended counter graph for the core six, each archetype's row by its building: what it beats and
+ * what it loses to. The Puffball Mortar has no row, so the core-six check reports what it measures for it.
+ */
+export const CORE6_GRAPH: Record<string, { beats: string[]; losesTo: string[] }> = {
+  sporelingBurrow: { beats: ['gillNest', 'hammercapForge'], losesTo: ['capguardHall', 'amanitaLodge', 'bursterPod'] },
+  capguardHall: { beats: ['sporelingBurrow'], losesTo: ['gillNest', 'amanitaLodge'] },
+  gillNest: { beats: ['capguardHall', 'hammercapForge'], losesTo: ['sporelingBurrow', 'amanitaLodge'] },
+  amanitaLodge: { beats: ['sporelingBurrow', 'capguardHall', 'gillNest'], losesTo: ['hammercapForge'] },
+  hammercapForge: { beats: ['amanitaLodge'], losesTo: ['sporelingBurrow', 'gillNest'] },
+  bursterPod: { beats: ['sporelingBurrow'], losesTo: ['gillNest'] },
+};
+
+/** The six a core-six check plays: the five core spawners and the candidate (R1-Q6). */
+export const core6Ids = (candidate: string): string[] => [...CORE_SPAWNERS, candidate];
+
+/**
+ * The core-six check's answers (R1-Q6): the six's monos, their 15 even pairs (the counter check's pair
+ * bots) and `bot:core6`. Content must hold the bots from `counterBotSpec` and `core6Spec`.
+ */
+export function core6Answers(content: Content, candidate: string): string[] {
+  const six = core6Ids(candidate);
+  const pairs: string[] = [];
+  for (let i = 0; i < six.length; i++) for (let j = i + 1; j < six.length; j++) {
+    const id = [`pair-${six[i]}-${six[j]}`, `pair-${six[j]}-${six[i]}`].find((p) => content.bots[p]);
+    if (!id) throw new Error(`core six: no pair bot for ${six[i]} and ${six[j]} (build the content with counterBotSpec)`);
+    pairs.push(`bot:${id}`);
+  }
+  if (!content.bots.core6) throw new Error('core six: bot:core6 is missing (append core6Spec)');
+  return [...six.map((id) => `bot:mono:${id}`), ...pairs, 'bot:core6'];
+}
+
+/** One directed edge between two of the six: the winner's mono's clash win rate against the loser's (a draw half). */
+export interface GraphEdge {
+  winner: string;
+  loser: string;
+  /** In §11.4's graph, or only measured (an edge of the Mortar's row, at 60% or more). */
+  intended: boolean;
+  /** Per budget: the mean over the fields, the one-lane field twice. */
+  budgets: { budget: number; rate: number }[];
+  /** Pooled over the budgets. */
+  rate: number;
+}
+
+export interface Core6GraphOptions {
+  cache: ClashCache;
+  candidate: string;
+  budgets?: readonly number[];
+  fields?: readonly FieldId[];
+  /** Seeds per seat (default the screen's 20, so the screen's cells are shared). */
+  seeds?: number;
+}
+
+/**
+ * §11.4's intended graph on clashes (R1-Q6, A011): every two of the six's monos play, in both seats, and
+ * each of the graph's edges reads as its winner's rate per budget. A candidate with no row (the Mortar)
+ * gets its measured one instead: what it beats, and what beats it, at 60% or more. Report only.
+ */
+export async function evaluateCore6Graph(content: Content, o: Core6GraphOptions): Promise<{ edges: GraphEdge[]; records: CellRecord[]; lines: string[] }> {
+  const budgets = [...(o.budgets ?? CLASH_CHECK.budgets)], fields = [...(o.fields ?? CLASH_CHECK.fields)], seeds = o.seeds ?? CLASH_CHECK.screenSeeds;
+  const counted = countedFields(fields);
+  const six = core6Ids(o.candidate);
+  const pairs: [string, string][] = [];
+  for (let i = 0; i < six.length; i++) for (let j = i + 1; j < six.length; j++) pairs.push([six[i]!, six[j]!]);
+  const cells: Cell[] = [];
+  for (const [a, b] of pairs) for (const field of fields) for (const budget of budgets) {
+    for (let seed = 1; seed <= seeds; seed++) for (const seat of SIDES) cells.push({ a: `bot:mono:${a}`, b: `bot:mono:${b}`, field, budget, seed, seat });
+  }
+  const records = await o.cache.slim(cells);
+  const per = fields.length * budgets.length * seeds * 2;
+  // a pair's cells read from either side: the second mono's results are the first's complement
+  const read = new Map<string, ReturnType<typeof byBudget>>();
+  pairs.forEach(([a, b], i) => {
+    const mine = records.slice(i * per, (i + 1) * per);
+    read.set(`${a}>${b}`, byBudget(mine, 'a', budgets, fields, 'lowest'));
+    read.set(`${b}>${a}`, byBudget(mine, 'b', budgets, fields, 'lowest'));
+  });
+  const edge = (winner: string, loser: string, intended: boolean): GraphEdge => {
+    const at = read.get(`${winner}>${loser}`)!;
+    return { winner, loser, intended, budgets: at.map((x) => ({ budget: x.budget, rate: x.mean })), rate: overFields(pooled(at, fields), counted, 'lowest').mean };
+  };
+  const edges: GraphEdge[] = [];
+  const have = (w: string, l: string) => edges.some((e) => e.winner === w && e.loser === l);
+  for (const id of six) {
+    const row = CORE6_GRAPH[id];
+    for (const x of row?.beats ?? []) if (six.includes(x) && !have(id, x)) edges.push(edge(id, x, true));
+    for (const x of row?.losesTo ?? []) if (six.includes(x) && !have(x, id)) edges.push(edge(x, id, true));
+  }
+  if (!CORE6_GRAPH[o.candidate]) {
+    for (const x of six) {
+      if (x === o.candidate) continue;
+      for (const [w, l] of [[o.candidate, x], [x, o.candidate]] as const) {
+        const e = edge(w, l, false);
+        if (e.rate >= CLASH_CHECK.minAnswerRate) edges.push(e);
+      }
+    }
+  }
+  const name = (id: string) => content.buildings[id]?.name ?? id;
+  const mark = (r: number) => (r >= CLASH_CHECK.minAnswerRate ? ' ✓' : r < 0.5 ? ' ✗' : '');
+  const show = (e: GraphEdge, other: string) => `${name(other)} ${whole(e.rate)}${mark(e.rate)} (${e.budgets.map((b) => `${b.budget} ${whole(b.rate)}`).join(' · ')})`;
+  const lines = [
+    `core six with ${name(o.candidate)} (R1-Q6): §11.4's intended graph on clashes, each edge as its winner's win % against the loser's mono (a draw half), pooled and per budget; ✓ at ≥${pct(CLASH_CHECK.minAnswerRate)}, ✗ under 50%`,
+  ];
+  for (const id of six) {
+    const beats = edges.filter((e) => e.winner === id), loses = edges.filter((e) => e.loser === id);
+    const head = CORE6_GRAPH[id] ? name(id) : `${name(id)} (no row in §11.4, measured at ≥${pct(CLASH_CHECK.minAnswerRate)})`;
+    lines.push(`    ${head}: beats ${beats.map((e) => show(e, e.loser)).join(', ') || '–'}; loses to ${loses.map((e) => show(e, e.winner)).join(', ') || '–'}`);
+  }
+  return { edges, records, lines };
+}
+
+/** A controller's merge mirror: its army, merging on, against its own twin with merging off. */
+export interface MirrorRow {
+  controller: string;
+  /** The merge-on side's results per budget: the score on each field, their mean and the worst field. */
+  budgets: { budget: number; fields: FieldScores; mean: number; worst: number; worstField: FieldId }[];
+  fields: FieldScores;
+  mean: number;
+  /** Inside G7's band for the merge-on side (55–70%), report only. */
+  inBand: boolean;
+}
+
+/**
+ * The merge mirror (§12.3 G7 in round form, for #9; A015): every G3 build and the reference against its
+ * own army with merging off, built on the same seed, on G3's budgets and fields, both seats. Report only:
+ * each merge-on side's rate beside G7's band.
+ */
+export async function evaluateMergeMirror(content: Content, o: { cache: ClashCache; g3: ClashG3Verdict; seeds?: number }): Promise<{ rows: MirrorRow[]; records: CellRecord[]; lines: string[] }> {
+  const band = content.targets.G7.mirror;
+  const { budgets, fields } = o.g3;
+  const counted = countedFields(fields);
+  const seeds = o.seeds ?? CLASH_CHECK.mirrorSeeds;
+  const controllers = [...o.g3.bots.map((b) => `bot:mono:${b.id}`), o.g3.defender];
+  const cells: Cell[] = [];
+  for (const c of controllers) for (const field of fields) for (const budget of budgets) {
+    for (let seed = 1; seed <= seeds; seed++) for (const seat of SIDES) cells.push({ a: c, b: c, field, budget, seed, seat, twin: true });
+  }
+  const records = await o.cache.slim(cells);
+  const per = fields.length * budgets.length * seeds * 2;
+  const rows = controllers.map((controller, i): MirrorRow => {
+    const at = byBudget(records.slice(i * per, (i + 1) * per), 'a', budgets, fields, 'lowest');
+    const all = pooled(at, fields);
+    const { mean } = overFields(all, counted, 'lowest');
+    return { controller, budgets: at, fields: all, mean, inBand: mean >= band.minWinRate && mean <= band.maxWinRate };
+  });
+  const width = Math.max(10, ...controllers.map((c) => c.length));
+  const lines = [
+    `merge mirror (G7's round form, #9): each army, merging on, against its own twin with merging off, ${2 * seeds} games per field and budget; the merge-on side's win % (a draw half), its mean over the fields (the one-lane field twice), against G7's ${pct(band.minWinRate)}–${pct(band.maxWinRate)} (report only)`,
+    `    ${'army'.padEnd(width)}${[...budgets.map(String), 'pooled'].map((h) => h.padStart(7)).join('')}`,
+    ...rows.map((r) => `    ${r.controller.padEnd(width)}${[...r.budgets.map((b) => b.mean), r.mean].map((x) => whole(x).padStart(7)).join('')}${r.inBand ? '' : `  outside ${pct(band.minWinRate)}–${pct(band.maxWinRate)}`}`),
+  ];
+  return { rows, records, lines };
+}
+
+/** A spawner's squad and §11.4's value for it, under some squad options. */
+export interface SquadRow {
+  buildingId: string;
+  squad: number;
+  /** §11.4's role factor; undefined where the heuristic can't value the unit (the Burster, the Tender). */
+  roleFactor?: number;
+  perGold?: number;
+  perPlot?: number;
+}
+
+/**
+ * The squad table (§11.4, A010): each army card's spawner, its squad under these options and its value,
+ * `squad × sqrt(HP × DPS) × roleFactor` per plot and that over the cost per gold, at tier 1. §11.4's role
+ * factors: ranged 1.6, splash and cleave 1.4, siege 1.3, slayer 1.2, other 1.0.
+ */
+export function squadTable(content: Content, opts: SquadOpts = {}): SquadRow[] {
+  return clashArmyIds(content).filter((id) => content.buildings[id]!.spawn).map((id): SquadRow => {
+    const b = content.buildings[id]!, u = content.units[b.spawn!.unit]!;
+    const squad = squadSize(content, id, opts);
+    // what the heuristic can't value (§11.4): the Burster's one burst, the Tender's heals
+    if (u.tags.includes('burst') || u.tags.includes('support')) return { buildingId: id, squad };
+    const roleFactor = u.tags.includes('ranged') ? 1.6 : (u.splashRadius ?? 0) > 0 ? 1.4 : u.tags.includes('siege') ? 1.3 : u.tags.includes('slayer') ? 1.2 : 1;
+    const perPlot = squad * Math.sqrt(u.hp * (u.damage / u.attackInterval)) * roleFactor;
+    return { buildingId: id, squad, roleFactor, perGold: perPlot / b.cost, perPlot };
+  });
+}
+
+/** The squad table as the clash report prints it. */
+export function squadLines(content: Content, opts: SquadOpts = {}): string[] {
+  const rows = squadTable(content, opts);
+  const width = Math.max(8, ...rows.map((r) => r.buildingId.length));
+  return [
+    "squads and §11.4's value under this run's squad options: squad × sqrt(HP × DPS) × role factor, per plot and per gold (target 1.45 ± 0.15 per gold)",
+    ...rows.map((r) => `    ${r.buildingId.padEnd(width)} ${String(r.squad).padStart(3)}   ${r.roleFactor === undefined ? '  –' : `×${r.roleFactor.toFixed(1)}`}`
+      + `   ${r.perGold === undefined ? '–' : `${r.perGold.toFixed(2)} a gold, ${Math.round(r.perPlot!)} a plot`}`),
+  ];
 }
 
 /** A set of clashes read one way: how many, how many reached the cap and that share, and the median length. */
