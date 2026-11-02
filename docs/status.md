@@ -30,7 +30,11 @@ Updated 2026-11-02, on `docs/r2a-s4` (the hub's docs PR into `develop`). This is
 ## Next session: R2a S5
 
 - **Work from** [docs/tasks/r2a-battle-in-rounds.md](tasks/r2a-battle-in-rounds.md).
-  - **S5** (`feature/r2a-combat`, T035–T041): v1's kept combat rules copied into `src/sim/rounds/` and stripped (world, targets, spatial, hits, and targeting, movement, combat, merging, healing and clouds), with v2's §5.2 as the rule, and emplacements compiled and fielded. It starts Phase 3 (US1). Its gate (S4 merged) is met, and it started on 2026-11-02.
+  - **S5** (`feature/r2a-combat`, T035–T041, [#78](https://github.com/Swalliso/Sambattler/pull/78)): built, and waiting for the hub's review. It starts Phase 3 (US1).
+    - `src/sim/rounds/` holds copies of v1's `world.ts`, `targets.ts`, `spatial.ts` and `hits.ts`, and `systems/` its targeting, movement, combat, merging, healing and clouds. They're typed on rounds' state and stripped as T036–T040 list, with v2's §5.2 as the rule (Call 20). Flyers' inert checks went too, since rounds have no `flying` rule yet.
+    - Emplacements fire from their centre within their band, never move in separation, pin nothing, never merge and are never healed. Clouds, bursts and the Spore Burst's strike hit them. S2 and S3a had already compiled and fielded them, and T041 checked that.
+    - `UnitState.slotY` (v1's `spawnY`, for §5.2's drift) differs from §14.4's listing, for S20's As built.
+    - `tests/unit/rounds/combat.test.ts` (33 cases) runs the kept systems in §14.6's order until T045 wires them. Verify and the browser tests are green, and no golden moved.
 - Then S6, once S5 has merged.
 
 ## R2a, a battle in rounds
