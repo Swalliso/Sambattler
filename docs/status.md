@@ -1,6 +1,6 @@
 # Where things stand
 
-Updated 2026-11-01, on `docs/review-follow-ups` (a docs PR into `develop`). This is the hand-over page. It covers what we're working on, what's waiting on the user's decision, and where each piece lives. Update it when work lands or the user decides something. Keep the detail in the docs it links to.
+Updated 2026-11-01, on `docs/hub-after-wave-3` (a docs PR into `develop`). This is the hand-over page. It covers what we're working on, what's waiting on the user's decision, and where each piece lives. Update it when work lands or the user decides something. Keep the detail in the docs it links to.
 
 ## In short
 
@@ -27,7 +27,7 @@ Updated 2026-11-01, on `docs/review-follow-ups` (a docs PR into `develop`). This
 
   [docs/tasks/README.md](tasks/README.md) has the full order and every milestone's sessions.
 
-## Next session: R1 S5 and S6
+## Next session: R1 S7, R1's runs
 
 - **Work from** [docs/tasks/r1-clash-check.md](tasks/r1-clash-check.md) and follow [docs/tasks/README.md](tasks/README.md#running-a-session). So far:
   - **S1** (`feature/r1-formation`, T003–T006): merged ([#46](https://github.com/Swalliso/Sambattler/pull/46)). `src/sim/formation.ts` holds the slot layout (`formationBox`, `slotPositions`, `emplacementPosition`, `overflows`, `slotGrid`) and the muster's knitting (`findTrios`, `musterKnits`), as pure functions that R2 reuses. A test checks that the muster agrees with the sim's merging;
@@ -38,14 +38,14 @@ Updated 2026-11-01, on `docs/review-follow-ups` (a docs PR into `develop`). This
     - The clash jobs run on the worker pool, and each distinct clash plays once (`clashCache`).
     - `npm run experiment -- --checks clash` plays clash G3, the strict counter matrix (G12) with the clash matrix for #14 and #15, and G13, each per budget beside the pooled result.
     - A clash takes about 3.3 ms, since `playClash` no longer hashes its final state. Verify green, no golden moved.
-- **Next: S5 and S6, side by side,** now that S4 has merged:
-  - S5 (`feature/r1-variants`, T054, T055, T025–T031): built, in a PR into `develop` for review. First the fixes from S4's review: clash G3 plays every mono, so G12 counts no untested one; #15's line counts the answers tied for the best; G13 counts only the counted fields; and the guards. Then the presets `kept`, `noeldersplash`, `clashpace` and `clashshield`, and every variant option of `--checks clash`: squads, copies, the core-six check, the merge mirror, extra plots, the lanes rule and the v1 switches, with §11.4's squad table. Verify green, no golden moved;
-  - S6 (`feature/r1-race-bench`, T032–T039): built, its PR into `develop` next. Verify green, no golden moved.
+- **S5 and S6** ran side by side after S4:
+  - S5 (`feature/r1-variants`, T054, T055, T025–T031): merged ([#60](https://github.com/Swalliso/Sambattler/pull/60)). First the fixes from S4's review: clash G3 plays every mono, so G12 counts no untested one; #15's line counts the answers tied for the best; G13 counts only the counted fields; and the guards. Then the presets `kept`, `noeldersplash`, `clashpace` and `clashshield`, and every variant option of `--checks clash`: squads, copies, the core-six check, the merge mirror, extra plots, the lanes rule and the v1 switches, with §11.4's squad table. Verify green, no golden moved;
+  - S6 (`feature/r1-race-bench`, T032–T039): merged ([#59](https://github.com/Swalliso/Sambattler/pull/59)). Verify green, no golden moved.
     - `tools/lib/roundRace.ts` is the race model for X5. `--checks clash` now plays the G4 row (`--g4seeds`, default 50) and prints after G13 the cap-binding and drawn shares, then the race over the G4 case and G3's, the full colony and the overflow table.
     - `--checks pairings` is battle 1's pairing table (R2-Q13), and `npm run bench` times the full-colony clash, report only. Twin Roots' full colony fields 192 units a side, over §13.7's 150; the one-lane field's 144 fits.
     - It also fixed S4's `clashCache` count of a clash played for a slim record and then a full one.
 
-  Then S7's runs and S8's review gate, in the order of the task list's Sessions table.
+- **Next: S7, R1's runs** (`feature/r1-results`, T040–T048, T052): about 40 runs in the background, then R1's entry in `docs/balance-backlog.md`, the plan's As built and SPEC §15's tool docs. It starts on your OK, since the runs are a long background job. Then S8, R1's review gate, where you make the calls R2a needs.
 - **R1's calls, agreed 2026-11-01:** every recommendation. They're dated in [clarify.md](tasks/clarify.md) and written into SPEC §16 R1 and §12.2.
   - R1-Q1, where squads stand: §7.3's tags set the line, files fill centre-out, and on Twin Roots each building goes to the lane with fewer of its line.
   - R1-Q2, spending: economy and utility cards are filtered out, a pick that doesn't fit is skipped, and each army has its own stream.
@@ -65,8 +65,8 @@ Updated 2026-11-01, on `docs/review-follow-ups` (a docs PR into `develop`). This
       - **No weapon marks on units** (the user, 2026-11-01, at the sheet's review; SPEC §5.8): no unit or emplacement carries one, now or later. `data/sprites/marks.json` and the shape block's mark fields are gone, and a block that names a mark fails to load. A unit's damage type shows in its silhouette, the hit sparks, the matchup marks on cards and the planning screen, and the inspect panel.
       - **The silhouette sheet,** `docs/r4a-silhouettes.json`, was redrawn without marks and **approved by the user as drawn** (T026). The record is in [r4a-plan.md](r4a-plan.md#the-approved-silhouette-sheet-t026-2026-11-01).
       - Verify green, no golden moved.
-    - **R4a-S3** (`feature/r4a-core-sprites`, R4/T027–T029): built, its PR waits for review. The core six (the Sporeling, Capguard, Gill Archer, Amanita Knight, Hammercap and Burster) are redrawn from the approved sheet, three frames each, with shape blocks, and `units.json` has the bands. `e-puffballMortar` is the Mortar's emplacement, and the registry requires one for every tower with an attack; `emplacementSprite()` finds it. Verify green, no golden moved.
-    - **Next: R4a-S4** (`feature/r4a-roster-sprites`, R4/T030–T032), once S3 merges: the other seven redrawn, and a shape required on every unit sprite. Then S5, in the order of [the task list](tasks/r4-readable-armies.md)'s Sessions table, still beside R1.
+    - **R4a-S3** (`feature/r4a-core-sprites`, R4/T027–T029): merged ([#58](https://github.com/Swalliso/Sambattler/pull/58)). The core six (the Sporeling, Capguard, Gill Archer, Amanita Knight, Hammercap and Burster) are redrawn from the approved sheet, three frames each, with shape blocks, and `units.json` has the bands. `e-puffballMortar` is the Mortar's emplacement, and the registry requires one for every tower with an attack; `emplacementSprite()` finds it. Verify green, no golden moved.
+    - **Next: R4a-S4** (`feature/r4a-roster-sprites`, R4/T030–T032), now that S3 has merged: the other seven redrawn, and a shape required on every unit sprite. Then S5, in the order of [the task list](tasks/r4-readable-armies.md)'s Sessions table, still beside R1.
     - **R2a's playtest waits for R4a's review gate** (R4/T039).
   - **Run it back** ([run-it-back.md](tasks/run-it-back.md)): X10 was agreed on 2026-11-01, and records S0 agreed its plan, [run-it-back-plan.md](run-it-back-plan.md), with RB-Q1 and RB-Q2 as recommended ([#44](https://github.com/Swalliso/Sambattler/pull/44)). records-1 builds only the remembered setup and Run it back, and records no runs, so no v1 run is ever recorded. Run records start in records-2, after R2b.
     - **records S1** (`feature/records-1-run-it-back`, T003–T012): merged ([#48](https://github.com/Swalliso/Sambattler/pull/48)). The profile store, `src/meta/records.ts`, keeps the last setup under `spore-sprawl/profile/v1`, and every write goes through `updateRecords()`. On the summary, Run it back (`Enter` or `R`) starts the same commander and bans on a new seed, straight on the route.
@@ -80,13 +80,14 @@ Updated 2026-11-01, on `docs/review-follow-ups` (a docs PR into `develop`). This
 
 ## Waiting on the user
 
-1. **The decisions that shape the milestones**, X1–X10 in [clarify.md](tasks/clarify.md#index). Each has a recommendation. The task lists assume them and say what changes otherwise.
+1. **R1 S7's runs:** your OK to start them. About 40 runs go in the background, and S7's gate is clear now that S5 and S6 have merged.
+2. **The decisions that shape the milestones**, X1–X10 in [clarify.md](tasks/clarify.md#index). Each has a recommendation. The task lists assume them and say what changes otherwise.
    - Needed now: X1 (split R2 into R2a and R2b) and X2 (build R2a beside v1 on `develop`; R2b's switch-over on an integration branch until a whole run plays). X3 (split R4, the field's shapes first) and X10 (Run it back in two parts) were agreed on 2026-11-01.
    - At R1's review gate: X4 (copies before R3, if the swarm fails) and X5 (the scoring curve). R1 measures both, as agreed on 2026-11-01.
    - Later: X6 (run length), X7 (an "answer what you see" bot), X8 (measuring the general), X9 (flyers out of the first release).
-2. **The six core archetypes** are a first cut the user wants to discuss further. The sixth slot is open: the Burster Pod, or the Puffball Mortar ([§11.2](../SPEC.md#112-velvet-bloom-buildings)). It's §18.2 #36 in clarify.md: R1 measures both, and the call comes at R3's plan.
-3. **The open rules in §18.2** now each have a block in [clarify.md](tasks/clarify.md) with a recommendation, filed under the milestone that needs them. Some recommendations disagree with SPEC's first guess and say why. The rows R2 needs (#16–#35) include #32: what happens to runs saved before R2.
-4. **A release to `main`:** only when the user asks.
+3. **The six core archetypes** are a first cut the user wants to discuss further. The sixth slot is open: the Burster Pod, or the Puffball Mortar ([§11.2](../SPEC.md#112-velvet-bloom-buildings)). It's §18.2 #36 in clarify.md: R1 measures both, and the call comes at R3's plan.
+4. **The open rules in §18.2** now each have a block in [clarify.md](tasks/clarify.md) with a recommendation, filed under the milestone that needs them. Some recommendations disagree with SPEC's first guess and say why. The rows R2 needs (#16–#35) include #32: what happens to runs saved before R2.
+5. **A release to `main`:** only when the user asks.
 
 ## Where things live
 
@@ -107,6 +108,9 @@ Updated 2026-11-01, on `docs/review-follow-ups` (a docs PR into `develop`). This
 
 | Work | Where | State |
 |---|---|---|
+| R1 S5: the review's fixes, the presets and the variants (2026-11-01) | [#60](https://github.com/Swalliso/Sambattler/pull/60), [tools/lib/balance.ts](../tools/lib/balance.ts), `src/data/proto.ts`, `--checks clash` | Merged. T054 and T055 fixed G12, #15's line and G13, and every variant option is in. S7's runs are next, on your OK |
+| R1 S6: the race model, the pairings, the full colony and the bench (2026-11-01) | [#59](https://github.com/Swalliso/Sambattler/pull/59), [tools/lib/roundRace.ts](../tools/lib/roundRace.ts), `--checks pairings`, `npm run bench` | Merged. Twin Roots' full colony fields 192 units a side, over §13.7's 150 (report only, for R1's review gate) |
+| R4a-S3: the core six and the Mortar redrawn (2026-11-01) | [#58](https://github.com/Swalliso/Sambattler/pull/58), `data/sprites/units.json`, `data/sprites/buildings.json` | Merged. R4a-S4 redraws the other seven next |
 | The hub's review of #54 and #55 (2026-11-01) | SPEC §9.3, §10.2 and §11.5, [r1-clash-check.md](tasks/r1-clash-check.md) T054 and T055, [r4-readable-armies.md](tasks/r4-readable-armies.md) T024 and T062 | Both sound, with minor issues. #55 missed some weapon-mark lines, now fixed. #54's three report fixes go first in R1 S5, and none of them affects the planned runs |
 | records-1's check passed (2026-11-01) | [#53](https://github.com/Swalliso/Sambattler/pull/53), [playtest-feedback.md](playtest-feedback.md#2026-11-01-records-1s-check-on-the-dev-site-the-user), [run-it-back.md](tasks/run-it-back.md) T023 | Done. records-1 is finished; records-2 starts after R2b |
 | R4a-S2b: the approved silhouette sheet, and no weapon marks (2026-11-01) | [#55](https://github.com/Swalliso/Sambattler/pull/55), [r4a-plan.md](r4a-plan.md#the-approved-silhouette-sheet-t026-2026-11-01), `docs/r4a-silhouettes.json`, SPEC §5.8 | Merged. You approved the sheet (T026) and dropped weapon marks from units (T077). R4a-S3 redraws the core six next |
