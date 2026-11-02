@@ -419,7 +419,7 @@ The armies (T011–T012) need nothing from `formation.ts` or the switches, so S2
 
 ## Phase 8: Polish and verification
 
-- [ ] T040 [P] Document the clash check as built in `SPEC.md`: §12.2 (the winner rule, the jitter, the dedupe, the measured cost), §13.4's `formation.ts` row (the function names), §15.3 (every option of `--checks clash` and `--checks pairings`) and §15.4 (the full-colony case, report only) (§16's intro: a milestone documents its commands in §15; A017)
+- [x] T040 [P] Document the clash check as built in `SPEC.md`: §12.2 (the winner rule, the jitter, the dedupe, the measured cost), §13.4's `formation.ts` row (the function names), §15.3 (every option of `--checks clash` and `--checks pairings`) and §15.4 (the full-colony case, report only) (§16's intro: a milestone documents its commands in §15; A017)
 - [ ] T041 Verification step 1: run `npm run verify` (`tools/verify.ts`) and `npm run golden -- verify` (`tools/golden.ts`); no hash moves, and the unit suite covers the slot layout and the muster (one Burrow, two side by side, three in a row); also run `npm run test:slow`, whose v1 guardrails must give the same verdicts as `develop` before R1 (no rule changed; a v1 miss isn't open work, CLAUDE.md); quote the summaries in the commit (§16 R1 verification 1, §15.7)
 - [ ] T042 Verification step 2: the clash check on today's combat and on `kept`, in the background, each writing `reports/experiments/<label>.json`; note each run's wall time for `docs/r1-plan.md`'s As built (§16 R1 verification 2)
   - Each run plays the G4 row by default (T034), so r1-baseline and r1-kept carry the even battles X5's race section quotes first.
