@@ -2,10 +2,12 @@
 // frame's measured box, and every way a sprite's shape block breaks the rules. Units and emplacements carry
 // no weapon mark (§5.8, the user's decision of 2026-11-01; T077), and the last cases keep it that way.
 import { describe, expect, it } from 'vitest';
+import { loadContent } from '../../src/data/registry.ts';
+import type { Content } from '../../src/data/registry.ts';
 import { SpriteSchema } from '../../src/data/schema.ts';
 import type { SpriteBands, SpriteDef, SpriteShape } from '../../src/data/schema.ts';
 import { baseSquad, bodyBox, bodyOf, emplacementShapeProblems, shapeProblems, unitShapeProblems, widthBound } from '../../src/data/shapes.ts';
-import { nodeContent, protoContent } from '../../tools/lib/content.ts';
+import { nodeContent, protoContent, readRawContent } from '../../tools/lib/content.ts';
 
 const content = nodeContent();
 const BANDS: SpriteBands = { small: [8, 9], medium: [11, 12], big: [15, 16] };
@@ -113,5 +115,64 @@ describe('the core six and the Mortar', () => {
         expect([...emplacementShapeProblems(b, s), ...shapeProblems(s, c.bands[c.spriteSheet[s.id]!])], s.id).toEqual([]);
       }
     }
+  });
+});
+
+// The whole roster (§4.6, §5.8, §11.2, §17 #20; R4a-S4, T030): every unit sprite declares a shape, no two
+// silhouettes overlap too much, and every unit fits its squad's k × k grid with a Rhizome Vault beside it
+// (call 8). The Velvet Shrine's +2 may overflow under §18.2 #11's first guess: `npm run sprite-sheet` lists it,
+// and nothing here fails it.
+describe('the whole roster', () => {
+  const rework = protoContent('rework');
+  const unitSprites = (c: Content) => c.spriteOrder.filter((id) => id.startsWith('u-')).map((id) => c.sprites[id]!);
+  /** Frame 0's opaque pixels, as points from the sprite's anchor. */
+  const mask = (s: SpriteDef) => {
+    const m = new Set<string>();
+    s.frames[0]!.forEach((row, y) => { for (let x = 0; x < row.length; x++) if (s.palette[row[x]!]) m.add(`${x - s.anchor[0]},${y - s.anchor[1]}`); });
+    return m;
+  };
+  /** Two frame 0s overlaid on their anchors: shared pixels over all pixels. */
+  const iou = (a: SpriteDef, b: SpriteDef) => {
+    const ma = mask(a), mb = mask(b);
+    let both = 0;
+    for (const p of ma) if (mb.has(p)) both++;
+    return both / (ma.size + mb.size - both);
+  };
+
+  it('every unit sprite declares a shape, or the data fails to load', () => {
+    for (const c of [content, rework]) for (const s of unitSprites(c)) expect(s.shape, s.id).toBeDefined();
+    const raw = structuredClone(readRawContent());
+    delete (raw['sprites/units.json'] as { sprites: SpriteDef[] }).sprites.find((s) => s.id === 'u-tender')!.shape;
+    expect(() => loadContent(raw)).toThrow(/unit tender: sprite u-tender declares no shape, and every unit sprite needs one/);
+  });
+
+  it('no two silhouettes overlap too much: an IoU below 0.75 on their anchors, or boxes 2 px apart', () => {
+    const us = unitSprites(content);
+    expect(iou(us[0]!, us[0]!)).toBe(1);
+    const alike: string[] = [];
+    for (let i = 0; i < us.length; i++) {
+      for (let j = i + 1; j < us.length; j++) {
+        const a = us[i]!, b = us[j]!, ba = bodyBox(a, 0)!, bb = bodyBox(b, 0)!;
+        const apart = Math.abs(ba.w - bb.w) >= 2 || Math.abs(ba.h - bb.h) >= 2;
+        if (!apart && iou(a, b) >= 0.75) alike.push(`${a.id} ~ ${b.id}: IoU ${iou(a, b).toFixed(2)}`);
+      }
+    }
+    expect(alike).toEqual([]);
+  });
+
+  it("every unit's width fits its spawner's base squad + 1, in every frame", () => {
+    expect([4, 5, 9, 10].map(widthBound)).toEqual([16, 10, 10, 8]);
+    const checked = new Set<string>();
+    for (const c of [content, rework]) {
+      for (const u of Object.values(c.units)) {
+        const s = c.sprites[u.sprite]!;
+        for (const b of Object.values(c.buildings).filter((x) => x.spawn?.unit === u.id)) {
+          const n = baseSquad(b) + 1;
+          for (let f = 0; f < s.frames.length; f++) expect(bodyBox(s, f)!.w, `${s.id} frame ${f}, ${b.id}'s squad of ${n}`).toBeLessThanOrEqual(widthBound(n));
+          checked.add(s.id);
+        }
+      }
+    }
+    expect([...checked].sort()).toEqual(unitSprites(content).map((s) => s.id).sort());
   });
 });
