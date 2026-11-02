@@ -40,6 +40,7 @@ and its task format explains the markers. Read it first. This skill is that proc
    - Update `docs/status.md`: what landed, and the next session with what it waits on.
    - The milestone's last session also writes the plan's **As built** and runs SPEC §16's
      verification.
-   - Push and open the PR into `develop` (or the integration branch) when the user asks, ending
-     the body with the attribution line. Never merge unless the user says to.
+   - Push and open the PR into `develop` (or the integration branch), ending the body with the
+     attribution line, and turn on auto-merge as CLAUDE.md's "Pushing and merging" says. A PR
+     that changes `src/sim/`, `src/data/` or `tools/lib/` waits for a review instead.
    - End by telling the user what landed, anything left undone, and which rows can start next.
