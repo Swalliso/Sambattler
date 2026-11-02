@@ -51,7 +51,13 @@
 //   and the best `--top n` answers that count (default 3) are confirmed on `--confirm-seeds n` more
 //   (default 50). A mono answer that fails clash G3 doesn't count;
 // - the clash matrix (#14, #15): each build's best 3 answers per budget, beside §7.4's counter sets;
-// - G13: the share of every clash that reached the 45 s cap, both cap readings, and the median length.
+// - the G4 row: bot:balanced against general:scripted on the one-lane field, `--g4seeds n` a seat (default
+//   50 here; v1's g4 keeps G4's 40), and against itself on fresh seeds, for the race model;
+// - G13: the share of every clash that reached the 45 s cap, both cap readings, and the median length;
+// - the race section (X5, tools/lib/roundRace.ts): per budget and field, the share of clashes whose loser's
+//   damage passes the 500 cap, at storm ×1.0 and at the budget's round storm, and the share of drawn rounds;
+//   then the race model, which chains the G4 row's clashes (first) and G3's into battles of up to 9 rounds
+//   under the 500 cap and its alternatives. It's crude, and not a guardrail.
 // `--jitter j` moves each unit up to ±j tiles per axis after the muster (default 0, no jitter; numbers
 // are quoted at 0.2). It prints the bars per budget beside the pooled result, then the clashes played and
 // the wall time. The report, labelled `clash` (or `clash-<proto>`), holds the options, each mono's and
@@ -70,8 +76,8 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { protoContent, ROOT } from './lib/content.ts';
 import {
-  CLASH_CHECK, clashCache, clashG13, counterBotSpec, evaluateClashCounters, evaluateClashG3, evaluateCounters, evaluateG1, evaluateG2, evaluateG3, evaluateG4,
-  evaluateG5, evaluateG6, evaluateG7, evaluateG8, g3Setup, g3Verdict, inProcessRows, rosterIds, supplyDuel, uniqueCells,
+  CLASH_CHECK, clashCache, clashG13, clashRace, counterBotSpec, evaluateClashCounters, evaluateClashG3, evaluateClashG4Row, evaluateCounters, evaluateG1, evaluateG2,
+  evaluateG3, evaluateG4, evaluateG5, evaluateG6, evaluateG7, evaluateG8, g3Setup, g3Verdict, inProcessRows, rosterIds, supplyDuel, uniqueCells,
 } from './lib/balance.ts';
 import type { G3Verdict, Verdict } from './lib/balance.ts';
 import { runBench } from './lib/bench.ts';
@@ -358,6 +364,7 @@ if (checks.has('clash')) {
       budgets, fields, jitter, g3Seeds,
       screenSeeds: num('--screen-seeds') ?? CLASH_CHECK.screenSeeds, confirmSeeds: num('--confirm-seeds') ?? CLASH_CHECK.confirmSeeds, top: num('--top') ?? CLASH_CHECK.top,
       mono: monoIds ?? null, answers: answers ?? null, matrix: matrix ?? null, records: args.includes('--records'), workers,
+      g4Seeds: num('--g4seeds') || 50,
     };
     const pool = workers > 1 ? clashPool(spec, workers) : undefined;
     try {
@@ -369,14 +376,18 @@ if (checks.has('clash')) {
         cache, g3, screenSeeds: options.screenSeeds, confirmSeeds: options.confirmSeeds, top: options.top,
         ...(matrix ? { matrix: 'all' as const } : {}), ...(answers ? { answers } : {}),
       });
-      // G13 reads every cell the check played, each once (plan call 15)
-      const g13 = clashG13(uniqueCells(g3.records, g12.records), g3.records);
+      const g4row = await evaluateClashG4Row(cc, { cache, budgets, seeds: options.g4Seeds });
+      // G13 and the cap-binding share read every cell the check played, each once (plan calls 15, 17)
+      const all = uniqueCells(g3.records, g12.records, g4row.records);
+      const g13 = clashG13(all, g3.records);
+      const race = clashRace(all, [...g4row.records, ...g3.records]);
       const ms = Date.now() - t0;
       const { cells, played } = cache.stats();
       const descriptions = Object.fromEntries([...new Set(Object.values(g12.answers).flat())].map((a) => [a, cc.bots[a.slice(4)]?.description ?? '']));
       const g3Lines = verdict(g3), g12Lines = verdict(g12);
       lines.push(...g12.matrixLines);
       const g13Lines = verdict(g13);
+      lines.push(...g4row.details, ...race.details);
       lines.push(`clash check: ${played} clashes played for ${cells} cells in ${(ms / 1000).toFixed(1)} s on ${workers} worker${workers > 1 ? 's' : ''}`);
       out.clash = {
         options,
@@ -388,6 +399,8 @@ if (checks.has('clash')) {
         },
         matrix: g12.builds.map((b) => ({ build: b.build, rows: b.matrix })),
         G13: { ...g13Lines, all: g13.all, g3: g13.g3, cells: g13.cells },
+        G4row: { budgets: g4row.budgets, seeds: g4row.seeds, scores: g4row.scores },
+        race: { cells: race.cells, all: race.all, groups: race.race.groups },
         timing: { ms, clashes: played, cells },
         ...(options.records ? { records: cache.records() } : {}),
       };

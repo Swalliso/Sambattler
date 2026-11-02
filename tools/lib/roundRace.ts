@@ -284,7 +284,7 @@ function raceLines(groups: readonly RaceGroup[]): string[] {
     mirror: (g) => `mirror: ${G4_PLAYER} against itself on fresh seeds (its second army on seed 1,000 + s) on ${g.field}, the player seat's army the player, ${g.cases} cases`,
     g3: (g) => `G3 cases: each mono against ${G4_PLAYER} on ${g.field}, the player seat's army the player (lopsided), ${g.cases} cases`,
   };
-  const w = 11, rw = Math.max(...RACE_RULES.map((r) => r.id.length)) + 2;
+  const w = 14, rw = Math.max(...RACE_RULES.map((r) => r.id.length)) + 2;
   for (const g of groups) {
     lines.push(label[g.id](g));
     lines.push(`  ${'rules'.padEnd(rw)}${BATTLES.map((b) => (b.kind.length > 1 ? b.kind : `battle ${b.kind}`).padStart(w)).join('')}`);
