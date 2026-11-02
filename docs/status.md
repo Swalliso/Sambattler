@@ -30,7 +30,11 @@ Updated 2026-11-02, on `docs/r2a-s3b` (the hub's docs PR into `develop`). This i
 ## Next session: R2a S4
 
 - **Work from** [docs/tasks/r2a-battle-in-rounds.md](tasks/r2a-battle-in-rounds.md).
-  - **S4** (`feature/r2a-planning`, T030–T034): the planning commands with their refusals and refunds, the kit with no copies, and `formationOf` and `mergePreview` on state. It ends Phase 2. Its gate (S3b merged) is met, and it started on 2026-11-02.
+  - **S4** (`feature/r2a-planning`, T030–T034, [#76](https://github.com/Swalliso/Sambattler/pull/76)): built, and waiting for the hub's review. It ends Phase 2.
+    - `src/sim/rounds/planning.ts` holds the executors for `plant`, `sell`, `toggleMerge` and `beginClash`'s planning half, and the checks `legalPlots`, `plantProblem`, `priceOf` and `sellValue`. Each refusal is a `commandRejected` with a code. A queued enemy plan is refused with `enemyPlanAfterOpening`, and a player-side Begin is refused with `notInRoundsYet` until T043.
+    - `src/sim/rounds/kit.ts` gives the faction roster with no copies. A general's cards carry its `maxOwned`, which `plant` checks.
+    - `formationOf` and `mergePreview` take an optional `change`, and `survivingSupply` is exported with them.
+    - Verify and the browser tests are green, and no golden moved.
 - Then S5, once S4 has merged.
 
 ## R2a, a battle in rounds
