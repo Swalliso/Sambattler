@@ -103,15 +103,18 @@ export class Tray {
 
   /**
    * Full-size cards in one row if they fit the tray's width, else the compact two-row tray. A compact
-   * name that still overflows (text sets wider on some platforms) is squeezed a little rather than cut.
+   * name that still overflows (text sets wider on some platforms) is squeezed a little, then set a size
+   * smaller if it still does (the Rhizomorph Tunnel in 16 cards at 1280 px), rather than cut.
    */
   fit(): void {
     const n = this.cards.length;
     const compact = n * CARD_MIN + (n - 1) * GAP > this.el.clientWidth;
     toggleClass(this.el, 'compact', compact);
     for (const c of this.cards) {
-      c.nameEl.classList.remove('squeeze');
-      if (compact && c.nameEl.scrollWidth > c.nameEl.clientWidth) c.nameEl.classList.add('squeeze');
+      c.nameEl.classList.remove('squeeze', 'squeeze-more');
+      if (!compact || c.nameEl.scrollWidth <= c.nameEl.clientWidth) continue;
+      c.nameEl.classList.add('squeeze');
+      if (c.nameEl.scrollWidth > c.nameEl.clientWidth) c.nameEl.classList.add('squeeze-more');
     }
   }
 
