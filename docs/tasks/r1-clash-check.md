@@ -420,25 +420,25 @@ The armies (T011–T012) need nothing from `formation.ts` or the switches, so S2
 ## Phase 8: Polish and verification
 
 - [x] T040 [P] Document the clash check as built in `SPEC.md`: §12.2 (the winner rule, the jitter, the dedupe, the measured cost), §13.4's `formation.ts` row (the function names), §15.3 (every option of `--checks clash` and `--checks pairings`) and §15.4 (the full-colony case, report only) (§16's intro: a milestone documents its commands in §15; A017)
-- [ ] T041 Verification step 1: run `npm run verify` (`tools/verify.ts`) and `npm run golden -- verify` (`tools/golden.ts`); no hash moves, and the unit suite covers the slot layout and the muster (one Burrow, two side by side, three in a row); also run `npm run test:slow`, whose v1 guardrails must give the same verdicts as `develop` before R1 (no rule changed; a v1 miss isn't open work, CLAUDE.md); quote the summaries in the commit (§16 R1 verification 1, §15.7)
-- [ ] T042 Verification step 2: the clash check on today's combat and on `kept`, in the background, each writing `reports/experiments/<label>.json`; note each run's wall time for `docs/r1-plan.md`'s As built (§16 R1 verification 2)
+- [x] T041 Verification step 1: run `npm run verify` (`tools/verify.ts`) and `npm run golden -- verify` (`tools/golden.ts`); no hash moves, and the unit suite covers the slot layout and the muster (one Burrow, two side by side, three in a row); also run `npm run test:slow`, whose v1 guardrails must give the same verdicts as `develop` before R1 (no rule changed; a v1 miss isn't open work, CLAUDE.md); quote the summaries in the commit (§16 R1 verification 1, §15.7)
+- [x] T042 Verification step 2: the clash check on today's combat and on `kept`, in the background, each writing `reports/experiments/<label>.json`; note each run's wall time for `docs/r1-plan.md`'s As built (§16 R1 verification 2)
   - Each run plays the G4 row by default (T034), so r1-baseline and r1-kept carry the even battles X5's race section quotes first.
   - `npm run experiment -- --checks clash --budgets 300,600,900,1200,1500 --jitter 0.2 --matrix all --mirror --workers 8 --label r1-baseline`
   - `npm run experiment -- --checks clash --budgets 300,600,900,1200,1500 --jitter 0 --workers 8 --label r1-baseline-j0` (the deterministic reference)
   - `npm run experiment -- --proto kept --checks clash --budgets 300,600,900,1200,1500 --jitter 0.2 --mirror --workers 8 --label r1-kept`
   - `npm run experiment -- --proto kept,bot.balanced.fixedWeights:true --checks clash --budgets 300,600,900,1200,1500 --jitter 0.2 --workers 8 --label r1-kept-fixedref` (A023)
-- [ ] T043 Verification step 2, the variants: 20-seed screens with `tools/experiment.ts` (`--checks clash --budgets 300,600,900,1200,1500 --g3seeds 20 --confirm-seeds 20 --jitter 0.2 --workers 8`), each against the baseline and with its own label in `reports/experiments/`, in this order (§16 R1 verification 2, §12.2)
+- [x] T043 Verification step 2, the variants: 20-seed screens with `tools/experiment.ts` (`--checks clash --budgets 300,600,900,1200,1500 --g3seeds 20 --confirm-seeds 20 --jitter 0.2 --workers 8`), each against the baseline and with its own label in `reports/experiments/`, in this order (§16 R1 verification 2, §12.2)
   - `--merging off`; `--proto noeldersplash`;
   - `--squad-seconds 45`, `--squad-seconds 75`, `--squad-scale 45`, `--squad-scale 75`; `--squad sporelingBurrow=6`, `--squad sporelingBurrow=7`;
   - `--proto pinned`, `sporecloud`, `burster`, `cleave`, `rhizomorph`, alone; `burster` and `rhizomorph` again with `bot.balanced.fixedWeights:true`;
   - `--proto clashpace`; `--lanes-rule general --fields twin`;
   - last, `--proto clashshield`. Not `--proto rework`.
-- [ ] T044 Verification step 2, the set of pieces, with `tools/experiment.ts`: if `kept` fails a bar, screen sets by this rule, then confirm the best set that passes at 50 seeds (`--g3seeds 50 --confirm-seeds 50 --mirror`) (§16 R1 Done when, §18.2 #8, #9)
+- [x] T044 Verification step 2, the set of pieces, with `tools/experiment.ts`: if `kept` fails a bar, screen sets by this rule, then confirm the best set that passes at 50 seeds (`--g3seeds 50 --confirm-seeds 50 --mirror`) (§16 R1 Done when, §18.2 #8, #9)
   - Mono Sporeling fails G3 or G12: screen `kept,noeldersplash`, then `kept,clashshield`.
   - G13 fails: screen `kept,clashpace`.
   - A piece whose own screen (T043) fails a bar: screen `kept` without it, written as a CLI spec of the other four presets, for example `pinned,sporecloud,burster,cleave`. CLI specs apply presets in order and `setPath`'s `+` accumulates appends (`src/data/proto.ts`), so the spawners the four bring stay appended.
   - If no screened set passes, say so, and confirm the set closest to passing.
-- [ ] T045 The other measurements the calls ask for, with `tools/experiment.ts`, as 20-seed screens unless noted, each with its own label in `reports/experiments/` (§16 R1, §12.2) ⛔ X4, R1-Q4, R1-Q6, R1-Q9
+- [x] T045 The other measurements the calls ask for, with `tools/experiment.ts`, as 20-seed screens unless noted, each with its own label in `reports/experiments/` (§16 R1, §12.2) ⛔ X4, R1-Q4, R1-Q6, R1-Q9
   - X4 (A196): `--copies 2`, `--copies 3` and `--copies 4`, on the baseline and on T044's set.
   - R1-Q4 (A005): `--extra-plots 4 --budgets 1200,1500`, the late-run colony.
   - R1-Q6 and #36's reading (A011): `--core6 bursterPod --proto burster` (or T044's set) and `--core6 puffballMortar`.
@@ -446,11 +446,11 @@ The armies (T011–T012) need nothing from `formation.ts` or the switches, so S2
   - A021 and A008: `--v1-movement` and `--v1-targeting`, to show what each switch changes in G13, far-edge parking and the Mortar's cells.
   - A116: `npm run experiment -- --proto kept --checks duels,g8`, G1, G2 and G8 on v1's battle with the kept set; record any new miss.
   - R2-Q13 (A201): `npm run experiment -- --checks pairings --jitter 0.2`.
-- [ ] T052 Verification step 2, the 50-seed confirmations, with `tools/experiment.ts`: re-run at 50 seeds per seat (`--g3seeds 50 --confirm-seeds 50`, the same spec and options, the label with `-50` appended) every T043–T045 variant whose screen flips a bar against the baseline, or that supports a recommendation departing from SPEC's first guess (§16 R1 verification 2, §12.2)
+- [x] T052 Verification step 2, the 50-seed confirmations, with `tools/experiment.ts`: re-run at 50 seeds per seat (`--g3seeds 50 --confirm-seeds 50`, the same spec and options, the label with `-50` appended) every T043–T045 variant whose screen flips a bar against the baseline, or that supports a recommendation departing from SPEC's first guess (§16 R1 verification 2, §12.2)
   - §16 R1 quotes numbers at 50 seeds; a 20-seed screen is good to about ±8 points.
   - List in the T047 entry which variants were confirmed and why. Every other variant number is labelled "a 20-seed screen".
 - [x] T046 Verification step 3: `npm run bench` (`tools/bench.ts`); record each full-colony case's units and supply a side, the arrival time and the tick mean and p99 against §13.7, and if a case is over, the lever that brings it inside (squads, the upgrade's +1 per batch, or plots) (§16 R1 verification 3, §13.7) ⛔ R1-Q5
-- [ ] T047 Write R1's entry in `docs/balance-backlog.md`, replacing its "Open: R1" item: the date, the commit, every command, the seeds and the jitter, and the results with a recommendation for each (§16 R1 Done when, §18.2 #7–#15)
+- [x] T047 Write R1's entry in `docs/balance-backlog.md`, replacing its "Open: R1" item: the date, the commit, every command, the seeds and the jitter, and the results with a recommendation for each (§16 R1 Done when, §18.2 #7–#15)
   - G3, G12 and G13 tables per budget beside the pooled result, for the baseline, `kept` and T044's set; the variant screens.
   - Seeds: a number quoted as a result comes from a 50-seed run (T042, T044's confirmation, T052). Every other variant number is labelled "a 20-seed screen", and a recommendation for #8, #9, #12 or X4 rests on a 50-seed number.
   - #7: squads and value per gold under each squad option, and the full colony against §13.7 (with T046). #8 and #9: the shield and splash variants and the merge mirror. #10: the Mortar's cells with the switch on and off, and how often emplacements alone held a lane. #11: the overflow table, noting it rests on few cases (A020). #12: the pace variant's G12, G13 and clash length. #13: both cap readings. #14 and #15: the clash matrix beside §7.4's sets.

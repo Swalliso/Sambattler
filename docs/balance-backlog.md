@@ -32,7 +32,50 @@ R1's runs (S7, T040–T048, T052), measured on `develop` at `fd9621f` (#62), wit
   - `r1-kept`: `--proto kept --jitter 0.2 --mirror`. 187,092 clashes in 121 s.
   - `r1-kept-fixedref`: `--proto kept,bot.balanced.fixedWeights:true --jitter 0.2` (A023: the reference on its data weights, not buying the appended spawners). 147,304 clashes in 91 s.
 - **Seeds:** a number quoted as a result comes from a 50-seed run (above, T044's confirmation or T052). Every other variant number is a 20-seed screen (`--g3seeds 20 --confirm-seeds 20 --jitter 0.2`), good to about ±8 points.
+- **Checks (T041):** `npm run verify` is green (627 unit tests in 37 files), `npm run golden -- verify` passes 8 of 8 with no moved hash, and `npm run test:slow` gives the same v1 verdicts as `develop` before R1 (`ffd57f9`): the same four guardrails miss (G1, G3, G7, G8), and all 57 guardrail lines match.
 - **Jitter:** ±0.2 tiles, with the jitter-free run beside it. The two agree to within 6 points on every pooled G3 mean (the widest, Amanita Lodge, 30% against 24%), and give the same G3 and G12 verdicts.
+
+**The calls for S8, with recommendations** (the measures follow; a recommendation for #8, #9, #12 or X4 rests on a 50-seed number)
+- **In short:** in a clash the muster's knitting favours a mono army, which knits fully, over a mixed one. In the merge mirror merging wins 90–100% for most armies; with merging off the Sporeling passes G3 and G12 passes; and the shield for mixed armies fixes G12. So four monos beat `bot:balanced` (Capguard Hall 90%, Sporeling Burrow 79%, Gill Nest 75%, Veilstalker Hollow 64%), and two have no answer. One set measured passes every bar at 50 seeds: `kept` with the arrival shield (`clashshield`) and Capguard Hall's squad at 3.
+- **#7, squads and the full colony.**
+  - Squads: sizes per building, from §11.2's column with **Capguard Hall at 3** and the Burrow at 8. Capguard Hall's 4 is the strongest mono in clashes (90%), though §11.4's value per gold puts it inside the band. Each global option fails 5–6 monos (45 s or 75 s, either rounding), and a Burrow of 6 or 7 lifts the Capguard, the Gill and the Veilstalker (to 94–96%, 80–94% and 71–81%), while at 7 the Sporeling still fails (61% at 50 seeds).
+  - The full colony: keep §13.7's 150 live units. Twin Roots fields 192, over it, yet ticks well inside G11 (p99 1.53 ms), so the 150 is about reading the field, not the CPU. The lever that keeps squads and plots as designed is no upgrade's +1 per batch (128 a side). A200's rows (the Vault, the Shrine, Mold's passive) push an upgraded colony further over; they're upper bounds for R3 to recheck.
+- **#8, the arrival shield.** Adopt it, a departure from SPEC's first guess, by #8's own test: G12 fails without it and passes with it, on today's combat and on `kept` (50 seeds). R2a writes it as v2's rule with its own data key, not v1's `waves`. It's one more system to learn (playtest F8). The other variant that passes G12, merging off, fails G13.
+- **#9, the Elder Sporeling's splash.** Keep it (the first guess). Without it the Sporeling still fails G3 (66% at 50 seeds) and only gains a G12 answer. With the shield, `kept` and Capguard Hall at 3, the Sporeling passes G3 (48%) and G12 (answered at 95%) with the splash on.
+- **#10, emplacements.** Agree with the first guess and A029's unit rules. Emplacements alone held 0–2% of lanes. The siege units' preference for buildings changes no cell (`--v1-targeting` matches the baseline cell for cell). The Mortar wins nothing on today's combat (0%) and becomes a real piece only with spore clouds (41–45%), where Rootbreaker Den answers it at 100%.
+- **#11, overflow.** Agree with D47 (pack tighter). No squad overflows at today's sizes, only grown ones (Capguard Hall and Hammercap Forge at 5, Rootbreaker Den and Scythecap Grove at +2), so it rests on few cases (A020).
+- **#12, the approach.** Agree: no pace rule. `clashpace` leaves G12 failing (Sporeling 50%, Capguard 53% at 50 seeds) and G13 where it was (1.2%).
+- **#13, the muster in the 45 s.** Agree: it counts. The two readings differ by 0.3 points (5.8% against 5.5%), with the same median.
+- **#14, an Anti-Ranged kind.** Add it, as clarify recommends: the swarm answers archers in clashes. Mono Sporeling beats mono Gill Nest 100% at every budget, and the Sporeling and Veilstalker pair, which counts, 95–100%. But §7.4 reads mono Gill Nest as Elite today, since its knitted archers count at their parts' supply, so the kind bites only once R2-Q3 is settled.
+- **#15, counter sets.** Keep type and tag with clarify's three fixes, and use the clash matrix as a check, not the source. With the swarm read, §7.4's set holds the matrix's best answer to the Sporeling (Capguard Hall) and to the Veilstalker (the swarm builds). It misses for the Capguard, which reads Elite from 600 gold while Gill Nest answers it. The best answers also shift with budget: against the Capguard, Gill Nest at 600–900 and the Capguard and Gill pair from 1,200.
+- **X4, copies before R3.** The condition is met (mono Sporeling fails G3 and G12 without copies), but recommend **no**: keep D45.
+  - Copies don't fix the Sporeling (57–63% at 2–4 copies, 50 seeds).
+  - At 2 and 3 copies more builds lose their answer (7 and 3 fail G12). A capped mono fills its other plots by `bot:balanced`'s weights, so the builds converge and few answers clear 60%.
+  - The set above passes without copies. #51 waits for R3, which should revisit how G12 reads a capped mono.
+
+  | Copies (50 seeds) | Sporeling | Capguard | Gill | Veilstalker | Other G3 fails | G12 fails |
+  | --- | --- | --- | --- | --- | --- | --- |
+  | Unlimited | 79 | 90 | 75 | 64 | none | Sporeling 51, Capguard 57 |
+  | 4 | 63 | 79 | 72 | 69 | none | none |
+  | 3 | 57 | 72 | 72 | 63 | Rootbreaker (Twin Roots 69) | Capguard 52, Gill 53, Veilstalker 49 |
+  | 2 | 58 | 59 | 60 | 55 (fails, just over) | Rootbreaker (Twin Roots 64) | 7 builds, the best answers 48% to just under 60% |
+
+  On `kept,clashshield` (20-seed screens), 2 copies fail G3 on the Capguard (63), the Mortar (62), the Scythecap (59) and Rootbreaker on Twin Roots (77), and G12 on three builds. At 3 and 4 copies G12 passes, but G3 fails the Capguard (72, 74), the Mortar (58, 59), the Sporeling (56, 60) and Rootbreaker on Twin Roots.
+- **X5, the scoring curve.** No rule set measured brings even battles inside G4's band: under every one, about half or more reach round 9.
+  - Recommend the X5 lean (a cap of 25% of the loser's max HP, and the Decision by share) as R2a's starting rule. It scales with the Heartcap, and in the model it's within a few points of the storm cap, the best of the six.
+  - Make G4's band R2a's measurement on real battles of rounds, since the model leaves out income, comebacks and counters. If battles still run long there, the next levers (lower Heartcaps, a stronger storm) are untested here.
+- **#36, the sixth archetype.** The Burster Pod, as clarify leans.
+  - Its core six fails G3 only on the Capguard (85%) and the Gill (57%) at 50 seeds, and only on the Capguard (74%, a 20-seed screen) with `kept,clashshield`.
+  - The Mortar's core six fails four monos (Capguard 96, Sporeling 86, Gill 85, Hammercap 68) and three G12 builds.
+  - In the core-six graph the Mortar wins none of its edges (it loses 70–100% to all five), while the Burster Pod beats the Sporeling (68%; the graph is a 20-seed screen).
+- **R2-Q3, eliteShare.** Count Elder parts only. It's the one reading that keeps `bot:balanced` from reading Elite: at most 10% at every budget, against 100% counted plainly, 10–66% with the swarm read, and 30–78% with the factor cut to 0.6.
+- **R2-Q7, Puppet Bloom.** Give it a v2 job, as clarify suggests: after the muster it has a median of 0 trios to knit at 300 and 600 gold (rounds 1–3), and 1 from 900.
+- **R2-Q13, battle 1's pairings** (R2b's call; 20 seeds, today's combat, passives off). 3 of 6 pairings have no starter answer at 60%: Vesper and Armilla against the Lichen Baron (the best, mono Capguard Hall, 51%), and Cordis against Mother Mold (the best, mono Sporeling Burrow, 41%). Cordis against the Mold loses clearly, so clarify's free blueprint applies. Re-measure on R2a's set.
+- **The knobs** (A109):
+  - **Adopt as data,** as R2a's start: `kept`, that is `pinned`, `sporecloud`, `burster`, `cleave` and `rhizomorph`, which §1.3 #11 keeps; and `clashshield` (#8), written as v2's rule with its own key.
+  - **Delete:** `noeldersplash` (#9), `clashpace` (#12) and `swarmread`, which counting Elder parts replaces (R2-Q3).
+  - **The two switches** (`noBuildingPreference`, `idleSeek`): R2a writes them as v2's targeting and movement (R1-Q7, R1-Q8), and R2b deletes the flags. In these clashes `--v1-targeting` changes no cell, and `--v1-movement` rarely parks (at most 0.04 units a clash).
+  - **For R2a to watch:** alone, `pinned` weakens the answers to the Sporeling and the Capguard (G12 40% and 36%), and without it `kept,clashshield` reads the same at 20 seeds (only the Capguard fails). The Rhizomorph Tunnel wins 1% as a mono, so its job is support. Under `kept`, v1's G2 newly fails (A116, below).
 
 **The bars on today's combat** (`r1-baseline`)
 - **G3 fails on four monos** (limits: mean ≤55%, the one-lane field counted twice; worst field ≤60%). Win % against `bot:balanced`'s army with the same gold, a draw half:
@@ -62,6 +105,74 @@ R1's runs (S7, T040–T048, T052), measured on `develop` at `fd9621f` (#62), wit
 - **G12 fails on Capguard Hall alone:** its best answer, the Rootbreaker and Mortar pair, wins 42% on the one-lane field. Mono Sporeling Burrow is answered (the Capguard and Burster pair, 91%).
 - **G13 passes:** 5.2% (4.9%).
 - So `kept` fails a bar, and T044 screens sets from it (below).
+- `kept` per budget (G3 win %, 50 seeds a seat):
+
+  | Mono | 300 | 600 | 900 | 1,200 | 1,500 | Mean | Worst field |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | Capguard Hall | 100 | 96 | 86 | 87 | 83 | **90** | twin 92 |
+  | Sporeling Burrow | 63 | 72 | 81 | 50 | 46 | **62** | twin 69 |
+  | Hammercap Forge | 28 | 52 | 54 | 60 | 64 | 52 | one 52 |
+  | Puffball Mortar | 0 | 38 | 61 | 60 | 67 | 45 | one 52 |
+  | Veilstalker Hollow | 5 | 32 | 50 | 60 | 75 | 44 | one 48 |
+  | Rootbreaker Den | 45 | 59 | 25 | 27 | 31 | 37 | **twin 60** |
+  | Scythecap Grove | 19 | 32 | 37 | 37 | 43 | 33 | twin 35 |
+  | Gill Nest | 8 | 30 | 37 | 41 | 37 | 30 | twin 33 |
+  | Burster Pod | 35 | 17 | 27 | 36 | 36 | 30 | twin 33 |
+  | Amanita Lodge | 52 | 17 | 14 | 9 | 26 | 23 | one 25 |
+  | Morel Warren | 37 | 32 | 18 | 10 | 8 | 21 | twin 22 |
+  | Rhizomorph Tunnel | 1 | 1 | 1 | 1 | 1 | 1 | twin 2 |
+  | Tender's Ring | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+
+**The set of pieces** (T044: 20-seed screens, then the best set at 50 seeds with `--mirror`)
+- `kept` fails a bar, so sets were screened by T044's rule. Mono Sporeling fails G3, so `kept,noeldersplash` and `kept,clashshield`. G13 passes, so no `kept,clashpace`. `pinned` is the piece whose own screen fails a bar (it adds Veilstalker Hollow's G12 fail), so `kept` without it (`sporecloud,burster,cleave,rhizomorph`), alone and with the shield.
+- Two leads beyond the rule, on Capguard Hall's squad (#7): `kept` and `kept,clashshield`, each with `--squad capguardHall=3`.
+
+| Set | G3 fails | G12 fails | G13 |
+| --- | --- | --- | --- |
+| `kept` (20 seeds) | Capguard 90, Sporeling 59, Rootbreaker (Twin Roots 64) | Capguard 42 | 5.6% |
+| `kept,noeldersplash` | Capguard 92, Hammercap 55, Rootbreaker (Twin Roots 64) | Capguard 42 | 4.6% |
+| `kept,clashshield` | Capguard 83 | none | 2.8% |
+| `kept` without `pinned` | Capguard 90, Gill 69, Sporeling 57, Rootbreaker (Twin Roots 64) | Capguard 56 | 4.5% |
+| `kept` without `pinned`, with the shield | Capguard 80 | none | 1.9% |
+| `kept`, Capguard Hall 3 | Sporeling 62, Hammercap 56, Rootbreaker (Twin Roots 73) | none | 5.2% |
+| `kept,clashshield`, Capguard Hall 3 | none | none | 6.7% |
+| **50 seeds:** `kept,clashshield` | Capguard 83 | none | 4.7% |
+| **50 seeds:** `kept,clashshield`, Capguard Hall 3 | **none** | **none** | 7.5% |
+
+- **No preset set passes.** `kept,clashshield` comes closest: only Capguard Hall fails, at 83% over 50 seeds. With Capguard Hall's squad at 3, the set passes all three bars at 50 seeds, the only set in R1 that does.
+- **That set, per budget** (`r1-kept-clashshield-capguard3-50`, G3 win %):
+
+  | Mono | 300 | 600 | 900 | 1,200 | 1,500 | Mean | Worst field |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | Sporeling Burrow | 58 | 62 | 63 | 31 | 28 | 48 | twin 58 |
+  | Hammercap Forge | 30 | 41 | 34 | 49 | 50 | 41 | twin 45 |
+  | Puffball Mortar | 0 | 35 | 51 | 54 | 65 | 41 | one 49 |
+  | Veilstalker Hollow | 7 | 29 | 35 | 48 | 66 | 37 | one 38 |
+  | Capguard Hall | 92 | 39 | 20 | 7 | 2 | 32 | twin 43 |
+  | Rootbreaker Den | 45 | 52 | 20 | 18 | 17 | 30 | twin 55 |
+  | Scythecap Grove | 21 | 27 | 25 | 25 | 29 | 25 | twin 28 |
+  | Gill Nest | 3 | 21 | 19 | 26 | 24 | 19 | twin 21 |
+  | Burster Pod | 30 | 13 | 14 | 18 | 19 | 19 | twin 22 |
+  | Amanita Lodge | 42 | 14 | 11 | 5 | 10 | 17 | twin 20 |
+  | Morel Warren | 33 | 22 | 9 | 5 | 4 | 14 | twin 15 |
+  | Rhizomorph Tunnel | 2 | 1 | 1 | 0 | 0 | 1 | twin 2 |
+  | Tender's Ring | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+
+  - **G12 passes:** the three monos over 40% have answers. The Scythecap and Burster pair beats the Sporeling at 95%; Rootbreaker Den beats the Mortar and Veilstalker Hollow beats the Hammercap, each at 100%.
+  - **G13:** 7.5% capped over every clash, the mirror's included, and 4.2% of G3's; the median clash is 19.4 s. `kept` raises the capped share (1.3% → 5.6% on the 20-seed scope), most of it with `sporecloud` (3.8% alone), which makes the Mortar a real piece.
+  - **Flags** (the pooled mean passes, but one budget dominates): Capguard Hall 92% at 300 gold, so round 1 still belongs to it at 3; and the Sporeling 58–63% from 300 to 900.
+
+**The 50-seed confirmations** (T052): each variant whose screen flips a bar, or that backs a recommendation departing from SPEC's first guess, re-run with `--g3seeds 50 --confirm-seeds 50` as `r1-<variant>-50`.
+- `noeldersplash` (#9): G3 still fails the Sporeling (66%), and Capguard 92, Gill 75, Veilstalker 67. G12 fails Capguard Hall alone (57%): the Sporeling gains an answer.
+- `clashshield` (#8; it flips G12): G3 fails Capguard 81, Sporeling 62 and Veilstalker (one lane, just over 60). G12 passes. G13 1.8%.
+- `clashpace` (#12): G3 fails Capguard 88, Sporeling 75, Gill 73, Veilstalker 59; G12 fails Sporeling 50, Capguard 53; G13 1.2%, median 17.7 s.
+- Copies at 2, 3 and 4 (X4), in the table under the calls.
+- `--squad capguardHall=3` (#7, departs from §11.2): Capguard Hall passes (48%). The Sporeling 83, Gill 77 and Veilstalker 68 still fail, and G12 fails the Sporeling (39%).
+- `--squad sporelingBurrow=7` (#7; its screen passed the Sporeling at 55%): at 50 seeds the Sporeling fails (61%), and Capguard 94, Gill 81, Veilstalker 71.
+- `--squad-scale 45` (it flips G12): G12 passes; G3 fails Capguard 94, Sporeling 80, Amanita 79, Veilstalker 74, Gill 69.
+- The core-six checks (#36), under the calls.
+- `--v1-movement` (it gives the Capguard an answer): G3 within 3 points of the baseline; G12 fails the Sporeling alone (48%).
+- `--merging off` (it flips G12 and G13): G3 fails Capguard 79, Gill 76, Scythecap 65, Amanita 61; G12 passes; G13 16.6%, a fail, median 25.4 s.
 
 **The merge mirror** (G7's round form, #9; `--mirror`, 20 seeds a seat): each army with merging on against its own twin with merging off. Merging wins 97–100% for Sporeling Burrow, Capguard Hall, Gill Nest, Rootbreaker Den, Scythecap Grove and Hammercap Forge, 91% for Morel Warren and 90% for `bot:balanced`. It loses every game for Veilstalker Hollow and Tender's Ring (0%). Only Amanita Lodge (56%) is inside G7's 55–70% band; the Mortar never merges (50%). Under `kept` the same, plus the Burster Pod 52% and the Rhizomorph Tunnel 69%. In a clash the muster's knitting decides more than v1's G7 band allows, and for the Veilstalker and the Tender it always hurts.
 
@@ -147,6 +258,12 @@ R1's runs (S7, T040–T048, T052), measured on `develop` at `fd9621f` (#62), wit
 - **R2-Q7 and A057, Puppet Bloom:** the most trios a 3-tile circle could still knit after the muster, a side: a mean of 0.02, 0.39, 0.78, 0.87 and 1.12 by budget, and at least one trio in 2, 32, 55, 61 and 75% of armies. So the median is 0 at 300 and 600 gold (rounds 1–3) and 1 from 900.
 - **A021, far-edge parking:** with v2's idle seek, a mean of at most 0.01 units a clash stand within 0.5 tiles of the far edge when a lane ends. With `--v1-movement`, at most 0.04, in 1% of clashes from 900 gold. In these armies today's movement rarely parks.
 - **#10, emplacements:** a lane is held by emplacements alone (one side has only emplacements left at the cap) in 0–2% of lanes, the same in clashes with the mono Mortar. The mono Mortar wins 0% of its G3 clashes with v2's targeting and with `--v1-targeting` (siege units preferring buildings).
+
+**v1's checks on the kept set** (A116: `npm run experiment -- --proto kept --checks duels,g8`, beside the shipped data's `--checks duels,g8`)
+- G1 (production duels) and G8 (adaptation) miss on the shipped data too, so neither miss is new. Under `kept`, G8's `bot:balanced` battle-1 rate comes inside its band.
+- **New:** G2 (supply duels) passes on the shipped data and fails under `kept`. The Gill Archer wins no supply duel: it loses to the Sporeling, the Capguard, the Scythecap, the Veilstalker, the Hammercap, the Amanita Knight, the Morel Runner, the Burster and the Rhizomorph. A v1 miss isn't open work, but R2a's G2 should watch the archer under the kept pieces.
+
+**Not measured, or left for later:** `--proto rework` (refused, not R1's variant); the late-run colony and the three-lane screen are leads outside the bars (in the screens table); and R2-Q13's table is on today's combat, not on R2a's set.
 
 ## Until R2
 
