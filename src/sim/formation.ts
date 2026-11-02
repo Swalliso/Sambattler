@@ -195,8 +195,12 @@ function walk(units: readonly MusterUnit[], radius: number): MusterUnit[][] {
   return trios.sort((p, q) => p[0]!.key - q[0]!.key);
 }
 
-/** The unit a trio (in key order) knits into, as `complete` in `systems/merging.ts` places it. */
-function knit(trio: readonly MusterUnit[], key: number, opts: MusterOpts): MusterUnit {
+/**
+ * The unit a trio (in key order) knits into, as `complete` in `systems/merging.ts` places it. R2a's
+ * `musterFor` (`rounds/formation.ts`) makes each trio's unit again with it, to show where the muster
+ * knits each one, Bloomed units that later knit into an Elder included.
+ */
+export function knit(trio: readonly MusterUnit[], key: number, opts: MusterOpts): MusterUnit {
   const [a, b, c] = trio as [MusterUnit, MusterUnit, MusterUnit];
   const tier = (a.tier + 1) as Tier;
   const lane = opts.lanes[a.lane];
