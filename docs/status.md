@@ -36,7 +36,7 @@ Updated 2026-11-02, on `feature/r2a-plan` (a docs PR into `develop`). This is th
 
 ## R2a, a battle in rounds
 
-- **S0** (`feature/r2a-plan`, T001–T006): the plan, [docs/r2a-plan.md](r2a-plan.md), agreed on 2026-11-02.
+- **S0** (`feature/r2a-plan`, T001–T006, [#67](https://github.com/Swalliso/Sambattler/pull/67)): the plan, [docs/r2a-plan.md](r2a-plan.md), agreed on 2026-11-02.
   - **The calls:** you took every recommendation for R2a's 26 open calls. Each is dated in [clarify.md](tasks/clarify.md) and written into SPEC.
   - **Eight depart from or add to SPEC's first guess:**
     - interest at 1 per 10 gold, up to 30 (R2-Q2);
@@ -161,7 +161,7 @@ Updated 2026-11-02, on `feature/r2a-plan` (a docs PR into `develop`). This is th
 
 | Work | Where | State |
 |---|---|---|
-| R2a S0: R2a's plan and its calls (2026-11-02) | The `feature/r2a-plan` PR, [r2a-plan.md](r2a-plan.md), [clarify.md](tasks/clarify.md) (26 calls), SPEC, [r2a-battle-in-rounds.md](tasks/r2a-battle-in-rounds.md) | Plan agreed, every recommendation taken. R2a S1 and S2 are next |
+| R2a S0: R2a's plan and its calls (2026-11-02) | [#67](https://github.com/Swalliso/Sambattler/pull/67), [r2a-plan.md](r2a-plan.md), [clarify.md](tasks/clarify.md) (26 calls), SPEC, [r2a-battle-in-rounds.md](tasks/r2a-battle-in-rounds.md) | Plan agreed, every recommendation taken. R2a S1 and S2 are next |
 | R1 S8: R1's review gate (2026-11-02) | [#66](https://github.com/Swalliso/Sambattler/pull/66), [clarify.md](tasks/clarify.md) #7–#15, X4, X5 and #36, SPEC §4.6, §5.2, §5.3, §5.6, §6.5, §6.7, §7.4, §11.2, §11.6, §13.7, §16 R2 and §18.2 | Merged. Every recommendation taken. R1 is done |
 | R1 S7: R1's runs and write-up (2026-11-02) | [#65](https://github.com/Swalliso/Sambattler/pull/65), [balance-backlog.md](balance-backlog.md#r1--the-clash-check-2026-11-02), [r1-plan.md](r1-plan.md#as-built) | Merged. In 65 runs four monos beat `bot:balanced`, and `kept` with the arrival shield and Capguard Hall at 3 is the only set that passes every bar |
 | R4a's review gate passed, and X1 and X2 decided (2026-11-02) | [#64](https://github.com/Swalliso/Sambattler/pull/64), [r4a-plan.md](r4a-plan.md#as-built), [clarify.md](tasks/clarify.md) X1 and X2 | Done. R4a is finished. R2 splits into R2a and R2b, R2a goes beside v1, and `develop` may switch wholly to v2 |

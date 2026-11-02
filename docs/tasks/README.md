@@ -8,7 +8,7 @@ SPEC v2, broken into task lists that later sessions work through one row of a Se
 
 | Now | Session | Waits on |
 |---|---|---|
-| 1 | **R2a S1** in [r2a-battle-in-rounds.md](r2a-battle-in-rounds.md): the rounds data, and R1's set as default data (T007–T014) | R2a S0 (`feature/r2a-plan`) merged |
+| 1 | **R2a S1** in [r2a-battle-in-rounds.md](r2a-battle-in-rounds.md): the rounds data, and R1's set as default data (T007–T014) | R2a S0 ([#67](https://github.com/Swalliso/Sambattler/pull/67)) merged |
 | 1 | **R2a S2**, beside S1: the colony and the formation's pure core (T015–T020) | The same |
 
 R1, R4a, records-1 and R2a S0 are done. The sessions after S1 and S2 are in R2a's Sessions table.
