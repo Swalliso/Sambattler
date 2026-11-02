@@ -1,6 +1,6 @@
 # Where things stand
 
-Updated 2026-11-02, on `docs/r2a-s4` (the hub's docs PR into `develop`). This is the hand-over page. It covers what we're working on, what's waiting on the user's decision, and where each piece lives. Update it when work lands or the user decides something. Keep the detail in the docs it links to.
+Updated 2026-11-02, on `docs/r2a-s5` (the hub's docs PR into `develop`). This is the hand-over page. It covers what we're working on, what's waiting on the user's decision, and where each piece lives. Update it when work lands or the user decides something. Keep the detail in the docs it links to.
 
 ## In short
 
@@ -18,7 +18,7 @@ Updated 2026-11-02, on `docs/r2a-s4` (the hub's docs PR into `develop`). This is
   See [SPEC §0.1](../SPEC.md#01-what-changed-in-v2), [§1.3](../SPEC.md#13-v2-decisions-2026-10-31) and the [P3 notes](playtest-feedback.md#2026-10-31-p3-the-combat-rework-the-user).
 - **SPEC v2 is on `develop`** ([#39](https://github.com/Swalliso/Sambattler/pull/39)). **Nothing in v2 is built yet.** Until milestone R2 lands, the code follows v1: the M5 battle, with the rework's pieces behind `?proto=rework` on the dev site.
 - **The spec is broken into task lists** in [docs/tasks/](tasks/README.md) ([#40](https://github.com/Swalliso/Sambattler/pull/40), on `develop`), spec-kit style: one list per milestone, one session per row of its Sessions table. The decisions each milestone needs from the user are in [clarify.md](tasks/clarify.md), and the problems the breakdown found in SPEC v2 are in [spec-analysis.md](tasks/spec-analysis.md). Lists after R1's are drafts, refreshed when each milestone's plan is agreed.
-- **Milestone R1, the clash check, is done** ([SPEC §16](../SPEC.md#16-milestone-plan)). A headless tool fought whole armies at equal gold, with no rule change, to set squad sizes and check that every strong army has an answer before the round loop is built. At its review gate on 2026-11-02 you took every recommendation (below). **R2a's plan is agreed** (S0, 2026-11-02), **R2a's foundational sessions, S1 to S4, have merged**, and **S5 is next**.
+- **Milestone R1, the clash check, is done** ([SPEC §16](../SPEC.md#16-milestone-plan)). A headless tool fought whole armies at equal gold, with no rule change, to set squad sizes and check that every strong army has an answer before the round loop is built. At its review gate on 2026-11-02 you took every recommendation (below). **R2a's plan is agreed** (S0, 2026-11-02), **R2a S1 to S5 have merged** (the foundation, and the kept combat copied into rounds), and **S6 is next**.
 - **Then:**
   - R2: rounds, the general plans first, lives, and the planning screen. R2a's plan, [r2a-plan.md](r2a-plan.md), was agreed on 2026-11-02. The task lists split it in two (X1): R2a, a single battle in rounds, then R2b, the run in rounds. R2a gets a rough playtest after S14, as soon as a battle in rounds is properly playable and before its counter cycle and powers (R2-Q25, agreed 2026-11-01), and S21's playtest stays the gate;
   - R3: the kit, the six archetypes, augments, combos and run packs;
@@ -27,15 +27,11 @@ Updated 2026-11-02, on `docs/r2a-s4` (the hub's docs PR into `develop`). This is
 
   [docs/tasks/README.md](tasks/README.md) has the full order and every milestone's sessions.
 
-## Next session: R2a S5
+## Next session: R2a S6
 
 - **Work from** [docs/tasks/r2a-battle-in-rounds.md](tasks/r2a-battle-in-rounds.md).
-  - **S5** (`feature/r2a-combat`, T035–T041, [#78](https://github.com/Swalliso/Sambattler/pull/78)): built, and waiting for the hub's review. It starts Phase 3 (US1).
-    - `src/sim/rounds/` holds copies of v1's `world.ts`, `targets.ts`, `spatial.ts` and `hits.ts`, and `systems/` its targeting, movement, combat, merging, healing and clouds. They're typed on rounds' state and stripped as T036–T040 list, with v2's §5.2 as the rule (Call 20). Flyers' inert checks went too, since rounds have no `flying` rule yet.
-    - Emplacements fire from their centre within their band, never move in separation, pin nothing, never merge and are never healed. Clouds, bursts and the Spore Burst's strike hit them. S2 and S3a had already compiled and fielded them, and T041 checked that.
-    - `UnitState.slotY` (v1's `spawnY`, for §5.2's drift) differs from §14.4's listing, for S20's As built.
-    - `tests/unit/rounds/combat.test.ts` (33 cases) runs the kept systems in §14.6's order until T045 wires them. Verify and the browser tests are green, and no golden moved.
-- Then S6, once S5 has merged.
+  - **S6** (`feature/r2a-clash`, T042, T046, T043–T045): per-squad stats, Begin with the arrival and its shield, the muster, a lane's end and the frozen lane, and the clash wired into `step`. Its gate (S5 merged) is met, and it started on 2026-11-02.
+- Then S7, once S6 has merged.
 
 ## R2a, a battle in rounds
 
@@ -78,6 +74,11 @@ Updated 2026-11-02, on `docs/r2a-s4` (the hub's docs PR into `develop`). This is
   - A queued enemy plan is refused with `enemyPlanAfterOpening`, so the general's turn (T068) calls the executors directly in the round's opening. A player-side Begin is refused with `notInRoundsYet` until T043.
   - `src/sim/rounds/kit.ts` gives the faction roster with no copies. A general's cards carry its `maxOwned`, which `plant` checks.
   - `formationOf` and `mergePreview` take an optional `change`, and `survivingSupply` is exported with them.
+- **S5** (`feature/r2a-combat`, T035–T041, [#78](https://github.com/Swalliso/Sambattler/pull/78)): merged. It starts Phase 3 (US1). No golden moved, and no bug was found in a kept rule.
+  - `src/sim/rounds/` holds copies of v1's `world.ts`, `targets.ts`, `spatial.ts` and `hits.ts`, and `systems/` its targeting, movement, combat, merging, healing and clouds. They're typed on rounds' state and stripped as T036–T040 list, with v2's §5.2 as the rule (Call 20).
+  - Flyers' checks went too, since nothing in rounds sets `flying` yet. They come back if X9 brings flyers in.
+  - Emplacements fire from their centre within their band, never move in separation, pin nothing, never merge and are never healed. Clouds, bursts and the Spore Burst's strike hit them, and a Burster aims at one as at any unit (§6.7).
+  - `UnitState.slotY` (v1's `spawnY`, for §5.2's drift) differs from §14.4's listing, for S20's As built.
 - **What R2a starts from:** R1's chosen set as default data (all of `kept`, the arrival shield, Capguard Hall's squad at 3, the Elder's splash on); X5's cap and Decision by share; no copies before R3 (D45); the Anti-Ranged kind and the three fixes to the counter sets (§7.4); and eliteShare by Elder parts.
 - **For R2a to watch** (R1, and S1's readings):
   - Capguard Hall at 3 still won 92% at 300 gold and 2% at 1,500;
@@ -187,6 +188,7 @@ Updated 2026-11-02, on `docs/r2a-s4` (the hub's docs PR into `develop`). This is
 
 | Work | Where | State |
 |---|---|---|
+| R2a S5: the kept combat copied into rounds, and emplacements (2026-11-02) | [#78](https://github.com/Swalliso/Sambattler/pull/78), `src/sim/rounds/systems/`, `world.ts`, `targets.ts`, `tests/unit/rounds/combat.test.ts` | Merged after the hub's review. No golden moved, and no bug found in a kept rule. S6 is next |
 | R2a S4: the planning commands, the kit and the formation on state (2026-11-02) | [#76](https://github.com/Swalliso/Sambattler/pull/76), `src/sim/rounds/planning.ts`, `kit.ts`, `formation.ts` | Merged after the hub's review. No golden moved. Phase 2 is done, and S5 is next |
 | R2a S3b: `createBattle`, the step by phase and round scenarios (2026-11-02) | [#74](https://github.com/Swalliso/Sambattler/pull/74), `src/sim/rounds/create.ts`, `commands.ts`, `step.ts`, `snapshot.ts`, `tests/roundHelpers.ts` | Merged after the hub's review. No golden moved. S4 is next |
 | R2a S3a: the round types, compile and the modifier DSL (2026-11-02) | [#72](https://github.com/Swalliso/Sambattler/pull/72), `src/sim/rounds/state.ts`, `compile.ts`, `effects.ts`, `src/data/schema.ts` | Merged after the hub's review. No golden moved. S3b is next |
