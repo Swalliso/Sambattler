@@ -8,17 +8,17 @@ SPEC v2, broken into task lists that later sessions work through one row of a Se
 
 | Now | Session | Waits on |
 |---|---|---|
-| 1 | **R2a S4** in [r2a-battle-in-rounds.md](r2a-battle-in-rounds.md): the planning commands with refusals and refunds, the kit, and `formationOf` and `mergePreview` on state (T030–T034). Started 2026-11-02 | R2a S3b ([#74](https://github.com/Swalliso/Sambattler/pull/74)), merged |
-| 2 | **R2a S5**: the kept combat rules copied and stripped, and emplacements (T035–T041) | S4 merged |
+| 1 | **R2a S5** in [r2a-battle-in-rounds.md](r2a-battle-in-rounds.md): the kept combat rules copied and stripped, and emplacements (T035–T041). Started 2026-11-02 | R2a S4 ([#76](https://github.com/Swalliso/Sambattler/pull/76)), merged |
+| 2 | **R2a S6**: per-squad stats, Begin with the arrival and its shield, the muster, and a lane's end (T042, T046, T043–T045) | S5 merged |
 
-R1, R4a, records-1 and R2a S0–S3b are done. The sessions after S5 are in R2a's Sessions table.
+R1, R4a, records-1 and R2a S0–S4 are done. The sessions after S6 are in R2a's Sessions table.
 
 ## Milestones
 
 | Milestone | Task list | Sessions | Starts | Lands |
 |---|---|---|---|---|
 | R1, the clash check | [r1-clash-check.md](r1-clash-check.md), plan [r1-plan.md](../r1-plan.md) | S0–S8 | Done 2026-11-02 | One PR per session into `develop`. No rule changes, so no golden moves |
-| R2a, a battle in rounds | [r2a-battle-in-rounds.md](r2a-battle-in-rounds.md), plan [r2a-plan.md](../r2a-plan.md) | S0–S21 (S3 and S10 in two parts, with S14b) | Now: S4 (S0–S3b done 2026-11-02) | Beside v1 on `develop`, behind a preview entry (X2). Ends with a playtest gate on the dev site |
+| R2a, a battle in rounds | [r2a-battle-in-rounds.md](r2a-battle-in-rounds.md), plan [r2a-plan.md](../r2a-plan.md) | S0–S21 (S3 and S10 in two parts, with S14b) | Now: S5 (S0–S4 done 2026-11-02) | Beside v1 on `develop`, behind a preview entry (X2). Ends with a playtest gate on the dev site |
 | R2b, the run in rounds | [r2b-run-in-rounds.md](r2b-run-in-rounds.md) | S0–S14 (with S1b and S4b) | After R2a's playtest gate | S1–S4 and S1b as sub-PRs into `feature/r2b-cutover`, merged into `develop` at S4b once a whole run plays and v1 is gone; S5–S14 one PR each into `develop`. R2b S0 may drop the cutover branch, since X2 lets `develop` switch wholly to v2 |
 | R3, the kit | [r3-kit.md](r3-kit.md) | S0–S15 | After R2b | One PR per session into `develop` |
 | R4a, shapes on the field | [r4-readable-armies.md](r4-readable-armies.md), part 1 | R4a-S0–S5 (with S2b) | Now, beside R1 (X3). Lands before R2a's playtest | One PR per session into `develop` |
