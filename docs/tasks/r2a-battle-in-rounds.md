@@ -320,7 +320,7 @@ S1 to S4: the data, the colony, the round state machine and the planning command
   - `FieldedSquad` carries `lane`;
   - `rng.ai` is `{player, enemy}`, and `AiState` carries `plans[]`;
   - `Command` stays `{round, tick, side, seq}`.
-- [ ] T024 Write `tests/unit/rounds/compile.test.ts` (new) (§11.2, §14.2, §13.3):
+- [x] T024 Write `tests/unit/rounds/compile.test.ts` (new) (§11.2, §14.2, §13.3):
   - a squad's count comes from `squad`;
   - a tower compiles to an emplacement unit with structure armor and its building's `hp`;
   - a modifier on a retired stat compiles to nothing and is listed;
