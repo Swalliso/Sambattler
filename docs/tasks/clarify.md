@@ -24,7 +24,7 @@ This is the clarify step for SPEC v2. SPEC.md is the spec, `docs/<milestone>-pla
 | Ref | Question (short) | Needed by | Recommendation (short) |
 |---|---|---|---|
 | X1 | Split R2 into R2a and R2b? | Now (before R2a S0) | Yes (decided 2026-11-02) |
-| X2 | How R2 lands | Now (before R2a S0) | Beside v1 on develop (decided 2026-11-02); develop may switch wholly to v2, so R2b needn't use `feature/r2b-cutover` |
+| X2 | How R2 lands | Now (before R2a S0) | Beside v1 on develop (decided 2026-11-02); develop may switch wholly to v2, so R2b needn't use `feature/r2b-cutover`; R2a's preview loads on every build (2026-11-02) |
 | X3 | Split R4, the field's shape language first? | Now (R4a-S0) | Yes: R4a now, R4b after R3 |
 | X10 | Run it back in two parts? | Now (records-1 S0) | Yes: records-1 now, records-2 after R2b |
 | RB-Q1 | Where records live | records-1 S0 | The profile key, as profile v1, meta only |
@@ -40,7 +40,7 @@ This is the clarify step for SPEC v2. SPEC.md is the spec, `docs/<milestone>-pla
 | R1-Q7 | v2 targeting in the check | R1 S0 | A tool-only flag, on in the check |
 | R1-Q8 | v2 movement in the check | R1 S0 | Idle seek, on in the check |
 | R1-Q9 | A three-lane field | R1 S0 | Yes, as a screen |
-| R2-Q3 | How eliteShare counts merged units | R1 S0 (records), R2a S0 | Parts' base supply, recalibrated from R1 |
+| R2-Q3 | How eliteShare counts merged units | R1 S0 (records), R2a S0 | Elder parts only (decided 2026-11-02) |
 | R4-Q1 | Body-size bands | R4a-S0 | Heights 8–9, 11–12, 15–16 px |
 | R4-Q2 | Weapon marks | R4a-S0 | Shared glyphs baked onto each frame; area mark only for armor-ignoring damage. Superseded 2026-11-01: units carry no marks |
 | R4-Q3 | A louder tier cue | R4a-S0 | A team-neutral rim per tier, bigger pips |
@@ -59,32 +59,32 @@ This is the clarify step for SPEC v2. SPEC.md is the spec, `docs/<milestone>-pla
 | #14 | An Anti-Ranged kind | R1 gate | Yes (decided 2026-11-02) |
 | #15 | Counter sets from the clash matrix? | R1 gate | No, with the three fixes (decided 2026-11-02) |
 | #36 | The sixth archetype | R1 gate (reading), R3 S0 (call) | Lean the Burster Pod (R1's reading, 2026-11-02: the Burster Pod) |
-| X6 | Is 25–35 minutes binding? | R2a S0 | Measure; re-set after R2b's playtest |
-| X7 | Bots that buy the answer (§18.2 #34) | R2a S0 | Yes; G8, G14, G15 under both policies |
-| X8 | The general between counter cycles | R2a S0 | Measure; two default-off knobs |
-| R2-Q1 | What you see of the general from round 2 | R2a S0 | Full reveal by default; A/B "last fielded" |
-| R2-Q2 | Interest | R2a S0 | Raise it to 1 per 10 gold, up to 30 |
-| R2-Q4 | The single battle's general kit | R2a S0 | Its listed weights only |
-| R2-Q5 | Who buys the Burster Pod and the Rhizomorph Tunnel | R2a S0 | Weights in data; retire `aiWeight` |
-| R2-Q6 | bot:rush and bot:turtle in rounds | R2a S0 | Weight profiles; drop `placement` |
-| R2-Q7 | Cordis and Puppet Bloom under the muster | R2a S0 | Measure trios; v2 jobs if they're dead |
-| R2-Q8 | Display text out of the hashed state | R2a S0 | Yes, in R2a |
-| R2-Q9 | How long test:slow may run | R2a S0 | About 15 minutes, on worker pools |
-| R2-Q10 | G16 over role-split pairs | R2a S0 | Yes |
-| R2-Q11 | Clash-rule details | R2a S0 | Yes to the set |
-| R2-Q12 | Planning-screen details | R2a S0 | Yes to the set |
+| X6 | Is 25–35 minutes binding? | R2a S0 | Measure; re-set after R2b's playtest (decided 2026-11-02) |
+| X7 | Bots that buy the answer (§18.2 #34) | R2a S0 | Yes; G8, G14, G15 under both policies (decided 2026-11-02) |
+| X8 | The general between counter cycles | R2a S0 | Measure; two default-off knobs (decided 2026-11-02) |
+| R2-Q1 | What you see of the general from round 2 | R2a S0 | Full reveal by default; A/B "last fielded" (decided 2026-11-02) |
+| R2-Q2 | Interest | R2a S0 | Raise it to 1 per 10 gold, up to 30 (decided 2026-11-02) |
+| R2-Q4 | The single battle's general kit | R2a S0 | Its listed weights only (decided 2026-11-02) |
+| R2-Q5 | Who buys the Burster Pod and the Rhizomorph Tunnel | R2a S0 | Weights in data; retire `aiWeight` (decided 2026-11-02) |
+| R2-Q6 | bot:rush and bot:turtle in rounds | R2a S0 | Weight profiles; drop `placement` (decided 2026-11-02) |
+| R2-Q7 | Cordis and Puppet Bloom under the muster | R2a S0 | Measure trios; v2 jobs if they're dead (decided 2026-11-02; R1: a median of 0 trios in rounds 1–3) |
+| R2-Q8 | Display text out of the hashed state | R2a S0 | Yes, in R2a (decided 2026-11-02) |
+| R2-Q9 | How long test:slow may run | R2a S0 | About 15 minutes, on worker pools (decided 2026-11-02) |
+| R2-Q10 | G16 over role-split pairs | R2a S0 | Yes (decided 2026-11-02) |
+| R2-Q11 | Clash-rule details | R2a S0 | Yes to the set (decided 2026-11-02) |
+| R2-Q12 | Planning-screen details | R2a S0 | Yes to the set (decided 2026-11-02) |
 | R2-Q25 | A rough playtest after S14 | R2a (decided 2026-11-01) | Yes, before S15 and S16 |
-| #19 | The third rank's tiles and order | R2a S0 | First guess, plus a `startRanks` field |
-| #22 | The margin with siege units | R2a S0 | First guess |
-| #23 | Edge cases E1–E8 | R2a S0 | First guess |
-| #25 | A power during the muster | R2a S0 | First guess |
-| #29 | A bank reserve for the general | R2a S0 | 0 |
-| #30 | The general's lane rule on Twin Roots | R2a S0 | First guess; a lane in the fielded record |
-| #31 | A counter a round late? | R2a S0 | No |
-| #35 | The guardrail bands | R2a S0, R2b S0 | One measurement; upper bounds on G6 and G15 |
-| M6-Q1 | Record the feat stats in R2 | R2a S0 | Yes |
-| M7-Q1 | Gray Rot records and its trait | R2a S0 (trait), M7 S0 | Mirror records; drop the trait |
-| RB-Q3 | Active play time | R2a S0 (R2a S19 at the latest), records-2's S3 (RB/T024) | Visible wall time, 60 s idle cutoff |
+| #19 | The third rank's tiles and order | R2a S0 | First guess, plus a `startRanks` field (decided 2026-11-02) |
+| #22 | The margin with siege units | R2a S0 | First guess (decided 2026-11-02) |
+| #23 | Edge cases E1–E8 | R2a S0 | First guess (decided 2026-11-02) |
+| #25 | A power during the muster | R2a S0 | First guess (decided 2026-11-02) |
+| #29 | A bank reserve for the general | R2a S0 | 0 (decided 2026-11-02) |
+| #30 | The general's lane rule on Twin Roots | R2a S0 | First guess; a lane in the fielded record (decided 2026-11-02) |
+| #31 | A counter a round late? | R2a S0 | No (decided 2026-11-02) |
+| #35 | The guardrail bands | R2a S0, R2b S0 | One measurement; upper bounds on G6 and G15 (approach agreed 2026-11-02; the bands at R2a T125 and R2b S0) |
+| M6-Q1 | Record the feat stats in R2 | R2a S0 | Yes (decided 2026-11-02) |
+| M7-Q1 | Gray Rot records and its trait | R2a S0 (trait), M7 S0 | Mirror records; drop the trait (the trait dropped 2026-11-02; the records at M7 S0) |
+| RB-Q3 | Active play time | R2a S0 (R2a S19 at the latest), records-2's S3 (RB/T024) | Visible wall time, 60 s idle cutoff (decided 2026-11-02) |
 | R2-Q13 | A guaranteed answer in battle 1 | R2b S1b (R2b/T029) | Measure; a free blueprint if a pairing loses |
 | R2-Q14 | A boss win by Decision | R2b S0 | The full reward |
 | R2-Q15 | Home Brood and "+1 unit" effects | R2b S0 | +10% HP and damage instead |
@@ -187,6 +187,7 @@ These ten calls set how the work after R1 is cut. The task files assume each rec
   - So develop no longer has to stay playable as v1. R2b's switch-over may land on develop directly, without `feature/r2b-cutover`, and the stand-ins may show there. R2b S0 settles its branches and Sessions table with this (R2b Call 14). R2a S0 may simplify its own plan the same way, for example its dev-only entry.
   - What stays: `npm run verify` is green on every PR into develop. A develop push that fails verify fails the whole deploy, so `main`'s site couldn't redeploy either (`.github/workflows/deploy.yml`).
   - `main` keeps the v1 game until the user asks for a release.
+- **R2a part agreed:** 2026-11-02 (R2a S0; the user chose "Every build"): R2a's preview entry, `scene=rounds`, loads on every build through a dynamic `import()`, and the title's button shows only on the dev site. So there's no dev-only gate, no "not part of this build" message and no `--dev` mode in the screenshot tool, and R2a's sessions don't check by hand that v1 still plays: `npm run verify` still covers it. `main` never sees the preview, since R2b deletes it before any release. In SPEC §15 and §16 R2.
 
 ### X3 · Split R4: the field's shape language now, the text after R3
 
@@ -227,7 +228,7 @@ These ten calls set how the work after R1 is cut. The task files assume each rec
 - **Recommendation:** Measure first. R2a adds local play-time instrumentation (RB-Q3): planning seconds per round in R2a's playtest, run minutes in R2b's. Re-set the target after R2b's playtest. Levers in order: rounds per battle (X5), then the route's length, with its shape in data (§8.2's SHOULD). **Why:** SPEC's own figures give 32–44 minutes, more if battles reach round 9 (A203), and §8.2 disagrees with itself.
 - **Alternatives:** A203's order (the curve, a 2× clash default, a 5-row route); or a 35–45 minute target now.
 - **Blocks:** R2a S0; R2b gate; M8 step 6.
-- **Decision:** _open_
+- **Decision:** 2026-11-02 (R2a S0; the user: "Take every recommendation"): the recommendation: measure first. R2a's report shows planning seconds per round (R2a S19, on RB-Q3's clock), R2b's playtest reads the run's minutes, and the target is re-set after R2b's playtest. If runs are long, the levers go in order: rounds per battle (X5), then the route's length. In SPEC §8.2.
 
 ### X7 · Bots that buy the answer (§18.2 #34)
 
@@ -236,7 +237,7 @@ These ten calls set how the work after R1 is cut. The task files assume each rec
 - **Recommendation:** Yes, in R2a, with G8, G14 and G15 reported under both policies. G3 and G12 stay on fixed weights. This disagrees with the first guess. **Why:** §12.2 itself says "a bot that ignores it understates the player". Under the full reveal the general may be too easy, and only a bot that reads its army can show that (A198).
 - **Alternatives:** fixed weights only; G14 and G15 then read one policy.
 - **Blocks:** R2a S18's answer bot (T120, T121, T124); #35.
-- **Decision:** _open_
+- **Decision:** 2026-11-02 (R2a S0; the user: "Take every recommendation"): the recommendation, departing from SPEC's first guess (fixed weights only). R2a adds `bot:answer`, which plans after the general and leans toward the answer to the army it sees (R2a S18). G8 reports under both policies in R2a, and G14 and G15 under both in R2b. G3 and G12 stay on fixed weights. In SPEC §12.2, §12.3 and §18.2 #34.
 
 ### X8 · The general between counter cycles
 
@@ -245,7 +246,7 @@ These ten calls set how the work after R1 is cut. The task files assume each rec
 - **Recommendation:** Measure first. R2a's sim summary reports, per round, its banked gold, its free plots and exact replays of the last clash. Keep two default-off data knobs for the playtest: a light lean toward last round's answer from round 2, and "replace when full". **Why:** battle 1 fills its plots around round 6–7, later battles sooner, and its army then sits fixed about 2 rounds at a time (A049). With no colony change and no power, the clash replays exactly (A206).
 - **Alternatives:** "replace when full" as default data now (it moves goldens); a counter lean every round (A198).
 - **Blocks:** R2a S15's readouts and knobs (T100, T101).
-- **Decision:** _open_
+- **Decision:** 2026-11-02 (R2a S0; the user: "Take every recommendation"): the recommendation: measure first, and §7.2's rule stands. R2a's sim summary reports, per round, the general's banked gold, its free plots, what it planted and sold, and whether the clash replayed the last one exactly. Two default-off knobs in `balance.rounds.ai` (`leanToLastAnswer`, `replaceWhenFull`) are there for the playtest. In SPEC §7.2.
 
 ### X9 · Flyers after the first release
 
@@ -459,7 +460,7 @@ R1 reports a measure for each row, and you settle it at R1's review gate (§16 R
 - **Recommendation:** Keep the full reveal as the default (your answer to playtest F18), and A/B "last fielded from round 2" as a dev-site view option in R2a's playtest. It's a view rule, so no golden moves (A198). **Why:** with the full reveal you always move last and see its counters first; the archived rounds design rejected the rule for that reason, and Mechabellum hides each round's placements (A198). X7's bot measures the risk.
 - **Alternatives:** "last fielded" now (A198's pick); or a visible edge for the general.
 - **Blocks:** R2a S19's "last fielded" view (T127).
-- **Decision:** _open_
+- **Decision:** 2026-11-02 (R2a S0; the user: "Take every recommendation"): the recommendation. The full reveal stays the default (§1.3 #3, §7.5). R2a's playtest A/Bs a "last fielded" view from round 2 (`reveal=last`), a view rule that moves no golden. In SPEC §7.5 and §16 R2.
 
 ### R2-Q2 · Interest
 
@@ -468,7 +469,7 @@ R1 reports a measure for each row, and you settle it at R1's review gate (§16 R
 - **Recommendation:** Raise it to 1 per 10 gold, up to 30, in data, and report banked gold per round. This disagrees with the first guess. **Why:** +10 against a 100 stipend is no choice: one more building beats it (A205). A real stake gives the Trade pack's banking build a point. Both round-3 testers found interest confusing (§6.2), so if R2a's playtest still does, cut it.
 - **Alternatives:** cut it, and re-do Deep Cellars, the Spore Exchange and Patient Growth (A205); keep it.
 - **Blocks:** R2a's economy.
-- **Decision:** _open_
+- **Decision:** 2026-11-02 (R2a S0; the user: "Take every recommendation"): the recommendation, departing from SPEC's first guess (1 per 20 gold banked, up to 10). Interest is 1 per 10 gold banked at Begin, up to 30 (`interestPer` 10, `interestCap` 30, in data), and the report shows banked gold per round. If R2a's playtest still finds interest confusing, cut it. In SPEC §6.2, §11.1 and D36.
 
 ### R2-Q3 · How eliteShare counts merged units
 
@@ -477,7 +478,7 @@ R1 reports a measure for each row, and you settle it at R1's review gate (§16 R
 - **Recommendation:** Count merged units at their parts' base supply, and R1 records them that way (A014). Then recalibrate from R1: count Elder parts only, or cut the 1.2 to about 0.6. Test that `bot:balanced`'s round-4 colony doesn't read Elite (A041). **Why:** under every reading a default mixed army reads Elite, so the general sends Veilstalkers, which you dodge by switching merges off (A041). "At its base supply" allows readings ninefold apart (A014).
 - **Alternatives:** the swarm read alone.
 - **Blocks:** R1 S0 (what R1 records); R2a's counter cycle.
-- **Decision:** _open_
+- **Decision:** 2026-11-02 (R2a S0; the user: "Take every recommendation"): the recommendation as R1 refined it, departing from SPEC's first guess (Bloomed and Elder units count). `eliteShare` is the share of the fielded supply in Elder units, with every unit counted at its parts' base supply: an Elder counts its 9 parts' tier-1 supply, and a Bloomed unit its 3 parts', though a Bloomed unit isn't elite. The swarm read (`ai.counter.swarmMaxSupply`) isn't v2's rule. In R1's records this is the one reading that keeps `bot:balanced` from reading Elite (0–10% of its armies from 300 to 1,500 gold, against 100% counted plainly and 10–66% with the swarm read), and it lets #14's Anti-Ranged kind bite. In SPEC §7.4, §11.1 and §16 R2.
 - **R1 measures:** agreed 2026-11-01 (R1 S0). R1 records eliteShare after the muster with merged units at their parts' base supply (a Bloomed unit counts its 3 parts' tier-1 supply, an Elder its 9), with and without the swarm read, plus the Elder-only share and the four kinds' scores. The rule for §7.4 stays open for R2a S0.
 
 ### R2-Q4 · The single battle's general kit
@@ -487,7 +488,7 @@ R1 reports a measure for each row, and you settle it at R1's review gate (§16 R
 - **Recommendation:** Weight 1 applies only to cards §7.8 adds to a run kit and to a counter's missing answer. A single battle's general buys only its listed weights, as today (A045). **Why:** read literally, G4's scripted opponent would buy every building in the roster.
 - **Alternatives:** weight 1 for every kit card.
 - **Blocks:** R2a's general; G4.
-- **Decision:** _open_
+- **Decision:** 2026-11-02 (R2a S0; the user: "Take every recommendation"): the recommendation, departing from §11.11's literal rule ("a kit card its weights don't list gets weight 1"). Weight 1 applies only to the cards §7.8 adds to a run kit and to a counter's missing answer. In a single battle the general buys only its listed weights, as today. In SPEC §11.11.
 
 ### R2-Q5 · Who buys the Burster Pod and the Rhizomorph Tunnel
 
@@ -496,7 +497,7 @@ R1 reports a measure for each row, and you settle it at R1's review gate (§16 R
 - **Recommendation:** Keep R1's conditions, written into data: weight 1 in `bot:balanced`, rush, turtle, greedy and each general's weights; preferred lists only where wanted. Retire `aiWeight` and the kit append, pinned by a kit test (A048). Revisit with #48 and #49. **Why:** reviewers split. With no weights, G3 and G12 stop matching R1; `aiWeight` is a back door that changes every kit silently (A048).
 - **Alternatives:** no weights until R3 (A048).
 - **Blocks:** R2a's data; G3, G12.
-- **Decision:** _open_
+- **Decision:** 2026-11-02 (R2a S0; the user: "Take every recommendation"): the recommendation. The Burster Pod and the Rhizomorph Tunnel get weight 1 in `bot:balanced`, rush, turtle and greedy and in each general's weights, written in data, as R1 measured them. `aiWeight` and the kit append retire, and a kit test pins it. #48 and #49 revisit it in R3. In SPEC §11.11 and §16 R2.
 
 ### R2-Q6 · bot:rush and bot:turtle in rounds
 
@@ -505,7 +506,7 @@ R1 reports a measure for each row, and you settle it at R1's review gate (§16 R
 - **Recommendation:** Drop `placement` and keep both as weight profiles. Rush: no economy, swarm first. Turtle: Capguards, Mortars and Cellars, its description reworded. Keep `limits`, read in rounds, in BotDef (A044, A038). **Why:** both play in the tournament (§12.2), and `bot:turtle` was the best answer to Sporelings in the counter matrix (61%, §7.4).
 - **Alternatives:** retire both.
 - **Blocks:** R2a's bots.
-- **Decision:** _open_
+- **Decision:** 2026-11-02 (R2a S0; the user: "Take every recommendation"): the recommendation. `placement` goes, and `bot:rush` and `bot:turtle` stay as weight profiles: rush buys no economy and swarm first, and turtle buys Capguards, Mortars and Cellars, its description reworded. `limits` stays in BotDef, read in rounds through `afterRound`. In SPEC §7.1 and §14.2.
 
 ### R2-Q7 · Cordis and Puppet Bloom under the muster
 
@@ -514,7 +515,7 @@ R1 reports a measure for each row, and you settle it at R1's review gate (§16 R
 - **Recommendation:** Measure Puppet Bloom's trios per clash in R2a. Below a median of 1, give it a v2 job, such as lifting same-type units within 3 tiles one tier (A057). Turn the knit-time bonus into something the muster uses, such as merged units starting at +10% HP (A096). **Why:** knit time acts only after the muster (§5.6), and few trios remain then, so the auto policy rarely fires and the Cordis smoke fails (A057).
 - **Alternatives:** keep both.
 - **Blocks:** R2a's powers; R2b's knit content (A096).
-- **Decision:** _open_
+- **Decision:** 2026-11-02 (R2a S0; the user: "Take every recommendation"): the recommendation, with R1's reading: after the muster Puppet Bloom found a median of 0 trios at 300 and 600 gold (rounds 1–3) and 1 from 900. R2a measures it again in real rounds (S16). If the median stays below 1, R2b's S0 gives Puppet Bloom a v2 job (such as lifting same-type units within 3 tiles one tier) and turns Cordis's knit-time bonus into something the muster uses (such as merged units starting at +10% HP). Until then both are kept as written. In SPEC §11.10.
 
 ### R2-Q8 · Display text out of the hashed state
 
@@ -523,7 +524,7 @@ R1 reports a measure for each row, and you settle it at R1's review gate (§16 R
 - **Recommendation:** Yes, in R2a. The UI reads text by id, so rewording never moves a golden, and R4b deletes `src/ui/words.ts` (A152). **Why:** otherwise R4b and #56 move the goldens again, and `words.ts` would show v1 sentences over R2's relic effects (A152).
 - **Alternatives:** words into data, and another refresh in R4b.
 - **Blocks:** R2a's state; R4b's text pass.
-- **Decision:** _open_
+- **Decision:** 2026-11-02 (R2a S0; the user: "Take every recommendation"): the recommendation. From R2a the round battle's state holds ids and numbers only, and the UI reads names and text from content by id, so rewording never moves a round golden. R4b deletes `src/ui/words.ts`. In SPEC §10.4 and §14.4.
 
 ### R2-Q9 · How long test:slow may run
 
@@ -532,7 +533,7 @@ R1 reports a measure for each row, and you settle it at R1's review gate (§16 R
 - **Recommendation:** Assert them all, split across files, with G3, G12 and the runs on worker pools, in about 15 minutes on the dev machine. Record the runtimes in `docs/balance-backlog.md`. Past 20 minutes, G12 screens in the suite and confirms with `--checks counters` (A102). **Why:** G12 took about 35 minutes single-threaded in v1, and vitest's per-test timeout is 600 s (A102).
 - **Alternatives:** G12 only through `--checks counters`.
 - **Blocks:** R2a's guardrails.
-- **Decision:** _open_
+- **Decision:** 2026-11-02 (R2a S0; the user: "Take every recommendation"): the recommendation. `npm run test:slow` asserts every round guardrail, split across files, with G3, G12 and the runs on worker pools, in about 15 minutes on the dev machine. The runtimes go in `docs/balance-backlog.md`. Past 20 minutes, G12 screens in the suite and confirms through `--checks counters`. In SPEC §12.3 and §16 R2.
 
 ### R2-Q10 · G16 over role-split pairs
 
@@ -541,7 +542,7 @@ R1 reports a measure for each row, and you settle it at R1's review gate (§16 R
 - **Recommendation:** Yes, at budgets where both fit, ≥ 60% pooled, with a column per budget; same-role pairs are reported only. With a third rank, the swap trades the front and back ranks and leaves the third in place (A108, A120). **Why:** 28 of the 45 pairs are two front-line buildings, so the real cases would need about 78% for the pool to reach 60% (A108).
 - **Alternatives:** every even pair.
 - **Blocks:** R2a's guardrails.
-- **Decision:** _open_
+- **Decision:** 2026-11-02 (R2a S0; the user: "Take every recommendation"): the recommendation, departing from SPEC's first guess (every even pair). G16 counts role-split pairs, one front-line and one back-line building, at budgets where both fit: at least 60% pooled, with a column per budget. Same-role pairs are reported only. With a third rank, the swap trades the front and back ranks and leaves the third in place. In SPEC §12.3.
 
 ### R2-Q11 · Clash-rule details
 
@@ -557,7 +558,7 @@ R1 reports a measure for each row, and you settle it at R1's review gate (§16 R
   **Why:** two Burrows side by side make an Elder or none by plant order (A024), and §6.5's "the HP each Heartcap lost" breaks once Mending Moss heals (A209).
 - **Alternatives:** settle each one apart.
 - **Blocks:** R2a's clash core and scoring.
-- **Decision:** _open_
+- **Decision:** 2026-11-02 (R2a S0; the user: "Take every recommendation"): the recommendation, as a set. Units arrive in plot order (lane, rank, file, then unit), and the muster resolves inside Begin, before any tick or power; muster ticks skip targeting, movement, separation and attacks. The muster knits within a lane only. A unit knit from two squads takes the lowest-id parent's squad stats. A lane that has ended freezes, and a power aimed there is refused. Round damage is recorded capped, before the HP floor, and the round's result and the Decision use it, so heals never subtract. In SPEC §5.6, §6.5, §6.7 and §14.6.
 
 ### R2-Q12 · Planning-screen details
 
@@ -572,7 +573,7 @@ R1 reports a measure for each row, and you settle it at R1's review gate (§16 R
   **Why:** Space means Begin, pause and skip in turn, so one held key can start a clash with no planning (A065).
 - **Alternatives:** settle each one apart.
 - **Blocks:** R2a's battle UI.
-- **Decision:** _open_
+- **Decision:** 2026-11-02 (R2a S0; the user: "Take every recommendation"): the recommendation, as a set. Begin by key needs a fresh keydown after planning opens, ignores auto-repeat and waits about 400 ms, while the button stays instant. R2a's basic marks show your hits on enemy squads; the reverse direction and card marks come with R4b. Hovering a formation slot snaps the ghost to its plot, and a click there plants. The aftermath holds under Help or settings, and the speed control stays live there, with pause hidden. In SPEC §10.2, §10.3 and §13.5.
 
 ### R2-Q25 · A rough playtest after S14
 
@@ -590,7 +591,7 @@ R1 reports a measure for each row, and you settle it at R1's review gate (§16 R
 - **Recommendation:** Agree, with a map field such as `colony.startRanks: 2`, since homeCols alone can't say which ranks start open; and on Twin Roots, files 2, 1, 3, alternating lanes from the top (A031). Armilla's Landholder opens the first third-rank plot from battle 1. **Why:** R2a draws the closed columns into every map (A031).
 - **Alternatives:** gained plots beside the colony.
 - **Blocks:** R2a's maps and plot model.
-- **Decision:** _open_
+- **Decision:** 2026-11-02 (R2a S0; the user: "Take every recommendation"): the recommendation, adding to SPEC's first guess. Maps reserve homeCols 6, and a `colony.startRanks` field (2) says which ranks start open. One lane opens files 2, 3, 1, 4; Twin Roots opens files 2, 1, 3, alternating lanes from the top. Armilla's Landholder opens the first third-rank plot from battle 1. In SPEC §4.6, §11.9 and §18.2 #19.
 
 ### #22 · The margin with siege units
 
@@ -599,7 +600,7 @@ R1 reports a measure for each row, and you settle it at R1's review gate (§16 R
 - **Recommendation:** Agree. **Why:** siege units count once to decide a lane at 45 s and double for damage (§6.7), so subtracting damage supply keeps a close siege win small, and the floor stops a negative margin when the loser fields more siege.
 - **Alternatives:** the winner's damage supply minus the loser's surviving supply.
 - **Blocks:** R2a's scoring.
-- **Decision:** _open_
+- **Decision:** 2026-11-02 (R2a S0; the user: "Take every recommendation"): the recommendation: SPEC's first guess, the winner's damage supply minus the loser's, never below 0. In SPEC §6.7 and §18.2 #22.
 
 ### #23 · The clash's edge cases E1–E8
 
@@ -608,7 +609,7 @@ R1 reports a measure for each row, and you settle it at R1's review gate (§16 R
 - **Recommendation:** Agree, with one rule scenario each (§16 R2 step 4). E5 and E6 follow #10. If X5 changes the cap, E7's "each capped at 500" becomes "each capped".
 - **Alternatives:** none worth pricing.
 - **Blocks:** R2a's scoring and rule scenarios.
-- **Decision:** _open_
+- **Decision:** 2026-11-02 (R2a S0; the user: "Take every recommendation"): the recommendation: §6.7's table as written, with one rule scenario each (§16 R2 step 4). E5 and E6 follow #10, and E7 reads "each capped" under X5. In SPEC §6.7 and §18.2 #23.
 
 ### #25 · A power fired during the muster
 
@@ -617,7 +618,7 @@ R1 reports a measure for each row, and you settle it at R1's review gate (§16 R
 - **Recommendation:** Agree; R2-Q11 makes it exact. **Why:** the preview promises what fields (D48), and a power that broke muster knits would break the promise.
 - **Alternatives:** knits land at the muster's end, so a power can break them.
 - **Blocks:** R2a's clash core and power.
-- **Decision:** _open_
+- **Decision:** 2026-11-02 (R2a S0; the user: "Take every recommendation"): the recommendation: SPEC's first guess, made exact by R2-Q11. Merged units replace their parts inside Begin, before the clash's first tick, so a power hits the merged units and can't break a muster knit. In SPEC §5.6 and §18.2 #25.
 
 ### #29 · A bank reserve for the general
 
@@ -626,7 +627,7 @@ R1 reports a measure for each row, and you settle it at R1's review gate (§16 R
 - **Recommendation:** Agree for now. X8's readouts show what it banks anyway once its plots fill (A049). Revisit if R2-Q2 raises interest, since a reserve matters only when interest is worth having.
 - **Alternatives:** a reserve up to the interest cap.
 - **Blocks:** R2a's general.
-- **Decision:** _open_
+- **Decision:** 2026-11-02 (R2a S0; the user: "Take every recommendation"): the recommendation: 0 for now, so the general spends what it can. X8's readouts show what it banks anyway, and since R2-Q2 raised interest, R2a's measurements revisit it. In SPEC §7.2 and §18.2 #29.
 
 ### #30 · The general's lane rule on Twin Roots
 
@@ -635,7 +636,7 @@ R1 reports a measure for each row, and you settle it at R1's review gate (§16 R
 - **Recommendation:** Agree. Add a lane to each fielded squad, so the rule and its aggressive variant read only the record (A047). **Why:** Twin Roots is where mono Sporeling escaped its answers (§7.3), and G12 on Twin Roots tests this rule directly.
 - **Alternatives:** split evenly by supply.
 - **Blocks:** R2a's general.
-- **Decision:** _open_
+- **Decision:** 2026-11-02 (R2a S0; the user: "Take every recommendation"): the recommendation: SPEC's first guess, with a lane on each fielded squad, so the rule and its aggressive variant read only the record. In SPEC §7.3, D42, §14.4 and §18.2 #30.
 
 ### #31 · Should a counter land a round late?
 
@@ -644,7 +645,7 @@ R1 reports a measure for each row, and you settle it at R1's review gate (§16 R
 - **Recommendation:** Agree. **Why:** you see the counter before you plan anyway (§7.5), so a delay only weakens a general that may already be too easy (A198). R2-Q1's A/B covers the "my build never paid off" worry.
 - **Alternatives:** a one-round delay.
 - **Blocks:** R2a's counter cycle.
-- **Decision:** _open_
+- **Decision:** 2026-11-02 (R2a S0; the user: "Take every recommendation"): the recommendation: SPEC's first guess. A counter activates in the planning phase of its analysis. In SPEC §7.4 and §18.2 #31.
 
 ### #35 · The guardrail bands
 
@@ -659,7 +660,8 @@ R1 reports a measure for each row, and you settle it at R1's review gate (§16 R
   **Why:** v1's G6 read up to 88%, where falling behind was an edge (A111).
 - **Alternatives:** §12.3 as it stands.
 - **Blocks:** R2a's guardrails; R2b's G14 and G15.
-- **Decision:** _open_
+- **Decision:** _open_ for the bands: R2a T125 sets G4, G6, G8, G13 and G16, and R2b S0 sets G14 and G15.
+- **R2a part agreed:** 2026-11-02 (R2a S0; the user: "Take every recommendation"): the approach. Every band comes from one measurement, and G4 and G6 start from X5's race model, with four changes: G6's first clause becomes a band, such as 20–45%; G6 gives both sides equal max HP and plays both seats; G15 bounds boss reach, such as ≤ 85%; and G8's and G14's bands are set together, with the drafts' lift stated. R2a measures and sets G4, G6 (both clauses, single battle), G8 under both policies, G13 and G16 (R2a T124, T125); R2b sets G14 and G15 and re-reads G8 beside G14. In SPEC §12.3 and §18.2 #35.
 
 The R2a plan settles these itself, with no call from you: A027, A032, A034, A036, A039, A043, A046, A052, A059, A060, A061, A064, A067, A068, A069, A070, A071, A072, A075, A076, A103, A104, A106, A110, A113, A114, A115, A118, A121.
 
@@ -1283,7 +1285,7 @@ The R4 plans settle these themselves, with no call from you: A155, A161.
 - **Recommendation:** Yes: list the feat stats in §5.7 and the stat-path whitelist in §14.2 before R2a's stats session (A175). **Why:** adding stats in M6 moves every golden a second time after R2 (A175).
 - **Alternatives:** add them in M6.
 - **Blocks:** R2a's stats session.
-- **Decision:** _open_
+- **Decision:** 2026-11-02 (R2a S0; the user: "Take every recommendation"): the recommendation. SPEC lists the feat stats now, in §5.7 and in §14.2's stat-path whitelist, and R2a records them per round (S8): economy buildings planted, the most economy buildings on loam at once, buildings sold after fielding, each Heartcap's lowest HP fraction, and damage by unit tag in the round a Heartcap fell. In SPEC §5.7, §9.2 and §14.2.
 
 ### M6-Q2 · Unlocks earned mid-run
 
@@ -1409,7 +1411,8 @@ The M6 plan settles these itself, with no call from you: A174, A187.
 - **Recommendation:** Separate records, each with a `mirrors` field and identical stats, which packs, augments, counter sets and weights resolve through (A170). Drop the trait; this disagrees with §11.12. **Why:** the trait is an unlisted edge for every general, and adding it at M7 would retune every band R2–R4 set (A182). The Gray Rot's identity is its names, art and doctrines.
 - **Alternatives:** keep the trait as enemy-seat data from R2a, so the bands include it (A182).
 - **Blocks:** R2a S0 (the trait, if it stays); M7's roster.
-- **Decision:** _open_
+- **Decision:** _open_ for the records (M7 S0).
+- **R2a part agreed:** 2026-11-02 (R2a S0; the user: "Take every recommendation"): the trait, departing from §11.12. The Gray Rot has no faction trait, so R2a's enemy seat plays its units' stats unchanged and the bands carry no hidden edge. The records part (separate records with a `mirrors` field) waits for M7 S0. In SPEC §11.12.
 
 ### M7-Q2 · Blight details
 
@@ -1523,7 +1526,7 @@ X10 splits this into records-1 (now) and records-2 (after R2b).
 - **Recommendation:** Wall time with the tab visible on any run or battle screen, paused while hidden and after 60 s without input. Help and settings count, and a paused clash counts until the idle cutoff. The app computes it, and it never enters the run state or the hash (A185). **Why:** ticks run only in clashes, so the sim clock undercounts, and the number feeds X6 and M8's step 6.
 - **Alternatives:** wall time from run start to end.
 - **Blocks:** R2a S19's play clock (R2a/T126, T128; X6); records-2's S3 (RB/T015–T017, T019).
-- **Decision:** _open_
+- **Decision:** 2026-11-02 (R2a S0; the user: "Take every recommendation"): the recommendation. Active play time is wall time with the tab visible on a run or battle screen, paused while the tab is hidden and after 60 s without input. Help and settings count, and a paused clash counts until the idle cutoff. The app computes it, and it never enters the run state or the hash. R2a's play clock (S19) is the one module, and records-2 extends it. In SPEC §8.2 and §16 M6.
 
 ### RB-Q4 · What makes a card "seen", and where the codex shows
 
