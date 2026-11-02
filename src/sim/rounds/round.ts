@@ -3,8 +3,8 @@
 // the general plan first and a bot or general on the player's side after it, and enters planning. T055
 // adds the income, the round's Sporestorm with `roundStarted`, the `battleStart` and `roundStart`
 // triggers, and R2a's empty draft step (plan Call 26). Begin's clash half fields both armies and resolves
-// the muster (§4.7 steps 12–14), and the clash's end hands over to scoring (T051). It stands beside v1's
-// code until R2b moves it to `src/sim/round.ts`.
+// the muster (§4.7 steps 12–14), and the clash's end scores the round and checks the battle's end (§4.7
+// step 17, §6.5). It stands beside v1's code until R2b moves it to `src/sim/round.ts`.
 import type { ModifierDef } from '../../data/schema.ts';
 import { musterKnits } from '../formation.ts';
 import type { MusterUnit } from '../formation.ts';
@@ -13,9 +13,10 @@ import { addUnit } from './create.ts';
 import { collectRoundEffects, fireTriggers } from './effects.ts';
 import { formationOf } from './formation.ts';
 import type { MusterTrio, SquadPlan } from './formation.ts';
-import { SIDES } from './state.ts';
-import type { BattleState, ClashState, FieldedSquad, Side, SquadState } from './state.ts';
+import { SIDES, other } from './state.ts';
+import type { BattleState, ClashState, FieldedSquad, LaneResult, RoundResult, Side, SquadState } from './state.ts';
 import { mergeTriosNow } from './systems/merging.ts';
+import { capFor, decisionWinner, laneDamage, roundOutcome, stormBpFor, stormed, takenMods } from './systems/victory.ts';
 import { findUnit, isEmplacement } from './world.ts';
 
 /**
@@ -156,12 +157,107 @@ function fieldedOf(state: BattleState, side: Side): FieldedSquad[] {
 }
 
 /**
- * The clash's end (§14.6 clash step 13), on the tick its last lane ends. S7 scores the round here from the
- * lanes' locks (T051), putting `clash.fielded` in its `RoundResult`, and checks the battle's end (T052).
- * Either way the battle enters the aftermath.
+ * The clash's end (§4.7 step 17, §14.6 clash step 13), on the tick its last lane ends: the round is scored
+ * from the lanes' locks, the round's winner fires its `roundWon` triggers (none after a drawn round), and
+ * the battle's end is checked, which sets `outcome`. Either way the battle enters the aftermath, whose step
+ * ends the battle or opens the next round.
  */
 export function endClash(state: BattleState): void {
+  const { winner } = roundOutcome(scoreRound(state).damage);
+  if (winner) fireTriggers(state, winner, 'roundWon', { x: 0, y: 0, lane: -1, sourceBuildingId: 0 });
+  const outcome = battleOutcome(state);
+  if (outcome) state.outcome = outcome;
   state.phase = 'aftermath';
+}
+
+/**
+ * Scores the round from the lanes' locks in §6.7's integer order (§13.3 rule 5, §14.6 clash step 13). Each
+ * lane's winner deals 25 × its margin to the loser's Heartcap, × the round's storm, × the loser's
+ * damage-taken modifiers; each Heartcap's sum over the lanes it lost is then capped and applied, down to 0,
+ * with `heartcapDamaged`. The round's `RoundResult` records each side's damage capped, before the HP floor
+ * (R2-Q11), and each lane's before the cap (A068). The clash's fielded record moves into it, with this
+ * round's damage and survivors by building (plan Call 13, A064).
+ */
+export function scoreRound(state: BattleState): RoundResult {
+  const clash = state.clash!, rules = state.rules;
+  const stormBp = stormBpFor(rules.storm, state.round);
+  // what each Heartcap takes, summed over the lanes it lost, before the cap
+  const taken: Record<Side, number> = { player: 0, enemy: 0 };
+  const lanes = clash.lanes.map((lock): LaneResult => {
+    let damage = 0;
+    if (lock.winner) {
+      const loser = other(lock.winner);
+      damage = takenMods(stormed(laneDamage(lock.margin, rules.heartcapDamagePerSupply), stormBp), damageTakenBp(state, loser));
+      taken[loser] += damage;
+    }
+    return { winner: lock.winner, survivors: { ...lock.survivors }, capped: lock.capped, ticks: lock.endTick - clash.startTick, damage };
+  });
+  const damage: Record<Side, number> = { player: 0, enemy: 0 };
+  let capped = false;
+  for (const s of SIDES) {
+    const ss = state.sides[s];
+    const amount = Math.min(taken[s], capFor(rules.roundDamageCap, ss.heartcapMaxHp, stormBp));
+    const cut = amount < taken[s];
+    if (cut) capped = true;
+    damage[other(s)] = amount;
+    if (amount === 0) continue;
+    ss.heartcapHp = Math.max(0, ss.heartcapHp - amount);
+    state.stats[s].heartcapDamageTaken += amount;
+    state.events.push({ t: 'heartcapDamaged', side: s, amount, stormBp, capped: cut });
+  }
+  const result: RoundResult = {
+    round: state.round, lanes, damage, stormBp, capped,
+    heartcaps: { player: state.sides.player.heartcapHp, enemy: state.sides.enemy.heartcapHp },
+    fielded: clash.fielded,
+    damageByBuilding: { player: roundDamageByBuilding(state, 'player'), enemy: roundDamageByBuilding(state, 'enemy') },
+    survivorsByBuilding: { player: survivorsByBuilding(state, 'player'), enemy: survivorsByBuilding(state, 'enemy') },
+  };
+  clash.fielded = { player: [], enemy: [] };
+  state.rounds.push(result);
+  return result;
+}
+
+/**
+ * A side's damage-taken modifiers in basis points, applied in turn (§6.7 step 3), such as Rot Ward's 8500.
+ * None reaches a battle in R2a: relics aren't in its single battles, and `side.heartcapDamageTaken` comes
+ * with content's v2 effects in R2b (plan Call 19).
+ */
+function damageTakenBp(_state: BattleState, _side: Side): number[] {
+  return [];
+}
+
+/** A side's damage by building this round (A064): its battle's counters (§5.7) less what the rounds before recorded. */
+function roundDamageByBuilding(state: BattleState, side: Side): Record<number, number> {
+  const out: Record<number, number> = {};
+  for (const [key, total] of Object.entries(state.stats[side].damageByBuilding)) {
+    const id = Number(key);
+    const before = state.rounds.reduce((n, r) => n + (r.damageByBuilding[side][id] ?? 0), 0);
+    if (total > before) out[id] = total - before;
+  }
+  return out;
+}
+
+/** A side's units standing at the clash's end by building (A064), an emplacement under its tower's id. */
+function survivorsByBuilding(state: BattleState, side: Side): Record<number, number> {
+  const out: Record<number, number> = {};
+  for (const u of state.units) if (u.side === side && u.hp > 0) out[u.sourceBuildingId] = (out[u.sourceBuildingId] ?? 0) + 1;
+  return out;
+}
+
+/**
+ * The battle's end, checked once a round is scored (§6.5, §14.6 clash step 13). A Heartcap at 0 is a Rout
+ * for the other side, and with both at 0 the player loses (E8). After `maxRounds` with both standing it's a
+ * Decision on the Heartcap damage each side dealt in the battle, as each round recorded it (`decisionWinner`).
+ */
+export function battleOutcome(state: BattleState): BattleState['outcome'] {
+  const { player, enemy } = state.sides, round = state.round;
+  if (player.heartcapHp <= 0) return { winner: 'enemy', by: 'rout', round };
+  if (enemy.heartcapHp <= 0) return { winner: 'player', by: 'rout', round };
+  if (round < state.rules.maxRounds) return undefined;
+  const side = (s: Side) => ({
+    dealt: state.rounds.reduce((n, r) => n + r.damage[s], 0), hp: state.sides[s].heartcapHp, maxHp: state.sides[s].heartcapMaxHp,
+  });
+  return { winner: decisionWinner(state.rules.decisionBy, { player: side('player'), enemy: side('enemy') }), by: 'decision', round };
 }
 
 export function openRound(state: BattleState): void {

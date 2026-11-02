@@ -8,6 +8,15 @@ replaces. None of it is open work, including headings that say "Open:". From mil
 entries measure or tune v2's round battle (SPEC §11, §12). "The backlog" in the entries below means
 v1's, now [archived](../docs/archive/v1/balance-backlog.md).
 
+## R2a-S7: the round scenarios (2026-11-02)
+
+**Test data only, no golden moved.** No number or rule changed, and v1 never reads `data/scenarios/rounds/`.
+- **The rule scenarios** (R2a/T048, SPEC §16 R2 step 4): 19 files in `data/scenarios/rounds/`. They are
+  `formation-from-plots`, `clash-cap`, `round-damage-cap` and `decision-round-9`, one for each of §6.7's E1–E8, and
+  G6's `comeback-r4`, with clash-form copies of v1's `merge-trio`, `knit-cancel`, `elder-ladder` and
+  `merge-under-fire` and of R4a's `unit-lineup` and `unit-lineup-twin`. v1's own files stay until R2b.
+  `tests/unit/rounds/scenarios.test.ts` asserts each one's lanes, damage and comeback gold exactly.
+
 ## R2a-S1: R1's chosen set as default data, and the rounds data (2026-11-02)
 
 **v1's goldens moved once, from the adopted set** (`npm run golden -- update`, T014). Every change rests on a
