@@ -334,7 +334,7 @@ S1 to S4: the data, the colony, the round state machine and the planning command
   - `rank` and `onLoam` select squads by their plot;
   - `npm run validate:data` and v1's `tests/unit/effects.test.ts` still pass.
   - That each trigger fires once at its §14.6 step is tested with the step: `roundStart` in T054, `clashStart` in T042, `roundWon` in T047.
-- [ ] T026 Build the modifier DSL for rounds in `src/sim/rounds/effects.ts` (new), and the data it needs in `src/data/schema.ts` (§14.2, §14.6)
+- [x] T026 Build the modifier DSL for rounds in `src/sim/rounds/effects.ts` (new), and the data it needs in `src/data/schema.ts` (§14.2, §14.6)
   - The schema: add `roundStart`, `clashStart` and `roundWon` to `TriggerSchema`'s `on` enum (`src/data/schema.ts:83`). v1's `src/sim/effects.ts` never fires them. Add `rank: 0 | 1 | 2` to `SelectorSchema`, treated as positional, so until T046 it's accepted only where `POSITIONAL_STATS` allows (`:46-67`).
   - The DSL: v1's stat resolution, the kept selectors plus `rank` and `onLoam`, and the triggers `battleStart`, `roundStart`, `clashStart`, `unitDeath`, `merge` and `roundWon`, with `gainGold`.
 
