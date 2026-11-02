@@ -389,19 +389,19 @@ S1 to S4: the data, the colony, the round state machine and the planning command
 
 **S5: the kept combat rules and emplacements**
 
-- [ ] T035 [US1] Write `tests/unit/rounds/combat.test.ts` (new), with the kept cases of v1's combat and damage tests in round form (§5.2, §5.3, §6.7) (A008, A021, A029, A110)
+- [x] T035 [US1] Write `tests/unit/rounds/combat.test.ts` (new), with the kept cases of v1's combat and damage tests in round form (§5.2, §5.3, §6.7) (A008, A021, A029, A110)
   - Targeting: the preferred class first, then the nearest by edge, ties to the lower id; stickiness within ×1.25; no building or Heartcap candidates; siege units have no preference; slayer and tunneler preferences hold; a tunneler surfaces at the nearest enemy ranged unit out of an emplacement's reach.
   - Movement: an idle unit seeks the nearest enemy it could target; with none it advances, drifting toward its slot's y at 0.3 tiles a second; positions clamp to [0, W]; separation runs 2 passes.
   - Damage: splash falloff, pinning, clouds, cleave, bursts and healing.
   - An emplacement never moves, even when overlapped; it counts 0 supply; siege deals ×2 to it; its firing band respects `minRange` 1.5; the Mortar reaches 7 tiles with clouds; it's never healed, never merges, pins nothing, and clouds, bursts and powers hit it.
-- [ ] T036 [US1] Copy `world.ts`, `targets.ts`, `spatial.ts` and `hits.ts` into `src/sim/rounds/world.ts` (new), `src/sim/rounds/targets.ts` (new), `src/sim/rounds/spatial.ts` (new) and `src/sim/rounds/hits.ts` (new), typed on rounds' state (§13.4) (A027, A103)
+- [x] T036 [US1] Copy `world.ts`, `targets.ts`, `spatial.ts` and `hits.ts` into `src/sim/rounds/world.ts` (new), `src/sim/rounds/targets.ts` (new), `src/sim/rounds/spatial.ts` (new) and `src/sim/rounds/hits.ts` (new), typed on rounds' state (§13.4) (A027, A103)
   - Removed: buildings and `HEARTCAP_ID` as targets, besieged, suppression, `columnsOwned` and `supplyCapOf`. `MAX_RADIUS` 0.8 stays.
-- [ ] T037 [US1] Copy targeting into `src/sim/rounds/systems/targeting.ts` (new), without buildings or Heartcaps as targets, call for help, dive, or siege's preference. Keep slayer's and the tunneler's rules; the tower path becomes the emplacement's firing band and the Mortar's cloud aim (§5.2, §13.4) (A008, A110)
-- [ ] T038 [US1] Copy movement into `src/sim/rounds/systems/movement.ts` (new), without Hold, waves, rush, fall-back, dive, surfacing at spawners, turret checks, or the imports from `spawning.ts` and `stance.ts` (§5.2, §13.4) (A021)
+- [x] T037 [US1] Copy targeting into `src/sim/rounds/systems/targeting.ts` (new), without buildings or Heartcaps as targets, call for help, dive, or siege's preference. Keep slayer's and the tunneler's rules; the tower path becomes the emplacement's firing band and the Mortar's cloud aim (§5.2, §13.4) (A008, A110)
+- [x] T038 [US1] Copy movement into `src/sim/rounds/systems/movement.ts` (new), without Hold, waves, rush, fall-back, dive, surfacing at spawners, turret checks, or the imports from `spawning.ts` and `stance.ts` (§5.2, §13.4) (A021)
   - Idle units seek per §5.2; emplacements are immovable in separation, and the other unit takes the whole overlap. There's no pace rule (#12): each unit moves at its own speed.
-- [ ] T039 [US1] Copy combat into `src/sim/rounds/systems/combat.ts` (new), without turrets, damage to buildings and the Heartcap, `spawnerDefense`, the storm's unit and tower multiplier, or `releaseStored`. Siege's ×2 stays, against structure armor only (§5.3, §11.1, §13.4)
-- [ ] T040 [US1] Copy merging, healing and clouds into `src/sim/rounds/systems/merging.ts` (new), `src/sim/rounds/systems/healing.ts` (new) and `src/sim/rounds/systems/clouds.ts` (new). Merging's v1 rule holds on the field after the muster, without the supply wait, `noteMerged` or wave tracking. Clouds keep `soakShield`, and merging keeps shields in proportion, since #8 adopted the arrival shield (§5.3, §5.6, §13.4)
-- [ ] T041 [US1] Compile and field emplacements in `src/sim/rounds/compile.ts` and `src/sim/rounds/formation.ts` (§4.4, §6.7) (A029)
+- [x] T039 [US1] Copy combat into `src/sim/rounds/systems/combat.ts` (new), without turrets, damage to buildings and the Heartcap, `spawnerDefense`, the storm's unit and tower multiplier, or `releaseStored`. Siege's ×2 stays, against structure armor only (§5.3, §11.1, §13.4)
+- [x] T040 [US1] Copy merging, healing and clouds into `src/sim/rounds/systems/merging.ts` (new), `src/sim/rounds/systems/healing.ts` (new) and `src/sim/rounds/systems/clouds.ts` (new). Merging's v1 rule holds on the field after the muster, without the supply wait, `noteMerged` or wave tracking. Clouds keep `soakShield`, and merging keeps shields in proportion, since #8 adopted the arrival shield (§5.3, §5.6, §13.4)
+- [x] T041 [US1] Compile and field emplacements in `src/sim/rounds/compile.ts` and `src/sim/rounds/formation.ts` (§4.4, §6.7) (A029)
   - Each tower becomes one unit with its attack, `hp`, `minRange` and cloud aim, structure armor and 0 supply. It stands at its slot's centre, with a radius of at most 0.8, its range measured from its centre as a tower's was, and it's restored each round.
 
 **S6: Begin, the muster and a lane's end**
@@ -411,6 +411,7 @@ S1 to S4: the data, the colony, the round state machine and the planning command
   - with no power queued, for 20 ticks no unit's position or HP changes, separation included;
   - the fielded record equals the units standing after the muster, by lane, type, tier and count;
   - a muster merge pays its side effects once;
+  - an emplacement arrives at its tower's full HP each round, whatever the last clash left it (T041);
   - the arrival shield (#8, Call 30): each lane's army of 2 or more unit types arrives with shields of 20% of each unit's max HP, before the muster; emplacements neither count as a type nor take one, and a knit keeps shields in proportion;
   - `clashStart` triggers fire once, after `musterKnit` and before the clash's first tick (T026);
   - lane ends: E1 and E2 resolve on the first tick, a double wipe is drawn (E4), and the cap falls at exactly `startTick + 900` with the muster counted (#13);

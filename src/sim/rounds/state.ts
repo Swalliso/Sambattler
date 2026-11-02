@@ -11,7 +11,7 @@ import type {
 } from '../state.ts';
 import type { ColonyPlot } from './colony.ts';
 
-export { COUNTER_KINDS, SIDES, other } from '../state.ts';
+export { COUNTER_KINDS, POWER_SOURCE_ID, SIDES, other } from '../state.ts';
 export type {
   Armor, BattleModifier, BuildingKind, CloudSpec, CloudState, CompiledTier, Controller, CounterKind, DamageType,
   DraftPolicy, DraftPool, Effectiveness, IntelProfile, KnitState, OpenDraft, PendingHit, PowerPolicy, Rng4, Side, Tier,
@@ -313,6 +313,11 @@ export interface UnitState {
   y: number;
   px: number;
   py: number;
+  /**
+   * The y it arrived at in its slot (its file, §4.6), which it drifts back toward while it has no enemy to
+   * seek (§5.2). A merged unit takes its parts' mean. v1's `spawnY`.
+   */
+  slotY: number;
   hp: number;
   maxHp: number;
   supply: number;
