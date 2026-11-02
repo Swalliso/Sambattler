@@ -2,7 +2,8 @@
 // hash32(runSeed, streamName, battleIndex). Stream state lives in the battle state.
 import type { Rng4 } from './state.ts';
 
-export type StreamName = 'combat' | 'ai' | 'draft' | 'route' | 'events' | 'meta';
+/** v1 draws on `ai`; a battle in rounds has an AI stream a side, `ai.player` and `ai.enemy` (plan Call 10). */
+export type StreamName = 'combat' | 'ai' | 'ai.player' | 'ai.enemy' | 'draft' | 'route' | 'events' | 'meta';
 
 /** FNV-1a 32 over the UTF-16 code units of a string. */
 export function fnv1a32(text: string): number {

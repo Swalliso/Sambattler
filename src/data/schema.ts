@@ -771,6 +771,56 @@ export const ScenarioSchema = z.object({
   sides: z.object({ player: ScenarioSide, enemy: ScenarioSide }).strict(),
 }).strict();
 
+// ---- round scenarios: `data/scenarios/rounds/<id>.json` (SPEC §15.2, R2a plan Call 18) ----
+
+const SideName = z.enum(['player', 'enemy']);
+const RoundScenarioSide = z.object({
+  /** The buildings planted on its plots before the scenario's round; each merges unless `merge` is false (§5.6). */
+  colony: z.array(z.object({
+    building: Id, lane: z.number().int().nonnegative(), rank: z.number().int().nonnegative(), file: z.number().int().positive(),
+    merge: z.boolean().optional(),
+  }).strict()).optional(),
+  /** Its kit by building id: its faction's roster unless set (SPEC §18.1 D45). */
+  kit: z.array(Id).optional(),
+  /** Its gold before the round's income: §6.1's starting gold unless set. */
+  gold: z.number().int().nonnegative().optional(),
+  /** Its Heartcap, full unless `heartcapHp` is set (SPEC §4.5). */
+  heartcapHp: z.number().int().nonnegative().optional(),
+  heartcapMaxHp: z.number().int().positive().optional(),
+  /** The Heartcap damage it has dealt in the rounds before: the other side's max HP minus its HP unless set. */
+  dealt: z.number().int().nonnegative().optional(),
+  /** The plots its colony holds: the map's base plots unless set (SPEC §4.6). */
+  plots: z.number().int().nonnegative().optional(),
+  /** Its commander: the passive, and the power with the powers flag (SPEC §11.10). */
+  commander: Id.optional(),
+}).strict();
+/** A round before the scenario's: each lane's winner (null for a draw), and the Heartcap damage each side dealt, whose smaller dealer lost it (SPEC §6.7). */
+const RoundScenarioRound = z.object({
+  lanes: z.array(SideName.nullable()).optional(),
+  damage: z.object({ player: z.number().int().nonnegative(), enemy: z.number().int().nonnegative() }).strict().optional(),
+}).strict();
+const RoundScenarioFielded = z.object({
+  unit: Id, tier: TierSel.optional(), count: z.number().int().positive(), lane: z.number().int().nonnegative().optional(),
+}).strict();
+
+export const RoundScenarioSchema = z.object({
+  id: Id, description: z.string(), map: Id,
+  battleIndex: z.number().int().positive().optional(),
+  /** The round it starts in, 1 unless set. */
+  round: z.number().int().positive().optional(),
+  controllers: ScenarioSchema.shape.controllers,
+  flags: ScenarioSchema.shape.flags,
+  sides: z.object({ player: RoundScenarioSide, enemy: RoundScenarioSide }).strict(),
+  /** The last round's result, whose damage counts in each side's `dealt` (R2a plan Call 18, A106). */
+  last: RoundScenarioRound.optional(),
+  /** Instead of `dealt` and `last`: every round before this one, with what each side fielded, which the counter cycle reads (SPEC §7.4). */
+  rounds: z.array(RoundScenarioRound.extend({
+    fielded: z.object({ player: z.array(RoundScenarioFielded).optional(), enemy: z.array(RoundScenarioFielded).optional() }).strict().optional(),
+  })).optional(),
+  /** For rule tests: units placed for a clash directly, which the scenario starts in. */
+  clash: z.object({ units: z.array(z.object({ side: SideName, ...ScenarioUnits.shape }).strict()) }).strict().optional(),
+}).strict();
+
 // ---- run content (SPEC §8, §11.6–11.7) ----
 
 const TrackLevel = z.object({ text: z.string().min(1), effects: EffectBundleSchema }).strict();
@@ -858,6 +908,7 @@ export type SoundBusT = z.infer<typeof SoundBus>;
 export type GeneralDef = z.infer<typeof GeneralSchema>;
 export type BotDef = z.infer<typeof BotSchema>;
 export type ScenarioDef = z.infer<typeof ScenarioSchema>;
+export type RoundScenarioDef = z.infer<typeof RoundScenarioSchema>;
 export type UpgradeTrackDef = z.infer<typeof UpgradeTrackSchema>;
 export type RelicDef = z.infer<typeof RelicSchema>;
 export type EventDef = z.infer<typeof EventSchema>;
