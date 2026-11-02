@@ -8,7 +8,7 @@ import type { RoundScenarioDef } from '../../../src/data/schema.ts';
 import { createBattle as createV1Battle, makeConfig as makeV1Config, snapshot as snapshotV1 } from '../../../src/sim/index.ts';
 import { seedStream } from '../../../src/sim/rng.ts';
 import {
-  addUnit, commandStamp, createBattle, createFromScenario, hashState, makeRoundConfig, queueCommand, restore, SIDES, snapshot, step,
+  addUnit, commandStamp, createBattle, createFromScenario, hashState, makeRoundConfig, queueCommand, restore, SIDES, snapshot, step, survivingSupply,
 } from '../../../src/sim/rounds/index.ts';
 import type { BattleState, Side } from '../../../src/sim/rounds/index.ts';
 import { readRawContent } from '../../../tools/lib/content.ts';
@@ -221,5 +221,23 @@ describe('round scenarios (§15.2, plan Call 18, A106)', () => {
     expect(s.units.map((u) => [u.id, u.side, u.unitId, u.lane])).toEqual([
       [1, 'player', 'sporeling', 0], [2, 'player', 'sporeling', 0], [3, 'player', 'sporeling', 0], [4, 'enemy', 'gillArcher', 0],
     ]);
+  });
+
+  it("counts a side's surviving supply in a lane: its living units', a merged unit its own and a siege unit once (§6.7)", () => {
+    const s = createFromScenario(content, scenario({
+      map: 'twin-roots',
+      clash: {
+        units: [
+          { side: 'player', unit: 'sporeling', lane: 0, x: 8, y: 2, count: 3 }, { side: 'player', unit: 'sporeling', lane: 0, x: 9, y: 3, tier: 2 },
+          { side: 'player', unit: 'rootbreaker', lane: 0, x: 10, y: 2 }, { side: 'enemy', unit: 'gillArcher', lane: 0, x: 21, y: 3 },
+          { side: 'enemy', unit: 'capguard', lane: 1, x: 20, y: 9 },
+        ],
+      },
+    }));
+    const tug = () => [0, 1].map((lane) => SIDES.map((side) => survivingSupply(s, side, lane)));
+    expect(tug()).toEqual([[8, 2], [0, 2]]);
+    s.units.find((u) => u.unitId === 'gillArcher')!.hp = 0;
+    expect(tug()).toEqual([[8, 0], [0, 2]]);
+    expect(survivingSupply(planningState(), 'player', 0)).toBe(0);
   });
 });

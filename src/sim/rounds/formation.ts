@@ -2,12 +2,15 @@
 // the formation box its colony copies, and `musterFor` knits them in place at the clash's opening muster,
 // to a fixed point, giving `mergePreview`'s shape (plan call 5). Both take plain records and run on R1's
 // `src/sim/formation.ts`, so they read no battle state and draw on no stream (§13.3 rule 2).
-// `formationOf` and `mergePreview` (T034) build their input from the state, and the arrival (T043) puts
-// units where `formationFor` says, so the preview and the clash can't disagree.
+// `formationOf` and `mergePreview` build their input from the state, with an optional change to preview
+// (plan call 6), and the arrival (T043) puts units where `formationOf` says, so the preview and the clash
+// can't disagree.
 import type { BuildingDef } from '../../data/schema.ts';
 import { emplacementPosition, formationBox, knit, musterKnits, overflows, slotPositions } from '../formation.ts';
 import type { FieldGeom, MusterOpts, MusterUnit, Point, Slot } from '../formation.ts';
 import type { Side, Tier } from '../state.ts';
+import { plantProblem, sellProblem, toggleProblem } from './planning.ts';
+import type { BattleState, CompiledUnit } from './state.ts';
 
 /** A building as the formation reads it: what it fields and its merge toggle. */
 export interface FieldingBuilding {
@@ -177,6 +180,69 @@ export function musterFor(input: MusterInput): MergePreview {
     }
   });
   return { byBuilding, trios };
+}
+
+/**
+ * A change to a colony that `formationOf` and `mergePreview` preview without touching the state (§14.6,
+ * plan call 6, A060): the ghost before a plant, a sale or a toggle.
+ */
+export type PlanChange = { plant: { buildingId: string; plot: number } } | { sell: number } | { toggle: { id: number; on: boolean } };
+
+/**
+ * A side's squads as they arrive at the clash (§4.6, §14.6): `formationFor` on its colony as it stands, or
+ * as it would stand after `change`. It's the one formation rule, which the arrival, the planning preview
+ * and the AI read. It writes nothing and draws on no stream (§13.3), so a preview equals the state after
+ * the change; a change its command would refuse now previews the colony as it stands.
+ */
+export function formationOf(state: BattleState, side: Side, change?: PlanChange): SquadPlan[] {
+  return formationFor(formationInput(state, side, change)).squads;
+}
+
+/** What a side fields after the muster (§5.6, §14.6): `musterFor` on `formationOf`'s colony, with the side's merge radius. */
+export function mergePreview(state: BattleState, side: Side, change?: PlanChange): MergePreview {
+  const { units, mergeRadius } = state.compiled[side];
+  return musterFor({ ...formationInput(state, side, change), mergeRadius, radiusOf: (unitId, tier) => units[unitId]!.tiers[tier - 1]!.radius });
+}
+
+/** T020's plain input from the state: the map's geometry and the side's plots, each with its building as the formation reads it. */
+function formationInput(state: BattleState, side: Side, change: PlanChange | undefined): FormationInput {
+  const plots: FormationPlot[] = state.sides[side].plots.map((p) => {
+    const b = p.building ? state.buildings.find((x) => x.id === p.building) : undefined;
+    return { lane: p.lane, rank: p.rank, file: p.file, building: b ? fielding(state, side, b.id, b.buildingId, b.mergeOn) : null };
+  });
+  if (change) applyChange(state, side, plots, change);
+  return { geom: { width: state.map.width, lanes: state.lanes, gapTiles: state.rules.formationGapTiles }, side, plots };
+}
+
+/** Makes a change on the input's own plots, as its command would make it, unless the command would refuse it now. */
+function applyChange(state: BattleState, side: Side, plots: FormationPlot[], change: PlanChange): void {
+  const at = (id: number): FormationPlot => plots.find((p) => p.building?.id === id)!;
+  if ('plant' in change) {
+    const { buildingId, plot } = change.plant;
+    // with the id `plant` would give it, and its toggle on
+    if (!plantProblem(state, side, buildingId, plot)) plots[plot]!.building = fielding(state, side, state.nextId, buildingId, true);
+  } else if ('sell' in change) {
+    if (!sellProblem(state, side, change.sell)) at(change.sell).building = null;
+  } else if (!toggleProblem(state, side, change.toggle.id)) {
+    const p = at(change.toggle.id);
+    p.building = { ...p.building!, mergeOn: change.toggle.on };
+  }
+}
+
+/** A building as the formation reads it, from its compiled card (§4.4): a spawner's squad, or a tower's one emplacement. */
+function fielding(state: BattleState, side: Side, id: number, buildingId: string, mergeOn: boolean): FieldingBuilding {
+  const card = state.compiled[side].buildings[buildingId]!;
+  if (!card.squad) return { id, kind: card.kind, mergeOn };
+  const unit = state.compiled[side].units[card.squad.unit]!;
+  return { id, kind: card.kind, squad: { unitId: unit.id, count: card.squad.count, radius: unit.tiers[0].radius, eligible: knitsAtMuster(state, unit) }, mergeOn };
+}
+
+/**
+ * Whether a squad's units may knit at the muster, toggle aside (§5.6): never with the battle's merging off,
+ * nor a unit that arrives burrowed, nor a Burster while bursts are in play, as v1's merging has it.
+ */
+function knitsAtMuster(state: BattleState, unit: CompiledUnit): boolean {
+  return state.config.flags.merging && !unit.tags.includes('burrow') && !(state.rules.burst && unit.tags.includes('burst'));
 }
 
 const byPlace = (p: FormationPlot, q: FormationPlot): number => p.lane - q.lane || p.rank - q.rank || p.file - q.file;

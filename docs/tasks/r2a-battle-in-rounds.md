@@ -378,7 +378,7 @@ S1 to S4: the data, the colony, the round state machine and the planning command
   - with no copy limit (D45; X4 decided no, 2026-11-02), a card plants until the plots run out;
   - the general plants by `maxOwned`.
 - [x] T033 Build the kit in `src/sim/rounds/kit.ts` (new): `kitOf(content, side, config)`, a single battle's faction roster, and `inKit`, which `plant` checks. There are no copies (D45, Call 29), and the general keeps `maxOwned` (§7.8); R3 adds copies here, and the general's are #42's (§4.4, §14.6, §18.1 D45) (A033, A145, A194, A196)
-- [ ] T034 Build `formationOf(state, side, change?)` and `mergePreview(state, side, change?)` in `src/sim/rounds/formation.ts` on T020's core, and export both with `survivingSupply` from `src/sim/rounds/index.ts` (§4.6, §5.6, §14.6) (A032, A060)
+- [x] T034 Build `formationOf(state, side, change?)` and `mergePreview(state, side, change?)` in `src/sim/rounds/formation.ts` on T020's core, and export both with `survivingSupply` from `src/sim/rounds/index.ts` (§4.6, §5.6, §14.6) (A032, A060)
   - Add cases to `tests/unit/rounds/formation.test.ts`: a `change` preview equals the state after that change; `hashState` and every rng stream are unchanged after either call.
 
 **Checkpoint:** `npm run verify` is green with only S1's v1 golden refresh; `npx vitest run tests/unit/rounds` passes.

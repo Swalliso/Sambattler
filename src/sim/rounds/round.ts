@@ -4,7 +4,18 @@
 // adds the income, the round's Sporestorm with `roundStarted`, the `battleStart` and `roundStart`
 // triggers, and R2a's empty draft step (plan Call 26). It stands beside v1's code until R2b moves it to
 // `src/sim/round.ts`.
-import type { BattleState, ClashState } from './state.ts';
+import type { BattleState, ClashState, Side } from './state.ts';
+
+/**
+ * A side's surviving supply in a lane (§6.7): its living units' current supply there, a merged unit its own
+ * and a siege unit once, an emplacement none. It's the lane tug's number (§10.2) and what the 45 s cap
+ * compares, so it's 0 in planning. A lane that has ended is frozen, so this still equals its lock's survivors.
+ */
+export function survivingSupply(state: BattleState, side: Side, lane: number): number {
+  let supply = 0;
+  for (const u of state.units) if (u.side === side && u.lane === lane && u.hp > 0) supply += u.supply;
+  return supply;
+}
 
 /** A clash starting now, with every lane still fighting: Begin's (T043), or a scenario's that places its units (T029). */
 export function newClash(state: BattleState): ClashState {

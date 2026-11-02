@@ -1,14 +1,19 @@
 // The formation's pure core (SPEC §4.6, §5.6, §14.6; §15.7 Formation and Merging): `formationFor` stands
 // a side's squads in the slots its plots copy, and `musterFor` knits them in place to a fixed point, in
 // arrival order. Both run on R1's `src/sim/formation.ts`, from plain records built here on the maps'
-// colonies. `formationOf` and `mergePreview` (T034) will build the same records from a battle's state.
+// colonies. `formationOf` and `mergePreview` build the same records from a battle's state, with a change
+// to preview (plan Call 6).
 import { describe, expect, it } from 'vitest';
 import { colonyPlots, openOrder } from '../../../src/sim/rounds/colony.ts';
-import { formationFor, musterFor } from '../../../src/sim/rounds/formation.ts';
-import type { FieldingBuilding, FormationInput, MergePreview, SquadPlan, TierCounts } from '../../../src/sim/rounds/formation.ts';
+import { formationFor, formationOf, mergePreview, musterFor } from '../../../src/sim/rounds/formation.ts';
+import type { FieldingBuilding, FormationInput, MergePreview, PlanChange, SquadPlan, TierCounts } from '../../../src/sim/rounds/formation.ts';
+import { createFromScenario, hashState, restore, snapshot } from '../../../src/sim/rounds/index.ts';
+import type { BattleState } from '../../../src/sim/rounds/index.ts';
+import { plant as plantAtOnce, sell as sellAtOnce, toggleMerge as toggleAtOnce } from '../../../src/sim/rounds/planning.ts';
 import { SIDES } from '../../../src/sim/state.ts';
 import type { Side, Tier } from '../../../src/sim/state.ts';
 import { content, liveState } from '../../helpers.ts';
+import { plotAt } from '../../roundHelpers.ts';
 
 const compiled = liveState().compiled.player;
 const radiusOf = (unitId: string, tier: Tier): number => compiled.units[unitId]!.tiers[tier - 1]!.radius;
@@ -186,5 +191,82 @@ describe('musterFor: squads knit in place at the muster (SPEC §5.6)', () => {
     expect(musterFor(input)).toEqual(musterFor(input));
     expect(formationFor(input)).toEqual(formationFor(input));
     expect(JSON.stringify(input)).toBe(before);
+  });
+});
+
+describe("formationOf and mergePreview on a battle's state (SPEC §4.6, §5.6, §14.6, plan Call 6)", () => {
+  const front = (file: number) => ({ lane: 0, rank: 0, file });
+  /** Each side's two Burrows side by side, and a Gill Nest behind the first, in round 1's planning. */
+  const colony = (flags: { merging?: boolean } = {}): BattleState => {
+    const planted = [{ building: 'sporelingBurrow', ...front(2) }, { building: 'sporelingBurrow', ...front(3) }, { building: 'gillNest', lane: 0, rank: 1, file: 2 }];
+    return createFromScenario(content, { id: 'previews', description: 'Previews.', map: 'bogwater-hollow', flags, sides: { player: { colony: planted }, enemy: { colony: planted } } });
+  };
+  const changes: [string, (s: BattleState, side: Side) => PlanChange][] = [
+    ['a plant', (s, side) => ({ plant: { buildingId: 'sporelingBurrow', plot: plotAt(s, side, front(4)) } })],
+    ['a sale', (s, side) => ({ sell: s.buildings.find((b) => b.side === side)!.id })],
+    ['a toggle', (s, side) => ({ toggle: { id: s.buildings.find((b) => b.side === side)!.id, on: false } })],
+  ];
+  /** The change, made as its command makes it: at once, as the general's turn runs its commands in the opening (T068). */
+  const make = (s: BattleState, side: Side, c: PlanChange): string | null =>
+    'plant' in c ? plantAtOnce(s, side, c.plant.buildingId, c.plant.plot) : 'sell' in c ? sellAtOnce(s, side, c.sell) : toggleAtOnce(s, side, c.toggle.id, c.toggle.on);
+
+  it("builds T020's input from the state: the squads and the muster the plain records give", () => {
+    const s = colony();
+    for (const side of SIDES) {
+      const [a, b, nest] = s.buildings.filter((x) => x.side === side);
+      const archers: FieldingBuilding = { id: nest!.id, kind: 'spawner', squad: { unitId: 'gillArcher', count: 4, radius: radiusOf('gillArcher', 1) }, mergeOn: true };
+      const planted: Planted[] = [[0, 0, 2, burrow(a!.id)], [0, 0, 3, burrow(b!.id)], [0, 1, 2, archers]];
+      expect(formationOf(s, side)).toEqual(formationFor(on('bogwater-hollow', side, planted)).squads);
+      expect(mergePreview(s, side)).toEqual(muster('bogwater-hollow', side, planted));
+    }
+  });
+
+  it.each(changes)('previews %s as the state after it, on both sides', (_, change) => {
+    for (const side of SIDES) {
+      const s = colony(), c = change(s, side), after = restore(snapshot(s));
+      expect(make(after, side, c)).toBeNull();
+      expect(formationOf(s, side, c)).toEqual(formationOf(after, side));
+      expect(mergePreview(s, side, c)).toEqual(mergePreview(after, side));
+      expect(formationOf(s, side, c)).not.toEqual(formationOf(s, side));
+    }
+  });
+
+  it('previews a change its command would refuse as the colony stands', () => {
+    const s = colony();
+    const refused: PlanChange[] = [
+      { plant: { buildingId: 'gillNest', plot: plotAt(s, 'player', front(2)) } }, // a taken plot
+      { plant: { buildingId: 'gillNest', plot: plotAt(s, 'player', { lane: 0, rank: 2, file: 1 }) } }, // a closed plot
+      { sell: s.buildings.find((b) => b.side === 'enemy')!.id }, // the general's building
+      { toggle: { id: 99, on: false } }, // no building
+    ];
+    for (const c of refused) {
+      expect(formationOf(s, 'player', c)).toEqual(formationOf(s, 'player'));
+      expect(mergePreview(s, 'player', c)).toEqual(mergePreview(s, 'player'));
+    }
+  });
+
+  it('writes nothing and draws on no stream: hashState and every stream are the same after either call (§13.3)', () => {
+    const s = colony();
+    const hash = hashState(s), streams = JSON.stringify(s.rng);
+    for (const side of SIDES) {
+      for (const c of [undefined, ...changes.map(([, change]) => change(s, side))]) {
+        formationOf(s, side, c);
+        mergePreview(s, side, c);
+      }
+    }
+    expect([hashState(s), JSON.stringify(s.rng)]).toEqual([hash, streams]);
+  });
+
+  it("knits nothing with the battle's merging off, nor a squad that arrives burrowed or bursts (§5.6)", () => {
+    const off = colony({ merging: false });
+    for (const side of SIDES) {
+      expect(mergePreview(off, side).trios).toEqual([]);
+      expect(formationOf(off, side).some((q) => q.eligible)).toBe(false);
+    }
+    const s = colony();
+    for (const buildingId of ['bursterPod', 'rhizomorphTunnel']) {
+      const squads = formationOf(s, 'player', { plant: { buildingId, plot: plotAt(s, 'player', front(4)) } });
+      expect(squads.find((q) => q.building === s.nextId)?.eligible, buildingId).toBe(false);
+    }
   });
 });
