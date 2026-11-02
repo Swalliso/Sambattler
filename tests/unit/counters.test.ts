@@ -6,8 +6,9 @@ import { describe, expect, it } from 'vitest';
 import { SIDES, other } from '../../src/sim/index.ts';
 import type { Side } from '../../src/sim/index.ts';
 import {
-  armyIds, clashCache, clashG13, clashRace, counterAnswers, counterBots, counterBotSpec, evaluateClashCounters, evaluateClashG3, evaluateClashG4Row, evaluateCounters,
-  evaluateG3, evaluatePairings, g3Row, pairingBotSpec, uniqueCells,
+  CORE6_GRAPH, CORE_SPAWNERS, armyIds, clashCache, clashG13, clashRace, core6Answers, core6Spec, counterAnswers, counterBots, counterBotSpec, evaluateClashCounters,
+  evaluateClashG3, evaluateClashG4Row, evaluateCore6Graph, evaluateCounters, evaluateG3, evaluateMergeMirror, evaluatePairings, g3Row, pairingBotSpec, squadTable,
+  uniqueCells,
 } from '../../tools/lib/balance.ts';
 import type { Cell, CellRecord, ClashRunner } from '../../tools/lib/balance.ts';
 import { armyFromBot, playClash } from '../../tools/lib/clash.ts';
@@ -276,6 +277,41 @@ describe('the strict clash counter matrix (G12, SPEC §12.3)', () => {
     expect(row.answers[0]).toMatchObject({ cards: ['capguardHall'], kinds: ['swarm'], failsG3: true, swarm: false });
     expect(v.sets.swarm).toContain('capguardHall');
   });
+
+  // mono Gill Nest wins everything in clash G3; the swarm monos pass it and mono Capguard fails it
+  const t054Rates: Record<string, Partial<Record<FieldId, number>>> = {
+    'bot:mono:gillNest': { one: 1, twin: 1 }, 'bot:mono:sporelingBurrow': { one: 0.5, twin: 0.5 },
+    'bot:mono:morelWarren': { one: 0.5, twin: 0.5 }, 'bot:mono:capguardHall': { one: 0, twin: 0.75 },
+  };
+  const t054G3 = () => evaluateClashG3(cc, {
+    cache: clashCache(cc, scripted((job) => (game(job, 1) < 4 * t054Rates[job.armies[0].controller]![job.field]! ? 'a' : 'b')), { jitter: 0.2 }),
+    ids: Object.keys(t054Rates).map((c) => c.slice(9)), budgets: [600], fields: ['one', 'twin'], seeds: 2,
+  });
+
+  it('counts no mono answer clash G3 never played, and takes the builds it is given whatever their mean (T054)', async () => {
+    const g3 = await t054G3();
+    const cache = clashCache(cc, scripted(() => 'b'), { jitter: 0.2 });
+    const v = await evaluateClashCounters(cc, { cache, g3, builds: ['capguardHall'], answers: ['bot:mono:sporelingBurrow'], screenSeeds: 1, confirmSeeds: 1, top: 1 });
+    expect(v.builds.map((b) => [b.build, b.pass])).toEqual([['capguardHall', true]]); // its mean is 25%, under the 40% a build needs by default
+    await expect(evaluateClashCounters(cc, { cache, g3, builds: ['gillNest'], answers: ['bot:mono:hammercapForge'], screenSeeds: 1, confirmSeeds: 1, top: 1 }))
+      .rejects.toThrow(/bot:mono:hammercapForge is a mono clash G3 didn't play/);
+    await expect(evaluateClashCounters(cc, { cache, g3, builds: ['amanitaLodge'], screenSeeds: 1, confirmSeeds: 1, top: 1 })).rejects.toThrow(/amanitaLodge isn't a mono clash G3 played/);
+  });
+
+  it("reports #15's ties: how many answers that count share the best result, and how many field only swarm spawners (T054)", async () => {
+    const g3 = await t054G3();
+    const mono = (id: string) => `bot:mono:${id}`, pair = 'bot:pair-capguardHall-gillNest', knights = 'bot:counter-knights';
+    const rates: Record<string, number> = { [mono('capguardHall')]: 1, [mono('sporelingBurrow')]: 1, [mono('morelWarren')]: 1, [pair]: 1, [knights]: 0.5 };
+    const cache = clashCache(cc, scripted((job) => (game(job, job.seed > 2 ? 3 : 1) < 4 * rates[job.armies[1].controller]! ? 'b' : 'a')), { jitter: 0.2 });
+    const v = await evaluateClashCounters(cc, { cache, g3, builds: ['gillNest'], answers: Object.keys(rates), screenSeeds: 2, confirmSeeds: 2, top: 2 });
+    const row = v.builds[0]!.matrix[0]!;
+    // mono Capguard ties too, but it fails clash G3, so it's left out
+    expect(row.answers.map((a) => [a.answer, a.failsG3])).toEqual([[mono('capguardHall'), true], [mono('sporelingBurrow'), false], [mono('morelWarren'), false]]);
+    expect(row.best).toEqual({ worst: 1, mean: 1, answers: [mono('sporelingBurrow'), mono('morelWarren'), pair], swarm: [mono('sporelingBurrow'), mono('morelWarren')] });
+    const line = v.matrixLines.at(-1)!;
+    expect(line).toMatch(/600: 2 of 3 tied at 100% \(bot:mono:sporelingBurrow, bot:mono:morelWarren\)/);
+    expect(line).not.toContain(mono('capguardHall'));
+  });
 });
 
 describe('G13, clash stalls (SPEC §12.3)', () => {
@@ -301,6 +337,99 @@ describe('G13, clash stalls (SPEC §12.3)', () => {
     const twice = uniqueCells(g3, [{ ...g3[0]! }, ...matrix]);
     expect(twice).toHaveLength(10);
     expect(clashG13(twice, g3).all).toEqual(v.all);
+  });
+
+  it('counts the bar over the counted fields, with the three-lane screen beside it (T054, R1-Q9)', () => {
+    const two = [cell('one', 300, 400), cell('twin', 300, 500)];
+    const three = [cell('three', 300, 900, 920), cell('three', 300, 900, 920)];
+    const v = clashG13([...two, ...three], two);
+    expect(v.all.cap).toMatchObject({ clashes: 2, capped: 0, share: 0 });
+    expect(v.pass).toBe(true);
+    expect(v.three!.cap).toMatchObject({ clashes: 2, capped: 2, share: 1 });
+    expect(v.three!.capAfterMuster).toMatchObject({ clashes: 2, capped: 2 });
+    expect(v.cells.map((c) => c.field)).toEqual(['one', 'twin', 'three']);
+    expect(v.details.join('\n')).toMatch(/three-lane screen, a lead outside the bar: 100.0% of 2/);
+    // the three-lane screen alone is the bar, as in G3 and G12
+    const alone = clashG13(three);
+    expect([alone.pass, alone.all.cap.clashes, alone.three]).toEqual([false, 2, undefined]);
+  });
+});
+
+describe("the clash check's variants (SPEC §16 R1; T030, T031)", () => {
+  const lodge = 'bot:mono:amanitaLodge';
+  // 4 Lodges at 1,100 gold and at 1,200 (a fifth costs 1,300): the same army at both budgets
+  const lodges = [1100, 1200].map((budget): Cell => ({ a: lodge, b: lodge, field: 'one', budget, seed: 1, seat: 'player' }));
+
+  it("gives the extra plots from extraPlotsFrom up, and keys both the armies and the clashes on them (T031)", async () => {
+    const plain = clashCache(cc, inProcessClashes(cc));
+    await plain.slim(lodges);
+    expect(plain.stats().played).toBe(1); // no jitter: the same armies are one clash at both budgets
+    const late = clashCache(cc, inProcessClashes(cc), { opts: { extraPlots: 4 }, extraPlotsFrom: 1200 });
+    const [low, high] = await late.full(lodges);
+    expect(late.stats().played).toBe(2); // the plots can move squads, so the clash key holds them
+    expect([low!.opts.extraPlots, high!.opts.extraPlots]).toEqual([0, 4]);
+    expect(late.army('bot:mono:sporelingBurrow', 1100, 1, 'one').entries).toHaveLength(8);
+    expect(late.army('bot:mono:sporelingBurrow', 1500, 1, 'one').entries).toHaveLength(12);
+  });
+
+  it("builds a twin cell's second army as the first one's own, on the same seed, with merging off (T030)", async () => {
+    const cache = clashCache(cc, inProcessClashes(cc), { army: { squad: { sporelingBurrow: 7 } } });
+    const [r] = await cache.full([{ a: 'bot:balanced', b: 'bot:balanced', field: 'one', budget: 900, seed: 1, seat: 'enemy', twin: true }]);
+    expect([r!.armies.enemy.controller, r!.armies.player.controller]).toEqual(['bot:balanced', 'bot:balanced (merging off)']);
+    const own = cache.army('bot:balanced', 900, 1, 'one');
+    expect(r!.armies.enemy.entries).toEqual(own.entries);
+    expect(r!.armies.player.entries).toEqual(own.entries.map((e) => ({ ...e, mergeOn: false })));
+    expect(own.entries.filter((e) => e.buildingId === 'sporelingBurrow').every((e) => e.count === 7)).toBe(true); // the army options hold
+  });
+
+  it("plays the merge mirror: each G3 build and the reference against its own merge-off twin, both seats (T030, G7's round form)", async () => {
+    const g3 = await evaluateClashG3(cc, { cache: clashCache(cc, scripted(() => 'a'), { jitter: 0.2 }), ids: ['sporelingBurrow'], budgets: [600], fields: ['one', 'twin'], seeds: 1 });
+    const seen: ClashJob[] = [];
+    const m = await evaluateMergeMirror(cc, { cache: clashCache(cc, scripted((job) => (job.field === 'one' ? 'a' : game(job, 1) === 0 ? 'a' : 'b'), seen), { jitter: 0.2 }), g3, seeds: 2 });
+    expect(m.rows.map((r) => r.controller)).toEqual(['bot:mono:sporelingBurrow', 'bot:balanced']);
+    expect(m.rows[0]!.budgets[0]!.fields.one!.rate).toBe(1);
+    expect(m.rows[0]!.budgets[0]!.fields.twin!.rate).toBe(0.25);
+    for (const j of seen) expect(j.armies[1].entries).toEqual(j.armies[0].entries.map((e) => (e.kind === 'squad' ? { ...e, mergeOn: false } : e)));
+    expect(m.records).toHaveLength(2 * 2 * 2 * 2); // controllers × fields × seeds × seats
+  });
+
+  it("limits the core-six check to the six: their monos, the 15 even pairs and bot:core6, and reads §11.4's graph (T030, R1-Q6)", async () => {
+    const bc = protoContent(['burster', core6Spec('bursterPod')].join(','));
+    const six = protoContent(['burster', counterBotSpec(bc), core6Spec('bursterPod')].join(','));
+    const answers = core6Answers(six, 'bursterPod');
+    expect(answers).toHaveLength(6 + 15 + 1);
+    expect(answers).toContain('bot:core6');
+    expect(answers.filter((a) => a.startsWith('bot:pair-')).every((a) => [...CORE_SPAWNERS, 'bursterPod'].filter((id) => a.includes(id)).length === 2)).toBe(true);
+    // §11.4's edges, each the winner's: the Burster beats the swarm and loses to archers
+    expect(CORE6_GRAPH.bursterPod).toEqual({ beats: ['sporelingBurrow'], losesTo: ['gillNest'] });
+    const g = await evaluateCore6Graph(six, { cache: clashCache(six, scripted((job) => (job.armies[0].controller === 'bot:mono:sporelingBurrow' ? 'a' : 'b')), { jitter: 0.2 }), candidate: 'bursterPod', budgets: [300], fields: ['one'], seeds: 1 });
+    // mono Burrow wins every clash it plays as a, so it beats the archers (intended) and the Burster (against §11.4)
+    expect(g.edges.find((e) => e.winner === 'sporelingBurrow' && e.loser === 'gillNest')!.rate).toBe(1);
+    expect(g.edges.find((e) => e.winner === 'bursterPod' && e.loser === 'sporelingBurrow')!.rate).toBe(0);
+    expect(g.records).toHaveLength(15 * 2);
+  });
+
+  it("reads the squad table's value per gold by §11.4: squad × sqrt(HP × DPS) × role factor / cost (T030, A010)", () => {
+    const rows = Object.fromEntries(squadTable(content).map((r) => [r.buildingId, r]));
+    expect(rows.sporelingBurrow).toMatchObject({ squad: 8, roleFactor: 1 });
+    expect(rows.sporelingBurrow!.perGold).toBeCloseTo(1.83, 2);
+    expect(rows.gillNest!.roleFactor).toBe(1.6);
+    expect(rows.rootbreakerDen!.roleFactor).toBe(1.3);
+    expect(rows.veilstalkerHollow!.roleFactor).toBe(1.2);
+    expect(rows.scythecapGrove!.roleFactor).toBe(1.4);
+    expect(rows.tendersRing!.perGold).toBeUndefined(); // the heuristic can't value a healer
+    expect(squadTable(content, { squad: { sporelingBurrow: 7 } }).find((r) => r.buildingId === 'sporelingBurrow')!.perGold).toBeCloseTo(1.6, 2);
+  });
+
+  it('labels G3 on a fixed reference and lists the monos of appended spawners apart (T030, A023)', async () => {
+    const fc = protoContent(['burster', 'bot.balanced.fixedWeights:true'].join(','));
+    const g3 = await evaluateClashG3(fc, { cache: clashCache(fc, scripted(() => 'b'), { jitter: 0.2 }), ids: ['bursterPod', 'sporelingBurrow'], budgets: [300], fields: ['one'], seeds: 1 });
+    expect([g3.reference, g3.appended]).toEqual(['data weights', ['bursterPod']]);
+    const text = g3.details.join('\n');
+    expect(text).toMatch(/reference on its data weights/);
+    expect(text.indexOf('bursterPod')).toBeGreaterThan(text.indexOf('sporelingBurrow')); // apart, after the others
+    const plain = await evaluateClashG3(cc, { cache: clashCache(cc, scripted(() => 'b'), { jitter: 0.2 }), ids: ['sporelingBurrow'], budgets: [300], fields: ['one'], seeds: 1 });
+    expect(plain.reference).toBeUndefined();
   });
 });
 

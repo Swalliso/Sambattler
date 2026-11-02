@@ -392,3 +392,38 @@ describe('diver (balance diveRanged)', () => {
     expect(dive(melee, 30, 10).x).toBeCloseTo(dive(undefined, 30, 10).x, 9);
   });
 });
+
+describe("R1's clash-check presets (SPEC §16 R1, §12.4)", () => {
+  const battle = (c: typeof content) => createBattle(c, makeConfig(c, { seed: 1, mapId: 'test-flat', player: 'human', enemy: 'human' }));
+
+  it("noeldersplash removes the Elder Sporeling's splash perk", () => {
+    expect(content.units.sporeling!.mergePerks?.[3]).toEqual({ splashRadius: 0.6 });
+    const c = protoContent('noeldersplash');
+    expect(c.units.sporeling!.mergePerks?.[3]).not.toHaveProperty('splashRadius');
+    expect(battle(c).compiled.player.units.sporeling!.tiers[2]!.splashRadius).toBe(0);
+  });
+
+  it('clashpace compiles rules.waves with rangedGap 1 and matchPace true', () => {
+    expect(battle(protoContent('clashpace')).rules.waves).toEqual({ rangedGap: 1, matchPace: true });
+  });
+
+  it("clashshield sets balance.mixedWave alone: rules.mixed stays absent, so v1's battle plays as without it", () => {
+    const c = protoContent('clashshield');
+    expect(c.balance.mixedWave).toEqual({ minTypes: 2, shieldFrac: 0.2 });
+    const play = (cx: typeof content) => {
+      const s = createBattle(cx, makeConfig(cx, { seed: 1, mapId: 'bogwater-hollow', player: 'bot:balanced', enemy: 'general:scripted' }));
+      runHeadless(s, { until: 600 });
+      return s;
+    };
+    const on = play(c), off = play(content);
+    expect(on.rules.mixed).toBeUndefined();
+    // the units, buildings and outcome, not hashState, which covers the balance too
+    const look = (s: BattleState) => ({
+      units: s.units.map((u) => [u.id, u.unitId, u.tier, u.x, u.y, u.hp, u.shield]),
+      buildings: s.buildings.map((b) => [b.id, b.buildingId, b.hp]),
+      outcome: s.outcome,
+    });
+    expect(on.units.length).toBeGreaterThan(0);
+    expect(look(on)).toEqual(look(off));
+  });
+});
