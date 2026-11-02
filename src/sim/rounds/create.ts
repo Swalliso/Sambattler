@@ -350,7 +350,7 @@ export function addUnit(
   const u: UnitState = {
     id: state.nextId++,
     side, lane, unitId, tier,
-    x, y, px: x, py: y,
+    x, y, px: x, py: y, slotY: y,
     hp: t.hp, maxHp: t.hp, supply: t.supply,
     cooldown: 0, targetId: 0, lastCombatTick: -100000, lastAttackTick: -1,
     mergeOn: true, sourceBuildingId,
