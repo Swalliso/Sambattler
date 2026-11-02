@@ -190,7 +190,7 @@ R1 was built in six sessions on 2026-11-01 and run in S7 on 2026-11-02. No rule 
 - **Step 9** (S7): the runs and the write-up, with SPEC §12.2, §13.4, §15.3 and §15.4 written as built (T040).
 
 **Calls that changed in the building**
-- **The cost (A013):** a clash takes about 4 ms of a worker, not 10–30 ms, since `playClash` no longer hashes its final state (S4). The plan's 8–12 hours of background compute took about 1.5 hours on 6 workers for about 60 runs.
+- **The cost (A013):** a clash takes about 4 ms of a worker, not 10–30 ms, since `playClash` no longer hashes its final state (S4). The plan's 8–12 hours of background compute took 93 minutes on 6 workers for 65 runs, plus about 20 minutes for the two slow suites.
 - **Extra runs beyond the plan:**
   - a 20-seed baseline (`r1-baseline-20`), so each screen is read against the same seeds;
   - small `--records` runs on G3's clashes alone, for eliteShare, Puppet Bloom's trios, parking and emplacement holds. A record is about 9 KB, so a full run's records would be hundreds of MB;
@@ -201,4 +201,6 @@ R1 was built in six sessions on 2026-11-01 and run in S7 on 2026-11-02. No rule 
 
 **Wall times** (6 workers, 12 cores shared with another session's builds and tests)
 - The 50-seed runs (T042): `r1-baseline` 183 s, `r1-baseline-j0` 48 s, `r1-kept` 121 s, `r1-kept-fixedref` 91 s. `npm run bench`: 2 s.
-- The 20-seed screens: 50–125 s each, most about 70 s; merging off 251 s, since nothing knits and armies stay large.
+- The 20-seed screens: 50–125 s each, most about 70 s; merging off 251 s, since nothing knits and armies stay large. Copies on `kept,clashshield`: 205–253 s.
+- The 50-seed confirmations (T044, T052): 28–136 s, merging off 276 s. They take about as long as the screens, since G12's 20-seed screen dominates a run.
+- The checks (T041): `npm run test:slow` 605 s on `develop` before R1 and 584 s now, `npm run verify` 15 s.

@@ -27,7 +27,7 @@ Updated 2026-11-01, on `docs/hub-after-wave-3` (a docs PR into `develop`). This 
 
   [docs/tasks/README.md](tasks/README.md) has the full order and every milestone's sessions.
 
-## Next session: R1 S7, R1's runs
+## Next session: R1 S8, R1's review gate
 
 - **Work from** [docs/tasks/r1-clash-check.md](tasks/r1-clash-check.md) and follow [docs/tasks/README.md](tasks/README.md#running-a-session). So far:
   - **S1** (`feature/r1-formation`, T003–T006): merged ([#46](https://github.com/Swalliso/Sambattler/pull/46)). `src/sim/formation.ts` holds the slot layout (`formationBox`, `slotPositions`, `emplacementPosition`, `overflows`, `slotGrid`) and the muster's knitting (`findTrios`, `musterKnits`), as pure functions that R2 reuses. A test checks that the muster agrees with the sim's merging;
@@ -45,7 +45,13 @@ Updated 2026-11-01, on `docs/hub-after-wave-3` (a docs PR into `develop`). This 
     - `--checks pairings` is battle 1's pairing table (R2-Q13), and `npm run bench` times the full-colony clash, report only. Twin Roots' full colony fields 192 units a side, over §13.7's 150; the one-lane field's 144 fits.
     - It also fixed S4's `clashCache` count of a clash played for a slim record and then a full one.
 
-- **Next: S7, R1's runs** (`feature/r1-results`, T040–T048, T052): about 40 runs in the background, then R1's entry in `docs/balance-backlog.md`, the plan's As built and SPEC §15's tool docs. It starts on your OK, since the runs are a long background job. Then S8, R1's review gate, where you make the calls R2a needs.
+- **S7** (`feature/r1-results`, T040–T048, T052): run on 2026-11-02, PR pending. 65 runs in about 93 minutes on 6 workers, against the plan's 8–12 hours, since a clash takes about 4 ms. No rule or data changed, and no golden hash moved; `npm run test:slow` gives the same v1 verdicts as before R1. The results and a recommendation for each call are R1's entry in [docs/balance-backlog.md](balance-backlog.md#r1--the-clash-check-2026-11-02).
+  - **In short:** in a clash the muster's knitting favours mono armies. On today's combat four monos fail clash G3 (Capguard Hall 90%, Sporeling Burrow 79%, Gill Nest 75%, Veilstalker Hollow 64%), and the Sporeling and the Capguard have no answer (G12). G13 passes.
+  - `kept` still fails (Capguard Hall 90%, Sporeling 62%, Rootbreaker Den on Twin Roots). No preset set passes. `kept,clashshield` with Capguard Hall's squad at 3 passes G3, G12 and G13 at 50 seeds, the only set that does.
+  - Twin Roots' full colony fields 192 units a side, over §13.7's 150 (S6's finding), yet ticks inside G11; the one-lane colony's 144 fits.
+  - The recommendations: Capguard Hall's squad at 3 (#7), adopt the arrival shield (#8), keep the splash (#9), agree on #10–#13, add an Anti-Ranged kind (#14), keep type-and-tag sets (#15), no copies before R3 (X4), the X5 lean with G4's band measured in R2a (X5), the Burster Pod (#36), count Elder parts for eliteShare (R2-Q3), and a v2 job for Puppet Bloom (R2-Q7).
+- **What R2a takes from R1:** `formation.ts`'s layout and muster (`formationBox`, `slotPositions`, `emplacementPosition`, `overflows`, `findTrios`, `musterKnits`); `tools/lib/clash.ts`'s army builder and slot assignment (`armyFromBot`, `lineOf`, `assignSlots`) for its `playRoundClash`; the pool's clash jobs; the knobs' outcomes once agreed (the entry proposes adopting `kept` and `clashshield` as data, and deleting `noeldersplash`, `clashpace` and `swarmread`); and the bench's full-colony case, report-only until R2 adds it to G11.
+- **Next: S8, R1's review gate** (T049, T050): you read R1's entry and settle #7–#15, X4 (and #51 if yes), X5, #36's reading and each knob's outcome; the session records them in `docs/tasks/clarify.md`, SPEC and here. R2a S0 starts after that.
 - **R1's calls, agreed 2026-11-01:** every recommendation. They're dated in [clarify.md](tasks/clarify.md) and written into SPEC §16 R1 and §12.2.
   - R1-Q1, where squads stand: §7.3's tags set the line, files fill centre-out, and on Twin Roots each building goes to the lane with fewer of its line.
   - R1-Q2, spending: economy and utility cards are filtered out, a pick that doesn't fit is skipped, and each army has its own stream.
