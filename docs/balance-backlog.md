@@ -20,6 +20,7 @@ v1's backlog is archived at [docs/archive/v1/balance-backlog.md](archive/v1/bala
 
 - **The pace after T125** (R2a S18, below): at 100 a supply, agreed on 2026-11-03, battles take a median of 7 rounds, 18.5% of 200 reach round 9 (G4: ≤ 20%), and the damage cap binds in 70% of damaging rounds. S21's playtest reads whether a win's size still counts.
 - **The round guardrails that miss on the final data** (R2a S20, confirming S18's, below): G1, G2, G3, G7, G8's mono drops and G16 (the formation rule loses to its ranks traded). Each waits for the user, G16 best before S21.
+- **A fixed round cap** (R2a S21b, below; measurement only): a fixed 750 for both sides passes G4, G6, G8's bands and G13 (6 rounds, 13% reach round 9); a fixed 500 fails G4 (34%). Today's 25% is even in capped rounds (4 each). For R2b's S0.
 - **The Morel Runners** (R2a S21b, below): intended under §5.2, not a bug. A pair charges in a column, so it reads as one runner, and the runners that "pushed in to the enemy base" were striking the invisible Mortar that T160 fixed. A fan-out rule would be the user's call.
 - **G16 after the Burster moved to the front** (R2a S21b, below; the user's OK, 2026-11-03): 40%, from 24%. The Gill Archer and Mortar pairs are what's left (55% and 26%), and only a 2-tile gap fixed them in the levers' entry. They wait for the playtest's calls and R3's combos.
 - **Step 3's round-9 limit** (R2a S20, below): SPEC §16 R2 step 3 still says 15%, where G4's agreed band says 20% over 200 battles. Its 40 battles read 15%, at the limit.
@@ -27,6 +28,35 @@ v1's backlog is archived at [docs/archive/v1/balance-backlog.md](archive/v1/bala
 - **Gill Archers tie Swarm and Ranged** (R2a S15, below): the noise, not #14's tie order, picks between them. A rule change waits for the user.
 - **The Burster's seat effect** (R2a S17, below): a mirror of Bursters goes to whichever side's ids come first. A rule change waits for the user.
 - **The first fighting tick's frame in Chromium** (R2a S17, below): 4.8–11.4 ms once a page, against §13.7's 8 ms.
+
+## R2a S21b · a fixed round cap, for R2b's S0 (2026-11-03)
+
+**Measured** (T163; no rule changed):
+- **What:** today's cap is 25% of the loser's max HP (X5): you deal at most 500 to the general's 2,000 and take at most 750 on your 3,000, which the user finds asymmetric. A fixed cap of 750 HP and one of 500 HP, for both sides, against it.
+- **The guardrails:** G4 over 200 battles (`bot:balanced` against the scripted general on Bogwater Hollow), G13 over the same battles, G6 and G8.
+- **Where:** `feature/r2a-playtest-fixes`, with T159's Burster in front, at 100 a supply.
+- **How:** `npm run experiment -- --rounds --checks g4,g6,g8`, with `--proto 'rounds.roundDamageCap:{"flat":750}'` or `{"flat":500}`. S18's `roundDamageCap.flat` already takes a fixed cap, so no knob was added and no replay hash moves.
+
+**Result:**
+
+| Round cap | G4: median rounds · reach round 9 · the bot wins | The cap binds, of rounds with damage | G13: capped · median clash | G6: behind side wins · winner hit | G8: `bot:balanced` · `bot:answer` |
+|---|---|---|---|---|---|
+| Today: 25% of the loser's max HP (500 / 750) | 7 · 16% · 63% | 70% (781 of 1,115) | 9% · 19.0 s | 36% · 72% | 50% · 67% |
+| **Fixed 750 for both** | 6 · 13% · 65% | 61% (612 of 999) | 9% · 18.4 s | 36% · 71% | 53% · 70% |
+| Fixed 500 for both | 7 · **34%** (fails ≤ 20%) · 65% | 76% (913 of 1,204) | 8% · 19.1 s | 33% · 72% | 50% · 67% |
+
+G8's mono clause fails under all three, as it did before (no asserted mono drops 20 points). Noise on 200 battles is about ±3 points.
+
+**Reading:**
+- **Today's cap is symmetric in rounds, not in HP.** Each side needs 4 capped rounds to fell the other: 2,000 / 500 and 3,000 / 750.
+- **A fixed 750** raises only the general's cap, so you can fell it in 3 capped rounds while it needs 4 to fell you. Battles get shorter (a median of 6 rounds, 13% reach round 9), the cap binds less often, and every band holds. The bot's 63% → 65% is within noise.
+- **A fixed 500** lowers only yours, so the general needs 6 capped rounds to fell you. A third of battles then reach round 9, which fails G4.
+- **Either way the race tilts toward you** in rounds, where today's is even. Over a run, R2b's lives and the general's larger Heartcaps at bosses would read the tilt differently.
+
+**For R2b's S0:**
+- If the user wants one number, a fixed 750 passes every band measured.
+- Keeping 25% keeps the race even in capped rounds. The HUD could show the cap as a share, "25% of max HP", rather than as two HP numbers.
+- G14 and G15, lives and bosses, weren't measured here. They're R2b's.
 
 ## R2a S21b · the Morel Runners, diagnosed (2026-11-03)
 
