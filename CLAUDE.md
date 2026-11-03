@@ -2,8 +2,8 @@
 
 A round-based lane auto-battler roguelite in the browser (TypeScript, Vite, Canvas). The design and
 milestones live in `SPEC.md`, which is v2 since 2026-10-31: read its §0.1 (what changed) and §1.3 (the
-decisions) before design work. Until milestone R2 lands, the code still runs v1's battle (the M1–M5
-battle plus the combat rework's `?proto=` knobs), which v2 replaces. This file holds only what every
+decisions) before design work. Since R2b's S3 the code runs only v2's battle in rounds, though v1's keys stay
+in the data and its knobs in `?proto=` until R2b's S4 and S12 remove them. This file holds only what every
 session needs. Rules that matter in only some files live in `.claude/rules/` and load when Claude opens
 one of those files (see the end).
 
@@ -59,7 +59,7 @@ Both sites share the swalliso.github.io origin, so every localStorage key goes t
 
 - `npm run verify` is the gate (SPEC §15.1): typecheck, lint, data validation, unit tests, golden replays, sim smoke and a quick bench.
 - One test file: `npx vitest run tests/unit/<name>.test.ts`.
-- `npm run test:browser` and `npm run test:slow` run separately. Until R2, `test:slow` holds v1's balance guardrails: keep them passing, but a miss isn't open work (SPEC §12.3 has v2's). With `?debug=1` or `?test=1` the page exposes `window.__GAME__` (`src/app/debugBridge.ts`) for scripted browser checks.
+- `npm run test:browser` and `npm run test:slow` run separately. `test:slow` asserts the round guardrails (SPEC §12.3); R2a's known misses (T133) wait for the user's calls, so keep the rest passing. With `?debug=1` or `?test=1` the page exposes `window.__GAME__` (`src/app/debugBridge.ts`) for scripted browser checks.
 - Any change to the sim's rules or data changes the golden hashes. Refresh them with `npm run golden -- update`, and log data changes in `data/CHANGELOG-balance.md`.
 
 ## Topic rules (`.claude/rules/`)
@@ -68,4 +68,4 @@ Both sites share the swalliso.github.io origin, so every localStorage key goes t
 | --- | --- | --- |
 | `balance.md` | `data/`, `src/data/`, the balance, experiment and golden tools, `tools/lib/`, `tests/slow/`, `tests/golden/`, `docs/balance-backlog.md` | the approval rule, prototypes, changelog entries, goldens, guardrails, sweeps |
 | `storage.md` | `src/app/channel.ts`, `settings.ts`, `run.ts`, `tips.ts`, `src/run/storage.ts`, `resume.ts`, `runState.ts`, `flow.ts`, `src/meta/` | the storage keys, `storageKey()`, the `Storage` interface, the profile |
-| `v1-code.md` | `src/`, `tests/`, `tools/` | the code still runs v1's battle until R2: don't extend retired systems, and new work follows SPEC v2 |
+| `v1-code.md` | `src/`, `tests/`, `tools/` | what's left of v1 after R2b's S3: don't extend retired systems, and new work follows SPEC v2 |
