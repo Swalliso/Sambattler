@@ -27,7 +27,7 @@ Updated 2026-11-03, on `docs/r2a-done` (the hub's docs PR into `develop`). This 
 
   [docs/tasks/README.md](tasks/README.md) has the full order and every milestone's sessions.
 
-## Next: R2b's S1, the run plays rounds
+## R2b, the run in rounds
 
 - **R2b's plan is agreed** (S0, 2026-11-03): [r2b-plan.md](r2b-plan.md). You took every recommendation for R2b's open calls. The ones that change most:
   - **#67:** once your colony is full, gold buys upgrades: a planted building's squad fields one merge tier up for the rest of the battle, and the general and the bots buy them too. A new session, S5b, builds it after the drafts, measuring first;
@@ -37,7 +37,19 @@ Updated 2026-11-03, on `docs/r2a-done` (the hub's docs PR into `develop`). This 
   - **#27:** you kept R1's call, so a unit level adds no unit in rounds;
   - **No cutover branch** (Call 14): S1–S4 land on `develop` directly, and S4b is dropped.
 - [The task list](tasks/r2b-run-in-rounds.md) has T159–T169, story US10 and session S5b for them. SPEC, [clarify.md](tasks/clarify.md) and the plan record every answer.
-- **Next: R2b's S1** (T006–T027 and T164), `feature/r2b-run` into `develop`: the run plays rounds with lives, `RUN_VERSION` 2 with the migration, and the fixed cap. Its gate is clear once S0's PR has merged.
+- **S1** (`feature/r2b-run`, T006–T027 and T164): in review. A run plays rounds with lives on R2a's battle scene, from the title to the summary:
+  - **Lives:** 3 Regrowths; a lost battle costs one and pays nothing, the run ends at 0 or on a boss loss, and a won battle adds a plot, up to 4. Each battle's Heartcaps start full: yours 3000, lower after Fallen Oak, +15% for a battle after Quiet Clearing's Rest. The Grove regains a Regrowth, grafts, or lets you leave.
+  - **Saves:** `RUN_VERSION` 2, under the same key. A run saved before R2 loads migrated with a notice (lives = 3 − battles lost, plots by battles won), from twelve v1 fixtures in `tests/fixtures/saves/v1/`; an unreadable save says so on the title and is replaced only when you confirm.
+  - **The fixed cap** (#68): 750 a round for both Heartcaps. The five round goldens moved; v1's battle goldens didn't. `r2-run-s7` replaces v1's run golden.
+  - **A run's relics and upgrade levels** compile in a round battle as passives do: those on stats rounds keep apply, the rest are listed and do nothing (R2a's Call 19).
+  - **For S1b and the hub:** 20 bot runs (`npm run sim -- --run --seeds 1..20 --summary`) all complete, and no life is lost in a won battle. 19 fight 4–5 battles; seed 4 lost its first three and ended after 3, which the lives rule allows but §16 R2 step 5's "4–5 battles" doesn't. `bot:balanced` loses battle 1 in 9 of 20 runs, which S1b's table measures (R2-Q13, G14).
+- **The stand-ins open on `develop`** from S1 (Call 14):
+  - run battles open no in-battle drafts until S5 (T067);
+  - relics and passives on retired systems do nothing in a round battle until S6 and S7, and Rhizome Tithe is refused until T082;
+  - a reload mid-battle restarts it at round 1's planning, with the notice when a battle save was found, until S8 (T095, T096);
+  - the route's intel bars show v1's four kinds, without Anti-Ranged, until S9;
+  - `scene=draft` opens a run battle with no draft until S5 and T115, and its capture waits for T039.
+- **Next:** S1b (T028–T029) once S1 merges, then S2 to S4.
 
 ## R2a, a battle in rounds
 

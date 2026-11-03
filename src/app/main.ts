@@ -120,7 +120,7 @@ function boot(): void {
   }
   const atlas = bakeAtlas(content);
   const engine = installSound(content, soundEnabled({ test: params.test, force: params.sound }));
-  // the preview reads its own parameters; a dynamic import keeps the round battle out of the main bundle (§13.7)
+  // the preview reads its own parameters; its battle is in the main bundle since runs play rounds (R2b's S1), and T032 deletes the entry
   if (params.scene === ROUNDS) void import('./rounds/main.ts').then((m) => m.startRounds(content, atlas, errors));
   else if (params.scene === 'sounds') soundBoard(content, atlas, engine);
   else if (params.scene === TITLE || params.scene === UNDERROOT) openTitle(content, atlas, params);
