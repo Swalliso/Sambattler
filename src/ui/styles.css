@@ -243,6 +243,8 @@ body:has(.draft-overlay:not([hidden])) .callouts { position: relative; z-index: 
 .ghost-tip .good { color: var(--ok); }
 .ghost-tip .muted { color: var(--muted); }
 .dev-badge { position: fixed; left: 50%; top: 0; transform: translateX(-50%); z-index: 30; pointer-events: none; padding: 0 8px; border: 1px solid var(--gold-deep); border-top: 0; border-radius: 0 0 4px 4px; background: var(--tooltip-bg); color: var(--gold); font: 10px/13px var(--font-mono); letter-spacing: .08em; }
+/* a `?proto=` spec naming a preset that doesn't exist (A117): said on every scene, under the dev badge */
+.proto-notice { position: fixed; left: 50%; top: 16px; transform: translateX(-50%); z-index: 30; pointer-events: none; max-width: calc(100vw - 32px); padding: 4px 10px; border: 1px solid var(--gold-deep); border-radius: 4px; background: var(--tooltip-bg); color: var(--text); font: 12px/16px var(--font-mono); }
 
 /* ---- bottom band: controls, the tray, the inspect panel ---- */
 .bottom { display: grid; grid-template-columns: 156px minmax(0, 1fr) 224px; gap: 10px; padding: 8px 12px 10px; background: var(--panel); border-top: 1px solid var(--line); height: 204px; }

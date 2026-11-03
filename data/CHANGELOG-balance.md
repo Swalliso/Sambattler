@@ -8,6 +8,21 @@ replaces. None of it is open work, including headings that say "Open:". From mil
 entries measure or tune v2's round battle (SPEC §11, §12). "The backlog" in the entries below means
 v1's, now [archived](../docs/archive/v1/balance-backlog.md).
 
+## R2b-S4 T055–T061: the presets of retired systems deleted (2026-11-03)
+
+**No data value changed, and no golden moved.** The deletions are §16 R2's list and R1's knob outcomes (A109), which
+the user approved at R1's review gate (2026-11-02) and R2b's S0.
+- **`src/data/proto.ts`** keeps the agreed default-off knobs: `flyers` and `bosslives`. Gone: `b1`, `a3`, `b4`,
+  `hold`, `nohold`, `t1`, `t2`, `t3`, `diver`, `diverleap`, `hotstart`, `breach`, `bigdrafts`, `callforhelp`, `waves`,
+  `mixedwave`, `stormwaves`, `swarmread`, `rework`, `noeldersplash`, `clashpace` and `clashshield`, and `a2` and `b3`,
+  which the user dropped on 2026-11-03 ("Drop both") since no battle in rounds read them. A spec naming one is
+  refused by the tools and shown as unknown on the page (A117).
+- **Schema keys that only those presets set** are gone from `src/data/schema.ts`. v1's keys still in the data
+  (`laneStance`, the timed storm's `heartcapTakenPerStack`, the `waveStart` and `buildingDestroyed` triggers) wait for
+  T129, since the battle state hashes the balance.
+- **`flyers` in squad form:** the Drift Stalk fields a squad of 6 Driftlings (§11.2), with no HP and no spawn timer,
+  and `flying` lost `holdsGround`. A spawner needs a `squad` block, and only a tower needs `hp`.
+
 ## R2b-S1 T164: one fixed round cap, 750 for both Heartcaps (2026-11-03)
 
 **A rule number, approved by the user** at R2b's S0 ("Fixed 750 for both", 2026-11-03, §18.2 #68).

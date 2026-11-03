@@ -19,7 +19,7 @@ export interface Params {
   test: boolean;
   /** `?sound=1` turns sound on in an automated browser (it is off there by default; `?test=1` always wins). */
   sound: boolean;
-  /** A balance-backlog prototype spec (`?proto=b1,besiegedBy:melee`), or null for the shipped rules. */
+  /** A balance-backlog prototype spec (`?proto=bosslives,livesAtBoss.heartcapPerLife:300`), or null for the shipped rules. */
   proto: string | null;
   /** `run` (play a whole run with bots) or `battles:<n>` (the first n battles), for route and summary screens. */
   autoplay: { battles: number | 'all' } | null;

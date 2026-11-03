@@ -51,7 +51,7 @@
 // clash's record. On the round sim the record has no reading with the cap after the muster, no lane cases,
 // damage supply, arrival or parked units, and R1's `--v1-movement`, `--v1-targeting` and squad variants on v1's
 // timers (`--squad-seconds`, `--squad-scale`, `--squad`) are gone: squads are the data's. `--proto` refuses
-// `rework`: it's v1's P3 package, not R1's variant.
+// a preset that doesn't exist, v1's `rework` among them (R2b S4).
 //
 // `--checks clash --pair a,b` plays one matchup instead (any bot the counter check knows, or a general):
 // both armies at each budget on each field for seeds 1 to `--seeds n` (default 3), with `a` in each
@@ -82,7 +82,6 @@ import { clashArmyIds, clashOpts, fullColony, overflowTable, pairLine, pairScore
 import type { ArmyOpts, ClashOpts, FieldId, LanesRule } from './lib/clash.ts';
 import { runEndingLines, runEndings } from './lib/engagement.ts';
 import { clashPool, defaultWorkers, inProcessClashes, inProcessRounds, roundPool } from './lib/pool.ts';
-import { specPresets } from '../src/data/proto.ts';
 import { simulateRun } from '../src/run/index.ts';
 import type { PowerPolicy } from '../src/sim/index.ts';
 
@@ -124,8 +123,7 @@ const commanders: (string | undefined)[] = commanderOpt === 'all' ? Object.keys(
 const power = (opt('--power-policy') ?? 'none') as PowerPolicy;
 if (power !== 'none' && power !== 'auto') throw new Error(`--power-policy must be none or auto, not ${String(power)}`);
 if (checks.has('clash') || checks.has('pairings')) {
-  // the clash checks refuse a bad spec or number before any check runs, so they throw away no other check's work (T055)
-  if (specPresets(proto).includes('rework')) throw new Error("rework is v1's P3 package, not R1's variant (SPEC §16 R1)");
+  // the clash checks refuse a bad number before any check runs (protoContent refused a bad spec above), so they throw away no other check's work (T055)
   const counts = [...(checks.has('clash') ? ['--top', '--screen-seeds', '--g3seeds', '--confirm-seeds', '--g4seeds'] : []), ...(pair || checks.has('pairings') ? ['--seeds'] : [])];
   for (const k of counts) {
     const v = opt(k);

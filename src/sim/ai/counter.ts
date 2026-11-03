@@ -29,7 +29,7 @@ export interface FieldedAnalysis {
 /**
  * What the other side fielded in rounds `from` to `to` (§7.4, R2-Q3): every unit at its parts' base supply, an
  * Elder its 9 parts' and a Bloomed unit its 3, as shares of armor, of ranged units, and of Elders, the only
- * elite, with the five kinds' scores. The combat rework's swarm read isn't v2's rule, so `swarmMaxSupply` isn't read.
+ * elite, with the five kinds' scores. Counting parts replaced the combat rework's swarm read, which is gone (A109).
  */
 export function analyzeFielded(view: PlanningView, from: number, to: number): FieldedAnalysis {
   const k = view.counterKnobs;

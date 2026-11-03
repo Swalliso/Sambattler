@@ -4,8 +4,8 @@
 import { createServer } from 'vite';
 import type { ViteDevServer } from 'vite';
 
-/** The prototype preset the dev-site cases run: `b3`, a preset that stays after R2b's S4 (T055). */
-export const PROTO = 'b3';
+/** The prototype preset the dev-site cases run: `bosslives`, a preset that stays after R2b's S4 (T055) and changes no content. */
+export const PROTO = 'bosslives';
 
 const servers: ViteDevServer[] = [];
 

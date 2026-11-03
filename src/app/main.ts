@@ -6,6 +6,7 @@
 // `scene=sounds` is the sound board, a tool for auditioning data/sounds.json. Any other scene, v1's `deploy`
 // and R2a's `rounds` among them, is refused with a visible message (R2b plan Call 15).
 import '../ui/styles.css';
+import { PROTO_PRESETS, unknownPresets } from '../data/proto.ts';
 import { loadRecords, runItBackSetup, setLastSetup, updateRecords } from '../meta/index.ts';
 import { bakeAtlas } from '../render/atlas.ts';
 import { createRun, currentRow, loadRun, MemoryStorage, runForScene } from '../run/index.ts';
@@ -88,8 +89,11 @@ function boot(): void {
   // ?test=1 holds every screen still (no deal-in, reveal or twinkle), so screenshots are stable
   if (params.test) document.documentElement.classList.add('still');
   if (params.proto) {
-    console.info(`prototype rules: ${params.proto} (${DEV_SITE ? 'runs save apart from the real save' : 'runs are not saved'})`);
+    console.info(`prototype rules: ${params.proto} (${protoSpace(params.proto) !== null ? 'runs save apart from the real save' : 'runs are not saved'})`);
     document.title = `[proto ${params.proto}] ${document.title}`;
+    // a preset that doesn't exist, such as a retired one, is said on the page, not only in the console (A117)
+    const unknown = unknownPresets(params.proto);
+    if (unknown.length) document.body.append(h('div', { class: 'proto-notice', id: 'proto-notice', role: 'status' }, unknownPresetNotice(unknown)));
   }
   if (DEV_SITE) {
     // the dev site says so, with its commit, so playtest notes can name the build
@@ -103,10 +107,16 @@ function boot(): void {
   else startBattle(content, atlas, params.scene);
 }
 
+/** The page's notice for a `?proto=` spec naming presets that don't exist (A117): they're ignored, and the run is saved nowhere. */
+function unknownPresetNotice(names: readonly string[]): string {
+  const list = names.map((n) => `"${n}"`).join(', ');
+  return `?proto= names no preset ${list} (known: ${Object.keys(PROTO_PRESETS).join(', ')}), so ${names.length === 1 ? "it's" : "they're"} ignored, and this run isn't saved.`;
+}
+
 /**
  * Where a run and the profile are kept: normal play saves both, and seeded and test runs never touch
  * storage. A prototype run saves only on the dev site, apart from the real save (`protoSpace`), and never
- * writes the profile (RB-Q2).
+ * writes the profile (RB-Q2); one whose spec names a preset that doesn't exist saves nowhere (A117).
  */
 function runStorage(params: Params): { persist: boolean; storage: BrowserStorage | MemoryStorage; records: BrowserStorage | null } {
   const space = params.proto ? protoSpace(params.proto) : '';

@@ -366,6 +366,8 @@ R1 reports a measure for each row, and you settle it at R1's review gate (§16 R
 
 **Knob outcomes (A109), decided** 2026-11-02 (R1 S8, the review gate; the user: "Take every recommendation"): the recommendation. Adopted as data: `kept` (`pinned`, `sporecloud`, `burster`, `cleave`, `rhizomorph`) and `clashshield`, written as v2's arrival shield under its own key. Deleted: `noeldersplash` (#9), `clashpace` (#12) and `swarmread`, which counting Elder parts replaces if R2a S0 settles R2-Q3 that way. R2a writes the tool-only switches `noBuildingPreference` and `idleSeek` as v2's targeting and movement, and R2b deletes the flags. For R2a to watch: alone, `pinned` weakens the answers to the Sporeling and the Capguard, and under `kept` v1's G2 newly fails on the Gill Archer. In SPEC §16 R2.
 
+**A2 and B3 dropped** 2026-11-03 (R2b S4; the user: "Drop both"). §16 R2 had kept `a2` and `b3` as default-off knobs, but R2b's S3 found that no battle in rounds reads `ai.counter.counterFloorWeight` or `firingCongestion`. Both presets go, with their schema keys, and `?proto=a2` or `?proto=b3` now reads as an unknown preset (A117). The kept knobs are `flyers` and `bosslives`. In SPEC §16 R2 and R2b's T055 and T058.
+
 ### #7 · Squad sizes and the full colony
 
 - **Question:** What does each building field a round, and what's the most a full colony fields?

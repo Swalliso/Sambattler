@@ -184,11 +184,11 @@ describe('triggers in rounds (SPEC §14.2, §14.6)', () => {
   it("a trigger rounds don't fire, or an action they don't run, compiles to nothing and is listed (plan Call 19)", () => {
     const compiled = compile([{
       side: 'player', source: 'relic:test',
-      effects: { triggers: [{ on: 'waveStart', do: [{ gainGold: 1 }] }, { on: 'merge', do: [{ gainGold: 2 }, { repairHeartcapPct: 0.1 }] }, { on: 'unitDeath', do: [{ readyPower: true }] }] },
+      effects: { triggers: [{ on: 'waveStart', do: [{ gainGold: 1 }] }, { on: 'merge', do: [{ gainGold: 2 }, { repairHeartcapPct: 0.1 }] }, { on: 'unitDeath', do: [{ explode: { damage: 10, damageType: 'crush', radius: 1 } }] }] },
     }]);
     expect(compiled.player.triggers).toEqual([{ on: 'merge', do: [{ gainGold: 2 }] }]);
     expect(compiled.player.ignored).toEqual([
-      { source: 'relic:test', trigger: 'waveStart' }, { source: 'relic:test', action: 'repairHeartcapPct' }, { source: 'relic:test', action: 'readyPower' },
+      { source: 'relic:test', trigger: 'waveStart' }, { source: 'relic:test', action: 'repairHeartcapPct' }, { source: 'relic:test', action: 'explode' },
     ]);
     expect(compiled.enemy.triggers).toEqual([]);
   });
