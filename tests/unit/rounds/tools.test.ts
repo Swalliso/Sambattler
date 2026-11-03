@@ -20,7 +20,8 @@ describe('playRoundClash (T116)', () => {
   it('gives the same clash from either seat, read from the first army', () => {
     const job: RoundClashJob = { field: 'one', seed: 1, seat: 'player', armies: [army('bot:mono:sporelingBurrow'), army('bot:mono:capguardHall')] };
     const asPlayer = playRoundClash(content, job), asEnemy = playRoundClash(content, { ...job, seat: 'enemy' });
-    const { seat: _p, ...p } = asPlayer, { seat: _e, ...e } = asEnemy;
+    // the capped damage reads the loser's max HP, 3000 as the player and 2000 as the general, so it's left out
+    const { seat: _p, damage: _dp, ...p } = asPlayer, { seat: _e, damage: _de, ...e } = asEnemy;
     expect(e).toEqual(p);
     expect(asPlayer.winner).not.toBe('draw');
   });

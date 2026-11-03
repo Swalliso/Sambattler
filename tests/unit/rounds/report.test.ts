@@ -81,16 +81,16 @@ describe('the outcome (§10.4, §6.5)', () => {
   });
 
   it('gives a Decision after round 9 with each side\'s damage dealt, as a share of the other\'s max HP', () => {
-    // you dealt 1400 of the general's 2000 (70%); it dealt 1800 of your 3000 (60%) once its Capguards take round 9
+    // you dealt 1400 of the general's 2000 (70%); it dealt 1950 of your 3000 (65%) once its Capguards take round 9
     const s = finish(fromScenario('decision-round-9'));
     expect(s.outcome).toMatchObject({ winner: 'player', by: 'decision', round: 9 });
     const dealt = (side: Side) => s.rounds.reduce((n, r) => n + r.damage[side], 0);
-    expect([dealt('player'), dealt('enemy')]).toEqual([1400, 1800]);
+    expect([dealt('player'), dealt('enemy')]).toEqual([1400, 1950]);
     const text = outcomeText(s);
     expect(text).toMatch(/^The Velvet Bloom wins by Decision after round 9/);
     expect(text).toContain('1400');
     expect(text).toContain('70%');
-    expect(text).toContain('1800');
-    expect(text).toContain('60%');
+    expect(text).toContain('1950');
+    expect(text).toContain('65%');
   });
 });

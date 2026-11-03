@@ -8,6 +8,27 @@ replaces. None of it is open work, including headings that say "Open:". From mil
 entries measure or tune v2's round battle (SPEC §11, §12). "The backlog" in the entries below means
 v1's, now [archived](../docs/archive/v1/balance-backlog.md).
 
+## R2a-S18 T125: the pace, 75 a supply, and #35's bands for R2a (2026-11-03)
+
+**A rule number, approved by the user** ("Take them all", 2026-11-03, on S18's proposal). **The five round replays moved,
+v1's eight didn't**: rounds' state hashes its rules, and v1's library leaves `balance.rounds` out (Call 27).
+`git diff --stat tests/golden/m*` shows nothing.
+- **`rounds.heartcapDamagePerSupply` 25 → 75** (SPEC §6.7, §18.3; R2a/T124, T125). At 25, `bot:balanced` against the
+  scripted general went a median of 9 rounds, 73% reaching round 9 (G4: 6–8, ≤ 15%), and S14b's playtest found the
+  late rounds empty once the colony was full. Of the levers measured, only damage per supply moved it far: at 75,
+  7 rounds and 18% reach round 9, the bot still winning 60% and 9% of clashes capped. The round cap (34%, 40%), the
+  Heartcaps' HP and the Sporestorm moved it less. Measured in `docs/balance-backlog.md`'s S18 entry.
+- **`comeback-r4`'s deficit 700 → 1275** (G6, #35): what a 3000-HP side loses in rounds 1–3 of G4's battles at 75 a
+  supply, by each round's median (150, 525, 600). The same method gives 425 at 25 a supply, so the old 700 was a high
+  first guess.
+- **Two rule scenarios keep their rule at the new number:** `decision-round-9`'s Heartcap starts at 1800 (was 1500), so the
+  share still gives you the Decision that damage dealt would give the general; in `both-heartcaps-zero` the general's
+  max HP is 3000, so your capped 750 still wins the round its 630 loses (E8). The other scenarios' expected damage
+  triples where no cap binds; `scoring.test.ts` keeps §6.7's steps worked at 25 a supply, set on the state.
+- **`balance-targets.json`'s `rounds` bands** (#35, R2a's part): G4 6–8 rounds, ≤ 15% at round 9, the bot 30–70%; G6
+  20–45% and ≥ 50%; G8 40–65% for `bot:balanced` and at most 80% for `bot:answer`, now one band per policy; G13 ≤ 15%
+  capped and a median clash of 15–40 s (was 20–40); G16 ≥ 60%. G14 and G15 are R2b's.
+
 ## R2a-S18: the round guardrails' targets and bots (2026-11-03)
 
 **New bots and targets. No golden moved**: neither v1's nor rounds' state reads `balance-targets.json`, and a bot

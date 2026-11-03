@@ -19,7 +19,7 @@ v1's backlog is archived at [docs/archive/v1/balance-backlog.md](archive/v1/bala
 ## Open
 
 - **R1's review gate** (S8, T049): the user reads R1's entry below and settles §18.2 #7–#15, X4, X5, #36's reading and each knob's outcome (A109). R2a starts after that.
-- **The pace of a battle in rounds and #35's bands** (R2a S18, below): G4 misses at 9 rounds and 73% reaching round 9. S18 proposes `heartcapDamagePerSupply` 75 and a band for each of G4, G6, G8, G13 and G16, for the user's call at T125.
+- **The pace and #35's bands, after T125** (R2a S18, below): at 75 a supply, agreed on 2026-11-03, G4 reaches round 9 in 18% of battles (≤ 15%), and G6's behind side wins 46% (≤ 45%). Both go to S21's playtest.
 - **S18's other guardrail misses** (below): G1, G2, G3, G7, G8's mono drops and G16 (the formation rule loses to its ranks traded). Each waits for the user.
 - **X8's readouts** (R2a S15, below): your colony is full from round 5, and once both colonies are full, half the clashes replay the last one. They go to S18's pace call and S21's playtest, with X8's two knobs still off.
 - **Gill Archers tie Swarm and Ranged** (R2a S15, below): the noise, not #14's tie order, picks between them. A rule change waits for the user.
@@ -106,6 +106,21 @@ npm run experiment -- --rounds --checks g4,g6 --proto <lever>
 - **Merging is worth too much** (G7): merge-on wins 87% of the mirror (55–70%), and 72% with Slayers fielding 25% of supply (≤ 50%).
 - **The Baron's counter cycle doesn't answer monos** (G8): one of eight asserted monos drops 20 points.
 - **Squad duels at 600 gold** (G1): the Sporeling Burrow wins 9 of 10 pairings and the Rhizomorph Tunnel none.
+
+**T125, the user's call** (2026-11-03, "Take them all"): `heartcapDamagePerSupply` 75, and the bands as proposed above (G4 kept; G6 20–45% from a deficit the pace gives, and ≥ 50%; G8 40–65% for `bot:balanced` and ≤ 80% for `bot:answer`; G13 ≤ 15% and 15–40 s; G16 ≥ 60%). G6's deficit is 1275 HP: a 3000-HP side's median loss in each of rounds 1–3 of G4's battles at 75 a supply, 150 + 525 + 600 (the same method reads 425 at 25, so the old 700 was high). `npx vitest run tests/slow/rounds` at the agreed pace (288 s):
+
+| | Reading at 75 a supply | |
+|---|---|---|
+| G4 | 7 rounds; 18% reach round 9 (≤ 15%); the bot wins 60% | miss, by 3 points, as measured before the call |
+| G5 | 63% | pass |
+| G6 | the behind side wins 46% from 1275 behind (20–45%); the winner is hit in 75% | miss, by 1 point |
+| G8 | `bot:balanced` 50% (40–65%), `bot:answer` 70% (≤ 80%); 1 of 8 asserted monos drops 20 points (the Hammercap, 87% → 63%) | the bands hold; the mono clause misses |
+| G12 | every build above 40% in G3 answered on every map | pass |
+| G13 | 9% capped; median clash 17.4 s (15–40 s) | pass |
+| G16 | 24% | miss (a rule question) |
+| G1, G2, G3, G7 | as above, G3's same 8 builds | miss |
+
+- **G6's deficit hardly matters:** from 1275 behind the behind side still wins 46%, against 49% from 700 at the same pace. A round's cap and the comeback gold keep the race close, so being behind after round 3 costs about 4 points. The band, the deficit or the comeback gold is the user's call, with S21's playtest.
 
 ## R2a S17 · the round bench against §13.7, and the first `g4` in rounds (2026-11-03)
 

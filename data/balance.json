@@ -102,7 +102,7 @@
     "clashCapSeconds": 45,
     "musterSeconds": 1,
     "formationGapTiles": 6,
-    "heartcapDamagePerSupply": 25,
+    "heartcapDamagePerSupply": 75,
     "siegeHeartcapMult": 2,
     "arrivalShield": { "minTypes": 2, "shieldFrac": 0.2 },
     "roundDamageCap": { "maxHpBp": 2500 },

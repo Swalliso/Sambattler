@@ -480,8 +480,8 @@ export const BalanceTargetsSchema = z.object({
   G11: z.object({ tickMeanMs: Pos, tickP99Ms: Pos, battleWallMs: Pos, benchTicks: z.number().int().positive(), quickTicks: z.number().int().positive() }).strict(),
   /**
    * The round forms (SPEC §12.3, R2a/T119), asserted in `tests/slow/rounds/` beside v1's blocks until R2b retires
-   * those. G2 stays the block above. The battle-level bands (G4, G6, G8, G13, G16) are §12.3's first guesses
-   * until the user sets them from R2a's measurement (§18.2 #35, T125).
+   * those. G2 stays the block above. The battle-level bands (G4, G6, G8, G13, G16) are the user's, set from R2a's
+   * measurement (§18.2 #35, T125, 2026-11-03); R2b sets G14's and G15's and re-reads G8's beside G14.
    */
   rounds: z.object({
     G1: z.object({ seeds: z.number().int().positive(), goldBudget: z.number().int().positive(), maxPairingWinShare: z.number(), clearLossRatio: z.number() }).strict(),
@@ -502,10 +502,10 @@ export const BalanceTargetsSchema = z.object({
       mirror: z.object({ mergeBot: Id, noMergeBot: Id, minWinRate: z.number(), maxWinRate: z.number() }).strict(),
       slayers: z.object({ mergeBot: Id, noMergeBot: Id, share: z.number(), maxWinRate: z.number() }).strict(),
     }).strict(),
-    /** As v1's G8, with the band read under each of `policies` (X7). */
+    /** As v1's G8, with a band for each planning policy's bot against the adaptive general (X7): `bot:balanced`'s, and `bot:answer`'s ceiling. */
     G8: z.object({
       seeds: z.number().int().positive(), general: Id, minDrop: z.number(), minBaseline: z.number(),
-      balancedMin: z.number(), balancedMax: z.number(), policies: z.array(Id).min(1),
+      policies: z.array(z.object({ bot: Id, min: z.number().optional(), max: z.number().optional() }).strict()).min(1),
     }).strict(),
     /** v1's G11, plus the budgets new in v2 (§13.7): the arrival, the general's turn, a planning command's sim part, and a full colony's units a side. */
     G11: z.object({

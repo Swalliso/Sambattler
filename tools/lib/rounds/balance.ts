@@ -677,8 +677,8 @@ export interface RoundG8Row { bot: string; off: number; on: number; drop: number
 
 /**
  * G8 in rounds (§12.3): each mono bot's win rate against `general` drops by `minDrop` with the counter cycle on (one
- * below `minBaseline` without it is reported only), and the first of `policies` wins within the band against the
- * adaptive general at battle index 1. The others are reported beside it until #35 sets their band (X7).
+ * below `minBaseline` without it is reported only), and each planning policy's bot wins within its band against the
+ * adaptive general at battle index 1: `bot:balanced` 40–65%, `bot:answer` at most 80% (X7, #35, T125).
  */
 export async function evaluateG8(content: Content, run: RoundRunner): Promise<Verdict & { rows: RoundG8Row[]; policies: Record<string, number> }> {
   const t = content.targets.rounds.G8, general = `general:${t.general}`, map = 'bogwater-hollow';
@@ -686,7 +686,7 @@ export async function evaluateG8(content: Content, run: RoundRunner): Promise<Ve
   const ids = rosterIds(content);
   const cells: SeatCell[] = [
     ...ids.flatMap((id) => [{ a: `bot:mono:${id}`, b: general, map, flags: off }, { a: `bot:mono:${id}`, b: general, map, flags: on }]),
-    ...t.policies.map((p) => ({ a: `bot:${p}`, b: general, map, flags: on })),
+    ...t.policies.map((p) => ({ a: `bot:${p.bot}`, b: general, map, flags: on })),
   ];
   const rows = await playSeats(run, cells, t.seeds, 1, ['player']);
   const winRate = (i: number) => rows[i]!.winsA / rows[i]!.games;
@@ -695,16 +695,18 @@ export async function evaluateG8(content: Content, run: RoundRunner): Promise<Ve
     // a drop of exactly `minDrop` passes: 11/30 − 5/30 is a hair under 0.2 in floats
     return { bot: id, off: rOff, on: rOn, drop: rOff - rOn, asserted, ok: !asserted || rOff - rOn >= t.minDrop - 1e-9 };
   });
-  const policies = Object.fromEntries(t.policies.map((p, k) => [p, winRate(2 * ids.length + k)]));
-  const first = policies[t.policies[0]!]!, bandOk = first >= t.balancedMin && first <= t.balancedMax;
+  const bands = t.policies.map((p, k) => {
+    const r = winRate(2 * ids.length + k), good = (p.min === undefined || r >= p.min) && (p.max === undefined || r <= p.max);
+    const band = p.min === undefined ? `at most ${rate(p.max!)}` : p.max === undefined ? `at least ${rate(p.min)}` : `${rate(p.min)}–${rate(p.max)}`;
+    return { bot: p.bot, r, good, band };
+  });
   const details = [
     ...monos.map((r) => `${!r.asserted ? 'n/a ' : ok(r.ok)} mono:${r.bot} vs ${t.general}: ${rate(r.off)} → ${rate(r.on)} with the counter cycle (drop ${Math.round(r.drop * 100)} points${r.asserted ? '' : `; under the ${rate(t.minBaseline)} baseline, report only`})`),
-    `${ok(bandOk)} bot:${t.policies[0]} vs adaptive ${t.general} at battle index 1: ${rate(first)} (band ${rate(t.balancedMin)}–${rate(t.balancedMax)})`,
-    ...t.policies.slice(1).map((p) => `info bot:${p} vs adaptive ${t.general} at battle index 1: ${rate(policies[p]!)} (reported, no band until #35)`),
+    ...bands.map((b) => `${ok(b.good)} bot:${b.bot} vs adaptive ${t.general} at battle index 1: ${rate(b.r)} (band ${b.band})`),
   ];
   return {
-    id: 'G8', pass: monos.every((r) => r.ok) && bandOk, rows: monos, policies,
-    summary: `adaptation in rounds: every mono bot drops ≥${Math.round(t.minDrop * 100)} points against the adaptive ${t.general}; bot:${t.policies[0]} wins ${rate(t.balancedMin)}–${rate(t.balancedMax)}`,
+    id: 'G8', pass: monos.every((r) => r.ok) && bands.every((b) => b.good), rows: monos, policies: Object.fromEntries(bands.map((b) => [b.bot, b.r])),
+    summary: `adaptation in rounds: every mono bot drops ≥${Math.round(t.minDrop * 100)} points against the adaptive ${t.general}; ${bands.map((b) => `bot:${b.bot} ${b.band}`).join(', ')}`,
     details,
   };
 }

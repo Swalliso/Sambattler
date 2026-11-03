@@ -170,8 +170,9 @@ describe('stats per round (§5.7, A064)', () => {
         expect(r.stats[side].heartcapDamageTaken).toBe(r.damage[side === 'player' ? 'enemy' : 'player']);
       }
     });
-    // Capguards against Tenders, which never attack: 25 × 6 at round 7's ×1.6 (§6.4)
+    // Capguards against Tenders, which never attack: 25 × 6 at round 7's ×1.6 (§6.4), §6.7's first value, under the cap
     const storm = battle({ player: { colony: [on('capguardHall', at(0, 0, 2), false)] }, enemy: { colony: [on('tendersRing', at(0, 0, 2), false)] } }, 7);
+    storm.rules.heartcapDamagePerSupply = 25;
     finishRound(storm);
     expect([storm.rounds.at(-1)!.stats.player.heartcapDamageDealt, storm.rounds.at(-1)!.stats.enemy.heartcapDamageTaken]).toEqual([240, 240]);
     // a lane dealing 1000 against a cap of 500 (§6.7, X5)
