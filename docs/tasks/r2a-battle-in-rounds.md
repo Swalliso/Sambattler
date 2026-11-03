@@ -499,8 +499,8 @@ S1 to S4: the data, the colony, the round state machine and the planning command
 
 **S9: headless, the CLI and determinism**
 
-- [ ] T058 [US2] Write `tests/unit/asserts.test.ts` (new): parse `hash@r3=…`, `roundLog[2].lanes[0].capped=false` and `x@r2:200>=1`, beside v1's `@<tick>` (§15.2)
-- [ ] T059 [US2] Write `tests/unit/rounds/headless.test.ts` (new) (§14.6, §15.2) (A036):
+- [x] T058 [US2] Write `tests/unit/asserts.test.ts` (new): parse `hash@r3=…`, `roundLog[2].lanes[0].capped=false` and `x@r2:200>=1`, beside v1's `@<tick>` (§15.2)
+- [x] T059 [US2] Write `tests/unit/rounds/headless.test.ts` (new) (§14.6, §15.2) (A036):
   - `until` takes `'end'`, `{round}` and `{round, tick}`, with `tick` counted within the clash;
   - a human planning phase with no commands throws a clear error rather than looping;
   - planning and aftermath steps don't count as stalls.
