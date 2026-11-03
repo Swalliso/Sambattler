@@ -24,12 +24,71 @@ Entries before 2026-10-31 describe the v1 battle, which [SPEC v2](../SPEC.md) re
 | F14 | Defensive buildings smaller than 2×2, to fit the gaps players leave | §4.4 | **SPEC v2 (2026-10-31):** plots are fixed 2×2 (§4.6); still open. Before v2: open, waits on the user |
 | F15 | A building that spreads the fungus to capture territory over time | §4.3 | **SPEC v2 (2026-10-31):** superseded. There's no territory; your colony gains plots over a run instead (§4.6). Before v2: open, waits on the user |
 | F16 | A benefit for fighting on your own territory (home ground) | §4.3, §5.3 | **SPEC v2 (2026-10-31):** superseded. There's no territory (Appendix A). Before v2: open, waits on the user |
-| F17 | Units are hard to tell apart, and knowing which one counters what takes "a wall of text" | §5.8, §10.4, §11.2 | **SPEC v2 (2026-10-31):** the shape language (body size shows armor, a weapon mark shows damage type, pips mark merges), six core archetypes, and matchup marks on cards and the planning screen. The art and card text are milestone R4. **2026-11-01:** the user dropped weapon marks from units (R4/T077): body size and a distinct silhouette per archetype tell units apart, and the matchup marks say what counters what **2026-11-02:** R4a drew the shape language on the field (R4a-S1 to S5, `docs/r4a-plan.md` As built): size by armor, a silhouette per unit, pips and an Elder rim for merges, and a lighter Gray Rot that stays apart under colour filters. It waits on the user's review (R4/T039) and R2a's playtest; R4b does the cards and matchup marks |
-| F18 | The opener feels like a gamble: you can't tell whether the general will rush you or build economy | §7.1, §7.5 | **SPEC v2:** the general plans first each round, and you see its whole army before you plan. **2026-11-02:** R2a's rough playtest found it works: "no longer a gamble" ([entry](#2026-11-02-r2as-rough-playtest-a-battle-in-rounds-the-user)) |
-| F19 | Waves mix real time with turns and are hard to follow; a build phase, then a fight phase, was suggested | §4.2, §4.7 | **SPEC v2:** battles are rounds of planning, clash and aftermath. Waves and Hold are retired. **2026-11-02:** R2a's rough playtest found rounds read as plan, then fight ([entry](#2026-11-02-r2as-rough-playtest-a-battle-in-rounds-the-user)) |
-| F20 | Placement doesn't matter: the player fills the home zone from the top left down | §4.6, §11.14 | **SPEC v2:** the colony is the formation (front and back ranks), plus combos by position. **2026-11-02:** R2a's rough playtest found placement mattered ("ranged in the back"). The grid stays as it is, and what a full colony's gold does is §18.2 #67 ([entry](#2026-11-02-r2as-rough-playtest-a-battle-in-rounds-the-user)) |
+| F17 | Units are hard to tell apart, and knowing which one counters what takes "a wall of text" | §5.8, §10.4, §11.2 | **SPEC v2 (2026-10-31):** the shape language (body size shows armor, a weapon mark shows damage type, pips mark merges), six core archetypes, and matchup marks on cards and the planning screen. The art and card text are milestone R4. **2026-11-01:** the user dropped weapon marks from units (R4/T077): body size and a distinct silhouette per archetype tell units apart, and the matchup marks say what counters what **2026-11-02:** R4a drew the shape language on the field (R4a-S1 to S5, `docs/r4a-plan.md` As built): size by armor, a silhouette per unit, pips and an Elder rim for merges, and a lighter Gray Rot that stays apart under colour filters. It waits on the user's review (R4/T039) and R2a's playtest; R4b does the cards and matchup marks. **2026-11-03:** at R2a's playtest gate the user could see the Elders and Bloomed units ([entry](#2026-11-03-r2as-playtest-gate-a-battle-in-rounds-the-user)) |
+| F18 | The opener feels like a gamble: you can't tell whether the general will rush you or build economy | §7.1, §7.5 | **SPEC v2:** the general plans first each round, and you see its whole army before you plan. **2026-11-02:** R2a's rough playtest found it works: "no longer a gamble" ([entry](#2026-11-02-r2as-rough-playtest-a-battle-in-rounds-the-user)). **2026-11-03:** R2a's playtest gate kept the full reveal as the default, since the user prefers reacting to the general's plan, and `reveal=last` became an idea ([entry](#2026-11-03-r2as-playtest-gate-a-battle-in-rounds-the-user)) |
+| F19 | Waves mix real time with turns and are hard to follow; a build phase, then a fight phase, was suggested | §4.2, §4.7 | **SPEC v2:** battles are rounds of planning, clash and aftermath. Waves and Hold are retired. **2026-11-02:** R2a's rough playtest found rounds read as plan, then fight ([entry](#2026-11-02-r2as-rough-playtest-a-battle-in-rounds-the-user)). **2026-11-03:** R2a's playtest gate found the same, except with `reveal=last` ([entry](#2026-11-03-r2as-playtest-gate-a-battle-in-rounds-the-user)) |
+| F20 | Placement doesn't matter: the player fills the home zone from the top left down | §4.6, §11.14 | **SPEC v2:** the colony is the formation (front and back ranks), plus combos by position. **2026-11-02:** R2a's rough playtest found placement mattered ("ranged in the back"). The grid stays as it is, and what a full colony's gold does is §18.2 #67 ([entry](#2026-11-02-r2as-rough-playtest-a-battle-in-rounds-the-user)). **2026-11-03:** R2a's playtest gate found placement mattered again, Bursters in the front rank among it. A full colony still limits the late game, so #67 goes to R2b's S0 ([entry](#2026-11-03-r2as-playtest-gate-a-battle-in-rounds-the-user)) |
 | F21 | Unit cards and buildings are too word-dense | §10.4 | Postponed by the user until combat is settled: milestone R4 |
 | F22 | Nothing pulls you into another run: the research has examples, and none are built | §8, §9, §16 | **SPEC v2:** lives instead of a run lost in one battle, run packs, augments and combos; M6 rewritten for v2. Run it back and records were agreed as separate work (X10, 2026-11-01). records-1, Run it back and the remembered setup, is on `develop` and passed the user's check on 2026-11-01; records-2 follows R2b |
+
+## 2026-11-03: R2a's playtest gate, a battle in rounds (the user)
+
+The user played R2a's battle in rounds on the dev site on builds `9b15a8a` and `2563235`, which hold R2a's final data at 100 Heartcap damage a supply (T125). This is R2a's playtest gate, S21 (T137 in [r2a-battle-in-rounds.md](tasks/r2a-battle-in-rounds.md), SPEC §16 R2 step 10). They played the three battles T137 names: the default battle (Old Mother Mold, adaptive, with powers), Twin Roots against the Lichen Baron, and `reveal=last` (R2-Q1's A/B) on two seeds. The verdict: the default battle feels good, questions 1, 2, 3, 6 and 7 are answered, and the gate passes. The hub went through the notes with the user the same day, and the user took its recommendations ("Yes, start both").
+
+**1. Did seeing the general's army first turn the opener into a plan rather than a gamble? (F18, R2-Q1's A/B)** "I still prefer to see the general's army planning/placing units/structures before I make my move and wasn't particularly a fan of the reveal=last mode. That might work as an optional difficulty setting or some variant mode or something down the line, but I think the default should be to be reacting to your opponent."
+- Yes, with the full reveal, which stays the default.
+
+**2. Did where you planted change how a clash went? (F20)** "Where I placed structures/units definitely seemed to impact the battle". And: "bursters in the front rank also felt pretty good."
+- Yes. Bursters in front fit G16's measurement: placed behind its front, as §7.3's rule puts it, a Burster always lost to the same colony with it in front ([balance-backlog.md](balance-backlog.md)).
+
+**3. Did rounds read as "plan, then fight"? (F19)** "Rounds read as plan then fight for the most part except for the `reveal` mode"
+- Yes, with the full reveal.
+
+**6. When were you bored, and when did you feel clever?** "I wasn't bored, but I still feel a bit limited on how to make moves late game. Once you have all your slots filled, it's kind of hard to adjust your strategy or change up your playstyle to adapt to what your opponent is doing. I'm not sure if we have something like this in the works, but upgrading buildings/units with gold might be an option worth exploring to help with that exhaustion of buildable ground. happy to wait on this proposal though since we still have worked lined up."
+- Not bored, at the new pace: a median of 7 rounds, where 25 a supply took 9. But a full colony still leaves few ways to adapt, so §18.2 #67's first guess, "nothing new", no longer holds (below).
+
+**7. Did you miss placing or Hold during a clash, with only the commander power live?** "I do not miss the hold command, as I don't think it really fits in with the V2 spec changes we're working with."
+- No. Hold stays out.
+
+**R4's question (A162): could you spot the Elders, and tell a Bloomed unit from a base one? (F17)** "I could see the elders and bloomed units"
+- Yes. #52's first reading, the shape language at Twin Roots' scale, raised nothing: "twin roots also felt good" (below).
+
+**The other notes, and the hub's readings** (2026-11-03):
+- **The Heartcap cap reads as asymmetric.** "I'm not sure I'm a fan of the asymmetric heartcap damage between the player and the opponent. It feels weird being limited to 500 damage while you can take more (750?)."
+  - Right: the cap is 25% of the loser's max HP a round (X5), so you deal at most 500 a round to battle 1's general (2000) and take at most 750 (3000). Either side still falls after four capped losses. And since the cap binds in 70% of damaging rounds (S18), a bigger Heartcap raises its own cap, so D28's bigger Heartcaps for later generals barely matter.
+  - S21b measures a fixed cap for R2b's S0 (§18.2 #68).
+- **The Morel Warren's runners.** "Not sure if this is a problem with other units, but it seems like the Morel Warren runners have a hard time pathfinding properly and even though there are two units, they only seem to attack one at a time when matching up against Capguards and Rootbreakers. This typically ends with the units pushing all the way in to the enemy base."
+  - S21b diagnoses it.
+- **The commander power.** "The default battle still feels good to me. we might need to adjust the timing of the commander power or something at some point though, since it can be used quite effectively to invalidate some units (bursters), but maybe that's an okay counterplay or strength for the general with spore burst."
+  - Spore Burst dealt 10–21% of the user's damage in the two saved reports. No change now: R2b's commander work watches it (§18.2 #70).
+- **Two highlighted grid segments while placing.** "It feels a bit confusing to be highlighting two different grid segments when placing structures/units (pic 2) and I think we should stick to just having the user place the buildings."
+  - S21b fixes the placing highlight.
+- **The Puffball Mortars weren't drawn.** "In the version I was playtesting, the puffball mortars weren't visible on the map, which looked kind of weird with the units attacking a tile with nothing in it."
+  - S21b fixes the Mortar's drawing.
+- **The general's openings.** "I played all three battles and the default mode feels good, my only wish is for more variety with the opening moves from the opponent, but I understand why we might want to start off with the same one each run while we build things out."
+  - R2b's opening doctrine (R2-Q18) and its several generals bring some variety, and several openers per general is the cheap next step (§18.2 #69).
+- **Twin Roots' economy lane.** "twin roots also felt good, although in the run I did, the opponent just build mortars in the bottom lane while focussing on building in the top, which was okay for me, since I would then just concentrate my econ building in that lane instead of the top, allowing me to focus on building units up there."
+  - A lane you leave empty goes to whatever the general fields there (E1). The user treated it as a fair trade (§18.2 #71). Pic 1, in round 5: the user's Heartcap at 1850/3000 and the Baron's at 1000/2000, with lane 2 lost to the Baron's Mortars against the user's economy lane.
+  - S21 adds: a lane won by emplacements alone deals no damage (E6), so if the Baron fielded only Mortars there, the empty lane cost the user only that lane's half of the tally.
+- **Gold once the colony is full** (answer 6): the user's idea is upgrades bought with gold. The hub's notes: an upgrade should be a real jump, such as a squad arriving Bloomed, since small percentages measured below noise (DR-7), and buying stumps into extra plots is another candidate. It goes to R2b's S0 (§18.2 #67).
+- **The reports.** "Apologies I only saved the last variant's after-battle report, but if it is helpful I can run them again."
+  - They're below. A default-mode report would give X6 the planning time of the mode that stays the default, so the offer stands. It doesn't block the gate.
+
+**The two saved reports** (`reveal=last`, read off the user's screenshots, pics 3 and 4):
+
+| Battle | Result | Planning seconds, by round | Median | Active play | MVP | Spore Burst's damage |
+|---|---|---|---|---|---|---|
+| Seed 708952, against Mold | Won by Rout in round 5, dealing 2000 and taking 750 | 28, 10, 13, 89, 20 | 20 s | 4.7 min | Capguard Hall ×4, 89% of the damage | 1,903 |
+| Seed 802122 | Won by Rout in round 6, dealing 2400 and taking 400 | 7, 5, 50, 5, 8, 4 | 6 s | 2.1 min | Burster Pod ×2, 61% | 1,554 |
+
+**What changes** (the user with the hub, 2026-11-03):
+- **R2-Q1's A/B:** the full reveal stays the default. `reveal=last` goes to [docs/ideas/](ideas/reveal-last-fielded.md) as a possible variant or difficulty setting.
+- **Question 7:** Hold stays out.
+- **The Burster moves to the front line** of SPEC §7.3's formation rule. S21b makes the change, beside S21.
+- **S21b** also fixes the Mortar's drawing and the placing highlight, diagnoses the Morel Warren's runners, and measures a fixed round cap for R2b's S0.
+- **SPEC §16 R2 step 3** allows 20% of battles to reach round 9, matching G4's band (T125). It said 15%.
+- **R2b's S0** takes five inputs, each with a block in [clarify.md](tasks/clarify.md) and a row in SPEC §18.2: what gold does once the colony is full (#67), the Heartcap cap and D28 (#68), the general's openings (#69), the commander power (#70) and Twin Roots' economy lane (#71).
+- **R2b's start:** the user agreed on 2026-11-03 ("Yes, once both merge"): R2b's S0 starts once S21 and S21b have merged into `develop`.
 
 ## 2026-11-02: R2a's rough playtest, a battle in rounds (the user)
 
