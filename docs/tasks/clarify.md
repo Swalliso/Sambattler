@@ -193,6 +193,7 @@ These ten calls set how the work after R1 is cut. The task files assume each rec
   - What stays: `npm run verify` is green on every PR into develop. A develop push that fails verify fails the whole deploy, so `main`'s site couldn't redeploy either (`.github/workflows/deploy.yml`).
   - `main` keeps the v1 game until the user asks for a release.
 - **R2a part agreed:** 2026-11-02 (R2a S0; the user chose "Every build"): R2a's preview entry, `scene=rounds`, loads on every build through a dynamic `import()`, and the title's button shows only on the dev site. So there's no dev-only gate, no "not part of this build" message and no `--dev` mode in the screenshot tool, and R2a's sessions don't check by hand that v1 still plays: `npm run verify` still covers it. `main` never sees the preview, since R2b deletes it before any release. In SPEC §15 and §16 R2.
+- **R2b S0:** 2026-11-03 (the user chose "Drop it, land on develop"): no `feature/r2b-cutover`. R2b's S1–S4 land on `develop` directly, each green and playable, and S4b is dropped (R2b's Call 14). In SPEC §16 R2.
 
 ### X3 · Split R4: the field's shape language now, the text after R3
 
@@ -523,6 +524,7 @@ R1 reports a measure for each row, and you settle it at R1's review gate (§16 R
 - **Alternatives:** keep both.
 - **Blocks:** R2a's powers; R2b's knit content (A096).
 - **Decision:** 2026-11-02 (R2a S0; the user: "Take every recommendation"): the recommendation, with R1's reading: after the muster Puppet Bloom found a median of 0 trios at 300 and 600 gold (rounds 1–3) and 1 from 900. R2a measures it again in real rounds (S16). If the median stays below 1, R2b's S0 gives Puppet Bloom a v2 job (such as lifting same-type units within 3 tiles one tier) and turns Cordis's knit-time bonus into something the muster uses (such as merged units starting at +10% HP). Until then both are kept as written. In SPEC §11.10.
+- **R2b S0:** 2026-11-03 (the user: "Take them all"): S16 read a median of 0 trios, so Puppet Bloom's v2 job is to lift same-type units within 3 tiles one tier, and Cordis's knit-time bonus becomes merged units starting at +10% HP (R2b S7). In SPEC §11.10.
 
 ### R2-Q8 · Display text out of the hashed state
 
@@ -581,6 +583,7 @@ R1 reports a measure for each row, and you settle it at R1's review gate (§16 R
 - **Alternatives:** settle each one apart.
 - **Blocks:** R2a's battle UI.
 - **Decision:** 2026-11-02 (R2a S0; the user: "Take every recommendation"): the recommendation, as a set. Begin by key needs a fresh keydown after planning opens, ignores auto-repeat and waits about 400 ms, while the button stays instant. R2a's basic marks show your hits on enemy squads; the reverse direction and card marks come with R4b. Hovering a formation slot snaps the ghost to its plot, and a click there plants. The aftermath holds under Help or settings, and the speed control stays live there, with pause hidden. In SPEC §10.2, §10.3 and §13.5.
+- **R2b S0:** 2026-11-03 (the user: "Take them all"): a card is placed on its plot only, so hovering or clicking a squad's spot in the field no longer places it (S21b's note; the user at R2a's gate: "stick to just having the user place the buildings"). R2b/T167 builds it. In SPEC §10.2 and §10.3.
 
 ### R2-Q25 · A rough playtest after S14
 
@@ -635,6 +638,7 @@ R1 reports a measure for each row, and you settle it at R1's review gate (§16 R
 - **Alternatives:** a reserve up to the interest cap.
 - **Blocks:** R2a's general.
 - **Decision:** 2026-11-02 (R2a S0; the user: "Take every recommendation"): the recommendation: 0 for now, so the general spends what it can. X8's readouts show what it banks anyway, and since R2-Q2 raised interest, R2a's measurements revisit it. In SPEC §7.2 and §18.2 #29.
+- **R2b S0:** 2026-11-03 (the user: "Take them all"): still 0. Once its plots are full, the general spends its gold on #67's upgrades.
 
 ### #30 · The general's lane rule on Twin Roots
 
@@ -669,6 +673,7 @@ R1 reports a measure for each row, and you settle it at R1's review gate (§16 R
 - **Blocks:** R2a's guardrails; R2b's G14 and G15.
 - **Decision:** R2a's part agreed 2026-11-03 (R2a T125; the user: "Take them all", then through the hub "Yes, with the rerun" and "Go to 100"), from R2a S18's measurement (`docs/balance-backlog.md`). With them the pace: `heartcapDamagePerSupply` 25 → 100. A 200-battle rerun put 75 a supply at 23.5% reaching round 9 and 100 at 18.5%, with the same median and win rate, and the damage cap binding in 70% of damaging rounds against 60%. G4 plays 200 battles, keeps 6–8 rounds and the bot winning 30–70%, and allows 20% to reach round 9 rather than 15%. G6 keeps 20–45% for the behind side, from a deficit of 1550 HP (what a 3000-HP side loses in rounds 1–3 of G4's 200 battles at 100 a supply, by each round's median; it was 700), and ≥ 50% for the winner's Heartcap hit. G8 keeps 40–65% for `bot:balanced` and gives `bot:answer` a ceiling of 80%. G13 keeps ≤ 15% capped and lowers the clash band to 15–40 s. G16 keeps ≥ 60%, and its reading (24%: the formation rule loses to its ranks traded) is a rule question for the user. Still _open_ for R2b: R2b S0 sets G14's and G15's bands and re-reads G8's beside G14's, with the drafts' lift stated.
 - **R2a part agreed:** 2026-11-02 (R2a S0; the user: "Take every recommendation"): the approach. Every band comes from one measurement, and G4 and G6 start from X5's race model, with four changes: G6's first clause becomes a band, such as 20–45%; G6 gives both sides equal max HP and plays both seats; G15 bounds boss reach, such as ≤ 85%; and G8's and G14's bands are set together, with the drafts' lift stated. R2a measures and sets G4, G6 (both clauses, single battle), G8 under both policies, G13 and G16 (R2a T124, T125); R2b sets G14 and G15 and re-reads G8 beside G14. In SPEC §12.3 and §18.2 #35.
+- **R2b part agreed:** 2026-11-03 (R2b S0; the user: "Take them all"): G14's and G15's bands are set at S12 (T131) from S11's measurement of whole runs, starting from §12.3's (G14: 70–90% of battle 1s for each commander; G15: at least 40% reach the boss, the bot wins 40–70% there, and reach is at most 85%), with G8's band re-read beside G14's and the drafts' lift stated. Six round guardrails that miss on R2a's data (T133) stay known misses through R2b: S14 tunes G1, G2 and G7, each retune with the user's OK; G3 and G8's mono clause wait for R3's copies, and G16's Gill Archer and Mortar pairs for R3's combos (the user chose "Known misses, owned later"). In SPEC §12.3 and §16 R2 step 7.
 
 The R2a plan settles these itself, with no call from you: A027, A032, A034, A036, A039, A043, A046, A052, A059, A060, A061, A064, A067, A068, A069, A070, A071, A072, A075, A076, A103, A104, A106, A110, A113, A114, A115, A118, A121.
 
@@ -692,7 +697,7 @@ The R2a plan settles these itself, with no call from you: A027, A032, A034, A036
 - **Recommendation:** The full boss reward (60 Spores, +2 Amber), and fix the curve so routs happen (X5). **Why:** with a 3600 boss and a flat 500 cap, most boss wins are Decisions (A097, A197), and the run's climax shouldn't pay half on a technicality. Today's rewards code already pays the boss in full (A097).
 - **Alternatives:** half, as §6.5 reads.
 - **Blocks:** R2b's rewards.
-- **Decision:** _open_
+- **Decision:** 2026-11-03 (R2b S0; the user: "Take them all"): the recommendation. A boss win by Decision pays the full boss reward, 60 Spores and +2 Amber. In SPEC §6.5 and §8.6.
 
 ### R2-Q15 · Home Brood and other "+1 unit" effects
 
@@ -701,7 +706,7 @@ The R2a plan settles these itself, with no call from you: A027, A032, A034, A036
 - **Recommendation:** A uniform bonus: Vesper's front-rank squads get +10% HP and damage. Keep "+1 unit" for one-clash effects (Fresh Spores), and check the Vault (#26) and the Shrine (#61) per building. This disagrees with the first guess. **Why:** +1 unit is worth about 14 gold on a Burrow and about 130 on an Amanita Lodge, which steers Vesper to heavy front ranks, unlike her v1 passive's flat 10% (A085).
 - **Alternatives:** +1 unit, as written.
 - **Blocks:** R2b's commander content.
-- **Decision:** _open_
+- **Decision:** 2026-11-03 (R2b S0; the user: "Take them all"): the recommendation. Home Brood gives Vesper's front-rank squads +10% HP and damage, in place of +1 unit. "+1 unit" stays for one-clash effects such as Fresh Spores, and the Vault (#26) and the Shrine (#61) are checked per building. In SPEC §11.10.
 
 ### R2-Q16 · Rhizome Tithe in rounds
 
@@ -710,7 +715,7 @@ The R2a plan settles these itself, with no call from you: A027, A032, A034, A036
 - **Recommendation:** The clash state counts killed supply (merged units at their own supply, emplacements 0), and firing at 0 kills is allowed. The auto policy fires on the first think tick at 40 s or later, or when either side's surviving supply in an unfinished lane is at most 25% of its arrival supply (A094). **Why:** "fire it late" isn't an algorithm, and G14 runs Armilla on the auto policy.
 - **Alternatives:** fire at a fixed 30 s.
 - **Blocks:** R2b's power content; G14 for Armilla.
-- **Decision:** _open_
+- **Decision:** 2026-11-03 (R2b S0; the user: "Take them all"): the recommendation. The clash counts the enemy supply killed (`ClashState.killedSupply`: a merged unit at its own supply, an emplacement at 0), and firing at 0 kills is allowed. The auto policy fires on the first think tick at 40 s or later, or once either side's surviving supply in an unfinished lane is at most 25% of its arrival supply. With a median clash of 19 s at 100 a supply, the second clause is the one that usually fires. In SPEC §11.10.
 
 ### R2-Q17 · The generals' passives under the muster
 
@@ -719,7 +724,7 @@ The R2a plan settles these itself, with no call from you: A027, A032, A034, A036
 - **Recommendation:** Mold: phrase it by what fields after the muster, for example +10% HP for swarm units (A058). The Sovereign: the union of its dual doctrine's two sets and the active counter's set, read at each Begin; no doctrine, no bonus (A050). **Why:** 9 Sporelings knit into one Elder, so "+1 Sporeling" can mean fewer bodies, not more (A058).
 - **Alternatives:** Mold's swarm buildings merge off; the passives as written.
 - **Blocks:** R2b's general content.
-- **Decision:** _open_
+- **Decision:** 2026-11-03 (R2b S0; the user: "Take them all"): the recommendation. Old Mother Mold's swarm units get +10% HP, phrased by what fields after the muster. The Pale Sovereign's bonus covers the union of its dual doctrine's two counter sets and the active counter's set, read at each Begin; no doctrine, no bonus. In SPEC §7.7.
 
 ### R2-Q18 · The opening doctrine and the opener
 
@@ -728,7 +733,7 @@ The R2a plan settles these itself, with no call from you: A027, A032, A034, A036
 - **Recommendation:** Swap the opener's last army card for the cheapest kit card in the doctrine's counter set, when the kit holds one (A042). **Why:** the opener is bought first and leaves 0–230 gold, so the doctrine rarely touches round 1. With the swap, the callout "remembers your SWARM" matches the army you see.
 - **Alternatives:** reword §7.6: its first visible picks come in round 2.
 - **Blocks:** R2b's intel work.
-- **Decision:** _open_
+- **Decision:** 2026-11-03 (R2b S0; the user: "Take them all"): the recommendation. The opening doctrine swaps the opener's last army card for the cheapest kit card in the doctrine's counter set, when the kit holds one, so the opener shows it. In SPEC §7.6.
 
 ### R2-Q19 · Relic details for R2
 
@@ -743,7 +748,7 @@ The R2a plan settles these itself, with no call from you: A027, A032, A034, A036
   **Why:** a rare relic with no effect is a dead card (A083).
 - **Alternatives:** settle each one apart.
 - **Blocks:** R2b's relic content.
-- **Decision:** _open_
+- **Decision:** 2026-11-03 (R2b S0; the user: "Take them all"): the recommendation. As a set: the Sporestorm Sigil makes Spore Burst 90 → 135 damage, Rhizome Tithe 2 → 3 gold a supply and Puppet Bloom's radius 3 → 4.5 tiles, shown in the previews; Rot-Eater and the Sigil switch on with the storm's first round; Mycorrhizal Link stays out of the pool behind `requires` until R3's combos, and Forward Spores keeps its form, since R1 kept spore clouds; Martyr's Bloom counts a squad as its units by source building after the muster, and a squad absorbed whole at the muster doesn't burst. In SPEC §11.7.
 
 ### R2-Q20 · One path for gold earned in a clash
 
@@ -752,7 +757,7 @@ The R2a plan settles these itself, with no call from you: A027, A032, A034, A036
 - **Recommendation:** One path: credit it at once with an event, shown as one "from the clash" line in the next round's income, and drop `pendingGold` (A037). This disagrees with §6.2's separate row. **Why:** the gold can't be spent before the next planning phase and never carries between battles, so only the readout changes (A091). A091 routes everything through `pendingGold` instead, which works too.
 - **Alternatives:** everything through `pendingGold` (A091).
 - **Blocks:** R2b's economy content; R3's Truffle Hunters.
-- **Decision:** _open_
+- **Decision:** 2026-11-03 (R2b S0; the user: "Take them all"): the recommendation. Gold earned in a clash takes one path: credited at once with a `gold` event of source `clash`, and shown as one "from the clash" row in the next round's income. `pendingGold` goes (R2b/T074). In SPEC §6.2.
 
 ### R2-Q21 · The Grove's way out
 
@@ -761,7 +766,7 @@ The R2a plan settles these itself, with no call from you: A027, A032, A034, A036
 - **Recommendation:** Add an always-lit Leave choice. Bots take a life if hurt, else graft, else leave (A082). **Why:** at full lives with every owned track maxed, the Grove offers no legal choice; today's repair is always available.
 - **Alternatives:** a third reward in place of Leave.
 - **Blocks:** R2b's Grove.
-- **Decision:** _open_
+- **Decision:** 2026-11-03 (R2b S0; the user: "Take them all"): the recommendation. The Grove always offers Leave beside its two choices. Bots take a life if hurt, else graft, else leave. In SPEC §8.7.
 
 ### R2-Q22 · Saves: the report after a reload, and the power
 
@@ -770,7 +775,7 @@ The R2a plan settles these itself, with no call from you: A027, A032, A034, A036
 - **Recommendation:** A reload on the report goes to the next screen with a one-line notice. The battle's end applies the whole result, Amber roll included, and the report shows it (A081). Firing the power saves the battle, and a resume replays it at its tick (A087); this disagrees with §8.9. **Why:** the report's state is gone after a reload (A081), and a re-fire after a reload is a fully informed retry of the only live decision (A087).
 - **Alternatives:** keep §8.9's re-fire, and say so plainly.
 - **Blocks:** R2b's saves.
-- **Decision:** _open_
+- **Decision:** 2026-11-03 (R2b S0; the user: "Take them all"): the recommendation. A reload on the battle report goes to the next screen with a one-line notice, since the battle's end applies the whole result, the elite's Amber roll included, before the report shows it. Firing the power saves the battle, and a resume replays it at its tick, in place of §8.9's re-fire. In SPEC §8.9 and §10.5.
 
 ### R2-Q23 · The run's kit until R3
 
@@ -779,7 +784,7 @@ The R2a plan settles these itself, with no call from you: A027, A032, A034, A036
 - **Recommendation:** Keep a list of ids in R2; R3 adds copies with its own save version (A095). If X4 brings copies into R2a, the kit gets copy counts in R2b, in #32's migration. **Why:** the change touches about 79 references in 23 files with no R2 behaviour (A095).
 - **Alternatives:** copy counts in R2b regardless.
 - **Blocks:** R2b's run state and migration.
-- **Decision:** _open_
+- **Decision:** 2026-11-03 (R2b S0; the user: "Take them all"): the recommendation. The run's kit stays a list of building ids through R2, and R3 adds copy counts with its own save version (R3-Q6). In SPEC §8.10 and §14.4.
 
 ### R2-Q24 · Where the in-battle draft sits
 
@@ -788,7 +793,7 @@ The R2a plan settles these itself, with no call from you: A027, A032, A034, A036
 - **Recommendation:** A bottom sheet in place of the bottom band, whose tray, inspect and controls are idle during a draft anyway, with shorter cards and details in tooltips. The field stays uncovered, dimmed except the general's preview, whose squads stay hoverable (A062). **Why:** today's centred 940 px dialog covers the general's slots at 1280×720.
 - **Alternatives:** the cards over your half of the field.
 - **Blocks:** R2b's draft UI.
-- **Decision:** _open_
+- **Decision:** 2026-11-03 (R2b S0; the user: "Take them all"): the recommendation. The draft is a bottom sheet in place of the bottom band, with shorter cards and details in tooltips. The field stays uncovered, dimmed except the general's preview, whose squads stay hoverable. In SPEC §10.2.
 
 ### #16 · The boss battle and lives
 
@@ -797,7 +802,7 @@ The R2a plan settles these itself, with no call from you: A027, A032, A034, A036
 - **Recommendation:** Agree that it ends the run. Add "lives left count at the boss" (such as +250 boss Heartcap per life left, shown on its node) as a default-off knob for R2b's playtest, and bound G15's boss reach (#35) (A199). **Why:** at a 70% win rate, three non-boss losses come in only 3–8% of runs, so lives left at the boss are worth nothing (A199).
 - **Alternatives:** a boss loss costs a life and you fight again; or sprawl yours alone (#21).
 - **Blocks:** R2b's lives.
-- **Decision:** _open_
+- **Decision:** 2026-11-03 (R2b S0; the user: "Take them all"): the recommendation. Losing the boss battle ends the run, as in v1. "Lives left count at the boss" is a default-off knob, `bosslives`, for R2b's playtest, and G15 bounds boss reach (#35). In SPEC §8.5, §8.8 and §18.2 #16.
 
 ### #17 · A clean-win bonus, and a Rout's kit
 
@@ -806,7 +811,7 @@ The R2a plan settles these itself, with no call from you: A027, A032, A034, A036
 - **Recommendation:** Agree on no bonus; R2b's gate question 4 asks again. Fix the Rout's kit: a won battle pays each draft it skipped by ending early as an extra spoils pick, and SPEC says whether a Decision's "2 cards" means pick 1 of 2 (A207). **Why:** with drafts tied to rounds reached, a player who's ahead gains by not finishing the general (A207).
 - **Alternatives:** accept the gap; or a clean-win bonus.
 - **Blocks:** R2b's rewards and spoils.
-- **Decision:** _open_
+- **Decision:** the Rout's kit, 2026-11-03 (R2b S0; the user: "Take them all"): the recommendation. A won battle pays each draft it skipped by ending early as an extra spoils pick, and a Decision's "2 cards" is a pick of 1 from 2. There's no clean-win bonus for now: R2b's playtest asks again (question 4, T148), and that half stays _open_ until then. In SPEC §8.3, §8.6 and §18.2 #17.
 
 ### #18 · Sprawl: how many plots, and when
 
@@ -815,7 +820,7 @@ The R2a plan settles these itself, with no call from you: A027, A032, A034, A036
 - **Recommendation:** Agree, with the cap held inside R1-Q5's budget (16 plots on Twin Roots may not fit). The run stores sprawl gains only (`plotsGained`), apart from relic, trait and commander plots (A098). **Why:** the general's colony copies your sprawl gains (D49), so it needs them apart from what's yours alone.
 - **Alternatives:** a plot per battle fought, won or lost.
 - **Blocks:** R2b's run state; #21, #50.
-- **Decision:** _open_
+- **Decision:** 2026-11-03 (R2b S0; the user: "Take them all"): the recommendation. The colony gains +1 plot per battle won, up to 4 more, as the third rank, inside R1-Q5's budget of 150 live units a side. The run stores sprawl's gains only (`plotsGained`, 0–4), apart from relic, trait and commander plots. In SPEC §4.6, §11.1 (`plotGrowth`), §14.4 and §18.2 #18.
 
 ### #20 · Planted buildings between battles
 
@@ -824,7 +829,7 @@ The R2a plan settles these itself, with no call from you: A027, A032, A034, A036
 - **Recommendation:** Agree. **Why:** each battle is a new map with its own loam and stumps (§11.9), and an empty colony makes round 1's planning the opener, against an army you can see.
 - **Alternatives:** the colony carries, re-placed on the new map.
 - **Blocks:** R2b's run flow.
-- **Decision:** _open_
+- **Decision:** 2026-11-03 (R2b S0; the user: "Take them all"): the recommendation. Planted buildings don't carry between battles: each battle starts with both colonies empty and every copy free. In SPEC §4.6 and §18.2 #20.
 
 ### #21 · How many plots the general opens
 
@@ -833,7 +838,7 @@ The R2a plan settles these itself, with no call from you: A027, A032, A034, A036
 - **Recommendation:** Agree. **Why:** the general keeps pace without copying what's yours alone.
 - **Alternatives:** the map's plots plus (battle index − 1), so a lost battle costs a real plot (A199); worth it only if #16's knob doesn't make lives matter.
 - **Blocks:** R2b's sprawl.
-- **Decision:** _open_
+- **Decision:** 2026-11-03 (R2b S0; the user: "Take them all"): the recommendation. The general's colony opens the map's plots plus your sprawl gains, not your relics', traits' or commander's. In SPEC §4.6 and §18.2 #21.
 
 ### #24 · When a heal on a round's result lands
 
@@ -842,7 +847,7 @@ The R2a plan settles these itself, with no call from you: A027, A032, A034, A036
 - **Recommendation:** Agree. Damage is recorded before the heal (R2-Q11), so a heal never changes a Decision. **Why:** it then shows as a heal, not as a smaller hit.
 - **Alternatives:** before the cap.
 - **Blocks:** R2b's relic content (Mending Moss).
-- **Decision:** _open_
+- **Decision:** 2026-11-03 (R2b S0; the user: "Take them all"): the recommendation. A heal on a round's result lands after step 4's damage and cap, never above max HP. The damage is recorded before the heal, so a heal never changes a Decision. In SPEC §6.7 and §18.2 #24.
 
 ### #26 · The Rhizome Vault's new effect
 
@@ -851,7 +856,7 @@ The R2a plan settles these itself, with no call from you: A027, A032, A034, A036
 - **Recommendation:** Keep the effect, but build it in R3, as a combo with the Vault on one side and a new squad-size patch field (A124). Until then the Vault stays out of drafts and kits through R2-Q19's `requires` flag (A083), so Armilla's R2 drafts offer five core cards. **Why:** R2's effect DSL has no adjacency selector and nothing that adds units to a squad, and the Vault is R3's Elder Grove building anyway (A124).
 - **Alternatives:** a plot-adjacency selector in R2's DSL (A083).
 - **Blocks:** R2b's content; R3's combos.
-- **Decision:** _open_
+- **Decision:** 2026-11-03 (R2b S0; the user: "Take them all"): the recommendation. The Vault keeps its effect, each spawner beside it fielding 1 more unit, built in R3 as a combo with a squad-size patch field. Until then it stays out of drafts and kits behind R2-Q19's `requires` flag, so Armilla's R2 drafts offer five core cards. In SPEC §4.4, §11.2 and §18.2 #26.
 
 ### #27 · v1's upgrade levels in R2
 
@@ -860,7 +865,7 @@ The R2a plan settles these itself, with no call from you: A027, A032, A034, A036
 - **Recommendation:** Agree on the effects. Dead levels get `offered: false` and empty effects, and drafts skip past them, so later levels stay reachable (A105). Unit levels become fixed adds (Burrow +4, Warren +3), re-derived from R1's squads; the general's kit and Veteran follow the same rule (A100). **Why:** levels are offered in order, so a dead level mid-track strands the next one, such as the Exchange's interest +10 (A080). A080 deletes dead levels; the flag keeps the three-level schema and saved counts.
 - **Alternatives:** delete the dead levels and remap saved levels (A080).
 - **Blocks:** R2b's drafts.
-- **Decision:** _open_
+- **Decision:** 2026-11-03 (R2b S0; the user: "Take them all", then "Keep R1's call"): the effects as R1's review gate left them (§18.2 #7). A level that added a unit per spawn adds none in rounds, since one more unit per batch put Twin Roots' full colony at 192 units a side, over §13.7's 150. Levels on building HP, the supply cap or spawn speed do nothing, and a level of gold per tick is +12 gold a round. Levels that do nothing get `offered: false` and empty effects, and drafts skip past them, so later levels stay reachable (A105). The recommendation's fixed unit adds (Burrow +4, Warren +3) predate R1's gate and are dropped. In SPEC §11.6 and §18.2 #27.
 
 ### #28 · Planning commands while a draft is open
 
@@ -869,7 +874,7 @@ The R2a plan settles these itself, with no call from you: A027, A032, A034, A036
 - **Recommendation:** Agree. **Why:** R2-Q24's sheet takes the bottom band, so the tray is idle anyway: pick, reroll or skip, then plan.
 - **Alternatives:** plan freely with the draft open.
 - **Blocks:** R2b's drafts and commands.
-- **Decision:** _open_
+- **Decision:** 2026-11-03 (R2b S0; the user: "Take them all"): the recommendation. `plant`, `sell` and `toggleMerge` are refused while your draft is open, as `beginClash` is: pick, reroll or skip, then plan. In SPEC §4.7, §14.5 and §18.2 #28.
 
 ### #32 · A run saved before R2
 
@@ -878,7 +883,7 @@ The R2a plan settles these itself, with no call from you: A027, A032, A034, A036
 - **Recommendation:** Migrate: lives = 3 − v1 battles lost (at least 1); plots by sprawl from battles won; a mid-battle save restarts at round 1's planning with the notice; the title tells an unreadable save from none (A084). The version bump lands with the first run-state change. **Why:** §8.9 already keeps a v1 run's progress when its battle restarts, and R2's step 6 tests it; "3 lives" alone gives a run that lost battles full lives (A084).
 - **Alternatives:** end it with a notice; simpler, and before M6 nothing outlives a run.
 - **Blocks:** R2b's migration.
-- **Decision:** _open_
+- **Decision:** 2026-11-03 (R2b S0; the user: "Take them all"): the recommendation. A run saved before R2 migrates: lives = 3 − v1 battles lost (at least 1), plots by sprawl from battles won, and a mid-battle save restarts at round 1's planning with the notice. The title tells an unreadable save from none, and `RUN_VERSION` 2 lands with the first change to RunState's shape (R2b S1). In SPEC §8.9 and §18.2 #32.
 
 ### #33 · The battle-1 economy tip
 
@@ -887,7 +892,7 @@ The R2a plan settles these itself, with no call from you: A027, A032, A034, A036
 - **Recommendation:** Agree; R2b's playtest decides. **Why:** it costs nothing to keep, and the playtest shows whether greed is punished.
 - **Alternatives:** drop it.
 - **Blocks:** R2b's gate.
-- **Decision:** _open_
+- **Decision:** _open_ until R2b's playtest (S14, T148). 2026-11-03 (R2b S0; the user: "Take them all"): the recommendation. The tip stays as it is until then.
 
 ### #67 · What gold does once the colony is full
 
@@ -900,7 +905,7 @@ The R2a plan settles these itself, with no call from you: A027, A032, A034, A036
   - buying stumps into extra plots.
 - **Alternatives:** keep "nothing new", and let R2b's draft rerolls and R3's augments take the gold.
 - **Blocks:** R2b's S0 (the drafts) and R3's S0 (the augments).
-- **Decision:** _open_
+- **Decision:** 2026-11-03 (R2b S0; the user chose "Gold upgrades in R2b"): upgrades bought with gold, the user's idea, each a real jump. The first form to measure is a planted building whose squad fields one merge tier up for the rest of the battle. R2b builds it in its own session after S5's drafts (S5b), which first measures what the drafts leave of the banked gold, then sets the price; the general and the bots buy upgrades too. In SPEC §6.1 and §18.2 #67.
 
 ### #68 · The Heartcap cap and D28
 
@@ -910,7 +915,7 @@ The R2a plan settles these itself, with no call from you: A027, A032, A034, A036
 - **Recommendation:** decide at R2b's S0, on R2a S21b's measurement of a fixed cap (`docs/balance-backlog.md`). **Why:** one number for both sides reads as fair, and it makes D28's bigger Heartcaps cost rounds again. The measurement says what it does to G4's rounds and the bot's wins.
 - **Alternatives:** keep X5's 25%; equal Heartcaps (A193, one of X5's alternatives).
 - **Blocks:** R2b's S0: the run's scoring by battle index, and G14's and G15's bands (#35).
-- **Decision:** _open_
+- **Decision:** 2026-11-03 (R2b S0; the user chose "Fixed 750 for both"): one fixed cap for both Heartcaps, 750 HP a round, in place of X5's 25% of the loser's max HP. S21b measured it passing G4, G6, G8's bands and G13 (a median of 6 rounds, 13% reaching round 9, the bot winning 65%), and it makes D28's bigger Heartcaps cost rounds again. R2b's S1 sets it (`roundDamageCap.flat`) and updates the goldens. In SPEC §6.7, D28 and §18.2 #68.
 
 ### #69 · The general's openings
 
@@ -920,7 +925,7 @@ The R2a plan settles these itself, with no call from you: A027, A032, A034, A036
 - **Recommendation:** several openers per general, one drawn per battle, as the cheap next step. R2b's opening doctrine (R2-Q18) and its several generals bring some variety first. **Why:** openers are data, so more of them cost little beyond one draw per battle.
 - **Alternatives:** one opener per general until R3's kit.
 - **Blocks:** R2b's general content.
-- **Decision:** _open_
+- **Decision:** 2026-11-03 (R2b S0; the user: "Take them all"): the recommendation. Several openers per general, one drawn per battle (R2b S7). R2b's opening doctrine (R2-Q18) and its several generals add to it. In SPEC §7.7, §11.11 and §18.2 #69.
 
 ### #70 · The commander power against some units
 
@@ -930,7 +935,7 @@ The R2a plan settles these itself, with no call from you: A027, A032, A034, A036
 - **Recommendation:** no change now. Watch it in R2b's commander work and its playtest, and if it needs a change, try its timing first, as the user suggests.
 - **Alternatives:** a later first-ready tick within the clash now; a weaker Spore Burst against Bursters.
 - **Blocks:** nothing yet. R2b's commander work reads it.
-- **Decision:** _open_
+- **Decision:** 2026-11-03 (R2b S0; the user: "Take them all"): the recommendation. No change now. R2b's commander work and its playtest watch it, and if it needs a change, its timing is tried first. In SPEC §6.6 and §18.2 #70.
 
 ### #71 · Twin Roots' economy lane
 
@@ -940,7 +945,7 @@ The R2a plan settles these itself, with no call from you: A027, A032, A034, A036
 - **Recommendation:** keep E1 and E6. **Why:** the user treated it as a fair trade. By E6, if the Baron fielded only Mortars there, the empty lane cost the user only that lane's half of the tally.
 - **Alternatives:** the general's lane rule (#30) also weighs a lane you leave empty, so giving one up costs damage.
 - **Blocks:** nothing yet. R2b's general work and its playtest read it.
-- **Decision:** _open_
+- **Decision:** 2026-11-03 (R2b S0; the user: "Take them all"): the recommendation. E1 and E6 stay: a lane you leave empty goes to what the general fields there, and a lane won by emplacements alone deals no damage. In SPEC §6.7 and §18.2 #71.
 
 The R2b plan settles these itself, with no call from you: A063, A073, A074, A079, A088, A089, A093, A117.
 
@@ -1330,7 +1335,7 @@ The R3 plan settles these itself, with no call from you: A131, A140.
 - **Recommendation:** Regrowths, with "lives" in its tooltip. Settle it at R2b S0, so the run bar, the report and the Grove use one word from the start. **Why:** renaming in R4b touches those screens twice, and the plain word in the tooltip follows §10.4's plain-words rule.
 - **Alternatives:** "lives" everywhere.
 - **Blocks:** R2b's run screens; R4b's text pass at the latest.
-- **Decision:** _open_
+- **Decision:** 2026-11-03 (R2b S0; the user: "Take them all"): the recommendation. Lives are called Regrowths on the game's screens, with "lives" in the tooltip, from R2b's first run screens (S1, S9). In SPEC §2, §8.5 and §18.2 #56.
 
 The R4 plans settle these themselves, with no call from you: A155, A161.
 

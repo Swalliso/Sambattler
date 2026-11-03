@@ -27,10 +27,17 @@ Updated 2026-11-03, on `docs/r2a-done` (the hub's docs PR into `develop`). This 
 
   [docs/tasks/README.md](tasks/README.md) has the full order and every milestone's sessions.
 
-## Next: R2b's S0, the run in rounds' plan
+## Next: R2b's S1, the run plays rounds
 
-- S21b ([#109](https://github.com/Swalliso/Sambattler/pull/109)) lands when CI passes, with its auto-merge on. That finishes R2a.
-- Then R2b's S0 (T001–T005 in [r2b-run-in-rounds.md](tasks/r2b-run-in-rounds.md)) settles R2b's plan and its open decisions with you, the playtest's new rows #67–#71 among them. You agreed in S21 that it starts once S21 and S21b have merged. It waits as a card.
+- **R2b's plan is agreed** (S0, 2026-11-03): [r2b-plan.md](r2b-plan.md). You took every recommendation for R2b's open calls. The ones that change most:
+  - **#67:** once your colony is full, gold buys upgrades: a planted building's squad fields one merge tier up for the rest of the battle, and the general and the bots buy them too. A new session, S5b, builds it after the drafts, measuring first;
+  - **#68:** one fixed round cap of 750 for both Heartcaps, in S1;
+  - **#69:** several openers per general, in S7;
+  - **T133's misses** stay known through R2b. S14 tunes G1, G2 and G7, R3's copies take G3 and G8's mono clause, and R3's combos take G16's pairs;
+  - **#27:** you kept R1's call, so a unit level adds no unit in rounds;
+  - **No cutover branch** (Call 14): S1–S4 land on `develop` directly, and S4b is dropped.
+- [The task list](tasks/r2b-run-in-rounds.md) has T159–T169, story US10 and session S5b for them. SPEC, [clarify.md](tasks/clarify.md) and the plan record every answer.
+- **Next: R2b's S1** (T006–T027 and T164), `feature/r2b-run` into `develop`: the run plays rounds with lives, `RUN_VERSION` 2 with the migration, and the fixed cap. Its gate is clear once S0's PR has merged.
 
 ## R2a, a battle in rounds
 
