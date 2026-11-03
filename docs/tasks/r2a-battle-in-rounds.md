@@ -797,6 +797,7 @@ S1 to S4: the data, the colony, the round state machine and the planning command
 - [x] T117 [US6] Add `--rounds` to `tools/experiment.ts` and a `rounds` job kind to `tools/lib/pool.ts`, so round battles play in worker threads with the same results as in process. This session wires `duels` and `g4`; T123 wires the rest. `engagement`, `runs`, `lanes` and `spread` stay v1's until R2b (§12.2, §15.3)
   - As built (S17): a round job is a battle, a clash or a supply duel (`playRoundJob`). `--rounds` defaults to `duels` and `g4` and refuses the other checks. Its reports on 6 workers and on 1 came out equal. The first `g4` reading is in `docs/balance-backlog.md`.
 - [x] T118 [US6] Add `npm run bench -- --rounds --quick` to `tools/verify.ts` (§15.1)
+  - As built (S17): under `process.env.CI` the round bench holds its timings to a guard of 3× each budget, and names it on each PASS or FAIL line. That covers the tick mean and p99, the arrival, the general's turn, the planning command and the full battle. On CI's runner the quick bench's tick p99 read 2.06 ms, where this machine's reads 0.97. Peak units and the full colony are counts, so they stay exact. v1's bench is as it was.
 
 **S18: the guardrails in round form**
 

@@ -2,7 +2,8 @@
 // the §13.7 budgets in data/balance-targets.json (G11). Exits 1 if a budget is exceeded. Without --quick
 // it then times R1's full-colony clash (§15.4), report only until R2 adds it to G11. `--rounds` (R2a, temporary)
 // runs the cases in round form instead, each checked (§15.4, R2a plan Call 24): bench-300's clash, the full
-// colonies' arrival, the general's planning turn, the sim part of a planning command and one full battle.
+// colonies' arrival, the general's planning turn, the sim part of a planning command and one full battle. Under
+// `process.env.CI` its timings are held to a guard of 3× each budget, since CI's shared runner ticks slower.
 import { nodeContent } from './lib/content.ts';
 import { runBench, runClashBench } from './lib/bench.ts';
 import { TURN_GENERALS, roundBenchChecks, runRoundBench } from './lib/rounds/bench.ts';
