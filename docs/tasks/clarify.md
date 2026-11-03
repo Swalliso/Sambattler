@@ -17,7 +17,7 @@ This is the clarify step for SPEC v2. SPEC.md is the spec, `docs/<milestone>-pla
 - Session names follow each task file's Sessions table: R4's rows are "R4a-S0", "R4b-S0" and so on.
 - Findings are cited by A-ID (A001–A209), the review's numbering. `docs/tasks/spec-analysis.md` lists them. Each block quotes the evidence it rests on, so it reads on its own.
 - A recommendation that disagrees with SPEC's first guess says so and why. Where the evidence doesn't warrant a challenge, the block agrees plainly.
-- Each §18.2 row from #7 to #67 has exactly one block. #34 is X7.
+- Each §18.2 row from #7 to #71 has exactly one block. #34 is X7.
 
 ## Index
 
@@ -62,7 +62,7 @@ This is the clarify step for SPEC v2. SPEC.md is the spec, `docs/<milestone>-pla
 | X6 | Is 25–35 minutes binding? | R2a S0 | Measure; re-set after R2b's playtest (decided 2026-11-02) |
 | X7 | Bots that buy the answer (§18.2 #34) | R2a S0 | Yes; G8, G14, G15 under both policies (decided 2026-11-02) |
 | X8 | The general between counter cycles | R2a S0 | Measure; two default-off knobs (decided 2026-11-02) |
-| R2-Q1 | What you see of the general from round 2 | R2a S0 | Full reveal by default; A/B "last fielded" (decided 2026-11-02) |
+| R2-Q1 | What you see of the general from round 2 | R2a S0 | Full reveal by default; A/B "last fielded" (decided 2026-11-02; the A/B kept the full reveal at R2a's gate, 2026-11-03) |
 | R2-Q2 | Interest | R2a S0 | Raise it to 1 per 10 gold, up to 30 (decided 2026-11-02) |
 | R2-Q4 | The single battle's general kit | R2a S0 | Its listed weights only (decided 2026-11-02) |
 | R2-Q5 | Who buys the Burster Pod and the Rhizomorph Tunnel | R2a S0 | Weights in data; retire `aiWeight` (decided 2026-11-02) |
@@ -109,7 +109,11 @@ This is the clarify step for SPEC v2. SPEC.md is the spec, `docs/<milestone>-pla
 | #32 | A run saved before R2 | R2b S0 | Migrate, with lives by losses |
 | #56 | A name for lives | R2b S0 (R4b-S0 at the latest) | Regrowths, "lives" in its tooltip |
 | #33 | The battle-1 economy tip | R2b gate | Keep |
-| #67 | What gold does once the colony is full | R2b S0, R3 S0 | Nothing new; S18's pace call and R2b's drafts cover it |
+| #67 | What gold does once the colony is full | R2b S0, R3 S0 | Reopened at R2a's gate: weigh upgrades bought with gold, or stumps bought as plots |
+| #68 | The Heartcap cap and D28 | R2b S0 | Decide on S21b's measurement of a fixed cap |
+| #69 | The general's openings | R2b S0 | Several openers per general |
+| #70 | The commander power against some units | R2b S0, R2b gate | No change; watch it |
+| #71 | Twin Roots' economy lane | R2b S0, R2b gate | Keep E1 and E6 |
 | X9 | Flyers in the first release? | R3 S0 | No; runs deal 4 of 9 packs |
 | R3-Q1 | R3's data work during R2's tuning | R3 S0 | Yes |
 | R3-Q2 | R3's augment scope | R3 S0 | Retire all 42 levels; 7 pack augments |
@@ -221,6 +225,7 @@ These ten calls set how the work after R1 is cut. The task files assume each rec
 - **Blocks:** R1 S0; R1 gate; R2a's scoring; #35; R2-Q14.
 - **Decision:** 2026-11-02 (R1 S8, the review gate; the user: "Take every recommendation"): the lean, departing from SPEC's first guess (a flat 500 cap and a Decision by damage dealt). The cap is 25% of the loser's max HP a round, and a Decision goes by the share of max HP dealt. No rule measured brought even battles inside G4's band: under each, about half or more reached round 9 (G4 allows 15%). The 25% cap cut that by 8–23 points, within a few of the storm cap, the best of the six. G4's band is R2a's measurement on real battles; if they still run long, the next levers (lower Heartcaps, a stronger storm) are untested. In SPEC §6.4, §6.5, §6.7 (step 4 and E7), §11.1, §14.6, §18.3 and D26.
 - **R1 measures:** agreed 2026-11-01 (R1 S0). The race model (`tools/lib/roundRace.ts`), G4's even pairing first, then G3's pairs. It reports rounds to fall per battle index (1–5, a Fortified elite, the boss), the share reaching round 9, Routs and lead changes, under the 500 cap and the alternatives, with the cap-binding and drawn shares per budget. The call stays open for R1's gate (R1/T049).
+- **Revisited:** R2a's playtest gate (2026-11-03) found the cap asymmetric (at most 500 dealt to battle 1's general, up to 750 taken), and at 100 a supply it binds in 70% of damaging rounds, so D28's bigger Heartcaps barely matter. #68 takes a fixed cap to R2b's S0.
 
 ### X6 · Is the 25–35 minute run binding?
 
@@ -462,6 +467,7 @@ R1 reports a measure for each row, and you settle it at R1's review gate (§16 R
 - **Alternatives:** "last fielded" now (A198's pick); or a visible edge for the general.
 - **Blocks:** R2a S19's "last fielded" view (T127).
 - **Decision:** 2026-11-02 (R2a S0; the user: "Take every recommendation"): the recommendation. The full reveal stays the default (§1.3 #3, §7.5). R2a's playtest A/Bs a "last fielded" view from round 2 (`reveal=last`), a view rule that moves no golden. In SPEC §7.5 and §16 R2.
+- **The A/B's result:** 2026-11-03 (R2a's playtest gate, S21; the user with the hub, "Yes, start both"): the full reveal stays the default. The user: "I think the default should be to be reacting to your opponent". `reveal=last` goes to `docs/ideas/reveal-last-fielded.md` as a possible variant or difficulty setting. In SPEC §7.5 and §16 R2 step 10.
 
 ### R2-Q2 · Interest
 
@@ -887,9 +893,53 @@ The R2a plan settles these itself, with no call from you: A027, A032, A034, A036
 
 - **Question:** What does gold do once the colony is full? R2a's rough playtest (2026-11-02, `docs/playtest-feedback.md`) ran out of ways to spend it in a battle's later rounds, and was bored then.
 - **SPEC's first guess:** nothing new. S18's pace call (T124, T125) and R2b's drafts cover it (§6.1).
-- **Recommendation:** Agree, and revisit it if R2a's playtest gate (S21) still finds empty late rounds. **Why:** the empty rounds come mostly from the pace. §6.2 plans about one new spawner a round after the opener, so 8 plots fill around round 7, about when a battle of the target length (6–8 rounds) ends, while S10b measured a median of 9 rounds, with 73% of battles reaching round 9. Upgrades come as draft picks (v1's cards in R2b, then R3's augments), so a full colony's gold buys rerolls and swaps, and S15's counter cycle gives it a reason to sell and replant.
-- **Alternatives:** a new use for gold once the plots are full, such as an upgrade bought with gold. That is a rule change, for the user to make if S21 still finds empty late rounds.
+- **First recommendation** (2026-11-02): agree, and revisit it if R2a's playtest gate (S21) still finds empty late rounds. **Why:** the empty rounds come mostly from the pace. §6.2 plans about one new spawner a round after the opener, so 8 plots fill around round 7, about when a battle of the target length (6–8 rounds) ends, while S10b measured a median of 9 rounds, with 73% of battles reaching round 9. Upgrades come as draft picks (v1's cards in R2b, then R3's augments), so a full colony's gold buys rerolls and swaps, and S15's counter cycle gives it a reason to sell and replant.
+- **R2a's playtest gate** (2026-11-03): "nothing new" no longer holds. At 100 a supply a battle takes a median of 7 rounds, and the user wasn't bored, but: "Once you have all your slots filled, it's kind of hard to adjust your strategy or change up your playstyle to adapt to what your opponent is doing." Their idea: "upgrading buildings/units with gold might be an option worth exploring", and they're "happy to wait on this proposal". In S20's step 3 the player's colony (`bot:balanced`) was full from round 5 in 37 of 40 battles, and then banked a median of 320 gold a round (X8's readouts).
+- **Recommendation** (2026-11-03): R2b's S0 picks a use for gold once the plots are full. The candidates:
+  - upgrades bought with gold, the user's idea. Each should be a real jump, such as a squad arriving Bloomed, since small percentages measured below noise (DR-7);
+  - buying stumps into extra plots.
+- **Alternatives:** keep "nothing new", and let R2b's draft rerolls and R3's augments take the gold.
 - **Blocks:** R2b's S0 (the drafts) and R3's S0 (the augments).
+- **Decision:** _open_
+
+### #68 · The Heartcap cap and D28
+
+- **Question:** Should the round cap be one fixed number for both Heartcaps, rather than 25% of the loser's max HP?
+- **SPEC's first guess:** 25% of the loser's max HP a round (X5, §6.7 step 4): 750 for your 3000, 500 for battle 1's general, 900 for the boss. Later generals are harder by their bigger Heartcaps (D28).
+- **R2a's playtest gate** (2026-11-03): the user: "It feels weird being limited to 500 damage while you can take more (750?)." Either side still falls after four capped losses. But the cap binds in 70% of damaging rounds at 100 a supply (S18), and a bigger Heartcap raises its own cap, so D28's later generals barely last longer.
+- **Recommendation:** decide at R2b's S0, on R2a S21b's measurement of a fixed cap (`docs/balance-backlog.md`). **Why:** one number for both sides reads as fair, and it makes D28's bigger Heartcaps cost rounds again. The measurement says what it does to G4's rounds and the bot's wins.
+- **Alternatives:** keep X5's 25%; equal Heartcaps (A193, one of X5's alternatives).
+- **Blocks:** R2b's S0: the run's scoring by battle index, and G14's and G15's bands (#35).
+- **Decision:** _open_
+
+### #69 · The general's openings
+
+- **Question:** How varied should the general's opening moves be?
+- **SPEC's first guess:** one opener per general (§7.7, §11.11), worked through first in round 1 (§7.2). The opening doctrine, aimed at your intel's top kind, applies from round 1 (§7.6, R2-Q18).
+- **R2a's playtest gate** (2026-11-03): the user's "only wish is for more variety with the opening moves from the opponent, but I understand why we might want to start off with the same one each run while we build things out."
+- **Recommendation:** several openers per general, one drawn per battle, as the cheap next step. R2b's opening doctrine (R2-Q18) and its several generals bring some variety first. **Why:** openers are data, so more of them cost little beyond one draw per battle.
+- **Alternatives:** one opener per general until R3's kit.
+- **Blocks:** R2b's general content.
+- **Decision:** _open_
+
+### #70 · The commander power against some units
+
+- **Question:** Is a commander power that can cancel a unit too strong?
+- **SPEC's first guess:** once per clash, ready from the clash's first tick (§6.6).
+- **R2a's playtest gate** (2026-11-03): the user: "we might need to adjust the timing of the commander power or something at some point though, since it can be used quite effectively to invalidate some units (bursters), but maybe that's an okay counterplay". Spore Burst dealt 10–21% of the user's damage in the two saved reports.
+- **Recommendation:** no change now. Watch it in R2b's commander work and its playtest, and if it needs a change, try its timing first, as the user suggests.
+- **Alternatives:** a later first-ready tick within the clash now; a weaker Spore Burst against Bursters.
+- **Blocks:** nothing yet. R2b's commander work reads it.
+- **Decision:** _open_
+
+### #71 · Twin Roots' economy lane
+
+- **Question:** Is giving a lane up to economy a fair trade?
+- **SPEC's first guess:** a lane you leave empty goes to whatever the general fields there, on the first tick (E1), and a lane won by emplacements alone deals no damage (E6) (§6.7).
+- **R2a's playtest gate** (2026-11-03): on Twin Roots the Lichen Baron "just build mortars in the bottom lane while focussing on building in the top, which was okay for me, since I would then just concentrate my econ building in that lane instead of the top, allowing me to focus on building units up there." In the user's round-5 screenshot their Heartcap was at 1850/3000 and the Baron's at 1000/2000, with lane 2 lost to its Mortars.
+- **Recommendation:** keep E1 and E6. **Why:** the user treated it as a fair trade. By E6, if the Baron fielded only Mortars there, the empty lane cost the user only that lane's half of the tally.
+- **Alternatives:** the general's lane rule (#30) also weighs a lane you leave empty, so giving one up costs damage.
+- **Blocks:** nothing yet. R2b's general work and its playtest read it.
 - **Decision:** _open_
 
 The R2b plan settles these itself, with no call from you: A063, A073, A074, A079, A088, A089, A093, A117.
