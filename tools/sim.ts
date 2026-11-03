@@ -99,8 +99,9 @@ function parseArgs(argv: string[]): Args {
     }
   }
   if (!a.run) {
-    const runOnly = [a.autoRoute && '--auto-route', a.autoDraft && '--auto-draft'].filter(Boolean);
-    if (runOnly.length) throw new Error(`${runOnly.join(', ')} needs --run: a single battle opens no drafts until R2b's T065`);
+    if (a.autoRoute) throw new Error('--auto-route needs --run');
+    // a single battle drafts with `--flags drafts` (§8.3), a bot player by `--auto-draft` (greedy unless set)
+    if (a.autoDraft && !a.flags?.drafts) throw new Error('--auto-draft needs --run or --flags drafts');
   } else if (a.kit) {
     throw new Error('--kit is for a single battle; a run builds its own kit');
   }
@@ -157,6 +158,7 @@ function mainBattle(args: Args, content: ReturnType<typeof nodeContent>): number
     if (args.flags) spec.flags = args.flags;
     if (args.commander) spec.commander = args.commander;
     if (args.powerPolicy) spec.powerPolicy = args.powerPolicy;
+    if (args.autoDraft) spec.autoDraft = args.autoDraft;
     if (args.kit) spec.kit = args.kit;
     if (args.hashEvery) spec.hashEvery = args.hashEvery;
     const { result } = runRoundBattle(content, spec);

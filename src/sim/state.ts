@@ -190,7 +190,7 @@ export interface BattleConfig {
   enemy: SideConfig;
   /** Event effects, blights, the elite modifier, and the commanders' and generals' passives (§7.7, §11.10). */
   modifiers?: BattleModifier[];
-  /** R2a refuses `drafts` in a battle in rounds (plan Call 26). */
+  /** `drafts` opens a draft for each side with a pool in the planning after each round in `draftRounds` (§8.3). */
   flags: { merging: boolean; drafts: boolean; adaptiveGeneral: boolean; powers: boolean };
   scenario?: string;
 }
@@ -210,10 +210,19 @@ export interface Library {
   units: Record<string, LibraryUnit>;
   /** The commander powers in this battle (present only with `flags.powers` and a side that has one). */
   powers?: Record<string, LibraryPower>;
-  /** A run's relics in this battle, their effects only (R2b; present only when a side holds one). */
-  relics?: Record<string, { effects: EffectBundle }>;
-  /** A run's upgrade tracks in this battle, by building id: each level's effects only (until R3; present only when a side has a level). */
-  upgrades?: Record<string, { effects: EffectBundle }[]>;
+  /**
+   * A run's relics in this battle, with their rarity for drafts: those the sides hold, and with drafts on every relic a
+   * drafting side's pool holds (R2b; present only when there is one).
+   */
+  relics?: Record<string, { effects: EffectBundle; rarity: Rarity }>;
+  /** A run's upgrade tracks in this battle, by building id: those the sides have levels on, and with drafts on every track a drafting side could take (until R3). */
+  upgrades?: Record<string, LibraryTrack>;
+}
+
+/** An upgrade track without its texts (§11.6): each level's rarity and effects, and `offered: false` on a level drafts skip (#27). */
+export interface LibraryTrack {
+  rarity: Rarity[];
+  levels: { effects: EffectBundle; offered?: false }[];
 }
 
 /** A unit at its three merge tiers (§5.5, §5.6), or a tower's emplacement. */
@@ -293,6 +302,8 @@ export interface CompiledSide {
   triggers: RoundTrigger[];
   /** What this side's content compiles to nothing (plan Call 19). */
   ignored: IgnoredEffect[];
+  /** A side that drafts (§8.3): its cards an offer, a reroll's cost (the base, + the step per reroll in the draft) and a skip's gold. */
+  draft?: { cards: number; rerollBase: number; rerollStep: number; skipGold: number };
 }
 
 /** Rule constants, converted to ticks and integers when the battle is created. */
@@ -351,6 +362,8 @@ export interface MapState {
   height: number;
   homeCols: number;
   tiles: string[];
+  /** The order its colonies' plots open in (`openOrder`, §18.2 #19), the same on both sides: a plot gained mid-battle opens the next. */
+  openOrder: number[];
 }
 
 /** A plot of a side's colony (§4.6), as `colonyPlots` gives it, with the building on it. */
@@ -578,6 +591,10 @@ export interface AiState {
   target?: { building: string; round: number };
   /** One entry a round, so the Intent panel survives later commands and a fast-forward to a round. */
   plans: AiPlan[];
+  /** A drafting side's weights for the pool's buildings outside its kit (§8.3): greedy drafts by them, and a picked blueprint's moves into `weights`. */
+  pool?: AiWeight[];
+  /** A side that leaves its drafts to the player (`autoDraft: 'none'`) plans once its open draft resolves: the round's income, which its plan records. */
+  waiting?: number;
   counter?: CounterState;
 }
 
@@ -600,6 +617,8 @@ export interface SideState {
   powerUsed: boolean;
   draft?: OpenDraft;
   draftsOpened: number;
+  /** The cards it picked in this battle's drafts, in order (§8.3), which the run records; absent until its first pick. */
+  drafted?: string[];
   ai?: AiState;
 }
 
@@ -622,10 +641,10 @@ export interface RoundStats {
   heartcapDamageDealt: number;
   heartcapDamageTaken: number;
   /**
-   * By source (§6.2): the opening's income, gold effects earned in a clash, paid at once (R2-Q20), and gold
-   * effects earned out of one, such as at a round's opening.
+   * By source (§6.2): the opening's income, gold effects earned in a clash, paid at once (R2-Q20), gold effects
+   * earned out of one, such as at a round's opening, and a skipped draft's gold (§8.3).
    */
-  goldEarned: { stipend: number; economy: number; comeback: number; interest: number; clash: number; effects: number };
+  goldEarned: { stipend: number; economy: number; comeback: number; interest: number; clash: number; effects: number; drafts?: number };
   /** Building entity id → its economy gold. */
   goldByBuilding: Record<string, number>;
   healingDone: number;

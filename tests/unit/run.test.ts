@@ -26,11 +26,11 @@ function enter(run: RunState, row: number, index: number): void {
   chooseNode(content, run, index);
 }
 
-/** A battle in rounds from the run's current battle config, ended with the given result in round 5. */
-function ended(run: RunState, winner: Side, by: 'rout' | 'decision'): BattleState {
+/** A battle in rounds from the run's current battle config, ended with the given result in `round`: the last, so it skipped no draft, unless set. */
+function ended(run: RunState, winner: Side, by: 'rout' | 'decision', round = 9): BattleState {
   const s = createBattle(content, configOf(run));
   s.phase = 'ended';
-  s.outcome = { winner, by, round: 5 };
+  s.outcome = { winner, by, round };
   return s;
 }
 
@@ -109,7 +109,9 @@ describe('battle setup and rewards (SPEC §4.5, §4.6, §6.1, §6.5, §8.5–8.6
     expect(c1.player.heartcapMaxHp).toBe(bal.heartcapPlayerHp);
     for (const s of ['player', 'enemy'] as const) expect(c1[s]).not.toHaveProperty('heartcapHp');
     expect(c1.player.kit).toEqual([{ building: 'sporelingBurrow' }, { building: 'capguardHall' }, { building: 'truffleCellar' }]);
-    expect(c1.flags.drafts).toBe(false); // drafts open in planning from T067
+    expect(c1.flags.drafts).toBe(true); // you draft in planning (T067), and the general never does
+    expect(c1.player.draft).toEqual(runPool(content, run));
+    expect(c1.enemy).not.toHaveProperty('draft');
     expect(() => createBattle(content, c1)).not.toThrow();
     run.battles.push({ ...({} as RunState['battles'][number]), index: 1 }, { ...({} as RunState['battles'][number]), index: 2 });
     enter(run, 4, 1); // row 5 elite, battle 3
@@ -146,6 +148,38 @@ describe('battle setup and rewards (SPEC §4.5, §4.6, §6.1, §6.5, §8.5–8.6
     for (const id of spawners) expect(vet.upgrades[id]).toBeGreaterThanOrEqual(1); // Veteran: +1 on every unit track
     expect(levels(vet.upgrades)).toBe(spawners.length + 2); // plus (i − 1) + elite random levels
     expect(generalKit(content, run, { kind: 'battle', map: 'stumpfield', general: 'scripted' }, 3)).toEqual(k3); // deterministic
+  });
+
+  it("the general's random levels and Veteran land only on levels that are offered, by the tracks' lengths in the data (#27, A100)", () => {
+    const live = (id: string, level: number) => level <= content.upgrades[id]!.levels.length && content.upgrades[id]!.levels[level - 1]!.offered !== false;
+    for (let seed = 1; seed <= 25; seed++) {
+      const run = createRun(content, { seed });
+      for (const general of ['scripted', 'lichen-baron', 'mother-mold', 'blightwright', 'pale-sovereign']) {
+        for (const node of [
+          { kind: 'battle', general }, { kind: 'elite', general, elite: 'veteran' }, { kind: 'boss', general },
+        ] as const) {
+          for (const index of [2, 4, 6]) {
+            const { upgrades } = generalKit(content, run, { ...node, map: 'stumpfield' }, index);
+            for (const [id, level] of Object.entries(upgrades)) expect(live(id, level), `${general} ${node.kind} ${index}: ${id} ${level}`).toBe(true);
+          }
+        }
+      }
+    }
+    // the Lichen Baron's Amanita Lodge joins at battle 6, and Veteran never takes its dead level 3
+    const run = createRun(content, { seed: 4 });
+    const vet = generalKit(content, run, { kind: 'elite', map: 'stumpfield', general: 'lichen-baron', elite: 'veteran' }, 6);
+    expect(vet.kit).toContain('amanitaLodge');
+    expect(vet.upgrades.amanitaLodge).toBeGreaterThanOrEqual(1);
+    expect(vet.upgrades.amanitaLodge).toBeLessThanOrEqual(2);
+  });
+
+  it('Old Mother Mold opens battle 1 with a Sporeling Burrow and a Truffle Cellar, and her Gill Archer Nest joins in battle 2 (R2-Q13, T068)', () => {
+    const run = createRun(content, { seed: 3 });
+    const mold = (index: number) => generalKit(content, run, { kind: 'battle', map: 'bogwater-hollow', general: 'mother-mold' }, index).kit;
+    expect(mold(1)).toEqual(['sporelingBurrow', 'truffleCellar']);
+    expect(mold(2)).toEqual(['sporelingBurrow', 'truffleCellar', 'gillNest']);
+    const s = createBattle(content, makeRoundConfig(content, { seed: 3, player: 'human', enemy: 'general:mother-mold' }));
+    expect(s.sides.enemy.ai!.plans[0]!.planted.slice(0, 2).map((p) => p.building)).toEqual(['sporelingBurrow', 'truffleCellar']);
   });
 
   it("no general's battle-1 kit holds R1's Burster Pod or Rhizomorph Tunnel: the kit append retired with aiWeight (R2-Q5, A048)", () => {
@@ -224,6 +258,71 @@ describe('battle setup and rewards (SPEC §4.5, §4.6, §6.1, §6.5, §8.5–8.6
     finishBattle(content, run, ended(run, 'player', 'decision'));
     expect(run.plotsGained).toBe(4);
     expect(run.screen.kind === 'spoils' && run.screen.picks[0]!.cards).toBe(2); // a pick of 1 from 2 (#17)
+  });
+
+  it('a won battle pays each draft it ended before as an extra spoils pick: 3 cards, no reroll, +10 rare after an elite (#17, A207)', () => {
+    const picks = (row: number, node: number, round: number) => {
+      const run = createRun(content, { seed: 5 });
+      enter(run, row, node);
+      finishBattle(content, run, ended(run, 'player', 'rout', round));
+      return run.screen.kind === 'spoils' ? run.screen.picks.map((p) => [p.label, p.cards, p.freeRerolls, p.rareBonus, p.relicsOnly]) : [];
+    };
+    const rout = ['Spoils', 3, 1, bal.draft.rarityBiasStep, false];
+    const skipped = ['Spoils', 3, 0, 0, false];
+    // a Rout in round 4 never reached round 5's or 7's planning; one in round 6, round 7's; one in round 7 reached them all
+    expect(picks(0, 0, 4)).toEqual([rout, skipped, skipped]);
+    expect(picks(0, 0, 6)).toEqual([rout, skipped]);
+    expect(picks(0, 0, 7)).toEqual([rout]);
+    expect(picks(0, 0, 9)).toEqual([rout]);
+    const elite = picks(2, 1, 6);
+    expect(elite).toEqual([
+      ['Spoils', 3, 1, bal.draft.rarityBiasStep + bal.draft.eliteRareBonus, false], ['Spoils', 3, 0, bal.draft.eliteRareBonus, false],
+      ['Elite relic', 3, 0, bal.draft.eliteRareBonus, true],
+    ]);
+    // a loss pays none
+    const run = createRun(content, { seed: 5 });
+    chooseNode(content, run, 0);
+    finishBattle(content, run, ended(run, 'enemy', 'rout', 4));
+    expect(run.screen.kind).toBe('route');
+  });
+
+  it("the cards you drafted in a battle join the run, win or lose, and its record lists them (§8.3, T067)", () => {
+    for (const winner of ['player', 'enemy'] as const) {
+      const run = createRun(content, { seed: 5 });
+      chooseNode(content, run, 0);
+      const s = ended(run, winner, 'rout');
+      s.sides.player.drafted = ['bp:gillNest', 'up:truffleCellar', 'up:truffleCellar'];
+      const record = finishBattle(content, run, s);
+      expect(record.drafted).toEqual(['bp:gillNest', 'up:truffleCellar', 'up:truffleCellar']);
+      expect(run.kit).toEqual(['sporelingBurrow', 'capguardHall', 'truffleCellar', 'gillNest']);
+      expect(run.upgrades.truffleCellar).toBe(3); // its level 2 isn't offered (#27)
+      expect(run.cards.slice(0, 3)).toEqual(record.drafted.map((card) => ({ card, source: 'battle 1' })));
+    }
+  });
+
+  it("a saved spoils offer or prompt naming a level that's no longer offered is dealt again, or answered with a notice (A084, #27)", () => {
+    const run = createRun(content, { seed: 8 });
+    chooseNode(content, run, 0);
+    finishBattle(content, run, ended(run, 'player', 'rout'));
+    if (run.screen.kind !== 'spoils') throw new Error('no spoils');
+    run.upgrades.sporelingBurrow = 2;
+    // a run saved before #27 dealt the Burrow's level 3
+    run.screen.picks[0]!.offer[0] = { id: 'up:sporelingBurrow', type: 'upgrade', rarity: 'uncommon' };
+    expect(recoverPendingChoice(content, run)).toMatch(/dealt again/);
+    expect(run.screen.picks[0]!.offer.map((c) => c.id)).not.toContain('up:sporelingBurrow');
+    expect(run.screen.picks[0]!.offer).toHaveLength(3);
+    expect(recoverPendingChoice(content, run)).toBeNull();
+    // a Grove graft saved with the Burrow among its tracks offers the others
+    const grove = createRun(content, { seed: 8 });
+    grove.path = [0, 2];
+    grove.upgrades = { sporelingBurrow: 2 };
+    grove.pending = [{ upgrade: { count: 1, pick: 'choose' } }];
+    grove.screen = { kind: 'prompt', prompt: { title: 'Grove', text: 'Choose an upgrade track for +1 level.', options: ['sporelingBurrow', 'capguardHall', 'truffleCellar'], optionKind: 'upgrade', remaining: 1 } };
+    expect(recoverPendingChoice(content, grove)).toMatch(/no level left to offer/);
+    expect(grove.screen.kind === 'prompt' && grove.screen.prompt.options).toEqual(['capguardHall', 'truffleCellar']);
+    expect(recoverPendingChoice(content, grove)).toBeNull();
+    promptAnswer(content, grove, 'truffleCellar');
+    expect(grove.upgrades.truffleCellar).toBe(1);
   });
 
   it('a lost battle costs a life and pays nothing; the run goes on with earlier Spores kept, ends at 0 lives, and a boss loss ends it (#16)', () => {
@@ -381,7 +480,8 @@ describe('Grove and events (SPEC §8.7)', () => {
   });
 
   it('Spore Merchant rejects trades when removal leaves fewer than two upgrade levels, without spending anything', () => {
-    for (const sporeLevel of [2, 3]) {
+    // the Burrow's level 3 isn't offered (#27): at 1 it has one level left, at 2 none
+    for (const sporeLevel of [1, 2]) {
       const run = at('event', 'spore-merchant');
       run.kit.push('gillNest');
       run.upgrades = { sporelingBurrow: sporeLevel, capguardHall: 3, truffleCellar: 3, gillNest: 2 };
@@ -418,7 +518,8 @@ describe('Grove and events (SPEC §8.7)', () => {
   it('Spore Merchant delivers two levels split across nearly full tracks and rejects a maxed follow-up pick', () => {
     const run = at('event', 'spore-merchant');
     run.kit.push('gillNest');
-    run.upgrades = { sporelingBurrow: 2, capguardHall: 2, truffleCellar: 3, gillNest: 3 };
+    // the Burrow's level 3 isn't offered (#27), so level 2 fills its track
+    run.upgrades = { sporelingBurrow: 1, capguardHall: 2, truffleCellar: 3, gillNest: 3 };
     eventChoose(content, run, 0);
     promptAnswer(content, run, 'gillNest');
     promptAnswer(content, run, 'sporelingBurrow');
@@ -428,19 +529,20 @@ describe('Grove and events (SPEC §8.7)', () => {
     expect(hashRun(run)).toBe(before);
     promptAnswer(content, run, 'capguardHall');
     expect(run.cards).toHaveLength(2);
-    expect(run.upgrades).toMatchObject({ sporelingBurrow: 3, capguardHall: 3 });
+    expect(run.upgrades).toMatchObject({ sporelingBurrow: 2, capguardHall: 3 });
     expect(run.screen.kind).toBe('route');
   });
 
   it('recovers a persisted legacy Merchant reward after the blueprint was already traded, preserving available levels and run progress', () => {
-    for (const sporeLevel of [2, 3]) {
+    // the Burrow's level 3 isn't offered (#27): at 1 it has one level left, at 2 none
+    for (const sporeLevel of [1, 2]) {
       const legacy = at('event', 'spore-merchant');
       // Before the fix the trade could remove Gill Nest, then save an unaffordable two-level reward.
       legacy.upgrades = { sporelingBurrow: sporeLevel, capguardHall: 3, truffleCellar: 3, gillNest: 2 };
       legacy.pending = [{ upgrade: { count: 2, pick: 'choose' } }];
       legacy.screen = { kind: 'prompt', prompt: {
         title: 'Spore Merchant', text: 'Choose an upgrade track for +1 level.',
-        options: sporeLevel < 3 ? ['sporelingBurrow'] : [], optionKind: 'upgrade', remaining: 2,
+        options: sporeLevel < 2 ? ['sporelingBurrow'] : [], optionKind: 'upgrade', remaining: 2,
       } };
       legacy.spores = 60;
       const storage = new MemoryStorage();
@@ -448,7 +550,7 @@ describe('Grove and events (SPEC §8.7)', () => {
       const run = load(storage);
       const rngBefore = structuredClone(run.rng);
       const notice = recoverPendingChoice(content, run);
-      expect(notice).toContain(sporeLevel === 2 ? 'only 1 of its 2 remaining levels' : 'could not restore its 2 remaining levels');
+      expect(notice).toContain(sporeLevel === 1 ? 'only 1 of its 2 remaining levels' : 'could not restore its 2 remaining levels');
       expect(notice).toContain('without paying again');
       expect(run.kit).toEqual(legacy.kit);
       expect(run.path).toEqual(legacy.path);
@@ -460,10 +562,10 @@ describe('Grove and events (SPEC §8.7)', () => {
       saveRun(storage, run);
       const recovered = load(storage);
       expect(recoverPendingChoice(content, recovered)).toBeNull();
-      if (sporeLevel === 2) {
+      if (sporeLevel === 1) {
         expect(recovered.screen.kind === 'prompt' && recovered.screen.prompt.remaining).toBe(1);
         promptAnswer(content, recovered, 'sporelingBurrow');
-        expect(recovered.upgrades.sporelingBurrow).toBe(3);
+        expect(recovered.upgrades.sporelingBurrow).toBe(2);
         expect(recovered.cards.map((c) => c.card)).toEqual(['up:sporelingBurrow']);
       }
       expect(recovered.screen.kind).toBe('route');

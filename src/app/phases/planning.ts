@@ -16,11 +16,12 @@ export function planningFrame(session: RoundSession, advance: () => void): numbe
 
 /**
  * The planning hint (§10.2): the round, your gold and "plan, then press Begin", or "place your opener" in round
- * 1. In the last round it says so, and who leads on the Decision as it stands, by the battle's `decisionBy`
- * (§6.5, X5), from the sim's `decisionWinner`.
+ * 1, or while your draft is open "pick, reroll or skip" first (§8.3). In the last round it says so, and who leads
+ * on the Decision as it stands, by the battle's `decisionBy` (§6.5, X5), from the sim's `decisionWinner`.
  */
 export function planningHint(state: BattleState): string {
   const r = state.rules, gold = state.sides.player.gold;
+  if (state.sides.player.draft) return `Round ${state.round} · ${gold} gold · pick a card, reroll or skip the draft, then plan`;
   if (state.round === 1) return `Round 1 · ${gold} gold · place your opener, then press Begin`;
   if (state.round < r.maxRounds) return `Round ${state.round} · ${gold} gold · plan, then press Begin`;
   const side = (s: Side) => ({

@@ -6,6 +6,7 @@
 // keeps the data's numbers.
 import type { Content } from '../data/registry.ts';
 import type { PowerDef } from '../data/schema.ts';
+import type { BattleRecord } from '../run/index.ts';
 
 
 /** Upgrade levels by `<building>:<level>` (1-based). */
@@ -13,16 +14,12 @@ const UPGRADES: Record<string, string> = {
   'capguardHall:2': 'Capguards take 20% less Pierce damage (×0.8)',
   'gillNest:1': 'Gill Archer range +0.75 tiles',
   'gillNest:3': 'Gill Archers wait 15% less between attacks',
-  'rootbreakerDen:3': 'Rootbreakers deal +25% to buildings and Heartcaps',
-  'puffballMortar:1': 'Mortar blast reaches +0.3 tiles farther',
-  'puffballMortar:3': 'Mortar range +1 tile',
-  'truffleCellar:1': 'Truffle Cellar +1 gold every 5 s',
-  'truffleCellar:3': 'Truffle Cellar +1 gold every 5 s',
+  'puffballMortar:1': "Mortar emplacement's blast reaches +0.3 tiles farther",
+  'puffballMortar:3': 'Mortar emplacement range +1 tile',
   'scythecapGrove:3': 'Scythecap cleave reaches +0.3 tiles farther',
   'tendersRing:3': 'Tender heal range +0.75 tiles',
   'hammercapForge:3': 'Hammercaps wait 12% less between attacks',
-  'sporeExchange:1': '+1 gold every 5 s',
-  'sporeExchange:3': 'Interest cap +10: each new wave can pay up to 10 more gold',
+  'sporeExchange:3': "Interest cap +10: each round's interest can pay up to 10 more gold",
 };
 
 const BUILDINGS: Record<string, string> = {
@@ -59,3 +56,15 @@ export function powerTiming(): string {
 
 /** The plain rewordings, for the test that keeps their numbers in step with the data. */
 export const REWORDED = { upgrades: UPGRADES, buildings: BUILDINGS } as const;
+
+/** Lives' name on the game's screens (§2, §8.5, #56): Regrowths, with "lives" in each tooltip (`LIVES_TIP`). */
+export const regrowths = (n: number): string => `${n} Regrowth${n === 1 ? '' : 's'}`;
+
+/** The tooltip wherever Regrowths show: the run bar, the Grove, event chips, the report, the title and the top band. */
+export const LIVES_TIP = 'Regrowths are your lives: a lost battle costs one, and the run ends at 0 or when the boss wins. Each battle\'s Heartcaps start full.';
+
+/** How a battle was decided, as the summary words it (§8.8): a Rout names the round a Heartcap fell, which a battle migrated from v1 doesn't record. */
+export function battleOutcome(b: Pick<BattleRecord, 'winner' | 'by' | 'rounds'>): string {
+  const fell = b.rounds.at(-1)?.round;
+  return `${b.winner === 'player' ? 'Won' : 'Lost'} by ${b.by === 'decision' ? 'Decision' : `Rout${fell ? ` in round ${fell}` : ''}`}`;
+}

@@ -23,12 +23,13 @@ import { underrootScreen } from '../ui/screens/underroot.ts';
 import type { UnderrootTab } from '../ui/screens/underroot.ts';
 import { sporeLayer } from '../render/spores.ts';
 import { closeSettings, openSettings, settingsButton, settingsOpen } from '../ui/settingsScreen.ts';
+import { regrowths } from '../ui/words.ts';
 import { BUILD_SHA, DEV_SITE, protoSpace } from './channel.ts';
 import { browserContent } from './content.ts';
 import { installBridge } from './debugBridge.ts';
 import { openRoundBattle } from './loop.ts';
 import type { RoundBattle } from './loop.ts';
-import { BattleRefusal, battleForParams, parseParams, parseRoundParams } from './urlParams.ts';
+import { BattleRefusal, battleForParams, forwardBattle, parseParams, parseRoundParams, runCheckpoint } from './urlParams.ts';
 import type { Params } from './urlParams.ts';
 import { BrowserStorage, RunController } from './run.ts';
 import { loadSettings, markTipShown, onSettings, settingsStore, tipsShown } from './settings.ts';
@@ -234,7 +235,8 @@ function openTitle(content: Content, atlas: ReturnType<typeof bakeAtlas>, params
 /**
  * A run (`scene=run`). Without a seed (normal play) the saved run resumes, or a new one starts; seeded
  * and test runs never touch storage (they're deterministic, so screenshots match Node), and a prototype
- * run saves only on the dev site, apart from the real save.
+ * run saves only on the dev site, apart from the real save. `round=` and `phase=` open the run's current
+ * battle at that checkpoint, held there as a single battle is (T157); one it can't reach shows its reason.
  */
 function startRun(content: Content, atlas: ReturnType<typeof bakeAtlas>, params: Params): void {
   const { persist, storage, records } = runStorage(params);
@@ -242,18 +244,38 @@ function startRun(content: Content, atlas: ReturnType<typeof bakeAtlas>, params:
   // a save that can't be read goes to the title, which says so and asks before replacing it (§8.9, A084)
   if (loaded.kind === 'unreadable') { openTitle(content, atlas, { ...params, scene: TITLE }); return; }
   const seed = params.seed ?? randomSeed();
-  const run = loaded.kind === 'run' ? loaded.run : runForScene(content, { scene: params.scene, seed, player: params.player, autoplay: params.autoplay });
+  const at = runCheckpoint(location.search);
+  const run = loaded.kind === 'run' ? loaded.run
+    : runForScene(content, { scene: params.scene, seed, player: params.player, autoplay: params.autoplay, enterBattle: at !== null });
   const notice = loaded.kind === 'run' ? loaded.notice : undefined;
-  const ctl = new RunController({ content, atlas, storage, persist, records, debug: params.debug, still: params.test, newSeed: randomSeed }, run, notice);
-  if (params.debug || params.test) {
-    const bridge = installBridge({ scene: params.scene, battle: () => ctl.battleState, run: () => ctl.run }, errors);
-    ctl.onFrame = () => { bridge.ready = true; };
+  let ctl: RunController | null = null;
+  const bridge = params.debug || params.test
+    ? installBridge({ scene: params.scene, battle: () => ctl?.battleState ?? null, run: () => ctl?.run ?? run, playTime: () => ctl?.playTime() ?? null }, errors)
+    : null;
+  let opening: { state: BattleState; hold: boolean; holdAftermath: boolean } | undefined;
+  if (at && run.screen.kind === 'battle') {
+    try {
+      const state = forwardBattle(createBattle(content, run.screen.config), at);
+      opening = { state, hold: state.phase === 'planning' ? at.phase === 'planning' || at.paused : at.paused, holdAftermath: params.test && at.phase !== null };
+    } catch (e) {
+      if (!(e instanceof BattleRefusal)) throw e;
+      refuseBattle(e.message);
+      if (bridge) bridge.ready = true;
+      return;
+    }
   }
+  ctl = new RunController({
+    content, atlas, storage, persist, records, debug: params.debug, still: params.test, newSeed: randomSeed, ...(opening ? { opening } : {}),
+  }, run, notice);
+  if (bridge) ctl.onFrame = () => { bridge.ready = true; };
   ctl.show();
 }
 
-/** Lives' name on the game's screens (§2, #56). */
-const regrowths = (n: number): string => `${n} Regrowth${n === 1 ? '' : 's'}`;
+/** A battle its parameters can't open shows the reason in its place, and fails a capture through the bridge's errors (§15.6). */
+function refuseBattle(message: string): void {
+  errors.push(`battle: ${message}`);
+  document.getElementById('app')!.replaceChildren(h('pre', { class: 'fatal', id: 'battle-refused' }, `This battle can't open: ${message}.`));
+}
 
 /**
  * A single battle in rounds (`scene=battle`, `scene=report`, or battle parameters without a scene): the battle its
@@ -282,8 +304,7 @@ function startBattle(content: Content, atlas: ReturnType<typeof bakeAtlas>, scen
     state = battleForParams(content, params, seed);
   } catch (e) {
     if (!(e instanceof BattleRefusal)) throw e;
-    errors.push(`battle: ${e.message}`);
-    document.getElementById('app')!.replaceChildren(h('pre', { class: 'fatal', id: 'battle-refused' }, `This battle can't open: ${e.message}.`));
+    refuseBattle(e.message);
     if (bridge) bridge.ready = true;
     return;
   }

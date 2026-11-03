@@ -2,7 +2,7 @@
 // with the general's plan made, or from a round scenario (§15.2, plan Call 18); and the flags, controllers
 // and draft pools that a battle's and a run's configs are made of.
 import type { Content } from '../data/registry.ts';
-import type { ScenarioDef } from '../data/schema.ts';
+import type { ModifierDef, ScenarioDef } from '../data/schema.ts';
 import { seedStream } from './rng.ts';
 import { resolveProfile } from './ai/profiles.ts';
 import { basePlots, colonyPlots, openOrder } from './colony.ts';
@@ -21,7 +21,7 @@ export type Flags = BattleConfig['flags'];
 
 /** The milestone this build implements. Feature flags default to what it ships (SPEC §15.2). */
 export const MILESTONE = 5;
-/** A battle in rounds' features unless its config sets them. R2a has no drafts (plan Call 26). */
+/** A battle in rounds' features unless its config sets them. A single battle drafts only with `--flags drafts` (§8.3). */
 export const DEFAULT_FLAGS: Readonly<Flags> = { merging: true, drafts: false, adaptiveGeneral: true, powers: true };
 
 /** Flag names as written in `--flags` and `?flags=`, and the milestone each one arrives in. */
@@ -125,6 +125,8 @@ export function makeRoundConfig(content: Content, opts: RoundBattleOptions): Bat
   };
   for (const s of SIDES) config[s].kit = kitOf(content, s, config);
   if (opts.commander) setCommander(content, config.player, opts.commander);
+  // a single battle with drafts on gives the player its commander's pool (Vesper's without one, §8.4)
+  if (config.flags.drafts) config.player.draft = draftPool(content, config.player.faction, opts.commander ?? DEFAULT_COMMANDER, config.flags);
   setPassives(content, config);
   return config;
 }
@@ -168,7 +170,6 @@ function newBattle(content: Content, config: BattleConfig): BattleState {
   const map = content.maps[config.mapId];
   if (!map) throw new Error(`unknown map ${config.mapId}`);
   if (!map.colony) throw new Error(`${map.id} has no colony block, so it can't hold a battle in rounds (§4.6)`);
-  if (config.flags.drafts) throw new Error('a battle in rounds has no drafts until R2b (plan Call 26)');
   const library = buildRoundLibrary(content, config);
   const rules = compileRoundRules(library, config);
   const compiled = compileRoundSides(library, config);
@@ -177,8 +178,7 @@ function newBattle(content: Content, config: BattleConfig): BattleState {
     const sc = config[s];
     // a modifier on side.heartcapMaxHp, side.startingGold or side.plots reaches the battle's creation (§4.5, §4.6, §6.1)
     const maxHp = Math.max(1, Math.round(resolveStat(sc.heartcapMaxHp, fx[s].mods, 'side.heartcapMaxHp')));
-    // a plot gained opens the next closed one by #19's order; past the map's last, it's dropped (Call 4)
-    const plots = Math.min(openOrder(map).length, Math.max(0, Math.round(resolveStat(sc.plots, fx[s].mods, 'side.plots'))));
+    const plots = plotCount(openOrder(map).length, sc.plots, fx[s].mods);
     const st: SideState = {
       gold: Math.max(0, Math.round(resolveStat(sc.startingGold, fx[s].mods, 'side.startingGold'))),
       heartcapHp: maxHp,
@@ -214,7 +214,7 @@ function newBattle(content: Content, config: BattleConfig): BattleState {
     rules,
     library,
     // the colony block's tiles: R2's arena is plain soil (§11.9)
-    map: { id: map.id, width: map.width, height: map.height, homeCols: map.colony.homeCols, tiles: [...map.colony.tiles] },
+    map: { id: map.id, width: map.width, height: map.height, homeCols: map.colony.homeCols, tiles: [...map.colony.tiles], openOrder: openOrder(map) },
     sides: { player: sideState('player'), enemy: sideState('enemy') },
     lanes: map.lanes.map((l) => ({ rowStart: l.rowStart, rowEnd: l.rowEnd })),
     buildings: [],
@@ -233,6 +233,23 @@ function newBattle(content: Content, config: BattleConfig): BattleState {
     if (library.powers?.[config[s].power ?? '']) Object.assign(state.stats[s], { powerUses: 0, powerDamage: 0, powerMerges: 0 });
   }
   return state;
+}
+
+/**
+ * A side's plot count (§4.6): its config's, with its `side.plots` modifiers such as Mycelial Web's +1, and at
+ * most the colony's `max`. A plot gained past the map's last closed plot is dropped (Call 4).
+ */
+function plotCount(max: number, base: number, mods: readonly ModifierDef[]): number {
+  return Math.min(max, Math.max(0, Math.round(resolveStat(base, mods, 'side.plots'))));
+}
+
+/**
+ * Opens a side's plots up to its count with `mods`, in the map's open order (§4.6, #19): a plot a draft's pick
+ * gains mid-battle, such as Mycelial Web's, opens at once (§11.7). A plot never closes mid-battle.
+ */
+export function openPlots(state: BattleState, side: Side, mods: readonly ModifierDef[]): void {
+  const order = state.map.openOrder, plots = state.sides[side].plots;
+  for (const i of order.slice(0, plotCount(order.length, state.config[side].plots, mods))) plots[i]!.open = true;
 }
 
 export interface RoundScenarioOverrides {

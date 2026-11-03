@@ -74,21 +74,34 @@ Updated 2026-11-03, on `docs/r2b-s4-done` (the hub's docs PR into `develop`). Th
   - **The rule,** in CLAUDE.md, `.claude/rules/balance.md` and SPEC §16 R2: no new named presets. A candidate rule is a data change measured with `--proto path:value`, or code on a short-lived branch merged as the default with your OK, or it's deleted. Any temporary switch names the session that removes it.
   - **For R3:** its task list had planned the Air pack's dealable case on the `flyers` preset. That case now adds a Drift Stalk with `path:value` overrides.
   - S5 and S6 start once this merges, since they also edit `src/data/schema.ts`.
+- **S5** (`feature/r2b-drafts`, T062–T069 and T153): in review. Drafts open in planning, in runs and with `--flags drafts`:
+  - **Drafts in planning** (T065): a draft opens in the planning of rounds 3, 5 and 7, after the general has planned, with v1's cards. Begin, plant, sell and the merge toggle are refused while it's open (#28), a skip pays +40 at once, and rerolls cost 20, then 30. A bot player answers before it plans, and the general never drafts. `npm run sim -- --seeds 1..40 --player bot:balanced --enemy general:scripted --flags merging,drafts --auto-draft greedy --summary` reads 0 rejected commands.
+  - **#27's levels** (T064, T066): the levels that do nothing in rounds (the Cellar's and the Exchange's HP, the Lodge's spawn speed, the Vault's track, and the Burrow's and the Warren's +1 unit) have `offered: false` and empty effects, and drafts, spoils, events, the general's levels and Veteran skip past them. Gold a tick is +12 gold a round.
+  - **In runs** (T067): you draft in every run battle, your picks join the run and its record, and a won battle pays each draft it ended before as an extra spoils pick. A saved spoils offer or upgrade prompt that names a skipped level is dealt again or rebuilt, with a notice.
+  - **Old Mother Mold** opens battle 1 with a Sporeling Burrow and a Truffle Cellar (T068, R2-Q13).
+  - **Today's dialog** (T153) shows the draft over the field, with keys 1–3, and Begin unlit until you pick or skip.
+  - **Goldens:** `r2-run-s7` moved (drafts in runs, Mold's opener). The five single-battle goldens hold, since a battle without drafts compiles as before.
+  - **Mold's opener is her round-1 buys in every battle,** single battles and run battles 2–3 included, until T165 gives each general 2–3 openers. Against a mono Sporeling bot she now falls in round 3 on most seeds, so verify's adaptive-general smoke moved from seeds 4–5 to 20–21, which still reach her first counter in round 4.
+  - **Not built:** the relics-and-upgrades popover listed under S2 as "S5, S6": no S5 task names it, and `src/ui/hud/kit.ts` is imported by nothing.
 - **S6** (`feature/r2b-relics`, T070–T078): in review. The relics in v2 form, as you decided at S0 (R2-Q19, R2-Q20, #24, #26):
   - **All 21 relics** have §11.7's v2 effects and texts. The eleven new effects work in rounds, and the eight kept ones as before, Spore Cloud's death burst included, which R2a's compile had listed and skipped. The Sporestorm Sigil's ×1.5 is in the DSL (`powerEffectMult`), and S7's T084 applies it to each power.
   - **`requires: combos`** keeps the Rhizome Vault and Mycorrhizal Link out of drafts, spoils, events and every kit until R3, so Armilla's core offers five cards.
   - **Clash gold** is credited at once, with a `gold` event of source `clash`, and shows as one "from the clash" row in the next income. `pendingGold` is gone.
-  - **Goldens:** all six moved at round 1's first checkpoint, by the state's new shape, and the five battle replays play out as on `develop`. `r2-run-s7` moved further, with the run's pool and relics.
-  - **For S5:** Mycelial Web's plot opens when a battle is created. Opening it at once when picked mid-battle is now T065's, in its `draftPick` recompile.
-  - **For the hub:** S2's note gives the battle's relics-and-upgrades popover to S5 and S6, but no task in either brings it back.
+  - **Goldens:** all six moved at round 1's first checkpoint, by the state's new shape, regenerated after S5 and S9 merged. The five battle replays play out as on `develop`; `r2-run-s7` moved further, with the run's pool and relics.
+  - **Mycelial Web's plot** opens when a battle is created, and at once when a draft picks it (S5's pick recompile).
+  - **Not built:** the relics-and-upgrades popover, as S5 found: no S6 task names it either.
+- **S9** (`feature/r2b-run-screens`, T101–T110 and T157): in review. The run screens for lives:
+  - **Regrowths** name lives on the run bar, the Grove, event chips, the report, the title and the battle's top band, each with "lives" in its tooltip (`src/ui/words.ts`). A run battle shows a cap per Regrowth under your Heartcap (`#hud-lives`); a single battle shows none.
+  - **The route's battle nodes** show their general's kit as 1× sprites with v1's random levels standing in for augments, at the node's nominal battle index or, in the row you choose from, the index it's fought at. The boss's node says its first extra cards answer your intel, and shows the `bosslives` bonus when that knob is on. The intel bars show Anti-Ranged too, with a new icon.
+  - **The summary** gives each battle's outcome ("Lost by Rout in round 7", "Won by Decision"), a round sparkline (dealt rising in violet, taken hanging in ash), the kit at the end and the run's play time: its active minutes and median planning seconds a round, on one clock for the run that a reload restarts and the save never holds (X6).
+  - **The title and the link previews** describe rounds, and `public/og-image.png` is regenerated from the new title.
+  - **`scene=run&round=&phase=`** opens the run's first battle at that checkpoint with Node's hash (T157), and `tools/screenshot.ts` checks the run capture's lives, the route's kits and the summary's battles (T110). No golden moved.
 - **The stand-ins open on `develop`** from S1 (Call 14), each with the session that lifts it (checked at S4, T152):
-  - run battles open no in-battle drafts until S5 (T067);
   - passives on retired systems do nothing in a round battle until S7, which also ends Rhizome Tithe's refusal (T082) and applies the Sporestorm Sigil to each power (T084); relics have their v2 effects since S6;
   - a reload mid-battle restarts it at round 1's planning, with the notice when a battle save was found, until S8 (T095, T096);
-  - the route's intel bars show v1's four kinds, without Anti-Ranged, until S9;
-  - `scene=draft` opens a run battle with no draft, so its capture finds none, until S5 (T067) and S10 (T115);
+  - `scene=draft` opens round 1's planning of a run battle, so its capture shows no draft until round 3, until S10 (T115);
   - retired selectors and triggers still in the data compile to no-ops, v1's keys stay in the data and the schema, and R2a's `rounds` data blocks sit beside them, until S12 (T129);
-  - from S5 (T153) until S10 (T116), the draft will be today's centred dialog, which covers the general's formation.
+  - the draft is today's centred dialog, which covers the general's formation, until S10 (T116).
 - **Next:** S5 (drafts), S6 (relics) and S9 (run screens) can start side by side once S4 merges.
 
 ## R2a, a battle in rounds

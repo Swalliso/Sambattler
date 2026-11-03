@@ -6,7 +6,7 @@
 import type { Content } from '../data/registry.ts';
 import type { Atlas } from '../render/atlas.ts';
 import { spriteToCanvas } from '../render/atlas.ts';
-import { parseCard } from '../sim/index.ts';
+import { nextLevel, parseCard } from '../sim/index.ts';
 import type { DraftCard } from '../sim/index.ts';
 import { ROLE_LABEL } from './buildingInfo.ts';
 import { h } from './h.ts';
@@ -39,7 +39,8 @@ export function cardText(content: Content, card: string, upgrades: Record<string
   }
   const b = content.buildings[c.id]!;
   if (c.type === 'blueprint') return { name: b.name, text: buildingDescription(content, c.id) };
-  const level = (upgrades[c.id] ?? 0) + 1;
+  // the next level offered, past any that isn't (#27)
+  const level = nextLevel(content.upgrades[c.id]!, upgrades[c.id] ?? 0) ?? (upgrades[c.id] ?? 0) + 1;
   return { name: `${b.name} ${'I'.repeat(level)}`, text: upgradeText(content, c.id, level), level };
 }
 

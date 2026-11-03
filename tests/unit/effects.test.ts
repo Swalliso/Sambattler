@@ -21,7 +21,7 @@ import type { BattleConfig, BattleModifier, BattleState, CompiledSide, Side, Sid
 import { endClash, scoreRound } from '../../src/sim/round.ts';
 import { other } from '../../src/sim/state.ts';
 import { deathSystem } from '../../src/sim/systems/combat.ts';
-import { begin, content, finishRound, plant, plotAt } from '../helpers.ts';
+import { begin, command, content, finishRound, plant, plotAt } from '../helpers.ts';
 
 /** A single battle on Bogwater Hollow: each faction's roster as its kit, with the given battle modifiers. */
 function config(modifiers: BattleModifier[] = []): BattleConfig {
@@ -586,6 +586,16 @@ describe("§11.7's relics in rounds (T075)", () => {
     full.player.plots = order.length;
     full.player.relics = ['mycelialWeb'];
     expect(createBattle(content, full).sides.player.plots.every((p) => p.open)).toBe(true);
+  });
+
+  it('Mycelial Web picked in a draft opens its plot at once, in the same planning phase', () => {
+    const s = toRound(createBattle(content, makeRoundConfig(content, { seed: 1, player: 'human', enemy: 'human', flags: { drafts: true } })), 3);
+    const open = () => s.sides.player.plots.flatMap((p, i) => (p.open ? [i] : []));
+    const before = open();
+    s.sides.player.draft!.offer[0] = { id: 'relic:mycelialWeb', type: 'relic', rarity: 'uncommon' };
+    command(s, 'player', { type: 'draftPick', cardId: 'relic:mycelialWeb' });
+    expect([s.phase, s.sides.player.relics]).toEqual(['planning', ['mycelialWeb']]);
+    expect(open()).toEqual([...before, s.map.openOrder[before.length]!].sort((x, y) => x - y));
   });
 
   it('the Sporestorm Sigil keeps `requires: powers`, and Mycorrhizal Link compiles to nothing until R3 (A138)', () => {

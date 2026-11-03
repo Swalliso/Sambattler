@@ -108,7 +108,8 @@ export class KitView {
               art,
               h('div', null,
                 h('div', { class: 'kit-up-name' }, h('b', null, b.name), h('span', { class: 'lvl' }, `Level ${lvl} of ${levels.length}`)),
-                h('ol', null, ...levels.map((_, i) => h('li', { class: i < lvl ? 'on' : '' }, upgradeText(content, id, i + 1))))));
+                // a level that isn't offered does nothing in rounds, so it isn't listed (#27)
+                h('ol', null, ...levels.flatMap((l, i) => (l.offered === false ? [] : [h('li', { class: i < lvl ? 'on' : '' }, upgradeText(content, id, i + 1))])))));
           }))
           : h('p', { class: 'muted' }, `None yet. ${draftNote}`)),
     );

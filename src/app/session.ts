@@ -25,6 +25,7 @@ export interface PlotGhost {
 
 /** `plantProblem`'s reasons in the ghost's words (plan Call 21: "this plot is closed"). */
 const REASONS: Record<string, string> = {
+  draftOpen: 'pick or skip the draft first',
   plotClosed: 'this plot is closed',
   stumpPlot: 'a stump fills this plot',
   plotTaken: 'this plot is taken',
@@ -288,7 +289,8 @@ export class RoundSession {
    */
   begin(): 'warned' | 'begun' | null {
     const s = this.state;
-    if (s.phase !== 'planning' || s.queue.some((c) => c.type === 'beginClash')) return null;
+    // the draft is resolved first (§8.3)
+    if (s.phase !== 'planning' || s.sides.player.draft || s.queue.some((c) => c.type === 'beginClash')) return null;
     if (!this.warned) {
       this.warnedLanes = this.emptyLanes();
       if (this.warnedLanes.length) { this.warned = true; return 'warned'; }

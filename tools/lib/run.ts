@@ -4,7 +4,7 @@ import {
   bestBloom, createBattle, createFromScenario, kitCards, makeRoundConfig, powerOf, runHeadless, summarize,
 } from '../../src/sim/index.ts';
 import type {
-  BattleConfig, BattleState, Command, Content, Controller, CounterKind, Flags, HeadlessResult, HeadlessUntil, PowerPolicy,
+  BattleConfig, BattleState, Command, Content, Controller, CounterKind, DraftPolicy, Flags, HeadlessResult, HeadlessUntil, PowerPolicy,
   RoundLogEntry, RoundScenarioOverrides, RoundSummary, Side, SideStats,
 } from '../../src/sim/index.ts';
 import type { ScenarioDef } from '../../src/data/schema.ts';
@@ -22,6 +22,8 @@ export interface RoundRunSpec {
   commander?: string;
   /** Whether a bot player fires its power, at most once per clash (§6.6). */
   powerPolicy?: PowerPolicy;
+  /** How a bot player answers its drafts with `flags.drafts` (§8.3): greedy unless set. */
+  autoDraft?: DraftPolicy;
   /** The player's kit by building id, in place of its faction's roster (R2-Q7: a commander's starter). */
   kit?: string[];
   /** Use this exact config instead of building one (replays). */
@@ -110,6 +112,7 @@ export function buildRoundState(content: Content, spec: RoundRunSpec): BattleSta
     ...(spec.commander ? { commander: spec.commander } : {}),
   });
   if (spec.powerPolicy) config.player.powerPolicy = spec.powerPolicy;
+  if (spec.autoDraft) config.player.autoDraft = spec.autoDraft;
   if (spec.kit) config.player.kit = kitCards(content, config.player.controller, spec.kit);
   return createBattle(content, config);
 }

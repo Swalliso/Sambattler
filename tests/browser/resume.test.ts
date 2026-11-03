@@ -83,7 +83,8 @@ describe('saved run recovery', () => {
     const run = createRun(nodeContent(), { seed: 9 });
     run.path = [0, 1];
     run.spores = 60;
-    run.upgrades = { sporelingBurrow: 2, capguardHall: 3, truffleCellar: 3 };
+    // the Burrow's level 3 isn't offered (#27), so at level 1 it has one level left
+    run.upgrades = { sporelingBurrow: 1, capguardHall: 3, truffleCellar: 3 };
     run.pending = [{ upgrade: { count: 2, pick: 'choose' } }];
     run.screen = { kind: 'prompt', prompt: {
       title: 'Spore Merchant', text: 'Choose an upgrade track for +1 level.',
@@ -99,7 +100,7 @@ describe('saved run recovery', () => {
     await page.locator('[data-option="sporelingBurrow"]').click();
     await page.waitForFunction(() => window.__GAME__?.run()?.screen === 'route');
     const finished = await page.evaluate((key) => JSON.parse(localStorage.getItem(key)!), RUN_KEY);
-    expect(finished.upgrades.sporelingBurrow).toBe(3);
+    expect(finished.upgrades.sporelingBurrow).toBe(2);
     expect(finished.pending).toEqual([]);
     expect(finished.path).toEqual(run.path);
     expect(finished.spores).toBe(60);
