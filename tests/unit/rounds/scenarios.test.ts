@@ -4,10 +4,11 @@
 // outcome. Each also has its own rule below, with the clash-form copies of v1's merge scenarios and R4a's
 // lineups (§5.6). Ticks are asserted where a rule fixes them: the first tick, or the cap at 900.
 import { describe, expect, it } from 'vitest';
-import { other, SIDES, step } from '../../../src/sim/rounds/index.ts';
+import { hashValue } from '../../../src/sim/hash.ts';
+import { formationOf, mergePreview, other, SIDES, step } from '../../../src/sim/rounds/index.ts';
 import type { BattleState, Side, SimEvent } from '../../../src/sim/rounds/index.ts';
 import { roundOutcome } from '../../../src/sim/rounds/systems/victory.ts';
-import { begin, content, finishRound, fromScenario } from '../../roundHelpers.ts';
+import { begin, content, finishRound, fromScenario, plant, sell, toggle } from '../../roundHelpers.ts';
 
 interface LaneExpected { winner: Side | null; margin: number; damage: number; capped?: boolean; ticks?: number }
 interface RoundExpected {
@@ -25,6 +26,7 @@ const sides = (player: number, enemy: number): Record<Side, number> => ({ player
 const FULL = sides(3000, 2000);
 
 const EXPECTED: Record<string, RoundExpected> = {
+  'general-plans-first': { lanes: [{ winner: 'player', margin: 10, damage: 250 }], damage: sides(250, 0), heartcaps: sides(3000, 1750), comeback: 'enemy' },
   'formation-from-plots': { lanes: [{ winner: 'enemy', margin: 14, damage: 350, capped: false, ticks: 1 }], damage: sides(0, 350), heartcaps: sides(2650, 2000), comeback: 'player' },
   'clash-cap': { lanes: [{ winner: 'player', margin: 3, damage: 75, capped: true, ticks: 900 }], damage: sides(75, 0), heartcaps: sides(3000, 1925), comeback: 'enemy' },
   'round-damage-cap': { lanes: [{ winner: 'player', margin: 40, damage: 1000, capped: false }], damage: sides(500, 0), heartcaps: sides(3000, 1500), comeback: 'enemy' },
@@ -105,6 +107,47 @@ describe('rule scenarios, asserted exactly (§6.7, §15.7, §16 R2 step 4)', () 
 });
 
 describe('each scenario’s own rule', () => {
+  it('general-plans-first: the general’s colony and army stand before your first command, and two different plans of yours leave its plan hash-equal (§4.7, §7.1)', () => {
+    // the general's side as its turn left it: its colony, the army it will field, its gold and plans, and its AI stream
+    const general = (s: BattleState): string => hashValue({
+      side: s.sides.enemy, colony: s.buildings.filter((b) => b.side === 'enemy'),
+      army: formationOf(s, 'enemy'), muster: mergePreview(s, 'enemy'), stream: s.rng.ai.enemy,
+    });
+    const yours = (s: BattleState, buildingId: string): number => s.buildings.find((b) => b.side === 'player' && b.buildingId === buildingId)!.id;
+    // no plan, then two different ones: a plant and a toggle, or a sell and two plants
+    const plans: ((s: BattleState) => SimEvent[])[][] = [
+      [],
+      [(s) => plant(s, 'player', 'sporelingBurrow', { lane: 0, rank: 0, file: 2 }), (s) => toggle(s, 'player', yours(s, 'capguardHall'), false)],
+      [
+        (s) => sell(s, 'player', yours(s, 'gillNest')), (s) => plant(s, 'player', 'puffballMortar', { lane: 0, rank: 1, file: 2 }),
+        (s) => plant(s, 'player', 'capguardHall', { lane: 0, rank: 0, file: 1 }),
+      ],
+    ];
+    for (const round of [1, 2]) {
+      const armies = plans.map((commands) => {
+        const s = fromScenario('general-plans-first');
+        // round 1 played with no plan of yours, so round 2's general plans on the same record whatever you plan in round 2
+        while (s.round < round) {
+          finishRound(s);
+          step(s);
+        }
+        // its turn came in the round's opening: its plan is kept, and only its commands are logged this round
+        expect([s.phase, s.sides.enemy.ai!.plans.at(-1)!.round, s.sides.enemy.ai!.plans.at(-1)!.planted.length > 0]).toEqual(['planning', round, true]);
+        expect(new Set(s.log.filter((c) => c.round === round).map((c) => c.side))).toEqual(new Set(['enemy']));
+        const planned = general(s);
+        for (const command of commands) {
+          expect(command(s).filter((e) => e.t === 'commandRejected')).toEqual([]);
+          expect(general(s)).toBe(planned);
+        }
+        begin(s);
+        const units = s.units.filter((u) => u.side === 'enemy').map((u) => [u.unitId, u.tier, u.lane, u.x, u.y]);
+        return { planned, fielded: s.clash!.fielded.enemy, units };
+      });
+      expect(armies[1]).toEqual(armies[0]);
+      expect(armies[2]).toEqual(armies[0]);
+    }
+  });
+
   it('formation-from-plots: a Capguard Hall in front of a Gill Archer Nest fields its Capguards in rank 0, ahead of the archers', () => {
     const s = fromScenario('formation-from-plots');
     begin(s);

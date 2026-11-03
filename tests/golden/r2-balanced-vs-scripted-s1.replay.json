@@ -1,0 +1,178 @@
+{
+  "name": "r2-balanced-vs-scripted-s1",
+  "description": "bot:balanced vs the scripted general, which plans first, a battle in rounds on Bogwater Hollow, seed 1 (R2a/T072)",
+  "kind": "rounds",
+  "config": {
+    "seed": 1,
+    "battleIndex": 1,
+    "mapId": "bogwater-hollow",
+    "player": {
+      "faction": "velvet-bloom",
+      "controller": {
+        "kind": "bot",
+        "id": "balanced"
+      },
+      "kit": [
+        {
+          "building": "sporelingBurrow"
+        },
+        {
+          "building": "capguardHall"
+        },
+        {
+          "building": "gillNest"
+        },
+        {
+          "building": "rootbreakerDen"
+        },
+        {
+          "building": "puffballMortar"
+        },
+        {
+          "building": "truffleCellar"
+        },
+        {
+          "building": "scythecapGrove"
+        },
+        {
+          "building": "veilstalkerHollow"
+        },
+        {
+          "building": "tendersRing"
+        },
+        {
+          "building": "hammercapForge"
+        },
+        {
+          "building": "amanitaLodge"
+        },
+        {
+          "building": "morelWarren"
+        },
+        {
+          "building": "rhizomeVault"
+        },
+        {
+          "building": "sporeExchange"
+        },
+        {
+          "building": "bursterPod"
+        },
+        {
+          "building": "rhizomorphTunnel"
+        }
+      ],
+      "relics": [],
+      "plots": 8,
+      "heartcapMaxHp": 3000,
+      "startingGold": 300
+    },
+    "enemy": {
+      "faction": "gray-rot",
+      "controller": {
+        "kind": "general",
+        "id": "scripted"
+      },
+      "kit": [
+        {
+          "building": "sporelingBurrow"
+        },
+        {
+          "building": "capguardHall"
+        },
+        {
+          "building": "gillNest"
+        },
+        {
+          "building": "rootbreakerDen"
+        },
+        {
+          "building": "puffballMortar"
+        },
+        {
+          "building": "truffleCellar",
+          "maxOwned": 3
+        },
+        {
+          "building": "scythecapGrove"
+        },
+        {
+          "building": "veilstalkerHollow"
+        },
+        {
+          "building": "tendersRing"
+        },
+        {
+          "building": "hammercapForge"
+        },
+        {
+          "building": "amanitaLodge"
+        },
+        {
+          "building": "morelWarren"
+        },
+        {
+          "building": "rhizomeVault"
+        },
+        {
+          "building": "sporeExchange"
+        },
+        {
+          "building": "bursterPod"
+        },
+        {
+          "building": "rhizomorphTunnel"
+        }
+      ],
+      "relics": [],
+      "plots": 8,
+      "heartcapMaxHp": 2000,
+      "startingGold": 300
+    },
+    "flags": {
+      "merging": true,
+      "drafts": false,
+      "adaptiveGeneral": true,
+      "powers": true
+    }
+  },
+  "commands": [],
+  "expected": {
+    "r1.planning": "8363e009e22d431b",
+    "r1.clash": "72d84149f7fe1723",
+    "r1:200": "e1af70aca2751b57",
+    "r1.aftermath": "ad20abd62bf87f11",
+    "r2.planning": "8cf68e22bd290ac6",
+    "r2.clash": "e55ae5a1be233a65",
+    "r2:200": "140af768b818a99a",
+    "r2.aftermath": "1f3fcebd557da1af",
+    "r3.planning": "2c7ac27966e083db",
+    "r3.clash": "274d5dc5dce6a012",
+    "r3.aftermath": "d81f36742bf96517",
+    "r4.planning": "a2af4c3f3ef13b8e",
+    "r4.clash": "457c8e875a194241",
+    "r4:200": "846fce83065f8923",
+    "r4.aftermath": "b72c10fa346a00e2",
+    "r5.planning": "07980feaa8c63994",
+    "r5.clash": "220e987f5498d91e",
+    "r5:200": "2d095254a44d05ef",
+    "r5.aftermath": "7cb4b3ac9c61afc6",
+    "r6.planning": "e4a3b3fdaebd4b1d",
+    "r6.clash": "a49ae374802bf5f7",
+    "r6:200": "416b6aed8cb02469",
+    "r6.aftermath": "58e2abe658dda9e6",
+    "r7.planning": "90bc20e9a9acd05f",
+    "r7.clash": "0bc86c4c32ef03e9",
+    "r7:200": "b30fa76eb87e21b0",
+    "r7.aftermath": "1e4435078a81e5d6",
+    "r8.planning": "2e2a719ee6757639",
+    "r8.clash": "ee2051b9943ca0b6",
+    "r8:200": "e9bc1d40673bcfc5",
+    "r8.aftermath": "6f38212c1b2fde84",
+    "r9.planning": "49f141baff31d607",
+    "r9.clash": "b1077616cd34cf85",
+    "r9:200": "47b7eb4dcfbd6af5",
+    "r9.aftermath": "bfc76f055990bbc3",
+    "final": "9189eb1923dbea19"
+  }
+}

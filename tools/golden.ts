@@ -102,7 +102,12 @@ interface RoundReplay {
 const ROUND_REPLAYS: {
   name: string; description: string; seed: number; player: string; enemy: string; flags: Partial<RoundFlags>;
   commander?: string; powerPolicy?: PowerPolicy; map?: string;
-}[] = [];
+}[] = [
+  {
+    name: 'r2-balanced-vs-scripted-s1', description: 'bot:balanced vs the scripted general, which plans first, a battle in rounds on Bogwater Hollow, seed 1 (R2a/T072)',
+    seed: 1, player: 'bot:balanced', enemy: 'general:scripted', flags: { merging: true, adaptiveGeneral: true, powers: true },
+  },
+];
 
 function roundReplayConfig(r: (typeof ROUND_REPLAYS)[number]): RoundConfig {
   const config = makeRoundConfig(nodeContent(), {
