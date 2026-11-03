@@ -1,6 +1,6 @@
 # Where things stand
 
-Updated 2026-11-02, on `docs/r2a-s9b-s11` (the hub's docs PR into `develop`). This is the hand-over page. It covers what we're working on, what's waiting on the user's decision, and where each piece lives. Update it when work lands or the user decides something. Keep the detail in the docs it links to.
+Updated 2026-11-02, on `docs/r2a-s10b-s13` (the hub's docs PR into `develop`). This is the hand-over page. It covers what we're working on, what's waiting on the user's decision, and where each piece lives. Update it when work lands or the user decides something. Keep the detail in the docs it links to.
 
 ## In short
 
@@ -18,7 +18,7 @@ Updated 2026-11-02, on `docs/r2a-s9b-s11` (the hub's docs PR into `develop`). Th
   See [SPEC §0.1](../SPEC.md#01-what-changed-in-v2), [§1.3](../SPEC.md#13-v2-decisions-2026-10-31) and the [P3 notes](playtest-feedback.md#2026-10-31-p3-the-combat-rework-the-user).
 - **SPEC v2 is on `develop`** ([#39](https://github.com/Swalliso/Sambattler/pull/39)). **Nothing in v2 is built yet.** Until milestone R2 lands, the code follows v1: the M5 battle, with the rework's pieces behind `?proto=rework` on the dev site.
 - **The spec is broken into task lists** in [docs/tasks/](tasks/README.md) ([#40](https://github.com/Swalliso/Sambattler/pull/40), on `develop`), spec-kit style: one list per milestone, one session per row of its Sessions table. The decisions each milestone needs from the user are in [clarify.md](tasks/clarify.md), and the problems the breakdown found in SPEC v2 are in [spec-analysis.md](tasks/spec-analysis.md). Lists after R1's are drafts, refreshed when each milestone's plan is agreed.
-- **Milestone R1, the clash check, is done** ([SPEC §16](../SPEC.md#16-milestone-plan)). A headless tool fought whole armies at equal gold, with no rule change, to set squad sizes and check that every strong army has an answer before the round loop is built. At its review gate on 2026-11-02 you took every recommendation (below). **R2a's plan is agreed** (S0, 2026-11-02), **R2a S1 to S11 have merged**, all but S10b, with S7b's and S9b's fixes: US1 (a round's clash, scored) is done, a battle in rounds plays headless with the general planning first, and a round in which nothing changed replays the last clash exactly. `/?scene=rounds` opens the preview's first shell. **S10b, S12 and S13 now run side by side.**
+- **Milestone R1, the clash check, is done** ([SPEC §16](../SPEC.md#16-milestone-plan)). A headless tool fought whole armies at equal gold, with no rule change, to set squad sizes and check that every strong army has an answer before the round loop is built. At its review gate on 2026-11-02 you took every recommendation (below). **R2a's plan is agreed** (S0, 2026-11-02), **R2a S1 to S13 have merged**, with S7b's and S9b's fixes: US1 (a round's clash, scored) and US2 (a battle in rounds, with the general planning first) are done, a round in which nothing changed replays the last clash exactly, and the first round golden is recorded. `/?scene=rounds` shows the field with both formations, the top band and the Intent panel. **S14 now runs, the last row before your rough playtest.**
 - **Then:**
   - R2: rounds, the general plans first, lives, and the planning screen. R2a's plan, [r2a-plan.md](r2a-plan.md), was agreed on 2026-11-02. The task lists split it in two (X1): R2a, a single battle in rounds, then R2b, the run in rounds. R2a gets a rough playtest after S14, as soon as a battle in rounds is properly playable and before its counter cycle and powers (R2-Q25, agreed 2026-11-01), and S21's playtest stays the gate;
   - R3: the kit, the six archetypes, augments, combos and run packs;
@@ -27,14 +27,12 @@ Updated 2026-11-02, on `docs/r2a-s9b-s11` (the hub's docs PR into `develop`). Th
 
   [docs/tasks/README.md](tasks/README.md) has the full order and every milestone's sessions.
 
-## Next sessions: R2a S10b, S12 and S13, side by side
+## Next session: R2a S14, then your rough playtest
 
-- **Work from** [docs/tasks/r2a-battle-in-rounds.md](tasks/r2a-battle-in-rounds.md). All three started on 2026-11-02, on your OK, once S9b and S11 had merged. The hub records their outcome, so none of them edits this page.
-  - **S10b** (`feature/r2a-general-check`, T070–T073): `general-plans-first`, the round smoke in verify, the first round golden (`r2-balanced-vs-scripted-s1`) and §16 R2 step 3's reading in round form. It ends US2.
-  - **S12** (`feature/r2a-ui-field`, T082, T083, T142, T084–T086): the formation and merge previews, `matchupClass` and its marks, the aftermath and the field's details.
-  - **S13** (`feature/r2a-ui-bands`, T087–T091): both Heartcaps, the chips, the tally and the lane tug, the tooltips and the Intent panel, each in its mount.
-  - S12 and S13 change nothing the sim hashes, so S10b's golden holds. Step 3's wall time is read beside the other two sessions, so the hub re-runs it alone if it misses.
-- **Then:** S14 once S12 and S13 have merged: the tray, inspect, the planning and clash chrome, and the report by round (US3 done). Once S14 is on the dev site, **S14b is your rough playtest**, and the hub stops there to ask you.
+- **Work from** [docs/tasks/r2a-battle-in-rounds.md](tasks/r2a-battle-in-rounds.md). S14 started on 2026-11-02, on your OK, once S12 and S13 had merged. It runs alone, and the hub records its outcome.
+  - **S14** (`feature/r2a-ui-panels`, T092–T097, T143): the tray, inspect, the planning and clash chrome, the report by round, and the screenshot tool's assertion 4. It ends US3: on the dev site, a battle in rounds plays from round 1's planning to the report.
+- **Then: S14b, your rough playtest** on the dev site, once S14 has merged and deployed (R2-Q25). The hub stops there to ask you. Watch the pace (S10b, below). Your notes go into `docs/playtest-feedback.md`, and any change to S15–S20 into the task list.
+- **After it:** S15 (the counter cycle) and S16 (powers), side by side.
 
 ## R2a, a battle in rounds
 
@@ -114,6 +112,29 @@ Updated 2026-11-02, on `docs/r2a-s9b-s11` (the hub's docs PR into `develop`). Th
 
     No storage key changed.
   - **For R2b:** `tools/lib/rounds/params.ts` opens the preview's state through the page's own `previewState` in `src/app/rounds/urlParams.ts`, which imports no DOM, so a capture's hash can't drift from the page's. `urlParams.ts` reads v1's `parseFlags` from `src/sim/create.ts`.
+- **S10b** (`feature/r2a-general-check`, T070–T073, [#91](https://github.com/Swalliso/Sambattler/pull/91)), **S12** (`feature/r2a-ui-field`, T082–T086 and T142, [#93](https://github.com/Swalliso/Sambattler/pull/93)) and **S13** (`feature/r2a-ui-bands`, T087–T091, [#92](https://github.com/Swalliso/Sambattler/pull/92)): merged, side by side on your OK (2026-11-02). Before turning on #91's and #93's auto-merge, the hub merged the three branches locally and ran the typecheck, the round tests, every golden, the round browser tests and the build. Only the new golden was added. US2 is done.
+  - **S10b:**
+    - `general-plans-first` shows that the general's colony and army stand before your first command. Three different plans of yours leave its side hash-equal, in rounds 1 and 2 (§16 R2 step 4).
+    - Verify runs a round smoke (3 seeds).
+    - `r2-balanced-vs-scripted-s1` is the first round golden: 36 checkpoints over 9 rounds. v1's eight goldens didn't move.
+  - **Step 3 in rounds** (T073; 40 battles of `bot:balanced` against `general:scripted`, in [balance-backlog.md](balance-backlog.md)):
+    - Every battle ends, with no rejected command. 8% of clashes reach the cap, the bot wins 60%, and a battle takes 50 ms.
+    - **It misses two numbers: a median of 9 rounds against step 3's 6–8, and 73% of battles reach round 9 against at most 15%.**
+    - Why: a won round deals a median of 250 to the general's 2000 HP, and the two sides split the rounds almost evenly. So half the battles end in a Decision.
+    - Nothing was tuned. S18's G4 run and #35's bands decide the pace, unless your rough playtest says otherwise.
+  - **S12:**
+    - the formation preview in planning, for both sides, from `formationOf` and `mergePreview`;
+    - `matchupClass` (`src/sim/rounds/matchups.ts`, pure, never called by the battle) and its strong and weak marks;
+    - the aftermath, drawn from the round's result;
+    - the field's details: the "New" sprout, arrival puffs, coin pops, the storm haze and F3's debug view.
+  - **S13:**
+    - both Heartcaps;
+    - the chips: gold, plots, the round with the clash clock, and the storm;
+    - the round tally and the lane tug;
+    - the chips' tooltips, computed from the sim's functions;
+    - the general's Intent panel, from `ai.plans`.
+
+    Its styles are in `src/ui/rounds/rounds.css`.
 - **What R2a starts from:** R1's chosen set as default data (all of `kept`, the arrival shield, Capguard Hall's squad at 3, the Elder's splash on); X5's cap and Decision by share; no copies before R3 (D45); the Anti-Ranged kind and the three fixes to the counter sets (§7.4); and eliteShare by Elder parts.
 - **For R2a to watch** (R1, and the readings of S1 and S7b):
   - Capguard Hall at 3 still won 92% at 300 gold and 2% at 1,500;
@@ -195,7 +216,7 @@ Updated 2026-11-02, on `docs/r2a-s9b-s11` (the hub's docs PR into `develop`). Th
 
 ## Waiting on the user
 
-1. **R2a's next calls:** none until S14b, the rough playtest after S14 (T145). Then #35's battle-level bands at S18 (T125), and the playtest gate at S21. R2a's plan and its 26 calls were settled at S0 on 2026-11-02.
+1. **R2a's next calls:** S14b, your rough playtest, once S14 is on the dev site (T145). Watch the pace there: S10b's step 3 reading has battles running long (a median of 9 rounds, and 73% reach round 9), and each lever for it is a retune that waits for your OK. Then #35's battle-level bands at S18 (T125), and the playtest gate at S21. R2a's plan and its 26 calls were settled at S0 on 2026-11-02.
 2. **The decisions that shape the milestones**, X1–X10 in [clarify.md](tasks/clarify.md#index). Each has a recommendation. The task lists assume them and say what changes otherwise.
    - X1 and X2 were decided on 2026-11-02. R2 splits into R2a and R2b, and R2a is built beside v1 on `develop`. You also said `develop` may switch wholly to v2 from now on, so R2b's switch-over needn't go through `feature/r2b-cutover`. Verify still stays green on every PR, since a failing `develop` blocks every deploy. X3 (split R4, the field's shapes first) and X10 (Run it back in two parts) were agreed on 2026-11-01.
    - X4 and X5 were decided at R1's review gate on 2026-11-02: no copies before R3, and a cap of 25% of the loser's max HP with a Decision by share.
@@ -224,6 +245,7 @@ Updated 2026-11-02, on `docs/r2a-s9b-s11` (the hub's docs PR into `develop`). Th
 
 | Work | Where | State |
 |---|---|---|
+| R2a S10b, S12 and S13, side by side (2026-11-02) | [#91](https://github.com/Swalliso/Sambattler/pull/91) (the first round golden, step 3 in rounds), [#93](https://github.com/Swalliso/Sambattler/pull/93) (the field), [#92](https://github.com/Swalliso/Sambattler/pull/92) (the top band and the Intent panel) | Merged after the hub's review and a check of all three together. Only the new golden was added. Step 3 misses its pace (a median of 9 rounds). S14 runs next, then your rough playtest |
 | R2a S9b and S11, side by side (2026-11-02) | [#88](https://github.com/Swalliso/Sambattler/pull/88) (clash timers on the clash's clock), [#89](https://github.com/Swalliso/Sambattler/pull/89) (the `scene=rounds` preview) | Merged after the hub's review. #89's CI ran before #88 landed, so the hub checked the two together locally. No golden moved. S10b, S12 and S13 run next, side by side |
 | R2a S9 and S10a, side by side (2026-11-02) | [#85](https://github.com/Swalliso/Sambattler/pull/85) (`runHeadless`, `sim --rounds`, round replays), [#86](https://github.com/Swalliso/Sambattler/pull/86) (`src/sim/rounds/ai/`) | Merged after the hub's review and a check of both together. No golden moved. S9 found T149, so S9b runs next beside S11 |
 | R2a S8: opening a round, the economy and stats per round (2026-11-02) | [#84](https://github.com/Swalliso/Sambattler/pull/84), `src/sim/rounds/round.ts`, `systems/economy.ts`, `stats.ts`, `summary.ts` | Merged after the hub's review. No golden moved |
