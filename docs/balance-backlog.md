@@ -20,11 +20,55 @@ v1's backlog is archived at [docs/archive/v1/balance-backlog.md](archive/v1/bala
 
 - **The pace after T125** (R2a S18, below): at 100 a supply, agreed on 2026-11-03, battles take a median of 7 rounds, 18.5% of 200 reach round 9 (G4: ≤ 20%), and the damage cap binds in 70% of damaging rounds. S21's playtest reads whether a win's size still counts.
 - **The round guardrails that miss on the final data** (R2a S20, confirming S18's, below): G1, G2, G3, G7, G8's mono drops and G16 (the formation rule loses to its ranks traded). Each waits for the user, G16 best before S21.
+- **G16's levers** (2026-11-03, below): the Burster's back-line rule (§7.3) is the miss, and none of the three levers measured moves G16. A rule change waits for the user, at S21's tuning calls.
 - **Step 3's round-9 limit** (R2a S20, below): SPEC §16 R2 step 3 still says 15%, where G4's agreed band says 20% over 200 battles. Its 40 battles read 15%, at the limit.
 - **X8's readouts** (R2a S15, below): your colony is full from round 5, and once both colonies are full, half the clashes replay the last one. They go to S18's pace call and S21's playtest, with X8's two knobs still off.
 - **Gill Archers tie Swarm and Ranged** (R2a S15, below): the noise, not #14's tie order, picks between them. A rule change waits for the user.
 - **The Burster's seat effect** (R2a S17, below): a mirror of Bursters goes to whichever side's ids come first. A rule change waits for the user.
 - **The first fighting tick's frame in Chromium** (R2a S17, below): 4.8–11.4 ms once a page, against §13.7's 8 ms.
+
+## R2a · G16's formation levers (2026-11-03, measured for the hub)
+
+**Measured:**
+- **What:** G16 (§12.3). It asks that a colony planted by the formation rule beat the same colony with its front and back ranks traded in at least 60% of clashes, pooled over role-split pairs. G3, G4, G12 and G13 were read for side effects.
+- **Where:** `develop` at 6f99d2f, at 100 a supply.
+- **How:** `npm run experiment -- --rounds` with `--proto` overrides, one lever at a time. No code or data changed.
+
+**Today:** G16 reads 24%. By the back-line building in each pair:
+- Gill Archer pairs read 51%;
+- tower pairs, which are the Puffball Mortar, read 24%;
+- Burster pairs read 0%.
+
+G4 (7 rounds, 19% reaching round 9, the bot winning 59%), G12 and G13 (9% capped, 18.6 s) pass. G3 fails, with 8 of 16 monos over its limit.
+
+| Lever (today's value) | G16 | Gill / tower / Burster pairs | Side effects |
+|---|---|---|---|
+| The gap between the front ranks, 8 (6) | 22% | 47 / 21 / 1 | G4, G12 and G13 pass; the median clash is 21.0 s |
+| Gap 7 | not run: `formationBox` (`src/sim/formation.ts`) needs the field's width less the gap to be even | | |
+| Gap 4 (probe) | 29% | 51 / 38 / 1 | G16 only |
+| Gap 2 (probe) | 48% | 68 / 82 / 0 | G4, G12 and G13 pass; 12% reach round 9; the median clash is 16.1 s, 1.1 s above G13's floor |
+| Gill Archer `aggroRange` 5 (6) | 25% | 54 / 24 / 0 | pass |
+| `pinned.rateMult` 0.2 (0.35) | 24% | 51 / 24 / 0 | pass |
+| `pinned.radius` 1.5 (1) | 23% | 48 / 24 / 0 | pass |
+| `pinned.radius` 3 (probe) | 30% | 68 / 24 / 0 | pass; G3 has 7 of 16 failing |
+| `pinned.radius` 3 and `rateMult` 0.2 (probe) | 32% | 77 / 24 / 0 | pass; G3 has 7 of 16 failing |
+
+Gaps of 10 and 14 read 26% and 31%.
+
+**Reading:**
+- **The Burster decides the pool.** Its pairs are 36% of G16's clashes and read 0% under every setting. The formation rule's colony, a Capguard front with Bursters behind, is wiped out in 5–10 s by the same colony with its Bursters in front. While those pairs count, G16 can reach at most 64%, even if every other pair won every clash.
+- **S18's reading is only part of it.** S18 found that front-rank Gill Archers start within aggro range. A gap of 8 and an aggro of 5 both remove that, yet the Gill pairs stay at 47–54%.
+
+**Recommended:** each of these is a rule change for the user, at S21's tuning calls (T139).
+1. **Settle the Burster first.** §7.3's `burst` → back line is what fails. Move `burst` to the front line, so those pairs are same-role and leave G16's pool, or leave Bursters out of G16. That alone takes the pool from 24% to 38%.
+   - This wasn't measured with the Burster in front, since that needs a code change: `BACK_TAGS` in `tools/lib/clash.ts`, the general's placement, and §7.3's text.
+   - The hub recommends moving it to the front line. A Burster rolls at the enemy's thickest knot, so the front is its job.
+2. **The Gill and tower pairs can wait for the playtest and R3's combos.**
+   - Only a 2-tile gap clears 60% for them: 75% without the Burster pairs. It's a cliff, though, since 4 tiles reads 45%, and it changes how every clash opens, with the armies nearly touching.
+   - The gentler option, a pin radius of 3, fixes only the Gill pairs, since a tower is never pinned. That reaches 46–51% without the Burster pairs.
+   - The Gill pairs, at 51%, are a coin flip rather than a trap. R3's combos that reward the back rank (Shield Wall, Sundering Volley, Anvil) would tip them.
+
+**Not measured:** G1, G2, G5–G8 and G11 under the levers; the Burster in the front line; a gap of 7; a longer Gill range.
 
 ## R2a S20 · R2's verification steps on the final data (2026-11-03)
 
