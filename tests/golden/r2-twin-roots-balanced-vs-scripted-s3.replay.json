@@ -1,0 +1,187 @@
+{
+  "name": "r2-twin-roots-balanced-vs-scripted-s3",
+  "description": "bot:balanced vs the scripted general on Twin Roots, each lane its own clash, seed 3 (R2a/T112)",
+  "kind": "rounds",
+  "config": {
+    "seed": 3,
+    "battleIndex": 1,
+    "mapId": "twin-roots",
+    "player": {
+      "faction": "velvet-bloom",
+      "controller": {
+        "kind": "bot",
+        "id": "balanced"
+      },
+      "kit": [
+        {
+          "building": "sporelingBurrow"
+        },
+        {
+          "building": "capguardHall"
+        },
+        {
+          "building": "gillNest"
+        },
+        {
+          "building": "rootbreakerDen"
+        },
+        {
+          "building": "puffballMortar"
+        },
+        {
+          "building": "truffleCellar"
+        },
+        {
+          "building": "scythecapGrove"
+        },
+        {
+          "building": "veilstalkerHollow"
+        },
+        {
+          "building": "tendersRing"
+        },
+        {
+          "building": "hammercapForge"
+        },
+        {
+          "building": "amanitaLodge"
+        },
+        {
+          "building": "morelWarren"
+        },
+        {
+          "building": "rhizomeVault"
+        },
+        {
+          "building": "sporeExchange"
+        },
+        {
+          "building": "bursterPod"
+        },
+        {
+          "building": "rhizomorphTunnel"
+        }
+      ],
+      "relics": [],
+      "plots": 12,
+      "heartcapMaxHp": 3000,
+      "startingGold": 300
+    },
+    "enemy": {
+      "faction": "gray-rot",
+      "controller": {
+        "kind": "general",
+        "id": "scripted"
+      },
+      "kit": [
+        {
+          "building": "sporelingBurrow"
+        },
+        {
+          "building": "capguardHall"
+        },
+        {
+          "building": "gillNest"
+        },
+        {
+          "building": "rootbreakerDen"
+        },
+        {
+          "building": "puffballMortar"
+        },
+        {
+          "building": "truffleCellar",
+          "maxOwned": 3
+        },
+        {
+          "building": "scythecapGrove"
+        },
+        {
+          "building": "veilstalkerHollow"
+        },
+        {
+          "building": "tendersRing"
+        },
+        {
+          "building": "hammercapForge"
+        },
+        {
+          "building": "amanitaLodge"
+        },
+        {
+          "building": "morelWarren"
+        },
+        {
+          "building": "rhizomeVault"
+        },
+        {
+          "building": "sporeExchange"
+        },
+        {
+          "building": "bursterPod"
+        },
+        {
+          "building": "rhizomorphTunnel"
+        }
+      ],
+      "relics": [],
+      "plots": 12,
+      "heartcapMaxHp": 2000,
+      "startingGold": 300
+    },
+    "flags": {
+      "merging": true,
+      "drafts": false,
+      "adaptiveGeneral": false,
+      "powers": false
+    }
+  },
+  "commands": [],
+  "expected": {
+    "r1.planning": "b23d4e1173bb8359",
+    "r1.clash": "4e966b09ab393010",
+    "r1:200": "6e94a33d53369ba1",
+    "r1.aftermath": "3671c329ac61598c",
+    "r2.planning": "ff6c4a27b008efcd",
+    "r2.clash": "1a5878119368097d",
+    "r2.aftermath": "b5f5a8bdbe424a4a",
+    "r3.planning": "66427425a6113044",
+    "r3.clash": "8b455affd517868c",
+    "r3:200": "739bf63cb8e1c69e",
+    "r3:400": "e59fc67ca6496125",
+    "r3.aftermath": "59e3d4fecec29645",
+    "r4.planning": "4ba35da34b31c6b1",
+    "r4.clash": "07b5a7911f80bfb2",
+    "r4:200": "ddcb9af7e7e158b7",
+    "r4.aftermath": "fd3fbd2a87fb49a1",
+    "r5.planning": "1f4f14a04f423cd3",
+    "r5.clash": "1aaf85e4aa59d0fd",
+    "r5:200": "4461670b500ee731",
+    "r5:400": "74ea23f68cadabb9",
+    "r5:600": "2401bdcc56c19961",
+    "r5:800": "d0b6bc4d6b970078",
+    "r5.aftermath": "9200721835521d40",
+    "r6.planning": "b245842b74da7496",
+    "r6.clash": "307bc1819ceb57c7",
+    "r6:200": "7884d98c8cf0ec9b",
+    "r6:400": "f59219ba547c791b",
+    "r6:600": "2b76e74241bb76d1",
+    "r6:800": "9363abd45be1be48",
+    "r6.aftermath": "a94b858650ed6814",
+    "r7.planning": "ad8dd4e612122406",
+    "r7.clash": "8c1cea968c34910a",
+    "r7:200": "8aaa2616aa873bf2",
+    "r7:400": "4022b725ea65df26",
+    "r7:600": "4f567391dc1ab4a7",
+    "r7:800": "cac3eef6f5abcd46",
+    "r7.aftermath": "099d5304e9d878fe",
+    "r8.planning": "3290cfe14843605f",
+    "r8.clash": "45e2cf70c5502703",
+    "r8:200": "08bcae9e02c5127b",
+    "r8:400": "a2db3514e7249f39",
+    "r8:600": "9b822b5a1495373c",
+    "r8:800": "9954680d8a9c45db",
+    "r8.aftermath": "cbd61fe72b2ad947",
+    "final": "748e81ce3d6a3958"
+  }
+}

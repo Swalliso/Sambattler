@@ -1,0 +1,176 @@
+{
+  "name": "r2-merge-mirror-s3",
+  "description": "merge-on vs merge-off mirror (bot:balanced vs bot:balanced-nomerge, the G7 setup), knitting at the muster, seed 3 (R2a/T112)",
+  "kind": "rounds",
+  "config": {
+    "seed": 3,
+    "battleIndex": 1,
+    "mapId": "bogwater-hollow",
+    "player": {
+      "faction": "velvet-bloom",
+      "controller": {
+        "kind": "bot",
+        "id": "balanced"
+      },
+      "kit": [
+        {
+          "building": "sporelingBurrow"
+        },
+        {
+          "building": "capguardHall"
+        },
+        {
+          "building": "gillNest"
+        },
+        {
+          "building": "rootbreakerDen"
+        },
+        {
+          "building": "puffballMortar"
+        },
+        {
+          "building": "truffleCellar"
+        },
+        {
+          "building": "scythecapGrove"
+        },
+        {
+          "building": "veilstalkerHollow"
+        },
+        {
+          "building": "tendersRing"
+        },
+        {
+          "building": "hammercapForge"
+        },
+        {
+          "building": "amanitaLodge"
+        },
+        {
+          "building": "morelWarren"
+        },
+        {
+          "building": "rhizomeVault"
+        },
+        {
+          "building": "sporeExchange"
+        },
+        {
+          "building": "bursterPod"
+        },
+        {
+          "building": "rhizomorphTunnel"
+        }
+      ],
+      "relics": [],
+      "plots": 8,
+      "heartcapMaxHp": 3000,
+      "startingGold": 300
+    },
+    "enemy": {
+      "faction": "gray-rot",
+      "controller": {
+        "kind": "bot",
+        "id": "balanced-nomerge"
+      },
+      "kit": [
+        {
+          "building": "sporelingBurrow"
+        },
+        {
+          "building": "capguardHall"
+        },
+        {
+          "building": "gillNest"
+        },
+        {
+          "building": "rootbreakerDen"
+        },
+        {
+          "building": "puffballMortar"
+        },
+        {
+          "building": "truffleCellar"
+        },
+        {
+          "building": "scythecapGrove"
+        },
+        {
+          "building": "veilstalkerHollow"
+        },
+        {
+          "building": "tendersRing"
+        },
+        {
+          "building": "hammercapForge"
+        },
+        {
+          "building": "amanitaLodge"
+        },
+        {
+          "building": "morelWarren"
+        },
+        {
+          "building": "rhizomeVault"
+        },
+        {
+          "building": "sporeExchange"
+        },
+        {
+          "building": "bursterPod"
+        },
+        {
+          "building": "rhizomorphTunnel"
+        }
+      ],
+      "relics": [],
+      "plots": 8,
+      "heartcapMaxHp": 2000,
+      "startingGold": 300
+    },
+    "flags": {
+      "merging": true,
+      "drafts": false,
+      "adaptiveGeneral": false,
+      "powers": false
+    }
+  },
+  "commands": [],
+  "expected": {
+    "r1.planning": "26f88a0c4c5a1e93",
+    "r1.clash": "61ac613090b12490",
+    "r1:200": "5561c97d44309d68",
+    "r1.aftermath": "30173d19a6ad862d",
+    "r2.planning": "7ebe1ee985fea681",
+    "r2.clash": "5f44089b710d0c4c",
+    "r2:200": "d8580149c34a5057",
+    "r2.aftermath": "7114acca43a00ac8",
+    "r3.planning": "ddd8e5d3c6eda6d0",
+    "r3.clash": "e297cf673c86c9af",
+    "r3:200": "a8d5cdbb35ead051",
+    "r3:400": "784a5bf01e4f4bc1",
+    "r3.aftermath": "ddf5db80f915c78c",
+    "r4.planning": "b8ef285c757b7677",
+    "r4.clash": "5a8e3f6769138238",
+    "r4:200": "68313dfd9b07a2b0",
+    "r4:400": "f480a0bbad56e262",
+    "r4.aftermath": "d55b97a1b682d99a",
+    "r5.planning": "bd5ca7297a520b23",
+    "r5.clash": "40ecb1b6e18e4089",
+    "r5:200": "b1963126b807516b",
+    "r5:400": "32aab0d9221b8f32",
+    "r5:600": "d2f866baddb1c1cd",
+    "r5.aftermath": "0432cc2b238e26c7",
+    "r6.planning": "702fd39cd5ea47b5",
+    "r6.clash": "bb24fa2cbe442c50",
+    "r6:200": "74dddee1aae5e50c",
+    "r6:400": "9f1c46202ca0fb70",
+    "r6.aftermath": "040b591dba8e1d58",
+    "r7.planning": "4fe1b0e3b2ea3994",
+    "r7.clash": "3ee2803aa66d2483",
+    "r7:200": "214af2dceb89b3c5",
+    "r7:400": "419f704be727d4ad",
+    "r7.aftermath": "05b1c72987728760",
+    "final": "0107b8d1194cd717"
+  }
+}

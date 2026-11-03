@@ -94,6 +94,13 @@
 // 300,600,900) on `--fields` (default one,twin), `--seeds n` (default 20), `--jitter j` as given, on
 // `--workers n`. Passives are off: a clash plays both sides as human. It prints each pairing's best
 // candidate and its win %, and the share of pairings with no answer at 60% or more.
+//
+// `--rounds` (R2a, temporary; §15.3, T117) plays the checks on single battles in rounds, on the round sim, its
+// battles, clashes and duels on `--workers n` threads (1 plays them in process, with the same results). It wires
+// `duels` (G1's squad duels as one round clash each, G2's supply duels with placed units: readings, no verdict yet)
+// and `g4` (bot:balanced against the scripted general by rounds on `--maps`, `--g4seeds n` battles, read against
+// §12.3's G4 and G13 bands), its defaults. R2a's S18 wires the rest (T123); `engagement`, `runs`, `lanes` and
+// `spread` stay v1's until R2b, which removes the option.
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { protoContent, ROOT } from './lib/content.ts';
@@ -106,7 +113,8 @@ import type { G3Verdict, Verdict } from './lib/balance.ts';
 import { runBench } from './lib/bench.ts';
 import { clashArmyIds, clashOpts, fullColony, overflowTable, pairLine, pairScore, playPair } from './lib/clash.ts';
 import type { ArmyOpts, ClashOpts, FieldId, LanesRule } from './lib/clash.ts';
-import { clashPool, defaultWorkers, inProcessClashes, rowPool } from './lib/pool.ts';
+import { clashPool, defaultWorkers, inProcessClashes, inProcessRounds, roundPool, rowPool } from './lib/pool.ts';
+import { duelLines, duels, g4Lines, tournament } from './lib/rounds/balance.ts';
 import { engagement, engagementLines, runEndingLines, runEndings } from './lib/engagement.ts';
 import { laneLines, laneSummary } from './lib/lanes.ts';
 import { spreadCase, spreadLines, spreadSummary } from './lib/spread.ts';
@@ -120,14 +128,27 @@ const args = process.argv.slice(2);
 const opt = (k: string): string | undefined => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : undefined; };
 const proto = opt('--proto') ?? '';
 const ALL = ['duels', 'g3', 'g4', 'g5', 'g6', 'g7', 'g8', 'g11', 'boss'];
-const checks = new Set((opt('--checks') ?? ALL.join(',')).split(','));
+/** The checks `--rounds` plays so far (T117); T123 wires g3, g5–g8, g11, counters and formation. */
+const ROUND_CHECKS = ['duels', 'g4'];
+const rounds = args.includes('--rounds');
+const checks = new Set((opt('--checks') ?? (rounds ? ROUND_CHECKS : ALL).join(',')).split(','));
+/** With `--rounds`, its checks, taken out of v1's so no v1 check runs. */
+const roundChecks = new Set(rounds ? checks : []);
+if (rounds) {
+  const other = [...roundChecks].filter((c) => !ROUND_CHECKS.includes(c));
+  if (other.length) {
+    throw new Error(`--rounds plays ${ROUND_CHECKS.join(' and ')} so far, not ${other.join(', ')}: R2a's S18 wires g3, g5–g8, g11, counters and formation (T123), and engagement, runs, lanes and spread stay v1's until R2b`);
+  }
+  checks.clear();
+}
 /** The clash check's one matchup (`--pair a,b`). */
 const pair = opt('--pair')?.split(',');
 /** The clash check's variant options (T031) and which of them are flags; each one set names the default label. */
 const CLASH_VARIANTS = ['--merging', '--squad-seconds', '--squad-scale', '--squad', '--copies', '--core6', '--extra-plots', '--lanes-rule', '--v1-movement', '--v1-targeting', '--mirror'];
 const CLASH_FLAGS = ['--v1-movement', '--v1-targeting', '--mirror'];
 const variantLabel = CLASH_VARIANTS.filter((k) => args.includes(k)).map((k) => `-${k.slice(2)}${CLASH_FLAGS.includes(k) ? '' : opt(k) ?? ''}`).join('');
-const defaultLabel = checks.has('clash') ? `clash${pair ? `-pair-${pair.join('-')}` : ''}${proto ? `-${proto}` : ''}${variantLabel}`
+const defaultLabel = rounds ? `rounds${proto ? `-${proto}` : ''}`
+  : checks.has('clash') ? `clash${pair ? `-pair-${pair.join('-')}` : ''}${proto ? `-${proto}` : ''}${variantLabel}`
   : checks.has('pairings') ? `pairings${proto ? `-${proto}` : ''}` : proto || 'baseline';
 const label = opt('--label') ?? defaultLabel.replace(/[^a-zA-Z0-9.=-]+/g, '_');
 /** G3's opponent: `bot:balanced` (the guardrail), or a one-off diagnostic bot added with `--proto bot.<id>:{…}`. */
@@ -529,6 +550,34 @@ if (checks.has('pairings')) {
     const ms = Date.now() - t0;
     lines.push(...v.details, `pairings: ${cache.stats().played} clashes played for ${cache.stats().cells} cells in ${(ms / 1000).toFixed(1)} s`);
     out.pairings = { options, rows: v.rows, unanswered: v.unanswered, budgets: v.budgets, timing: { ms, ...cache.stats() } };
+  } finally {
+    await pool?.close();
+  }
+}
+
+if (roundChecks.size) {
+  // single battles in rounds (§15.3, T117): every battle, clash and duel is a round job, played on the pool
+  const pool = workers > 1 ? roundPool(proto, workers) : undefined;
+  const run = pool?.run ?? inProcessRounds(content);
+  const maxRounds = content.balance.rounds.maxRounds;
+  try {
+    if (roundChecks.has('duels')) {
+      const t0 = Date.now();
+      const d = await duels(content, run);
+      lines.push(...duelLines(content, d), `duels in rounds: ${d.squad.length} squad duels and ${d.supply.length} supply duels in ${((Date.now() - t0) / 1000).toFixed(1)} s`);
+      out.duels = d;
+    }
+    if (roundChecks.has('g4')) {
+      const t0 = Date.now();
+      const rows = [];
+      for (const map of maps) {
+        const [row] = await tournament(content, run, { bots: ['bot:balanced'], map, seeds: g4Seeds });
+        lines.push(...g4Lines(row!, maxRounds));
+        rows.push(row);
+      }
+      lines.push(`g4 in rounds: ${rows.length * g4Seeds} battles in ${((Date.now() - t0) / 1000).toFixed(1)} s on ${workers} worker${workers > 1 ? 's' : ''}`);
+      out.G4 = rows.length === 1 ? rows[0] : rows;
+    }
   } finally {
     await pool?.close();
   }

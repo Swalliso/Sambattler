@@ -2,6 +2,9 @@
 // Writes reports/balance/<timestamp>.{md,json} and prints the guardrail verdicts (SPEC §12.2, §15.3).
 // `--supply 60` re-runs the supply duels at army scale (G2 itself stays at its data value).
 // `tournament --commanders all` plays whole runs per commander instead of the bot tournament (SPEC §16 M5).
+// `--rounds` (R2a, temporary; §15.3, T116) plays `duel` and `tournament` on single battles in rounds: squad duels
+// as one round clash, supply duels with placed units, and the four bots against the scripted general by rounds.
+// Its guardrail verdicts come with R2a's S18 (T123); R2b removes the option.
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { nodeContent, ROOT } from './lib/content.ts';
@@ -9,6 +12,8 @@ import {
   commanderTournament, evaluateG1, evaluateG2, evaluateG3, evaluateG4, evaluateG5, evaluateG6, evaluateG7, matchup, spawnerIds, supplyDuel,
 } from './lib/balance.ts';
 import type { DuelOutcome, Verdict } from './lib/balance.ts';
+import { inProcessRounds } from './lib/pool.ts';
+import { duelLines, duels, rowLine, tournament } from './lib/rounds/balance.ts';
 import { fmtTicks, median } from './lib/run.ts';
 
 const args = process.argv.slice(2);
@@ -26,6 +31,7 @@ const commanderList = commandersArg < 0 ? null
 for (const id of commanderList ?? []) if (!content.commanders[id]) throw new Error(`--commanders: unknown commander "${id}"`);
 const supplyArg = args.indexOf('--supply');
 const armySupply = supplyArg >= 0 ? Number(args[supplyArg + 1]) : 0;
+const rounds = args.includes('--rounds');
 
 const md: string[] = [`# Balance report: ${mode}`, '', `Generated ${new Date().toISOString()}`, ''];
 const json: Record<string, unknown> = { mode };
@@ -46,7 +52,39 @@ function matrix(title: string, outcomes: DuelOutcome[], ids: string[], value: (o
   md.push('', 'Cells: A\'s wins / games (mean remaining-value ratio A:B).', '');
 }
 
-if (mode === 'duel') {
+if (rounds) {
+  // battles in rounds (§15.3, T116): played in process; `npm run experiment -- --rounds` plays them on the pool (T117)
+  const run = inProcessRounds(content);
+  const maxRounds = content.balance.rounds.maxRounds;
+  if (mode === 'duel') {
+    const d = await duels(content, run, armySupply ? { supply: armySupply } : {});
+    const ids = spawnerIds(content);
+    matrix('Squad duels in rounds (equal gold on one building, one round clash)', d.squad, ids, (o) => (o.valueA + 1) / (o.valueB + 1));
+    matrix(`Supply duels in rounds (${armySupply || content.targets.G2.supply} supply each, one round clash)`, d.supply,
+      ids.map((id) => content.buildings[id]!.spawn!.unit), (o) => (o.valueA + 0.01) / (o.valueB + 0.01));
+    const lines = duelLines(content, d);
+    md.push('## Readings', '', ...lines.map((l) => `- ${l}`), '', "The round G1 and G2 verdicts come with R2a's S18 (T123).", '');
+    for (const l of lines) console.log(l);
+    json.squad = d.squad;
+    json.supply = d.supply;
+    json.edges = d.edges;
+  } else if (mode === 'tournament' && !commanderList) {
+    const seeds = content.targets.G4.seeds;
+    const rows = await tournament(content, run, { seeds });
+    md.push(`## Bots vs the scripted general, battles in rounds (${seeds} seeds, Bogwater Hollow)`, '',
+      `| bot | win % | median rounds | reached round ${maxRounds} | clashes at the cap | median clash | lead changes | rejected |`, '|---|---|---|---|---|---|---|---|');
+    const pct = (n: number, d: number) => `${Math.round((100 * n) / Math.max(1, d))}%`;
+    for (const r of rows) {
+      md.push(`| ${r.player} | ${pct(r.wins, r.games)} | ${r.medianRounds} | ${pct(r.lastRound, r.games)} | ${pct(r.capped, r.clashes)} | ${((r.medianClashTicks ?? 0) / 20).toFixed(1)} s | ${r.leadChanges} in ${r.changedBattles} battles | ${r.rejected} |`);
+      console.log(rowLine(r, maxRounds));
+    }
+    md.push('');
+    json.vsGeneral = rows;
+  } else {
+    console.error("usage: npm run balance -- duel [--supply n] | tournament [--seeds n] --rounds (the round guardrails come with R2a's S18, T123; --commanders plays runs, R2b's)");
+    process.exit(2);
+  }
+} else if (mode === 'duel') {
   const g1 = evaluateG1(content);
   const ids = spawnerIds(content);
   matrix('Production duels (equal gold, 3 minutes)', g1.outcomes, ids, (o) => (o.valueA + 1) / (o.valueB + 1));
