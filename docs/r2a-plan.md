@@ -155,7 +155,7 @@ The task list's Sessions table, one PR each into `develop`:
 **Later:**
 - **S14b (T145):** the rough playtest, and any change to S15–S20.
 - **S18 (T125):** the battle-level bands for G4, G6, G8, G13 and G16 (#35), from T124's measurement.
-- **S21 (T137, T139):** the playtest gate, your tuning calls, and R2b's start.
+- **S21 (T137, T139):** the playtest gate, your tuning calls, and R2b's start. Answered 2026-11-03: the As built's "The playtest gate".
 - **R2b's S0:**
   - Puppet Bloom's v2 job, if S16's median is still below 1 (R2-Q7);
   - a bank reserve, if X8's readouts warrant one (#29).
@@ -253,6 +253,47 @@ None of these blocks S21's playtest.
 - **`power-demo` has no clash form yet** (§15.7): v1's other merge scenarios do (`merge-trio`, `knit-cancel`, `merge-under-fire`, `elder-ladder`).
 - **The round guardrails that miss** (T133) wait for the user's calls at S21 (T139) or earlier. Each is in `docs/balance-backlog.md`.
 - **R2-Q7 and #29 for R2b's S0:** Puppet Bloom's v2 job, since S16's median is 0 trios, and a bank reserve, since your colony is full from round 5 and you then bank a median of 320 gold a round.
+
+### The playtest gate (S21, T137, T144, T139)
+
+The user played on the dev site on 2026-11-03, on builds `9b15a8a` and `2563235`, which hold R2a's final data at 100 a supply: the default battle (Old Mother Mold), Twin Roots against the Lichen Baron, and `reveal=last` on two seeds. Their answers, in their words, are in [playtest-feedback.md](playtest-feedback.md#2026-11-03-r2as-playtest-gate-a-battle-in-rounds-the-user).
+
+**The gate passed** (§16 R2 step 10). Questions 1, 2, 3, 6 and 7:
+- 1, the opener as a plan: yes, with the full reveal (R2-Q1's A/B);
+- 2, placement: yes, and Bursters in the front rank "felt pretty good";
+- 3, plan, then fight: yes, except with `reveal=last`;
+- 6, bored or clever: not bored, though a full colony still leaves few ways to adapt late (#67);
+- 7, Hold: not missed.
+
+R4's Elders question (A162) read yes. #52's first reading on Twin Roots raised nothing: "twin roots also felt good".
+
+**Planning seconds per round** (X6), from the two reports the user saved, both `reveal=last`:
+
+| Battle | Result | Planning seconds, by round | Median | Active play |
+|---|---|---|---|---|
+| Seed 708952, against Mold | Won by Rout in round 5 | 28, 10, 13, 89, 20 | 20 s | 4.7 min |
+| Seed 802122 | Won by Rout in round 6 | 7, 5, 50, 5, 8, 4 | 6 s | 2.1 min |
+
+The default and Twin Roots reports weren't saved, so X6 has no planning time yet for the mode that stays the default. The user offered to rerun one, and it doesn't block the gate.
+
+**The calls** (T139; the user with the hub, 2026-11-03: "Yes, start both"):
+- the full reveal stays the default, and `reveal=last` goes to [docs/ideas/reveal-last-fielded.md](ideas/reveal-last-fielded.md) as a possible variant or difficulty setting;
+- Hold stays out;
+- the Burster moves to the front line of §7.3's formation rule. That's S21b's change, beside S21, with the Mortar's drawing, the placing highlight, a diagnosis of the Morel Warren's runners, and a fixed round cap measured for R2b's S0;
+- §16 R2 step 3 allows 20% of battles to reach round 9, matching G4's band (T125). It said 15%.
+
+S21 tuned no data, so no golden moved.
+
+**What R2b's S0 needs,** each with a block in [clarify.md](tasks/clarify.md) and a row in SPEC §18.2:
+- #67, what gold does once the colony is full: reopened, since its first guess no longer holds. The user's idea is upgrades bought with gold;
+- #68, the Heartcap cap and D28, on S21b's measurement of a fixed cap;
+- #69, the general's openings;
+- #70, the commander power, which can cancel Bursters;
+- #71, Twin Roots' economy lane.
+
+Still open after the gate, with no call made: T133's guardrail misses (G1, G2, G3, G7, G8's mono clause, and G16's Gill Archer and Mortar pairs), S15's Gill Archer tie, S17's Burster seat effect, and R2-Q7 and #29 (above).
+
+**R2b's start:** agreed by the user on 2026-11-03 ("Yes, once both merge"): R2b's S0 starts once S21 and S21b have merged into `develop`.
 
 ### The test inventory for R2b (T136)
 
