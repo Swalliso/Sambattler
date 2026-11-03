@@ -799,6 +799,8 @@ export const BotSchema = z.object({
   placement: z.object({ spawnerDepthWeight: z.number().optional() }).strict().optional(),
   /** Buys only what `weights` lists (the counter check's test bots). */
   fixedWeights: z.boolean().optional(),
+  /** In rounds, `answer` leans toward the answer to the general's planned army (SPEC §12.2, X7); fixed weights unless set. */
+  policy: z.literal('answer').optional(),
 }).strict();
 
 const ScenarioUnits = z.object({

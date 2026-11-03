@@ -4,7 +4,8 @@
 // their weights list (R2-Q4, A045), which is what `fixedWeights` asks of the counter check's test bots, so
 // rounds needn't read it. Their data limits stay, read by round through `afterRound` (R2-Q6, A044). v1's
 // `placement` knob means nothing under plots and is ignored: `bot:rush` and `bot:turtle` are weight
-// profiles. An adaptive general, with `flags.adaptiveGeneral` on, also gets its counter cycle (§7.4, §7.6). It
+// profiles. An adaptive general, with `flags.adaptiveGeneral` on, also gets its counter cycle (§7.4, §7.6), and
+// a bot with `policy: "answer"` leans toward the answer to the general's army (§12.2, X7). It
 // stands beside v1's `src/sim/ai/profiles.ts` until R2b moves it there.
 import type { Content } from '../../../data/registry.ts';
 import type { GeneralDef } from '../../../data/schema.ts';
@@ -21,7 +22,7 @@ export function resolveProfile(content: Content, ctl: Controller, side: SideConf
   if (ctl.kind === 'human') throw new Error('a human has no AI profile');
   let opener: string[], weights: Record<string, number>, mergePolicy: MergePolicy;
   let limits: Limits = {};
-  let aggressive = false, adaptive = false, boss = false;
+  let aggressive = false, adaptive = false, boss = false, answer = false;
   const mono = ctl.kind === 'bot' ? /^mono:(.+)$/.exec(ctl.id) : null;
   if (ctl.kind === 'general') {
     const g = content.generals[ctl.id];
@@ -46,6 +47,7 @@ export function resolveProfile(content: Content, ctl: Controller, side: SideConf
     ({ opener, weights, mergePolicy } = bot);
     limits = bot.limits ?? {};
     adaptive = !!bot.adaptive;
+    answer = bot.policy === 'answer';
   }
   const kit = new Set(side.kit.map((c) => c.building));
   // by building id, so the weighted pick's order never rests on the data's key order
@@ -62,6 +64,7 @@ export function resolveProfile(content: Content, ctl: Controller, side: SideConf
     weights: list,
     mergePolicy,
     ...(aggressive ? { laneStyle: 'aggressive' as const } : {}),
+    ...(answer ? { policy: 'answer' as const } : {}),
     plans: [],
     ...(adaptive && flags?.adaptiveGeneral ? { counter: newCounterState(content.balance.rounds.ai.counter, boss, side.intel) } : {}),
   };

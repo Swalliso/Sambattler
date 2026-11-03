@@ -359,6 +359,53 @@ describe('bots plan after the general (§7.1, §14.6 step 7, plan Call 14)', () 
   });
 });
 
+describe('the answer bot (§12.2, X7, §18.2 #34, A198)', () => {
+  /** Round 2's planning with the general's colony standing and `gold` for the player, who plans as `controller` once `before` has run. */
+  const answerTurn = (controller: string, enemy: Colony, o: { gold?: number; kit?: string[]; seed?: number; before?: (s: BattleState) => void } = {}): BattleState => {
+    const player = { gold: o.gold ?? 0, ...(o.kit ? { kit: o.kit } : {}) };
+    const s = createFromScenario(content, scenario({ player, enemy: { colony: enemy } }, { round: 2 }), { seed: o.seed ?? 3 });
+    o.before?.(s);
+    return withAi(s, 'player', controller);
+  };
+  const burrows: Colony = [1, 2, 3].map((file) => ({ building: 'sporelingBurrow', lane: 0, rank: 0, file }));
+  const halls: Colony = [1, 2, 3].map((file) => ({ building: 'capguardHall', lane: 0, rank: 0, file }));
+  const weights = (s: BattleState) => targetWeights(planningView(s, 'player'));
+
+  it("weighs bot:balanced's cards, × 3 on the one whose unit's hits best answer the general's planned squads: Capguard Hall against mono Sporelings", () => {
+    const answer = weights(answerTurn('bot:answer', burrows, { gold: 500 })), balanced = weights(answerTurn('bot:balanced', burrows, { gold: 500 }));
+    expect(answer.capguardHall).toBe(3 * balanced.capguardHall!);
+    expect({ ...answer, capguardHall: 0 }).toEqual({ ...balanced, capguardHall: 0 });
+  });
+
+  it('plants a Capguard Hall against them where bot:balanced, on the same seed, plants none', () => {
+    const plant = (controller: string) => {
+      const s = answerTurn(controller, burrows, { gold: 600, seed: 3 });
+      planTurn(s, 'player');
+      return names(s, 'player');
+    };
+    expect(plant('bot:balanced')).not.toContain('capguardHall');
+    expect(plant('bot:answer')).toContain('capguardHall');
+  });
+
+  it("leans to the next answer when its kit has no Capguard Hall: the Scythecap Grove, which the Sporelings' hits are weaker on than on Sporelings", () => {
+    const kit = ['sporelingBurrow', 'gillNest', 'scythecapGrove', 'truffleCellar'];
+    const answer = weights(answerTurn('bot:answer', burrows, { gold: 500, kit })), balanced = weights(answerTurn('bot:balanced', burrows, { gold: 500, kit }));
+    expect(Object.keys(answer)).toEqual(['gillNest', 'scythecapGrove', 'sporelingBurrow', 'truffleCellar']);
+    expect(answer).toEqual({ ...balanced, scythecapGrove: 3 * balanced.scythecapGrove! });
+  });
+
+  it("follows the general's colony this round, not what it fielded last round", () => {
+    const fieldedLast = (army: FieldedSquad[]) => (s: BattleState) => { s.rounds.at(-1)!.fielded.enemy = army; };
+    const lean = (enemy: Colony, last: FieldedSquad[]) => {
+      const answer = weights(answerTurn('bot:answer', enemy, { gold: 500, before: fieldedLast(last) }));
+      const balanced = weights(answerTurn('bot:balanced', enemy, { gold: 500, before: fieldedLast(last) }));
+      return Object.keys(answer).filter((id) => answer[id] !== balanced[id]);
+    };
+    expect(lean(burrows, capguards)).toEqual(['capguardHall']);
+    expect(lean(halls, sporelings)).toEqual(['gillNest']);
+  });
+});
+
 // ---- the counter cycle (§7.4, §7.6, T098) ----
 
 const sporelings = [fielded('sporeling', 24)], capguards = [fielded('capguard', 9)];

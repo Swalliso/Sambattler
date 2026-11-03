@@ -438,6 +438,8 @@ export interface AiState {
   mergePolicy: MergePolicy;
   /** The Blightwright's: spawners go to the lane you fielded least in (§7.3). */
   laneStyle?: 'aggressive';
+  /** A bot that leans toward the answer to the general's planned army (§12.2, X7, `ai/answer.ts`). */
+  policy?: 'answer';
   /** A target out of reach, with the round it was picked: carried into the next planning phase once (§7.2). */
   target?: { building: string; round: number };
   /** One entry a round, so the Intent panel survives later commands and a fast-forward to a round. */

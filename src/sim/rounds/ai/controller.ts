@@ -12,6 +12,7 @@ import { plant, sell, sellValue, toggleMerge } from '../planning.ts';
 import { other } from '../state.ts';
 import type { AiPlan, AiState, AiWeight, BattleState, BuildingState, Command, CommandBody, Side } from '../state.ts';
 import { roundOutcome } from '../systems/victory.ts';
+import { ANSWER_LEAN, bestAnswer } from './answer.ts';
 import { counterKindsOf, doctrineMult, lastAnswer, runCycle } from './counter.ts';
 import { choosePlot, freePlots } from './formationScore.ts';
 import { planningView } from './view.ts';
@@ -119,12 +120,17 @@ function setToggles(state: BattleState, side: Side): void {
 /**
  * The weights the side would pick a target by now (§7.2), for each card its profile lists: its doctrine
  * weight × the situational multipliers (economy × 1.5 before round 3 and × 0.3 from round 7, towers × 2
- * after a round it lost) × the counter's and the intel's (§7.4, §7.6) × X8's lean. A card it may not buy now weighs 0.
+ * after a round it lost) × the counter's and the intel's (§7.4, §7.6) × X8's lean, and for the answer bot ×
+ * `ANSWER_LEAN` on the best answer to the general's army (§12.2). A card it may not buy now weighs 0.
  */
 export function targetWeights(view: PlanningView): Record<string, number> {
   const out: Record<string, number> = {};
   const answer = leanKind(view);
-  for (const w of view.ai?.weights ?? []) out[w.building] = canBuy(view, w.building) ? weightOf(view, w, answer) : 0;
+  const buyable = (view.ai?.weights ?? []).filter((w) => canBuy(view, w.building));
+  const best = view.ai?.policy === 'answer' ? bestAnswer(view, buyable) : null;
+  for (const w of view.ai?.weights ?? []) {
+    out[w.building] = buyable.includes(w) ? weightOf(view, w, answer) * (w.building === best ? ANSWER_LEAN : 1) : 0;
+  }
   return out;
 }
 

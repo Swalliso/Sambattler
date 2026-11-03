@@ -16,6 +16,15 @@
     "mergePolicy": "off"
   },
   {
+    "id": "answer",
+    "description": "bot:balanced's weights, leaning ×3 toward the card that best answers the general's planned army (rounds only, X7).",
+    "opener": ["sporelingBurrow", "truffleCellar"],
+    "weights": { "sporelingBurrow": 3, "capguardHall": 3, "gillNest": 2, "truffleCellar": 2, "rootbreakerDen": 1, "puffballMortar": 1, "scythecapGrove": 2, "veilstalkerHollow": 1, "bursterPod": 1, "rhizomorphTunnel": 1 },
+    "limits": { "truffleCellar": { "maxOwned": 3 }, "rootbreakerDen": { "afterSeconds": 180, "afterRound": 4 } },
+    "mergePolicy": "on",
+    "policy": "answer"
+  },
+  {
     "id": "slayer",
     "description": "bot:balanced with extra Veilstalker Hollows for about a 25% Slayer spawn share (G7).",
     "opener": ["sporelingBurrow", "truffleCellar"],
