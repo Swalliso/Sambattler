@@ -11,7 +11,7 @@ import type { MusterUnit } from '../formation.ts';
 import { planTurn } from './ai/controller.ts';
 import { squadStats } from './compile.ts';
 import { addUnit } from './create.ts';
-import { collectRoundEffects, fireTriggers } from './effects.ts';
+import { collectRoundEffects, fireTriggers, roundModifiers } from './effects.ts';
 import { formationOf } from './formation.ts';
 import type { MusterTrio, SquadPlan } from './formation.ts';
 import { closeRound, emptyRoundStats } from './stats.ts';
@@ -64,7 +64,7 @@ export function startClash(state: BattleState): void {
   state.phase = 'clash';
   const clash = (state.clash = newClash(state));
   const plans = { player: formationOf(state, 'player'), enemy: formationOf(state, 'enemy') };
-  const fx = collectRoundEffects(state.config.modifiers);
+  const fx = collectRoundEffects(roundModifiers(state.library, state.config));
   for (const s of SIDES) for (const p of plans[s]) state.squads.push(squadFor(state, s, p, fx[s].mods));
   state.squads.sort((a, b) => a.building - b.building);
   // each arrived unit as its squad's j, which the muster's trios name (plan Call 5)

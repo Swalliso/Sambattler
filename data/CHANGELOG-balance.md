@@ -8,6 +8,21 @@ replaces. None of it is open work, including headings that say "Open:". From mil
 entries measure or tune v2's round battle (SPEC §11, §12). "The backlog" in the entries below means
 v1's, now [archived](../docs/archive/v1/balance-backlog.md).
 
+## R2b-S1 T019: the events in rounds (2026-11-03)
+
+**Rules the user approved** at R2b's S0 (§8.7's first guesses, "Take them all", 2026-11-03, `docs/r2b-plan.md`). A
+run has lives and each battle its own Heartcap since R2b's S1, so there's no run-long Heartcap to repair or shrink:
+- **Fallen Oak**'s `maxHpPct` −0.15 now lowers every later battle's Heartcap max (the run's `heartcapMaxPct`), not the
+  run's Heartcap. Its text says so.
+- **Quiet Clearing**'s Rest is `nextBattle.heartcapMaxHpPct` 0.15, +15% max HP in the next battle, in place of v1's
+  `repairPct` 0.15. Forage keeps v1's random upgrade level until R3.
+- **Mold Bloom** is `nextBattle.sporestormShiftRounds` −1 with +150 gold: the storm starts at round 4, not 1:00 early.
+- **The schema:** `gainLife` (the Grove's regained life, §8.7) replaces `repairPct`, and `nextBattle` takes
+  `sporestormShiftRounds` and `heartcapMaxHpPct` in place of `sporestormShiftSeconds`. A v1 save's pending Rest and
+  storm shift migrate to them (`src/run/migrate.ts`, #32).
+- `routRepair`, `decisionLossDamage` and `groveRepair` stay in `data/balance.json`, read by nothing, until R2b's T129.
+- **Goldens:** none moved; the run golden is re-recorded on rounds in T027.
+
 ## R2a-S21b T159: the Burster in the front line (2026-11-03)
 
 **A rule change, approved by the user** ("Yes, start both", 2026-11-03, on the hub's recommendation after G16's

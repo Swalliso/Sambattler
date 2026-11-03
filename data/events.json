@@ -2,7 +2,7 @@
   { "id": "fallen-oak", "title": "Fallen Oak",
     "text": "An old oak lies split across the path. Something glints in the heartwood, but prying it loose will cost the colony.",
     "choices": [
-      { "label": "Pry it loose", "text": "Take a random rare relic. Your Heartcap loses 15% of its max HP.", "outcome": [{ "gainRelic": { "rarity": "rare" } }, { "maxHpPct": -0.15 }] },
+      { "label": "Pry it loose", "text": "Take a random rare relic. Your Heartcap starts every later battle 15% lower.", "outcome": [{ "gainRelic": { "rarity": "rare" } }, { "maxHpPct": -0.15 }] },
       { "label": "Leave it", "text": "Nothing happens.", "outcome": [] }
     ] },
   { "id": "spore-merchant", "title": "Spore Merchant",
@@ -14,13 +14,13 @@
   { "id": "quiet-clearing", "title": "Quiet Clearing",
     "text": "Soft moss and still air. The colony could rest here, or forage the undergrowth.",
     "choices": [
-      { "label": "Rest", "text": "Repair your Heartcap by 15% of max HP.", "outcome": [{ "repairPct": 0.15 }] },
+      { "label": "Rest", "text": "Next battle: your Heartcap has +15% max HP.", "outcome": [{ "nextBattle": { "heartcapMaxHpPct": 0.15 } }] },
       { "label": "Forage", "text": "+1 level on a random upgrade track.", "outcome": [{ "upgrade": { "count": 1, "pick": "random" } }] }
     ] },
   { "id": "mold-bloom", "title": "Mold Bloom",
     "text": "The air thickens with spores. Feed the bloom and the next battle turns stormy early, but rich.",
     "choices": [
-      { "label": "Let it bloom", "text": "Next battle: the Sporestorm starts 1:00 earlier (both sides) and you get +150 starting gold.", "outcome": [{ "nextBattle": { "sporestormShiftSeconds": -60, "startingGold": 150 } }] },
+      { "label": "Let it bloom", "text": "Next battle: the Sporestorm starts at round 4 (both sides) and you get +150 starting gold.", "outcome": [{ "nextBattle": { "sporestormShiftRounds": -1, "startingGold": 150 } }] },
       { "label": "Decline", "text": "Nothing happens.", "outcome": [] }
     ] },
   { "id": "burn-the-notes", "title": "Burn the Notes",

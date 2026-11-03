@@ -62,13 +62,25 @@ describe("rounds' library holds ids and numbers only (R2-Q8, A152)", () => {
     expect(buildRoundLibrary(reworded, c)).toEqual(buildRoundLibrary(content, c));
   });
 
-  it("refuses relics and upgrade levels, which R2a's single battles have none of (plan Call 19)", () => {
-    const relic = config();
-    relic.player.relics = [content.relicOrder[0]!];
-    expect(() => buildRoundLibrary(content, relic)).toThrow(/relics/);
-    const upgrade = config();
-    upgrade.enemy.upgrades = { gillNest: 1 };
-    expect(() => buildRoundLibrary(content, upgrade)).toThrow(/upgrade/);
+  it("compiles a run's relics and upgrade levels with the battle's modifiers: kept stats apply, retired ones are listed (R2b, plan Call 19)", () => {
+    const c = config();
+    c.player.relics = ['hardySpores', 'deepCellars'];
+    c.player.upgrades = { sporelingBurrow: 3 };
+    c.enemy.upgrades = { gillNest: 1 };
+    const lib = buildRoundLibrary(content, c);
+    expect(Object.keys(lib.relics!)).toEqual(['deepCellars', 'hardySpores']);
+    expect(Object.keys(lib.upgrades!)).toEqual(['gillNest', 'sporelingBurrow']);
+    expect(JSON.stringify(lib)).not.toContain(content.relics.hardySpores!.text); // ids and numbers only (R2-Q8)
+    const plain = compile(), run = compileRoundSides(lib, c);
+    const hp = (s: Side, unit: string, sides = run) => sides[s].units[unit]!.tiers[0].hp;
+    expect(hp('player', 'sporeling') / hp('player', 'sporeling', plain)).toBeCloseTo(1.08 * 1.15, 1);
+    expect(hp('player', 'capguard') / hp('player', 'capguard', plain)).toBeCloseTo(1.08, 1);
+    expect(run.player.interestCap).toBe(plain.player.interestCap + 10);
+    expect(run.player.ignored).toEqual([{ source: 'upgrade:sporelingBurrow', stat: 'building.spawnCount' }]);
+    expect(run.enemy.units.gillArcher!.tiers[0].range).toBeGreaterThan(plain.enemy.units.gillArcher!.tiers[0].range); // its level 1: range +0.75
+    // a single battle holds neither, so its library and hash are as before
+    expect(buildRoundLibrary(content, config())).not.toHaveProperty('relics');
+    expect(() => buildRoundLibrary(content, { ...c, player: { ...c.player, relics: ['nope'] } })).toThrow(/unknown relic/);
   });
 });
 

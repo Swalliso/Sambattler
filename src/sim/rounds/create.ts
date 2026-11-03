@@ -8,7 +8,7 @@ import { seedStream } from '../rng.ts';
 import { resolveProfile } from './ai/profiles.ts';
 import { basePlots, colonyPlots } from './colony.ts';
 import { buildRoundLibrary, compileRoundRules, compileRoundSides } from './compile.ts';
-import { collectRoundEffects, resolveStat } from './effects.ts';
+import { collectRoundEffects, resolveStat, roundModifiers } from './effects.ts';
 import { kitCards, kitOf } from './kit.ts';
 import { newClash, openRound } from './round.ts';
 import { emptyRoundStats, emptyStats } from './stats.ts';
@@ -84,7 +84,7 @@ export function setCommander(content: Content, sc: SideConfig, commanderId: stri
 }
 
 /** Sets the battle's modifiers to both sides' passives: the generals' (§7.7), then the commanders' (§11.10), as v1 orders them. */
-function setPassives(content: Content, config: BattleConfig): void {
+export function setPassives(content: Content, config: BattleConfig): void {
   const out: BattleModifier[] = [];
   for (const s of SIDES) {
     const ctl = config[s].controller;
@@ -118,7 +118,7 @@ function newBattle(content: Content, config: BattleConfig): BattleState {
   const library = buildRoundLibrary(content, config);
   const rules = compileRoundRules(library, config);
   const compiled = compileRoundSides(library, config);
-  const fx = collectRoundEffects(config.modifiers);
+  const fx = collectRoundEffects(roundModifiers(library, config));
   const sideState = (s: Side): SideState => {
     const sc = config[s];
     // a modifier on side.heartcapMaxHp or side.startingGold reaches the battle's creation (§4.5, §6.1)

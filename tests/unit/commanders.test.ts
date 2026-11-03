@@ -1,10 +1,13 @@
 // Commanders in runs (SPEC §8.1, §8.4, §11.10, §16 Milestone 5): the three commanders' pools and
 // starter kits, ban filtering and its rules, core-pool weighting, and the commander in run battles.
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { banProblem, battleConfig, botCoreWeights, createRun, loadRun, MemoryStorage, RUN_KEY, runPool, simulateRun } from '../../src/run/index.ts';
 import type { RouteNode } from '../../src/run/index.ts';
-import { buildLibrary, createBattle, draftPool, generateOffer, parseCard, seedStream } from '../../src/sim/index.ts';
+import { buildLibrary, draftPool, generateOffer, parseCard, seedStream } from '../../src/sim/index.ts';
 import { candidates } from '../../src/sim/draft.ts';
+import { createBattle as createRoundBattle } from '../../src/sim/rounds/index.ts';
 import type { DraftPool, Loadout } from '../../src/sim/index.ts';
 import { content } from '../helpers.ts';
 
@@ -37,8 +40,10 @@ describe('the three commanders (SPEC §11.10)', () => {
       expect(config.player.commander).toBe(id);
       expect(config.player.power).toBe(content.commanders[id]!.power.id);
       expect(config.modifiers?.find((m) => m.source === `commander:${id}`)?.side).toBe('player');
-      const s = createBattle(content, config);
-      expect(s.sides.player.powerCooldown).toBe(content.commanders[id]!.power.firstReady * 20);
+      // a battle in rounds: the power is ready in every clash (§6.6)
+      const s = createRoundBattle(content, config);
+      expect(s.sides.player.powerUsed).toBe(false);
+      expect(s.library.powers?.[content.commanders[id]!.power.id]).toBeDefined();
     }
   });
 });
@@ -73,9 +78,11 @@ describe('bans (SPEC §8.1, §8.4)', () => {
     expect(run.bans).toEqual(bans);
     expect(runPool(content, run).shared).toEqual(pool.shared);
     expect(battleConfig(content, run, { kind: 'battle', map: 'bogwater-hollow', general: 'scripted' }).player.draft!.shared).toEqual(pool.shared);
+    // a save from before bans, which is a v1 record, loads with none
     const storage = new MemoryStorage();
-    storage.set(RUN_KEY, JSON.stringify({ ...run, bans: undefined }));
-    expect(loadRun(storage)!.bans).toEqual([]); // a save from before bans loads with none
+    const v1 = JSON.parse(readFileSync(join(import.meta.dirname, '..', 'fixtures', 'saves', 'v1', 'run-route.json'), 'utf8')) as Record<string, unknown>;
+    storage.set(RUN_KEY, JSON.stringify({ ...v1, bans: undefined }));
+    expect(loadRun(storage, content)).toMatchObject({ kind: 'run', run: { v: 2, bans: [] } });
   });
 
   it('a whole autoplayed run never drafts a banned building', () => {

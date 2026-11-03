@@ -9,7 +9,8 @@ import {
   runHeadless, snapshot, step, topKind, zeroProfile,
 } from '../../src/sim/index.ts';
 import type { BattleConfig, BattleState, CounterState, IntelProfile, SimEvent } from '../../src/sim/index.ts';
-import { averageProfile, battleProfile, createRun, intelDots, simulateRun, updateIntel } from '../../src/run/index.ts';
+import { averageProfile, battleConfig, battleProfile, createRun, intelDots, simulateRun, updateIntel } from '../../src/run/index.ts';
+import { createBattle as createRoundBattle, makeRoundConfig, topKinds as roundTopKinds } from '../../src/sim/rounds/index.ts';
 import { building, content, liveState, setBorders, steps } from '../helpers.ts';
 
 const ADAPTIVE = { merging: true, adaptiveGeneral: true };
@@ -227,14 +228,17 @@ describe('the counter cycle (SPEC §7.4)', () => {
 describe('intel (SPEC §7.6)', () => {
   const p = (swarm: number, line: number, armor: number, elite: number): IntelProfile => ({ swarm, line, armor, elite });
 
-  it('the update rule: the first battle sets it, then ½ intel + ½ profile', () => {
-    const first = updateIntel(undefined, p(1, 0, 0, 0), 0.5);
-    expect(first).toEqual(p(1, 0, 0, 0));
-    expect(updateIntel(first, p(0, 1, 0, 0.4), 0.5)).toEqual(p(0.5, 0.5, 0, 0.2));
-    const avg = averageProfile([p(1, 0, 0, 0), p(0, 1, 0, 0), p(0, 0, 1, 0.3)])!;
-    for (const [k, v] of Object.entries(p(1 / 3, 1 / 3, 1 / 3, 0.1))) expect(avg[k as keyof IntelProfile]).toBeCloseTo(v, 12);
+  it('the update rule: the first battle sets it, then ½ intel + ½ profile, over the five kinds in rounds', () => {
+    // the run's intel has v2's five kinds, Anti-Ranged among them (§7.4); a v1 profile's missing kind reads 0
+    const q = (swarm: number, line: number, armor: number, elite: number, ranged = 0) => ({ swarm, line, armor, elite, ranged });
+    const first = updateIntel(undefined, q(1, 0, 0, 0), 0.5);
+    expect(first).toEqual(q(1, 0, 0, 0));
+    expect(updateIntel(first, q(0, 1, 0, 0.4, 0.6), 0.5)).toEqual(q(0.5, 0.5, 0, 0.2, 0.3));
+    expect(updateIntel(p(1, 0, 0, 0), q(0, 0, 0, 0, 1), 0.5)).toEqual(q(0.5, 0, 0, 0, 0.5));
+    const avg = averageProfile([q(1, 0, 0, 0), q(0, 1, 0, 0), q(0, 0, 1, 0.3, 0.6)])!;
+    for (const [k, v] of Object.entries(q(1 / 3, 1 / 3, 1 / 3, 0.1, 0.2))) expect(avg[k as keyof typeof avg]).toBeCloseTo(v, 12);
     expect(averageProfile([])).toBeNull();
-    expect(intelDots(p(1, 0.5, 0.1, 1.3))).toEqual(p(4, 2, 0, 4));
+    expect(intelDots(q(1, 0.5, 0.1, 1.3, 0.25))).toEqual(q(4, 2, 0, 4, 1));
   });
 
   it('opening doctrine: intel\'s top kind at ×2 / ×0.8, until the first counter activates', () => {
@@ -267,21 +271,20 @@ describe('intel (SPEC §7.6)', () => {
     expect(vsGeneral('mother-mold', (c) => { c.enemy.intel = zeroProfile(); }).sides.enemy.ai!.opening).toBeUndefined();
   });
 
-  it('across a run: a mono-Sporeling player is read as Swarm and the next general opens against it', () => {
-    const r = simulateRun(content, 3, { route: 'battles', draft: 'greedy', player: 'bot:mono:sporelingBurrow' }, { maxBattles: 1 });
+  it('across a run in rounds: a mono-Capguard player is read as Line and the next general opens against it', () => {
+    // a mono-Sporeling army merges into Elders, which rounds read as Elite (R2a's reading, §7.4)
+    const r = simulateRun(content, 3, { route: 'battles', draft: 'greedy', player: 'bot:mono:capguardHall' }, { maxBattles: 1 });
     const b1 = r.battles[0]!;
     expect(b1.profile).toBeDefined();
-    expect(topKind(b1.profile!)).toBe('swarm');
+    expect(roundTopKinds(b1.profile!, 1)).toEqual(['line']);
     expect(r.run.intel).toEqual(b1.profile);
     expect(r.run.profiles).toEqual([b1.profile]);
-    // the profile is the mean of the readable samples at 2:00, 5:00 and the end
-    expect(b1.counters!.length).toBeGreaterThan(0);
+    expect(battleConfig(content, r.run, r.run.route[1]![0]!).enemy.intel).toEqual(b1.profile);
   });
 
-  it('battleProfile is null when the enemy did not adapt', () => {
-    const s = createBattle(content, makeConfig(content, { seed: 1, player: 'bot:balanced', enemy: 'general:scripted' }));
-    queueCommand(s, { tick: 0, side: 'player', type: 'begin' });
-    runHeadless(s, { until: 3000 });
+  it("battleProfile is null for a battle in rounds that fielded nothing, and a new run has no intel", () => {
+    const s = createRoundBattle(content, makeRoundConfig(content, { seed: 1, player: 'bot:balanced', enemy: 'general:scripted' }));
+    expect(s.rounds).toEqual([]);
     expect(battleProfile(s)).toBeNull();
     expect(createRun(content, { seed: 1 }).intel).toBeUndefined();
   });

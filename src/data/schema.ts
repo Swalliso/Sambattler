@@ -267,6 +267,11 @@ export const BalanceSchema = z.object({
     battles: z.array(z.object({ player: EffectBundleSchema.optional(), enemy: EffectBundleSchema.optional() }).strict()).optional(),
   }).strict().optional(),
   /**
+   * "Lives left count at the boss" (§8.5, §18.2 #16, A199), absent by default: in the boss battle your
+   * Heartcap's max gains `heartcapPerLife` for each life the run has left. A knob for R2b's playtest (`bosslives`).
+   */
+  livesAtBoss: z.object({ heartcapPerLife: z.number().int().positive() }).strict().optional(),
+  /**
    * Heartcap breach prototype (step B), absent by default: triggers both sides get in every battle,
    * as if from a relic, such as `heartcapBreach` triggers for a breach and a last stand.
    */
@@ -898,13 +903,21 @@ export const RelicSchema = z.object({
   requires: z.enum(['powers']).optional(),
 }).strict();
 
-/** Run-level outcomes of events and Grove choices (SPEC §8.7). */
+/**
+ * Run-level outcomes of events and Grove choices (SPEC §8.7). Since R2 there's no run-long Heartcap to repair:
+ * `gainLife` regains a life, `maxHpPct` changes every later battle's Heartcap max, and `nextBattle` shapes one
+ * battle, its storm shifted in rounds.
+ */
 export const RunEffectSchema = z.union([
-  z.object({ repairPct: Pos.max(1) }).strict(),
+  z.object({ gainLife: z.number().int().positive() }).strict(),
   z.object({ maxHpPct: z.number().min(-0.9).max(1) }).strict(),
   z.object({ gainRelic: z.object({ rarity: Rarity.optional(), count: z.number().int().positive().optional() }).strict() }).strict(),
   z.object({ gainAmber: z.number().int().positive() }).strict(),
-  z.object({ nextBattle: z.object({ startingGold: z.number().int().optional(), sporestormShiftSeconds: z.number().optional() }).strict() }).strict(),
+  z.object({
+    nextBattle: z.object({
+      startingGold: z.number().int().optional(), sporestormShiftRounds: z.number().int().optional(), heartcapMaxHpPct: z.number().min(-0.9).max(1).optional(),
+    }).strict(),
+  }).strict(),
   z.object({ halveIntel: z.literal(true) }).strict(),
   z.object({ upgrade: z.object({ count: z.number().int().positive(), pick: z.enum(['choose', 'random']), ownedOnly: z.boolean().optional() }).strict() }).strict(),
   z.object({ removeBlueprint: z.literal('choose') }).strict(),
