@@ -1,0 +1,62 @@
+// The callout lane of a battle in rounds (SPEC §10.2): at most 3 banners at once, each for 2.5 s (tips 6 s), in
+// priority order: a counter moment > a lane won, lost or drawn > a refused key > tips > an Elder, on either
+// side > other news. A Bloomed merge gets none, since squads knit every round. Pinned callouts come first and
+// stay until they no longer apply: the planning hint, the empty-lane warning, "Paused" and the round's result
+// banner through the aftermath (A071). A callout's text may hold keycaps. It stands beside v1's
+// `src/ui/callouts.ts`, whose lane it copies with rounds' kinds.
+import { h } from '../h.ts';
+
+export type RoundCalloutKind = 'counter' | 'lane' | 'refused' | 'tip' | 'elder' | 'info';
+const PRIORITY: Record<RoundCalloutKind, number> = { counter: 0, lane: 1, refused: 2, tip: 3, elder: 4, info: 5 };
+const LIFE_MS = 2500;
+const TIP_MS = 6000;
+const MAX = 3;
+
+interface Item { kind: RoundCalloutKind; text: string; t0: number; life: number; el: HTMLElement }
+
+export class RoundCallouts {
+  readonly el = h('div', { class: 'callouts', id: 'callouts', 'aria-live': 'polite' });
+  private items: Item[] = [];
+  private pinned = new Map<string, HTMLElement>();
+
+  /** `content` is plain text, or text and keycaps; `life` overrides the kind's time on screen. */
+  push(kind: RoundCalloutKind, content: string | (string | Node)[], tone: 'good' | 'bad' | '', now: number, life?: number): void {
+    const parts = typeof content === 'string' ? [content] : content;
+    const text = parts.map((p) => (typeof p === 'string' ? p : p.textContent ?? '')).join('');
+    // an identical live callout restarts instead of stacking a duplicate
+    const dup = this.items.find((i) => i.text === text);
+    if (dup) { dup.t0 = now; return; }
+    const el = h('div', { class: `callout ${tone} ${kind}`.trim() }, ...parts);
+    this.items.push({ kind, text, t0: now, life: life ?? (kind === 'tip' ? TIP_MS : LIFE_MS), el });
+    this.render();
+  }
+
+  /** Shows `el` (a `.callout`) until unpin(key); pinning the same key again is a no-op. */
+  pin(key: string, el: HTMLElement): void {
+    if (this.pinned.get(key) === el) return;
+    this.pinned.set(key, el);
+    this.render();
+  }
+
+  unpin(key: string): void {
+    if (this.pinned.delete(key)) this.render();
+  }
+
+  update(now: number): void {
+    const before = this.items.length;
+    this.items = this.items.filter((i) => now - i.t0 < i.life);
+    if (this.items.length !== before) this.render();
+  }
+
+  /**
+   * The pinned callouts, then the timed ones by priority. A callout pops in once: re-inserting it would replay
+   * its animation, so a settled callout keeps still when the lane reorders.
+   */
+  private render(): void {
+    const timed = [...this.items].sort((a, b) => PRIORITY[a.kind] - PRIORITY[b.kind] || b.t0 - a.t0).map((i) => i.el);
+    const shown = [...this.pinned.values(), ...timed].slice(0, MAX);
+    if (shown.length === this.el.children.length && shown.every((el, i) => this.el.children[i] === el)) return;
+    for (const el of shown) if (!el.isConnected && !el.classList.contains('settled')) el.addEventListener('animationend', () => el.classList.add('settled'), { once: true });
+    this.el.replaceChildren(...shown);
+  }
+}

@@ -659,24 +659,24 @@ S1 to S4: the data, the colony, the round state machine and the planning command
   - with an empty colony against the scripted general, Begin warns and reads "Begin anyway", a second press starts the clash, and planting clears the warning;
   - the result banner stays pinned through the aftermath;
   - the report's round chart has one column per round equal to `rounds[].damage`, with lane half-pips on Twin Roots; its gold rows add up; the outcome text reads right for a Rout in round 6 and a Decision after round 9.
-- [ ] T093 [US3] Build the tray in `src/ui/rounds/hud/tray.ts` (new) (§10.2, §4.4)
+- [x] T093 [US3] Build the tray in `src/ui/rounds/hud/tray.ts` (new) (§10.2, §4.4)
   - The price is `priceOf`. An army card shows its squad (the unit and "×N"), an economy card what it earns a round. Each card carries `data-building="<id>"` for tests and captures.
   - A card you can't afford is unlit with "need N". In a clash the tray takes no clicks, but its tooltips open.
   - The tooltip gives the squad and unit stats, strong vs, weak vs and armor, merge perks, and an economy card's rounds to pay for itself. There are no copies to show (D45).
   - Mount it in `src/app/rounds/battleView.ts`'s tray mount; T094 fills the inspect mount the same way.
-- [ ] T094 [US3] Build inspect in `src/ui/rounds/inspect.ts` (new) (§10.2, §10.4) (A064)
+- [x] T094 [US3] Build inspect in `src/ui/rounds/inspect.ts` (new) (§10.2, §10.4) (A064)
   - A building shows its squad and merge preview in words, its plot (rank, file, loam), its squad's damage and survivors in the current or last clash, the gold it produced, the merge toggle and its sell value. The general's buildings show the same without buttons.
   - A unit shows its tier, HP, armor and damage type with hints, its DPS over 5 s and its kills.
-- [ ] T095 [US3] Build the planning and clash chrome in `src/app/rounds/battleView.ts` (T077's), `src/app/rounds/phases/planning.ts`, `src/app/rounds/phases/clash.ts` and `src/ui/rounds/callouts.ts` (new) (§10.2, §10.3) (A071)
+- [x] T095 [US3] Build the planning and clash chrome in `src/app/rounds/battleView.ts` (T077's), `src/app/rounds/phases/planning.ts`, `src/app/rounds/phases/clash.ts` and `src/ui/rounds/callouts.ts` (new) (§10.2, §10.3) (A071)
   - Planning: Begin is the one primary button, with a Space keycap. The planning hint is pinned: the round, your gold and "plan, then press Begin" ("place your opener" in round 1; in round 9, the last round and who leads on the Decision, by `decision.by`). The empty-lane warning reads "Begin anyway".
   - Clash: the speed control replaces Begin and the tray stops taking clicks. The muster's knits glow and the clash clock runs on the round chip. Twin Roots lane-end callouts ("Lane won · 9 supply left", "Lane lost", "Lane drawn"); "Paused" pinned; Help and settings pause a clash.
   - Callout priority: a counter moment, then a lane result, a refused key, tips, an Elder, other news. The result banner is pinned through the aftermath.
-- [ ] T096 [US3] Build the report by round in `src/ui/rounds/report.ts` (new), for a single battle (§10.4, §10.5) (A068)
+- [x] T096 [US3] Build the report by round in `src/ui/rounds/report.ts` (new), for a single battle (§10.4, §10.5) (A068)
   - It names the outcome and how it was decided.
   - The round chart: damage dealt up in violet, taken down in ash, each Heartcap's HP as a line, storm rounds marked, lane half-pips on Twin Roots.
   - Also damage by building over the battle, units fielded and merged from `fielded`, gold by source, the general's counters by round, and a slot for the planning seconds, which the app passes in (T128).
   - It has no lives line (R2b). Its buttons are Again (same seed) and Rematch (new seed), both reopening `scene=rounds` with the same parameters.
-- [ ] T097 [US3] Wire the three phase views into `src/app/rounds/battleView.ts`: planning, clash and aftermath, each switching its chrome on and off. The aftermath holds while Help or settings is open, and the speed control stays live there, without pause. The bands and panels are already mounted (T088–T094), and Space, Enter or a click already skip the aftermath (T078) (§10.2, §13.5) (A078)
+- [x] T097 [US3] Wire the three phase views into `src/app/rounds/battleView.ts`: planning, clash and aftermath, each switching its chrome on and off. The aftermath holds while Help or settings is open, and the speed control stays live there, without pause. The bands and panels are already mounted (T088–T094), and Space, Enter or a click already skip the aftermath (T078) (§10.2, §13.5) (A078)
 - [ ] T143 [US3] Add §15.6's assertion 4 for `scene=rounds` to `tools/screenshot.ts` (§15.6, §16 R2 step 9) (A076)
   - `#hud-gold`, `#hud-plots`, `#hud-round` and both Heartcap values equal `summary()`, and there's no `#hud-lives`.
   - With `phase=planning`, `preview().enemy` equals Node's `formationOf(state, 'enemy')` from `roundStateForParams`, unit for unit: the general's whole colony and formation are drawn before the player's first command (§7.5, §10.2).

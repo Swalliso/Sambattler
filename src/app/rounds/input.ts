@@ -1,8 +1,10 @@
 // Mouse and keyboard for a battle in rounds (SPEC §10.3), by phase. Everything becomes a session change or a
-// queued command. Any key or press releases the planning hold (plan Call 14). Begin by key needs a fresh
+// queued command. Any key or press releases the planning hold (plan Call 14), except choosing a card, which
+// changes only the view. Begin by key needs a fresh
 // keydown, ignores auto-repeat and waits about 400 ms after planning opens, while the button stays instant, so
 // one held or double-tapped key can't skip the aftermath and start the next clash with no planning (R2-Q12,
-// A065). Planning keys in a clash or the aftermath are refused with a callout. It stands beside v1's input.
+// A065). Planning keys in a clash or the aftermath are refused with a callout. Help is modal while it's open,
+// and the settings screen keeps keys to itself. It stands beside v1's input.
 import type { RoundsView } from './battleView.ts';
 import type { RoundSession } from './session.ts';
 
@@ -36,6 +38,8 @@ export function bindRoundInput(session: RoundSession, view: RoundsView, hooks: R
     session.hover = { col: t.col, row: t.row };
     const phase = session.state.phase;
     if (phase === 'aftermath') { hooks.skip(); return; }
+    // in a clash a click inspects a unit, or a building on its plot (§10.3)
+    if (phase === 'clash') { session.selectIn(t.x, t.y, t.col, t.row); return; }
     if (phase !== 'planning') return;
     if (session.placing) {
       const g = session.ghost();
@@ -45,27 +49,26 @@ export function bindRoundInput(session: RoundSession, view: RoundsView, hooks: R
     session.selectAt(t.col, t.row);
   });
 
-  const sell = () => {
-    const r = session.sell();
-    if (!r) return;
-    const name = session.content.buildings[session.state.buildings.find((b) => b.id === session.sellArmed)?.buildingId ?? '']?.name;
-    if (!r.sold) view.say('info', `Sell ${name ?? 'it'} for ${r.refund} gold? Press X again`);
-  };
-
   const onKeyDown = (ev: KeyboardEvent) => {
     if (ev.target instanceof HTMLInputElement) return;
+    if (view.helpOpen) {
+      // Help is modal: H or Esc closes it, and everything else waits
+      if (ev.key === 'h' || ev.key === 'H' || ev.key === 'Escape') { ev.preventDefault(); view.toggleHelp(); }
+      return;
+    }
     // Tab moves along the top band once `I` has put focus there (§10.2)
     if (ev.key === 'Tab' && ev.target instanceof Element && ev.target.closest('[data-native-tab]')) return;
-    session.hold = false;
     session.shift = ev.shiftKey;
     const phase = session.state.phase;
     const planning = phase === 'planning';
+    // choosing a card is the view's alone, so it keeps the hold: a bot player's queued Begin waits on (T135's marks capture)
     if (/^[1-9]$/.test(ev.key)) {
       if (!planning) { planningOnly(); return; }
       const id = session.cards()[Number(ev.key) - 1];
       if (id) session.pick(id);
       return;
     }
+    session.hold = false;
     switch (ev.key) {
       case 'Escape': session.cancel(); break;
       case ' ':
@@ -86,7 +89,7 @@ export function bindRoundInput(session: RoundSession, view: RoundsView, hooks: R
         break;
       case 'x': case 'X': case 'Delete': case 'Backspace':
         if (!planning) planningOnly();
-        else sell();
+        else view.sell();
         break;
       case 'm': case 'M':
         if (!planning) planningOnly();
@@ -96,11 +99,15 @@ export function bindRoundInput(session: RoundSession, view: RoundsView, hooks: R
         if (phase !== 'clash') view.say('refused', 'The commander power works only in a clash');
         break;
       case 'i': case 'I': view.focusChips(); break;
+      case 'h': case 'H': view.toggleHelp(); break;
       case 'F3': ev.preventDefault(); hooks.toggleDebug(); break;
     }
   };
   const onKeyUp = (ev: KeyboardEvent) => { session.shift = ev.shiftKey; };
-  const onPress = () => { session.hold = false; };
+  const onPress = (ev: PointerEvent) => {
+    if (ev.target instanceof Element && ev.target.closest('#tray')) return;
+    session.hold = false;
+  };
   window.addEventListener('keydown', onKeyDown);
   window.addEventListener('keyup', onKeyUp);
   window.addEventListener('pointerdown', onPress);

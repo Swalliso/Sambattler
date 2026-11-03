@@ -197,8 +197,8 @@ describe('the planning and clash chrome (§10.2, §10.3)', () => {
     expect(await page.locator('#begin-btn').isVisible()).toBe(false);
     expect(await page.locator('#planning-hint').count()).toBe(0);
     expect(await page.locator('#callouts #paused-callout').count()).toBe(1);
-    // the tray takes no clicks in a clash, but its tooltips open
-    await page.click('#tray [data-building=sporelingBurrow]');
+    // the tray takes no clicks in a clash (it says so with aria-disabled), but its tooltips open
+    await page.click('#tray [data-building=sporelingBurrow]', { force: true });
     await frames(page);
     expect(await page.locator('#tray .card.sel').count()).toBe(0);
     await page.hover('#tray [data-building=gillNest]');
@@ -268,7 +268,7 @@ describe('the planning and clash chrome (§10.2, §10.3)', () => {
     expect((await game(page)).tick).toBe(t0);
     expect(await page.locator('#help').isVisible()).toBe(true);
     await page.keyboard.press('h');
-    await until(page, (g) => g.tick > t0);
+    await page.waitForFunction((t) => window.__GAME__!.tick > t, t0, { timeout: 20000 });
     // an empty colony's clash ends at once: Help then holds its aftermath past its 3 s
     await page.close();
     page = await open(q);
