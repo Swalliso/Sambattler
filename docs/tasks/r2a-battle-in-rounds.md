@@ -792,7 +792,7 @@ S1 to S4: the data, the colony, the round state machine and the planning command
     - The tournament reads the lead after each round by the share of max HP left, as a Decision does.
 - [x] T117 [US6] Add `--rounds` to `tools/experiment.ts` and a `rounds` job kind to `tools/lib/pool.ts`, so round battles play in worker threads with the same results as in process. This session wires `duels` and `g4`; T123 wires the rest. `engagement`, `runs`, `lanes` and `spread` stay v1's until R2b (§12.2, §15.3)
   - As built (S17): a round job is a battle, a clash or a supply duel (`playRoundJob`). `--rounds` defaults to `duels` and `g4` and refuses the other checks. Its reports on 6 workers and on 1 came out equal. The first `g4` reading is in `docs/balance-backlog.md`.
-- [ ] T118 [US6] Add `npm run bench -- --rounds --quick` to `tools/verify.ts` (§15.1)
+- [x] T118 [US6] Add `npm run bench -- --rounds --quick` to `tools/verify.ts` (§15.1)
 
 **S18: the guardrails in round form**
 
