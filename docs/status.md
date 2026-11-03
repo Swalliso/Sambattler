@@ -1,6 +1,6 @@
 # Where things stand
 
-Updated 2026-11-03, on `docs/r2a-s20-g16` (the hub's docs PR into `develop`). This is the hand-over page. It covers what we're working on, what's waiting on the user's decision, and where each piece lives. Update it when work lands or the user decides something. Keep the detail in the docs it links to.
+Updated 2026-11-03, on `docs/r2a-done` (the hub's docs PR into `develop`). This is the hand-over page. It covers what we're working on, what's waiting on the user's decision, and where each piece lives. Update it when work lands or the user decides something. Keep the detail in the docs it links to.
 
 ## In short
 
@@ -18,7 +18,7 @@ Updated 2026-11-03, on `docs/r2a-s20-g16` (the hub's docs PR into `develop`). Th
   See [SPEC §0.1](../SPEC.md#01-what-changed-in-v2), [§1.3](../SPEC.md#13-v2-decisions-2026-10-31) and the [P3 notes](playtest-feedback.md#2026-10-31-p3-the-combat-rework-the-user).
 - **SPEC v2 is on `develop`** ([#39](https://github.com/Swalliso/Sambattler/pull/39)). **Nothing in v2 is built yet.** Until milestone R2 lands, the code follows v1: the M5 battle, with the rework's pieces behind `?proto=rework` on the dev site.
 - **The spec is broken into task lists** in [docs/tasks/](tasks/README.md) ([#40](https://github.com/Swalliso/Sambattler/pull/40), on `develop`), spec-kit style: one list per milestone, one session per row of its Sessions table. The decisions each milestone needs from the user are in [clarify.md](tasks/clarify.md), and the problems the breakdown found in SPEC v2 are in [spec-analysis.md](tasks/spec-analysis.md). Lists after R1's are drafts, refreshed when each milestone's plan is agreed.
-- **Milestone R1, the clash check, is done** ([SPEC §16](../SPEC.md#16-milestone-plan)). A headless tool fought whole armies at equal gold, with no rule change, to set squad sizes and check that every strong army has an answer before the round loop is built. At its review gate on 2026-11-02 you took every recommendation (below). **R2a's plan is agreed** (S0, 2026-11-02), **R2a S1 to S13 have merged**, with S7b's and S9b's fixes: US1 (a round's clash, scored) and US2 (a battle in rounds, with the general planning first) are done, a round in which nothing changed replays the last clash exactly, and the first round golden is recorded. S14 ([#95](https://github.com/Swalliso/Sambattler/pull/95)) made `/?scene=rounds` play a whole battle in rounds, from round 1's planning to the report, and your rough playtest (S14b) found the loop working. **S15 ([#99](https://github.com/Swalliso/Sambattler/pull/99)), the counter cycle, S16 ([#98](https://github.com/Swalliso/Sambattler/pull/98)), the power once per clash, S17 ([#102](https://github.com/Swalliso/Sambattler/pull/102)), the round tools, S18 ([#104](https://github.com/Swalliso/Sambattler/pull/104)), the round guardrails and the answer bot, S19 ([#101](https://github.com/Swalliso/Sambattler/pull/101)), the playtest's measures, and S20 ([#106](https://github.com/Swalliso/Sambattler/pull/106)), the verification steps and the As built, have merged. At S18's T125 you set the pace at 100 damage a supply (was 25) and R2a's bands. R2a's battle is on the dev site for your playtest gate (S21).**
+- **Milestone R1, the clash check, is done** ([SPEC §16](../SPEC.md#16-milestone-plan)). A headless tool fought whole armies at equal gold, with no rule change, to set squad sizes and check that every strong army has an answer before the round loop is built. At its review gate on 2026-11-02 you took every recommendation (below). **R2a's plan is agreed** (S0, 2026-11-02), **R2a S1 to S13 have merged**, with S7b's and S9b's fixes: US1 (a round's clash, scored) and US2 (a battle in rounds, with the general planning first) are done, a round in which nothing changed replays the last clash exactly, and the first round golden is recorded. S14 ([#95](https://github.com/Swalliso/Sambattler/pull/95)) made `/?scene=rounds` play a whole battle in rounds, from round 1's planning to the report, and your rough playtest (S14b) found the loop working. **S15 ([#99](https://github.com/Swalliso/Sambattler/pull/99)), the counter cycle, S16 ([#98](https://github.com/Swalliso/Sambattler/pull/98)), the power once per clash, S17 ([#102](https://github.com/Swalliso/Sambattler/pull/102)), the round tools, S18 ([#104](https://github.com/Swalliso/Sambattler/pull/104)), the round guardrails and the answer bot, S19 ([#101](https://github.com/Swalliso/Sambattler/pull/101)), the playtest's measures, and S20 ([#106](https://github.com/Swalliso/Sambattler/pull/106)), the verification steps and the As built, have merged. At S18's T125 you set the pace at 100 damage a supply (was 25) and R2a's bands. Your playtest passed R2a's gate on 2026-11-03 (S21, [#108](https://github.com/Swalliso/Sambattler/pull/108)). S21b ([#109](https://github.com/Swalliso/Sambattler/pull/109)) fixes what it found: Bursters stand in the front line, the Mortar is drawn in the clash, and placing lights only the plot. R2b's S0 is next.**
 - **Then:**
   - R2: rounds, the general plans first, lives, and the planning screen. R2a's plan, [r2a-plan.md](r2a-plan.md), was agreed on 2026-11-02. The task lists split it in two (X1): R2a, a single battle in rounds, then R2b, the run in rounds. R2a gets a rough playtest after S14, as soon as a battle in rounds is properly playable and before its counter cycle and powers (R2-Q25, agreed 2026-11-01), and S21's playtest stays the gate;
   - R3: the kit, the six archetypes, augments, combos and run packs;
@@ -27,11 +27,10 @@ Updated 2026-11-03, on `docs/r2a-s20-g16` (the hub's docs PR into `develop`). Th
 
   [docs/tasks/README.md](tasks/README.md) has the full order and every milestone's sessions.
 
-## Next: your playtest gate (S21)
+## Next: R2b's S0, the run in rounds' plan
 
-- R2a's battle in rounds is on the dev site: #106 deployed on 2026-11-03.
-- You play the three battles T137 names and answer §16 R2's gate questions. S21 then writes them down (T144) and takes your tuning calls (T139).
-- G16's formation measurement (below) is in, ready for those tuning calls.
+- S21b ([#109](https://github.com/Swalliso/Sambattler/pull/109)) lands when CI passes, with its auto-merge on. That finishes R2a.
+- Then R2b's S0 (T001–T005 in [r2b-run-in-rounds.md](tasks/r2b-run-in-rounds.md)) settles R2b's plan and its open decisions with you, the playtest's new rows #67–#71 among them. You agreed in S21 that it starts once S21 and S21b have merged. It waits as a card.
 
 ## R2a, a battle in rounds
 
@@ -242,7 +241,7 @@ Updated 2026-11-03, on `docs/r2a-s20-g16` (the hub's docs PR into `develop`). Th
     - None of the three levers measured moves G16: a gap of 8, Gill aggro 5, or harsher pinning.
     - Only a 2-tile gap clears 60% on the Gill and Mortar pairs.
 
-    Each fix is a rule change, for S21's tuning calls;
+    You approved moving `burst` to the front line, and S21b did it: G16 reads 40%. The Gill Archer pairs (55%) and the Mortar pairs (26%) wait for R2b's S0 and R3's combos;
   - S15's Gill Archer tie: one of two fixes in [balance-backlog.md](balance-backlog.md), or neither;
   - S17's Burster seat effect (T148): a unit felled by a burst still attacks that tick, or no change;
   - the playtest gate at S21 (T137, T139).
@@ -315,16 +314,24 @@ Updated 2026-11-03, on `docs/r2a-s20-g16` (the hub's docs PR into `develop`). Th
 
 ## Waiting on the user
 
-1. **R2a's next calls:**
-   - **Your playtest gate at S21:** the three battles on the dev site, and §16 R2's gate questions (T137). S21 writes them down and takes your tuning calls.
-   - **G16, the formation rule,** at those tuning calls. The measurement (2026-11-03) found that the Burster is the miss. Placed behind its front, as §7.3's rule puts it, it always loses to the same colony with it in front, and none of the three levers moves that. The hub recommends two things:
-     - move `burst` to the front line;
-     - decide the Gill and Mortar pairs after the playtest. Only a 2-tile gap fixed them, and that changes how every clash opens.
-   - **S15's Gill Archer tie and S17's Burster seat effect (T148)** also wait for you. Each fix is a rule change, and they're in [balance-backlog.md](balance-backlog.md).
-   - **SPEC §16 R2 step 3** still says 15% of battles reach round 9, where your G4 band says 20%. S21 aligns it with your OK.
-   - **S18's other misses** are balance work for later, with no call needed yet. They are G1, G2, G3, G7 and G8's mono clause, some of them R1's known ones.
+1. **R2b's S0:** the plan and its open decisions (T003). Among them are the playtest's new rows in [clarify.md](tasks/clarify.md):
+   - **#67, what gold does once the colony is full,** reopened with your idea of gold-bought upgrades;
+   - **#68, the Heartcap cap and D28.** S21b measured a fixed cap: 750 for both sides passes every band measured;
+   - **#69:** the general's openings;
+   - **#70:** the commander power;
+   - **#71:** Twin Roots' empty lane.
 
-   You settled T125 on 2026-11-03: the pace at 100 damage a supply, and R2a's bands. R2a's plan and its 26 calls were settled at S0 on 2026-11-02.
+   S21b also noted three things for you:
+   - a card can still be placed from its squad's spot in the field;
+   - a fan-out rule would let melee squads spread around their target;
+   - the Fuse augment's text, which is R3's.
+
+   **Still open from R2a:**
+   - G16's Gill Archer and Mortar pairs: G16 reads 40% after the Burster's move.
+   - S15's Gill Archer tie and S17's Burster seat effect (T148). Each fix is a rule change, in [balance-backlog.md](balance-backlog.md).
+   - S18's other misses (G1, G2, G3, G7 and G8's mono clause), which are balance work for later.
+
+   R2a's gate passed on 2026-11-03. You set the pace at 100 damage a supply and R2a's bands at T125, and S21 recorded your playtest calls: the full reveal stays the default, Hold stays out, and Bursters stand in the front line.
 2. **The decisions that shape the milestones**, X1–X10 in [clarify.md](tasks/clarify.md#index). Each has a recommendation. The task lists assume them and say what changes otherwise.
    - X1 and X2 were decided on 2026-11-02. R2 splits into R2a and R2b, and R2a is built beside v1 on `develop`. You also said `develop` may switch wholly to v2 from now on, so R2b's switch-over needn't go through `feature/r2b-cutover`. Verify still stays green on every PR, since a failing `develop` blocks every deploy. X3 (split R4, the field's shapes first) and X10 (Run it back in two parts) were agreed on 2026-11-01.
    - X4 and X5 were decided at R1's review gate on 2026-11-02: no copies before R3, and a cap of 25% of the loser's max HP with a Decision by share.
@@ -353,7 +360,8 @@ Updated 2026-11-03, on `docs/r2a-s20-g16` (the hub's docs PR into `develop`). Th
 
 | Work | Where | State |
 |---|---|---|
-| R2a S20 and G16's levers (2026-11-03) | [#106](https://github.com/Swalliso/Sambattler/pull/106) (the verification steps and the As built), [balance-backlog.md](balance-backlog.md) (G16's levers) | #106 merged and the dev site deployed. Every R2a verification step passes except T133's six guardrail misses, which wait for your calls. The G16 measurement changed nothing: the Burster's back-line rule is the miss, and no lever measured fixes it. S21, your playtest gate, is next |
+| R2a S21 and S21b (2026-11-03) | [#108](https://github.com/Swalliso/Sambattler/pull/108) (the playtest gate), [#109](https://github.com/Swalliso/Sambattler/pull/109) (the playtest's fixes) | #108 merged: your playtest passed the gate, and your calls and R2b's new questions (#67–#71) are recorded. #109 passed the hub's review and lands when CI passes. It does five things: Bursters in the front line (G16 from 24% to 40%), the Mortar drawn in the clash, one highlight when placing, the Morel Runners diagnosed as intended, and a fixed cap measured for R2b's S0. R2b's S0 is next |
+| R2a S20 and G16's levers (2026-11-03) | [#106](https://github.com/Swalliso/Sambattler/pull/106) (the verification steps and the As built), [balance-backlog.md](balance-backlog.md) (G16's levers) | #106 merged and the dev site deployed. Every R2a verification step passes except T133's six guardrail misses. The G16 measurement found the Burster's back-line rule was the miss |
 | R2a S18 (2026-11-03) | [#104](https://github.com/Swalliso/Sambattler/pull/104) (the round guardrails and the answer bot) | Merged after the hub's review. At T125 you set the pace at 100 damage a supply after a 200-battle rerun: a median of 7 rounds, 18.5% reaching round 9, and the damage cap binding in 70% of damaging rounds. G4 and G6 pass |
 | R2a S17 and S19 (2026-11-03) | [#102](https://github.com/Swalliso/Sambattler/pull/102) (the round tools), [#101](https://github.com/Swalliso/Sambattler/pull/101) (the playtest's measures) | Merged. #102's timing checks hold §13.7's budgets on a real machine, and a guard of 3× each budget on CI's slower shared runner. The hub checked the two together |
 | R2a S14b, S15 and S16 (2026-11-02 and 03) | [#97](https://github.com/Swalliso/Sambattler/pull/97) (your rough playtest), [#99](https://github.com/Swalliso/Sambattler/pull/99) (the counter cycle), [#98](https://github.com/Swalliso/Sambattler/pull/98) (the power once per clash) | Merged. The hub checked #98 and #99 together |
