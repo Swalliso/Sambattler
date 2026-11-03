@@ -2,18 +2,23 @@
 // Writes reports/balance/<timestamp>.{md,json} and prints the guardrail verdicts (SPEC §12.2, §15.3).
 // `--supply 60` re-runs the supply duels at army scale (G2 itself stays at its data value).
 // `tournament --commanders all` plays whole runs per commander instead of the bot tournament (SPEC §16 M5).
-// `--rounds` (R2a, temporary; §15.3, T116) plays `duel` and `tournament` on single battles in rounds: squad duels
-// as one round clash, supply duels with placed units, and the four bots against the scripted general by rounds.
-// Its guardrail verdicts come with R2a's S18 (T123); R2b removes the option.
+// `--rounds` (R2a, temporary; §15.3, T116, T123) plays `duel` and `tournament` on single battles in rounds: squad
+// duels as one round clash, supply duels with placed units, and the four bots against the scripted general by
+// rounds. `guardrails --rounds` plays the round guardrails (G1–G8, G12, G13, G16) on the pool and prints their
+// verdicts against the `rounds` targets. R2b removes the option.
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { nodeContent, ROOT } from './lib/content.ts';
+import { nodeContent, protoContent, ROOT } from './lib/content.ts';
 import {
-  commanderTournament, evaluateG1, evaluateG2, evaluateG3, evaluateG4, evaluateG5, evaluateG6, evaluateG7, matchup, spawnerIds, supplyDuel,
+  commanderTournament, counterBotSpec, evaluateG1, evaluateG2, evaluateG3, evaluateG4, evaluateG5, evaluateG6, evaluateG7, matchup, spawnerIds, supplyDuel,
 } from './lib/balance.ts';
 import type { DuelOutcome, Verdict } from './lib/balance.ts';
-import { inProcessRounds } from './lib/pool.ts';
-import { duelLines, duels, rowLine, tournament } from './lib/rounds/balance.ts';
+import { defaultWorkers, inProcessRounds, roundPool } from './lib/pool.ts';
+import {
+  duelLines, duels, evaluateG1 as roundG1, evaluateG2 as roundG2, evaluateG3 as roundG3, evaluateG4 as roundG4, evaluateG5 as roundG5,
+  evaluateG6 as roundG6, evaluateG7 as roundG7, evaluateG8 as roundG8, evaluateG12 as roundG12, evaluateG13 as roundG13, evaluateG16 as roundG16,
+  g4Battles, rowLine, tournament,
+} from './lib/rounds/balance.ts';
 import { fmtTicks, median } from './lib/run.ts';
 
 const args = process.argv.slice(2);
@@ -80,8 +85,20 @@ if (rounds) {
     }
     md.push('');
     json.vsGeneral = rows;
+  } else if (mode === 'guardrails') {
+    // the round guardrails (§12.3, T123) on the pool, with the counter matrix's bots for G12's answers and G16's armies
+    const spec = counterBotSpec(content);
+    const rc = protoContent(spec);
+    const pool = roundPool(spec, defaultWorkers());
+    try {
+      const d = await duels(rc, pool.run), g3 = await roundG3(rc, pool.run), g4 = await g4Battles(rc, pool.run);
+      verdicts.push(roundG1(rc, d), roundG2(rc, d), g3, roundG4(rc, g4), await roundG5(rc, pool.run), await roundG6(rc, pool.run, g4), await roundG7(rc, pool.run));
+      verdicts.push(await roundG8(rc, pool.run), await roundG12(rc, pool.run, { g3 }), roundG13(rc, g4), await roundG16(rc, pool.run));
+    } finally {
+      await pool.close();
+    }
   } else {
-    console.error("usage: npm run balance -- duel [--supply n] | tournament [--seeds n] --rounds (the round guardrails come with R2a's S18, T123; --commanders plays runs, R2b's)");
+    console.error('usage: npm run balance -- duel [--supply n] | tournament [--seeds n] | guardrails --rounds (--commanders plays runs, R2b\'s)');
     process.exit(2);
   }
 } else if (mode === 'duel') {

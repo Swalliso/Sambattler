@@ -8,6 +8,7 @@ import type {
   BattleConfig, BattleState, Command, Content, Controller, CounterKind, Flags, HeadlessResult, HeadlessUntil, PowerPolicy,
   RoundLogEntry, RoundScenarioOverrides, RoundSummary, Side, SideStats,
 } from '../../../src/sim/rounds/index.ts';
+import type { RoundScenarioDef } from '../../../src/data/schema.ts';
 import { fmtTicks } from '../run.ts';
 
 export interface RoundRunSpec {
@@ -15,8 +16,8 @@ export interface RoundRunSpec {
   map?: string;
   player?: string;
   enemy?: string;
-  /** A round scenario's id, in `data/scenarios/rounds/`. */
-  scenario?: string;
+  /** A round scenario's id, in `data/scenarios/rounds/`, or a scenario given whole (G6's mirror, T123). */
+  scenario?: string | RoundScenarioDef;
   battleIndex?: number;
   flags?: Partial<Flags>;
   /** The player's commander (its passive, and its power with the powers flag). */

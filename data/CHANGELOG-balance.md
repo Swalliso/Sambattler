@@ -10,12 +10,16 @@ v1's, now [archived](../docs/archive/v1/balance-backlog.md).
 
 ## R2a-S18: the round guardrails' targets and bots (2026-11-03)
 
-**A new bot and targets. No golden moved**: neither v1's nor rounds' state reads `balance-targets.json`, and a bot
-reaches a battle's state only when it plays.
+**New bots and targets. No golden moved**: neither v1's nor rounds' state reads `balance-targets.json`, and a bot
+reaches a battle's state only when it plays. Nothing was retuned; T124's readings and the pace proposal are in
+`docs/balance-backlog.md`, for the user's call at T125.
 - **`bot:answer`** (R2a/T121, X7, SPEC §12.2, agreed at S0 on 2026-11-02): `bot:balanced`'s opener, weights and limits, with
   `policy: "answer"`. In rounds it scores each card it may buy by its unit's hits on the general's planned squads,
   weighted by their supply, and leans × 3 toward the best; a tie goes to the card the squads' hits are weakest on.
   G8 reads it beside `bot:balanced` (T123); G3 and G12 stay on fixed weights. v1 ignores the field.
+- **`bot:slayer-rounds` and `bot:slayer-rounds-nomerge`** (R2a/T123, SPEC §12.3 G7): G7's Slayer check in rounds, beside v1's
+  `slayer` so v1's G7 reading doesn't move. They keep `slayer`'s weights (Veilstalker Hollow 8), which field 24–25%
+  of both sides' supply as Slayers, read from the `fielded` record at each unit's tier (target about 25%).
 - **`balance-targets.json` gets a `rounds` block** (R2a/T119, SPEC §12.3): G1, G3–G8, G11, G12, G13 and G16 in round form,
   beside v1's blocks until R2b. The battle-level bands (G4, G6's two clauses, G8, G13, G16) are §12.3's first guesses
   until the user sets them from T124's measurement (§18.2 #35, T125). G11's round form takes the arrival, turn,
