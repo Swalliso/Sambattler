@@ -250,7 +250,7 @@ These tasks land in S1's PR together with US1, so `RUN_VERSION` 2 and the migrat
   - The summary drops Length, Heartcap before → after and the front-line sparkline (`run.ts:519-576`), and shows each battle's outcome, how it was decided and lives lost. The spoils screen's rules drop the repair terms (`run.ts:97`).
   - The bridge's `run()` reports lives (`debugBridge.ts:14`, `:60`).
 - [x] T026 [US1] Move the run tools onto rounds in `tools/sim.ts`, `tools/lib/run.ts`, `tools/lib/engagement.ts` and `tools/lib/balance.ts`: `--run` plays v2 runs; its summary reports runs won, the boss reached and lives left (`sim.ts:236`, `:254-277`); engagement counts lives instead of full-HP wins (`engagement.ts:184-187`); `commanderTournament` reads lives; the run results drop `durationTicks` and `heartcap` (§15.2, §15.3)
-- [ ] T027 [US1] Replace the v1 run golden: delete `tests/golden/m3-run-s7.replay.json`, add `r2-run-s7` to `RUN_REPLAYS` in `tools/golden.ts` (`golden.ts:54-56`), record it with `npm run golden -- update`, and say so in the commit. T126 and T132 record it again (§15.5)
+- [x] T027 [US1] Replace the v1 run golden: delete `tests/golden/m3-run-s7.replay.json`, add `r2-run-s7` to `RUN_REPLAYS` in `tools/golden.ts` (`golden.ts:54-56`), record it with `npm run golden -- update`, and say so in the commit. T126 and T132 record it again (§15.5)
 
 S1b (the battle-1 measurement):
 

@@ -1,8 +1,8 @@
 // npm run golden -- verify | update (SPEC §15.5). Golden replays pin the sim's behaviour: a battle
 // replay holds a config, a command log and the expected state hashes at checkpoints; a run replay
 // (`kind: "run"`) holds a seed and autoplay policies and pins every battle's checkpoint hashes plus
-// the final run-state hash. R2a's round replays (`kind: "rounds"`) play through the rounds API beside them,
-// with the round checkpoints (R2a plan Call 17).
+// the final run-state hash, its battles in rounds since R2b's S1. R2a's round replays (`kind: "rounds"`)
+// play through the rounds API beside them, with the round checkpoints (R2a plan Call 17).
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { nodeContent, ROOT } from './lib/content.ts';
@@ -53,13 +53,14 @@ interface RunReplay {
   expected: { battles: Record<string, string>[]; run: string };
 }
 
-/** Whole-run replays (SPEC §16 Milestone 3, verification 4). */
+/** Whole-run replays (SPEC §15.5, §16 R2): a run in rounds, which R2b's S1 recorded in place of v1's `m3-run-s7` (T027). */
 const RUN_REPLAYS: Omit<RunReplay, 'expected' | 'kind'>[] = [
-  { name: 'm3-run-s7', description: 'a whole run, seed 7: bot:balanced, greedy drafts, random route', seed: 7, policies: { route: 'random', draft: 'greedy', player: 'bot:balanced' } },
+  { name: 'r2-run-s7', description: 'a whole run in rounds, seed 7: bot:balanced, greedy drafts, random route (R2b/T027)', seed: 7, policies: { route: 'random', draft: 'greedy', player: 'bot:balanced' } },
 ];
 
+/** Each battle's round checkpoints, as a round golden takes them (R2a plan Call 17), and the run's final hash. */
 function runHashes(r: Pick<RunReplay, 'seed' | 'policies'>): RunReplay['expected'] {
-  const res = simulateRun(nodeContent(), r.seed, r.policies, { hashEvery: CHECK_EVERY });
+  const res = simulateRun(nodeContent(), r.seed, r.policies, { hashEvery: ROUND_CHECK_EVERY });
   return { battles: res.hashes, run: hashRun(res.run) };
 }
 
@@ -70,9 +71,10 @@ function verifyRun(rep: RunReplay): boolean {
     if (diverged) return;
     const g = got.battles[b];
     if (!g) { diverged = `battle ${b + 1} (not played)`; return; }
-    const keys = Object.keys(exp).filter((k) => k !== 'final').sort((x, y) => Number(x) - Number(y));
+    // the checkpoints in battle order, as recorded: r<n>.planning, r<n>:<tick>, r<n>.clash, r<n>.aftermath
+    const keys = Object.keys(exp).filter((k) => k !== 'final');
     keys.push('final');
-    for (const k of keys) if (g[k] !== exp[k]) { diverged = `battle ${b + 1} ${k === 'final' ? 'final hash' : `tick ${k}`} (expected ${exp[k]}, got ${g[k] ?? '-'})`; return; }
+    for (const k of keys) if (g[k] !== exp[k]) { diverged = `battle ${b + 1} ${k === 'final' ? 'final hash' : `checkpoint ${k}`} (expected ${exp[k]}, got ${g[k] ?? '-'})`; return; }
   });
   if (!diverged && got.battles.length !== rep.expected.battles.length) diverged = `battle count (expected ${rep.expected.battles.length}, got ${got.battles.length})`;
   if (!diverged && got.run !== rep.expected.run) diverged = `the final run state (expected ${rep.expected.run}, got ${got.run})`;
