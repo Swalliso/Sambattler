@@ -1,5 +1,5 @@
 // The sim API for a battle in rounds (SPEC §14.6). It stands beside v1's `src/sim/index.ts` until R2b moves
-// it there; a later session adds `matchupClass`.
+// it there.
 export { loadContent, ContentError } from '../../data/registry.ts';
 export type { Content, RawContent } from '../../data/registry.ts';
 export {
@@ -17,6 +17,7 @@ export { legalPlots, plantProblem, priceOf, sellValue } from './planning.ts';
 export { inKit, kitOf } from './kit.ts';
 export { formationOf, mergePreview } from './formation.ts';
 export type { MergePreview, MusterTrio, PlanChange, SquadPlan, TierCounts } from './formation.ts';
+export { matchupClass } from './matchups.ts';
 export { survivingSupply } from './round.ts';
 export { incomePreview } from './systems/economy.ts';
 export type { IncomeBreakdown } from './systems/economy.ts';

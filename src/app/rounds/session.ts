@@ -41,6 +41,8 @@ export class RoundSession {
   hold = false;
   /** When this round's planning opened (performance.now()), for Begin by key (R2-Q12). */
   planningSince = 0;
+  /** Time into the aftermath at the clash's speed, which its view draws from (`phases/aftermath.ts`). */
+  aftermathMs = 0;
   placing: string | null = null;
   /** The tile under the cursor. */
   hover: { col: number; row: number } | null = null;
@@ -70,6 +72,7 @@ export class RoundSession {
     const phase = this.state.phase;
     this.sellArmed = null;
     this.warned = false;
+    this.aftermathMs = 0;
     if (phase === 'planning') this.planningSince = now;
     if (phase === 'clash') { this.paused = false; this.placing = null; }
   }

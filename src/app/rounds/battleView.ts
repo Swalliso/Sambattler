@@ -156,6 +156,10 @@ export class RoundsView {
       selected: s.selected,
       debug,
       timeMs: now,
+      hover: s.hover,
+      placing: s.placing,
+      colony: this.colonyVersion,
+      aftermathMs: s.aftermathMs,
     });
     this.ghostTip(state, ghost);
     const clash = state.phase === 'clash', planning = state.phase === 'planning';

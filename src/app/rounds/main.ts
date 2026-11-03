@@ -33,9 +33,10 @@ export function startRounds(content: Content, atlas: Atlas, errors: string[]): v
     history.replaceState(null, '', `?${q.toString()}`);
   }
   let state: BattleState | null = null;
+  let view: RoundsView | null = null;
   let loop: RoundLoop | null = null;
   const bridge = params.debug || params.test
-    ? installRoundsBridge({ battle: () => state, preview: () => null, frames: params.measure ? () => [...(loop?.frameTimes ?? [])] : null }, errors)
+    ? installRoundsBridge({ battle: () => state, preview: () => view?.renderer.preview.drawn ?? null, frames: params.measure ? () => [...(loop?.frameTimes ?? [])] : null }, errors)
     : null;
   try {
     state = previewState(content, params, seed);
@@ -50,7 +51,7 @@ export function startRounds(content: Content, atlas: Atlas, errors: string[]): v
   // a pause or `phase=planning` holds planning until input, and a pause never carries into a clash (plan Call 14)
   if (state.phase === 'planning') session.hold = params.phase === 'planning' || params.paused;
   else session.paused = params.paused;
-  const view = new RoundsView(session, content, atlas, { begin: () => { session.begin(); } }, params.test);
+  view = new RoundsView(session, content, atlas, { begin: () => { session.begin(); } }, params.test);
   document.getElementById('app')!.replaceChildren(view.root);
   view.fit();
   loop = new RoundLoop(session, view, { holdAftermath: params.test && params.phase !== null, measure: params.measure === 'frames' });

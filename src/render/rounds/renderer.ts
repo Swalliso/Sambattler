@@ -1,26 +1,32 @@
-// The canvas renderer for a battle in rounds (SPEC §13.6), a first cut from v1's `src/render/renderer.ts`
-// without territory, capture, rally lines, turrets or spawn timers. It reads the sim's state and each step's
-// events and never changes the sim. Layers, back to front: the terrain with both Heartcaps (baked); the
-// colonies, each side's mycelium under its open plots with their faint 2×2 grid, and closed plots as dark,
-// unlit soil with a small mark (plan Call 21, also baked); while a card is chosen, the free plots lit; the
-// buildings; spore clouds; the units, sorted by y then id, through R4a's `drawUnitSprite` (an emplacement
-// with its `emplacementSprite`); projectiles; sparks, puffs and merge pops; then the ghost. S12 adds the
-// formation preview (T083), the aftermath (T085) and the field's details (T086). It stands beside v1's
-// renderer until R2b moves it to `src/render/`.
+// The canvas renderer for a battle in rounds (SPEC §13.6), from v1's `src/render/renderer.ts` without
+// territory, capture, rally lines, turrets or spawn timers. It reads the sim's state and each step's events and
+// never changes the sim. Layers, back to front: the terrain with both Heartcaps (baked); the colonies, each
+// side's mycelium under its open plots with their faint 2×2 grid, and closed plots as dark, unlit soil with a
+// small mark (plan Call 21, also baked); while a card is chosen, the free plots lit; the buildings, with their
+// "New" sprout in planning and the merge-off knot; in planning the formation preview (`preview.ts`), and in a
+// clash spore clouds and the units, sorted by y then id, through R4a's `drawUnitSprite` (an emplacement with its
+// `emplacementSprite`), posed by the aftermath (`aftermath.ts`) once the clash is over; projectiles; sparks,
+// puffs, merge pops and coin pops; the Sporestorm's haze; the aftermath's numbers; then the overlays: the lit
+// plot and slot, the matchup marks, the ghost and F3's debug. It stands beside v1's renderer until R2b moves
+// it to `src/render/`.
 import type { Content } from '../../data/registry.ts';
-import type { BattleState, PlotState, Side, UnitState } from '../../sim/rounds/index.ts';
+import { formationBox } from '../../sim/formation.ts';
+import { SIDES, formationOf } from '../../sim/rounds/index.ts';
+import type { BattleState, PlotState, Side, SquadPlan, UnitState } from '../../sim/rounds/index.ts';
 import type { Atlas, Faction } from '../atlas.ts';
 import { Effects } from '../effects.ts';
 import { BIG_HIT, TILE, factionOf, matTile } from '../renderer.ts';
 import type { DamageNumbers } from '../renderer.ts';
-import { drawUnitSprite, emplacementSprite } from '../unitSprite.ts';
+import { INK_DEEP, drawUnitSprite, emplacementSprite } from '../unitSprite.ts';
 import type { UnitSpriteOpts } from '../unitSprite.ts';
+import { AftermathView } from './aftermath.ts';
+import type { AftermathPose } from './aftermath.ts';
+import { FormationPreview } from './preview.ts';
 
 export { TILE } from '../renderer.ts';
 
 /** The Heartcap strip's width in tiles at each end of the field, as v1's. */
 export const STRIP = 2;
-const SIDES: readonly Side[] = ['player', 'enemy'];
 
 export interface RoundGhost {
   buildingId: string;
@@ -36,6 +42,14 @@ export interface RoundView {
   selected: number | null;
   debug: boolean;
   timeMs: number;
+  /** The tile under the cursor, which lights a plot and its slot together (§10.2). */
+  hover: { col: number; row: number } | null;
+  /** The chosen card, whose hits the matchup marks show (§10.4). */
+  placing: string | null;
+  /** The colony's version (`RoundsView.colonyVersion`): the formation preview recomputes when it moves (§13.6). */
+  colony: number;
+  /** Time into the aftermath at the clash's speed, on the loop's clock (`phases/aftermath.ts`). */
+  aftermathMs: number;
 }
 
 export class RoundRenderer {
@@ -48,12 +62,20 @@ export class RoundRenderer {
   private coloniesKey = '';
   private assist = false;
   readonly effects = new Effects(512);
-  /** Merge pops and damage numbers, apart so a big fight's sparks never evict them. */
+  /** Merge pops, damage numbers and coin pops, apart so a big fight's sparks never evict them. */
   readonly labels = new Effects(256);
+  /** The formation preview, whose last drawing the bridge's `preview()` reports (T083). */
+  readonly preview: FormationPreview;
+  private aftermath: AftermathView;
+  private pose: AftermathPose = { dx: 0, sink: 0, alpha: 1 };
   damageNumbers: DamageNumbers = 'off';
   /** Ambient motion holds still (`?test=1`, set by the view). */
   still = false;
   private sorted: UnitState[] = [];
+  /** Each economy building's gold total at the last income, so a coin pop shows what it just paid (§13.6). */
+  private goldSeen = new Map<string, number>();
+  /** This step's formations, read as its `arrived` events come, one per squad in arrival order. */
+  private arrivals: Record<Side, { plans: SquadPlan[]; n: number }> | null = null;
   /** The unit drawer's options, refilled for each unit so a frame allocates none. */
   private unitOpts: UnitSpriteOpts = {
     sprite: '', faction: 'velvet-bloom', frame: 0, flip: false, x: 0, y: 0, tier: 1, side: 'player', id: 0, hpFrac: 1, glow: '', time: 0,
@@ -71,6 +93,9 @@ export class RoundRenderer {
     this.colonies = document.createElement('canvas');
     this.colonies.width = this.width;
     this.colonies.height = this.height;
+    this.preview = new FormationPreview(content, atlas);
+    this.aftermath = new AftermathView(this.effects);
+    for (const side of SIDES) for (const [id, gold] of Object.entries(state.stats[side].goldByBuilding)) this.goldSeen.set(`${side}:${id}`, gold);
   }
 
   /** Color-blind assist: team marks under units and bolder mats (the colonies rebake when it changes). */
@@ -83,6 +108,8 @@ export class RoundRenderer {
 
   /** Screen x (native px) of a world x. */
   sx(x: number): number { return (x + STRIP) * TILE; }
+  private toScreen = (x: number) => this.sx(x);
+  private glowOf = (side: Side) => this.mat(side).glow;
 
   private mat(side: Side) {
     return this.content.factions[factionOf(side)]!.mat;
@@ -167,8 +194,9 @@ export class RoundRenderer {
     }
   }
 
-  /** One step's events: sparks by effectiveness, death puffs, heals, bursts and merge pops. */
+  /** One step's events: sparks by effectiveness, death and arrival puffs, heals, bursts, merge pops and coin pops. */
   onTick(state: BattleState, now: number): void {
+    this.arrivals = null;
     for (const e of state.events) {
       if (e.t === 'hit') {
         const eff = e.eff === 'strong' ? 1 : e.eff === 'weak' ? 3 : 2;
@@ -178,12 +206,41 @@ export class RoundRenderer {
       else if (e.t === 'died') this.effects.add(e.side === 'player' ? 4 : 5, e.x, e.y, now, 0);
       else if (e.t === 'healed') this.effects.add(10, e.x, e.y, now, 0);
       else if (e.t === 'burst') this.effects.add(13, e.x, e.y, now, e.side === 'player' ? 0 : 1, e.radius);
+      else if (e.t === 'arrived') this.arrivalPuffs(state, e.side, now);
+      else if (e.t === 'income') this.coinPops(state, e.side, now);
+    }
+  }
+
+  /**
+   * A spore puff where each unit of the squad an `arrived` event names appears (§10.2, §10.4): Begin turns each
+   * previewed squad into units in arrival order, one event a squad, at `formationOf`'s positions, so this reads
+   * them there, before the muster's knits moved any.
+   */
+  private arrivalPuffs(state: BattleState, side: Side, now: number): void {
+    this.arrivals ??= { player: { plans: formationOf(state, 'player'), n: 0 }, enemy: { plans: formationOf(state, 'enemy'), n: 0 } };
+    const a = this.arrivals[side];
+    const plan = a.plans[a.n++];
+    if (plan) for (const at of plan.units) this.effects.add(7, at.x, at.y, now, 0);
+  }
+
+  /** A coin pop over each of a side's economy buildings that paid out at this income (§13.6); the general's dimmed. */
+  private coinPops(state: BattleState, side: Side, now: number): void {
+    const paid = state.stats[side].goldByBuilding;
+    for (const b of state.buildings) {
+      if (b.side !== side || !state.compiled[side].buildings[b.buildingId]?.economy) continue;
+      const key = `${side}:${b.id}`;
+      const total = paid[String(b.id)] ?? 0;
+      const gain = total - (this.goldSeen.get(key) ?? 0);
+      this.goldSeen.set(key, total);
+      const p = state.sides[side].plots[b.plot]!;
+      if (gain > 0) this.labels.add(11, p.col + 1, p.row + 0.3, now, side === 'player' ? 0 : 1, gain);
     }
   }
 
   draw(state: BattleState, alpha: number, view: RoundView): void {
     const g = this.ctx;
     const t = view.timeMs;
+    const planning = state.phase === 'planning';
     g.drawImage(this.terrain, 0, 0);
     this.bakeColonies(state);
     g.drawImage(this.colonies, 0, 0);
@@ -192,21 +249,30 @@ export class RoundRenderer {
     for (const b of state.buildings) {
       const p = state.sides[b.side].plots[b.plot]!;
       const x = this.sx(p.col), y = p.row * TILE;
-      this.drawSprite(g, this.content.buildings[b.buildingId]!.sprite, factionOf(b.side), Math.floor(t / 600 + b.id) % 2, x, y);
+      this.drawSprite(g, this.content.buildings[b.buildingId]!.sprite, factionOf(b.side), this.still ? 0 : Math.floor(t / 600 + b.id) % 2, x, y);
       if (b.id === view.selected) {
         g.strokeStyle = '#ffe9a8';
         g.lineWidth = 1;
         g.strokeRect(x + 0.5, y + 0.5, 2 * TILE - 1, 2 * TILE - 1);
       }
+      // the general's counters land as buildings with a "New" sprout, so you see them before you plan (§7.4, §10.4)
+      if (planning && b.plantedRound === state.round) sprout(g, x + 2, y + 2);
+      if (!b.mergeOn && state.compiled[b.side].buildings[b.buildingId]?.kind === 'spawner') knotOff(g, x + 2 * TILE - 9, y + 2 * TILE - 9, this.mat(b.side).glow);
     }
 
+    const calm = this.calm();
+    if (planning) {
+      this.preview.update(state, view);
+      this.preview.drawSquads(g, state, this.toScreen, this.glowOf, this.assist, calm, t);
+    }
     if (state.clouds?.length) this.drawClouds(state, t);
+    const over = state.phase === 'aftermath' || state.phase === 'ended';
+    if (over) this.aftermath.begin(state, view.aftermathMs, this.still || state.phase === 'ended' ? 'final' : calm ? 'calm' : 'full', t);
     const us = this.sorted;
     us.length = 0;
     for (const u of state.units) us.push(u);
     us.sort((a, b) => a.y - b.y || a.id - b.id);
-    const calm = this.calm();
-    for (const u of us) this.drawUnit(state, view, u, alpha, t, calm);
+    for (const u of us) this.drawUnit(state, view, u, alpha, t, calm, over);
 
     for (const h of state.hits) {
       if (!h.ranged) continue;
@@ -221,9 +287,13 @@ export class RoundRenderer {
       g.fillRect(Math.round(this.sx(x)) - 1, Math.round(y * TILE) - 1, s, s);
     }
 
-    this.effects.draw(g, t, (x) => this.sx(x), TILE);
-    this.labels.draw(g, t, (x) => this.sx(x), TILE);
+    this.effects.draw(g, t, this.toScreen, TILE);
+    this.labels.draw(g, t, this.toScreen, TILE);
+    if (state.sporestorm > 0) this.drawStorm(state.sporestorm, this.still ? 0 : t);
+    if (over) this.aftermath.draw(g, state, this.toScreen, this.glowOf);
+    if (planning) this.preview.drawOverlays(g, state, this.toScreen);
     if (view.ghost) this.drawGhost(state, view.ghost);
+    if (view.debug) this.drawDebug(state);
   }
 
   /** The free plots a chosen card could go on: a soft lilac wash and outline. */
@@ -284,20 +354,43 @@ export class RoundRenderer {
     }
   }
 
-  /** One unit, through R4a's drawer (`src/render/unitSprite.ts`), at its interpolated foot point. */
-  private drawUnit(state: BattleState, view: RoundView, u: UnitState, alpha: number, t: number, calm: boolean): void {
-    const x = u.px + (u.x - u.px) * alpha;
-    const y = u.py + (u.y - u.py) * alpha;
+  /** The Sporestorm's haze over the field, as v1's, thickening with each step of the storm (§6.4, §10.2). */
+  private drawStorm(steps: number, t: number): void {
+    const g = this.ctx;
+    g.fillStyle = `rgba(201, 162, 255, ${0.025 * steps})`;
+    g.fillRect(0, 0, this.width, this.height);
+    g.fillStyle = 'rgba(251, 246, 255, 0.55)'; // spore-white: spores are the one particle
+    const n = 14 * steps;
+    for (let i = 0; i < n; i++) {
+      const x = ((i * 97.3 + t * 0.012 * (1 + (i % 3))) % this.width + this.width) % this.width;
+      const y = ((i * 53.7 + t * 0.006 * ((i % 2) ? 1 : -1)) % this.height + this.height) % this.height;
+      g.fillRect(Math.round(x), Math.round(y), 1, 1);
+    }
+  }
+
+  /** One unit, through R4a's drawer (`src/render/unitSprite.ts`), at its interpolated foot point, posed by the aftermath once the clash is over. */
+  private drawUnit(state: BattleState, view: RoundView, u: UnitState, alpha: number, t: number, calm: boolean, over: boolean): void {
+    let x = u.px + (u.x - u.px) * alpha;
+    let y = (u.py + (u.y - u.py) * alpha) * TILE;
+    const emplacement = !!state.compiled[u.side].units[u.unitId]?.emplacement;
+    const o = this.unitOpts;
+    o.alpha = 1;
+    if (over) {
+      const pose = this.aftermath.pose(state, u, emplacement, this.pose);
+      if (pose.alpha <= 0) return;
+      x += pose.dx;
+      y += pose.sink;
+      o.alpha = pose.alpha;
+    }
     const moving = u.x !== u.px || u.y !== u.py;
     const attacking = state.tick - u.lastAttackTick < 6 && u.lastAttackTick >= 0;
-    const o = this.unitOpts;
     // an emplacement is one unit under its tower's id, drawn as R4a's emplacement (R4/T029)
     o.sprite = this.content.units[u.unitId]?.sprite ?? emplacementSprite(this.content, u.unitId);
     o.faction = factionOf(u.side);
     o.frame = attacking ? 2 : moving ? Math.floor(t / 250 + u.id) % 2 : 0;
     o.flip = u.side === 'enemy';
     o.x = this.sx(x);
-    o.y = y * TILE;
+    o.y = y;
     o.tier = u.tier;
     o.side = u.side;
     o.id = u.id;
@@ -313,8 +406,63 @@ export class RoundRenderer {
     drawUnitSprite(this.ctx, this.atlas, o);
   }
 
+  /** F3 (`?debug=1`, §10.3): every plot with its index, rank and file, the formation box and its slots, units' aggro radii and ids, buildings' ids. */
+  private drawDebug(state: BattleState): void {
+    const g = this.ctx;
+    g.font = '7px ui-monospace, monospace';
+    g.lineWidth = 1;
+    const geom = { width: state.map.width, lanes: state.lanes, gapTiles: state.rules.formationGapTiles };
+    for (const side of SIDES) {
+      const plots = state.sides[side].plots;
+      const tint = side === 'player' ? '#c9a2ff' : '#b8c4a8';
+      g.fillStyle = tint;
+      plots.forEach((p, i) => g.fillText(`${i} ${'FBT'[p.rank] ?? p.rank}${p.file}`, this.sx(p.col) + 1, p.row * TILE + 7));
+      const box = formationBox(geom, side, plots.reduce((n, p) => Math.max(n, p.rank + 1), 1));
+      g.strokeStyle = tint;
+      g.globalAlpha = 0.5;
+      for (const s of box) g.strokeRect(this.sx(s.col) + 0.5, s.row * TILE + 0.5, 2 * TILE - 1, 2 * TILE - 1);
+      g.globalAlpha = 1;
+      for (const s of box) g.fillText(`${'FBT'[s.rank] ?? s.rank}${s.file}`, this.sx(s.col) + 1, (s.row + 2) * TILE - 2);
+      const cols = box.map((s) => s.col), rows = box.map((s) => s.row);
+      const x0 = Math.min(...cols), y0 = Math.min(...rows);
+      g.strokeRect(this.sx(x0) - 0.5, y0 * TILE - 0.5, (Math.max(...cols) + 2 - x0) * TILE + 1, (Math.max(...rows) + 2 - y0) * TILE + 1);
+    }
+    g.fillStyle = '#ffe9a8';
+    for (const b of state.buildings) {
+      const p = state.sides[b.side].plots[b.plot]!;
+      g.fillText(`#${b.id}`, this.sx(p.col) + 1, (p.row + 2) * TILE - 2);
+    }
+    g.strokeStyle = '#ffe9a8';
+    g.globalAlpha = 0.35;
+    for (const u of state.units) {
+      g.beginPath();
+      g.arc(this.sx(u.x), u.y * TILE, state.compiled[u.side].units[u.unitId]!.aggroRange * TILE, 0, Math.PI * 2);
+      g.stroke();
+    }
+    g.globalAlpha = 1;
+    for (const u of state.units) g.fillText(String(u.id), this.sx(u.x) - 4, u.y * TILE + 9);
+  }
+
   /** Ambient motion holds still: `?test=1` (set by the view) or reduced motion. */
   private calm(): boolean {
     return this.still || (typeof document !== 'undefined' && document.documentElement.classList.contains('reduce-motion'));
   }
+}
+
+/** The "New" status glyph (§10.4): a sprout on a building planted this planning phase, until the clash. */
+function sprout(g: CanvasRenderingContext2D, x: number, y: number): void {
+  g.fillStyle = INK_DEEP;
+  g.fillRect(x - 1, y - 1, 7, 7);
+  g.fillStyle = '#9fe0a0';
+  for (const [px, py] of [[2, 2], [2, 3], [2, 4], [0, 1], [1, 1], [1, 2], [3, 0], [4, 0], [3, 1]] as const) g.fillRect(x + px, y + py, 1, 1);
+}
+
+/** The "merge off" status glyph (§10.4): a knot struck through, as v1's. */
+function knotOff(g: CanvasRenderingContext2D, x: number, y: number, color: string): void {
+  g.fillStyle = INK_DEEP;
+  g.fillRect(x - 1, y - 1, 9, 9);
+  g.fillStyle = color;
+  for (const [px, py] of [[2, 0], [3, 0], [4, 0], [1, 1], [5, 1], [0, 2], [6, 2], [0, 3], [6, 3], [0, 4], [6, 4], [1, 5], [5, 5], [2, 6], [3, 6], [4, 6], [3, 2], [3, 3], [3, 4]] as const) g.fillRect(x + px, y + py, 1, 1);
+  g.fillStyle = '#e0645a';
+  for (let i = 0; i < 7; i++) g.fillRect(x + i, y + 6 - i, 1, 1);
 }

@@ -609,7 +609,7 @@ S1 to S4: the data, the colony, the round state machine and the planning command
   - hovering plot F2 lights slot F2, and the other way round;
   - a chosen card lights free plots only, sampled per plot; the ghost on a stump plot gives its reason;
   - in a round scenario where the general fields a Gill Archer Nest and a Capguard Hall (T048's `formation-from-plots` can be it), with the Sporeling Burrow chosen, the archers' squad carries the strong mark (slash on light, ×1.5) and the Capguards' none (slash on medium, ×1.0), read from `preview()`.
-- [ ] T083 [US3] Build the formation preview in `src/render/rounds/preview.ts` (new): layer 4 in planning, drawn by `src/render/rounds/renderer.ts` (§10.2, §13.6) (A060)
+- [x] T083 [US3] Build the formation preview in `src/render/rounds/preview.ts` (new): layer 4 in planning, drawn by `src/render/rounds/renderer.ts` (§10.2, §13.6) (A060)
   - Both sides from `formationOf`: squads dimmed inside a faint slot outline, each with its merge preview (pips through R4a's `drawPips(g, atlas, cx, y, tier)`, then the count of base units left) from `mergePreview`.
   - Cached by colony and toggles. Hovering a plot lights its slot and the other way round; the ghost's squad shows in its slot through `formationOf(…, change)`.
   - On Twin Roots, one preview per lane. Color-blind team marks sit under preview units.
@@ -619,15 +619,15 @@ S1 to S4: the data, the colony, the round state machine and the planning command
   - A slayer's hit (the Veilstalker's) on a Bloomed unit is strong (×3.0 tag multiplier); on a base-tier unit it follows the matrix.
   - Merge-perk resistances never change a class (§5.3).
   - Within a squad that fields as 2 Bloomed and 2 base, the classes per tier can differ (Call 22).
-- [ ] T084 [US3] Build `matchupClass` in `src/sim/rounds/matchups.ts` (new), export it from `src/sim/rounds/index.ts`, and draw basic marks over enemy slots in `src/render/rounds/preview.ts` (§5.3, §10.2, §10.4, §11.1 `effectiveness`) (A060, A069)
+- [x] T084 [US3] Build `matchupClass` in `src/sim/rounds/matchups.ts` (new), export it from `src/sim/rounds/index.ts`, and draw basic marks over enemy slots in `src/render/rounds/preview.ts` (§5.3, §10.2, §10.4, §11.1 `effectiveness`) (A060, A069)
   - `matchupClass` follows `classify`'s rule (`src/sim/systems/combat.ts:247`) on the matrix and tag multipliers, with `balance.effectiveness`'s `strongAtLeast` 1.5 and `weakAtMost` 0.75, and the post-matrix rules, without merge-perk resistances. R4b extends this module (it finds it with `grep -rn matchupClass src/sim`).
   - Marks show while a card is chosen or one of your squads is hovered: strong at ×1.5 or more, weak at ×0.75 or less, none for normal.
   - Each squad gets Call 22's two marks. The reverse direction and the card's own marks wait for R4b.
-- [ ] T085 [US3] Build the aftermath in `src/render/rounds/aftermath.ts` (new), from the `RoundResult` in state (§10.2, §13.6) (A061, A078)
+- [x] T085 [US3] Build the aftermath in `src/render/rounds/aftermath.ts` (new), from the `RoundResult` in state (§10.2, §13.6) (A061, A078)
   - The winners' survivors surge into the loser's Heartcap and burst; at the cap the loser's wilt; a drawn lane's survivors wilt. The number rises over the Heartcap with the storm and "capped" beside it.
   - About 3 s at 1×, at the clash's speed, with no pause. Under reduced motion it's a fade of 120 ms or less. Under `?test=1` it jumps to its final frame (Call 15).
   - At a battle's end the field holds about 1 s on the fallen Heartcap.
-- [ ] T086 [US3] Add the field's details to `src/render/rounds/renderer.ts`: a "New" sprout on buildings planted this round (in planning), the merge-off knot, arrival puffs on `arrived`, coin pops on `income`, the storm haze from `state.sporestorm`, and F3 debug showing plots, the formation box, slots, aggro radii and ids (§10.2, §10.3, §13.6)
+- [x] T086 [US3] Add the field's details to `src/render/rounds/renderer.ts`: a "New" sprout on buildings planted this round (in planning), the merge-off knot, arrival puffs on `arrived`, coin pops on `income`, the storm haze from `state.sporestorm`, and F3 debug showing plots, the formation box, slots, aggro radii and ids (§10.2, §10.3, §13.6)
   - In a clash, emplacements draw through R4a's `emplacementSprite(content, buildingId)` (R4/T029): `e-<id>` if the sprite exists, else the building's sprite. If R4a hasn't landed, draw the building's sprite at the emplacement's slot.
 
 **S13: the top band and the Intent panel** (may run beside S12)

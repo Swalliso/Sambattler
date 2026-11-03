@@ -3,13 +3,12 @@
 // summary, so a capture can compare the page with Node at the same round, phase and tick. `tick` is the
 // battle's cumulative `state.tick` (plan Call 16). `battle()` is the live state, for browser tests that stage
 // a case; changing it gives up the hash check. It stands beside v1's bridge until R2b folds the two.
+import type { DrawnPreview } from '../../render/rounds/preview.ts';
 import { hashState, summarize } from '../../sim/rounds/index.ts';
 import type { BattleState, RoundSummary, Side } from '../../sim/rounds/index.ts';
 
-/** One side's formation preview as it was drawn: each squad and its units' positions (T083). */
-export interface DrawnPreview {
-  squads: { building: number; unitId: string; units: { x: number; y: number; tier: number }[] }[];
-}
+/** One side's formation preview as it was drawn: its squads with their units, merge previews and marks, the muster's knits and the lit plot (T083). */
+export type { DrawnPreview, DrawnSquad, SquadMarks } from '../../render/rounds/preview.ts';
 
 export interface RoundsBridge {
   ready: boolean;
