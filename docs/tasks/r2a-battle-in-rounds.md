@@ -486,7 +486,7 @@ S1 to S4: the data, the colony, the round state machine and the planning command
   - Clear the field and advance the round; pay income from round 2, with any `pendingGold`; set the storm and emit `roundStarted`; fire `roundStart`.
   - The general's turn (T068), an empty draft hook (Call 26), and a player-side bot's turn (T069); then enter planning.
   - Export `incomePreview(state, side)` from `src/sim/rounds/index.ts`.
-- [ ] T056 [US2] Write `tests/unit/rounds/stats.test.ts` (new) (§5.7) (A064, A175):
+- [x] T056 [US2] Write `tests/unit/rounds/stats.test.ts` (new) (§5.7) (A064, A175):
   - each stat is kept per round, and a battle's figure is their sum;
   - fielded by type, tier and count; merges by tier, at the muster and after;
   - damage by building, clouds and bursts included; each lane's result, length and survivors;
