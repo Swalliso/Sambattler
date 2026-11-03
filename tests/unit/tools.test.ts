@@ -1,12 +1,16 @@
 // The balance tools in round form (SPEC §12.2, §15.3; R2a/T116, T117): `playRoundClash` plays R1's armies as one
 // round clash on the round sim, from either seat, and the pool's round jobs give what an in-process run gives,
-// in job order, as a worker's dispatch does.
+// in job order, as a worker's dispatch does. The screenshot mirror plays `scene=run` to a round and phase as the
+// page does (R2b/T157).
 import { describe, expect, it } from 'vitest';
 import { armyFromBot, playRoundClash } from '../../tools/lib/clash.ts';
 import type { RoundClashJob } from '../../tools/lib/clash.ts';
 import { dispatch, inProcessRounds } from '../../tools/lib/pool.ts';
 import { playRoundJob, squadDuel } from '../../tools/lib/balance.ts';
 import type { RoundJob } from '../../tools/lib/balance.ts';
+import { runForParams } from '../../tools/lib/params.ts';
+import { BattleRefusal } from '../../src/app/urlParams.ts';
+import { createBattle, hashState } from '../../src/sim/index.ts';
 import { content } from '../helpers.ts';
 
 const army = (bot: string, budget = 600) => armyFromBot(content, bot, budget, 1, 8);
@@ -54,5 +58,31 @@ describe("the pool's round jobs (T117)", () => {
       expect(r).toEqual(playRoundJob(content, jobs[i]!));
       expect(dispatch(content, jobs[i]!)).toEqual(r);
     });
+  });
+});
+
+describe('scene=run at a round and phase (§15.6, R2b/T157)', () => {
+  const q = (s: string) => new URLSearchParams(s);
+
+  it("enters the run's first battle and plays it to the checkpoint, with the bot planning and beginning", () => {
+    const { run, battle } = runForParams(content, q('scene=run&seed=7&player=bot:balanced&round=2&phase=planning'));
+    expect(run.screen.kind).toBe('battle');
+    expect(run.path).toEqual([0]);
+    expect([battle!.round, battle!.phase, battle!.config.battleIndex]).toEqual([2, 'planning', 1]);
+    if (run.screen.kind !== 'battle') return;
+    expect(battle!.config).toEqual(run.screen.config);
+    // the same checkpoint each time, and past round 1's start
+    expect(hashState(runForParams(content, q('scene=run&seed=7&player=bot:balanced&round=2&phase=planning')).battle!)).toBe(hashState(battle!));
+    expect(hashState(battle!)).not.toBe(hashState(createBattle(content, run.screen.config)));
+  });
+
+  it('opens the route, with no battle, when it names neither', () => {
+    const { run, battle } = runForParams(content, q('scene=run&seed=7&player=bot:balanced'));
+    expect([run.screen.kind, battle]).toEqual(['route', null]);
+  });
+
+  it("refuses what a single battle refuses: a human's planning past round 1, or a phase that isn't one", () => {
+    expect(() => runForParams(content, q('scene=run&seed=7&round=2&phase=planning'))).toThrow(BattleRefusal);
+    expect(() => runForParams(content, q('scene=run&seed=7&player=bot:balanced&phase=lunch'))).toThrow(/phase=lunch/);
   });
 });

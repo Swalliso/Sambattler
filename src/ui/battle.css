@@ -13,6 +13,11 @@
 .rounds-top #mount-intent { grid-column: 4; grid-row: 1 / -1; align-self: stretch; display: flex; min-width: 0; }
 .rounds-top #mount-tally > [hidden] { display: none; }
 
+/* A run's lives under your Heartcap (§8.5, R2b/T106): a cap per life, lit for each one left, as on the run bar. */
+.heart .hud-lives { grid-column: 1 / -1; display: flex; gap: var(--space-1); height: 16px; cursor: help; }
+.hud-lives .cap { display: flex; }
+.hud-lives .cap:not(.lit) { opacity: 0.3; filter: grayscale(1); }
+
 /* The round chip: the clock shows only in a clash, and glows in the cap's last 5 s (§6.7). */
 .chip.round small:empty { display: none; }
 .chip.round.soon { border-color: var(--lilac); box-shadow: 0 0 8px var(--glow-lilac); }

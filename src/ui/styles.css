@@ -571,7 +571,7 @@ kbd { font-family: var(--font-mono); font-size: 12px; line-height: 16px; padding
 .runscreen > .run-sky { position: absolute; inset: 0; pointer-events: none; }
 .runscreen > .hud-tip { position: fixed; } /* the Underroot's building tooltips float over the screen */
 .runbar .muted, .muted { color: var(--muted); }
-.intel .intel-title { color: var(--muted); letter-spacing: .04em; }
+.intel .intel-title { flex: none; width: 7.5em; color: var(--muted); letter-spacing: .04em; line-height: 16px; }
 .intel .intel-kind { display: flex; align-items: center; gap: 4px; }
 .intel .kind-icon { width: 20px; height: 20px; flex: none; image-rendering: pixelated; }
 .intel .dots { display: inline-flex; gap: 3px; margin-left: 2px; }
@@ -595,7 +595,17 @@ kbd { font-family: var(--font-mono); font-size: 12px; line-height: 16px; padding
 .summary-table th { color: var(--muted); font-weight: 400; }
 .summary-battle.won .result { color: var(--lilac); }
 .summary-battle.lost .result { color: var(--danger-soft); }
-.sparkline { display: block; height: 28px; background: var(--well); border: 1px solid var(--line); }
+/* a battle's rounds (§8.8, R2b/T104): its count, then dealt rising in violet and taken hanging in ash */
+.summary-table td.rounds { display: flex; align-items: center; gap: var(--space-4); }
+.summary-table td.rounds > span { min-width: 1.2em; font-variant-numeric: tabular-nums; }
+.sparkline { display: block; flex: none; }
+.sparkline .dealt { fill: var(--violet); }
+.sparkline .taken { fill: var(--rot); }
+.sparkline .mid { fill: var(--line-strong); }
+.summary-kit { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; margin-top: 2px; }
+.summary-kit .kitpiece { position: relative; }
+.summary-kit .kitpiece canvas { width: 32px; height: 32px; image-rendering: pixelated; display: block; }
+.summary-kit .kitpiece i { position: absolute; right: -2px; bottom: -2px; font: normal 700 12px/14px var(--font-text); color: var(--text); background: var(--violet-deep); border: 1px solid var(--lilac); border-radius: 2px; padding: 0 2px; }
 .cardlist { margin: 0; padding-left: 18px; font-size: 12px; line-height: 17px; columns: 2; column-gap: 24px; }
 #summary-earned td { padding: 2px 8px; border-bottom: 1px solid var(--line); }
 #summary-earned .earned td { font-variant-numeric: tabular-nums; }
@@ -637,7 +647,7 @@ kbd { font-family: var(--font-mono); font-size: 12px; line-height: 16px; padding
 .runhead { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--space-6); padding: var(--space-5) var(--space-6) var(--space-3); }
 .runtitle { margin: 0; display: flex; align-items: baseline; gap: var(--space-5); font: 400 30px/32px var(--font-display); font-synthesis: none; }
 .runtitle .hint { font: 400 13px/1.35 var(--font-text); }
-.intel { display: flex; align-items: center; gap: 14px; padding: 6px 10px; border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--panel-2); font-size: 13px; }
+.intel { display: flex; align-items: center; gap: 12px; padding: 6px 10px; border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--panel-2); font-size: 13px; }
 .runfoot { display: flex; justify-content: space-between; align-items: center; gap: var(--space-6); min-height: 44px; padding: var(--space-3) var(--space-6); border-top: 1px solid var(--line); background: var(--panel); }
 .runfoot-right { display: flex; align-items: center; gap: var(--space-4); }
 .runfoot .seed { font: 12px/16px var(--font-mono); color: var(--muted); margin-right: var(--space-4); }
@@ -682,6 +692,16 @@ kbd { font-family: var(--font-mono); font-size: 12px; line-height: 16px; padding
 .route-node.open:focus-visible { box-shadow: none; }
 .route-node.open:focus-visible .pod { box-shadow: var(--shadow-focus); }
 .route-node.open .node-title { color: var(--lilac); }
+/* the general's kit on a battle node (§8.2, R2b/T105): 1× sprites with their levels, the names on hover or focus */
+.route-node .node-kit { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px; max-width: 176px; margin: 1px 0; }
+.route-node .nk-piece { position: relative; display: flex; }
+.route-node .nk-piece canvas { width: 32px; height: 32px; image-rendering: pixelated; image-rendering: crisp-edges; }
+.route-node .nk-piece i { position: absolute; right: -2px; bottom: -2px; font: normal 700 11px/13px var(--font-text); color: var(--text); background: var(--mat-rot); border: 1px solid var(--rot-light); border-radius: 2px; padding: 0 2px; }
+.route-node .node-tip { display: none; position: absolute; top: 60px; left: calc(100% - 8px); z-index: 20; width: 200px; padding: 7px 9px; flex-direction: column; gap: 2px; background: var(--tooltip-bg); border: 1px solid var(--line-strong); border-radius: var(--radius-md); box-shadow: var(--shadow-tooltip); font: 12px/16px var(--font-text); color: var(--text); text-align: left; pointer-events: none; }
+.route-row:last-child .route-node .node-tip { left: auto; right: calc(100% - 8px); }
+.route-node:hover .node-tip, .route-node:focus-visible .node-tip { display: flex; }
+.route-node .node-note { color: var(--muted); font-style: italic; }
+.route-node .node-bosslives { display: inline-flex; align-items: center; gap: var(--space-1); color: var(--lilac); font-weight: 700; }
 .route-node.past { opacity: .5; }
 .route-node.future .node-title, .route-node.past .node-title { color: var(--text); }
 .route-node.future.elite .node-title { color: var(--danger-soft); }

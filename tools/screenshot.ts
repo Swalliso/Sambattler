@@ -15,7 +15,9 @@ import { nodeContent, ROOT } from './lib/content.ts';
 import { CVD_MATRICES, cvdMatrixValues } from './lib/cvd.ts';
 import type { CvdFilter } from './lib/cvd.ts';
 import { RUN_SCENES, battleStateForParams, runForParams, sceneOf } from './lib/params.ts';
-import { hashRun, intelDots } from '../src/run/index.ts';
+import { generalKit, hashRun, intelDots, isBattle, nodeBattleIndex } from '../src/run/index.ts';
+import type { RunState } from '../src/run/index.ts';
+import { battleOutcome } from '../src/ui/words.ts';
 import { COUNTER_KINDS } from '../src/sim/index.ts';
 import { formationOf as roundFormationOf, hashState as hashRoundState, summarize as summarizeRound } from '../src/sim/index.ts';
 import type { BattleState as RoundState } from '../src/sim/index.ts';
@@ -139,9 +141,11 @@ async function main(): Promise<number> {
     let nodeTick = 0;
     let runBattle: RoundState | null = null;
     let runBrief: unknown = null;
+    let nodeRun: RunState | null = null;
     // the title and the Underroot hold no run or battle yet: the bridge's hash is empty
     if (RUN_SCENES.includes(scene)) {
       const r = runForParams(content, q);
+      nodeRun = r.run;
       runBattle = r.battle;
       nodeHash = runBattle ? hashRoundState(runBattle) : hashRun(r.run);
       nodeTick = runBattle?.tick ?? 0;
@@ -172,31 +176,55 @@ async function main(): Promise<number> {
       if (!offer) failures.push('no draft is open in the Node state');
       if (cards.length !== offer) failures.push(`draft shows ${cards.length} cards, the state offers ${offer}`);
       for (const c of cards) if (!c.type || !c.rarity || !c.name || !c.text) failures.push(`draft card missing type, rarity, name or text: ${JSON.stringify(c)}`);
+    } else if (scene === 'run' && runBattle) {
+      // a run's battle (`round=`, `phase=`; T157): a cap under your Heartcap per life, lit for each one left (A063)
+      dom = await page.evaluate(() => ({
+        caps: document.querySelectorAll('#hud-hp-player #hud-lives .cap').length,
+        lit: document.querySelectorAll('#hud-hp-player #hud-lives .cap.lit').length,
+      }));
+      const d = dom as { caps: number; lit: number };
+      const lives = (runBrief as { lives: { left: number; max: number } } | null)?.lives;
+      if (!lives) failures.push('the bridge has no run');
+      else if (d.caps !== lives.max || d.lit !== lives.left) failures.push(`#hud-lives shows ${d.lit} of ${d.caps} caps lit, the run has ${lives.left} of ${lives.max}`);
     } else if (scene === 'route' || scene === 'run') {
       dom = await page.evaluate(() => ({
         rows: document.querySelectorAll('.route-row').length,
-        nodes: [...document.querySelectorAll('.route-node')].map((n) => ({
-          kind: n.getAttribute('data-kind'), icon: !!n.querySelector('canvas.node-icon'), map: n.querySelector('.node-map')?.textContent ?? null,
+        nodes: [...document.querySelectorAll<HTMLElement>('.route-node')].map((n) => ({
+          node: n.dataset.node ?? '', kind: n.getAttribute('data-kind'), icon: !!n.querySelector('canvas.node-icon'), map: n.querySelector('.node-map')?.textContent ?? null,
+          kit: [...n.querySelectorAll<HTMLElement>('.node-kit [data-building]')].map((b) => `${b.dataset.building}:${b.dataset.level}`),
         })),
         open: document.querySelectorAll('.route-node.open').length,
       }));
-      const d = dom as { rows: number; nodes: { kind: string; icon: boolean; map: string | null }[]; open: number };
+      const d = dom as { rows: number; nodes: { node: string; kind: string; icon: boolean; map: string | null; kit: string[] }[]; open: number };
       if (d.rows !== 6) failures.push(`route shows ${d.rows} rows (expected 6)`);
       for (const n of d.nodes) {
         if (!n.icon) failures.push(`a ${n.kind} node has no icon`);
         if (['battle', 'elite', 'boss'].includes(n.kind) && !n.map) failures.push(`a ${n.kind} node does not name its map`);
       }
       if (!d.open) failures.push('no node is selectable in the current row');
+      // each battle node lists its general's kit at the battle index it shows (§8.2, T105)
+      for (const [r, list] of nodeRun!.route.entries()) {
+        for (const [i, node] of list.entries()) {
+          if (!isBattle(node)) continue;
+          const k = generalKit(content, nodeRun!, node, nodeBattleIndex(nodeRun!, r));
+          const want = k.kit.map((id) => `${id}:${k.upgrades[id] ?? 0}`);
+          const got = d.nodes.find((n) => n.node === `${r}:${i}`)?.kit ?? [];
+          if (got.join() !== want.join()) failures.push(`node ${r}:${i} lists the kit ${got.join(' ') || '(none)'}, generalKit has ${want.join(' ')}`);
+        }
+      }
     } else if (scene === 'summary') {
       dom = await page.evaluate(() => ({
         title: document.getElementById('summary-title')?.textContent ?? '',
         battles: [...document.querySelectorAll('.summary-battle')].map((r) => r.querySelector('.result')?.textContent ?? ''),
+        sparklines: document.querySelectorAll('.summary-battle .sparkline').length,
       }));
-      const d = dom as { title: string; battles: string[] };
-      const n = (runBrief as { battles: unknown[] } | null)?.battles.length ?? -1;
+      const d = dom as { title: string; battles: string[]; sparklines: number };
       if (!d.title) failures.push('the summary has no title');
-      if (d.battles.length !== n) failures.push(`summary lists ${d.battles.length} battles, the run has ${n}`);
-      for (const r of d.battles) if (!/^(Won|Lost) by (Rout|Decision)$/.test(r)) failures.push(`summary row without a result: "${r}"`);
+      // the summary's battles are the run's, each with how it was decided and a sparkline when it has rounds (§8.8)
+      const want = nodeRun!.battles.map(battleOutcome);
+      if (d.battles.join('|') !== want.join('|')) failures.push(`summary lists ${JSON.stringify(d.battles)}, the run has ${JSON.stringify(want)}`);
+      const sparks = nodeRun!.battles.filter((b) => b.rounds.length).length;
+      if (d.sparklines !== sparks) failures.push(`summary shows ${d.sparklines} sparklines, the run has ${sparks} battles with rounds`);
     }
 
     // 4e. the Underroot (SPEC §16 M5): three commander cards, each with its passive, power and starter kit
@@ -234,8 +262,8 @@ async function main(): Promise<number> {
       for (const b of u.bans) if (chosen && chosen.core.includes(b.id) !== b.core) failures.push(`ban ${b.id}: core marking is wrong for ${chosen.name}`);
     }
 
-    // 4c. intel bars (SPEC §7.6) on the route and the summary: four kinds with the run's dots once a battle has been read
-    if (scene === 'route' || scene === 'run' || scene === 'summary') {
+    // 4c. intel bars (SPEC §7.6) on the route and the summary: five kinds with the run's dots once a battle has been read
+    if (scene === 'route' || (scene === 'run' && !runBattle) || scene === 'summary') {
       const intelDom = await page.evaluate(() => [...document.querySelectorAll('#route-intel .intel-kind')].map((e) => ({
         kind: e.getAttribute('data-kind'), dots: Number(e.getAttribute('data-dots')), text: e.textContent ?? '',
       })));
@@ -243,9 +271,8 @@ async function main(): Promise<number> {
       const r = runForParams(content, q).run;
       if (r.intel) {
         const want = intelDots(r.intel);
-        if (intelDom.length !== 4) failures.push(`${scene} shows ${intelDom.length} intel bars (expected 4)`);
-        // the bars show v1's four kinds until S9 gives Anti-Ranged its bar
-        for (const k of COUNTER_KINDS.filter((x) => x !== 'ranged')) {
+        if (intelDom.length !== COUNTER_KINDS.length) failures.push(`${scene} shows ${intelDom.length} intel bars (expected ${COUNTER_KINDS.length})`);
+        for (const k of COUNTER_KINDS) {
           const got = intelDom.find((x) => x.kind === k);
           if (!got || got.dots !== want[k]) failures.push(`intel bar ${k}: ${got?.dots ?? '-'} dots, the run has ${want[k]}`);
         }

@@ -3,12 +3,14 @@
 // the battle's hash while a battle is on screen, at the same round, phase and tick, otherwise the run state's.
 // `tick` is the battle's cumulative `state.tick` (R2a plan Call 16). battle() hands browser tests the live state
 // to stage a case (a smaller kit, less gold); a test that changes it gives up the hash. preview() is what the
-// formation preview last drew (T083), and with `measure=frames` `frames` holds the last frames' times (T115).
+// formation preview last drew (T083), with `measure=frames` `frames` holds the last frames' times (T115), and on
+// run scenes playTime() is the run's play clock's readout (R2b/T109).
 import type { DrawnPreview } from '../render/preview.ts';
 import { hashRun } from '../run/index.ts';
 import type { RunState } from '../run/index.ts';
 import { hashState, summarize } from '../sim/index.ts';
 import type { BattleState, RoundSummary, Side } from '../sim/index.ts';
+import type { PlayTimeReadout } from '../ui/report.ts';
 import { stormBpFor } from '../sim/systems/victory.ts';
 
 /** `summarize`'s, with this round's storm as a multiplier, which the storm chip shows (§6.4, T087); the round log has past rounds'. */
@@ -44,6 +46,8 @@ export interface GameBridge {
   /** What the formation preview last drew, per side, or null before its first draw (T083). */
   preview(): Record<Side, DrawnPreview> | null;
   run(): RunBrief | null;
+  /** On run scenes, the run's play clock's readout, which the summary shows (T109); null elsewhere. */
+  playTime(): PlayTimeReadout | null;
   errors: string[];
   /** With `measure=frames`, the last frames' times in ms (T115). */
   readonly frames?: number[];
@@ -59,6 +63,7 @@ export interface BridgeSources {
   preview?: () => Record<Side, DrawnPreview> | null;
   frames?: (() => number[]) | null;
   run: () => RunState | null;
+  playTime?: () => PlayTimeReadout | null;
 }
 
 export function installBridge(src: BridgeSources, errors: string[]): GameBridge {
@@ -77,6 +82,7 @@ export function installBridge(src: BridgeSources, errors: string[]): GameBridge 
     summary: () => { const b = src.battle(); return b ? { ...summarize(b), storm: stormBpFor(b.rules.storm, b.round) / 10000 } : null; },
     battle: () => src.battle(),
     preview: () => src.preview?.() ?? null,
+    playTime: () => src.playTime?.() ?? null,
     run: () => {
       const r = src.run();
       if (!r) return null;
