@@ -519,7 +519,7 @@ S1 to S4: the data, the colony, the round state machine and the planning command
 
 **S10a: the general plans first, and the bots**
 
-- [ ] T065 [US2] Write `tests/unit/rounds/ai.test.ts` (new) for the planning turn (§7.1–§7.3, §7.9, §15.7 Planning, AI) (A043, A045, A047, A070):
+- [x] T065 [US2] Write `tests/unit/rounds/ai.test.ts` (new) for the planning turn (§7.1–§7.3, §7.9, §15.7 Planning, AI) (A043, A045, A047, A070):
   - a plan is a function of its view: two states that differ only in the player's current colony give identical commands and the same ai-stream position;
   - round 1's opener comes first, skipping what it can't afford, then weighted picks × doctrine;
   - economy is × 1.5 in rounds 1–2 and × 0.3 from round 7; the Mortar is × 2 only after a lost round, not a drawn one;
