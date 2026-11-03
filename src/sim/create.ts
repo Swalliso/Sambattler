@@ -21,7 +21,7 @@ export type Flags = BattleConfig['flags'];
 
 /** The milestone this build implements. Feature flags default to what it ships (SPEC §15.2). */
 export const MILESTONE = 5;
-/** A battle in rounds' features unless its config sets them. R2a has no drafts (plan Call 26). */
+/** A battle in rounds' features unless its config sets them. A single battle drafts only with `--flags drafts` (§8.3). */
 export const DEFAULT_FLAGS: Readonly<Flags> = { merging: true, drafts: false, adaptiveGeneral: true, powers: true };
 
 /** Flag names as written in `--flags` and `?flags=`, and the milestone each one arrives in. */
@@ -127,6 +127,8 @@ export function makeRoundConfig(content: Content, opts: RoundBattleOptions): Bat
   };
   for (const s of SIDES) config[s].kit = kitOf(content, s, config);
   if (opts.commander) setCommander(content, config.player, opts.commander);
+  // a single battle with drafts on gives the player its commander's pool (Vesper's without one, §8.4)
+  if (config.flags.drafts) config.player.draft = draftPool(content, config.player.faction, opts.commander ?? DEFAULT_COMMANDER, config.flags);
   setPassives(content, config);
   return config;
 }
@@ -170,7 +172,6 @@ function newBattle(content: Content, config: BattleConfig): BattleState {
   const map = content.maps[config.mapId];
   if (!map) throw new Error(`unknown map ${config.mapId}`);
   if (!map.colony) throw new Error(`${map.id} has no colony block, so it can't hold a battle in rounds (§4.6)`);
-  if (config.flags.drafts) throw new Error('a battle in rounds has no drafts until R2b (plan Call 26)');
   const library = buildRoundLibrary(content, config);
   const rules = compileRoundRules(library, config);
   const compiled = compileRoundSides(library, config);

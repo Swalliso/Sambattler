@@ -8,6 +8,7 @@
 // here (§7.2).
 import { nextFloat } from '../rng.ts';
 import { commandStamp, queueCommand } from '../commands.ts';
+import { executeDraft } from '../draft.ts';
 import { plant, sell, sellValue, toggleMerge } from '../planning.ts';
 import { other } from '../state.ts';
 import type { AiPlan, AiState, AiWeight, BattleState, BuildingState, Command, CommandBody, Side } from '../state.ts';
@@ -19,7 +20,7 @@ import { planningView } from './view.ts';
 import type { PlanningView } from './view.ts';
 
 /** The commands a planner runs at once. */
-export type PlanBody = Extract<CommandBody, { type: 'plant' | 'sell' | 'toggleMerge' }>;
+export type PlanBody = Extract<CommandBody, { type: 'plant' | 'sell' | 'toggleMerge' | 'draftPick' }>;
 
 /**
  * The side's planning turn (§7.2), which `openRound` runs for each AI side. `income` is what the round's
@@ -58,7 +59,8 @@ export function runAtOnce(state: BattleState, side: Side, body: PlanBody): strin
   const cmd = { ...commandStamp(state), side, seq: state.nextSeq[side]++, ...body } as Command;
   state.log.push(cmd);
   const problem = body.type === 'plant' ? plant(state, side, body.buildingId, body.plot)
-    : body.type === 'sell' ? sell(state, side, body.entityId) : toggleMerge(state, side, body.entityId, body.on);
+    : body.type === 'sell' ? sell(state, side, body.entityId)
+    : body.type === 'toggleMerge' ? toggleMerge(state, side, body.entityId, body.on) : executeDraft(state, side, body);
   if (problem) {
     state.events.push({ t: 'commandRejected', side, seq: cmd.seq, reason: problem });
     state.stats[side].rejectedCommands++;

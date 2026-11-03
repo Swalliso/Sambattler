@@ -3,7 +3,8 @@
 // executor checks its command again as it runs and returns why it's refused, or null once it has run, so a
 // refusal becomes the queue's `commandRejected` and a replay reproduces it (§13.3 rule 7). The general's
 // turn (T068) runs the executors at once in the round's opening; a queued enemy plan comes after it and is
-// refused (plan Call 8). Reasons are codes, which the UI words.
+// refused (plan Call 8). While a side's draft is open, its planning commands are refused (#28): it picks,
+// rerolls or skips, then plans. Reasons are codes, which the UI words.
 import { addBuilding } from './create.ts';
 import { atMaxOwned, inKit } from './kit.ts';
 import { startClash } from './round.ts';
@@ -67,22 +68,24 @@ export function toggleMerge(state: BattleState, side: Side, entityId: number, on
 
 /**
  * `beginClash`'s planning half (§4.7 step 12, §14.5): only the player's side begins the clash, a bot or
- * general there included (plan Call 8). R2b also refuses it while the side's draft is open; R2a has no
- * drafts (plan Call 26). Its clash half, `startClash` in `round.ts`, then fields both armies.
+ * general there included (plan Call 8), and not while its draft is open (§8.3). Its clash half,
+ * `startClash` in `round.ts`, then fields both armies.
  */
 export function beginClash(state: BattleState, side: Side): string | null {
   if (side !== 'player') return 'beginClashNotPlayer';
+  if (state.sides[side].draft) return 'draftOpen';
   startClash(state);
   return null;
 }
 
 /**
- * Why `plant` would refuse the building on the side's plot now, or null (§4.4, §14.5): a card not in the
- * kit; a plot number outside the side's own colony, so never another side's plot; a closed, stump or
- * taken plot; a general's card at its `maxOwned` (§7.8); or too little gold. There's no copy check until
- * R3 (D45).
+ * Why `plant` would refuse the building on the side's plot now, or null (§4.4, §14.5): the side's draft is
+ * open (#28); a card not in the kit; a plot number outside the side's own colony, so never another side's
+ * plot; a closed, stump or taken plot; a general's card at its `maxOwned` (§7.8); or too little gold.
+ * There's no copy check until R3 (D45).
  */
 export function plantProblem(state: BattleState, side: Side, buildingId: string, plot: number): string | null {
+  if (state.sides[side].draft) return 'draftOpen';
   if (!inKit(state, side, buildingId)) return 'notInKit';
   const p = state.sides[side].plots[plot];
   if (!p) return 'noSuchPlot';
@@ -94,8 +97,9 @@ export function plantProblem(state: BattleState, side: Side, buildingId: string,
   return null;
 }
 
-/** Why `sell` would refuse the entity now, or null: it must be one of the side's buildings. */
+/** Why `sell` would refuse the entity now, or null: it must be one of the side's buildings, and its draft closed (#28). */
 export function sellProblem(state: BattleState, side: Side, entityId: number): string | null {
+  if (state.sides[side].draft) return 'draftOpen';
   const b = state.buildings.find((x) => x.id === entityId);
   if (!b) return 'noSuchBuilding';
   return b.side === side ? null : 'notYourBuilding';

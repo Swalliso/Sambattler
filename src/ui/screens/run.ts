@@ -3,9 +3,9 @@
 import type { Content } from '../../data/registry.ts';
 import type { Atlas } from '../../render/atlas.ts';
 import { spriteToCanvas } from '../../render/atlas.ts';
-import { formatClock } from '../../sim/index.ts';
+import { formatClock, nextLevel } from '../../sim/index.ts';
 import {
-  battleRewards, battlesWon, cardLabel, clashTicks, currentRow, groveProblem, intelDots, outcomeAvailable, rewardRules,
+  battleRewards, battlesWon, cardLabel, clashTicks, currentRow, groveProblem, intelDots, outcomeAvailable, rewardRules, upgradeable,
 } from '../../run/index.ts';
 import { KIND_HINT, KIND_ICON, KIND_NAME } from '../doctrine.ts';
 import type { CounterRecordBrief, GroveChoice, RouteNode, RunState } from '../../run/index.ts';
@@ -408,7 +408,7 @@ export function runChanges(content: Content, before: RunSnapshot, after: RunSnap
   for (const id of after.relics) if (!before.relics.includes(id)) out.push({ kind: 'relic', id, lost: false });
   for (const id of after.kit) if (!before.kit.includes(id)) out.push({ kind: 'blueprint', id, lost: false });
   for (const [id, lvl] of Object.entries(after.upgrades)) {
-    for (let l = (before.upgrades[id] ?? 0) + 1; l <= lvl; l++) out.push({ kind: 'upgrade', id, level: l });
+    for (let l = (before.upgrades[id] ?? 0) + 1; l <= lvl; l++) if (content.upgrades[id]?.levels[l - 1]?.offered !== false) out.push({ kind: 'upgrade', id, level: l });
   }
   const hpMax = (snap: RunSnapshot) => Math.round(content.balance.heartcapPlayerHp * (1 + snap.heartcapMaxPct));
   const maxHp = hpMax(after) - hpMax(before);
@@ -453,7 +453,7 @@ function changeCard(content: Content, atlas: Atlas, c: RunChange, run: RunState)
   const levels = content.upgrades[c.id]?.levels.length ?? 3;
   return h('div', { class: 'result-card upgrade', 'data-result': `up:${c.id}` }, art,
     h('div', { class: 'result-main' },
-      h('div', { class: 'result-head' }, h('span', { class: 'eyebrow' }, 'Upgrade'), h('span', { class: 'lvl' }, `Level ${c.level} of ${levels}${(run.upgrades[c.id] ?? 0) >= levels ? ' (max)' : ''}`)),
+      h('div', { class: 'result-head' }, h('span', { class: 'eyebrow' }, 'Upgrade'), h('span', { class: 'lvl' }, `Level ${c.level} of ${levels}${!upgradeable(content, run).includes(c.id) ? ' (max)' : ''}`)),
       h('b', null, b.name),
       h('span', { class: 'result-text' }, upgradeText(content, c.id, c.level))));
 }
@@ -518,8 +518,9 @@ export function promptScreen(content: Content, atlas: Atlas, run: RunState, acti
       return h('button', { class: 'choice', 'data-option': id, onclick: () => actions.answer(id) }, h('b', null, r.name), h('span', null, relicText(content, id)));
     }
     const b = content.buildings[id]!;
-    const lvl = run.upgrades[id] ?? 0;
-    const text = p.optionKind === 'upgrade' ? `Level ${lvl + 1}: ${upgradeText(content, id, lvl + 1)}` : buildingDescription(content, id);
+    // the next level offered, past any that isn't (#27)
+    const lvl = nextLevel(content.upgrades[id] ?? { rarity: [], levels: [] }, run.upgrades[id] ?? 0) ?? 0;
+    const text = p.optionKind === 'upgrade' ? `Level ${lvl}: ${upgradeText(content, id, lvl)}` : buildingDescription(content, id);
     return h('button', { class: 'choice withart', 'data-option': id, onclick: () => actions.answer(id) },
       spriteToCanvas(atlas, b.sprite, 'velvet-bloom'), h('b', null, b.name), h('span', null, text));
   };

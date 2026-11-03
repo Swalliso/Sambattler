@@ -4,14 +4,15 @@
 // Battles themselves run in the sim; the run only sees their final state.
 import type { RunEffect } from '../data/schema.ts';
 import {
-  POWER_SOURCE_ID, RARITIES, applyCard, basePlots, draftLibrary, draftPool, generateOffer, hashState, kitCards, nextFloat, nextInt, openOrder,
-  parseCard, parseController, seedStream, setCommander, setPassives, topKinds,
+  POWER_SOURCE_ID, RARITIES, applyCard, basePlots, draftLibrary, draftPool, generateOffer, hashState, kitCards, levelsLeft, nextFloat, nextInt,
+  nextLevel, openOrder, parseCard, parseController, seedStream, setCommander, setPassives, topKinds,
 } from '../sim/index.ts';
 import type {
   BattleConfig, BattleState, Content, Controller, DraftLibrary, DraftPool, IntelProfile, Loadout, Rarity, SideConfig,
 } from '../sim/index.ts';
 import { averageProfile, battleProfile, scaleProfile, updateIntel } from './intel.ts';
 import { battleRewards } from './rewards.ts';
+import type { SpoilsSpec } from './rewards.ts';
 import { isBattle } from './route.ts';
 import type { RouteNode } from './route.ts';
 import { currentRow, freshNext } from './runState.ts';
@@ -31,14 +32,24 @@ export function runLibrary(content: Content, run: RunState): DraftLibrary {
 
 export const loadoutOf = (run: RunState): Loadout => ({ kit: run.kit, upgrades: run.upgrades, relics: run.relics });
 
-/** Kit buildings whose upgrade track has a level left (`ownedOnly`: only tracks already started). */
+/**
+ * Kit buildings whose upgrade track has a level left to offer (`ownedOnly`: only tracks already started). A level
+ * with `offered: false` is skipped, never taken, here as in drafts (#27).
+ */
 export function upgradeable(content: Content, run: RunState, ownedOnly = false): string[] {
   return run.kit.filter((id) => {
     const t = content.upgrades[id];
     const lvl = run.upgrades[id] ?? 0;
-    return !!t && lvl < t.levels.length && (!ownedOnly || lvl > 0);
+    return !!t && nextLevel(t, lvl) !== null && (!ownedOnly || lvl > 0);
   });
 }
+
+/** The run's level on a track after one more level, past any level that isn't offered (#27). */
+const levelUp = (content: Content, run: RunState, id: string): number => nextLevel(content.upgrades[id]!, run.upgrades[id] ?? 0)!;
+
+/** How many offered levels the run's tracks among `ids` have left (#27). */
+const slotsLeft = (content: Content, run: RunState, ids: readonly string[]): number =>
+  ids.reduce((n, id) => n + levelsLeft(content.upgrades[id]!, run.upgrades[id] ?? 0), 0);
 
 /** Blueprints the player may give up: anything outside the commander's starter kit. */
 export function nonStarter(content: Content, run: RunState): string[] {
@@ -76,9 +87,10 @@ export function playerHeartcapMax(content: Content, run: RunState, node: RouteNo
 }
 
 /**
- * The battle in rounds a node starts (SPEC §4.5, §4.6, §6.1, §7.7–7.8, §8.5): fixed when the node is entered.
+ * The battle in rounds a node starts (SPEC §4.5, §4.6, §6.1, §7.7–7.8, §8.3, §8.5): fixed when the node is entered.
  * Each battle has its own Heartcaps, which start full, and both colonies start empty (#20) on the map's plots
- * plus your sprawl (#21), past which a map has no plots. Run battles open no drafts until R2b's T067.
+ * plus your sprawl (#21), past which a map has no plots. You draft from the run's pool in the planning after
+ * each round in `draftRounds`; the general never drafts.
  */
 export function battleConfig(content: Content, run: RunState, node: RouteNode): BattleConfig {
   const bal = content.balance;
@@ -120,10 +132,7 @@ export function battleConfig(content: Content, run: RunState, node: RouteNode): 
   const extraWeights = Object.fromEntries(enemyKit.filter((id) => !(generalWeights[id]! > 0)).map((id) => [id, 1]));
   if (Object.keys(extraWeights).length) enemy.aiWeights = extraWeights;
   if (Object.keys(enemyUpgrades).length) enemy.upgrades = enemyUpgrades;
-  const config: BattleConfig = {
-    // drafts open in planning from T067 (R2b S5)
-    seed: run.seed, battleIndex: index, mapId: map.id, player, enemy, flags: { ...run.flags, drafts: false },
-  };
+  const config: BattleConfig = { seed: run.seed, battleIndex: index, mapId: map.id, player, enemy, flags: { ...run.flags } };
   setPassives(content, config);
   const modifiers = [...(config.modifiers ?? [])];
   const elite = node.elite ? content.elites[node.elite] : undefined;
@@ -162,8 +171,9 @@ export function generalIntel(content: Content, run: RunState, node: RouteNode): 
  * The general's kit for a battle (SPEC §7.8): its opener buildings plus (i − 1) blueprints from its
  * preferred list and (i − 1) random upgrade levels on units in its kit; an elite adds a level, the
  * boss fields 7 buildings and 4 levels, and the Veteran modifier adds a level on every unit track.
- * The random levels come from the `ai` stream, sub-seeded per battle index so they don't depend on
- * the path taken. A general without a preferred list fields its whole faction roster.
+ * A level lands only on a level that is offered, past any that isn't, up to each track's length in the
+ * data (#27, A100). The random levels come from the `ai` stream, sub-seeded per battle index so they
+ * don't depend on the path taken. A general without a preferred list fields its whole faction roster.
  */
 export function generalKit(content: Content, run: RunState, node: RouteNode, index: number): { kit: string[]; upgrades: Record<string, number> } {
   const rules = content.balance.enemyKit;
@@ -181,17 +191,21 @@ export function generalKit(content: Content, run: RunState, node: RouteNode, ind
     }
   }
   const upgrades: Record<string, number> = {};
-  const tracks = () => kit.filter((id) => content.buildings[id]!.squad && content.upgrades[id] && (upgrades[id] ?? 0) < 3);
+  const next = (id: string) => (content.upgrades[id] ? nextLevel(content.upgrades[id], upgrades[id] ?? 0) : null);
+  const tracks = () => kit.filter((id) => content.buildings[id]!.squad && next(id) !== null);
   const levels = boss ? rules.bossUpgrades : rules.upgradesPerBattle * (index - 1) + (node.kind === 'elite' ? rules.eliteUpgrades : 0);
   const rng = seedStream(run.seed, 'ai.enemy', 1000 + index);
   for (let k = 0; k < levels; k++) {
     const t = tracks();
     if (!t.length) break;
     const id = t[nextInt(rng, t.length)]!;
-    upgrades[id] = (upgrades[id] ?? 0) + 1;
+    upgrades[id] = next(id)!;
   }
   const veteran = node.elite ? content.elites[node.elite]?.upgradeLevels ?? 0 : 0;
-  if (veteran) for (const id of kit) if (content.buildings[id]!.squad && content.upgrades[id]) upgrades[id] = Math.min(3, (upgrades[id] ?? 0) + veteran);
+  for (const id of kit) {
+    if (!content.buildings[id]!.squad) continue;
+    for (let k = 0; k < veteran && next(id) !== null; k++) upgrades[id] = next(id)!;
+  }
   return { kit, upgrades };
 }
 
@@ -254,10 +268,11 @@ function countersOf(state: BattleState): CounterRecordBrief[] | undefined {
 }
 
 /**
- * Applies a finished battle in rounds (§8.5, §8.6, §4.6): a loss costs a life and pays nothing, and the run
- * ends at 0 lives or on a boss loss (#16); a win pays Spores, Amber and spoils and grows the colony by a plot,
- * up to `plotGrowth.max` (#18). The next battle's one-shot effects reset, and intel reads every battle. Until
- * R2b's drafts (T067) a battle changes no card, so the run keeps its loadout.
+ * Applies a finished battle in rounds (§8.3, §8.5, §8.6, §4.6): the cards you drafted in it join the run's
+ * loadout, win or lose, and its record lists them. A loss costs a life and pays nothing, and the run ends at 0
+ * lives or on a boss loss (#16); a win pays Spores, Amber and spoils and grows the colony by a plot, up to
+ * `plotGrowth.max` (#18), and a won battle pays each draft it ended before as an extra spoils pick (#17). The
+ * next battle's one-shot effects reset, and intel reads every battle.
  */
 export function finishBattle(content: Content, run: RunState, state: BattleState): BattleRecord {
   if (run.screen.kind !== 'battle') throw new Error('no battle in progress');
@@ -282,12 +297,18 @@ export function finishBattle(content: Content, run: RunState, state: BattleState
     const type = id === String(POWER_SOURCE_ID) ? 'power' : st.buildingTypes[id] ?? 'unknown';
     damage[type] = (damage[type] ?? 0) + dmg;
   }
+  const index = run.battles.length + 1;
+  const drafted = [...(state.sides.player.drafted ?? [])];
+  for (const card of drafted) {
+    applyCard(loadoutOf(run), card, content.upgrades);
+    run.cards.push({ card, source: `battle ${index}` });
+  }
   const map = content.maps[state.config.mapId]!;
   const heartcap = (s: 'player' | 'enemy') => ({ max: state.sides[s].heartcapMaxHp, end: state.sides[s].heartcapHp });
   const record: BattleRecord = {
-    index: run.battles.length + 1, row, kind: node.kind, map: map.id, mapName: map.name, lanes: map.lanes.length,
+    index, row, kind: node.kind, map: map.id, mapName: map.name, lanes: map.lanes.length,
     general: node.general ?? 'scripted', winner, by, finalHash: hashState(state), rounds: structuredClone(state.rounds),
-    heartcaps: { player: heartcap('player'), enemy: heartcap('enemy') }, lifeLost, damageByBuilding: damage, drafted: [], spores: r.spores,
+    heartcaps: { player: heartcap('player'), enemy: heartcap('enemy') }, lifeLost, damageByBuilding: damage, drafted, spores: r.spores,
   };
   if (node.elite) record.elite = node.elite;
   const opening = state.sides.enemy.ai?.counter?.opening;
@@ -307,7 +328,7 @@ export function finishBattle(content: Content, run: RunState, state: BattleState
     endRun(run, 'victory');
   } else if (r.spoils.length) {
     run.screen = { kind: 'spoils', picks: [] };
-    for (const sp of r.spoils) {
+    for (const sp of [...r.spoils.slice(0, 1), ...skippedDrafts(content, state, node.kind), ...r.spoils.slice(1)]) {
       run.screen.picks.push({
         label: sp.label, offer: [], freeRerolls: sp.freeRerolls, cards: sp.cards, rareBonus: sp.rareBonus,
         relicsOnly: sp.relicsOnly, battleIndex: record.index,
@@ -318,6 +339,18 @@ export function finishBattle(content: Content, run: RunState, state: BattleState
     run.screen = { kind: 'route' };
   }
   return record;
+}
+
+/**
+ * A spoils pick for each draft the battle ended before (§8.3, §8.6, #17, A207): one for each round in `draftRounds`
+ * whose next planning it never reached, dealt as that draft would have been, 3 cards with no reroll, and with an
+ * elite's +10 rare as every spoils draft after one.
+ */
+function skippedDrafts(content: Content, state: BattleState, kind: RouteNode['kind']): SpoilsSpec[] {
+  if (!state.config.flags.drafts) return [];
+  const skipped = content.balance.rounds.draftRounds.filter((r) => r >= state.outcome!.round).length;
+  const rareBonus = kind === 'elite' ? content.balance.draft.eliteRareBonus : 0;
+  return Array.from({ length: skipped }, () => ({ label: 'Spoils', cards: content.balance.draft.cards, rareBonus, freeRerolls: 0, relicsOnly: false }));
 }
 
 function endRun(run: RunState, outcome: 'victory' | 'defeat'): void {
@@ -349,7 +382,7 @@ export function spoilsPick(content: Content, run: RunState, card: string | null)
   const p = run.screen.picks[0]!;
   if (card !== null) {
     if (!p.offer.some((c) => c.id === card)) throw new Error(`${card} is not in the offer`);
-    applyCard(loadoutOf(run), card);
+    applyCard(loadoutOf(run), card, content.upgrades);
     run.cards.push({ card, source: p.label === 'Spoils' ? `spoils ${p.battleIndex}` : `elite ${p.battleIndex}` });
   }
   run.screen.picks.shift();
@@ -391,7 +424,7 @@ export function groveChoose(content: Content, run: RunState, choice: GroveChoice
 }
 
 const withoutBlueprint = (run: RunState, id: string): RunState => ({ ...run, kit: run.kit.filter((b) => b !== id) });
-const withUpgrade = (run: RunState, id: string): RunState => ({ ...run, upgrades: { ...run.upgrades, [id]: (run.upgrades[id] ?? 0) + 1 } });
+const withUpgrade = (content: Content, run: RunState, id: string): RunState => ({ ...run, upgrades: { ...run.upgrades, [id]: levelUp(content, run, id) } });
 const withoutRelic = (run: RunState, id: string): RunState => ({ ...run, relics: run.relics.filter((r) => r !== id) });
 
 function sacrificeRarity(content: Content, id: string, shift: number): Rarity {
@@ -423,9 +456,8 @@ function outcomeOptions(content: Content, run: RunState, outcome: readonly RunEf
   }
   if ('upgrade' in e) {
     const options = upgradeable(content, run, e.upgrade.ownedOnly);
-    const slots = options.reduce((n, id) => n + content.upgrades[id]!.levels.length - (run.upgrades[id] ?? 0), 0);
-    if (slots < e.upgrade.count) return [];
-    return options.filter((id) => outcomeAvailable(content, withUpgrade(run, id), afterUpgrade(e, rest)));
+    if (slotsLeft(content, run, options) < e.upgrade.count) return [];
+    return options.filter((id) => outcomeAvailable(content, withUpgrade(content, run, id), afterUpgrade(e, rest)));
   }
   if ('sacrificeRelic' in e) {
     return run.relics.filter((id) => {
@@ -458,8 +490,23 @@ export function eventChoose(content: Content, run: RunState, choice: number): vo
   resolvePending(content, run, ev.title);
 }
 
-/** Recover legacy choices whose rewards are no longer feasible, preserving already-paid progress. */
+/**
+ * Recover legacy choices whose rewards are no longer feasible, preserving already-paid progress. A saved spoils
+ * offer or upgrade prompt may name a track whose next level is no longer offered (#27): the offer is dealt again,
+ * and the prompt offers the tracks that have a level left.
+ */
 export function recoverPendingChoice(content: Content, run: RunState): string | null {
+  if (run.screen.kind === 'spoils') {
+    const p = run.screen.picks[0];
+    const stale = (card: string) => {
+      const c = parseCard(card);
+      return c?.type === 'upgrade' && !upgradeable(content, run).includes(c.id);
+    };
+    if (!p?.offer.some((c) => stale(c.id))) return null;
+    p.offer = [];
+    dealSpoils(content, run);
+    return 'A saved spoils offer held an upgrade level that is no longer offered, so it has been dealt again.';
+  }
   if (run.screen.kind !== 'prompt') return null;
   const prompt = run.screen.prompt;
   const e = run.pending[0];
@@ -484,9 +531,13 @@ export function recoverPendingChoice(content: Content, run: RunState): string | 
   }
   if (prompt.optionKind !== 'upgrade') return null;
   if (!e || !('upgrade' in e) || e.upgrade.pick !== 'choose') return null;
-  const slots = upgradeable(content, run, e.upgrade.ownedOnly)
-    .reduce((n, id) => n + content.upgrades[id]!.levels.length - (run.upgrades[id] ?? 0), 0);
-  if (slots >= e.upgrade.count) return null;
+  const slots = slotsLeft(content, run, upgradeable(content, run, e.upgrade.ownedOnly));
+  if (slots >= e.upgrade.count) {
+    const options = outcomeOptions(content, run, run.pending);
+    if (!options.length || (options.length === prompt.options.length && options.every((id, i) => id === prompt.options[i]))) return null;
+    run.screen = { kind: 'prompt', prompt: { ...prompt, options } };
+    return 'Some saved upgrade options have no level left to offer. Choose an available track; nothing has been spent.';
+  }
   const promised = e.upgrade.count;
   const title = prompt.title;
   if (slots > 0) run.pending[0] = { upgrade: { ...e.upgrade, count: slots } };
@@ -507,7 +558,7 @@ export function promptAnswer(content: Content, run: RunState, option: string): v
     run.kit = run.kit.filter((id) => id !== option);
     run.pending.shift();
   } else if ('upgrade' in e) {
-    run.upgrades[option] = (run.upgrades[option] ?? 0) + 1;
+    run.upgrades[option] = levelUp(content, run, option);
     run.cards.push({ card: `up:${option}`, source: p.title });
     if (p.remaining > 1) run.pending[0] = { upgrade: { ...e.upgrade, count: p.remaining - 1 } };
     else run.pending.shift();
@@ -569,7 +620,7 @@ function resolvePending(content: Content, run: RunState, title: string): void {
           const remaining = [{ upgrade: { ...e.upgrade, count: e.upgrade.count - i } }, ...run.pending.slice(1)];
           const opts = outcomeOptions(content, run, remaining);
           const id = opts[nextInt(run.rng.events, opts.length)]!;
-          run.upgrades[id] = (run.upgrades[id] ?? 0) + 1;
+          run.upgrades[id] = levelUp(content, run, id);
           run.cards.push({ card: `up:${id}`, source: title });
         }
       } else {

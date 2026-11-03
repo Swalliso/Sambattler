@@ -5,7 +5,8 @@
 // needn't read it. Their data limits stay, read by round through `afterRound` (R2-Q6, A044). v1's `placement`
 // knob means nothing under plots and is ignored: `bot:rush` and `bot:turtle` are weight profiles. An adaptive
 // general, with `flags.adaptiveGeneral` on, also gets its counter cycle (§7.4, §7.6), and a bot with `policy:
-// "answer"` leans toward the answer to the general's army (§12.2, X7).
+// "answer"` leans toward the answer to the general's army (§12.2, X7). A side that drafts keeps its weights for
+// its pool's buildings outside the kit, which its drafts read (§8.3).
 import type { Content } from '../../data/registry.ts';
 import type { GeneralDef } from '../../data/schema.ts';
 import type { AiState, AiWeight, BattleConfig, Controller, MergePolicy, SideConfig } from '../state.ts';
@@ -49,14 +50,16 @@ export function resolveProfile(content: Content, ctl: Controller, side: SideConf
     answer = bot.policy === 'answer';
   }
   const kit = new Set(side.kit.map((c) => c.building));
+  const pool = new Set(flags?.drafts && ctl.kind !== 'general' && side.draft ? [...side.draft.core, ...side.draft.shared] : []);
   // by building id, so the weighted pick's order never rests on the data's key order
-  const list = Object.entries({ ...weights, ...side.aiWeights })
-    .filter(([id, w]) => w > 0 && kit.has(id))
+  const all = Object.entries({ ...weights, ...side.aiWeights })
+    .filter(([id, w]) => w > 0 && (kit.has(id) || pool.has(id)))
     .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
     .map(([building, weight]): AiWeight => {
       const { maxOwned, afterRound } = limits[building] ?? {};
       return { building, weight, ...(maxOwned !== undefined ? { maxOwned } : {}), ...(afterRound !== undefined ? { afterRound } : {}) };
     });
+  const list = all.filter((w) => kit.has(w.building)), drafts = all.filter((w) => !kit.has(w.building));
   return {
     profileId: `${ctl.kind}:${ctl.id}`,
     opener: opener.filter((id) => kit.has(id)),
@@ -65,6 +68,7 @@ export function resolveProfile(content: Content, ctl: Controller, side: SideConf
     ...(aggressive ? { laneStyle: 'aggressive' as const } : {}),
     ...(answer ? { policy: 'answer' as const } : {}),
     plans: [],
+    ...(drafts.length ? { pool: drafts } : {}),
     ...(adaptive && flags?.adaptiveGeneral ? { counter: newCounterState(content.balance.rounds.ai.counter, boss, side.intel) } : {}),
   };
 }

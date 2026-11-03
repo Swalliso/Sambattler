@@ -3,6 +3,8 @@
 // player first (plan Call 7). A planning command runs at the next step, a clash command on its tick.
 // Commands are validated when they run, so an illegal one becomes a deterministic `commandRejected` on
 // replay too.
+import { planTurn } from './ai/controller.ts';
+import { executeDraft } from './draft.ts';
 import { executePlanning } from './planning.ts';
 import { powerProblem, usePower } from './powers.ts';
 import type { BattleState, Command, CommandBody, Side } from './state.ts';
@@ -94,12 +96,20 @@ function execute(state: BattleState, cmd: Command): void {
       else usePower(state, cmd.side, cmd);
       return;
     }
-    // R2a has no drafts (plan Call 26), so these are refused
     case 'draftPick':
     case 'draftReroll':
-    case 'draftSkip':
-      reject(state, cmd, 'notInRoundsYet');
+    case 'draftSkip': {
+      const problem = executeDraft(state, cmd.side, cmd);
+      if (problem) { reject(state, cmd, problem); return; }
+      // a bot that left its draft to the player plans once the draft resolves (§4.7 step 11)
+      const ai = state.sides[cmd.side].ai;
+      if (ai?.waiting !== undefined && !state.sides[cmd.side].draft) {
+        const income = ai.waiting;
+        delete ai.waiting;
+        planTurn(state, cmd.side, income);
+      }
       return;
+    }
     default:
       // every command type is handled above; a malformed replay is rejected, not crashed on
       reject(state, cmd as Command, `${(cmd as Command).type} is not a command`);
