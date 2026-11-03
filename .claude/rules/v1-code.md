@@ -20,6 +20,9 @@ replaces. That battle has:
   don't build on it.
 - **New work follows SPEC v2,** under its milestone (R1–R4, §16). Keep v1's battle running until
   the milestone that replaces it, so `main` and the dev site always have a working game.
+- **`rounds/` folders are v2's staging** (R2a), which R2b moves into place, and they never import
+  v1's `BattleState`. The one exception, until R2b rewrites Help, is `src/app/rounds/battleView.ts`:
+  it builds the preview's Help from a v1 rules-only battle, as the title's Help does.
 - **Tests follow the spec.** When a milestone retires a system, its tests, goldens and guardrails go
   in the same change (CLAUDE.md). Until then they keep passing.
 - **Section citations:** comments cite SPEC sections by number. v2 kept every v1 number, so a

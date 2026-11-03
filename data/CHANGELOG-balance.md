@@ -48,6 +48,14 @@ reaches a battle's state only when it plays. Nothing was retuned; T124's reading
   until the user sets them from T124's measurement (§18.2 #35, T125). G11's round form takes the arrival, turn,
   planning-command and full-colony budgets S17 held in `tools/lib/rounds/bench.ts`.
 
+## R2a-S17: `bench-300` in round form (2026-11-03)
+
+**Test data only, no golden moved.** No number or rule changed, and v1 never reads `data/scenarios/rounds/`. Logged at S20
+(T138), which found the scenario without an entry.
+- **`bench-300`** (R2a/T114, SPEC §13.7, §15.4): the bench's clash in rounds, 150 placed units a side on the 3-lane test map,
+  with merging off. `npm run bench -- --rounds` plays it as repeated fresh clashes, and `tests/unit/rounds/scenarios.test.ts`
+  asserts its exact outcome: every lane level at the cap.
+
 ## R2a-S15: X8's two knobs, both off (2026-11-03)
 
 **Data with no effect by default. v1's goldens didn't move**; the round golden `r2-balanced-vs-scripted-s1` was refreshed,
