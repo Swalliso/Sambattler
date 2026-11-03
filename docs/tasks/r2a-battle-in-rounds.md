@@ -589,8 +589,8 @@ S1 to S4: the data, the colony, the round state machine and the planning command
 - [x] T079 [US3] Build the bridge in `src/app/rounds/bridge.ts` (new): `window.__GAME__` with `ready`, `scene`, `round`, `phase`, `tick`, `hash` (rounds' `hashState`), `summary()`, `battle()`, `preview()` and `errors` (§15.6) (A076)
   - `preview()` returns `{player, enemy}`: per side, the squads and unit positions the preview drew. It's `null` until T083 draws the preview.
   - With `measure=frames`, `frames` holds the last frame times (T115). v1 has no such field yet (A187 marks it M8's), so it lives in this bridge only.
-- [ ] T080 [US3] Build `roundStateForParams` in `tools/lib/rounds/params.ts` (new), matching `src/app/rounds/main.ts`'s checkpoints exactly, and teach `tools/screenshot.ts` to compare a `scene=rounds` capture's hash with it at the same round, phase and tick. The tool's `vite preview` build has the entry (Call 2), so it needs no `--dev` mode (§15.6) (A059)
-- [ ] T141 [US3] Add §15.6's assertions 1–3 and 5 for `scene=rounds` to `tools/screenshot.ts` (§15.6, §16 R2 step 9) (A076)
+- [x] T080 [US3] Build `roundStateForParams` in `tools/lib/rounds/params.ts` (new), matching `src/app/rounds/main.ts`'s checkpoints exactly, and teach `tools/screenshot.ts` to compare a `scene=rounds` capture's hash with it at the same round, phase and tick. The tool's `vite preview` build has the entry (Call 2), so it needs no `--dev` mode (§15.6) (A059)
+- [x] T141 [US3] Add §15.6's assertions 1–3 and 5 for `scene=rounds` to `tools/screenshot.ts` (§15.6, §16 R2 step 9) (A076)
   - (1) No console or page errors.
   - (2) `__GAME__.hash` equals `roundStateForParams`'s `hashState` at the same round, phase and clash tick (T080's compare, failing the capture with both hashes).
   - (3) At least 12 distinct colors in the sampled grid, and both team tints sampled inside their own colony columns.

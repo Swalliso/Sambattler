@@ -10,14 +10,18 @@ import type { ChildProcess } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { chromium, firefox } from 'playwright';
+import type { Page } from 'playwright';
 import { nodeContent, ROOT } from './lib/content.ts';
 import { CVD_MATRICES, cvdMatrixValues } from './lib/cvd.ts';
 import type { CvdFilter } from './lib/cvd.ts';
 import { RUN_SCENES, runForParams, sceneOf, stateForParams } from './lib/params.ts';
+import { roundStateForParams } from './lib/rounds/params.ts';
 import { hashRun, intelDots } from '../src/run/index.ts';
 import { COUNTER_KINDS } from '../src/sim/index.ts';
 import { hashState, summarize } from '../src/sim/index.ts';
 import type { BattleState } from '../src/sim/index.ts';
+import { hashState as hashRoundState, summarize as summarizeRound } from '../src/sim/rounds/index.ts';
+import type { BattleState as RoundState } from '../src/sim/rounds/index.ts';
 
 interface Args {
   name: string; params: string; url?: string; browser: 'chromium' | 'firefox'; filter?: CvdFilter;
@@ -127,8 +131,10 @@ async function main(): Promise<number> {
     const bridgeErrors = await page.evaluate(() => window.__GAME__!.errors);
     for (const e of [...consoleErrors, ...bridgeErrors]) failures.push(`console/page error: ${e}`);
 
-    // 2. browser hash == Node hash at the same tick (the battle's state, or the run's on run screens)
     const scene = sceneOf(q);
+    if (scene === 'rounds') return await roundCapture(page, q, args, url, failures);
+
+    // 2. browser hash == Node hash at the same tick (the battle's state, or the run's on run screens)
     const browserTick = await page.evaluate(() => window.__GAME__!.tick);
     const browserHash = await page.evaluate(() => window.__GAME__!.hash);
     const summary = await page.evaluate(() => window.__GAME__!.summary());
@@ -402,6 +408,78 @@ async function main(): Promise<number> {
     await browser.close();
     server?.kill();
   }
+  return failures.length ? 1 : 0;
+}
+
+/**
+ * R2a's preview of a battle in rounds (`scene=rounds`, plan Call 2), checked with §15.6's assertions 2, 3 and 5
+ * after assertion 1's errors: the page's hash against `roundStateForParams`'s at the same round, phase and
+ * tick, a canvas that isn't blank with each team's mycelium inside its own colony's columns, and the PNG with
+ * a JSON of the round, phase, tick and hash. Assertion 4 needs the HUD and the preview, so it lands in T143.
+ */
+async function roundCapture(page: Page, q: URLSearchParams, args: Args, url: string, failures: string[]): Promise<number> {
+  const content = nodeContent();
+  const got = await page.evaluate(() => {
+    const g = window.__GAME__ as unknown as { round: number; phase: string | null; tick: number; hash: string };
+    return { round: g.round, phase: g.phase, tick: g.tick, hash: g.hash };
+  });
+  // 2. browser hash == Node hash at the same round, phase and clash tick; a checkpoint Node can't reach fails with its message
+  let node: RoundState | null = null;
+  try { node = roundStateForParams(content, q); } catch (e) { failures.push(`node: ${(e as Error).message}`); }
+  const nodeHash = node ? hashRoundState(node) : '';
+  if (node) {
+    const want = { round: node.round, phase: node.phase, tick: node.tick };
+    if (got.round !== want.round || got.phase !== want.phase || got.tick !== want.tick) {
+      failures.push(`checkpoint mismatch: browser round ${got.round} ${got.phase} tick ${got.tick}, node round ${want.round} ${want.phase} tick ${want.tick}`);
+    }
+    if (got.hash !== nodeHash) failures.push(`hash mismatch at round ${got.round} ${got.phase} tick ${got.tick}: browser ${got.hash}, node ${nodeHash}`);
+  }
+  // 3. canvas not blank: ≥12 distinct colours on a sampled grid; each team's strand tint inside its own colony's columns
+  let canvas: { distinct: number; playerTint: boolean; enemyTint: boolean } | null = null;
+  if (node) {
+    const pal = { player: content.factions['velvet-bloom']!.mat.strand, enemy: content.factions['gray-rot']!.mat.strand };
+    // (a script string, not a function: tsx would inject __name helpers the page does not have)
+    canvas = await page.evaluate(`(() => {
+      const pal = ${JSON.stringify(pal)}, colonyCols = ${node.map.homeCols}, mapW = ${node.map.width};
+      const c = document.getElementById('battlefield');
+      const img = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+      const hex = (i) => '#' + [img[i], img[i + 1], img[i + 2]].map((v) => v.toString(16).padStart(2, '0')).join('');
+      const colors = new Set();
+      for (let y = 2; y < c.height; y += 6) for (let x = 2; x < c.width; x += 6) colors.add(hex((y * c.width + x) * 4));
+      const rgb = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+      const P = rgb(pal.player), E = rgb(pal.enemy);
+      const d2 = (i, q) => (img[i] - q[0]) ** 2 + (img[i + 1] - q[1]) ** 2 + (img[i + 2] - q[2]) ** 2;
+      const has = (x0, x1, mine, theirs) => {
+        for (let y = 0; y < c.height; y++) for (let x = x0; x < x1; x++) {
+          const i = (y * c.width + x) * 4;
+          if (d2(i, mine) <= 40 * 40 && d2(i, mine) < d2(i, theirs)) return true;
+        }
+        return false;
+      };
+      const T = 16, strip = 2;
+      return {
+        distinct: colors.size,
+        playerTint: has(strip * T, (strip + colonyCols) * T, P, E),
+        enemyTint: has((strip + mapW - colonyCols) * T, (strip + mapW) * T, E, P),
+      };
+    })()`) as { distinct: number; playerTint: boolean; enemyTint: boolean };
+    if (canvas.distinct < 12) failures.push(`canvas looks blank: ${canvas.distinct} distinct colours sampled (need ≥12)`);
+    if (!canvas.playerTint) failures.push('violet mat tint missing from your colony\'s columns');
+    if (!canvas.enemyTint) failures.push('gray mat tint missing from the general\'s colony\'s columns');
+  }
+  // 5. the PNG and its JSON
+  const dir = join(ROOT, 'artifacts', 'screenshots');
+  mkdirSync(dirname(join(dir, args.name)), { recursive: true });
+  await page.screenshot({ path: join(dir, `${args.name}.png`) });
+  const report = {
+    name: args.name, url, browser: args.browser, filter: args.filter ?? null, size: `${args.width}x${args.height}`, clicks: args.clicks,
+    scene: 'rounds', round: got.round, phase: got.phase, tick: got.tick, browserHash: got.hash, nodeHash, canvas,
+    summary: node ? { ...summarizeRound(node), stats: undefined } : null,
+    failures,
+  };
+  writeFileSync(join(dir, `${args.name}.json`), JSON.stringify(report, null, 2));
+  console.log(`${failures.length ? 'FAIL' : 'PASS'}  ${args.name}: rounds · round ${got.round} ${got.phase} · tick ${got.tick} · hash ${got.hash} (node ${nodeHash})${canvas ? ` · ${canvas.distinct} colours` : ''} · artifacts/screenshots/${args.name}.png`);
+  for (const f of failures) console.log(`      - ${f}`);
   return failures.length ? 1 : 0;
 }
 
