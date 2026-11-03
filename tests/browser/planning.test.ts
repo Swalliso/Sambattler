@@ -1,16 +1,16 @@
 // The planning screen's field in a battle in rounds (SPEC §4.6, §5.6, §10.2, §10.4; plan Calls 6 and 22): the
 // formation preview stands every unit where the clash's arrival puts it, a merge toggle changes its slot's
-// pips, a plot and its slot light together, a chosen card lights free plots only, and the general's squads
-// carry the class of the chosen card's hits. The bridge's `preview()` reports what the preview drew (T083).
+// pips, a plot and its slot light together, a chosen card lights free plots only and is placed on its plot
+// only, never by its squad's spot (T167), and the general's squads carry the class of the chosen card's hits.
+// The bridge's `preview()` reports what the preview drew (T083).
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { chromium } from 'playwright';
 import type { Browser, Page } from 'playwright';
-import { nodeContent } from '../../../tools/lib/content.ts';
-import { formationBox } from '../../../src/sim/formation.ts';
-import type { BattleState, Side } from '../../../src/sim/rounds/index.ts';
-import { trayOrder } from '../../../src/ui/buildingInfo.ts';
-import type { RoundsBridge } from '../../../src/app/rounds/bridge.ts';
-import { closeServers, serve } from '../serve.ts';
+import { nodeContent } from '../../tools/lib/content.ts';
+import { formationBox } from '../../src/sim/formation.ts';
+import type { BattleState, Side } from '../../src/sim/rounds/index.ts';
+import { trayOrder } from '../../src/ui/buildingInfo.ts';
+import { closeServers, serve } from './serve.ts';
 
 let browser: Browser | undefined;
 let page: Page | undefined;
@@ -38,8 +38,8 @@ async function open(query: string): Promise<Page> {
   return p;
 }
 
-const preview = (p: Page) => p.evaluate(() => (window.__GAME__ as unknown as RoundsBridge).preview());
-const battle = (p: Page): Promise<BattleState> => p.evaluate(() => (window.__GAME__ as unknown as RoundsBridge).battle()!);
+const preview = (p: Page) => p.evaluate(() => window.__GAME__!.preview());
+const battle = (p: Page): Promise<BattleState> => p.evaluate(() => window.__GAME__!.battle()!);
 
 /** Waits for a test on the bridge, given an argument from Node. */
 const until = <A>(p: Page, f: (arg: A) => boolean, arg: A) =>
@@ -48,7 +48,7 @@ const until = <A>(p: Page, f: (arg: A) => boolean, arg: A) =>
 /** The page point at tile (col, row) of the field: the canvas is the map with a Heartcap strip at each end. */
 const pointAt = (p: Page, col: number, row: number) => p.evaluate(([c, r]) => {
   const cv = document.getElementById('battlefield') as HTMLCanvasElement;
-  const b = (window.__GAME__ as unknown as RoundsBridge).battle()!;
+  const b = window.__GAME__!.battle()!;
   const tile = cv.height / b.map.height, strip = (cv.width / tile - b.map.width) / 2;
   const rect = cv.getBoundingClientRect();
   return { x: rect.left + ((c! + strip) * tile * rect.width) / cv.width, y: rect.top + (r! * tile * rect.height) / cv.height };
@@ -80,12 +80,12 @@ async function plant(p: Page, buildingId: string, plot: number): Promise<void> {
   await hover(p, s.sides.player.plots[plot]!);
   await p.mouse.down();
   await p.mouse.up();
-  await until(p, (n) => (window.__GAME__ as unknown as RoundsBridge).battle()!.buildings.filter((b) => b.side === 'player').length === n, had + 1);
+  await until(p, (n) => window.__GAME__!.battle()!.buildings.filter((b) => b.side === 'player').length === n, had + 1);
 }
 
 describe('the formation preview (§4.6, §13.6, T083)', () => {
   it('draws every unit where the clash\'s first tick puts it', async () => {
-    const q = 'scene=rounds&seed=1&test=1&player=bot:balanced';
+    const q = 'scene=battle&seed=1&test=1&player=bot:balanced';
     page = await open(`${q}&phase=planning`);
     const drawn = (await preview(page))!;
     expect(drawn).not.toBeNull();
@@ -93,7 +93,7 @@ describe('the formation preview (§4.6, §13.6, T083)', () => {
     await page.close();
     // the same battle at its clash's first tick: the arrival, then the muster's knits inside Begin (§5.6)
     page = await open(`${q}&phase=clash&ticks=0&paused=1`);
-    const units = await page.evaluate(() => (window.__GAME__ as unknown as RoundsBridge).battle()!.units.map((u) => ({ side: u.side, tier: u.tier, x: u.x, y: u.y })));
+    const units = await page.evaluate(() => window.__GAME__!.battle()!.units.map((u) => ({ side: u.side, tier: u.tier, x: u.x, y: u.y })));
     expect(units.length).toBeGreaterThan(0);
     for (const u of units) {
       const d = drawn[u.side];
@@ -104,7 +104,7 @@ describe('the formation preview (§4.6, §13.6, T083)', () => {
   });
 
   it('M on a Burrow beside another Burrow changes its slot\'s pips from Elder to none (§5.6)', async () => {
-    page = await open('scene=rounds&seed=1&test=1&phase=planning');
+    page = await open('scene=battle&seed=1&test=1&phase=planning');
     const s = await battle(page);
     const first = plotOf(s, 0, 1), second = plotOf(s, 0, 2);
     await plant(page, 'sporelingBurrow', first);
@@ -117,13 +117,13 @@ describe('the formation preview (§4.6, §13.6, T083)', () => {
     await page.mouse.down();
     await page.mouse.up();
     await page.keyboard.press('m');
-    await until(page, (plot) => (window.__GAME__ as unknown as RoundsBridge).preview()!.player.squads.find((q) => q.plot === plot)!.fields.base === 8, first);
+    await until(page, (plot) => window.__GAME__!.preview()!.player.squads.find((q) => q.plot === plot)!.fields.base === 8, first);
     expect((await squadOn(first)).fields).toEqual({ elders: 0, bloomed: 0, base: 8 });
     expect((await squadOn(second)).fields).toEqual({ elders: 0, bloomed: 2, base: 2 });
   });
 
   it('lights a plot and its slot together, hovering either (§10.2)', async () => {
-    page = await open('scene=rounds&seed=1&test=1&phase=planning');
+    page = await open('scene=battle&seed=1&test=1&phase=planning');
     const s = await battle(page);
     const geom = { width: s.map.width, lanes: s.lanes, gapTiles: s.rules.formationGapTiles };
     for (const side of ['player', 'enemy'] as Side[]) {
@@ -131,7 +131,7 @@ describe('the formation preview (§4.6, §13.6, T083)', () => {
       const f2 = plots.findIndex((p) => p.lane === 0 && p.rank === 0 && p.file === 2);
       const ranks = plots.reduce((n, p) => Math.max(n, p.rank + 1), 1);
       const slot = formationBox(geom, side, ranks).find((sl) => sl.lane === 0 && sl.rank === 0 && sl.file === 2)!;
-      const lit = (want: { side: Side; plot: number | null }) => until(page!, (w) => (window.__GAME__ as unknown as RoundsBridge).preview()![w.side].hover === w.plot, want);
+      const lit = (want: { side: Side; plot: number | null }) => until(page!, (w) => window.__GAME__!.preview()![w.side].hover === w.plot, want);
       await hover(page, plots[f2]!);
       await lit({ side, plot: f2 });
       await page.mouse.move(1, 1);
@@ -145,14 +145,14 @@ describe('the formation preview (§4.6, §13.6, T083)', () => {
 
 describe('placing (§10.2 "Placing")', () => {
   it('lights only the free plots for a chosen card, and the ghost on a stump says why not', async () => {
-    page = await open('scene=rounds&seed=1&test=1&phase=planning&map=stumpfield');
+    page = await open('scene=battle&seed=1&test=1&phase=planning&map=stumpfield');
     const s0 = await battle(page);
     await plant(page, 'sporelingBurrow', plotOf(s0, 1, 1));
     await page.mouse.move(1, 1);
     // each plot's top edge, where the lit outline runs, in the canvas's own pixels
     const samples = () => page!.evaluate(() => {
       const cv = document.getElementById('battlefield') as HTMLCanvasElement;
-      const b = (window.__GAME__ as unknown as RoundsBridge).battle()!;
+      const b = window.__GAME__!.battle()!;
       const tile = cv.height / b.map.height, strip = (cv.width / tile - b.map.width) / 2;
       const g = cv.getContext('2d')!;
       return b.sides.player.plots.map((p) => [...g.getImageData((p.col + strip + 1) * tile, p.row * tile, 1, 1).data].join(','));
@@ -177,7 +177,7 @@ describe('placing (§10.2 "Placing")', () => {
 
 describe('one highlight when placing (S21b/T161)', () => {
   it('lights the plot a chosen card hovers and stands its ghost squad in the field, with no box at the slot', async () => {
-    page = await open('scene=rounds&seed=1&test=1&phase=planning');
+    page = await open('scene=battle&seed=1&test=1&phase=planning');
     // every outline the canvas draws, as [x, y, w, h] in its own pixels
     await page.evaluate(() => {
       const w = window as unknown as { rects: number[][] };
@@ -193,7 +193,7 @@ describe('one highlight when placing (S21b/T161)', () => {
     /** Whether the frames drawn since the last call outlined the square whose top-left tile is (col, row). */
     const outlined = (sq: { col: number; row: number }) => page!.evaluate(([c, r]) => {
       const cv = document.getElementById('battlefield') as HTMLCanvasElement;
-      const b = (window.__GAME__ as unknown as RoundsBridge).battle()!;
+      const b = window.__GAME__!.battle()!;
       const tile = cv.height / b.map.height, strip = (cv.width / tile - b.map.width) / 2;
       const w = window as unknown as { rects: number[][] };
       const hit = w.rects.some(([x, y]) => Math.abs(x! - ((c! + strip) * tile + 0.5)) < 0.01 && Math.abs(y! - (r! * tile + 0.5)) < 0.01);
@@ -204,7 +204,7 @@ describe('one highlight when placing (S21b/T161)', () => {
 
     // with no card, hovering a plot lights its slot too (T083)
     await hover(page, p);
-    await until(page, (i) => (window.__GAME__ as unknown as RoundsBridge).preview()!.player.hover === i, plot);
+    await until(page, (i) => window.__GAME__!.preview()!.player.hover === i, plot);
     await frames();
     await outlined(slot);
     await frames();
@@ -212,7 +212,7 @@ describe('one highlight when placing (S21b/T161)', () => {
 
     // with a card chosen, the plot is lit and the ghost squad stands in its slot, unboxed
     await page.keyboard.press(await keyOf(page, 'capguardHall'));
-    await until(page, () => !!(window.__GAME__ as unknown as RoundsBridge).preview()!.player.squads.some((q) => q.ghost), 0);
+    await until(page, () => !!window.__GAME__!.preview()!.player.squads.some((q) => q.ghost), 0);
     await frames();
     await outlined(slot);
     await frames();
@@ -222,14 +222,46 @@ describe('one highlight when placing (S21b/T161)', () => {
   });
 });
 
+describe('placing on plots only (T167)', () => {
+  it("doesn't place a chosen card by its squad's spot in the field, hovering or clicking it; its plot still takes it", async () => {
+    page = await open('scene=battle&seed=1&test=1&phase=planning');
+    const s = await battle(page);
+    const plot = plotOf(s, 0, 2);
+    const geom = { width: s.map.width, lanes: s.lanes, gapTiles: s.rules.formationGapTiles };
+    const ranks = s.sides.player.plots.reduce((n, q) => Math.max(n, q.rank + 1), 1);
+    const slot = formationBox(geom, 'player', ranks).find((sl) => sl.lane === 0 && sl.rank === 0 && sl.file === 2)!;
+    await page.keyboard.press(await keyOf(page, 'capguardHall'));
+    // the squad's spot: no ghost, no lit plot and no tip
+    await hover(page, slot);
+    await page.waitForTimeout(150);
+    const drawn = (await preview(page))!;
+    expect(drawn.player.squads.some((q) => q.ghost), 'a ghost squad').toBe(false);
+    expect(drawn.player.hover, 'the lit plot').toBeNull();
+    expect(await page.locator('#ghost-tip').isHidden()).toBe(true);
+    // and a click there plants nothing
+    await page.mouse.down();
+    await page.mouse.up();
+    await page.waitForTimeout(200);
+    const after = await battle(page);
+    expect(after.buildings.filter((b) => b.side === 'player')).toEqual([]);
+    expect(after.queue.filter((c) => c.side === 'player' && c.type === 'plant')).toEqual([]);
+    // the plot itself takes the card, still chosen
+    await hover(page, s.sides.player.plots[plot]!);
+    await until(page, () => !!window.__GAME__!.preview()!.player.squads.some((q) => q.ghost), 0);
+    await page.mouse.down();
+    await page.mouse.up();
+    await until(page, (i) => window.__GAME__!.battle()!.buildings.some((b) => b.side === 'player' && b.plot === i), plot);
+  });
+});
+
 describe('the matchup marks (§10.4, plan Call 22, T084)', () => {
   it('marks the general\'s Gill Archers strong and its Capguards with none for a chosen Sporeling Burrow', async () => {
-    page = await open('scene=rounds&seed=1&test=1&scenario=formation-from-plots&phase=planning');
+    page = await open('scene=battle&seed=1&test=1&scenario=formation-from-plots&phase=planning');
     const squads = async () => (await preview(page!))!.enemy.squads;
     // nothing chosen or hovered: no marks
     expect((await squads()).map((q) => q.marks)).toEqual([null, null]);
     await page.keyboard.press(await keyOf(page, 'sporelingBurrow'));
-    await page.waitForFunction(() => (window.__GAME__ as unknown as RoundsBridge).preview()!.enemy.squads.every((q) => q.marks !== null));
+    await page.waitForFunction(() => window.__GAME__!.preview()!.enemy.squads.every((q) => q.marks !== null));
     const by = (unitId: string) => squads().then((all) => all.find((q) => q.unitId === unitId)!.marks);
     expect(await by('gillArcher')).toEqual({ base: 'strong', merged: null }); // slash on light, ×1.5
     expect(await by('capguard')).toEqual({ base: null, merged: null }); // slash on medium, ×1.0: no mark

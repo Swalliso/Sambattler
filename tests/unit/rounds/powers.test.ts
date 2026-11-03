@@ -13,7 +13,7 @@ import type { BattleState, Command, Flags, Side, SimEvent, UnitState } from '../
 import { autoPowerTarget, powerProblem } from '../../../src/sim/rounds/powers.ts';
 import { damageFor } from '../../../src/sim/rounds/systems/combat.ts';
 import { inMuster } from '../../../src/sim/rounds/systems/clash.ts';
-import { POWER_REFUSALS } from '../../../src/app/rounds/phases/clash.ts';
+import { POWER_REFUSALS } from '../../../src/app/phases/clash.ts';
 import { begin, content, finishRound, playerScript, SCRIPTED_BATTLE, stepClash } from '../../roundHelpers.ts';
 
 type Colony = NonNullable<RoundScenarioDef['sides']['player']['colony']>;

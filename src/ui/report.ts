@@ -1,26 +1,29 @@
-// Battle report (SPEC §10.4, §10.5): the outcome and how it was decided, the front-line graph
-// (columns owned over time, one band per lane), damage by building, gold by source, and units
-// spawned and merged. Shown when a battle ends and for `scene=report`. The outcome is a banner (on a
-// win the Heartcap blooms in lilac spores, on a loss the cap wilts to ash) with the MVP building beside
-// it, and the report reveals in stages: the banner, then the front line, then the bars (docs/archive/v1/ui-ux-plan.md C4).
-// The banner's rewards (gold earned, and in a run the Spores and Amber) and the gold bars roll up (A6).
+// The report of a battle in rounds, for a single battle (SPEC §10.4, §10.5) (A068): the outcome and how it was
+// decided, the round in which a Heartcap fell or the Decision after round 9 with each side's damage dealt; the
+// round chart, one column a round with the Heartcap damage you dealt rising in violet and what you took
+// hanging in ash, each Heartcap's HP after the round as a line, Sporestorm rounds marked and, on Twin Roots,
+// each lane's result as a half-pip under its column; then damage by building over the battle, units fielded
+// and merged from the fielded record, gold by source with the gold banked at each Begin (R2-Q2), the general's
+// counters by round, and the play clock's line, which the app passes in (X6, T128). There are no lives in a
+// single battle (R2b). Again replays the seed and Rematch draws a new one, both on the same parameters. Its
+// figures are plain functions of the state, which `tests/unit/report.test.ts` reads. The banner's art and the
+// MVP callout are v1's, which the run's summary shares.
 import type { Content } from '../data/registry.ts';
-import type { TriggerDef } from '../data/schema.ts';
 import type { Atlas } from '../render/atlas.ts';
 import { spriteToCanvas } from '../render/atlas.ts';
 import { sporeLayer } from '../render/spores.ts';
-import type { BattleState, Side } from '../sim/index.ts';
-import { POWER_SOURCE_ID, formatClock } from '../sim/index.ts';
-import { columnsOwned } from '../sim/world.ts';
+import { POWER_SOURCE_ID, SIDES } from '../sim/rounds/index.ts';
+import type { BattleState, Side } from '../sim/rounds/index.ts';
 import { h } from './h.ts';
-import { uiIcon } from './icons.ts';
-import { KIND_LABEL, counterLine, generalName } from './doctrine.ts';
-import { rollUp } from './motion.ts';
+import { KIND_LABEL } from './doctrine.ts';
+import { resultOf, stormText } from './hud/explain.ts';
+import type { Result } from './hud/explain.ts';
 
 const SVG = 'http://www.w3.org/2000/svg';
 const COLOR: Record<Side, string> = { player: '#8a4fd8', enemy: '#7d8a7a' };
 const LIGHT: Record<Side, string> = { player: '#c9a2ff', enemy: '#b8c4a8' };
 const NAME: Record<Side, string> = { player: 'Velvet Bloom', enemy: 'Gray Rot' };
+const HALF: Record<Result, string> = { won: '#8a4fd8', lost: '#7d8a7a', drawn: '#a99bb8' };
 
 function svg(tag: string, attrs: Record<string, string | number>, ...children: (SVGElement | string)[]): SVGElement {
   const el = document.createElementNS(SVG, tag);
@@ -29,186 +32,10 @@ function svg(tag: string, attrs: Record<string, string | number>, ...children: (
   return el;
 }
 
-/** How the battle was decided, in words. */
-export function outcomeText(state: BattleState): string {
-  const o = state.outcome!;
-  const won = o.winner === 'player';
-  const pc = columnsOwned(state, 'player'), ec = columnsOwned(state, 'enemy');
-  let how: string;
-  if (o.by === 'rout') {
-    how = won ? 'by Rout: the Gray Rot\'s Heartcap fell.' : 'by Rout: your Heartcap fell.';
-  } else {
-    const p = state.sides.player, e = state.sides.enemy;
-    how = pc !== ec
-      ? `by Decision at 10:00: ${pc} vs ${ec} columns.`
-      : p.heartcapHp * e.heartcapMaxHp !== e.heartcapHp * p.heartcapMaxHp
-        ? `by Decision at 10:00: columns tied ${pc}–${ec}; Heartcap health ${Math.round((100 * p.heartcapHp) / p.heartcapMaxHp)}% vs ${Math.round((100 * e.heartcapHp) / e.heartcapMaxHp)}%.`
-        : 'by Decision at 10:00: dead even, so the general wins.';
-  }
-  return `${won ? 'The Velvet Bloom wins' : 'The Gray Rot wins'} ${how}`;
-}
+const dealtBy = (state: BattleState, side: Side) => state.rounds.reduce((n, r) => n + r.damage[side], 0);
+const pct = (part: number, whole: number) => `${Math.round((100 * part) / Math.max(1, whole))}%`;
 
-/** Columns owned over time, one band per lane: violet climbs from the bottom, gray hangs from the top. */
-export function frontLineGraph(state: BattleState, width = 900): SVGElement {
-  const W = state.map.width;
-  const home = state.map.homeCols;
-  const end = Math.max(state.tick, 1);
-  const pad = { l: 34, r: 8, t: 6, b: 18 };
-  const band = state.lanes.length === 1 ? 96 : state.lanes.length === 2 ? 64 : 48;
-  const gap = 8;
-  const plotW = width - pad.l - pad.r;
-  const height = pad.t + state.lanes.length * band + (state.lanes.length - 1) * gap + pad.b;
-  const x = (tick: number) => pad.l + (tick / end) * plotW;
-  const root = svg('svg', { viewBox: `0 0 ${width} ${height}`, width, height, id: 'report-frontline', role: 'img', 'aria-label': 'Front line over time' });
-  const wave = state.rules.waveTicks;
-  state.frontLine.forEach((series, li) => {
-    const top = pad.t + li * (band + gap);
-    const y = (col: number) => top + band * (1 - col / W);
-    root.append(svg('rect', { x: pad.l, y: top, width: plotW, height: band, fill: '#3a2a1f' }));
-    const pts = series.length ? series : [[0, home - 1, W - home] as [number, number, number]];
-    const last = pts[pts.length - 1]!;
-    const steps: [number, number, number][] = [...pts, [end, last[1], last[2]]];
-    // step areas: a border holds until the next sample changes it
-    let p = `M${x(0)},${y(0)}`, e = `M${x(0)},${y(W)}`;
-    for (let i = 0; i < steps.length; i++) {
-      const [t, pb, eb] = steps[i]!;
-      const prev = i > 0 ? steps[i - 1]! : steps[0]!;
-      p += ` L${x(t)},${y(prev[1] + 1)} L${x(t)},${y(pb + 1)}`;
-      e += ` L${x(t)},${y(prev[2])} L${x(t)},${y(eb)}`;
-    }
-    p += ` L${x(end)},${y(0)} Z`;
-    e += ` L${x(end)},${y(W)} Z`;
-    root.append(svg('path', { d: p, fill: COLOR.player, 'fill-opacity': 0.85 }));
-    root.append(svg('path', { d: e, fill: COLOR.enemy, 'fill-opacity': 0.85 }));
-    // home zones, the midline and wave beats
-    for (const c of [home, W - home]) root.append(svg('line', { x1: pad.l, x2: pad.l + plotW, y1: y(c), y2: y(c), stroke: '#120a16', 'stroke-dasharray': '3 3', 'stroke-width': 1 }));
-    root.append(svg('line', { x1: pad.l, x2: pad.l + plotW, y1: y(W / 2), y2: y(W / 2), stroke: '#ece4f4', 'stroke-opacity': 0.35, 'stroke-width': 1 }));
-    for (let t = wave; t < end; t += wave) root.append(svg('line', { x1: x(t), x2: x(t), y1: top, y2: top + band, stroke: '#120a16', 'stroke-opacity': 0.5 }));
-    if (state.rules.storm.startTick < end) {
-      const sx = x(state.rules.storm.startTick);
-      root.append(svg('line', { x1: sx, x2: sx, y1: top, y2: top + band, stroke: '#c9a2ff', 'stroke-dasharray': '2 3', 'stroke-width': 1.5 }));
-      if (li === 0) root.append(svg('text', { x: sx + 4, y: top + 12, fill: '#c9a2ff', 'font-size': 11 }, 'Sporestorm'));
-    }
-    root.append(svg('text', { x: pad.l - 6, y: top + 12, fill: LIGHT.enemy, 'font-size': 11, 'text-anchor': 'end' }, 'them'));
-    root.append(svg('text', { x: pad.l - 6, y: top + band - 4, fill: LIGHT.player, 'font-size': 11, 'text-anchor': 'end' }, 'you'));
-    if (state.lanes.length > 1) root.append(svg('text', { x: pad.l + 4, y: top + band / 2 + 4, fill: '#ece4f4', 'font-size': 11 }, `lane ${li + 1}`));
-  });
-  const axisY = height - 4;
-  for (let t = 0; t <= end; t += wave) root.append(svg('text', { x: x(t), y: axisY, fill: '#a99bb8', 'font-size': 11, 'text-anchor': t === 0 ? 'start' : 'middle' }, formatClock(t, state.rules.tickRate)));
-  return root;
-}
-
-interface Bar { label: string; value: number; side: Side }
-
-/** `roll`: the values roll up after this many ms (the gold bars, once their stage has revealed). */
-function bars(id: string, rows: Bar[], roll?: number): HTMLElement {
-  const max = Math.max(1, ...rows.map((r) => r.value));
-  return h('div', { class: 'bars', id },
-    ...rows.map((r) => h('div', { class: `bar ${r.side}` },
-      h('span', { class: 'label' }, r.label),
-      h('span', { class: 'track' }, h('span', { class: 'fill', style: `width:${((100 * r.value) / max).toFixed(1)}%` })),
-      roll === undefined ? h('span', { class: 'value' }, r.value.toLocaleString('en-US')) : rollUp(h('span', { class: 'value' }), r.value, { delay: roll }),
-    )),
-  );
-}
-
-/** What a battle in a run earns beyond gold (SPEC §8.6); an elite's Amber is a chance, rolled on Continue. */
-export interface ReportRewards { spores: number; amber: number; amberChance: number }
-
-/** The banner's rewards: an icon, a number that rolls up, and its word. */
-function rewardsRow(atlas: Atlas | undefined, gold: number, rewards: ReportRewards | undefined): HTMLElement {
-  const item = (icon: string, cls: string, value: number, word: string, delay: number) => h('span', { class: `reward ${cls}`, 'data-reward': cls },
-    atlas ? uiIcon(atlas, icon) : null, rollUp(h('b'), value, { delay }), h('small', null, word));
-  return h('div', { class: 'rewards', id: 'report-rewards' },
-    item('i-gold', 'gold', gold, 'gold earned', 300),
-    rewards ? item('i-spores', 'spores', rewards.spores, 'Spores', 450) : null,
-    rewards?.amber ? item('i-amber', 'amber', rewards.amber, 'Amber', 600) : null,
-    rewards?.amberChance ? h('span', { class: 'reward chance' }, atlas ? uiIcon(atlas, 'i-amber') : null,
-      h('small', null, `${Math.round(rewards.amberChance * 100)}% chance of +1 Amber`)) : null);
-}
-
-/** What dealt damage under a damage-by-building key: a building type, the Heartcap turrets or the commander power. */
-function sourceType(st: BattleState['stats']['player'], id: string): string {
-  return id === '0' ? 'turret' : id === String(POWER_SOURCE_ID) ? 'power' : st.buildingTypes[id] ?? '?';
-}
-
-/** The side's commander power by name, for its damage row. */
-function powerName(state: BattleState, side: Side): string {
-  const id = state.config[side].power;
-  return `${(id && state.library.powers?.[id]?.name) ?? 'Commander power'} (power)`;
-}
-
-/** What the player's power did this battle: uses, and its damage, columns or trios. */
-function powerLine(state: BattleState): string {
-  const st = state.stats.player;
-  const def = state.library.powers?.[state.config.player.power ?? ''];
-  const uses = st.powerUses ?? 0;
-  const what = def?.kind === 'tithe' ? `${st.powerGold ?? 0} gold` : def?.kind === 'surge' ? `${st.powerCaptures ?? 0} columns` : def?.kind === 'bloom' ? `${st.powerMerges ?? 0} trios` : `${st.powerDamage ?? 0} damage`;
-  return `${uses}× · ${what}`;
-}
-
-/**
- * A side's gold by source, in words, leaving out sources that paid nothing. Effect gold is split: the
- * commander power's (Rhizome Tithe) is its own row, and the rest is the relics' (Spore Tithe, Rot-Eater),
- * or with the Heartcap breach prototype, the breaches' too.
- */
-export function goldBySource(state: BattleState, side: Side): { label: string; value: number }[] {
-  const st = state.stats[side];
-  const g = st.goldEarned;
-  const power = st.powerGold ?? 0;
-  const pays = (t: TriggerDef) => t.do.some((a) => 'gainGold' in a);
-  const relics = state.sides[side].relics.some((id) => state.library.relics[id]?.effects.triggers?.some(pays));
-  const breaches = state.compiled[side].triggers.some((t) => t.on === 'heartcapBreach' && pays(t));
-  return [
-    { label: 'Stipend', value: g.stipend },
-    { label: 'Economy', value: g.economy },
-    { label: 'Interest', value: g.interest },
-    { label: 'Comeback', value: g.comeback },
-    { label: breaches ? (relics ? 'Relics and breaches' : 'Heartcap breaches') : 'Relics', value: g.effects - power },
-    { label: powerName(state, side), value: power },
-    { label: 'Skipped drafts', value: g.drafts },
-  ].filter((r) => r.value > 0);
-}
-
-/** Damage per building type (turrets and the commander power as their own rows), largest first. */
-export function damageByType(content: Content, state: BattleState, side: Side): { label: string; value: number }[] {
-  const st = state.stats[side];
-  const byType = new Map<string, { value: number; count: number }>();
-  for (const [id, dmg] of Object.entries(st.damageByBuilding)) {
-    const type = sourceType(st, id);
-    const cur = byType.get(type) ?? { value: 0, count: 0 };
-    cur.value += dmg;
-    byType.set(type, cur);
-  }
-  for (const type of Object.values(st.buildingTypes)) {
-    const cur = byType.get(type);
-    if (cur) cur.count++;
-  }
-  return [...byType.entries()]
-    .map(([type, { value, count }]) => ({
-      label: type === 'turret' ? 'Heartcap turrets' : type === 'power' ? powerName(state, side)
-        : `${content.buildings[type]?.name ?? type}${count > 1 ? ` ×${count}` : ''}`,
-      value,
-    }))
-    .sort((a, b) => b.value - a.value || (a.label < b.label ? -1 : 1));
-}
-
-/** "The general countered…" (SPEC §7.5): each counter with its time and the buildings it used. */
-export function counterSection(content: Content, state: BattleState): HTMLElement | null {
-  const ai = state.sides.enemy.ai;
-  const c = ai?.counter;
-  if (!ai || !c) return null;
-  const name = generalName(content, state);
-  const lines: HTMLElement[] = [];
-  if (ai.opening) {
-    lines.push(h('li', null, `${ai.opening.dual ? 'Dual doctrine' : 'Opened'} against your ${ai.opening.kinds.map((k) => KIND_LABEL[k]).join(' and ')}, from the intel on you`));
-  }
-  for (const rec of c.history) lines.push(h('li', { class: 'counter-line', 'data-kind': rec.kind }, counterLine(content, rec, state.rules.tickRate)));
-  if (!lines.length) lines.push(h('li', { class: 'muted' }, 'No counters: the battle ended before the first analysis, or there was nothing to read.'));
-  return h('section', { id: 'report-counters' }, h('h3', null, `${name} countered…`), h('ul', { class: 'counterlist' }, ...lines));
-}
-
-/** The building type that dealt the most damage (Heartcap turrets and the power aside), its count and its share of the side's damage. */
+/** The building type that dealt the most damage (the power aside, and a v1 run's Heartcap turrets), its count and its share of the side's damage. */
 export interface Mvp { type: string; value: number; count: number; share: number }
 
 export function mvpOf(damage: Record<string, number>, counts: Record<string, number> = {}): Mvp | null {
@@ -216,19 +43,6 @@ export function mvpOf(damage: Record<string, number>, counts: Record<string, num
   const best = Object.entries(damage).filter(([id]) => id !== 'turret' && id !== 'power').sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1))[0];
   if (!best || best[1] <= 0) return null;
   return { type: best[0], value: best[1], count: counts[best[0]] ?? 1, share: best[1] / Math.max(1, total) };
-}
-
-/** A battle's damage by building type for one side (turrets keyed `turret`), and how many of each type it built. */
-export function damageTotals(state: BattleState, side: Side): { damage: Record<string, number>; counts: Record<string, number> } {
-  const st = state.stats[side];
-  const damage: Record<string, number> = {};
-  for (const [id, dmg] of Object.entries(st.damageByBuilding)) {
-    const type = sourceType(st, id);
-    damage[type] = (damage[type] ?? 0) + dmg;
-  }
-  const counts: Record<string, number> = {};
-  for (const type of Object.values(st.buildingTypes)) counts[type] = (counts[type] ?? 0) + 1;
-  return { damage, counts };
 }
 
 /** The MVP callout: the building at 2×, its name and what it did. */
@@ -262,63 +76,247 @@ export function outcomeArt(atlas: Atlas | undefined, won: boolean): HTMLElement 
   return box;
 }
 
-export function battleReport(content: Content, state: BattleState, actions: { again: () => void; rematch: () => void; continueRun?: () => void }, atlas?: Atlas, rewards?: ReportRewards): HTMLElement {
+/** How the battle was decided, in words (§6.5): the round a Heartcap fell in, or the Decision with each side's damage dealt. */
+export function outcomeText(state: BattleState): string {
+  const o = state.outcome!;
+  const who = o.winner === 'player' ? 'The Velvet Bloom wins' : 'The Gray Rot wins';
+  const p = state.sides.player, e = state.sides.enemy;
+  if (o.by === 'rout') {
+    const fell = p.heartcapHp <= 0 && e.heartcapHp <= 0 ? 'both Heartcaps fell, and then the general takes it'
+      : o.winner === 'player' ? "the Gray Rot's Heartcap fell" : 'your Heartcap fell';
+    return `${who} by Rout in round ${o.round}: ${fell}.`;
+  }
+  const pd = dealtBy(state, 'player'), ed = dealtBy(state, 'enemy');
+  const how = state.rules.decisionBy === 'damage'
+    ? `you dealt ${pd} and it dealt ${ed}`
+    : `you dealt ${pd}, ${pct(pd, e.heartcapMaxHp)} of the Gray Rot's ${e.heartcapMaxHp}, and it dealt ${ed}, ${pct(ed, p.heartcapMaxHp)} of your ${p.heartcapMaxHp}`;
+  return `${who} by Decision after round ${o.round}: ${how}.`;
+}
+
+/** One round's column in the chart (§10.4, A068). */
+export interface ChartColumn {
+  round: number;
+  /** The Heartcap damage you dealt and took in the round, after the storm and the cap: one bar each way. */
+  dealt: number;
+  taken: number;
+  /** Each Heartcap's HP after the round. */
+  hp: Record<Side, number>;
+  /** A Sporestorm round, with its multiplier in basis points, and whether the round cap cut its damage. */
+  storm: boolean;
+  stormBp: number;
+  capped: boolean;
+  /** Each lane's result for you, as half-pips under the column on a map of more than one lane; empty on one lane. */
+  lanes: Result[];
+}
+
+export function roundChart(state: BattleState): ChartColumn[] {
+  return state.rounds.map((r) => ({
+    round: r.round, dealt: r.damage.player, taken: r.damage.enemy, hp: { ...r.heartcaps },
+    storm: r.stormBp > 10000, stormBp: r.stormBp, capped: r.capped,
+    lanes: state.lanes.length > 1 ? r.lanes.map((l) => resultOf(l.winner)) : [],
+  }));
+}
+
+/** A side's gold by source over the battle (§6.2), leaving out sources that paid nothing. They add up to all it earned. */
+export function goldBySource(state: BattleState, side: Side): { label: string; value: number }[] {
+  const g = state.stats[side].goldEarned;
+  return [
+    { label: 'Stipend', value: g.stipend },
+    { label: 'Economy buildings', value: g.economy },
+    { label: 'Interest', value: g.interest },
+    { label: 'Comeback', value: g.comeback },
+    { label: 'Clash gold', value: g.pending },
+    { label: 'Effects', value: g.effects },
+  ].filter((r) => r.value > 0);
+}
+
+/** The gold you banked at each round's Begin, which its interest read (R2-Q2). */
+export const bankedByRound = (state: BattleState): number[] => state.rounds.map((r) => r.stats.player.maxGoldBanked);
+
+/** Damage by building type over the battle's clashes, largest first, with how many of each the side planted. */
+export function damageByType(content: Content, state: BattleState, side: Side): { type: string; label: string; value: number; count: number }[] {
+  const st = state.stats[side];
+  const by = new Map<string, { value: number; count: number }>();
+  for (const [id, dmg] of Object.entries(st.damageByBuilding)) {
+    const type = id === String(POWER_SOURCE_ID) ? 'power' : st.buildingTypes[id] ?? '?';
+    const cur = by.get(type) ?? { value: 0, count: 0 };
+    cur.value += dmg;
+    by.set(type, cur);
+  }
+  for (const type of Object.values(st.buildingTypes)) { const cur = by.get(type); if (cur) cur.count++; }
+  return [...by.entries()]
+    .map(([type, { value, count }]) => ({
+      type, value, count,
+      label: type === 'power' ? 'Commander power' : `${content.buildings[type]?.name ?? type}${count > 1 ? ` ×${count}` : ''}`,
+    }))
+    .sort((a, b) => b.value - a.value || (a.label < b.label ? -1 : 1));
+}
+
+/** The units a side fielded over the battle, after each muster, by tier (§14.4's fielded record). */
+export function fieldedByTier(state: BattleState, side: Side): [number, number, number] {
+  const out: [number, number, number] = [0, 0, 0];
+  for (const r of state.rounds) for (const f of r.fielded[side]) out[(f.tier - 1) as 0 | 1 | 2] += f.count;
+  return out;
+}
+
+/**
+ * The round chart (§10.4): a column a round, dealt rising in violet over the midline and taken hanging in ash
+ * under it, on one scale; each Heartcap's HP after the round as a line, from full at the top to 0 at the bottom;
+ * a Sporestorm round marked with its multiplier; on Twin Roots, a half-pip a lane under each column.
+ */
+function chartSvg(state: BattleState, width = 900): SVGElement {
+  const cols = roundChart(state);
+  const slots = Math.max(state.rules.maxRounds, cols.length);
+  // the top pad holds a storm round's multiplier above the tallest bar's damage label (S20)
+  const pad = { l: 40, r: 10, t: 30, b: state.lanes.length > 1 ? 30 : 20 };
+  const height = 210;
+  const plotW = width - pad.l - pad.r, plotH = height - pad.t - pad.b;
+  const mid = pad.t + plotH / 2;
+  const step = plotW / slots, barW = Math.min(36, step * 0.55);
+  const top = Math.max(1, ...cols.map((c) => Math.max(c.dealt, c.taken)));
+  const k = (plotH / 2 - 4) / top;
+  const cx = (i: number) => pad.l + step * (i + 0.5);
+  const root = svg('svg', { viewBox: `0 0 ${width} ${height}`, width, height, id: 'report-rounds', role: 'img', 'aria-label': 'Heartcap damage by round' });
+  root.append(svg('rect', { x: pad.l, y: pad.t, width: plotW, height: plotH, fill: '#3a2a1f' }));
+  root.append(svg('line', { x1: pad.l, x2: pad.l + plotW, y1: mid, y2: mid, stroke: '#ece4f4', 'stroke-opacity': 0.35 }));
+  root.append(svg('text', { x: pad.l - 6, y: pad.t + 12, fill: LIGHT.player, 'font-size': 11, 'text-anchor': 'end' }, 'dealt'));
+  root.append(svg('text', { x: pad.l - 6, y: pad.t + plotH - 4, fill: LIGHT.enemy, 'font-size': 11, 'text-anchor': 'end' }, 'taken'));
+  cols.forEach((c, i) => {
+    const g = svg('g', { 'data-round': c.round, 'data-dealt': c.dealt, 'data-taken': c.taken });
+    if (c.storm) {
+      g.append(svg('rect', { x: cx(i) - step / 2 + 1, y: pad.t, width: step - 2, height: plotH, fill: '#c9a2ff', 'fill-opacity': 0.08 }));
+      g.append(svg('text', { x: cx(i), y: pad.t - 15, fill: '#c9a2ff', 'font-size': 11, 'text-anchor': 'middle' }, `☁ ${stormText(c.stormBp)}`));
+    }
+    g.append(svg('rect', { x: cx(i) - barW / 2, y: mid - c.dealt * k, width: barW, height: c.dealt * k, fill: COLOR.player }));
+    g.append(svg('rect', { x: cx(i) - barW / 2, y: mid, width: barW, height: c.taken * k, fill: COLOR.enemy }));
+    if (c.dealt) g.append(svg('text', { x: cx(i), y: mid - c.dealt * k - 3, fill: LIGHT.player, 'font-size': 11, 'text-anchor': 'middle' }, String(c.dealt)));
+    if (c.taken) g.append(svg('text', { x: cx(i), y: mid + c.taken * k + 12, fill: LIGHT.enemy, 'font-size': 11, 'text-anchor': 'middle' }, String(c.taken)));
+    c.lanes.forEach((l, j) => {
+      const w = barW / c.lanes.length;
+      g.append(svg('rect', { class: `half ${l}`, x: cx(i) - barW / 2 + j * w + 1, y: height - 26, width: w - 2, height: 6, fill: HALF[l], 'data-lane': j }));
+    });
+    root.append(g);
+  });
+  // each Heartcap's HP after each round, full at the top
+  for (const s of SIDES) {
+    const max = state.sides[s].heartcapMaxHp;
+    const pts = cols.map((c, i) => `${cx(i)},${pad.t + plotH * (1 - c.hp[s] / max)}`).join(' ');
+    if (cols.length) root.append(svg('polyline', { points: pts, fill: 'none', stroke: LIGHT[s], 'stroke-width': 1.5, 'stroke-dasharray': s === 'enemy' ? '4 3' : '' }));
+  }
+  for (let i = 0; i < slots; i++) root.append(svg('text', { x: cx(i), y: height - 6, fill: '#a99bb8', 'font-size': 11, 'text-anchor': 'middle' }, `R${i + 1}`));
+  return root;
+}
+
+interface Bar { label: string; value: number; side: Side }
+
+function bars(id: string, rows: Bar[]): HTMLElement {
+  const max = Math.max(1, ...rows.map((r) => r.value));
+  return h('div', { class: 'bars', id },
+    ...rows.map((r) => h('div', { class: `bar ${r.side}` },
+      h('span', { class: 'label' }, r.label),
+      h('span', { class: 'track' }, h('span', { class: 'fill', style: `width:${((100 * r.value) / max).toFixed(1)}%` })),
+      h('span', { class: 'value' }, r.value.toLocaleString('en-US')),
+    )));
+}
+
+/** The general's counters by round (§7.4, §10.4): each with the buildings it planted for it. */
+function counterSection(content: Content, state: BattleState): HTMLElement {
+  const plans = state.sides.enemy.ai?.plans.filter((p) => p.counter) ?? [];
+  const lines = plans.map((p) => h('li', { class: 'counter-line', 'data-kind': p.counter! },
+    `Round ${p.round}: countered your ${KIND_LABEL[p.counter!]}${p.planted.length ? ` with ${p.planted.map((x) => content.buildings[x.building]?.name ?? x.building).join(', ')}` : ''}`));
+  if (!lines.length) lines.push(h('li', { class: 'muted' }, 'No counters this battle.'));
+  return h('section', { id: 'report-counters' }, h('h3', null, 'The general countered…'), h('ul', { class: 'counterlist' }, ...lines));
+}
+
+/** A single battle's report has Again and Rematch; a run's battle has Continue in their place, with what it meant for the run. */
+export interface RoundsReportActions {
+  /** The same seed and parameters. */
+  again?(): void;
+  /** A new seed, the same parameters. */
+  rematch?(): void;
+  /** In a run: on to the run's next screen. */
+  continueRun?(): void;
+  /** In a run: one line on what the battle means for it, such as its Spores or a lost Regrowth (§8.5, §8.6). */
+  runNote?: string;
+}
+
+/** The play clock's readout (§8.2, X6, RB-Q3; T128), which the app passes in, since `src/ui` can't import `src/app`. */
+export interface PlayTimeReadout {
+  /** Each planning phase the clock timed, in order, with its active seconds. */
+  planning: readonly { round: number; seconds: number }[];
+  /** Their median, or null when it timed none. */
+  medianPlanningSeconds: number | null;
+  /** The battle's active minutes: its planning, clash and aftermath seconds summed. */
+  minutes: number;
+}
+
+/** The report's play-time line (X6): your planning seconds by round, their median, and the battle's active minutes. */
+export function playTimeText(t: PlayTimeReadout): string {
+  if (t.medianPlanningSeconds === null) return 'Planning time: none timed, since the battle opened past planning';
+  const rounds = t.planning.map((p) => `R${p.round} ${Math.round(p.seconds)} s`).join(' · ');
+  return `Planning time by round: ${rounds} · median ${Math.round(t.medianPlanningSeconds)} s · ${t.minutes.toFixed(1)} min of active play`;
+}
+
+/** @param playTime the play clock's readout, which the app passes in (T128) */
+export function roundsReport(content: Content, state: BattleState, actions: RoundsReportActions, atlas?: Atlas, playTime?: PlayTimeReadout): HTMLElement {
   const o = state.outcome!;
   const won = o.winner === 'player';
   const st = state.stats;
   const sum = (x: Record<string, number>) => Object.values(x).reduce((a, b) => a + b, 0);
-  const damage: Bar[] = [];
-  for (const side of ['player', 'enemy'] as Side[]) {
-    for (const r of damageByType(content, state, side).slice(0, 5)) damage.push({ ...r, side });
-  }
-  const gold: Bar[] = [];
-  for (const side of ['player', 'enemy'] as Side[]) {
+  const damage: Bar[] = [], gold: Bar[] = [];
+  for (const side of SIDES) {
+    for (const r of damageByType(content, state, side).slice(0, 5)) damage.push({ label: r.label, value: r.value, side });
     for (const r of goldBySource(state, side)) gold.push({ ...r, side });
   }
+  const mine = damageByType(content, state, 'player').filter((r) => r.type !== 'power' && r.type !== '?');
+  const mvp = mvpOf(Object.fromEntries(mine.map((r) => [r.type, r.value])), Object.fromEntries(mine.map((r) => [r.type, r.count])));
   const row = (label: string, f: (s: Side) => string | number) => h('tr', null, h('td', null, label), h('td', null, String(f('player'))), h('td', null, String(f('enemy'))));
-  const totals = damageTotals(state, 'player');
-  const card = h('div', { class: 'reportcard', id: 'report', role: 'dialog', 'aria-label': 'Battle report' },
+  const banked = bankedByRound(state);
+  const card = h('div', { class: 'reportcard rounds-report', id: 'report', role: 'dialog', 'aria-label': 'Battle report' },
     h('div', { class: `banner reveal ${won ? 'win' : 'loss'}`, style: '--d:0' },
       outcomeArt(atlas, won),
       h('div', { class: 'banner-text' },
         h('h1', { class: won ? 'win' : 'loss', id: 'end-title' }, won ? 'Victory' : 'Defeat'),
         h('div', { class: 'how', id: 'end-how' }, outcomeText(state)),
         h('div', { class: 'banner-meta' },
-          rewardsRow(atlas, sum(st.player.goldEarned), rewards),
-          h('span', { class: 'hint' }, `Battle length ${formatClock(o.tick, state.rules.tickRate)} · Sporestorm ${state.sporestorm} stack${state.sporestorm === 1 ? '' : 's'}`))),
-      mvpCallout(content, atlas, mvpOf(totals.damage, totals.counts), 'this battle'),
+          h('span', { class: 'hint' }, `${state.rounds.length} round${state.rounds.length === 1 ? '' : 's'} · you dealt ${dealtBy(state, 'player')} and took ${dealtBy(state, 'enemy')} · ${sum(st.player.goldEarned)} gold earned`))),
+      mvpCallout(content, atlas, mvp, 'this battle'),
     ),
     h('div', { class: 'reveal', style: '--d:1' },
-      h('h3', null, 'Front line'),
-      frontLineGraph(state),
+      h('h3', null, 'Rounds', h('span', { class: 'legend' }, h('i', { class: 'player' }), 'dealt', h('i', { class: 'enemy' }), 'taken', ' · lines: each Heartcap\'s HP after the round')),
+      chartSvg(state),
       counterSection(content, state)),
     h('div', { class: 'reportgrid reveal', style: '--d:2' },
       h('section', null,
         h('h3', null, 'Damage by building', h('span', { class: 'legend' }, h('i', { class: 'player' }), NAME.player, h('i', { class: 'enemy' }), NAME.enemy)),
         bars('report-damage', damage),
-      ),
-      h('section', null,
-        h('h3', null, 'Gold by source'),
-        bars('report-gold', gold, 700),
         h('h3', null, 'Units'),
         h('table', { id: 'report-units' },
           h('tr', null, h('th', null, ''), h('th', null, NAME.player), h('th', null, NAME.enemy)),
-          row('Spawned', (s) => sum(st[s].spawned)),
-          row('Merged: Bloomed / Elder', (s) => `${st[s].merges['2']} / ${st[s].merges['3']}`),
+          row('Fielded: base / Bloomed / Elder', (s) => fieldedByTier(state, s).join(' / ')),
+          row('Merges: Bloomed / Elder', (s) => `${st[s].merges['2']} / ${st[s].merges['3']}`),
           row('Most Elders at once', (s) => st[s].maxEldersAlive),
           row('Lost', (s) => st[s].unitsLost),
-          row('Buildings built / lost', (s) => `${st[s].buildingsBuilt} / ${st[s].buildingsLost}`),
+          row('Buildings planted / sold', (s) => `${st[s].buildingsPlanted} / ${st[s].buildingsSold}`),
           row('Heartcap HP', (s) => `${state.sides[s].heartcapHp} / ${state.sides[s].heartcapMaxHp}`),
-          st.player.powerUses !== undefined ? row(powerName(state, 'player').replace(' (power)', ' used'), (s) => (s === 'player' ? powerLine(state) : '—')) : null,
         ),
       ),
-    ),
-    actions.continueRun
-      ? h('div', { class: 'actions' }, h('button', { class: 'btn primary', onclick: actions.continueRun, id: 'continue-run' }, 'Continue the run'))
-      : h('div', { class: 'actions' },
-        h('button', { class: 'btn', onclick: actions.rematch, id: 'rematch' }, 'Rematch (same seed)'),
-        h('button', { class: 'btn primary', onclick: actions.again, id: 'play-again' }, 'Play again'),
+      h('section', null,
+        h('h3', null, 'Gold by source', h('span', { class: 'legend' }, h('i', { class: 'player' }), NAME.player, h('i', { class: 'enemy' }), NAME.enemy)),
+        bars('report-gold', gold),
+        h('div', { class: 'hint', id: 'report-banked' }, `You banked at each Begin: ${banked.join(' · ') || '—'}`),
+        playTime ? h('div', { class: 'hint', id: 'report-planning' }, playTimeText(playTime)) : null,
       ),
+    ),
+    actions.runNote ? h('div', { class: 'hint reveal', id: 'report-run', style: '--d:3' }, actions.runNote) : null,
+    h('div', { class: 'actions' },
+      ...(actions.continueRun
+        ? [h('button', { class: 'btn primary', onclick: actions.continueRun, id: 'report-continue', title: 'On to the run' }, 'Continue')]
+        : [
+          h('button', { class: 'btn', onclick: actions.again, id: 'report-again', title: 'The same battle again, on the same seed' }, 'Again (same seed)'),
+          h('button', { class: 'btn primary', onclick: actions.rematch, id: 'report-rematch', title: 'The same parameters on a new seed' }, 'Rematch'),
+        ]),
+    ),
   );
   return h('div', { class: 'overlay' }, card);
 }

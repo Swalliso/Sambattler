@@ -201,11 +201,10 @@ describe('fit at small windows', () => {
     });
   }
 
-  // a commander power adds the Q row to Keys (it overflowed until 2026-10-31), and the rework adds the waves' Hold and storm lines
+  // a commander power adds the Q row to Keys (it overflowed until 2026-10-31), and a battle in rounds always has one
   for (const [label, query] of [
-    ['a plain battle', '/?scene=deploy&map=test-flat&enemy=human&seed=1&test=1&paused=1'],
-    ['a battle with a commander power', '/?scenario=power-demo&test=1&paused=1'],
-    ['a power under the rework', '/?scenario=power-demo&proto=rework&test=1&paused=1'],
+    ['a battle with Vesper\'s Spore Burst', '/?scene=battle&map=test-flat&seed=1&test=1&phase=planning'],
+    ['a battle with Armilla\'s Rhizome Tithe', '/?scene=battle&seed=1&test=1&commander=armilla&phase=planning'],
   ] as const) it(`Help fits at 1280×720 with no key cell over two lines: ${label}`, async () => {
     const p = await open(query);
     await p.locator('#help-btn').click();

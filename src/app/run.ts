@@ -22,8 +22,8 @@ import { sporeWipe } from '../ui/motion.ts';
 import { closeSettings, openSettings, settingsButton } from '../ui/settingsScreen.ts';
 import { sporeLayer } from '../render/spores.ts';
 import { storageKey } from './channel.ts';
-import { openRoundBattle } from './rounds/main.ts';
-import type { RoundBattle } from './rounds/main.ts';
+import { openRoundBattle } from './loop.ts';
+import type { RoundBattle } from './loop.ts';
 import { settingsStore } from './settings.ts';
 import { soundPrefs, soundToggle } from './sound.ts';
 

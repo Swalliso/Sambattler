@@ -1,106 +1,241 @@
-// The battle HUD (docs/archive/v1/ui-ux-plan.md, Phase 1b): both Heartcaps frame the top band, its chips stay clear
-// of their labels (also with the combat rework's beat chip), Begin and its hint
-// stay off the field, the tray never clips or scrolls sideways (two compact rows when 16 cards don't fit
-// one row), unaffordable cards are unlit rather than faded, legal tiles light up while placing, the
-// ghost tip stays beside its footprint inside the field, the cog opens the settings screen (and pauses),
-// F says when Hold is ready if no lane can hold yet, and battle 1's economy tip still fires.
+// The top band of a battle in rounds (SPEC §10.2, §6.2, §6.4, §6.7, §7.5): both Heartcaps frame it and the
+// chips stay clear of their labels; the chips agree with the bridge's summary, with no lives in a single
+// battle (A063); the round tally's past pips follow each round's damage, with "dealt" their sum (A064); the
+// lane tug shows surviving supply in a clash; Twin Roots splits a pip into lane halves; and the Intent panel
+// lists the general's changes this round, with no countdown (A070). States come from the battle's parameters
+// and Node's same checkpoint, computed live, so no combat outcome is pinned (A059, A075). v1's cases that still
+// hold follow, on the round battle: the tray fits the kit with nothing clipped and unlights what you can't
+// afford, the ghost tip keeps clear of its plot and names a closed plot, and the cog holds a clash.
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { chromium } from 'playwright';
 import type { Browser, Page } from 'playwright';
-import { createServer } from 'vite';
-import type { ViteDevServer } from 'vite';
+import { nodeContent } from '../../tools/lib/content.ts';
+import { roundStateForParams } from '../../tools/lib/rounds/params.ts';
+import { incomePreview, survivingSupply } from '../../src/sim/rounds/index.ts';
+import type { BattleState } from '../../src/sim/rounds/index.ts';
+import { closeServers, serve } from './serve.ts';
 
-let server: ViteDevServer | undefined;
 let browser: Browser | undefined;
 let page: Page | undefined;
 let base: string;
+const content = nodeContent();
 
 beforeAll(async () => {
-  server = await createServer({ server: { host: '127.0.0.1', port: 0, watch: null, hmr: false } });
-  await server.listen();
-  const address = server.httpServer?.address();
-  if (!address || typeof address === 'string') throw new Error('Vite did not open a TCP port');
-  base = `http://127.0.0.1:${address.port}`;
+  base = await serve();
   browser = await chromium.launch();
 });
 
 afterAll(async () => {
   await browser?.close();
-  await server?.close();
+  await closeServers();
 });
 
 afterEach(async () => {
   await page?.close();
 });
 
-/** test-flat (32×8 tiles plus a two-tile Heartcap strip at each end) in deploy, with the full 16-building kit (R1's two since R2a). */
-const DEPLOY = '/?scene=deploy&map=test-flat&enemy=human&seed=1&test=1';
-
 async function open(query: string, width = 1280, height = 720): Promise<Page> {
   const p = await browser!.newPage({ viewport: { width, height } });
-  await p.goto(`${base}${query}`);
+  await p.goto(`${base}/?${query}`);
   await p.waitForFunction(() => window.__GAME__?.ready === true);
   await p.evaluate(() => document.fonts.ready.then(() => true));
   return p;
 }
 
-type Box = { x: number; y: number; width: number; height: number };
-const inside = (a: Box, b: Box) => a.x >= b.x - 0.5 && a.y >= b.y - 0.5 && a.x + a.width <= b.x + b.width + 0.5 && a.y + a.height <= b.y + b.height + 0.5;
-const overlap = (a: Box, b: Box) => a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+/** Node's state for the same query, at the same checkpoint (T080). */
+const node = (query: string) => roundStateForParams(content, new URLSearchParams(query));
+const text = (p: Page, sel: string) => p.locator(sel).first().textContent();
+const summary = (p: Page) => p.evaluate(() => window.__GAME__!.summary()!);
+/** Changes the live state for a staged case, then waits two frames for the band to show it. */
+const stage = async (p: Page, f: (b: BattleState) => void) => {
+  await p.evaluate(`(${f.toString()})(window.__GAME__.battle())`);
+  await p.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+};
 
-describe('the top band', () => {
-  it('puts your Heartcap and theirs at the ends of the territory tug', async () => {
-    page = await open(`${DEPLOY}&paused=1`);
-    const [mine, tug, theirs] = await Promise.all(['#hud-hp-player', '#hud-tug', '#hud-hp-enemy'].map((s) => page!.locator(s).boundingBox()));
-    expect(mine!.x + mine!.width).toBeLessThanOrEqual(tug!.x);
-    expect(theirs!.x).toBeGreaterThanOrEqual(tug!.x + tug!.width);
-    expect(await page.locator('#hud-hp-player .heart-hp').textContent()).toBe('3000/3000');
-    expect(await page.locator('#hud-hp-enemy .heart-label').textContent()).toBe('Gray Rot Heartcap');
-    // nothing is pinned to the field's corners any more
-    expect(await page.locator('.fieldwrap .hp').count()).toBe(0);
+/** The first seed whose round 4 clash lasts past 200 ticks with a bot player, found live (as S11's fast-forward test does). */
+let clashQuery = '';
+function clashAt(): string {
+  for (let seed = 1; seed <= 30 && !clashQuery; seed++) {
+    const at = `scene=battle&seed=${seed}&test=1&player=bot:balanced&round=4&phase=clash&ticks=200&paused=1`;
+    try { node(at); clashQuery = at; } catch { /* the battle or round 4's clash ended first */ }
+  }
+  expect(clashQuery).not.toBe('');
+  return clashQuery;
+}
+
+type Box = { x: number; y: number; width: number; height: number };
+const overlap = (a: Box, b: Box) => a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+const boxes = (p: Page, sel: string) => p.locator(sel).evaluateAll((els) => els.map((e) => {
+  const b = e.getBoundingClientRect();
+  return { id: e.id, box: { x: b.x, y: b.y, width: b.width, height: b.height } };
+}));
+
+describe('the top band (§10.2)', () => {
+  for (const [width, height] of [[1280, 720], [1366, 768], [1440, 900]] as const) {
+    it(`frames the band with both Heartcaps and keeps the chips clear of their labels at ${width}×${height}`, async () => {
+      // a clash, whose round chip carries the clock, with late numbers: four-digit gold
+      page = await open(clashAt(), width, height);
+      await stage(page, (b) => { b.sides.player.gold = 1888; });
+      const [band, mine, theirs, mineLabel, theirsLabel, tug, intent] = await Promise.all(
+        ['.rounds-top', '#hud-hp-player', '#hud-hp-enemy', '#hud-hp-player .heart-label', '#hud-hp-enemy .heart-label', '#hud-tug', '#hud-intent']
+          .map((s) => page!.locator(s).boundingBox()));
+      expect(mine!.x - band!.x).toBeLessThan(24);
+      expect(mine!.x + mine!.width).toBeLessThanOrEqual(tug!.x);
+      expect(theirs!.x).toBeGreaterThanOrEqual(tug!.x + tug!.width);
+      expect(intent!.x).toBeGreaterThanOrEqual(theirs!.x + theirs!.width);
+      const chips = await boxes(page, '#mount-top .chip');
+      expect(chips.map((c) => c.id)).toEqual(['chip-gold', 'chip-plots', 'chip-round', 'chip-storm']);
+      for (const c of chips) {
+        expect(overlap(c.box, mineLabel!), c.id).toBe(false);
+        expect(overlap(c.box, theirsLabel!), c.id).toBe(false);
+        expect(c.box.x, c.id).toBeGreaterThanOrEqual(mine!.x + mine!.width);
+        expect(c.box.x + c.box.width, c.id).toBeLessThanOrEqual(theirs!.x);
+        expect(c.box.y + c.box.height, c.id).toBeLessThanOrEqual(band!.y + band!.height);
+      }
+    });
+  }
+
+  it('shows the gold, plots, round and storm the summary gives, the income incomePreview gives, and no lives', async () => {
+    // round 5, the storm's first round (§6.4)
+    let q = '';
+    for (let seed = 1; seed <= 30 && !q; seed++) {
+      const at = `scene=battle&seed=${seed}&test=1&player=bot:balanced&round=5&phase=planning`;
+      try { node(at); q = at; } catch { /* the battle ended first */ }
+    }
+    page = await open(q);
+    const s = await summary(page);
+    expect(s.round).toBe(5);
+    expect(await text(page, '#hud-gold')).toBe(String(s.gold.player));
+    expect(await text(page, '#hud-income')).toBe(`+${incomePreview(node(q), 'player').total}`);
+    expect(await text(page, '#hud-plots')).toBe(`${s.plots.player.planted}/${s.plots.player.owned}`);
+    expect(await text(page, '#hud-round')).toBe(String(s.round));
+    expect(await text(page, '#hud-storm')).toBe(`×${s.storm.toFixed(1)}`);
+    expect(s.storm).toBe(1.2);
+    expect(await page.locator('#chip-storm').getAttribute('class')).toContain('on');
+    expect(await text(page, '#hud-hp-player .heart-hp b')).toBe(String(s.heartcap.player));
+    expect(await text(page, '#hud-hp-enemy .heart-hp b')).toBe(String(s.heartcap.enemy));
+    expect(await page.locator('#hud-lives').count()).toBe(0);
   });
 
-  // the combat rework's beat chip ran the row over "GRAY ROT HEARTCAP" at 1280 px (docs/archive/v1/ideas/after-the-rework.md);
-  // a battle 2:00 in, with a run's late numbers: four-digit gold, two-digit relics and upgrade levels
-  const RELICS = ['thickCaps', 'fruitingSeason', 'rotWard', 'quickRoots', 'freshSpores', 'hardySpores', 'rootStipend', 'deepCellars', 'sporeTithe', 'forwardSpores'];
-  for (const [width, height] of [[1280, 720], [1366, 650]] as const) {
-    for (const proto of ['', 'rework']) {
-      it(`keeps the chips clear of both Heartcaps' labels at ${width}×${height}${proto ? ' with the rework' : ''}`, async () => {
-        page = await open(`/?map=bogwater-hollow&enemy=general:mother-mold&player=bot:balanced&seed=1&test=1&ticks=2400&paused=1${proto ? `&proto=${proto}` : ''}`, width, height);
-        await page.evaluate((relics) => {
-          const p = window.__GAME__!.battle()!.sides.player;
-          p.gold = 1888;
-          p.relics.push(...relics);
-          p.upgrades = { sporelingBurrow: 3, capguardHall: 3, gillNest: 3, truffleCellar: 3 };
-        }, RELICS);
-        await expect.poll(() => page!.locator('#kit-btn').getAttribute('aria-label')).toContain('10 relics, 12 upgrade levels');
-        expect(await page.locator('#chip-beat').count()).toBe(proto ? 1 : 0);
-        const [mid, mine, theirs] = await Promise.all(['.top .mid', '#hud-hp-player .heart-label', '#hud-hp-enemy .heart-label'].map((s) => page!.locator(s).boundingBox()));
-        const chips = await page.locator('.top .chips > .chip').evaluateAll((cs) => cs.map((c) => {
-          const b = c.getBoundingClientRect();
-          return { id: c.id, box: { x: b.x, y: b.y, width: b.width, height: b.height } };
-        }));
-        expect(chips.length).toBe(proto ? 6 : 5);
-        for (const c of chips) {
-          expect(overlap(c.box, mine!), c.id).toBe(false);
-          expect(overlap(c.box, theirs!), c.id).toBe(false);
-          expect(inside(c.box, mid!), c.id).toBe(true);
-        }
-      });
-    }
-  }
+  it('leaves the storm chip unlit at ×1.0 before round 5', async () => {
+    page = await open('scene=battle&seed=1&test=1');
+    expect(await text(page, '#hud-storm')).toBe('×1.0');
+    expect(await page.locator('#chip-storm').getAttribute('class')).not.toContain('on');
+  });
+
+  it('opens the gold tip on I, totalling the chip\'s +N, moves along the band on Tab and closes on Esc', async () => {
+    page = await open('scene=battle&seed=1&test=1&phase=planning');
+    await page.keyboard.press('i');
+    await expect.poll(() => page!.evaluate(() => document.activeElement?.id)).toBe('chip-gold');
+    expect(await page.locator('#hud-tip').isVisible()).toBe(true);
+    const income = await text(page, '#hud-income');
+    expect(await text(page, '#hud-tip .row.total')).toContain(income!);
+    await page.keyboard.press('Tab');
+    expect(await page.evaluate(() => document.activeElement?.id)).toBe('chip-plots');
+    expect(await text(page, '#hud-tip')).toMatch(/plots/i);
+    await page.keyboard.press('Escape');
+    expect(await page.locator('#hud-tip').isVisible()).toBe(false);
+    expect(await page.evaluate(() => document.activeElement?.id ?? '')).not.toBe('chip-plots');
+  });
 });
 
-describe('the tray', () => {
-  // the longest names and summaries; nine full-size cards at 1280 are the narrowest they get
-  const NINE = ['truffleCellar', 'sporeExchange', 'sporelingBurrow', 'gillNest', 'rootbreakerDen', 'hammercapForge', 'veilstalkerHollow', 'puffballMortar', 'rhizomeVault'];
-  for (const [width, height, cards, compact] of [[1280, 720, 16, true], [1366, 650, 16, true], [1920, 1080, 16, true], [1280, 720, 9, false]] as const) {
-    it(`fits ${cards} cards in a ${width}×${height} window with nothing clipped`, async () => {
-      page = await open(`${DEPLOY}&paused=1`, width, height);
-      if (cards === 9) {
-        await page.evaluate((kit) => { window.__GAME__!.battle()!.sides.player.kit.splice(0, Infinity, ...kit); }, NINE);
-        await expect.poll(() => page!.locator('#tray .card').count()).toBe(9);
-      }
+describe('the round tally and the lane tug (§10.2, §6.7)', () => {
+  it('fills each past pip from its round\'s damage, outlines the current one, and sums "dealt" and "taken"', async () => {
+    let q = '';
+    for (let seed = 1; seed <= 30 && !q; seed++) {
+      const at = `scene=battle&seed=${seed}&test=1&player=bot:balanced&round=4&phase=planning`;
+      try { node(at); q = at; } catch { /* the battle ended first */ }
+    }
+    page = await open(q);
+    const damage = await page.evaluate(() => window.__GAME__!.battle()!.rounds.map((r) => r.damage));
+    expect(damage.length).toBe(3);
+    const pips = await page.locator('#hud-tally .pip').evaluateAll((els) => els.map((e) => ({ round: Number((e as HTMLElement).dataset.round), cls: e.className })));
+    expect(pips.map((p) => p.round)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    damage.forEach((d, i) => {
+      const want = d.player > d.enemy ? 'won' : d.player < d.enemy ? 'lost' : 'drawn';
+      expect(pips[i]!.cls, `round ${i + 1}`).toContain(want);
+    });
+    expect(pips[3]!.cls).toContain('current');
+    for (const p of pips.slice(3)) expect(p.cls).toContain('future');
+    const s = await summary(page);
+    expect(await text(page, '#hud-dealt')).toContain(String(damage.reduce((n, d) => n + d.player, 0)));
+    expect(await text(page, '#hud-dealt')).toContain(String(s.dealt.player));
+    expect(await text(page, '#hud-taken')).toContain(String(s.dealt.enemy));
+    expect(await page.locator('#hud-tug').isVisible()).toBe(false);
+  });
+
+  it('shows each lane\'s surviving supply on the tug in a clash, in the tally\'s place', async () => {
+    const q = clashAt();
+    const want = node(q);
+    page = await open(q);
+    expect(await page.locator('#hud-tally').isVisible()).toBe(false);
+    expect(await page.locator('#hud-tug .tugbar').count()).toBe(want.lanes.length);
+    for (let lane = 0; lane < want.lanes.length; lane++) {
+      expect(await text(page, `#hud-tug [data-lane="${lane}"] .num.p`)).toBe(String(survivingSupply(want, 'player', lane)));
+      expect(await text(page, `#hud-tug [data-lane="${lane}"] .num.e`)).toBe(String(survivingSupply(want, 'enemy', lane)));
+    }
+  });
+
+  it('splits a Twin Roots pip into lane halves (split-lanes)', async () => {
+    page = await open('scene=battle&scenario=split-lanes&test=1&phase=aftermath');
+    const lanes = await page.evaluate(() => window.__GAME__!.battle()!.rounds[0]!.lanes.map((l) => l.winner));
+    expect(lanes).toEqual(['player', 'enemy']);
+    const halves = await page.locator('#hud-tally .pip[data-round="1"] .half').evaluateAll((els) => els.map((e) => e.className));
+    expect(halves.length).toBe(2);
+    expect(halves[0]).toContain('won');
+    expect(halves[1]).toContain('lost');
+  });
+});
+
+describe("the General's Intent panel (§7.5, §10.2)", () => {
+  it('lists the buildings the general planted and sold this round, its income and its bank, and has no countdown', async () => {
+    page = await open('scene=battle&seed=1&test=1&phase=planning');
+    const plan = await page.evaluate(() => {
+      const b = window.__GAME__!.battle()!;
+      return b.sides.enemy.ai!.plans.find((p) => p.round === b.round)!;
+    });
+    expect(plan.planted.length).toBeGreaterThan(0);
+    const planted = await text(page, '#intent-planted');
+    for (const p of plan.planted.slice(0, 2)) expect(planted).toContain(content.buildings[p.building]!.name);
+    expect(await text(page, '#intent-income')).toContain(String(plan.income));
+    expect(await text(page, '#intent-banked')).toContain(String(plan.banked));
+    expect(await page.locator('#hud-countdown, #hud-warning').count()).toBe(0);
+    expect(await text(page, '#hud-intent')).not.toMatch(/countdown|wave/i);
+    // a staged plan with a sale and a long list: the sale shows, and the list is cut short with a count
+    await stage(page, (b) => {
+      const p = b.sides.enemy.ai!.plans.find((x) => x.round === b.round)!;
+      p.planted = ['capguardHall', 'gillNest', 'sporelingBurrow', 'hammercapForge', 'amanitaLodge', 'bursterPod'].map((building, plot) => ({ building, plot }));
+      p.sold = [{ building: 'truffleCellar', plot: 9 }];
+    });
+    expect(await text(page, '#intent-sold')).toContain('Truffle Cellar');
+    const long = await text(page, '#intent-planted');
+    expect(long).toContain('Capguard Hall');
+    expect(long).toMatch(/\+\d/);
+    expect(long).not.toContain('Burster Pod');
+  });
+
+  it('shows the plan of the round on screen after a fast-forward', async () => {
+    let q = '';
+    for (let seed = 1; seed <= 30 && !q; seed++) {
+      const at = `scene=battle&seed=${seed}&test=1&player=bot:balanced&round=3&phase=planning`;
+      try { node(at); q = at; } catch { /* the battle ended first */ }
+    }
+    page = await open(q);
+    const plan = node(q).sides.enemy.ai!.plans.find((p) => p.round === 3)!;
+    expect(await text(page, '#intent-income')).toContain(String(plan.income));
+    expect(await text(page, '#intent-banked')).toContain(String(plan.banked));
+  });
+});
+
+// v1's tray, ghost-tip and control cases, on the round battle (R2b/T030): the whole kit at test-flat's round 1
+// planning, held there by `phase=planning`
+const PLANNING = 'scene=battle&map=test-flat&seed=1&test=1&phase=planning';
+const inside = (a: Box, b: Box) => a.x >= b.x - 0.5 && a.y >= b.y - 0.5 && a.x + a.width <= b.x + b.width + 0.5 && a.y + a.height <= b.y + b.height + 0.5;
+
+describe('the tray (§10.2)', () => {
+  for (const [width, height] of [[1280, 720], [1366, 650], [1920, 1080]] as const) {
+    it(`fits the whole kit's 16 cards in a ${width}×${height} window in two compact rows, with nothing clipped`, async () => {
+      page = await open(PLANNING, width, height);
       const m = await page.evaluate(() => {
         const tray = document.getElementById('tray')!;
         const r = (e: Element) => { const b = e.getBoundingClientRect(); return { x: b.x, y: b.y, width: b.width, height: b.height }; };
@@ -118,8 +253,8 @@ describe('the tray', () => {
           })),
         };
       });
-      expect(m.cards).toHaveLength(cards);
-      expect(m.compact).toBe(compact);
+      expect(m.cards).toHaveLength(16);
+      expect(m.compact).toBe(true);
       expect(m.scroll).toBeLessThanOrEqual(0);
       for (const c of m.cards) {
         expect(inside(c.box, m.tray)).toBe(true);
@@ -129,11 +264,11 @@ describe('the tray', () => {
     });
   }
 
-  it('keeps three cards at card width instead of stretching them', async () => {
-    page = await open(`${DEPLOY}&paused=1`);
-    await page.evaluate(() => { window.__GAME__!.battle()!.sides.player.kit.splice(0, Infinity, 'sporelingBurrow', 'capguardHall', 'truffleCellar'); });
+  it("keeps a run's three starter cards at card width, economy first, with the hotkeys following", async () => {
+    page = await open('scene=run&seed=1&test=1');
+    await page.locator('.route-node.open').first().click();
+    await page.waitForFunction(() => window.__GAME__?.phase === 'planning' && !!document.getElementById('tray'));
     await expect.poll(() => page!.locator('#tray .card').count()).toBe(3);
-    // economy first, and the hotkeys follow
     expect(await page.locator('#tray .card').first().getAttribute('data-building')).toBe('truffleCellar');
     expect(await page.locator('#tray .card .key').first().textContent()).toBe('1');
     for (const b of await page.locator('#tray .card').evaluateAll((cs) => cs.map((c) => c.getBoundingClientRect().width))) expect(b).toBeLessThanOrEqual(108.5);
@@ -141,12 +276,13 @@ describe('the tray', () => {
   });
 
   it('unlights cards you can\'t afford, with what you still need, and never fades them', async () => {
-    page = await open(`${DEPLOY}&paused=1`);
-    await page.evaluate(() => { window.__GAME__!.battle()!.sides.player.gold = 120; });
+    page = await open(PLANNING);
+    await stage(page, (b) => { b.sides.player.gold = 120; });
     const hall = page.locator('[data-building="capguardHall"]');
     await expect.poll(() => hall.evaluate((c) => c.classList.contains('poor'))).toBe(true);
-    expect(await hall.locator('.need-label').textContent()).toBe('need 30');
-    expect(await hall.getAttribute('aria-label')).toBe('Capguard Hall, 150 gold, not enough gold');
+    const price = content.buildings.capguardHall!.cost;
+    expect(await hall.locator('.need-label').textContent()).toBe(`need ${price - 120}`);
+    expect(await hall.getAttribute('aria-label')).toBe(`Capguard Hall, ${price} gold, not enough gold`);
     const look = await hall.evaluate((c) => ({
       opacity: getComputedStyle(c).opacity, art: getComputedStyle(c.querySelector('.art')!).filter,
       price: getComputedStyle(c.querySelector('.price')!).color, name: getComputedStyle(c.querySelector('.name')!).color,
@@ -160,65 +296,35 @@ describe('the tray', () => {
   });
 });
 
-describe('deploy', () => {
-  it('puts Begin in the bottom band and its hint in the callout lane; speed and pause replace it once live', async () => {
-    page = await open(DEPLOY);
-    const begin = (await page.locator('#begin-btn').boundingBox())!;
-    expect(inside(begin, (await page.locator('footer.bottom').boundingBox())!)).toBe(true);
-    expect(overlap(begin, (await page.locator('#battlefield').boundingBox())!)).toBe(false);
-    expect(await page.locator('#callouts #deploy-hint').textContent()).toContain('then press Begin');
-    expect(await page.locator('.seg.speed').isVisible()).toBe(false);
-    await page.keyboard.press('Enter');
-    await page.waitForFunction(() => (window.__GAME__?.tick ?? 0) > 0);
-    await expect.poll(() => page!.locator('#begin-btn').isVisible()).toBe(false);
-    expect(await page.locator('#deploy-hint').count()).toBe(0);
-    expect(await page.locator('.seg.speed [data-speed="1"]').getAttribute('aria-pressed')).toBe('true');
-    // pausing pins "Paused" in the callout lane, not over the field
-    await page.keyboard.press('Space');
-    await expect.poll(() => page!.locator('#callouts #paused-callout').count()).toBe(1);
-    expect(await page.locator('#pause-btn').getAttribute('aria-pressed')).toBe('true');
-  });
-
-  it('lights your legal tiles while placing, and only yours', async () => {
-    page = await open(`${DEPLOY}&paused=1`);
-    // the left edge of a tile, on its middle row, in native canvas pixels (two-tile strip at each end)
-    const edge = (col: number, row: number) => page!.evaluate(([c, r]) => {
-      const cv = document.getElementById('battlefield') as HTMLCanvasElement;
-      return [...cv.getContext('2d')!.getImageData((c! + 2) * 16, r! * 16 + 8, 1, 1).data].slice(0, 3);
-    }, [col, row]);
-    await page.mouse.move(5, 5); // off the field: no ghost
-    const mineBefore = await edge(1, 1), theirsBefore = await edge(30, 1);
-    await page.locator('[data-building="capguardHall"]').click();
-    await page.mouse.move(5, 5);
-    await page.waitForTimeout(100);
-    expect(await edge(1, 1)).not.toEqual(mineBefore);
-    expect(await edge(30, 1)).toEqual(theirsBefore);
-    await page.keyboard.press('Escape');
-    await page.waitForTimeout(100);
-    expect(await edge(1, 1)).toEqual(mineBefore);
-  });
-
-  it('keeps the ghost tip inside the field and off the footprint, even at the right edge', async () => {
-    page = await open(`${DEPLOY}&paused=1`);
+describe('the ghost tip (§10.2 "Placing")', () => {
+  it('stays inside the field and off its plot, and says why a closed plot can\'t take the card', async () => {
+    page = await open(PLANNING);
+    const s = await page.evaluate(() => window.__GAME__!.battle()!);
     const box = (await page.locator('#battlefield').boundingBox())!;
-    const tile = box.width / 36;
-    await page.locator('[data-building="sporelingBurrow"]').click();
-    for (const col of [4, 16, 31]) {
-      await page.mouse.move(box.x + (col + 2.5) * tile, box.y + 4.5 * tile);
+    const tile = box.height / s.map.height, strip = (box.width / tile - s.map.width) / 2;
+    await page.keyboard.press('1');
+    const plots = s.sides.player.plots;
+    const at = (p: (typeof plots)[number]) => ({ x: box.x + (p.col + strip + 1) * tile, y: box.y + (p.row + 1) * tile });
+    for (const p of plots.filter((q) => q.open)) {
+      const m = at(p);
+      await page.mouse.move(m.x, m.y);
+      await page.waitForFunction(() => !(document.getElementById('ghost-tip') as HTMLElement).hidden);
       const tip = (await page.locator('#ghost-tip').boundingBox())!;
-      // a 2×2 footprint centred on the cursor, clamped to the map
-      const left = Math.min(col, 30);
-      const footprint = { x: box.x + (left + 2) * tile, y: box.y + 4 * tile, width: 2 * tile, height: 2 * tile };
-      expect(inside(tip, box)).toBe(true);
-      expect(overlap(tip, footprint)).toBe(false);
+      const square = { x: box.x + (p.col + strip) * tile, y: box.y + p.row * tile, width: 2 * tile, height: 2 * tile };
+      expect(inside(tip, box), `rank ${p.rank}, file ${p.file}`).toBe(true);
+      expect(overlap(tip, square), `rank ${p.rank}, file ${p.file}`).toBe(false);
     }
-    expect(await page.locator('#ghost-tip .bad').textContent()).toBe('not your territory');
+    // "not your territory" is a plot's reason in rounds
+    const closed = plots.find((q) => !q.open)!;
+    const m = at(closed);
+    await page.mouse.move(m.x, m.y);
+    await expect.poll(() => page!.locator('#ghost-tip').textContent()).toContain('this plot is closed');
   });
 });
 
-describe('controls', () => {
-  it('opens the settings screen from the cog, which pauses the battle until Esc', async () => {
-    page = await open(`${DEPLOY.replace('scene=deploy', 'scene=battle')}&ticks=200`);
+describe('controls (§10.2)', () => {
+  it('opens the settings screen from the cog, which holds a clash until Esc', async () => {
+    page = await open('scene=battle&seed=1&test=1&player=bot:balanced&phase=clash&ticks=20');
     await page.evaluate(() => localStorage.removeItem('spore-sprawl/settings/v1'));
     expect(await page.locator('#settings').count()).toBe(0);
     await page.locator('#settings-btn').click();
@@ -228,60 +334,25 @@ describe('controls', () => {
     const tick = await page.evaluate(() => window.__GAME__!.tick);
     await page.waitForTimeout(300);
     expect(await page.evaluate(() => window.__GAME__!.tick)).toBe(tick);
-    // keys reach nothing behind it: 1 doesn't pick a building, Space doesn't unpause
-    await page.keyboard.press('1');
+    // keys reach nothing behind it: Space doesn't pause, Q doesn't aim
     await page.keyboard.press('Space');
-    expect(await page.locator('#tray .card.sel').count()).toBe(0);
+    await page.keyboard.press('q');
+    expect(await page.locator('#pause-btn').getAttribute('aria-pressed')).toBe('false');
     await page.locator('#numbers [data-numbers="all"]').click();
     await expect.poll(() => page!.locator('#numbers [data-numbers="all"]').getAttribute('aria-pressed')).toBe('true');
     expect(JSON.parse((await page.evaluate(() => localStorage.getItem('spore-sprawl/settings/v1')))!).damageNumbers).toBe('all');
-    // Escape closes it, unpauses and leaves focus on the cog
+    // Escape closes it, lets the clash run on and leaves focus on the cog
     await page.keyboard.press('Escape');
     expect(await page.locator('#settings').count()).toBe(0);
     expect(await page.evaluate(() => document.activeElement?.id)).toBe('settings-btn');
     expect(await page.locator('#settings-btn').getAttribute('aria-expanded')).toBe('false');
     await expect.poll(() => page!.evaluate(() => window.__GAME__!.tick)).toBeGreaterThan(tick);
-    // a press on the scrim closes it too
-    await page.locator('#settings-btn').click();
-    await page.mouse.click(20, 360);
-    expect(await page.locator('#settings').count()).toBe(0);
   });
 
   it('shows the empty inspect panel as a short tip', async () => {
-    page = await open(`${DEPLOY}&paused=1`);
-    const text = (await page.locator('#inspect').textContent())!;
-    expect(text).toContain('Click a building or unit');
-    expect(text).not.toContain('Tab cycle');
-  });
-
-  // F with no lane able to hold says when one can, instead of doing nothing: the cooldown in today's game, the next
-  // beat under the combat rework's waves (a hold the beat spent waits for that beat to send both waves)
-  for (const [proto, says] of [['', 'Hold is ready in 6 s'], ['rework', 'Hold is ready once both waves leave, in 20 s']] as const) {
-    it(`says when Hold is ready if F finds every lane on its cooldown${proto ? ', under the rework' : ''}`, async () => {
-      page = await open(`/?map=bogwater-hollow&enemy=general:mother-mold&seed=1&test=1&ticks=401&paused=1${proto ? `&proto=${proto}` : ''}`);
-      await page.evaluate(() => {
-        const s = window.__GAME__!.battle()!, beat = s.compiled.player.waveBeatTicks;
-        s.sides.player.stance![0]!.readyAt = beat ? s.tick + beat - (s.tick % beat) + 1 : s.tick + 120;
-      });
-      await page.keyboard.press('f');
-      await expect.poll(() => page!.locator('#callouts .callout.refused').textContent()).toBe(says);
-      expect(await page.evaluate(() => window.__GAME__!.battle()!.queue.some((c) => c.type === 'stance'))).toBe(false);
-    });
-  }
-});
-
-describe('battle 1', () => {
-  it('still tips the economy at 0:30 when none is built, and pulses the economy cards', async () => {
-    // the first-time frontier tip has been seen, so the economy tip has the lane to itself
-    page = await browser!.newPage({ viewport: { width: 1280, height: 720 } });
-    await page.addInitScript(() => localStorage.setItem('spore-sprawl/tips/v1', JSON.stringify({ shown: ['frontier', 'hold'] })));
-    await page.goto(`${base}/?map=test-flat&enemy=human&seed=1&test=1&battleIndex=1&ticks=590`);
-    await page.waitForFunction(() => window.__GAME__?.ready === true);
-    const tip = page.locator('#callouts .callout.tip');
-    await expect.poll(() => tip.textContent(), { timeout: 10_000 }).toContain('A Truffle Cellar 1 earns gold');
-    // the hotkey is a keycap, as the design system's tips show it
-    expect(await tip.locator('kbd').textContent()).toBe('1');
-    expect(await page.locator('[data-building="truffleCellar"]').evaluate((c) => c.classList.contains('nudge'))).toBe(true);
-    expect(await page.locator('[data-building="capguardHall"]').evaluate((c) => c.classList.contains('nudge'))).toBe(false);
+    page = await open(PLANNING);
+    const t = (await page.locator('#inspect').textContent())!;
+    expect(t).toContain('Click a building or a unit');
+    expect(t).not.toContain('Tab cycle');
   });
 });

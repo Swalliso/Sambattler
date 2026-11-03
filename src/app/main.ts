@@ -1,19 +1,18 @@
 // Entry point: reads URL parameters, loads and validates content, and opens a scene. Milestone 3
 // adds the run (route, drafts, spoils, events, Grove, summary) alongside the single-battle scenes:
-// battle and deploy play one battle, report plays it out headlessly and opens on its report.
+// battle opens one battle in rounds, and report plays it to its end headlessly and opens on its report.
 // With no scene (and no battle parameters) the page opens on the title, the front door to the run;
 // New run goes through the Underroot (`scene=underroot`), where the commander and bans are chosen.
-// `scene=sounds` is the sound board, a tool for auditioning data/sounds.json. `scene=rounds` is R2a's preview
-// of a battle in rounds (src/app/rounds/main.ts), loaded as its own chunk, with its button on the dev site's title.
+// `scene=sounds` is the sound board, a tool for auditioning data/sounds.json. Any other scene, v1's `deploy`
+// and R2a's `rounds` among them, is refused with a visible message (R2b plan Call 15).
 import '../ui/styles.css';
 import { loadRecords, runItBackSetup, setLastSetup, updateRecords } from '../meta/index.ts';
 import { bakeAtlas } from '../render/atlas.ts';
 import { createRun, currentRow, loadRun, MemoryStorage, runForScene } from '../run/index.ts';
 import type { RunState } from '../run/index.ts';
-import {
-  DEFAULT_COMMANDER, MILESTONE, autoPowerTarget, createBattle, createFromScenario, makeConfig, parseController, queueCommand, runHeadless,
-} from '../sim/index.ts';
-import type { BattleState, Content } from '../sim/index.ts';
+import { DEFAULT_COMMANDER, MILESTONE } from '../sim/index.ts';
+import { createBattle, makeRoundConfig } from '../sim/rounds/index.ts';
+import type { BattleState, Content } from '../sim/rounds/index.ts';
 import { h } from '../ui/h.ts';
 import { helpOverlay } from '../ui/help.ts';
 import { applyMotion, sporeWipe } from '../ui/motion.ts';
@@ -23,28 +22,24 @@ import { underrootScreen } from '../ui/screens/underroot.ts';
 import type { UnderrootTab } from '../ui/screens/underroot.ts';
 import { sporeLayer } from '../render/spores.ts';
 import { closeSettings, openSettings, settingsButton, settingsOpen } from '../ui/settingsScreen.ts';
-import { BattleView } from './battleView.ts';
 import { BUILD_SHA, DEV_SITE, protoSpace } from './channel.ts';
 import { browserContent } from './content.ts';
 import { installBridge } from './debugBridge.ts';
-import { bindInput } from './input.ts';
-import { GameLoop } from './loop.ts';
-import { parseParams } from './urlParams.ts';
+import { openRoundBattle } from './loop.ts';
+import type { RoundBattle } from './loop.ts';
+import { BattleRefusal, battleForParams, parseParams, parseRoundParams } from './urlParams.ts';
 import type { Params } from './urlParams.ts';
 import { BrowserStorage, RunController } from './run.ts';
-import { Session } from './session.ts';
 import { loadSettings, markTipShown, onSettings, settingsStore, tipsShown } from './settings.ts';
 import { installSound, soundEnabled, soundPrefs } from './sound.ts';
 import { soundBoard } from './soundBoard.ts';
 
-const BATTLE_SCENES = new Set(['battle', 'deploy', 'report']);
+const BATTLE_SCENES = new Set(['battle', 'report']);
 const RUN_SCENES = new Set(['run', 'route', 'draft', 'summary']);
 const UNDERROOT = 'underroot';
 /** Tools that aren't part of the game: `sounds` is the sound board for auditioning the sound set. */
 const TOOL_SCENES = new Set(['sounds']);
 const TITLE = 'title';
-/** R2a's preview of a battle in rounds, on every build (plan Call 2). R2b deletes it. */
-const ROUNDS = 'rounds';
 /** The Underroot's first-time tip, remembered with the battle tips (spore-sprawl/tips/v1). */
 const UNDERROOT_TIP = 'underroot';
 const errors: string[] = [];
@@ -60,22 +55,6 @@ function randomSeed(): number {
 function fatal(message: string): void {
   const app = document.getElementById('app')!;
   app.replaceChildren(h('pre', { class: 'fatal' }, message));
-}
-
-function buildState(content: Content, p: Params, seed: number): BattleState {
-  if (p.scenario) {
-    return createFromScenario(content, p.scenario, {
-      seed,
-      ...(p.player !== 'human' ? { player: p.player } : {}),
-      ...(p.enemy !== null ? { enemy: p.enemy } : {}),
-      ...(p.flags ? { flags: p.flags } : {}),
-    });
-  }
-  return createBattle(content, makeConfig(content, {
-    seed, mapId: p.map, battleIndex: p.battleIndex,
-    player: parseController(p.player), enemy: parseController(p.enemy ?? 'general:scripted'),
-    ...(p.flags ? { flags: p.flags } : {}),
-  }));
 }
 
 /** The settings that shape the whole page (UI scale, reduced motion, color-blind assist), now and as they change. */
@@ -94,13 +73,11 @@ function installDisplaySettings(): void {
 function boot(): void {
   installDisplaySettings();
   const params = parseParams(location.search);
-  const known = params.scene === TITLE || params.scene === UNDERROOT || params.scene === ROUNDS || BATTLE_SCENES.has(params.scene) || RUN_SCENES.has(params.scene) || TOOL_SCENES.has(params.scene);
+  const known = params.scene === TITLE || params.scene === UNDERROOT || BATTLE_SCENES.has(params.scene) || RUN_SCENES.has(params.scene) || TOOL_SCENES.has(params.scene);
   if (!known) {
-    fatal(`scene=${params.scene} is not part of Milestone ${MILESTONE} (only ${[TITLE, UNDERROOT, ROUNDS, ...BATTLE_SCENES, ...RUN_SCENES, ...TOOL_SCENES].join(', ')} exist yet).`);
+    fatal(`scene=${params.scene} is not part of Milestone ${MILESTONE} (only ${[TITLE, UNDERROOT, ...BATTLE_SCENES, ...RUN_SCENES, ...TOOL_SCENES].join(', ')} exist yet).`);
     return;
   }
-  for (const problem of params.flagProblems) console.warn(`${problem}; ignored`);
-  if (params.scene === 'report') params.ticks = 'end';
   let content: Content;
   try {
     content = browserContent(params.proto);
@@ -120,12 +97,10 @@ function boot(): void {
   }
   const atlas = bakeAtlas(content);
   const engine = installSound(content, soundEnabled({ test: params.test, force: params.sound }));
-  // the preview reads its own parameters; its battle is in the main bundle since runs play rounds (R2b's S1), and T032 deletes the entry
-  if (params.scene === ROUNDS) void import('./rounds/main.ts').then((m) => m.startRounds(content, atlas, errors));
-  else if (params.scene === 'sounds') soundBoard(content, atlas, engine);
+  if (params.scene === 'sounds') soundBoard(content, atlas, engine);
   else if (params.scene === TITLE || params.scene === UNDERROOT) openTitle(content, atlas, params);
   else if (RUN_SCENES.has(params.scene)) startRun(content, atlas, params);
-  else start(content, atlas, params, params.seed ?? randomSeed());
+  else startBattle(content, atlas, params.scene);
 }
 
 /**
@@ -141,9 +116,7 @@ function runStorage(params: Params): { persist: boolean; storage: BrowserStorage
 
 /** A rules-only battle for Help outside a battle (the title): the default map, kit and rules. */
 function rulesState(content: Content): BattleState {
-  return createBattle(content, makeConfig(content, {
-    seed: 1, mapId: 'bogwater-hollow', battleIndex: 1, player: parseController('human'), enemy: parseController('general:scripted'),
-  }));
+  return createBattle(content, makeRoundConfig(content, { seed: 1, mapId: 'bogwater-hollow', battleIndex: 1, player: 'human', enemy: 'general:scripted' }));
 }
 
 /**
@@ -156,7 +129,7 @@ function openTitle(content: Content, atlas: ReturnType<typeof bakeAtlas>, params
   let ctl: RunController | null = null;
   let where = params.scene === UNDERROOT ? UNDERROOT : TITLE;
   const bridge = params.debug || params.test
-    ? installBridge({ get scene() { return ctl ? 'run' : where; }, battle: () => null, roundBattle: () => ctl?.battleState ?? null, run: () => ctl?.run ?? null }, errors)
+    ? installBridge({ get scene() { return ctl ? 'run' : where; }, battle: () => ctl?.battleState ?? null, run: () => ctl?.run ?? null }, errors)
     : null;
   const ready = () => { if (bridge) bridge.ready = true; };
   /** Opens a run: the saved one, with a migrated save's notice, or (`fresh`) a new one from the Underroot, saved at once. */
@@ -235,7 +208,6 @@ function openTitle(content: Content, atlas: ReturnType<typeof bakeAtlas>, params
       },
       help: openHelp,
       settings: settingsButton(atlas, openSettingsScreen, 'Settings'),
-      ...(DEV_SITE ? { rounds: () => { location.href = `?scene=${ROUNDS}`; } } : {}),
     }, params.test, `Milestone ${MILESTONE}${DEV_SITE ? ` · dev build${BUILD_SHA ? ` ${BUILD_SHA}` : ''}` : ''}`);
     document.getElementById('app')!.replaceChildren(screen);
     screen.querySelector<HTMLElement>('.title-menu .primary')?.focus({ preventScroll: true });
@@ -264,7 +236,7 @@ function startRun(content: Content, atlas: ReturnType<typeof bakeAtlas>, params:
   const notice = loaded.kind === 'run' ? loaded.notice : undefined;
   const ctl = new RunController({ content, atlas, storage, persist, records, debug: params.debug, still: params.test, newSeed: randomSeed }, run, notice);
   if (params.debug || params.test) {
-    const bridge = installBridge({ scene: params.scene, battle: () => null, roundBattle: () => ctl.battleState, run: () => ctl.run }, errors);
+    const bridge = installBridge({ scene: params.scene, battle: () => ctl.battleState, run: () => ctl.run }, errors);
     ctl.onFrame = () => { bridge.ready = true; };
   }
   ctl.show();
@@ -273,55 +245,57 @@ function startRun(content: Content, atlas: ReturnType<typeof bakeAtlas>, params:
 /** Lives' name on the game's screens (§2, #56). */
 const regrowths = (n: number): string => `${n} Regrowth${n === 1 ? '' : 's'}`;
 
-function start(content: Content, atlas: ReturnType<typeof bakeAtlas>, params: Params, seed: number): void {
-  const state = buildState(content, params, seed);
-  const session = new Session(state, content);
-  const humanPlayer = state.config.player.controller.kind === 'human';
-  const restart = (nextSeed: number) => sporeWipe(() => {
-    loop.stop();
-    unbind();
-    view.dispose();
-    document.querySelectorAll('.overlay').forEach((o) => o.remove());
+/**
+ * A single battle in rounds (`scene=battle`, `scene=report`, or battle parameters without a scene): the battle its
+ * parameters ask for, at its checkpoint (R2a plan Call 14), held there by `phase=` or `paused=1` until input. A
+ * seed it chose is written into the URL. Parameters it can't open show their reason in place of the battle, and
+ * fail a capture through the bridge's errors. Again replays the seed and Rematch draws a new one, from round 1's
+ * planning on the same parameters. A single battle never saves and touches no storage key (§13.8).
+ */
+function startBattle(content: Content, atlas: ReturnType<typeof bakeAtlas>, scene: string): void {
+  const params = parseRoundParams(location.search);
+  const seed = params.seed ?? randomSeed();
+  if (params.seed === null) {
     const q = new URLSearchParams(location.search);
-    q.set('seed', String(nextSeed));
-    q.delete('ticks');
-    q.delete('paused');
+    q.set('seed', String(seed));
     history.replaceState(null, '', `?${q.toString()}`);
-    start(content, atlas, { ...params, seed: nextSeed, ticks: null, paused: false }, nextSeed);
+  }
+  let state: BattleState | null = null;
+  let battle: RoundBattle | null = null;
+  const bridge = params.debug || params.test
+    ? installBridge({
+      scene, battle: () => state, run: () => null,
+      preview: () => battle?.view.renderer.preview.drawn ?? null, frames: params.measure ? () => [...(battle?.loop.frameTimes ?? [])] : null,
+    }, errors)
+    : null;
+  try {
+    state = battleForParams(content, params, seed);
+  } catch (e) {
+    if (!(e instanceof BattleRefusal)) throw e;
+    errors.push(`battle: ${e.message}`);
+    document.getElementById('app')!.replaceChildren(h('pre', { class: 'fatal', id: 'battle-refused' }, `This battle can't open: ${e.message}.`));
+    if (bridge) bridge.ready = true;
+    return;
+  }
+  // the report's Again and Rematch reopen the battle on the same parameters, from round 1's planning
+  const reopen = (next: number) => {
+    const q = new URLSearchParams(location.search);
+    for (const k of ['round', 'phase', 'ticks', 'paused']) q.delete(k);
+    if (q.get('scene') === 'report') q.set('scene', 'battle');
+    q.set('seed', String(next));
+    location.search = `?${q.toString()}`;
+  };
+  battle = openRoundBattle(content, atlas, state, {
+    actions: { again: () => reopen(seed), rematch: () => reopen(randomSeed()) },
+    still: params.test, debug: params.debug, reveal: params.reveal ?? 'full',
+    holdAftermath: params.test && params.phase !== null, measure: params.measure === 'frames',
+    onFrame: () => { if (bridge) bridge.ready = true; },
   });
-  const view = new BattleView(session, content, atlas, {
-    begin: () => { session.begin(); },
-    again: () => restart(randomSeed()),
-    rematch: () => restart(seed),
-  }, params.debug, params.test);
-  const app = document.getElementById('app')!;
-  app.replaceChildren(view.root);
-
-  // Bots play the player side automatically; `ticks` fast-forwards headlessly before the first frame.
-  if (state.phase === 'deploy' && (!humanPlayer || params.ticks !== null)) {
-    queueCommand(state, { tick: 0, side: 'player', type: 'begin' });
-  }
-  if (params.ticks !== null) {
-    runHeadless(state, { until: params.ticks, onTick: (s) => view.log.onTick(s) });
-  }
-  session.paused = params.paused;
-  if (params.targeting && session.toggleTargeting()) {
-    // `targeting=1` (screenshots): aim where the auto policy would, or at the middle of the field
-    const p = state.config.player.power ? autoPowerTarget(state, 'player') : null;
-    session.aim = p?.x !== undefined ? { x: p.x, y: p.y! } : { x: state.map.width / 2, y: state.map.height / 2 };
-  }
-  view.fit();
-  const loop = new GameLoop(session, view);
-  const unbind = bindInput(session, view, {
-    begin: () => { session.begin(); },
-    toggleDebug: () => { if (params.debug) loop.debugOverlay = !loop.debugOverlay; },
-  });
-  loop.debugOverlay = params.debug;
-  if (params.debug || params.test) {
-    const bridge = installBridge({ scene: params.scene, battle: () => session.state, run: () => null }, errors);
-    loop.onFrame = () => { bridge.ready = true; };
-  }
-  loop.start();
+  // a pause or `phase=planning` holds planning until input, and a pause never carries into a clash (plan Call 14)
+  if (state.phase === 'planning') battle.session.hold = params.phase === 'planning' || params.paused;
+  else battle.session.paused = params.paused;
+  // `targeting=1` (screenshots): in a clash, aim the power at the middle of the field
+  if (params.targeting && state.phase === 'clash' && battle.session.toggleTargeting()) battle.session.aim = { x: state.map.width / 2, y: state.map.height / 2 };
 }
 
 boot();

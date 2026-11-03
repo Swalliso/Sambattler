@@ -1,19 +1,28 @@
-// Mouse and keyboard (SPEC §10.3). Everything becomes a Session change or a queued command.
-import { FLY_LIFT, TILE } from '../render/renderer.ts';
-import { unitRadius } from '../sim/world.ts';
-import { trayOrder } from '../ui/buildingInfo.ts';
-import type { BattleView } from './battleView.ts';
-import type { Session } from './session.ts';
-import { sfx } from './sound.ts';
+// Mouse and keyboard for a battle in rounds (SPEC §10.3), by phase. Everything becomes a session change or a
+// queued command. Any key or press releases the planning hold (plan Call 14), except choosing a card, which
+// changes only the view. Begin by key needs a fresh
+// keydown, ignores auto-repeat and waits about 400 ms after planning opens, while the button stays instant, so
+// one held or double-tapped key can't skip the aftermath and start the next clash with no planning (R2-Q12,
+// A065). Planning keys in a clash or the aftermath are refused with a callout. In a clash, Q aims the commander
+// power, paused or not, and a click fires it on the next tick; Q is refused outside a clash or once the power is
+// spent (§6.6, §10.3). Help is modal while it's open, and the settings screen keeps keys to itself.
+import type { RoundsView } from './battleView.ts';
+import type { RoundSession } from './session.ts';
 
-export interface InputHooks {
+/** How long after planning opens Begin by key waits (R2-Q12). */
+export const BEGIN_KEY_MS = 400;
+
+export interface RoundInputHooks {
   begin(): void;
+  /** Space, Enter or a click in the aftermath. */
+  skip(): void;
   toggleDebug(): void;
 }
 
 /** Binds mouse and keyboard to one battle; returns a function that removes the window listeners. */
-export function bindInput(session: Session, view: BattleView, hooks: InputHooks): () => void {
+export function bindRoundInput(session: RoundSession, view: RoundsView, hooks: RoundInputHooks): () => void {
   const canvas = view.canvas;
+  const planningOnly = () => view.say('refused', 'Planting, selling and merge toggles are for planning');
   canvas.addEventListener('mousemove', (ev) => {
     const t = view.tileAt(ev);
     session.hover = { col: t.col, row: t.row };
@@ -23,115 +32,93 @@ export function bindInput(session: Session, view: BattleView, hooks: InputHooks)
   canvas.addEventListener('mouseleave', () => { session.hover = null; session.aim = null; });
   canvas.addEventListener('contextmenu', (ev) => {
     ev.preventDefault();
-    cancel();
+    session.cancel();
   });
   canvas.addEventListener('click', (ev) => {
     session.shift = ev.shiftKey;
     const t = view.tileAt(ev);
     session.hover = { col: t.col, row: t.row };
-    if (session.targeting) {
+    const phase = session.state.phase;
+    if (phase === 'aftermath') { hooks.skip(); return; }
+    // in a clash a click fires the power being aimed, or inspects a unit, or a building on its plot (§10.3)
+    if (phase === 'clash') {
       session.aim = { x: t.x, y: t.y };
-      if (!session.firePower()) sfx('illegal');
+      if (session.targeting) view.firePower();
+      else session.selectIn(t.x, t.y, t.col, t.row);
       return;
     }
+    if (phase !== 'planning') return;
     if (session.placing) {
-      if (!session.placeAtGhost()) sfx('illegal');
+      const g = session.ghost();
+      if (!session.plant() && g?.reason) view.say('refused', g.reason);
       return;
     }
-    select(t.x, t.y);
+    session.selectAt(t.col, t.row);
   });
-
-  function cancel(): void {
-    if (session.targeting) session.targeting = false;
-    else if (session.placing) session.placing = null;
-    else session.selected = null;
-    view.inspect.resetConfirm();
-  }
-
-  function select(x: number, y: number): void {
-    const s = session.state;
-    let best: number | null = null, bestD = Infinity;
-    for (const u of s.units) {
-      const r = unitRadius(s, u) + 0.3;
-      // a flyer (combat rework `flyers`) is picked at its raised sprite as well as at its shadow
-      const d = u.flying ? Math.min(Math.hypot(u.x - x, u.y - y), Math.hypot(u.x - x, u.y - FLY_LIFT / TILE - 0.35 - y)) : Math.hypot(u.x - x, u.y - y);
-      if (d <= r && d < bestD) { best = u.id; bestD = d; }
-    }
-    if (best === null) {
-      for (const b of s.buildings) {
-        const def = s.compiled[b.side].buildings[b.buildingId]!;
-        if (x >= b.col && x < b.col + def.w && y >= b.row && y < b.row + def.h) best = b.id;
-      }
-    }
-    session.selected = best;
-    view.inspect.resetConfirm();
-  }
 
   const onKeyDown = (ev: KeyboardEvent) => {
     if (ev.target instanceof HTMLInputElement) return;
-    session.shift = ev.shiftKey;
-    const s = session.state;
-    const card = view.draft.cardForKey(s, ev.key);
-    if (view.draft.open) {
-      // the draft is modal: number keys pick a card, everything else waits
-      if (card) session.issue({ type: 'draftPick', cardId: card });
-      return;
-    }
     if (view.helpOpen) {
-      // the help overlay is modal: H or Esc closes it, everything else waits
+      // Help is modal: H or Esc closes it, and everything else waits
       if (ev.key === 'h' || ev.key === 'H' || ev.key === 'Escape') { ev.preventDefault(); view.toggleHelp(); }
       return;
     }
-    // inside the top band's chips or the relics popover, Tab moves focus as usual (it cycles buildings elsewhere)
+    // Tab moves along the top band once `I` has put focus there (§10.2)
     if (ev.key === 'Tab' && ev.target instanceof Element && ev.target.closest('[data-native-tab]')) return;
+    session.shift = ev.shiftKey;
+    const phase = session.state.phase;
+    const planning = phase === 'planning';
+    // choosing a card is the view's alone, so it keeps the hold: a bot player's queued Begin waits on (T135's marks capture)
     if (/^[1-9]$/.test(ev.key)) {
-      const id = trayOrder(session.content, s.sides.player.kit)[Number(ev.key) - 1];
-      if (id) view.pick(id);
+      if (!planning) { planningOnly(); return; }
+      const id = session.cards()[Number(ev.key) - 1];
+      if (id) session.pick(id);
       return;
     }
+    session.hold = false;
     switch (ev.key) {
-      case 'Escape': cancel(); break;
+      case 'Escape': session.cancel(); break;
       case ' ':
-        // in deploy, Space begins the battle as Enter does (playtest round 3); once it is live, it pauses
-        ev.preventDefault();
-        if (s.phase === 'deploy') hooks.begin();
-        else session.paused = !session.paused;
-        break;
-      case ']': session.speed = Math.min(3, session.speed + 1); break;
-      case '[': session.speed = Math.max(1, session.speed - 1); break;
       case 'Enter':
-        // Begin must not also activate a focused inspector button (a pending sell would confirm)
-        if (s.phase === 'deploy') { ev.preventDefault(); hooks.begin(); }
-        break;
-      case 'Tab': {
+        // Begin must not also press a focused button, and Space must not scroll
         ev.preventDefault();
-        const mine = s.buildings.filter((b) => b.side === 'player');
-        if (!mine.length) break;
-        const i = mine.findIndex((b) => b.id === session.selected);
-        session.selected = mine[(i + 1) % mine.length]!.id;
-        session.placing = null;
-        view.inspect.resetConfirm();
+        if (planning) {
+          if (!ev.repeat && performance.now() - session.planningSince >= BEGIN_KEY_MS) hooks.begin();
+        } else if (phase === 'clash') {
+          if (ev.key === ' ') session.paused = !session.paused;
+        } else if (phase === 'aftermath') hooks.skip();
         break;
-      }
+      case ']': if (phase === 'clash' || phase === 'aftermath') session.speed = Math.min(3, session.speed + 1); break;
+      case '[': if (phase === 'clash' || phase === 'aftermath') session.speed = Math.max(1, session.speed - 1); break;
+      case 'Tab':
+        ev.preventDefault();
+        session.cycle();
+        break;
       case 'x': case 'X': case 'Delete': case 'Backspace':
-        if (session.selected !== null) view.inspect.requestSell(s, session.selected);
+        if (!planning) planningOnly();
+        else view.sell();
         break;
       case 'm': case 'M':
-        if (session.selected !== null) session.toggleMerge(session.selected);
+        if (!planning) planningOnly();
+        else session.toggleMerge();
         break;
-      case 'f': case 'F': view.toggleAllStances(); break;
       case 'q': case 'Q': view.togglePower(); break;
+      case 'i': case 'I': view.focusChips(); break;
       case 'h': case 'H': view.toggleHelp(); break;
-      case 'r': case 'R': view.top.kit.toggle(); break;
-      case 'i': case 'I': view.top.focusChips(); break;
       case 'F3': ev.preventDefault(); hooks.toggleDebug(); break;
     }
   };
   const onKeyUp = (ev: KeyboardEvent) => { session.shift = ev.shiftKey; };
+  const onPress = (ev: PointerEvent) => {
+    if (ev.target instanceof Element && ev.target.closest('#tray')) return;
+    session.hold = false;
+  };
   window.addEventListener('keydown', onKeyDown);
   window.addEventListener('keyup', onKeyUp);
+  window.addEventListener('pointerdown', onPress);
   return () => {
     window.removeEventListener('keydown', onKeyDown);
     window.removeEventListener('keyup', onKeyUp);
+    window.removeEventListener('pointerdown', onPress);
   };
 }

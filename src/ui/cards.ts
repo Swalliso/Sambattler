@@ -19,15 +19,14 @@ const TYPE_ICON = { blueprint: 'i-blueprint', upgrade: 'i-upgrade', relic: 'i-re
 const RARITY_LABEL = { common: 'Common', uncommon: 'Uncommon', rare: 'Rare' } as const;
 const nb = (s: string) => s.replaceAll(' ', ' ');
 
-/** One building's output in a few words, from its data (the tray's line reads the compiled side instead). */
+/** One building's output in a few words, from its data (the tray's line reads the compiled side instead): what it fields or earns a round. */
 export function buildingOutput(content: Content, id: string): string {
   const b = content.buildings[id]!;
-  const unit = b.spawn ? content.units[b.spawn.unit] : undefined;
-  if (b.spawn && unit) return `${b.spawn.count} ${unit.name}${b.spawn.count > 1 ? 's' : ''} / ${nb(`${b.spawn.interval} s`)}`;
+  const unit = b.squad ? content.units[b.squad.unit] : undefined;
+  if (b.squad && unit) return `${b.squad.count} ${unit.name}${b.squad.count > 1 ? 's' : ''} ${nb('a round')}`;
   if (b.attack) return `${b.attack.splashRadius ? 'splash · ' : ''}${nb(`range ${b.attack.range}`)}`;
   if (b.economy?.interestCapAdd) return `${nb('interest cap')} +${b.economy.interestCapAdd}`;
-  if (b.economy) return `${nb(`+${b.economy.goldPerTick} gold`)} / ${nb(`${content.balance.incomeTickSeconds} s`)}`;
-  if (b.utility) return `+${b.utility.supplyCapAdd} ${nb('supply cap')}`;
+  if (b.economy) return `${nb(`+${b.economy.goldPerRound ?? 0} gold`)} ${nb('a round')}`;
   return ROLE_LABEL[b.kind];
 }
 

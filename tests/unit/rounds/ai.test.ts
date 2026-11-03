@@ -18,8 +18,8 @@ import {
   COUNTER_KINDS, createBattle, createFromScenario, formationOf, hashState, makeRoundConfig, restore, runHeadless, snapshot, step,
 } from '../../../src/sim/rounds/index.ts';
 import type { BattleState, CounterKind, FieldedSquad, IntelProfile, PlotState, Side } from '../../../src/sim/rounds/index.ts';
-import { generalNews } from '../../../src/app/rounds/phases/planning.ts';
-import { intentOf } from '../../../src/ui/rounds/doctrine.ts';
+import { generalNews } from '../../../src/app/phases/planning.ts';
+import { intentOf } from '../../../src/ui/doctrine.ts';
 import { content, finishRound, planningState } from '../../roundHelpers.ts';
 
 type Colony = NonNullable<RoundScenarioDef['sides']['enemy']['colony']>;

@@ -1,7 +1,8 @@
 // Player settings (src/app/settings.ts): one key, spore-sprawl/settings/v1, that older saves keep
 // loading from as fields are added (sound arrived with SPEC §13.9, the settings screen's fields with
-// docs/archive/v1/ui-ux-plan.md Phase 3, tips and spawn timers with the clarity pass). The first-time tips already
-// shown live apart, under spore-sprawl/tips/v1.
+// docs/archive/v1/ui-ux-plan.md Phase 3, tips with the clarity pass), and loading a field that went (v1's spawn
+// timers, with its battle in R2b) without keeping it. The first-time tips already shown live apart, under
+// spore-sprawl/tips/v1.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_SETTINGS, loadSettings, markTipShown, onSettings, resetTips, saveSettings, tipsShown } from '../../src/app/settings.ts';
 
@@ -43,14 +44,22 @@ describe('settings', () => {
   it('loads a record from before the settings screen with its new fields at their defaults', () => {
     const old = { damageNumbers: 'all', masterVolume: 0.3, sfxVolume: 0.8, ambientVolume: 0.5, muted: true };
     store.set(KEY, JSON.stringify(old));
-    expect(loadSettings()).toEqual({ ...old, reducedMotion: 'system', uiScale: 'auto', colorAssist: false, defaultSpeed: 1, screenShake: false, tips: true, spawnTimers: true });
+    expect(loadSettings()).toEqual({ ...old, reducedMotion: 'system', uiScale: 'auto', colorAssist: false, defaultSpeed: 1, screenShake: false, tips: true });
   });
 
-  it('loads tips and spawn timers, on by default, and drops values of the wrong type', () => {
-    store.set(KEY, JSON.stringify({ tips: false, spawnTimers: false }));
-    expect(loadSettings()).toMatchObject({ tips: false, spawnTimers: false });
-    store.set(KEY, JSON.stringify({ tips: 'no', spawnTimers: 0 }));
-    expect(loadSettings()).toMatchObject({ tips: true, spawnTimers: true });
+  it('loads tips, on by default, and drops values of the wrong type', () => {
+    store.set(KEY, JSON.stringify({ tips: false }));
+    expect(loadSettings()).toMatchObject({ tips: false });
+    store.set(KEY, JSON.stringify({ tips: 'no' }));
+    expect(loadSettings()).toMatchObject({ tips: true });
+  });
+
+  it("loads a record with v1's spawn timers, and drops them on the next save under the same key (§10.5, §13.8)", () => {
+    store.set(KEY, JSON.stringify({ tips: false, spawnTimers: false, damageNumbers: 'big' }));
+    expect(loadSettings()).toEqual({ ...DEFAULT_SETTINGS, tips: false, damageNumbers: 'big' });
+    saveSettings({ muted: true });
+    expect(JSON.parse(store.get(KEY)!)).toEqual({ ...DEFAULT_SETTINGS, tips: false, damageNumbers: 'big', muted: true });
+    expect([...store.keys()]).toEqual([KEY]);
   });
 
   it('remembers shown tips under their own key, and forgets them all on "Show tips again"', () => {
