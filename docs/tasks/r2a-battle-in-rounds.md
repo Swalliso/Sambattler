@@ -769,9 +769,14 @@ S1 to S4: the data, the colony, the round state machine and the planning command
   - Add both entries to `ROUND_REPLAYS` in `tools/golden.ts`, run `npm run golden -- update`, then check that `git diff --stat tests/golden/m*` shows no change.
   - As built (S17): `r2-twin-roots-balanced-vs-scripted-s3` (`bot:balanced` against the scripted general on Twin Roots; the lanes split in 6 of its 8 rounds) and `r2-merge-mirror-s3` (`bot:balanced` against `bot:balanced-nomerge`), each with merging on and the adaptive general and powers off. No other golden moved.
 - [x] T113 [US6] Write `tests/slow/rounds/perf.test.ts` (new). It asserts G11's round budgets: arrival ≤ 5 ms, the general's planning turn ≤ 20 ms, one battle of rounds with bots on both sides ≤ 3 s, and a tick mean ≤ 1.0 ms and p99 ≤ 2.5 ms at 300 live units. It also asserts the sim part of a planning command under its Node budget, and peak units ≥ 300 (§13.7, §15.4) (A113)
-- [ ] T114 [US6] Build `tools/lib/rounds/bench.ts` (new) and a `--rounds` switch in `tools/bench.ts`, with Call 24's cases (§13.7, §15.4) (A112, A113, A119, A200)
+- [x] T114 [US6] Build `tools/lib/rounds/bench.ts` (new) and a `--rounds` switch in `tools/bench.ts`, with Call 24's cases (§13.7, §15.4) (A112, A113, A119, A200)
   - The cases: R1's full-colony clash on the round loop, its arrival tick timed; bench-300 as `data/scenarios/rounds/bench-300.json` (new); the general's planning turn; one full battle.
   - The output: mean, p95 and p99 per tick, peak units, heap growth, first-tick ms and general-turn ms. A full colony's live units at the arrival are checked against §13.7's budget of at most 150 a side (R1-Q5, #7).
+  - As built (S17):
+    - bench-300 is 150 units a side on test-3lane in blocks of 50 a lane, Gill Archers behind, merging off. Every lane holds level to the 900-tick cap, which `scenarios.test.ts` asserts. The bench plays fresh clashes until it has timed `benchTicks` fighting ticks, leaves the muster's ticks untimed, and weights each tick by the live units it began with.
+    - The full colony on the round loop: 12 plots of the Burrow's 8 on one lane (96 units a side), and 15 on Twin Roots (120), since one of its 16 open plots is a stump in the front rank, so not §13.7's 128.
+    - The general's turn is timed from round 2 on, against the scripted general, Mold and the Baron: on a copy at each aftermath, with the player's AI taken off. Round 1's runs inside `createBattle`.
+    - The sim part of a planning command has a Node budget of 2 ms, half the whole command's 4 ms in Chromium. It and the arrival's and the turn's budgets sit in `ROUND_BUDGETS` until T119 writes G11's round form.
 - [ ] T115 [US6] Write the Chromium checks in `tests/browser/rounds/perf.test.ts` (new), on a Vite dev server as `tests/browser/frame.test.ts` starts one (§13.7) (A113)
   - A plant and the preview update it causes take ≤ 4 ms, timed in the page.
   - `scene=rounds&scenario=bench-300&phase=clash&measure=frames` keeps the render frame at 300 units ≤ 8 ms, read from the bridge's `frames` (T079).

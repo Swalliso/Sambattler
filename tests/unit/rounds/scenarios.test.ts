@@ -60,6 +60,8 @@ const EXPECTED: Record<string, RoundExpected> = {
   'unit-lineup-twin': {
     lanes: [{ winner: null, margin: 0, damage: 0, capped: true, ticks: 900 }, { winner: 'player', margin: 8, damage: 200 }], damage: sides(200, 0), heartcaps: sides(3000, 1800), comeback: 'enemy',
   },
+  // the bench's clash (T114), a mirror: every lane holds level to the cap
+  'bench-300': { lanes: [0, 1, 2].map(() => ({ winner: null, margin: 0, damage: 0, capped: true, ticks: 900 })), damage: sides(0, 0), heartcaps: FULL, comeback: null },
 };
 
 /** Plays a scenario's clash to its end, recording each event with the tick it came on. */

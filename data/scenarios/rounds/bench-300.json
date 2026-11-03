@@ -1,0 +1,41 @@
+{
+  "id": "bench-300",
+  "description": "The bench's clash (SPEC §13.7, §15.4; R2a plan Call 24, A112, A119): the 3-lane test map with 150 units a side placed in formation-like blocks, 50 a lane, with no plots: Sporelings, Capguards, Rootbreakers and Sporelings in front and Gill Archers behind, each side's front 6 tiles from the other's. Merging is off, so all 300 stay live until first contact. npm run bench -- --rounds plays it as repeated fresh clashes.",
+  "map": "test-3lane",
+  "flags": { "merging": false, "adaptiveGeneral": false, "powers": false },
+  "sides": { "player": {}, "enemy": {} },
+  "clash": {
+    "units": [
+      { "side": "player", "unit": "sporeling", "lane": 0, "x": 12.0, "y": 0.5, "count": 10, "rows": 5, "dx": -0.6, "dy": 0.95 },
+      { "side": "player", "unit": "capguard", "lane": 0, "x": 10.8, "y": 0.5, "count": 10, "rows": 5, "dx": -0.6, "dy": 0.95 },
+      { "side": "player", "unit": "rootbreaker", "lane": 0, "x": 9.6, "y": 0.5, "count": 10, "rows": 5, "dx": -0.6, "dy": 0.95 },
+      { "side": "player", "unit": "sporeling", "lane": 0, "x": 8.4, "y": 0.5, "count": 10, "rows": 5, "dx": -0.6, "dy": 0.95 },
+      { "side": "player", "unit": "gillArcher", "lane": 0, "x": 7.2, "y": 0.5, "count": 10, "rows": 5, "dx": -0.6, "dy": 0.95 },
+      { "side": "player", "unit": "sporeling", "lane": 1, "x": 12.0, "y": 6.5, "count": 10, "rows": 5, "dx": -0.6, "dy": 0.95 },
+      { "side": "player", "unit": "capguard", "lane": 1, "x": 10.8, "y": 6.5, "count": 10, "rows": 5, "dx": -0.6, "dy": 0.95 },
+      { "side": "player", "unit": "rootbreaker", "lane": 1, "x": 9.6, "y": 6.5, "count": 10, "rows": 5, "dx": -0.6, "dy": 0.95 },
+      { "side": "player", "unit": "sporeling", "lane": 1, "x": 8.4, "y": 6.5, "count": 10, "rows": 5, "dx": -0.6, "dy": 0.95 },
+      { "side": "player", "unit": "gillArcher", "lane": 1, "x": 7.2, "y": 6.5, "count": 10, "rows": 5, "dx": -0.6, "dy": 0.95 },
+      { "side": "player", "unit": "sporeling", "lane": 2, "x": 12.0, "y": 12.5, "count": 10, "rows": 5, "dx": -0.6, "dy": 0.95 },
+      { "side": "player", "unit": "capguard", "lane": 2, "x": 10.8, "y": 12.5, "count": 10, "rows": 5, "dx": -0.6, "dy": 0.95 },
+      { "side": "player", "unit": "rootbreaker", "lane": 2, "x": 9.6, "y": 12.5, "count": 10, "rows": 5, "dx": -0.6, "dy": 0.95 },
+      { "side": "player", "unit": "sporeling", "lane": 2, "x": 8.4, "y": 12.5, "count": 10, "rows": 5, "dx": -0.6, "dy": 0.95 },
+      { "side": "player", "unit": "gillArcher", "lane": 2, "x": 7.2, "y": 12.5, "count": 10, "rows": 5, "dx": -0.6, "dy": 0.95 },
+      { "side": "enemy", "unit": "sporeling", "lane": 0, "x": 18.0, "y": 0.5, "count": 10, "rows": 5, "dx": 0.6, "dy": 0.95 },
+      { "side": "enemy", "unit": "capguard", "lane": 0, "x": 19.2, "y": 0.5, "count": 10, "rows": 5, "dx": 0.6, "dy": 0.95 },
+      { "side": "enemy", "unit": "rootbreaker", "lane": 0, "x": 20.4, "y": 0.5, "count": 10, "rows": 5, "dx": 0.6, "dy": 0.95 },
+      { "side": "enemy", "unit": "sporeling", "lane": 0, "x": 21.6, "y": 0.5, "count": 10, "rows": 5, "dx": 0.6, "dy": 0.95 },
+      { "side": "enemy", "unit": "gillArcher", "lane": 0, "x": 22.8, "y": 0.5, "count": 10, "rows": 5, "dx": 0.6, "dy": 0.95 },
+      { "side": "enemy", "unit": "sporeling", "lane": 1, "x": 18.0, "y": 6.5, "count": 10, "rows": 5, "dx": 0.6, "dy": 0.95 },
+      { "side": "enemy", "unit": "capguard", "lane": 1, "x": 19.2, "y": 6.5, "count": 10, "rows": 5, "dx": 0.6, "dy": 0.95 },
+      { "side": "enemy", "unit": "rootbreaker", "lane": 1, "x": 20.4, "y": 6.5, "count": 10, "rows": 5, "dx": 0.6, "dy": 0.95 },
+      { "side": "enemy", "unit": "sporeling", "lane": 1, "x": 21.6, "y": 6.5, "count": 10, "rows": 5, "dx": 0.6, "dy": 0.95 },
+      { "side": "enemy", "unit": "gillArcher", "lane": 1, "x": 22.8, "y": 6.5, "count": 10, "rows": 5, "dx": 0.6, "dy": 0.95 },
+      { "side": "enemy", "unit": "sporeling", "lane": 2, "x": 18.0, "y": 12.5, "count": 10, "rows": 5, "dx": 0.6, "dy": 0.95 },
+      { "side": "enemy", "unit": "capguard", "lane": 2, "x": 19.2, "y": 12.5, "count": 10, "rows": 5, "dx": 0.6, "dy": 0.95 },
+      { "side": "enemy", "unit": "rootbreaker", "lane": 2, "x": 20.4, "y": 12.5, "count": 10, "rows": 5, "dx": 0.6, "dy": 0.95 },
+      { "side": "enemy", "unit": "sporeling", "lane": 2, "x": 21.6, "y": 12.5, "count": 10, "rows": 5, "dx": 0.6, "dy": 0.95 },
+      { "side": "enemy", "unit": "gillArcher", "lane": 2, "x": 22.8, "y": 12.5, "count": 10, "rows": 5, "dx": 0.6, "dy": 0.95 }
+    ]
+  }
+}
