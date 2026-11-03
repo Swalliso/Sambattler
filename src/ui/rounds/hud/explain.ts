@@ -57,7 +57,7 @@ function laneRow(state: BattleState, i: number, l: LaneResult): HTMLElement {
  */
 export function pipTip(content: Content, atlas: Atlas, state: BattleState, round: number): TipSource {
   return {
-    key: () => String(state.rounds.length),
+    key: () => `${state.rounds.length}|${state.buildings.length}`,
     build: () => {
       const r = state.rounds[round - 1];
       if (!r) {
