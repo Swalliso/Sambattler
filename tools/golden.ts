@@ -109,6 +109,16 @@ const ROUND_REPLAYS: {
     name: 'r2-balanced-vs-scripted-s1', description: 'bot:balanced vs the scripted general, which plans first, a battle in rounds on Bogwater Hollow, seed 1 (R2a/T072)',
     seed: 1, player: 'bot:balanced', enemy: 'general:scripted', flags: { merging: true, adaptiveGeneral: true, powers: true },
   },
+  // Twin Roots, where each lane is its own clash (§15.5): on seed 3 the lanes split in 6 of the battle's 8 rounds (R2a/T112)
+  {
+    name: 'r2-twin-roots-balanced-vs-scripted-s3', description: 'bot:balanced vs the scripted general on Twin Roots, each lane its own clash, seed 3 (R2a/T112)',
+    seed: 3, player: 'bot:balanced', enemy: 'general:scripted', flags: { merging: true, adaptiveGeneral: false, powers: false }, map: 'twin-roots',
+  },
+  // the merge mirror, knitting at the muster (§5.6, §15.5): v1's G7 setup in rounds, merge-on against merge-off (R2a/T112)
+  {
+    name: 'r2-merge-mirror-s3', description: 'merge-on vs merge-off mirror (bot:balanced vs bot:balanced-nomerge, the G7 setup), knitting at the muster, seed 3 (R2a/T112)',
+    seed: 3, player: 'bot:balanced', enemy: 'bot:balanced-nomerge', flags: { merging: true, adaptiveGeneral: false, powers: false },
+  },
   // the power once per clash (§15.5), with the adaptive general off so the counter cycle can't move them (R2a/T111)
   ...(['vesper', 'cordis'] as const).map((c) => ({
     name: `r2-${c}-power-s3`, description: `bot:balanced as ${c}, with the starter kit and the auto power policy, vs the scripted general, seed 3 (R2a/T111)`,

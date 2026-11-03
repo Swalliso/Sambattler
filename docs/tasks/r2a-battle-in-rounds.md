@@ -753,6 +753,7 @@ S1 to S4: the data, the colony, the round state machine and the planning command
 - [x] T110 [US5] Add the power smokes to `tools/verify.ts`: Vesper with `--assert stats.player.powerUses>=1`, and Cordis with `--assert stats.player.powerMerges>=1` on a seed where T107 found trios. If no seed in 40 has one, Cordis's smoke waits for R2b's v2 job (R2-Q7), and T104's Bloom case covers the power. Armilla's round smoke is R2b's (§15.1)
 - [x] T111 [US5] Record `tests/golden/r2-vesper-power-s3.replay.json` (new) and `tests/golden/r2-cordis-power-s3.replay.json` (new); Armilla's replay is R2b's (§15.5)
   - Add both entries to `ROUND_REPLAYS` in `tools/golden.ts`, run `npm run golden -- update`, then check that `git diff --stat tests/golden/m*` shows no change.
+  - As built (S17): `r2-twin-roots-balanced-vs-scripted-s3` (`bot:balanced` against the scripted general on Twin Roots; the lanes split in 6 of its 8 rounds) and `r2-merge-mirror-s3` (`bot:balanced` against `bot:balanced-nomerge`), each with merging on and the adaptive general and powers off. No other golden moved.
 
 **Checkpoint:** T104's tests and T110's smokes pass; `npm run golden -- verify` passes; `npm run test:browser` is green.
 
@@ -764,8 +765,9 @@ S1 to S4: the data, the colony, the round state machine and the planning command
 
 - [x] T148 [US6] Add a Burster mirror to `tests/unit/rounds/seats.test.ts`, played with each side's ids first. A Burster's strike lands at once inside the attack step, so it may fell a unit later in the list before that unit attacks. If the mirror differs by seat, report it before changing any rule (§5.3, T147; #82's review, 2026-11-02)
   - As built (S17): the mirror Burster mono differs by seat. Whichever side's ids come first bursts first (clash tick 56), fells the other's Bursters before they burst, and wins the lane 4–0 at tick 60, 100 Heartcap damage. Bursters behind a Sporeling front end the same either way. No rule changed: the case is an `it.fails` until the user's call.
-- [ ] T112 [US6] Record `tests/golden/r2-twin-roots-<what>-s<seed>.replay.json` (new; Twin Roots, each lane its own clash) and `tests/golden/r2-merge-mirror-s3.replay.json` (new; the merge mirror, knitting at the muster), each pinning its flags (§15.5) (A115)
+- [x] T112 [US6] Record `tests/golden/r2-twin-roots-<what>-s<seed>.replay.json` (new; Twin Roots, each lane its own clash) and `tests/golden/r2-merge-mirror-s3.replay.json` (new; the merge mirror, knitting at the muster), each pinning its flags (§15.5) (A115)
   - Add both entries to `ROUND_REPLAYS` in `tools/golden.ts`, run `npm run golden -- update`, then check that `git diff --stat tests/golden/m*` shows no change.
+  - As built (S17): `r2-twin-roots-balanced-vs-scripted-s3` (`bot:balanced` against the scripted general on Twin Roots; the lanes split in 6 of its 8 rounds) and `r2-merge-mirror-s3` (`bot:balanced` against `bot:balanced-nomerge`), each with merging on and the adaptive general and powers off. No other golden moved.
 - [ ] T113 [US6] Write `tests/slow/rounds/perf.test.ts` (new). It asserts G11's round budgets: arrival ≤ 5 ms, the general's planning turn ≤ 20 ms, one battle of rounds with bots on both sides ≤ 3 s, and a tick mean ≤ 1.0 ms and p99 ≤ 2.5 ms at 300 live units. It also asserts the sim part of a planning command under its Node budget, and peak units ≥ 300 (§13.7, §15.4) (A113)
 - [ ] T114 [US6] Build `tools/lib/rounds/bench.ts` (new) and a `--rounds` switch in `tools/bench.ts`, with Call 24's cases (§13.7, §15.4) (A112, A113, A119, A200)
   - The cases: R1's full-colony clash on the round loop, its arrival tick timed; bench-300 as `data/scenarios/rounds/bench-300.json` (new); the general's planning turn; one full battle.
