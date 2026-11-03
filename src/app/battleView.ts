@@ -28,6 +28,7 @@ import { AnchoredTip } from '../ui/tooltip.ts';
 import { RoundCallouts } from '../ui/callouts.ts';
 import type { RoundCalloutKind } from '../ui/callouts.ts';
 import { hudContext, IntentPanel, TopBand } from '../ui/hud/top.ts';
+import type { Lives } from '../ui/hud/top.ts';
 import type { HudContext, HudPart } from '../ui/hud/top.ts';
 import { RoundTally } from '../ui/hud/tally.ts';
 import { RoundTray } from '../ui/hud/tray.ts';
@@ -122,8 +123,9 @@ export class RoundsView {
   /**
    * @param still ambient motion holds still (`?test=1`), so captures and browser tests are stable
    * @param reveal how the general shows from round 2 (`reveal=`, §7.5, T127)
+   * @param lives a run's lives, under your Heartcap (§8.5, T106); null in a single battle
    */
-  constructor(private session: RoundSession, private content: Content, private atlas: Atlas, private actions: RoundViewActions, still = false, reveal: Reveal = 'full') {
+  constructor(private session: RoundSession, private content: Content, private atlas: Atlas, private actions: RoundViewActions, still = false, reveal: Reveal = 'full', lives: Lives | null = null) {
     const state = session.state;
     this.sound = new BattleSound(content.audio.enemyGain, sfx);
     this.canvas = h('canvas', { id: 'battlefield', 'aria-label': 'Battlefield' });
@@ -145,7 +147,7 @@ export class RoundsView {
     this.mounts.callouts.style.display = 'contents';
     this.mounts.callouts.append(this.callouts.el);
     // the aftermath's drain holds while Help or the settings screen is open, as the loop's aftermath does
-    const hud = this.hud = hudContext(content, atlas, () => (session.overlayOpen ? 0 : session.speed), still, reveal);
+    const hud = this.hud = hudContext(content, atlas, () => (session.overlayOpen ? 0 : session.speed), still, reveal, lives);
     this.topBand = new TopBand(this.mounts.top, hud, state);
     this.bands.push(this.topBand);
     this.bands.push(new RoundTally(this.mounts.tally, hud, state));

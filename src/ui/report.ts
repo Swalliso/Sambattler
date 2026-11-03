@@ -18,6 +18,7 @@ import { h } from './h.ts';
 import { KIND_LABEL } from './doctrine.ts';
 import { resultOf, stormText } from './hud/explain.ts';
 import type { Result } from './hud/explain.ts';
+import { LIVES_TIP } from './words.ts';
 
 const SVG = 'http://www.w3.org/2000/svg';
 const COLOR: Record<Side, string> = { player: '#8a4fd8', enemy: '#7d8a7a' };
@@ -257,6 +258,16 @@ export function playTimeText(t: PlayTimeReadout): string {
   return `Planning time by round: ${rounds} · median ${Math.round(t.medianPlanningSeconds)} s · ${t.minutes.toFixed(1)} min of active play`;
 }
 
+/**
+ * The run summary's play-time line (§8.2, X6, R2b/T109): the run's active minutes and the median planning seconds
+ * a round, from the run's one clock. It counts from the page's opening, since a reload restarts it until
+ * records-2 adds `restore`.
+ */
+export function runPlayTimeText(t: PlayTimeReadout): string {
+  if (t.medianPlanningSeconds === null) return 'Play time: none timed since this page opened';
+  return `Play time: ${t.minutes.toFixed(1)} min of active play since this page opened · median planning ${Math.round(t.medianPlanningSeconds)} s a round`;
+}
+
 /** @param playTime the play clock's readout, which the app passes in (T128) */
 export function roundsReport(content: Content, state: BattleState, actions: RoundsReportActions, atlas?: Atlas, playTime?: PlayTimeReadout): HTMLElement {
   const o = state.outcome!;
@@ -308,7 +319,8 @@ export function roundsReport(content: Content, state: BattleState, actions: Roun
         playTime ? h('div', { class: 'hint', id: 'report-planning' }, playTimeText(playTime)) : null,
       ),
     ),
-    actions.runNote ? h('div', { class: 'hint reveal', id: 'report-run', style: '--d:3' }, actions.runNote) : null,
+    // a lost Regrowth carries lives' tooltip, as everywhere Regrowths show (#56)
+    actions.runNote ? h('div', { class: 'hint reveal', id: 'report-run', style: '--d:3', title: actions.runNote.includes('Regrowth') ? LIVES_TIP : null }, actions.runNote) : null,
     h('div', { class: 'actions' },
       ...(actions.continueRun
         ? [h('button', { class: 'btn primary', onclick: actions.continueRun, id: 'report-continue', title: 'On to the run' }, 'Continue')]

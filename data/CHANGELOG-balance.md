@@ -34,6 +34,12 @@ no pool and compiles as before.
   this opener, against 52%, 29% and 45% before; Armilla stays short of G14 until T082's Tithe, and S11 re-reads G14
   with the drafts in.
 
+## R2b-S9: the Anti-Ranged intel icon (2026-11-03)
+
+**No balance value changed, and no golden moved.** `data/sprites/ui.json` gains `i-ranged`, a 16×16 arrow, so the
+route's and the summary's intel bars show Anti-Ranged beside v1's four kinds (§7.4, §7.6; the stand-in S1 left for
+S9). Sprites aren't battle state, and no sprite id changed.
+
 ## R2b-S4c T170–T174: the flyers preset deleted, and no new presets (2026-11-03)
 
 **No balance value changed, and no golden moved.** The user, 2026-11-03: "I'm not personally a fan of having a bunch

@@ -1,7 +1,8 @@
 // The run controller (SPEC §8): shows the current run screen, plays each battle in rounds on the battle
-// scene (`openRoundBattle`), applies results through the pure run layer, and autosaves at every node
-// boundary. Until R2b's S8 saves a battle between rounds (T095, T096), a battle in progress isn't saved: a
-// reload restarts it at round 1's planning, with a notice when an older battle save was found (SPEC §8.9).
+// scene (`openRoundBattle`), with the run's lives under your Heartcap, applies results through the pure run
+// layer, and autosaves at every node boundary. Until R2b's S8 saves a battle between rounds (T095, T096), a
+// battle in progress isn't saved: a reload restarts it at round 1's planning, with a notice when an older
+// battle save was found (SPEC §8.9). One play clock times the run's battles for the summary (§8.2, T109).
 import type { Atlas } from '../render/atlas.ts';
 import { runItBackSetup, setLastSetup, updateRecords } from '../meta/index.ts';
 import {
@@ -24,6 +25,8 @@ import { sporeLayer } from '../render/spores.ts';
 import { storageKey } from './channel.ts';
 import { openRoundBattle } from './loop.ts';
 import type { RoundBattle } from './loop.ts';
+import { PlayClock, readoutOf } from './playTime.ts';
+import type { PlayTimeReadout } from '../ui/report.ts';
 import { settingsStore } from './settings.ts';
 import { soundPrefs, soundToggle } from './sound.ts';
 
@@ -55,6 +58,11 @@ export interface RunEnv {
   toTitle?: () => void;
   /** Run setup (the Underroot) for a new run; without it, a new run starts with the default commander. */
   setup?: () => void;
+  /**
+   * The first battle's state at the checkpoint `scene=run` names (`round=`, `phase=`; T157), held there as a
+   * single battle is: `hold` for `phase=planning` or `paused=1`, and `holdAftermath` under `?test=1`.
+   */
+  opening?: { state: BattleState; hold: boolean; holdAftermath: boolean };
 }
 
 /** Why a battle opened at round 1's planning though a save was found (§8.9, #32). */
@@ -74,10 +82,17 @@ export class RunController {
   private trail: EventTrail | null = null;
   /** What a random event outcome gave, shown before the route (UI only: the run is already saved at the route). */
   private result: { event: string | null; title: string; choice: string | null; changes: RunChange[] } | null = null;
+  /**
+   * The run's play clock (§8.2, RB-Q3, T109): each battle feeds it its phases, and the summary reads its planning,
+   * clash and aftermath seconds. It's never saved, so a reload restarts the count until records-2 adds `restore`.
+   */
+  private clock = new PlayClock(() => performance.now());
+  private opening: RunEnv['opening'] | null;
   onFrame: (() => void) | null = null;
 
   /** @param notice a migrated save's notice, shown on the first screen (§8.9) */
   constructor(private env: RunEnv, public run: RunState, notice?: string) {
+    this.opening = env.opening ?? null;
     this.runNotice = notice ?? null;
     this.rewardRecoveryNotice = recoverPendingChoice(env.content, run);
     if (this.rewardRecoveryNotice) this.save();
@@ -85,6 +100,9 @@ export class RunController {
 
   /** The battle on screen, if any (for the debug bridge). */
   get battleState(): BattleState | null { return this.battle?.state ?? null; }
+
+  /** The run's play time so far, as the summary shows it (T109). */
+  playTime(): PlayTimeReadout { return readoutOf(this.clock); }
 
   private save(): void { if (this.env.persist) saveRun(this.env.storage, this.run); }
 
@@ -182,7 +200,7 @@ export class RunController {
       case 'summary':
         el = summaryScreen(content, atlas, run, {
           newRun: () => this.newRun(), runItBack: () => this.runItBack(), ...(this.env.toTitle ? { toTitle: this.env.toTitle } : {}),
-        });
+        }, this.playTime());
         break;
     }
     if (el) {
@@ -202,20 +220,29 @@ export class RunController {
   }
 
   /**
-   * The battle on R2a's battle scene (§10.2), from round 1's planning: the general has planned, and a bot player
-   * plans and begins on its own. A battle save found here can't be restored (R2b saves none until S8), so it's
-   * cleared and the battle restarts with the notice (§8.9).
+   * The battle on R2a's battle scene (§10.2), from round 1's planning, or the first battle at `scene=run`'s
+   * checkpoint (T157): the general has planned, and a bot player plans and begins on its own. Your lives show
+   * under your Heartcap (§8.5, T106), and the battle feeds the run's play clock (T109). A battle save found here
+   * can't be restored (R2b saves none until S8), so it's cleared and the battle restarts with the notice (§8.9).
    */
   private startBattle(): void {
     if (this.run.screen.kind !== 'battle') return;
     const { content, atlas } = this.env;
     const restarted = this.env.persist && this.env.storage.get(BATTLE_KEY) !== null;
     if (restarted) clearBattle(this.env.storage);
-    const state = createBattle(content, this.run.screen.config);
+    const opening = this.opening;
+    this.opening = null;
+    const state = opening?.state ?? createBattle(content, this.run.screen.config);
     this.battle = openRoundBattle(content, atlas, state, {
       actions: { continueRun: () => this.finish(), runNote: (st) => this.runNoteOf(st) },
       still: this.env.still, debug: this.env.debug, onFrame: () => this.onFrame?.(),
+      lives: { ...this.run.lives }, runClock: this.clock, holdAftermath: opening?.holdAftermath ?? false,
     });
+    // as a single battle's: planning held until input, and a pause never carries into a clash (plan Call 14)
+    if (opening?.hold) {
+      if (state.phase === 'planning') this.battle.session.hold = true;
+      else this.battle.session.paused = true;
+    }
     if (restarted) this.battle.view.notice('save-recovery', RESTART_NOTICE);
     if (this.runNotice) this.battle.view.notice('run-notice', this.runNotice);
     this.runNotice = null;

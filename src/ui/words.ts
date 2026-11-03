@@ -5,6 +5,7 @@
 // descriptions through it. tests/unit/words.test.ts checks that each rewording keeps the data's numbers.
 import type { Content } from '../data/registry.ts';
 import type { PowerDef } from '../data/schema.ts';
+import type { BattleRecord } from '../run/index.ts';
 import { h } from './h.ts';
 
 const RELICS: Record<string, string> = {
@@ -84,4 +85,16 @@ export function relicDiagram(id: string): HTMLElement | null {
       h('span', null, h('i', { class: 'mid' }), 'this building'),
       h('span', null, h('i', { class: 'side' }), 'counts'),
       h('span', null, h('i', { class: 'corner' }), 'doesn\'t')));
+}
+
+/** Lives' name on the game's screens (§2, §8.5, #56): Regrowths, with "lives" in each tooltip (`LIVES_TIP`). */
+export const regrowths = (n: number): string => `${n} Regrowth${n === 1 ? '' : 's'}`;
+
+/** The tooltip wherever Regrowths show: the run bar, the Grove, event chips, the report, the title and the top band. */
+export const LIVES_TIP = 'Regrowths are your lives: a lost battle costs one, and the run ends at 0 or when the boss wins. Each battle\'s Heartcaps start full.';
+
+/** How a battle was decided, as the summary words it (§8.8): a Rout names the round a Heartcap fell, which a battle migrated from v1 doesn't record. */
+export function battleOutcome(b: Pick<BattleRecord, 'winner' | 'by' | 'rounds'>): string {
+  const fell = b.rounds.at(-1)?.round;
+  return `${b.winner === 'player' ? 'Won' : 'Lost'} by ${b.by === 'decision' ? 'Decision' : `Rout${fell ? ` in round ${fell}` : ''}`}`;
 }

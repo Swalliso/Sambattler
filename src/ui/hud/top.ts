@@ -1,5 +1,6 @@
-// The top band of a battle in rounds (SPEC §10.2): your Heartcap at the left end and the general's at the
-// right, so the win condition frames the band, with the stat chips between them: gold with what the next round
+// The top band of a battle in rounds (SPEC §10.2): your Heartcap at the left end, with a run's lives under it
+// (§8.5, R2b/T106), and the general's at the right, so the win condition frames the band, with the stat chips
+// between them: gold with what the next round
 // pays if you Begin now (`incomePreview`), plots planted of open plots, the round of 9 with the clash clock
 // against the 45 s cap, and the Sporestorm's multiplier on round damage. The round tally and the lane tug sit
 // under the chips in their own mount (`tally.ts`), and the General's Intent panel closes the band in its own.
@@ -22,6 +23,7 @@ import { reducedMotion } from '../motion.ts';
 import { AnchoredTip } from '../tooltip.ts';
 import { cutShort, intentOf } from '../doctrine.ts';
 import { goldTip, intentTip, plotsTip, roundTip, stormText, stormTip } from './explain.ts';
+import { LIVES_TIP, regrowths } from '../words.ts';
 
 /** A band or panel in its mount (T088–T091): drawn each frame, laid out afresh on a resize, removed with the view. */
 export interface HudPart {
@@ -70,11 +72,16 @@ export interface HudContext {
   aftermath: AftermathClock;
   /** How the general shows from round 2 (`reveal=`, T127): under `last`, its changes this round wait for Begin. */
   reveal: Reveal;
+  /** A run's lives (§8.5, T106), which show under your Heartcap; null in a single battle. */
+  lives: Lives | null;
 }
 
+/** A run's lives: how many are left, of the most it can hold. */
+export interface Lives { left: number; max: number }
+
 /** @param still motion holds still (`?test=1`), so the aftermath shows its final frame at once */
-export function hudContext(content: Content, atlas: Atlas, speed: () => number, still: boolean, reveal: Reveal = 'full'): HudContext {
-  return { content, atlas, tip: new AnchoredTip('hud-tip', 'below'), aftermath: new AftermathClock(speed, still), reveal };
+export function hudContext(content: Content, atlas: Atlas, speed: () => number, still: boolean, reveal: Reveal = 'full', lives: Lives | null = null): HudContext {
+  return { content, atlas, tip: new AnchoredTip('hud-tip', 'below'), aftermath: new AftermathClock(speed, still), reveal, lives };
 }
 
 /** A clash's clock, m:ss. */
@@ -116,6 +123,12 @@ class HeartBar {
   }
 }
 
+/** A run's lives under your Heartcap: a cap per life, lit for each one left (§8.5, §10.2), named Regrowths (#56). */
+function livesRow(atlas: Atlas, { left, max }: Lives): HTMLElement {
+  return h('div', { class: `hud-lives${left <= 1 ? ' low' : ''}`, id: 'hud-lives', title: LIVES_TIP, 'aria-label': `${regrowths(left)} of ${max} (lives) left` },
+    ...Array.from({ length: max }, (_, i) => h('i', { class: `cap${i < left ? ' lit' : ''}`, 'aria-hidden': 'true' }, uiIcon(atlas, 'i-heart'))));
+}
+
 /**
  * How tightly the chips sit when they don't fit between the Heartcaps (a narrow window, big late numbers):
  * closer together, then also without the words their icons and tips carry. Each step is a class on the row,
@@ -150,6 +163,7 @@ export class TopBand implements HudPart {
       enemy: new HeartBar(atlas, 'enemy', 'Gray Rot Heartcap', "The Gray Rot's Heartcap: bring it down to win"),
     };
     this.shownHp = { player: state.sides.player.heartcapHp, enemy: state.sides.enemy.heartcapHp };
+    if (hud.lives) this.hearts.player.el.append(livesRow(atlas, hud.lives));
     this.goldStat = h('span', { class: 'chip gold', id: 'chip-gold' }, uiIcon(atlas, 'i-gold'), this.gold, this.income);
     const plotsStat = h('span', { class: 'chip', id: 'chip-plots' }, uiIcon(atlas, 'i-supply'), this.plots, h('small', { class: 'word' }, 'plots'));
     this.roundStat = h('span', { class: 'chip round', id: 'chip-round' },

@@ -1,15 +1,20 @@
-// The run screens (docs/archive/v1/ui-ux-plan.md, Phase 2): the title opens with no scene and offers Continue only
-// with a saved run; the route draws a hypha from every node to every node in the next row and lights a
-// pod's threads on hover; spoils take keys 1–3; event choices carry outcome chips with a real minus for
-// costs; Help's six tabs fit at 1280×720; and no run screen clips at 1280×720 or 1366×650.
+// The run screens (docs/archive/v1/ui-ux-plan.md, Phase 2; SPEC §8.2, §8.5, §8.8, §10.5): the title opens with no
+// scene, offers Continue only with a saved run, and describes rounds, as the link previews do; the route draws a
+// hypha from every node to every node in the next row, lights a pod's threads on hover, and shows each battle
+// node's general's kit; the run bar and a run battle's top band light a cap per Regrowth left; spoils take keys
+// 1–3; event choices carry outcome chips with a real minus for costs; the summary gives each battle's outcome and
+// round sparkline and the run's play time; `scene=run` opens a battle at a round and phase with Node's hash (R2b
+// S9); Help's six tabs fit at 1280×720; and no run screen clips at 1280×720 or 1366×650.
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { chromium } from 'playwright';
 import type { Browser, Page } from 'playwright';
 import { createServer } from 'vite';
 import type { ViteDevServer } from 'vite';
-import { AUTOPLAY, RUN_KEY, createRun, simulateRun } from '../../src/run/index.ts';
-import type { RunState } from '../../src/run/index.ts';
+import { AUTOPLAY, RUN_KEY, chooseNode, createRun, generalKit, hashRun, isBattle, simulateRun } from '../../src/run/index.ts';
+import type { BattleRecord, RunState } from '../../src/run/index.ts';
+import { hashState } from '../../src/sim/index.ts';
 import { nodeContent } from '../../tools/lib/content.ts';
+import { runForParams } from '../../tools/lib/params.ts';
 
 let server: ViteDevServer | undefined;
 let browser: Browser | undefined;
@@ -61,6 +66,14 @@ async function clipped(p: Page): Promise<string[]> {
 const content = nodeContent();
 // seed 4: on R1's chosen set (R2a S1), seed 3's run ends in its first battle
 const mid = (): RunState => simulateRun(content, 4, AUTOPLAY, { maxBattles: 2 }).run;
+/** `scene=summary&seed=7&autoplay=run`'s run, played once. */
+let whole: RunState | undefined;
+const ended = (): RunState => (whole ??= simulateRun(content, 7, AUTOPLAY).run);
+/** A battle's result as the summary words it (§8.8): a Rout names the round a Heartcap fell, unless the record has no rounds. */
+const outcome = (b: BattleRecord): string =>
+  `${b.winner === 'player' ? 'Won' : 'Lost'} by ${b.by === 'decision' ? 'Decision' : `Rout${b.rounds.length ? ` in round ${b.rounds.at(-1)!.round}` : ''}`}`;
+/** A route row's nominal battle index (`ROW_INDEX` in src/run/route.ts), which picks its generals. */
+const NOMINAL = [1, 2, 3, 3, 4, 5];
 
 describe('the title', () => {
   it('opens with no scene; without a save the primary button is New run', async () => {
@@ -76,12 +89,25 @@ describe('the title', () => {
     const run = mid();
     const p = await open('/?debug=1', { run });
     expect(await p.locator('#title-continue').textContent()).toContain(`Row ${run.path.length + 1} of ${run.route.length} · ${run.lives.left} Regrowth`);
+    expect(await p.locator('#title-continue').getAttribute('title')).toContain('lives');
     await p.locator('#title-continue').click();
     await p.waitForSelector('#route');
     expect(await p.evaluate(() => window.__GAME__!.run()?.battles.length)).toBe(run.battles.length);
     // and the route leads back to the title
     await p.locator('#to-title').click();
     await p.waitForSelector('#title-continue');
+  });
+
+  it('describes rounds in its blurb and its link previews, with no tug-of-war, front line or columns', async () => {
+    const p = await open('/?test=1');
+    const blurb = (await p.locator('#title .title-blurb').textContent())!;
+    for (const want of [/plan/i, /general/i, /clash/i, /round/i]) expect(blurb).toMatch(want);
+    const previews = await p.evaluate(() => ['meta[name="description"]', 'meta[property="og:description"]', 'meta[name="twitter:description"]']
+      .map((sel) => document.querySelector<HTMLMetaElement>(sel)?.content ?? ''));
+    for (const text of [blurb, ...previews]) {
+      expect(text).toMatch(/round/i);
+      expect(text).not.toMatch(/tug-of-war|front line|column/i);
+    }
   });
 
   it('opens Help in six tabs, and the settings screen with sound and damage numbers', async () => {
@@ -120,6 +146,79 @@ describe('the route', () => {
     for (const [a, b] of hot) expect([a, b]).toContain(id);
     expect(await p.locator('#route-legend .legend-item').count()).toBe(7);
     expect(await clipped(p)).toEqual([]);
+  });
+
+  it('lights a cap per Regrowth left on the run bar, with lives in its tooltip', async () => {
+    const run = mid();
+    run.lives.left = 2;
+    const p = await open('/?scene=run&debug=1', { run });
+    expect(await p.evaluate(() => window.__GAME__!.run()!.lives)).toEqual({ left: 2, max: 3 });
+    expect(await p.locator('#run-lives .cap').count()).toBe(3);
+    expect(await p.locator('#run-lives .cap.lit').count()).toBe(2);
+    expect(await p.locator('#run-lives').getAttribute('title')).toContain('lives');
+  });
+
+  it("shows each battle node's general's kit at the index it's fought at, the boss's intel note, and no bosslives bonus by default", async () => {
+    const p = await open('/?scene=route&seed=4&autoplay=battles:2&test=1');
+    const run = mid();
+    const row = run.path.length;
+    let nodes = 0;
+    for (const [r, list] of run.route.entries()) {
+      for (const [i, node] of list.entries()) {
+        if (!isBattle(node)) continue;
+        // the nominal index, or the actual one in the row you choose from (§8.2)
+        const want = generalKit(content, run, node, r === row ? run.battles.length + 1 : NOMINAL[r]!);
+        const got = await p.locator(`[data-node="${r}:${i}"] .node-kit [data-building]`)
+          .evaluateAll((els) => els.map((e) => [(e as HTMLElement).dataset.building, Number((e as HTMLElement).dataset.level)]));
+        expect(got, `node ${r}:${i}`).toEqual(want.kit.map((id) => [id, want.upgrades[id] ?? 0]));
+        nodes++;
+      }
+    }
+    expect(nodes).toBeGreaterThanOrEqual(6);
+    expect(await p.locator('.route-node.boss .node-note').textContent()).toContain('intel');
+    expect(await p.locator('.node-bosslives').count()).toBe(0);
+    expect(await clipped(p)).toEqual([]);
+  });
+
+  it('shows the bosslives bonus on the boss node when the knob is on', async () => {
+    const p = await open('/?scene=route&seed=4&autoplay=battles:2&test=1&proto=bosslives');
+    const lives = await p.evaluate(() => window.__GAME__!.run()!.lives);
+    expect(await p.locator('.route-node.boss .node-bosslives').textContent()).toContain(`+${250 * lives.left}`);
+  });
+});
+
+describe('lives in battle', () => {
+  it('a run battle lights a cap per Regrowth left under your Heartcap; a single battle shows none', async () => {
+    const run = createRun(content, { seed: 9 });
+    chooseNode(content, run, 0);
+    run.lives.left = 2;
+    const p = await open('/?scene=run&debug=1', { run });
+    expect(await p.locator('#hud-hp-player #hud-lives .cap').count()).toBe(3);
+    expect(await p.locator('#hud-lives .cap.lit').count()).toBe(2);
+    expect(await p.locator('#hud-lives').getAttribute('title')).toContain('lives');
+    await p.close();
+    const single = await open('/?scene=battle&seed=1&test=1&phase=planning');
+    expect(await single.locator('#hud-lives').count()).toBe(0);
+  });
+
+  it("scene=run opens the run's battle at a round and phase, with Node's hash there (T157)", async () => {
+    const query = 'scene=run&seed=7&player=bot:balanced&round=2&phase=planning';
+    const p = await open(`/?${query}&test=1`);
+    const got = await p.evaluate(() => ({ round: window.__GAME__!.round, phase: window.__GAME__!.phase, hash: window.__GAME__!.hash }));
+    expect(got).toEqual({ round: 2, phase: 'planning', hash: hashState(runForParams(content, new URLSearchParams(query)).battle!) });
+    expect(await p.locator('#hud-lives .cap.lit').count()).toBe(3);
+  });
+
+  it("times the run's battles on the run's one clock (T109)", async () => {
+    const p = await open('/?scene=run&seed=7&player=bot:balanced&round=1&phase=planning&test=1');
+    for (let i = 0; i < 4; i++) {
+      await p.mouse.move(100 + 40 * i, 200);
+      await p.waitForTimeout(300);
+    }
+    const t = (await p.evaluate(() => window.__GAME__!.playTime()))!;
+    expect(t.planning.map((x) => x.round)).toEqual([1]);
+    expect(t.planning[0]!.seconds).toBeGreaterThan(0.5);
+    expect(t.minutes).toBeGreaterThan(0);
   });
 });
 
@@ -163,6 +262,10 @@ describe('spoils, events and the Grove', () => {
     expect(await choices.nth(2).isDisabled()).toBe(false);
     await choices.nth(2).click();
     await p.waitForFunction(() => window.__GAME__!.run()?.screen === 'route');
+    // the save that Leave wrote holds no play time (§8.2, A185)
+    const save = (await p.evaluate((k) => localStorage.getItem(k), RUN_KEY))!;
+    expect(JSON.parse(save).screen.kind).toBe('route');
+    expect(save).not.toMatch(/"(play[A-Z]\w*|planning\w*|minutes|seconds|clock)":/);
   });
 
   it('the Grove regains a Regrowth when one is lost', async () => {
@@ -178,14 +281,38 @@ describe('spoils, events and the Grove', () => {
 });
 
 describe('the summary', () => {
-  it('shows each battle\'s rounds and Regrowths lost, with no Length, Heartcap or Front line columns', async () => {
+  it("gives each battle's outcome, Regrowths lost and round sparkline, the kit at run end and the play time", async () => {
     const p = await open('/?scene=summary&seed=7&autoplay=run&test=1');
+    const run = ended();
+    expect(await p.evaluate(() => window.__GAME__!.hash)).toBe(hashRun(run));
     const heads = await p.locator('#summary-battles th').allTextContents();
     expect(heads).toEqual(['#', 'Node', 'Map', 'General', 'Result', 'Rounds', 'Regrowths', 'Countered']);
     for (const gone of ['Length', 'Heartcap', 'Front line']) expect(heads).not.toContain(gone);
-    expect(await p.locator('#summary-battles .sparkline').count()).toBe(0);
-    const run = await p.evaluate(() => window.__GAME__!.run()!);
+    expect(await p.locator('#summary-battles .result').allTextContents()).toEqual(run.battles.map(outcome));
     expect(await p.locator('#summary-battles .lives').allTextContents()).toEqual(run.battles.map((b) => (b.lifeLost ? '−1' : '-')));
+    // one sparkline a battle: each round's damage dealt rising and taken hanging
+    expect(await p.locator('#summary-battles .sparkline').count()).toBe(run.battles.length);
+    for (const [i, b] of run.battles.entries()) {
+      const spark = p.locator('#summary-battles .summary-battle').nth(i).locator('.sparkline');
+      expect(await spark.locator('.dealt').count()).toBe(b.rounds.length);
+      expect(await spark.locator('.taken').count()).toBe(b.rounds.length);
+    }
+    expect(await p.locator('#summary-kit [data-building]').evaluateAll((els) => els.map((e) => (e as HTMLElement).dataset.building))).toEqual(run.kit);
+    // autoplay played the run before the page's clock started (T109)
+    expect(await p.locator('#summary-playtime').textContent()).toMatch(/^Play time: /);
+    expect(await p.locator('#run-it-back').count()).toBe(1);
+  });
+
+  it('renders a battle migrated from before R2, which has no rounds', async () => {
+    const run = structuredClone(ended());
+    run.battles[0]!.rounds = [];
+    delete run.battles[0]!.heartcaps;
+    const p = await open('/?scene=run&debug=1', { run });
+    await p.waitForSelector('#summary');
+    const first = p.locator('#summary-battles .summary-battle').first();
+    expect(await first.locator('.result').textContent()).toBe(outcome(run.battles[0]!));
+    expect(await first.locator('.sparkline').count()).toBe(0);
+    expect(await p.locator('#summary-battles .sparkline').count()).toBe(run.battles.length - 1);
   });
 });
 
