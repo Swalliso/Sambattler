@@ -632,7 +632,7 @@ S1 to S4: the data, the colony, the round state machine and the planning command
 
 **S13: the top band and the Intent panel** (may run beside S12)
 
-- [ ] T087 [US3] Write `tests/browser/rounds/hud.test.ts` (new) and `tests/unit/rounds/teachingText.test.ts` (new) (§10.2, §6.2, §6.4) (A063, A064):
+- [x] T087 [US3] Write `tests/browser/rounds/hud.test.ts` (new) and `tests/unit/rounds/teachingText.test.ts` (new) (§10.2, §6.2, §6.4) (A063, A064):
   - both Heartcaps frame the band, and the chips stay clear of their labels at 1280×720, 1366×768 and 1440×900;
   - `#hud-gold`, `#hud-plots`, `#hud-round` and `#hud-storm` agree with `summary()`, and there's no `#hud-lives` in a single battle;
   - the tally's past pips match `rounds[].damage`, the current pip is outlined, and "dealt" is their sum;
