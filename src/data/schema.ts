@@ -152,6 +152,13 @@ export const RoundsSchema = z.object({
       backThird: z.number(), noise: z.number().nonnegative(),
     }).strict(),
     counter: z.object({ cycles: z.array(RoundCycle), bossCycles: z.array(RoundCycle), freePlots: z.number().int().nonnegative() }).strict(),
+    /**
+     * X8's knobs, both off by default, for a general that runs the counter cycle (§7.2): from round 2 its weights
+     * on the answer to last round's army × (1 + `leanToLastAnswer`), 0 for off; and with `replaceWhenFull`, once its
+     * colony is full it sells its lowest-weighted fielded spawner at 60% for a heavier card.
+     */
+    leanToLastAnswer: z.number().nonnegative(),
+    replaceWhenFull: z.boolean(),
   }).strict(),
 }).strict();
 

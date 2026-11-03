@@ -8,6 +8,18 @@ replaces. None of it is open work, including headings that say "Open:". From mil
 entries measure or tune v2's round battle (SPEC §11, §12). "The backlog" in the entries below means
 v1's, now [archived](../docs/archive/v1/balance-backlog.md).
 
+## R2a-S15: X8's two knobs, both off (2026-11-03)
+
+**Data with no effect by default. v1's goldens didn't move**; the round golden `r2-balanced-vs-scripted-s1` was refreshed,
+since rounds' library hashes its whole balance, the two new keys included. Its battle plays exactly as before: the
+scripted general doesn't adapt, so the counter cycle never reaches it, and with the keys removed its opening hashes
+to the old golden. v1's library leaves `balance.rounds` out (R2a Call 27).
+- **`rounds.ai.leanToLastAnswer` 0 and `rounds.ai.replaceWhenFull` false** (R2a/T101, X8, SPEC §7.2): two default-off knobs
+  for the playtest, read only by a general that runs the counter cycle. With the lean above 0, from round 2 its weights
+  on the answer to last round's army are × (1 + lean). With replace-when-full on, once its colony is full it sells its
+  lowest-weighted fielded spawner at 60% for the heaviest card that outweighs it and that it can afford, once a turn.
+  Agreed at R2a S0 (X8, 2026-11-02: "Take every recommendation"); turning either on is the user's call after X8's readouts.
+
 ## R2a-S10b: `general-plans-first` and the first round golden (2026-11-02)
 
 **Test data only. v1's goldens didn't move**; `tests/golden/r2-balanced-vs-scripted-s1.replay.json` is the first round
