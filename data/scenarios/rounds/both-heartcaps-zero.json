@@ -1,8 +1,8 @@
 {
   "id": "both-heartcaps-zero",
-  "description": "SPEC §6.7 E8 on Twin Roots, in round 6 (the storm at ×1.4): both Heartcaps stand at 100, the general's of 3600, and each side takes a lane on the first tick. Your Rootbreakers deal 100 × 18 × 1.4 = 2520, capped at 900 (25% of the general's 3600); its Capguards deal 100 × 6 × 1.4 = 840, capped at your 750. Both Heartcaps reach 0 in the same round, so the general wins by Rout, though you won the round. Merging is off.",
+  "description": "SPEC §6.7 E8 on Twin Roots, in round 5 (the storm at ×1.2): both Heartcaps stand at 100, the general's of 3600, and each side takes a lane on the first tick. Your Rootbreakers deal 100 × 18 × 1.2 = 2160, capped at the round's fixed 750 (#68), and its Capguards 100 × 6 × 1.2 = 720, under the cap. Both Heartcaps reach 0 in the same round, so the general wins by Rout, though you won the round. Merging is off.",
   "map": "twin-roots",
-  "round": 6,
+  "round": 5,
   "sides": {
     "player": {
       "heartcapHp": 100,

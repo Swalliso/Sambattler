@@ -8,6 +8,21 @@ replaces. None of it is open work, including headings that say "Open:". From mil
 entries measure or tune v2's round battle (SPEC §11, §12). "The backlog" in the entries below means
 v1's, now [archived](../docs/archive/v1/balance-backlog.md).
 
+## R2b-S1 T164: one fixed round cap, 750 for both Heartcaps (2026-11-03)
+
+**A rule number, approved by the user** at R2b's S0 ("Fixed 750 for both", 2026-11-03, §18.2 #68).
+- **`balance.rounds.roundDamageCap`** is `{ "flat": 750 }`, from `{ "maxHpBp": 2500 }` (X5's 25% of the loser's max HP:
+  500 for battle 1's general, 750 for your 3000, 900 for the boss). The Decision still compares shares of max HP.
+- **Why:** at R2a's gate the user found the share cap asymmetric, and with the cap binding in 70% of damaging rounds a
+  bigger Heartcap raised its own cap, so D28's bigger Heartcaps barely cost rounds. S21b measured a fixed 750 passing
+  G4, G6, G8's bands and G13: a median of 6 rounds, 13% reaching round 9, the bot winning 65%
+  (`docs/balance-backlog.md`).
+- **Tests and text that named the cap as a share follow it:** the cap's scenarios (`round-damage-cap`,
+  `lane-empty-one-side`, `lane-empty-both`, `decision-round-9`) say 750, and `both-heartcaps-zero` plays in round 5
+  (×1.2), so the general's lane deals 720, under the cap, and you still win the round E8 needs. The round tip and
+  the storm tip say "at most 750 HP".
+- **Goldens:** the five round replays moved; v1's seven battle replays didn't.
+
 ## R2b-S1 T019: the events in rounds (2026-11-03)
 
 **Rules the user approved** at R2b's S0 (§8.7's first guesses, "Take them all", 2026-11-03, `docs/r2b-plan.md`). A

@@ -142,18 +142,18 @@ describe('scoreRound (§6.7, §14.4, §14.6 clash step 13)', () => {
   });
 
   it('caps each Heartcap’s sum over the lanes it lost, not each lane, and each Heartcap on its own (X5, E7)', () => {
-    // 300 a lane is under the general's cap of 500, and their sum isn't
-    const s = scored(clashIn({ map: 'twin-roots' }), lock('player', 12), lock('player', 12));
-    expect(s.rounds[0]).toMatchObject({ damage: { player: 500, enemy: 0 }, capped: true, heartcaps: { player: 3000, enemy: 1500 } });
-    expect(s.rounds[0]!.lanes.map((l) => l.damage)).toEqual([300, 300]);
-    expect(s.events).toEqual([{ t: 'heartcapDamaged', side: 'enemy', amount: 500, stormBp: 10000, capped: true }]);
+    // 500 a lane is under the round's cap of 750 (#68), and their sum isn't
+    const s = scored(clashIn({ map: 'twin-roots' }), lock('player', 20), lock('player', 20));
+    expect(s.rounds[0]).toMatchObject({ damage: { player: 750, enemy: 0 }, capped: true, heartcaps: { player: 3000, enemy: 1250 } });
+    expect(s.rounds[0]!.lanes.map((l) => l.damage)).toEqual([500, 500]);
+    expect(s.events).toEqual([{ t: 'heartcapDamaged', side: 'enemy', amount: 750, stormBp: 10000, capped: true }]);
     expect(scored(clashIn({ map: 'twin-roots' }), lock('player', 8), lock('player', 8)).rounds[0]).toMatchObject({ damage: { player: 400, enemy: 0 }, capped: false });
-    // yours caps at 750 of 3000, the general's at 500 of 2000
+    // each Heartcap caps on its own: yours at 750 of 3000, the general's at 750 of 2000
     const split = scored(clashIn({ map: 'twin-roots' }), lock('player', 40), lock('enemy', 40));
-    expect(split.rounds[0]).toMatchObject({ damage: { player: 500, enemy: 750 }, capped: true, heartcaps: { player: 2250, enemy: 1500 } });
+    expect(split.rounds[0]).toMatchObject({ damage: { player: 750, enemy: 750 }, capped: true, heartcaps: { player: 2250, enemy: 1250 } });
     expect(split.events).toEqual([
       { t: 'heartcapDamaged', side: 'player', amount: 750, stormBp: 10000, capped: true },
-      { t: 'heartcapDamaged', side: 'enemy', amount: 500, stormBp: 10000, capped: true },
+      { t: 'heartcapDamaged', side: 'enemy', amount: 750, stormBp: 10000, capped: true },
     ]);
   });
 
@@ -168,10 +168,10 @@ describe('scoreRound (§6.7, §14.4, §14.6 clash step 13)', () => {
     expect([dealt({ flat: 400, stormScales: true }, 6), dealt({ maxHpBp: 2500, stormScales: true }, 6), dealt({ flat: 900, stormScales: true }, 6)]).toEqual([560, 700, 840]);
   });
 
-  it('records RoundResult.damage capped and before the HP floor, so a Heartcap left at 100 records the 500 it was dealt (R2-Q11)', () => {
-    const s = scored(clashIn({ sides: { enemy: { heartcapHp: 100 } } }), lock('player', 26));
-    expect(s.rounds[0]).toMatchObject({ damage: { player: 500, enemy: 0 }, capped: true, heartcaps: { player: 3000, enemy: 0 } });
-    expect(s.events[0]).toEqual({ t: 'heartcapDamaged', side: 'enemy', amount: 500, stormBp: 10000, capped: true });
+  it('records RoundResult.damage capped and before the HP floor, so a Heartcap left at 100 records the 750 it was dealt (R2-Q11)', () => {
+    const s = scored(clashIn({ sides: { enemy: { heartcapHp: 100 } } }), lock('player', 40));
+    expect(s.rounds[0]).toMatchObject({ damage: { player: 750, enemy: 0 }, capped: true, heartcaps: { player: 3000, enemy: 0 } });
+    expect(s.events[0]).toEqual({ t: 'heartcapDamaged', side: 'enemy', amount: 750, stormBp: 10000, capped: true });
   });
 
   it('moves the fielded record into the round, with the round’s own damage and survivors by building (A064)', () => {

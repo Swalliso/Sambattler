@@ -180,7 +180,7 @@ describe('the rules in rounds (SPEC §5.6, §6.4, §6.7, §11.1)', () => {
     const rules = compileRoundRules(buildRoundLibrary(content, c), c);
     expect([rules.clashCapTicks, rules.musterTicks, rules.maxRounds]).toEqual([900, 20, r.maxRounds]);
     expect(rules.storm).toEqual({ startRound: 5, stepBp: 2000, maxBp: 20000 });
-    expect([rules.roundDamageCap, rules.decisionBy, rules.interestPer]).toEqual([{ maxHpBp: 2500 }, 'shareOfMaxHp', 10]);
+    expect([rules.roundDamageCap, rules.decisionBy, rules.interestPer]).toEqual([{ flat: 750 }, 'shareOfMaxHp', 10]);
     const early = config([{ side: 'both', source: 'test', effects: { modifiers: [{ stat: 'battle.sporestormStart', op: 'set', value: 4 }] } }]);
     expect(compileRoundRules(buildRoundLibrary(content, early), early).storm.startRound).toBe(4);
   });

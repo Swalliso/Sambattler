@@ -105,7 +105,7 @@
     "heartcapDamagePerSupply": 100,
     "siegeHeartcapMult": 2,
     "arrivalShield": { "minTypes": 2, "shieldFrac": 0.2 },
-    "roundDamageCap": { "maxHpBp": 2500 },
+    "roundDamageCap": { "flat": 750 },
     "decision": { "by": "shareOfMaxHp" },
     "interestPer": 10,
     "interestCap": 30,
