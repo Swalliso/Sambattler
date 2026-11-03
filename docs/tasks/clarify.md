@@ -583,6 +583,7 @@ R1 reports a measure for each row, and you settle it at R1's review gate (§16 R
 - **Alternatives:** settle each one apart.
 - **Blocks:** R2a's battle UI.
 - **Decision:** 2026-11-02 (R2a S0; the user: "Take every recommendation"): the recommendation, as a set. Begin by key needs a fresh keydown after planning opens, ignores auto-repeat and waits about 400 ms, while the button stays instant. R2a's basic marks show your hits on enemy squads; the reverse direction and card marks come with R4b. Hovering a formation slot snaps the ghost to its plot, and a click there plants. The aftermath holds under Help or settings, and the speed control stays live there, with pause hidden. In SPEC §10.2, §10.3 and §13.5.
+- **R2b S0:** 2026-11-03 (the user: "Take them all"): a card is placed on its plot only, so hovering or clicking a squad's spot in the field no longer places it (S21b's note; the user at R2a's gate: "stick to just having the user place the buildings"). R2b/T167 builds it. In SPEC §10.2 and §10.3.
 
 ### R2-Q25 · A rough playtest after S14
 

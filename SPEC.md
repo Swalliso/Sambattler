@@ -438,7 +438,7 @@ This is the exact order of events, and tests cover it. The sim owns every step e
 
 **Planning** (the clock is stopped; no tick runs):
 
-5. **Income lands** for both sides, from round 2 on: the stipend, economy buildings, interest on the gold each side banked at Begin last round, +40 to the last round's loser, and any pending gold (§6.2). Round 1 has no income: starting gold takes its place.
+5. **Income lands** for both sides, from round 2 on: the stipend, economy buildings, interest on the gold each side banked at Begin last round, +40 to the last round's loser (§6.2). Gold earned in the last clash was credited as it was earned, and shows here as one "from the clash" row (R2b S0, 2026-11-03, R2-Q20). Round 1 has no income: starting gold takes its place.
 6. **The round's Sporestorm multiplier** is set (§6.4).
 7. **`roundStart` triggers** fire, such as relics' (§14.6).
 8. **The general plans first** (§7.2). It applies any due doctrine or counter change (§7.4), reading the squads you fielded in earlier rounds (`fielded`, step 12), never what you plant now. It sells for room if a counter needs it, buys from its kit and plants (§7.3), then sets its merge toggles.
@@ -461,7 +461,7 @@ This is the exact order of events, and tests cover it. The sim owns every step e
 18. The winner's survivors surge into the loser's Heartcap, and the bars drain by the damage the sim already scored. The round tally takes the round's result (§10.2).
 19. **The battle ends** when the aftermath closes, if a Heartcap is at 0 or if this was round 9 (§6.5). Otherwise the colony and gold carry into the next round, everything else on the field is cleared, and the next round begins at step 5.
 
-**At the end of a battle:** the report shows (§10.5). In a run, a won battle pays its rewards and spoils (§8.6), and a lost battle costs a life (§8.5). Pending gold not yet paid is lost (§6.2). Only the run's state carries into the next battle (§4.6, §8.10).
+**At the end of a battle:** the report shows (§10.5). In a run, a won battle pays its rewards and spoils (§8.6), and a lost battle costs a life (§8.5). Only the run's state carries into the next battle (§4.6, §8.10).
 
 ---
 
@@ -892,7 +892,7 @@ The Sporestorm is still the stalemate breaker, now across rounds (§1.3 #1). Fro
 - **Moving it:** an event or blight may move the first round for one battle. v1's one-minute shifts become one round: Mold Bloom (§8.7) and Early Storm (§11.8) start the storm in round 4. The multiplier still rises 20% a round and stays at ×2.0 once it gets there.
 - The top band shows the multiplier (its tooltip explains the storm and gives the multiplier for each round to come, §10.2), and the renderer thickens a spore haze with each storm round.
 - Inside a clash, the 45 s cap breaks a stall (§6.7).
-- Rot-Eater, which paid while the storm was active, gets a new effect: +1 gold for each enemy unit killed in a clash from round 5 (§11.7).
+- Rot-Eater, which paid while the storm was active, gets a new effect: +1 gold for each enemy unit killed in a clash from the storm's first round (§11.7).
 
 ### 6.5 How a battle ends: the Heartcap race, Decision at round 9, lives
 
@@ -928,7 +928,7 @@ Each battle is a Heartcap race (§4.5). The sim checks for the end after scoring
 - A power that kills a side's last units and emplacements in a lane ends that lane's clash like any other kill (§6.7).
 - A power aimed at a lane whose clash has already ended is refused, since that lane is frozen (R2a S0, 2026-11-02, R2-Q11; §6.7). A power still queued when the clash ends is dropped, not rejected (§14.5).
 - Powers are ordinary deterministic commands (§14.5).
-- Rhizome Tithe (gold per column held) and Sporestorm Sigil (a shorter cooldown) were tied to retired systems and get new effects. Rhizome Tithe pays gold at the next planning phase (§6.2, §11.10). The Sigil keeps the once-per-clash rule: from round 5, your power's effect is 50% stronger (§11.7).
+- Rhizome Tithe (gold per column held) and Sporestorm Sigil (a shorter cooldown) were tied to retired systems and get new effects. Rhizome Tithe pays gold for the clash's kills, credited at once (§6.2, §11.10). The Sigil keeps the once-per-clash rule: from the storm's first round, your power's effect is 50% stronger (§11.7).
 - Generals have no active power; each has a passive instead (§7.7).
 - **A power that can cancel a unit,** as Spore Burst cancels Bursters, stays as it is (R2b S0, 2026-11-03, §18.2 #70). R2b's commander work and its playtest watch it, and if it needs a change, its timing is tried first (the user's suggestion).
 
@@ -1321,7 +1321,7 @@ The route map has six rows. You pick one node per row, and every node connects t
 - A reroll costs 20 battle gold, plus 10 per extra reroll in the same draft.
 - Skip a draft to take +40 gold instead. The gold lands in the same planning phase, so it counts toward that phase's interest (§6.2).
 
-**Determinism:** a pick is a command (`draftPick { cardId }`, with `draftReroll` and `draftSkip`; §14.5), executed in planning like a placement. Each offer is a pure function of (run seed, battle index, draft index, run state), so battles stay replayable.
+**Determinism:** a pick is a command (`draftPick { cardId }`, with `draftReroll` and `draftSkip`; §14.5), executed in planning like a placement. Each offer is drawn from the battle's draft stream, so battles stay replayable (A093).
 
 **Open:** a cap on copies of one card. First guess: at most 4. Without one, plots are the only limit on a drafted card (§4.6).
 
@@ -1441,7 +1441,7 @@ This section owns when a battle saves and where it resumes. §13.8 points here.
      - **from a Begin save:** at the clash's first tick, rebuilt deterministically from the Begin save. The clash then runs live again. A power fired in the interrupted clash is in the latest save, and the resume replays it at its tick, so it can't be fired again (R2b S0, 2026-11-03, R2-Q22). A save requested in that clash's aftermath resumes here too.
 
   A clash is at most 45 s (900 ticks, §6.7), so a battle is at most 9 × 900 = 8,100 ticks, and replaying takes about a second or less.
-- **Saves from before R2:** a run or battle saved under v1's rules can't continue under rounds. A v1 battle restarts from round 1's planning with v1's notice for an incompatible save, and the run's progress is kept.
+- **Saves from before R2:** a run or battle saved under v1's rules can't continue under rounds. A v1 battle restarts from round 1's planning with v1's notice for an incompatible save, and the run's progress is kept. R2's battle save is `v: 3` (v1-rules saves use `v: 2`), and a save of any other version restarts the same way (A089).
   - **A run saved before R2 migrates** (R2b S0, 2026-11-03, §18.2 #32), keeping its kit, relics and progress, though it has a run-long Heartcap and no lives. Its lives are 3 minus the v1 battles it lost, at least 1, and its plots by sprawl come from the battles it won (§4.6). A battle saved mid-way restarts at round 1's planning with the notice above. The title tells an unreadable save from none. `RUN_VERSION` 2 lands with the first change to RunState's shape (R2b S1). It MUST NOT be lost silently, and its key stays (§13.8). Today `loadRun` (`src/run/resume.ts`) returns null on a version mismatch, which would drop it silently, so R2 MUST replace that (§16).
 - **Legacy event prompts:** if an old save offers a sacrifice that can no longer pay its full reward, return to the event choices before charging that cost. If an older version already charged the cost for an upgrade reward, offer the levels its remaining tracks can hold (or continue if none fit), with a visible shortfall notice and preserved run progress. This applies until R3 replaces upgrade levels with augments.
 
@@ -2159,7 +2159,7 @@ v1's drafts offered upgrade levels: 14 tracks of 3 levels, 42 levels in all, 40 
 | Truffle Cellar | +1 gold per tick | Building HP +200 | +1 gold per tick |
 | Others (M2+) | Same pattern: survivability → damage → a signature boost, defined in each building's data | | |
 
-**In R2, before augments.** A level that adds a unit per spawn adds no unit to the squad in rounds (R1's review gate, 2026-11-02, §18.2 #7): with one more unit per batch, Twin Roots' full colony fielded 192 units a side, over §13.7's 150, and without it 128. **Open:** what each upgrade level does in rounds. First guess: a level that added a unit per spawn does nothing, nor do levels on building HP, the supply cap or spawn speed, and R2's drafts stop offering them; a level of gold per tick is +12 gold a round.
+**In R2, before augments.** A level that adds a unit per spawn adds no unit to the squad in rounds (R1's review gate, 2026-11-02, §18.2 #7): with one more unit per batch, Twin Roots' full colony fielded 192 units a side, over §13.7's 150, and without it 128. **What each upgrade level does in rounds** (R2b S0, 2026-11-03, §18.2 #27): a level that added a unit per spawn does nothing, nor do levels on building HP, the supply cap or spawn speed. Each of these gets `offered: false` and empty effects, and drafts skip past it, so the levels after it stay reachable. A level of gold per tick is +12 gold a round.
 
 ### 11.7 Relics (Milestone 3) and colony traits (Milestone 6)
 
@@ -2365,7 +2365,7 @@ A **combo** is a rule about position: two buildings planted in front of, behind 
 | **Spotted Screen** | Amanita Lodge in front of any spawner | Enemy ranged units shoot an Amanita Knight first while one is in their range | a spotted cap over an arrow |
 | **Sundering Volley** | Gill Archer Nest behind Hammercap Forge | Its Gill Archers shoot the enemy unit the nearest Hammercap is fighting, when it's in range | a hammer and an arrow |
 | **Hunting Pack** | Veilstalker Hollow beside Sporeling Burrow | Its Veilstalkers attack enemy units that are knitting first, and see them from 2 tiles farther. A hit breaks the knit (§5.6) | a pair of eyes |
-| **Truffle Hunters** | Sporeling Burrow beside Truffle Cellar | Each of its Sporelings that dies drops 2 gold, held as pending gold and paid at the next planning phase (§14.4). A Cellar wants the back and a Burrow the front, so this costs a plot's best use | a coin |
+| **Truffle Hunters** | Sporeling Burrow beside Truffle Cellar | Each of its Sporelings that dies drops 2 gold, credited at once as gold from the clash (§6.2). A Cellar wants the back and a Burrow the front, so this costs a plot's best use | a coin |
 | **Chain Burst** | Burster Pod beside Burster Pod | A burst sets off every one of your Bursters within 1.5 tiles, from either Pod: each bursts where it stands | linked puffs |
 | **Anvil** | Puffball Mortar behind Capguard Hall | While a Capguard stands within 2 tiles of the Mortar, its minimum range is 0.5, not 1.5 | an anvil |
 
@@ -2654,12 +2654,12 @@ The tree is the code as built under v1 (Milestones 1–5 and the combat rework's
 | **Retired** (R2), inside files that stay | `world.ts`, `placement.ts`, `powers.ts`, `data/proto.ts` | Besieged spawners and suppression; the forward price; the column powers (`surge`, and `tithe`'s gold per column); the `?proto=` presets whose systems retire or that R1 doesn't keep, such as the mixed-wave preset, with their schema keys and tests (§16's R2 lists them). R1's chosen set of the rework's pieces (pinning, spore clouds, cleave, the Burster and the Rhizomorph, as R1 decides) moves from presets into the data (§1.3 #11, §11.1, §11.2) |
 | **Kept, with v1 parts removed** (R2) | `systems/movement.ts`, `systems/targeting.ts`, `systems/combat.ts`, `systems/merging.ts`, `systems/clouds.ts`; `targets.ts`, `effects.ts` | **Movement** loses Hold and waves (with its imports from `spawning.ts` and `stance.ts`), rush, fall-back and dive, and the Rhizomorph's surfacing at spawners and its check for Heartcap turrets. **Targeting** loses buildings and Heartcaps as targets (emplacements stay targets, §6.7), call for help, and dive's preference for ranged units. **Combat** loses Heartcap turrets and damage to buildings and the Heartcap; siege's ×2 stays, against emplacements (§11.1). **Merging** runs the muster's mode (§5.6) and loses v1's supply wait and wave tracking. **Clouds** keep their shield soaking, since R1's review gate adopted the arrival shield (§5.3, #8). **`targets.ts`** has units only to target. **`effects.ts`** gains R2's selectors (`rank`, `onLoam`) and triggers (`roundStart`, `clashStart`, `roundWon`; §14.2). What stays follows §5.2 and §5.3 (A027, A103) |
 | **Rewritten** (R2) | `step.ts` | The step by phase: planning, clash and aftermath (§14.6) |
-| **Rewritten** (R2) | `systems/economy.ts` | Income once a round, at the round's opening: the stipend, economy buildings with the loam bonus, interest on the gold banked at the end of planning, comeback gold (§6.2), and gold a clash left pending (`pendingGold`, §14.4) |
+| **Rewritten** (R2) | `systems/economy.ts` | Income once a round, at the round's opening: the stipend, economy buildings with the loam bonus, interest on the gold banked at the end of planning, comeback gold (§6.2), and one row for the gold credited during the last clash (R2-Q20) |
 | **Rewritten** (R2) | `systems/victory.ts` | The Heartcap race: a Heartcap at 0, or a Decision after round 9 by the share of max HP dealt (§6.5) |
 | **Rewritten** (R2) | `ai/controller.ts` | The general's planning turn, after income and the Sporestorm in the round's opening (§4.7): any due doctrine or counter change, selling for room if a counter needs it, buying from its kit, planting by its formation rule and picking a lane per building, then its merge toggles (§7.2, §7.3) |
 | **Rewritten** (R2) | `ai/counter.ts` | The counter cycle on a schedule in rounds, reading the squads the player actually fielded (§7.4) |
 | **Reworked** (R2) | `draft.ts`, `powers.ts`, `placement.ts` | Drafts open in the planning phases after rounds 2, 4 and 6 (§8.3); the power fires once per clash, from the clash's first tick (§6.6); placing is on plots, with no columns (§4.6) |
-| **Extended** (R2) | `state.ts`, `create.ts`, `compile.ts`, `commands.ts`, `index.ts`, `src/data/schema.ts` | Phases, rounds and round results with the fielded record, plots, squads, per-battle Heartcaps, pending gold, the kit's cards, and commands per planning phase (§14). Copies join the kit in R3 |
+| **Extended** (R2) | `state.ts`, `create.ts`, `compile.ts`, `commands.ts`, `index.ts`, `src/data/schema.ts` | Phases, rounds and round results with the fielded record, plots, squads, per-battle Heartcaps, the kit's cards, and commands per planning phase (§14). Copies join the kit in R3 |
 | **New** (R2) | `round.ts` | A round's phases: opening a round in §4.7's order, Begin, scoring a finished clash, round results |
 | **New** (R2) | `planning.ts` | The planning commands `plant`, `sell`, `toggleMerge` and `beginClash` (§14.5), with their checks, prices and refunds |
 | **New** (R2) | `systems/clash.ts` | The muster that opens a clash (§5.6), on `formation.ts`'s knitting, and how a lane's clash ends: one side has no units and no emplacements left, or the 45 s cap decides on surviving supply (§6.7) |
@@ -2768,7 +2768,7 @@ The tick and full-battle budgets are G11's in `data/balance-targets.json` today.
   - `spore-sprawl/profile/v1` and its backup `spore-sprawl/profile/v1.bak` (`src/meta/records.ts`, from Run it back's records-1): the profile (§9.7).
 
   Every key goes through `storageKey()` (`src/app/channel.ts`), which adds the `dev/` prefix on dev-site builds. A new key is added the same way, and the `dev/` prefix is never written by hand. When a record's format changes, the record carries its own version (its `v` field); the key stays. A prototype run (`?proto=`) saves only on the dev site, under `proto=<spec>/` keys of its own (`protoSpace()`), and the game never saves one. A prototype run never writes the profile: no records and no remembered setup (RB-Q2).
-- **Saves between rounds:** §8.9 owns when a battle saves, what a save holds and where resume returns to. In short, a battle saves at the start of each planning phase, once the general has planned, and at Begin, and resume returns to the latest save (a clash replays from its Begin save). This section adds only the storage side:
+- **Saves between rounds:** §8.9 owns when a battle saves, what a save holds and where resume returns to. In short, a battle saves at the start of each planning phase, once the general has planned, at Begin, and when the power fires, and resume returns to the latest save (a clash replays from its Begin save, with a fired power at its tick; R2-Q22). This section adds only the storage side:
   - Planning commands execute when they're queued, so a save in planning holds every plant and sale made before it.
   - Resume replays from round 1's planning and checks the hash. A battle is at most 8,100 clash ticks (§13.7), so the replay is faster than v1's.
 - **Saves from before R2** follow §8.9: a run saved before R2 migrates. Their keys stay.
@@ -2899,7 +2899,7 @@ interface Selector { unit?: Id; building?: Id; tag?: Tag; tier?: 1 | 2 | 3;
                      adjacentOwnBuildingsGte?: number }   // retired in R2 with Mycorrhizal Link's v1 effect (§11.7)
 interface ModifierDef { stat: StatKey; op: 'add' | 'mul' | 'set'; value: number;
                         side?: 'self' | 'opponent'; where?: Selector;
-                        if?: { roundGte?: number } }       // R2, first guess: the Sporestorm Sigil, from round 5 (§11.7)
+                        if?: { roundGte?: number } }       // R2: the Sporestorm Sigil, from the storm's first round (§11.7, R2-Q19)
 type StatKey =                                   // whitelist, extended deliberately
   | 'unit.hp' | 'unit.damage' | 'unit.attackInterval' | 'unit.range' | 'unit.speed'
   | 'unit.splashRadius' | 'unit.resist.slash' | 'unit.resist.pierce' | 'unit.resist.crush'
@@ -2928,14 +2928,14 @@ interface TriggerDef {
   on: 'merge' | 'unitDeath' | 'enemyUnitKilled'
     | 'roundStart' | 'clashStart' | 'battleStart'                      // R2: roundStart replaces waveStart
     | 'roundWon' | 'squadWiped';                                       // R2, first guesses: Mending Moss, Martyr's Bloom
-  if?: Selector & { roundGte?: number };          // R2, first guess: Rot-Eater, from round 5 (§11.7)
+  if?: Selector & { roundGte?: number };          // R2: Rot-Eater, from the storm's first round (§11.7, R2-Q19)
   do: EffectAction[];
 }
 // Retired in R2: the `buildingDestroyed` trigger (buildings can't be destroyed), `waveStart`, and the
 // breach preset's `heartcapBreach` trigger with its `at` (`src/data/proto.ts`).
 type EffectAction =
   | { gainGold: number }
-  | { pendingGold: number }                                // R2: paid at the next planning phase (`pendingGold`, §14.4)
+  | { pendingGold: number }                                // R2a; from R2b credited at once as clash gold (R2-Q20, §6.2)
   | { explode: { damage: number; damageType: DamageType; radius: number } }
   | { cloud: { radius: number; seconds: Seconds; damagePerSecond: number;
                at?: 'self' | 'enemyFrontRank' } }          // R2, first guess: Forward Spores lands on the enemy's front rank
@@ -2974,7 +2974,7 @@ type UnitAction =
   | { status: { kind: 'slow' | 'sunder'; mult: number; seconds: Seconds } }         // Sticky Darts, Sunder
   | { strikeExtra: { count: number; radius: number; damageMult: number } }          // Barbed Darts
   | { splash: { radius: number; damageMult: number } }                              // Shockwave, Red Charge
-  | { pendingGold: number }                                                          // Truffle Hunters
+  | { pendingGold: number }                                                          // Truffle Hunters; credited at once from R2b (R2-Q20)
   | { setOffBursts: { radius: number } };                                           // Chain Burst
 interface AugmentDef {
   id: Id; name: string; rarity: Rarity; text: string; unlockedBy?: Id;
@@ -3028,7 +3028,7 @@ type PowerDef = {                                       // fired at most once pe
 } & ( { kind: 'burst'; target: 'point'; radius: number; damage: number; damageType: DamageType }
     | { kind: 'bloom'; target: 'point'; radius: number }
     | { kind: 'harvest'; target: 'none'; goldPerSupply: number } );   // R2, first guess: Rhizome Tithe (§11.10),
-                                                                      //   paid through `pendingGold` (§14.4)
+                                                                      //   credited at once as clash gold (R2-Q20, §6.2)
 // Retired in R2: `cooldown` and `firstReady` (once per clash, ready from the clash's first tick, §6.6),
 // and the column powers `surge` and `tithe`.
 interface CommanderDef { id: Id; name: string; milestone: number; title: string; sprite: Id; description: string;
@@ -3166,7 +3166,7 @@ interface BattleState {
   units: UnitState[];                // sorted by id; empty in planning
   hits: PendingHit[];                // sorted by (tick, sourceId, seq)
   clouds?: CloudState[];             // spore clouds, oldest first
-  sporestorm: number;                // this round's escalation step: 0 before round 5 (§6.4)
+  sporestorm: number;                // this round's escalation step: 0 before the storm's first round, round 5 or 4 under Mold Bloom or Early Storm (§6.4, A090)
   queue: Command[];                  // pending, sorted by (round, tick, side, seq)
   log: Command[];                    // every executed command, in execution order (replays, resume)
   events: SimEvent[];                // this step only
@@ -3185,8 +3185,7 @@ interface SideState {
   relics: Id[];
   plots: PlotState[];                               // the colony, ordered by lane, rank, file
   bankedAtBegin: number;                            // gold held when this side's planning ended (interest, §6.2)
-  pendingGold: number;                              // R2: gold a clash won (Rhizome Tithe, Truffle Hunters); paid
-                                                    //   at the next planning phase, lost if the battle ends first
+  pendingGold: number;                              // R2a only: R2b credits clash gold at once and drops it (R2-Q20, §6.2)
   powerUsed: boolean;                               // in this clash (§6.6)
   draft?: OpenDraft; draftsOpened: number;
   ai?: AiState;                                     // doctrine, counter schedule in rounds, noise, and `plans`
@@ -3265,7 +3264,7 @@ interface PendingHit { tick: number; sourceId: number; seq: number; side: Side; 
 - **The fielded record.** At Begin the sim writes each side's `fielded` entries from `formationOf` and `mergePreview` (§14.6), which equal what fields once the muster's knits are made (§5.6): one entry per unit type, tier, augment set and lane, with its count. It's stored in that round's `RoundResult`, and the battle record carries it into the run, so the counter cycle, the general's merge toggle and the intel file all read this one record (§4.7, §7.2, §7.4, §7.6).
 - **Squads are fielded fresh.** Units exist only in a clash. When the next round opens, `units`, `squads`, `hits` and `clouds` are cleared, and only buildings and gold carry (§4.7).
 - **Ids and numbers only** (R2a S0, 2026-11-02, R2-Q8; A152). A round battle's `library` and `compiled` sides hold ids and numbers: no `name`, `description` or `text`. The UI reads names and text from `content` by id, so rewording a card never moves a round golden. v1's battle state still copies the data's text, and R4b deletes `src/ui/words.ts` (§10.4).
-- **Pending gold** (first guess). Gold that an effect pays "at the next planning phase" goes to `pendingGold`. It's paid as part of the next round's income (§4.7, §6.2) and lost if the battle ends first.
+- **Gold from the clash** (R2b S0, 2026-11-03, R2-Q20). Gold an effect earns in a clash is credited at once, with a `gold` event of source `clash`, and the next round's income shows it as one row (§4.7, §6.2). R2a's `pendingGold` goes in R2b (T074).
 - **Per-battle Heartcaps.** Both sides' `heartcapHp` start at `heartcapMaxHp` when the battle is created. Heartcap damage is taken only when a round is scored (§6.7), and `rounds` keeps what each side dealt, which a Decision after round 9 compares (§6.5).
 
 **The run** (`src/run/runState.ts`). Between battles only the run's state carries: the kit (its copies from R3), augments, relics, the plots gained and lives. Planted buildings don't carry between battles (§4.6), so each battle starts with an empty colony and its starting gold.
@@ -3343,7 +3342,7 @@ type SimEvent =
   | { t: 'knitStart'; side: Side; ids: number[]; x: number; y: number } | { t: 'knitCancel'; side: Side; ids: number[] }
   | { t: 'merged'; side: Side; id: number; unitId: Id; tier: 2 | 3; x: number; y: number }
   | { t: 'burst'; side: Side; id: number; x: number; y: number; radius: number }
-  | { t: 'effectGold'; side: Side; amount: number; pending?: boolean }   // pending: into `pendingGold`
+  | { t: 'effectGold'; side: Side; amount: number; pending?: boolean }   // R2a's `pending` goes in R2b: clash gold is credited at once (R2-Q20)
   | { t: 'power'; side: Side; power: Id; x?: number; y?: number; hits: number; merges: number }
   | { t: 'augmentActed' | 'comboActed'; side: Side; id: Id; x: number; y: number }   // R3: icon flashes (§13.6)
   | { t: 'laneWon'; lane: number; winner: Side | null; survivors: Record<Side, number>; capped: boolean }
@@ -3413,7 +3412,7 @@ With a `change`, both preview the colony as it would be after that plant, sale o
 *Opening a round* (`createBattle` for round 1; `step` in the aftermath for the rest):
 
 1. Clear events. Clear the last clash's units, squads, hits and clouds. Advance the round, unless it's round 1.
-2. Income for both sides, from round 2, with any `pendingGold` (§6.2). In round 1 a side has its starting gold (§6.1).
+2. Income for both sides, from round 2, with the last clash's gold shown as one row (§6.2, R2-Q20). In round 1 a side has its starting gold (§6.1).
 3. Set the Sporestorm's multiplier for the round (§6.4). Emit `roundStarted`.
 4. Fire `roundStart` triggers, such as relics' (and `battleStart` in round 1).
 5. The general plans (§7.2): it applies any due doctrine or counter change, sells for room if a counter needs it, buys from its kit and plants, then sets its merge toggles. Its commands execute at once, in order, then `generalPlanned`, and the round's plan goes in `ai.plans` (§14.4).
@@ -3824,7 +3823,7 @@ Its goldens are `m1-balanced-vs-scripted-s1` and `m1-turtle-vs-scripted-s2`. Its
 - **R2a, a battle in rounds,** builds one battle: the round loop, scoring, the colony's plots (the third rank built, and closed), the general that plans first with its counter cycle, the economy per round, the commander power, the battle screen, the adopted pieces, and the tools and guardrails for single battles. It has no run, lives, drafts or saves. Its plan is `docs/r2a-plan.md`, and its gate asks step 10's questions 1, 2, 3, 6 and 7.
 - **R2b, the run in rounds,** builds lives and the run, drafts in planning, saves between rounds, the content tied to retired systems, the route's and the run's screens, the migration of runs saved before R2, the round Help and tips (a first wording that R4b rewords, A156) and the switch-over that deletes v1. Its plan is `docs/r2b-plan.md`, and its gate asks questions 4 and 5.
 
-**How it lands** (X2, R2a S0, 2026-11-02). R2a is built beside v1 on `develop`: new modules in `rounds/` folders (§13.4), copies of the kept systems typed on the round state, and data fields v1 ignores. So v1's code and game stay as they are, apart from the rework's adopted pieces (below), and `npm run verify` is green on every PR. It ends in a temporary preview entry, `scene=rounds`, which loads on every build and shows its title button on the dev site only (§15). The user's decision lets `develop` switch wholly to v2: R2b switches the game over and deletes v1 on `develop`, with `npm run verify` green on every PR, and its S0 settles its branches. So §16's "merged into `develop` as the new default" holds for R2 from R2b's switch-over, and `main` keeps the v1 game until the user asks for a release. R2b deletes the preview entry and the tools' `--rounds` option before any release, so `main` never sees them.
+**How it lands** (X2, R2a S0, 2026-11-02). R2a is built beside v1 on `develop`: new modules in `rounds/` folders (§13.4), copies of the kept systems typed on the round state, and data fields v1 ignores. So v1's code and game stay as they are, apart from the rework's adopted pieces (below), and `npm run verify` is green on every PR. It ends in a temporary preview entry, `scene=rounds`, which loads on every build and shows its title button on the dev site only (§15). The user's decision lets `develop` switch wholly to v2: R2b switches the game over and deletes v1 on `develop`, with `npm run verify` green on every PR. At R2b's S0 (2026-11-03) the user dropped the cutover branch, so R2b's S1–S4 land on `develop` directly, each green and playable. So §16's "merged into `develop` as the new default" holds for R2 from R2b's switch-over, and `main` keeps the v1 game until the user asks for a release. R2b deletes the preview entry and the tools' `--rounds` option before any release, so `main` never sees them.
 
 **Scope:**
 
@@ -3836,10 +3835,10 @@ Its goldens are `m1-balanced-vs-scripted-s1` and `m1-turtle-vs-scripted-s2`. Its
 - **The economy per round** (§6.1, §6.2): the stipend, Truffle Cellars, interest at the end of planning, and +40 gold to the last round's loser. Selling refunds 100% in the planning phase a building was planted and 60% once it has fielded (§4.4).
 - **Drafts** after rounds 2, 4 and 6, in the next planning phase, with v1's cards until R3 (§8.3).
 - **The commander power** at most once per clash (§6.6).
-- **Content tied to retired systems** gets its new effect or retires, as §7.7, §11.7, §11.8 and §11.10 list: Vesper's and Armilla's passives and Rhizome Tithe, the generals' passives, and the relics about capture, the forward price, spawn timing and turrets. Rot-Eater, which paid while the storm was active, pays for kills in a clash from round 5 (§11.7).
+- **Content tied to retired systems** gets its new effect or retires, as §7.7, §11.7, §11.8 and §11.10 list: Vesper's and Armilla's passives and Rhizome Tithe, the generals' passives, and the relics about capture, the forward price, spawn timing and turrets. Rot-Eater, which paid while the storm was active, pays for kills in a clash from the storm's first round (§11.7).
 - **Saves** at the start of each planning phase and at Begin (§8.9).
 - **Runs and battles saved before R2** (§8.9, §18.2 #32): get the user's call on migrating a saved run or ending it with a notice. Then `loadRun` (`src/run/resume.ts`) handles the old `RUN_VERSION` (1) as decided, instead of returning null: today a version mismatch drops the run silently, with no Continue and no notice. A v1 battle save in a run that goes on restarts round 1's planning with the notice for an incompatible save, instead of being ignored (today `src/app/run.ts` resumes a battle save only when its config matches). The keys stay (§13.8).
-- **UI** (§10.2, §10.5): the planning, clash and aftermath views; both colonies' plots; the formation and merge previews; the round tally and the lane tug; both Heartcaps and your lives; basic matchup marks (the class of your hits against each enemy squad); the report by round; lives on the run bar; the general's kit on its route node. All on today's sprites.
+- **UI** (§10.2, §10.5): the planning, clash and aftermath views; both colonies' plots; the formation and merge previews; the round tally and the lane tug; both Heartcaps and your lives; basic matchup marks (the class of your hits against each enemy squad); the report by round; lives on the run bar; the general's kit on its route node; and the run summary's changes: how each battle was decided, the lives lost and the round sparkline (§8.8, A073). All on today's sprites.
 - **Retiring v1's battle in code,** at R2b's switch-over (Appendix A; files in §13.4, tests in §15.7 and §15.6): spawn timers, besieged spawners, territory and presence, forward building and the supply-line price, Hold / Advance, Heartcap turrets, the timed Sporestorm, the 10:00 Decision, the income tick, the supply cap, the vague telegraph, the run's Heartcap and its repairs, the deploy phase and placing while live. Their tests, goldens, guardrails, UI, Help and tips go with them. The systems R2 keeps lose their v1 parts as §13.4 lists (movement, targeting, combat, merging and clouds, with `targets.ts` and `effects.ts`).
 - **The rework's pieces become the default** (§1.3 #11): R2 adopts R1's chosen set as default data. R1's review gate (2026-11-02) chose all of `kept` (pinning, spore clouds, cleave, the Burster and the Rhizomorph), the arrival shield (§5.3) and Capguard Hall's squad at 3 (§11.2), with the Elder Sporeling keeping its splash. Its rules (pinning, spore clouds, cleave, the Burster's burst and the arrival shield, under its own key) move from `src/data/proto.ts` into `data/balance.json` (§11.1), and its units and buildings (the Burster Pod and the Rhizomorph Tunnel) into the faction files, for both rosters (§11.2). Until R3 the new buildings join the roster like any other, with weight 1 in the bots' and the generals' weights, written in data; v1's `aiWeight` and its kit append retire (R2a S0, 2026-11-02, R2-Q5; §11.11). R3 gives each its place in a run, a core archetype or a pack (§11.2, §11.15).
 - **Deleting the `?proto=` presets whose systems retire,** with their schema keys (`src/data/schema.ts`) and tests (`tests/unit/prototypes.test.ts`, `combatRework.test.ts`, `battleFeel.test.ts`, and the cases elsewhere that set them). In `src/data/proto.ts`:
@@ -3847,7 +3846,7 @@ Its goldens are `m1-balanced-vs-scripted-s1` and `m1-turtle-vs-scripted-s2`. Its
   - **R1's outcomes** (A109, R1's review gate, 2026-11-02): `pinned`, `sporecloud`, `cleave`, `burster`, `rhizomorph` and `clashshield` become default data, the shield as v2's rule under its own key, so their presets go, with `kept` and `mixedwave`. Deleted: `noeldersplash` and the Elder's splash off inside `rework`, `clashpace`, and `swarmread` (`ai.counter.swarmMaxSupply`), which counting Elder parts replaces (R2a S0, 2026-11-02, R2-Q3; §7.4). R2a writes the tool-only switches `noBuildingPreference` and `idleSeek` as v2's targeting and movement (§5.2), and R2b deletes the flags.
   - **They stay as default-off knobs:** `a2` and `b3`, which tune systems that stay, and `flyers`, for the later flyer (§1.3 #11), without `holdsGround`, which only territory reads.
 - **Settle §18.2's rows "Settled by R2"** (#16–#35) with the user in `docs/r2a-plan.md` and `docs/r2b-plan.md` before building each part. R2a's S0 settled #19, #22, #23, #25 and #29–#31 and #34, and agreed #35's approach (2026-11-02); R2b's S0 settles the rest (#16–#18, #20, #21, #24, #26–#28 and #32, and #35's G14 and G15). The two that R2's playtest settles (#17, #33) start from their first guesses.
-- **Link previews** (§13.8): `index.html`'s `description`, `og:description` and `twitter:description` describe the round-based game. Today they describe v1's tug-of-war; their text stays as it is until R2.
+- **Link previews** (§13.8): `index.html`'s `description`, `og:description` and `twitter:description` describe the round-based game, and so do the title screen's blurb and a regenerated og image (`npm run og-image`, A074). Today they describe v1's tug-of-war; their text stays as it is until R2.
 - **Tools:** `npm run sim` and `npm run balance` play rounds (§15.2); new goldens replace v1's eight (§15.5); the guardrails in round form (§12.3); screenshot parameters for a round and a phase (§15.6). R2a builds them beside v1's, behind `--rounds` and `scene=rounds` (§15), for single battles; R2b adds the run parts and removes the options. §15.7 says which unit tests are kept, rewritten, retired or new, and §15.6 which browser tests go and come.
 
 **Not in R2:**
@@ -3903,6 +3902,7 @@ Its goldens are `m1-balanced-vs-scripted-s1` and `m1-turtle-vs-scripted-s2`. Its
    npm run screenshot -- --name r2-clash     --params "scene=battle&seed=1&player=bot:balanced&enemy=general:scripted&round=4&phase=clash&ticks=200&paused=1"
    npm run screenshot -- --name r2-report    --params "scene=report&seed=1&player=bot:balanced&enemy=general:scripted"
    npm run screenshot -- --name r2-route     --params "scene=route&seed=7"
+   npm run screenshot -- --name r2-run-planning --params "scene=run&seed=7&round=1&phase=planning"
    ```
 
    The `--click` chooses the Sporeling Burrow's tray card, so the marks show in the capture (R2a S0, 2026-11-02, A076). The automatic assertions are §15.6's, including the browser hash equal to the Node hash and `preview()` against the clash's first tick, which `r2-clash-start` holds. Visual checklist:
@@ -3912,6 +3912,7 @@ Its goldens are `m1-balanced-vs-scripted-s1` and `m1-turtle-vs-scripted-s2`. Its
    - Basic matchup marks show on the general's squads while a card is chosen (`r2-planning-4`).
    - Nothing from the retired list shows: no territory, frontier, Hold switches, spawn timers, supply chip or telegraph countdown.
    - The report shows the round chart. The route's battle node shows its general's kit.
+   - Lives show in a run's battle: `r2-run-planning` shows them, and its `#hud-lives` equals `__GAME__.run().lives` (A063).
    - Nothing is clipped at 1280×720.
 10. **Playtest gate (human), in two parts** (X1, R2a S0, 2026-11-02). R2a's gate has the user play single battles on the dev site through `scene=rounds`, at least one on Twin Roots and one with `reveal=last` (R2-Q1's A/B), and asks questions 1, 2, 3, 6 and 7. R2b's has the user play at least one full run, and asks 4 and 5. The questions:
     - Did seeing the general's army first turn the opener into a plan rather than a gamble? (R2a)
@@ -4302,7 +4303,7 @@ Items from 7 on are v2's, one row per question: each is a rule the user hasn't d
 | 24 | **(closed 2026-11-03)** When an effect that heals on a round's result lands, such as Mending Moss | Decided: after step 4's damage and cap, never above the Heartcap's max HP. The damage is recorded before the heal, so a heal never changes a Decision | §6.7 | R2 |
 | 25 | **(closed 2026-11-02)** When, inside the muster, merged units replace their parts, and so whether a power fired during the muster can break a muster knit | Decided: the first guess, made exact by R2-Q11: inside Begin, before the clash's first tick, so a power hits the merged units and can't break a muster knit | §5.6 | R2a (S0) |
 | 26 | **(closed 2026-11-03)** The Rhizome Vault's new effect, since the supply cap it raised is gone | Decided: each spawner beside it fields 1 more unit, built in R3 as a combo with a squad-size patch field. Until then it stays out of drafts and kits behind a `requires` flag, so Armilla's R2 drafts offer five core cards | §4.4 | R2 |
-| 27 | What v1's upgrade levels do in R2, before augments replace them | A level that adds a unit per spawn adds one per batch to the squad; gold per tick becomes +12 a round; levels on building HP, the supply cap or spawn speed do nothing and stop being offered | §11.6 | R2 |
+| 27 | **(closed 2026-11-03)** What v1's upgrade levels do in R2, before augments replace them | Decided: a level that adds a unit per spawn adds none in rounds, as R1's review gate left it (#7: one more unit per batch put Twin Roots' full colony at 192 units a side); gold per tick becomes +12 a round; levels on building HP, the supply cap or spawn speed do nothing. Levels that do nothing get `offered: false`, and drafts skip past them | §11.6 | R2 |
 | 28 | **(closed 2026-11-03)** Are `plant`, `sell` and `toggleMerge` refused while your draft is open, as `beginClash` is? | Decided: yes, so you pick, reroll or skip before planning goes on | §4.7, §14.5 | R2 |
 | 29 | **(closed 2026-11-02)** A bank reserve: gold the general keeps back for interest | Decided: 0, so it spends whatever it can. X8's readouts show what it banks anyway, and R2a's measurements revisit it now that interest is raised (R2-Q2) | §7.2 | R2a (S0) |
 | 30 | **(closed 2026-11-02)** The general's lane rule on Twin Roots | Decided: the first guess, the lane where it lost the most last round, its need lowered by each squad it plans there (D42), with a lane on each fielded squad, so the rule and its aggressive variant read only the record | §7.3, §14.4 | R2a (S0) |
