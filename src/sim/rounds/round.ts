@@ -42,6 +42,7 @@ export function newClash(state: BattleState): ClashState {
     })),
     fielded: { player: [], enemy: [] },
     maxElders: { player: 0, enemy: 0 },
+    arrived: { player: 0, enemy: 0 },
   };
 }
 

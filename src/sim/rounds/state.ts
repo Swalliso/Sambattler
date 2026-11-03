@@ -286,6 +286,8 @@ export interface ClashState {
   fielded: Record<Side, FieldedSquad[]>;
   /** The most Elders each side has had alive at once in this clash, the muster's included, for the round's stats (§5.7). */
   maxElders: Record<Side, number>;
+  /** The units each side has put on the field this clash, merged ones included: the next one's `arrival`. */
+  arrived: Record<Side, number>;
 }
 
 export interface LaneResult {
@@ -328,6 +330,12 @@ export interface FieldedSquad {
 
 export interface UnitState {
   id: number;
+  /**
+   * Its place in the order its side's units took the field this clash, from 0: the arrivals in plot order,
+   * then each merged unit as it forms. Its staggered checks are phased by this, not its id, so they fall on
+   * the same clash ticks in every clash of the same colonies, and alike on both sides of a mirror (§5.2, T149).
+   */
+  arrival: number;
   side: Side;
   lane: number;
   unitId: string;

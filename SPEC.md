@@ -499,7 +499,9 @@ This is the exact order of events, and tests cover it. The sim owns every step e
 
 Units exist only during a clash. At Begin, each squad appears in its slot of its side's formation box (§4.6, §4.7). The clash opens with a **1 s muster**: squads set to merge have already knit in place (§5.6), and for the muster's 20 ticks nobody targets, moves, separates or attacks. Then the rules below run until the lane's clash ends (§6.7). A unit counts as out of combat when it's fielded, so its squad can knit at the muster.
 
-- **Retargeting** happens on ticks where `(tick + unitId) % 5 === 0`, or immediately if the current target died.
+- **Retargeting** happens on ticks where `(clashTick + arrival) % 5 === 0`, or immediately if the current target died (R2a, 2026-11-02, the user's OK).
+  - `clashTick` counts ticks from the clash's start, 1 on its first. `arrival` is the unit's place in the order its side's units took the field this clash, from 0: the arrivals in plot order, then each merged unit as it forms.
+  - Neither reads the battle's tick or a unit's id, so the stagger falls on the same ticks in every clash of the same colonies, as a clash with no change must to replay the last one exactly (§7.2), and alike on both sides of a mirror.
 - **Candidates:** enemy units in the same lane within `aggroRange` (edge distance).
   - Buildings take no part in a clash, and a Heartcap takes damage only in the aftermath (§4.6, §6.7), so units never target either.
   - A burrowed unit is never a candidate. A flyer is a candidate only for an attacker that can hit it (§5.3).
@@ -582,7 +584,7 @@ v2 keeps four rules from the combat rework as rules of the game (§1.3 #11), and
 
 **Pinning:** a `ranged` unit with an enemy unit within **1 tile** (edge distance) attacks at **×0.35** its rate (`pinned.radius`, `pinned.rateMult`).
 
-- Its cooldown runs on only 350 ticks in 1000, spread evenly and phased by unit id, so the rate is deterministic.
+- Its cooldown runs on only 350 ticks in 1000, spread evenly on the clash's clock and phased by the unit's arrival (§5.2), so the rate is deterministic (R2a, 2026-11-02, the user's OK).
 - A burrowed unit pins nothing. A flyer in contact pins like any unit.
 - Why: melee that reaches the back rank should count. A shield wall in front of the archers is what keeps them free to shoot (§4.6).
 
@@ -2546,6 +2548,7 @@ tools (Node CLIs) ──► run, meta, sim, data
 ### 13.3 Determinism rules for `src/sim`
 
 1. **Fixed timestep.** In a clash, `step(state)` advances exactly one tick and takes no time delta. Planning has no ticks: there, `step` only runs the queued commands. In the aftermath, `step` opens the next round, or ends the battle after its last round. §14.6 gives the order within each.
+   - **Periodic checks run on the clash's clock** (R2a, 2026-11-02, the user's OK). The retarget stagger, pinning's skips, heals, regeneration, trio detection and cloud pulses count ticks from the clash's start, not the battle's, and phase a unit by its arrival on its side (§5.2), never by its id. So a round in which neither colony changed and no power fired replays the last clash exactly (§7.2).
 2. **Seeded randomness only.** The PRNG is sfc32. Each stream is seeded through splitmix32 from `hash32(runSeed, streamName, battleIndex)`, and stream state lives in the sim state.
    - Streams: `combat` (randomness in a clash), `ai.player` and `ai.enemy`, `draft`, `route`, `events`, `meta`.
    - Each side has its own AI stream, so the general's plan depends only on the record and its own state, never on a bot's draws on the other side (R2a S0, 2026-11-02, A052). v1 keeps its single `ai` stream until R2b.
