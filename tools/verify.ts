@@ -1,6 +1,7 @@
 // npm run verify (SPEC §15.1): typecheck → lint → validate:data → test → golden verify → a sim
 // smoke test (3 seeds, scripted general) → an adaptive-general smoke (2 seeds) → the commander-power
-// smokes (SPEC §16 M5, verification 2) → a round smoke (3 battles in rounds, R2a) → bench --quick. Stops at
+// smokes (SPEC §16 M5, verification 2) → a round smoke (3 battles in rounds, R2a) → the power smokes in rounds
+// (R2a/T110) → bench --quick. Stops at
 // the first failure with a non-zero exit code.
 import { spawnSync } from 'node:child_process';
 import { ROOT } from './lib/content.ts';
@@ -22,6 +23,16 @@ const steps: [string, string[]][] = [
   ]),
   // a battle in rounds against a general that plans first (R2a/T071); `--rounds` goes when R2b makes rounds the battle
   ['round smoke (3 seeds)', ['run', 'sim', '--', '--rounds', '--seeds', '1..3', '--player', 'bot:balanced', '--enemy', 'general:scripted', '--summary', '--assert', 'rejectedCommands=0', '--assert', 'rounds<=9']],
+  // the power once per clash in rounds (R2a/T110), with the adaptive general off so the counter cycle can't move them:
+  // Vesper's Spore Burst, and Cordis's Puppet Bloom with the starter kit on seed 11, where T107 found trios
+  ...([
+    ['vesper', 'powerUses', ['--seed', '3']],
+    ['cordis', 'powerMerges', ['--seed', '11', '--enemy', 'general:mother-mold', '--kit', 'sporelingBurrow,gillNest,truffleCellar']],
+  ] as const).map(([c, stat, args]): [string, string[]] => [
+    `round smoke, ${c}'s power`,
+    ['run', 'sim', '--', '--rounds', ...args, '--player', 'bot:balanced', '--commander', c, '--power-policy', 'auto', '--flags', 'merging,powers', '--summary',
+      '--assert', 'rejectedCommands=0', '--assert', `stats.player.${stat}>=1`],
+  ]),
   ['bench --quick', ['run', 'bench', '--', '--quick']],
 ];
 

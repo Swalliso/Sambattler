@@ -1,0 +1,154 @@
+{
+  "name": "r2-vesper-power-s3",
+  "description": "bot:balanced as vesper, with the starter kit and the auto power policy, vs the scripted general, seed 3 (R2a/T111)",
+  "kind": "rounds",
+  "config": {
+    "seed": 3,
+    "battleIndex": 1,
+    "mapId": "bogwater-hollow",
+    "player": {
+      "faction": "velvet-bloom",
+      "controller": {
+        "kind": "bot",
+        "id": "balanced"
+      },
+      "kit": [
+        {
+          "building": "sporelingBurrow"
+        },
+        {
+          "building": "capguardHall"
+        },
+        {
+          "building": "truffleCellar"
+        }
+      ],
+      "relics": [],
+      "plots": 8,
+      "heartcapMaxHp": 3000,
+      "startingGold": 300,
+      "commander": "vesper",
+      "power": "sporeBurst",
+      "powerPolicy": "auto"
+    },
+    "enemy": {
+      "faction": "gray-rot",
+      "controller": {
+        "kind": "general",
+        "id": "scripted"
+      },
+      "kit": [
+        {
+          "building": "sporelingBurrow"
+        },
+        {
+          "building": "capguardHall"
+        },
+        {
+          "building": "gillNest"
+        },
+        {
+          "building": "rootbreakerDen"
+        },
+        {
+          "building": "puffballMortar"
+        },
+        {
+          "building": "truffleCellar",
+          "maxOwned": 3
+        },
+        {
+          "building": "scythecapGrove"
+        },
+        {
+          "building": "veilstalkerHollow"
+        },
+        {
+          "building": "tendersRing"
+        },
+        {
+          "building": "hammercapForge"
+        },
+        {
+          "building": "amanitaLodge"
+        },
+        {
+          "building": "morelWarren"
+        },
+        {
+          "building": "rhizomeVault"
+        },
+        {
+          "building": "sporeExchange"
+        },
+        {
+          "building": "bursterPod"
+        },
+        {
+          "building": "rhizomorphTunnel"
+        }
+      ],
+      "relics": [],
+      "plots": 8,
+      "heartcapMaxHp": 2000,
+      "startingGold": 300
+    },
+    "flags": {
+      "merging": true,
+      "drafts": false,
+      "adaptiveGeneral": false,
+      "powers": true
+    },
+    "modifiers": [
+      {
+        "side": "player",
+        "source": "commander:vesper",
+        "effects": {
+          "modifiers": [
+            {
+              "stat": "building.spawnInterval",
+              "op": "mul",
+              "value": 0.91,
+              "where": {
+                "zone": "home"
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "commands": [],
+  "expected": {
+    "r1.planning": "428905a65bd3d874",
+    "r1.clash": "90c663596760d0ae",
+    "r1.aftermath": "d93cd9f252a6a903",
+    "r2.planning": "6dcadd4b94eb1345",
+    "r2.clash": "c755c8ac270e24cd",
+    "r2:200": "2b42e12ae91f9d52",
+    "r2.aftermath": "d2d68625f16b137f",
+    "r3.planning": "9c8b7780802a1f8c",
+    "r3.clash": "71e6dfa0cd1c76fd",
+    "r3:200": "93e41d9b21c7db19",
+    "r3.aftermath": "5cd34f2c9c07e71f",
+    "r4.planning": "473bcd6c6ddd43d2",
+    "r4.clash": "8ab747be8a03fe37",
+    "r4:200": "e5e810dbd2fd0f0d",
+    "r4.aftermath": "0c2d85c6f844995f",
+    "r5.planning": "f13f24dce8b2fc47",
+    "r5.clash": "3670fead843f7d40",
+    "r5:200": "76b6a341d9274834",
+    "r5.aftermath": "8f148331c59adbbf",
+    "r6.planning": "ab1d159b9867f3c7",
+    "r6.clash": "f9707c1a06ee2814",
+    "r6:200": "cd9c8a9cbccebead",
+    "r6:400": "b54770eb71e87279",
+    "r6.aftermath": "7f8202a9280c61ed",
+    "r7.planning": "f06f2fb0c05c7f3c",
+    "r7.clash": "8c1b77dbc411e3e5",
+    "r7:200": "787227733ed16637",
+    "r7:400": "5da5cc2b2521a92f",
+    "r7.aftermath": "19a37ac16e17908b",
+    "final": "4c1f593f3eb53725"
+  }
+}

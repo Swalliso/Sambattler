@@ -10,7 +10,7 @@ import { createBattle, makeConfig, runHeadless } from '../src/sim/index.ts';
 import type { BattleConfig, Command, Flags, PowerPolicy } from '../src/sim/index.ts';
 import { hashRun, simulateRun } from '../src/run/index.ts';
 import type { AutoPolicies } from '../src/run/index.ts';
-import { createBattle as createRoundBattle, makeRoundConfig, runHeadless as runRoundHeadless } from '../src/sim/rounds/index.ts';
+import { createBattle as createRoundBattle, kitCards, makeRoundConfig, runHeadless as runRoundHeadless } from '../src/sim/rounds/index.ts';
 import type { BattleConfig as RoundConfig, Command as RoundCommand, Flags as RoundFlags } from '../src/sim/rounds/index.ts';
 
 const DIR = join(ROOT, 'tests', 'golden');
@@ -102,11 +102,19 @@ interface RoundReplay {
 const ROUND_REPLAYS: {
   name: string; description: string; seed: number; player: string; enemy: string; flags: Partial<RoundFlags>;
   commander?: string; powerPolicy?: PowerPolicy; map?: string;
+  /** The player's kit is its commander's starter (§11.10) rather than the faction's roster. */
+  starter?: boolean;
 }[] = [
   {
     name: 'r2-balanced-vs-scripted-s1', description: 'bot:balanced vs the scripted general, which plans first, a battle in rounds on Bogwater Hollow, seed 1 (R2a/T072)',
     seed: 1, player: 'bot:balanced', enemy: 'general:scripted', flags: { merging: true, adaptiveGeneral: true, powers: true },
   },
+  // the power once per clash (§15.5), with the adaptive general off so the counter cycle can't move them (R2a/T111)
+  ...(['vesper', 'cordis'] as const).map((c) => ({
+    name: `r2-${c}-power-s3`, description: `bot:balanced as ${c}, with the starter kit and the auto power policy, vs the scripted general, seed 3 (R2a/T111)`,
+    seed: 3, player: 'bot:balanced', enemy: 'general:scripted', flags: { merging: true, adaptiveGeneral: false, powers: true },
+    commander: c, powerPolicy: 'auto' as const, starter: true,
+  })),
 ];
 
 function roundReplayConfig(r: (typeof ROUND_REPLAYS)[number]): RoundConfig {
@@ -115,6 +123,7 @@ function roundReplayConfig(r: (typeof ROUND_REPLAYS)[number]): RoundConfig {
     ...(r.map ? { mapId: r.map } : {}), ...(r.commander ? { commander: r.commander } : {}),
   });
   if (r.powerPolicy) config.player.powerPolicy = r.powerPolicy;
+  if (r.starter && r.commander) config.player.kit = kitCards(nodeContent(), config.player.controller, nodeContent().commanders[r.commander]!.starter);
   return config;
 }
 

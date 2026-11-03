@@ -1,0 +1,152 @@
+{
+  "name": "r2-cordis-power-s3",
+  "description": "bot:balanced as cordis, with the starter kit and the auto power policy, vs the scripted general, seed 3 (R2a/T111)",
+  "kind": "rounds",
+  "config": {
+    "seed": 3,
+    "battleIndex": 1,
+    "mapId": "bogwater-hollow",
+    "player": {
+      "faction": "velvet-bloom",
+      "controller": {
+        "kind": "bot",
+        "id": "balanced"
+      },
+      "kit": [
+        {
+          "building": "sporelingBurrow"
+        },
+        {
+          "building": "gillNest"
+        },
+        {
+          "building": "truffleCellar"
+        }
+      ],
+      "relics": [],
+      "plots": 8,
+      "heartcapMaxHp": 3000,
+      "startingGold": 300,
+      "commander": "cordis",
+      "power": "puppetBloom",
+      "powerPolicy": "auto"
+    },
+    "enemy": {
+      "faction": "gray-rot",
+      "controller": {
+        "kind": "general",
+        "id": "scripted"
+      },
+      "kit": [
+        {
+          "building": "sporelingBurrow"
+        },
+        {
+          "building": "capguardHall"
+        },
+        {
+          "building": "gillNest"
+        },
+        {
+          "building": "rootbreakerDen"
+        },
+        {
+          "building": "puffballMortar"
+        },
+        {
+          "building": "truffleCellar",
+          "maxOwned": 3
+        },
+        {
+          "building": "scythecapGrove"
+        },
+        {
+          "building": "veilstalkerHollow"
+        },
+        {
+          "building": "tendersRing"
+        },
+        {
+          "building": "hammercapForge"
+        },
+        {
+          "building": "amanitaLodge"
+        },
+        {
+          "building": "morelWarren"
+        },
+        {
+          "building": "rhizomeVault"
+        },
+        {
+          "building": "sporeExchange"
+        },
+        {
+          "building": "bursterPod"
+        },
+        {
+          "building": "rhizomorphTunnel"
+        }
+      ],
+      "relics": [],
+      "plots": 8,
+      "heartcapMaxHp": 2000,
+      "startingGold": 300
+    },
+    "flags": {
+      "merging": true,
+      "drafts": false,
+      "adaptiveGeneral": false,
+      "powers": true
+    },
+    "modifiers": [
+      {
+        "side": "player",
+        "source": "commander:cordis",
+        "effects": {
+          "modifiers": [
+            {
+              "stat": "side.knitTicks",
+              "op": "mul",
+              "value": 0.5
+            },
+            {
+              "stat": "side.mergeRadius",
+              "op": "set",
+              "value": 2
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "commands": [],
+  "expected": {
+    "r1.planning": "f8b9f06c6f040f7b",
+    "r1.clash": "7b9db6ea526bb811",
+    "r1:200": "76f35f29c59c532d",
+    "r1.aftermath": "e3b77e167f832cb5",
+    "r2.planning": "415d4b558d172e72",
+    "r2.clash": "9127802bc3d8cd12",
+    "r2:200": "a94d3fcd28f00e2d",
+    "r2.aftermath": "56600c4153948f42",
+    "r3.planning": "6ae82098084db153",
+    "r3.clash": "762acf5436ad9572",
+    "r3:200": "77fb59bad5043ff6",
+    "r3.aftermath": "7de0785560885ded",
+    "r4.planning": "2751c69a8cabec7c",
+    "r4.clash": "ac0d39d665cc0d90",
+    "r4:200": "46ce90e822a7834c",
+    "r4.aftermath": "6773010b0b447524",
+    "r5.planning": "36b28cfdd2574e0f",
+    "r5.clash": "e00a262c3f64702d",
+    "r5:200": "41683a935e4b337f",
+    "r5:400": "09cbfb05955c4631",
+    "r5.aftermath": "91b7aea6d2de62d1",
+    "r6.planning": "42f67282a8d808bc",
+    "r6.clash": "d26084abf2ceacf1",
+    "r6:200": "8de5eb088f020438",
+    "r6.aftermath": "a934b984d4e51aa1",
+    "final": "dec2fc804aebd70e"
+  }
+}
