@@ -17,3 +17,33 @@
 .chip.round small:empty { display: none; }
 .chip.round.soon { border-color: var(--lilac); box-shadow: 0 0 8px var(--glow-lilac); }
 .chip.round.soon #hud-clock { color: var(--lilac); }
+
+/* The round tally (§10.2): a pip a round, violet won, ash lost, a dash drawn and hollow to come, the current one
+   outlined, one half a lane on Twin Roots; dealt and taken under its ends. */
+.tally { display: flex; flex-direction: column; gap: 3px; width: 100%; max-width: 420px; margin: 0 auto; }
+.tally .pips { display: flex; justify-content: space-between; gap: var(--space-3); }
+.tally .pip { position: relative; flex: 1; max-width: 40px; height: 12px; display: flex; background: var(--well); border: 1px solid var(--line-strong); border-radius: var(--radius-xs); overflow: hidden; cursor: help; }
+.tally .pip.won { background: repeating-linear-gradient(90deg, var(--violet) 0 6px, var(--violet-stripe) 6px 8px); border-color: var(--lilac); }
+.tally .pip.lost { background: repeating-linear-gradient(90deg, var(--rot) 0 6px, var(--rot-stripe) 6px 8px); border-color: var(--rot-light); }
+.tally .pip:has(.half) { background: var(--well); }
+.tally .pip.drawn:not(:has(.half))::after, .tally .pip .half.drawn::after { content: ''; position: absolute; left: 25%; right: 25%; top: 50%; height: 2px; margin-top: -1px; background: var(--muted); }
+.tally .pip.current { outline: 2px solid var(--lilac); outline-offset: 1px; }
+.tally .pip .half { position: relative; flex: 1; }
+.tally .pip .half + .half { border-left: 1px solid var(--ink); }
+.tally .pip .half.won { background: var(--violet); }
+.tally .pip .half.lost { background: var(--rot); }
+html.assist .tally .pip.lost, html.assist .tally .pip .half.lost { background: repeating-linear-gradient(135deg, var(--rot) 0 3px, var(--rot-deep) 3px 5px); }
+.tally .pip.tip-open, .tally .pip:focus-visible { border-color: var(--lilac); box-shadow: var(--shadow-glow); }
+.tally-label { display: flex; justify-content: space-between; font: 12px/14px var(--font-text); font-variant-numeric: tabular-nums; color: var(--muted); }
+.tally-label .p b { color: var(--lilac); }
+.tally-label .e b { color: var(--rot-light); }
+
+/* The lane tug in a clash (§10.2, §6.7): each lane's surviving supply, yours violet from the left and the
+   general's ash from the right, both numbers under its ends; an ended lane locks and names its result, and a
+   drawn one goes neutral. v1's .tugbar stripes and colour-blind hatching carry over; its column ticks don't. */
+.rounds-top .tug { gap: var(--space-1); width: 100%; max-width: 420px; margin: 0 auto; }
+.rounds-top .tug .lane { display: flex; flex-direction: column; gap: 1px; }
+.rounds-top .tugbar::after { content: none; }
+.rounds-top .tugbar.neutral .p, .rounds-top .tugbar.neutral .e { background: var(--tug-neutral); }
+.rounds-top .tugbar.locked { border-color: var(--line); }
+.rounds-top .tug .tug-label .state { color: var(--muted); }

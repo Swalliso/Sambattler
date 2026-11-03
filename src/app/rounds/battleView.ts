@@ -16,6 +16,7 @@ import { uiIcon } from '../../ui/icons.ts';
 import { uiScale } from '../../ui/scale.ts';
 import { hudContext, TopBand } from '../../ui/rounds/hud/top.ts';
 import type { HudPart } from '../../ui/rounds/hud/top.ts';
+import { RoundTally } from '../../ui/rounds/hud/tally.ts';
 import { loadSettings, onSettings } from '../settings.ts';
 import type { RoundSession } from './session.ts';
 
@@ -88,6 +89,7 @@ export class RoundsView {
     const hud = hudContext(content, atlas, () => session.speed, still);
     this.topBand = new TopBand(this.mounts.top, hud, state);
     this.bands.push(this.topBand);
+    this.bands.push(new RoundTally(this.mounts.tally, hud, state));
     this.top = h('header', { class: 'top rounds-top' }, this.mounts.top, this.mounts.tally, this.mounts.intent);
     this.field = h('main', { class: 'field' }, this.frameArt.el, h('div', { class: 'fieldwrap' }, this.canvas, this.tip));
     this.beginBtn = h('button', { class: 'btn primary', id: 'begin-btn', title: 'Start the clash (Space or Enter)', onclick: () => actions.begin() },

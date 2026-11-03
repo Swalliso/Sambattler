@@ -643,7 +643,7 @@ S1 to S4: the data, the colony, the round state machine and the planning command
   - Both Heartcaps: the display value holds at the round's starting HP until the aftermath drains it, and turns danger red below a third.
   - The chips: gold with `incomePreview`'s figure, plots planted of open plots, the round of 9 with the clash clock (glowing in the cap's last 5 s), and the storm, unlit at ×1.0 and lilac from round 5. They keep v1's tightening fit and stable ids.
   - Mount it in `src/app/rounds/battleView.ts`'s top-band mount (T077). T089 and T091 fill the tally's and the Intent panel's mounts the same way, so T087's browser cases pass at the end of S13.
-- [ ] T089 [US3] Build `RoundTally` and `LaneTug` in `src/ui/rounds/hud/tally.ts` (new) (§10.2, §6.7) (A064)
+- [x] T089 [US3] Build `RoundTally` and `LaneTug` in `src/ui/rounds/hud/tally.ts` (new) (§10.2, §6.7) (A064)
   - Pips are violet, ash, a dash or hollow, with lane halves on Twin Roots, and dealt and taken under the ends. A past pip's tooltip gives each lane's result and survivors, the damage both ways and your top squads (`damageByBuilding`).
   - The tug shows `survivingSupply` per lane, locks with the lane's result, goes neutral when drawn, and hatches the Rot's half under the color-blind assist.
 - [ ] T090 [US3] Build the chip tooltips in `src/ui/rounds/hud/explain.ts` (new): gold, plots, round and storm as §10.2 words them, computed from the sim's functions; `I` focuses the gold chip, Tab moves along the band, Esc closes (§10.2)

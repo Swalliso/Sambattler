@@ -17,6 +17,7 @@ import { h, setText, toggleClass } from '../../h.ts';
 import { uiIcon } from '../../icons.ts';
 import { reducedMotion } from '../../motion.ts';
 import { AnchoredTip } from '../../tooltip.ts';
+import { stormText } from './explain.ts';
 
 /** A band or panel in its mount (T088–T091): drawn each frame, laid out afresh on a resize, removed with the view. */
 export interface HudPart {
@@ -69,12 +70,6 @@ export interface HudContext {
 export function hudContext(content: Content, atlas: Atlas, speed: () => number, still: boolean): HudContext {
   return { content, atlas, tip: new AnchoredTip('hud-tip', 'below'), aftermath: new AftermathClock(speed, still) };
 }
-
-/** A round's storm as the chip shows it: ×1.0 to ×2.0 (§6.4). */
-export const stormText = (bp: number): string => {
-  const x = bp / 10000;
-  return `×${Number.isInteger(x * 10) ? x.toFixed(1) : x}`;
-};
 
 /** A clash's clock, m:ss. */
 const clock = (ticks: number, rate: number): string => {
