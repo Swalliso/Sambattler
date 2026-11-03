@@ -1,6 +1,7 @@
 // The title screen (SPEC §10.5, docs/archive/v1/ui-ux-plan.md A4): the wordmark over the Heartcap's silhouette, lit
 // from below, with spores drifting through the dark. Continue (only with a saved run), New run, How to
-// play (Help) and Settings (the settings screen, src/ui/settingsScreen.ts).
+// play (Help) and Settings (the settings screen, src/ui/settingsScreen.ts). On the dev site only, R2a adds a
+// button for its preview of a battle in rounds (plan Call 2), which R2b deletes.
 import type { Atlas } from '../../render/atlas.ts';
 import { spriteToCanvas } from '../../render/atlas.ts';
 import { sporeLayer } from '../../render/spores.ts';
@@ -18,6 +19,8 @@ export interface TitleActions {
   help(): void;
   /** The button that opens the settings screen (src/ui/settingsScreen.ts), labelled Settings. */
   settings: HTMLElement;
+  /** The dev site's only: opens R2a's preview of a battle in rounds with its defaults (`scene=rounds`). */
+  rounds?: () => void;
 }
 
 export function titleScreen(atlas: Atlas, actions: TitleActions, still: boolean, foot: string): HTMLElement {
@@ -40,6 +43,7 @@ export function titleScreen(atlas: Atlas, actions: TitleActions, still: boolean,
     actions.continueRun ? h('button', { class: 'btn', id: 'title-new', onclick: actions.newRun }, 'New run') : null,
     h('button', { class: 'btn', id: 'title-help', onclick: actions.help }, 'How to play'),
     actions.settings,
+    actions.rounds ? h('button', { class: 'btn', id: 'title-rounds', onclick: actions.rounds }, 'A battle in rounds (preview)') : null,
   );
   const sky = h('div', { class: 'title-sky', 'aria-hidden': 'true' });
   const el = h('div', { class: 'runscreen titlescreen', id: 'title' },
