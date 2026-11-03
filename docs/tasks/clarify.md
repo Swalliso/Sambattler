@@ -85,7 +85,7 @@ This is the clarify step for SPEC v2. SPEC.md is the spec, `docs/<milestone>-pla
 | M6-Q1 | Record the feat stats in R2 | R2a S0 | Yes (decided 2026-11-02) |
 | M7-Q1 | Gray Rot records and its trait | R2a S0 (trait), M7 S0 | Mirror records; drop the trait (the trait dropped 2026-11-02; the records at M7 S0) |
 | RB-Q3 | Active play time | R2a S0 (R2a S19 at the latest), records-2's S3 (RB/T024) | Visible wall time, 60 s idle cutoff (decided 2026-11-02) |
-| R2-Q13 | A guaranteed answer in battle 1 | R2b S1b (R2b/T029) | Measure; a free blueprint if a pairing loses |
+| R2-Q13 | A guaranteed answer in battle 1 | R2b S1b (R2b/T029) | Soften Mold's battle-1 opener, with no free blueprint (decided 2026-11-03) |
 | R2-Q14 | A boss win by Decision | R2b S0 | The full reward |
 | R2-Q15 | Home Brood and "+1 unit" effects | R2b S0 | +10% HP and damage instead |
 | R2-Q16 | Rhizome Tithe in rounds | R2b S0 | Killed supply in state; a fixed auto rule |
@@ -692,7 +692,11 @@ The R2a plan settles these itself, with no call from you: A027, A032, A034, A036
   - keep Mold out of battle 1 (her `appearsIn` [2, 3]): 78%, 55% and 83%, but every battle 1 is the Baron's, and she's already hard in battle 2.
   - no guarantee until S11 measures with the drafts in.
 - **Blocks:** R2b's run flow; G14.
-- **Decision:** _open_
+- **Decision:** 2026-11-03 (R2b S1b, on T028's table; the user: "Soften Mold's opener"): the recommendation.
+  - The opening pick isn't adopted, so T068 builds no free blueprint.
+  - Old Mother Mold's battle-1 opener becomes a Sporeling Burrow and a Truffle Cellar (`data/generals.json`, §7.8). S5 builds it in T068's place, with its changelog entry and goldens.
+  - S11 measures G14 again once the drafts, Mold's v2 passive and the Tithe are in.
+  - In SPEC §7.8.
 
 ### R2-Q14 · What a boss win by Decision pays
 

@@ -35,7 +35,7 @@ X1 and X2 were decided on 2026-11-02. At S0 (2026-11-03) the user dropped the cu
 
 ## Before you start
 
-**Decisions** (clarify refs, and the session each one blocks). All were decided at S0 on 2026-11-03, as recommended (`docs/r2b-plan.md`, "The decisions"), with #27's unit levels as R1's review gate left them. R2-Q13 waits for T029, on S1b's table, and #17's clean-win half and #33 for the playtest (S14):
+**Decisions** (clarify refs, and the session each one blocks). All were decided at S0 on 2026-11-03, as recommended (`docs/r2b-plan.md`, "The decisions"), with #27's unit levels as R1's review gate left them. R2-Q13 was decided at T029 on S1b's table (2026-11-03: soften Mold's opener), and #17's clean-win half and #33 wait for the playtest (S14):
 
 | Ref | Decision (recommendation) | Blocks |
 |---|---|---|
@@ -50,7 +50,7 @@ X1 and X2 were decided on 2026-11-02. At S0 (2026-11-03) the user dropped the cu
 | R2-Q21 | The Grove gets an always-lit Leave choice | S1 |
 | §8.7 events | Fallen Oak, Quiet Clearing's Rest and Mold Bloom as §8.7's first guesses ("none is decided"; no clarify block, so T003 settles them in the plan) | S1 |
 | #56 | Lives are called Regrowths, with "lives" in the tooltip | S1 (minimal), S9 |
-| R2-Q13 | A guaranteed answer in battle 1: measure, then a free blueprint if a pairing loses clearly | S1b (measure), S5 (build) |
+| R2-Q13 | A guaranteed answer in battle 1: Old Mother Mold's battle-1 opener becomes a Sporeling Burrow and a Truffle Cellar, with no opening pick (S1b's table, 2026-11-03) | S1b (measure), S5 (build) |
 | #27 | v1's upgrade levels: dead levels get `offered: false`; unit levels become fixed adds | S5 |
 | #28 | `plant`, `sell` and `toggleMerge` are refused while your draft is open | S5 |
 | R2-Q19, #24, #26 | Relic details as a set; a round-result heal lands after the damage; the Rhizome Vault waits for R3 behind `requires` | S6 |
@@ -76,7 +76,7 @@ If one of those went the other way:
 - R1's results in `docs/balance-backlog.md`, agreed by the user: the squad sizes (#7), for #27's unit levels (S5); the chosen set of rework pieces and one outcome per knob (adopt, keep as a knob, delete; A109), for S4; R1-Q5's full-colony budget, for #18's plot cap (S1).
 - R2a's As built in `docs/r2a-plan.md`: its staging folders, battle scene, dev-only entry, round tools, round goldens, `tests/slow/rounds/` files, play-time store and R2a/T136's test inventory (S0).
 - R2a's playtest answers in `docs/playtest-feedback.md`, and the user's tuning calls in `data/CHANGELOG-balance.md` (S0's gate).
-- The battle-1 pairing table for R2-Q13: R1's, if it ran one; otherwise S1b measures it (T028).
+- The battle-1 pairing table for R2-Q13: S1b's, in `docs/balance-backlog.md` (T028).
 
 **Findings R2b must handle** (high and medium):
 - A042: the opening doctrine barely touches the round-1 opener; swap its last army card (R2-Q18, T087).
@@ -256,7 +256,7 @@ S1b (the battle-1 measurement):
 
 - [x] T164 [US1] Set the round cap to one fixed 750 for both sides (#68, the user, 2026-11-03): `balance.rounds.roundDamageCap` in `data/balance.json` becomes `{ "flat": 750 }`, which S18's code already reads. The `round-damage-cap` scenario, `scoring.test.ts`'s cap cases and any text that names the cap as a share follow, and `npm run golden -- update` moves the round goldens. Log it in `data/CHANGELOG-balance.md` (§6.7, D28)
 - [x] T028 [US1] Measure battle 1 per commander and battle-1 general for R2-Q13, unless R1 recorded the table: `npm run sim -- --run --seeds 1..100 --player bot:balanced --commander <c> --auto-draft greedy --auto-route random --power-policy auto --summary` for Vesper, Armilla and Cordis, read by the battle-1 general (Old Mother Mold, the Lichen Baron). Write the table in `docs/balance-backlog.md`, noting that run battles have no in-battle drafts yet and Armilla's Tithe is refused until T082 (§7.8, §8.1, §12.3 G14, A201)
-- [ ] T029 [US1] [USER] Put R2-Q13 to the user with T028's table, and record the decision in `docs/tasks/clarify.md`. If the user adopts the opening pick, agree its building list for T068 (§8.3, §12.3) ⛔ R2-Q13
+- [x] T029 [US1] [USER] Put R2-Q13 to the user with T028's table, and record the decision in `docs/tasks/clarify.md`. If the user adopts the opening pick, agree its building list for T068 (§8.3, §12.3) ⛔ R2-Q13
 
 **Checkpoint:** `npm run verify` (v1's single-battle smokes and the round goldens still pass), `npx vitest run tests/unit/run.test.ts tests/unit/migrate.test.ts`, `npm run test:browser`, both builds, and the US1 sim command: every run completes in 4–5 battles and none loses a life in a won battle. S1b ends with T028's table in `docs/balance-backlog.md`.
 
@@ -420,7 +420,7 @@ S4's last task (S0 dropped S4b with the cutover branch, 2026-11-03):
 - [ ] T153 [US4] Show the draft in planning with today's dialog until T116 docks it: `src/app/battleView.ts` opens `src/ui/draftOverlay.ts` when the player's `side.draft` is set in planning, sends `draftPick`, `draftReroll` and `draftSkip`, and closes it when the draft resolves; Begin is unlit while it's open (§8.3, §10.2, §14.5)
 - [ ] T067 [US4] Turn drafts on in run battles in `src/run/flow.ts` (`battleConfig`'s `flags.drafts`), record each battle's picks in `BattleRecord.drafted`, and in `dealSpoils` add one spoils pick for each round in `draftRounds` whose next planning the won battle didn't reach (§8.3, §8.6, A207) ⛔ §18.2 #17, X4
   - Under X4, a spoils pick adds copies as T062 says (`dealSpoils`, `spoilsPick`). If X4 is no, none of this.
-- [ ] T068 [US4] If R2-Q13 adopted the opening pick: battle 1's round-1 planning opens a draft of blueprints only, after the general has planned, with no reroll and no skip gold, dealt from a `draft.openingPick` list of building ids in `data/balance.json` agreed in T029, read in `src/sim/draft.ts`, until R3's always-in set replaces it. If not adopted, build nothing (§8.3, §7.8) ⛔ R2-Q13
+- [ ] T068 [US4] Soften Old Mother Mold's battle-1 opener (R2-Q13, the user, 2026-11-03: "Soften Mold's opener"). Her `opener` in `data/generals.json` becomes `["sporelingBurrow", "truffleCellar"]`, in that order as S1b measured it, so her battle-1 kit holds both and the Gill Archer Nest joins in battle 2 (§7.8). No opening pick is built. Log it in `data/CHANGELOG-balance.md` with S1b's measurement (battle 1 won 82%, 52% and 76% for Vesper, Armilla and Cordis, `docs/balance-backlog.md`), refresh the goldens with `npm run golden -- update`, and fix any test or scenario that names her old opener (§7.8, §12.3 G14)
 - [ ] T069 [US4] Run `npm run golden -- update` for the moved round goldens in `tests/golden/` and say so in the commit; log the draft data in `data/CHANGELOG-balance.md` (§15.5, §12.4)
 
 **Checkpoint:** `npm run verify`, `npx vitest run tests/unit/drafts.test.ts tests/unit/run.test.ts`, and the US4 sim command with `rejectedCommands` = 0; on `npm run dev`, a run opens round 3's draft, and play goes on after a pick or a skip.
@@ -674,7 +674,7 @@ S14 (the playtest and tuning):
 | S2 | T030–T040, T150, T167 | `feature/r2b-screen` → `develop` | S1 merged | Every battle is the round battle, at §13.4's paths; R2a's preview entry gone; T040's grep empty; the browser suite ported |
 | S3 | T041–T054, T151, T158 | `feature/r2b-delete-v1` → `develop` | S2 merged | v1 gone from the sim, tools and tests; R2a's sim, tests, scenarios and tool libraries at §13.4's paths, with no `rounds/` folder left; `--rounds` gone; R1's clash check on the round sim; T054's list in the plan |
 | S4 | T055–T061, T152 | `feature/r2b-presets` → `develop` | S3 merged; R1's knob outcomes recorded (A109) | `PROTO_PRESETS` equals the agreed list; flyers in squad form; unknown presets visible |
-| S5 | T062–T069, T153 | `feature/r2b-drafts` → `develop` | S4 merged; #27, #28, #17 and R2-Q13 decided; R1's squad sizes agreed | Drafts open in rounds 3, 5 and 7 in runs and with `--flags drafts`, in today's dialog; goldens updated |
+| S5 | T062–T069, T153 | `feature/r2b-drafts` → `develop` | S4 merged; #27, #28, #17 and R2-Q13 decided; R1's squad sizes agreed | Drafts open in rounds 3, 5 and 7 in runs and with `--flags drafts`, in today's dialog; Mold opens with a Sporeling Burrow and a Truffle Cellar (T068); goldens updated |
 | S5b | T159–T163 | `feature/r2b-upgrades` → `develop` | S5 merged; #67 decided | Gold buys upgrades once the colony is full, for you, the general and the bots; T159's measurement and the price in `docs/balance-backlog.md`; goldens updated |
 | S6 | T070–T078 | `feature/r2b-relics` → `develop` | S4 merged; R2-Q17, R2-Q19, R2-Q20, #24, #26 and R2-Q8 decided | All 21 relics in v2 form; the `requires` gates; one path for clash gold; goldens updated |
 | S7 | T079–T090, T154–T156, T165, T166 | `feature/r2b-commanders` → `develop` | S6 merged; R2-Q15, R2-Q16, R2-Q17, R2-Q18, #69 and R2-Q7's v2 jobs decided (R2b S0) | Passives, the Tithe, the Sigil, the generals, the elites and the boss's extra cards in v2 form; the power smokes assert; Armilla's replay recorded |
@@ -712,7 +712,7 @@ S4b, which merged the cutover branch, was dropped at S0 (Call 14, 2026-11-03); i
 | Scope: settle §18.2 #16–#35 in the plan | R2a's S0 in `docs/r2a-plan.md` (#19, #22, #23, #25, #29, #30, #31, #34 as X7, #35's battle-level bands, R2a/T125); T003 in `docs/r2b-plan.md` (#16, #17's Rout-kit half, #18, #20, #21, #24, #26, #27, #28, #32, #35's run half); T131 (#35's G14 and G15); #17's clean-win half and #33 at the gate, T148, T149 |
 | Scope: link previews (§13.8) | T108, with the title blurb T107 (A074) |
 | Scope: tools play rounds; new goldens replace v1's eight; guardrails in round form; screenshot parameters (§15.2–§15.6, §12.3) | R2a for single battles; T026, T050, T051, T123–T125 (tools); T158 (R1's clash check on the round sim, §12.2); T027, T047, T126, T132, T156 (goldens); T049, T119, T122, T127, T151 (guardrails); T039, T110, T157 (captures) |
-| Not in R2: copies, augments, combos, packs, the core six as a set, the shape language's art, the card text, the rewritten Help (§16 R2) | No task builds them; X4's copies, if adopted, come from R2a and only change T008, T010, T019, T062, T065 and T067; T068's opening pick is a data list, not the core six |
+| Not in R2: copies, augments, combos, packs, the core six as a set, the shape language's art, the card text, the rewritten Help (§16 R2) | No task builds them; X4's copies, if adopted, come from R2a and only change T008, T010, T019, T062, T065 and T067 |
 | Done when: a human can play a whole run in rounds on the dev site, round 1's planning to the summary | T152 (the run on the dev site), T147 (the whole of R2b), T148 |
 | Done when: nothing from the retired list remains in the game, its tests or its tools | T040, T054, T130, T145 |
 | Done when: every verification step passes | T136–T144 |

@@ -28,7 +28,7 @@ v1's backlog is archived at [docs/archive/v1/balance-backlog.md](archive/v1/bala
 - **Gill Archers tie Swarm and Ranged** (R2a S15, below): the noise, not #14's tie order, picks between them. A rule change waits for the user.
 - **The Burster's seat effect** (R2a S17, below): a mirror of Bursters goes to whichever side's ids come first. A rule change waits for the user.
 - **The first fighting tick's frame in Chromium** (R2a S17, below): 4.8–11.4 ms once a page, against §13.7's 8 ms.
-- **Battle 1 misses G14** (R2b S1b, below; for R2-Q13): `bot:balanced` wins 52%, 29% and 45% of battle 1s for Vesper, Armilla and Cordis, against 70–90%. Old Mother Mold wins 73–94% of her pairings. A free blueprint lifts those by at most 21 points, while a softer Mold opener brings Vesper and Cordis inside the band.
+- **Battle 1 misses G14** (R2b S1b, below; for R2-Q13): `bot:balanced` wins 52%, 29% and 45% of battle 1s for Vesper, Armilla and Cordis, against 70–90%. Old Mother Mold wins 73–94% of her pairings. A free blueprint lifts those by at most 21 points, while a softer Mold opener brings Vesper and Cordis inside the band. The user chose the softer opener on 2026-11-03 (R2-Q13), and S5 lands it (T068).
 
 ## R2b S1b · battle 1 per commander and general, for R2-Q13 (2026-11-03)
 
@@ -76,6 +76,8 @@ v1's backlog is archived at [docs/archive/v1/balance-backlog.md](archive/v1/bala
 - **Armilla is short under every variant** (52–55%): she fields 1–2 units in rounds 1–3, and her Tithe is refused. That's her own problem, not the pairing's, so it waits for T082 and S11's re-read. The Burster Pod or the Gill Archer Nest in her starter would bring her to 79–83% against the Baron.
 
 **For R2-Q13** (the user's call, T029): don't adopt the opening pick, so T068 builds nothing. Give Mold's opener a Sporeling Burrow and a Truffle Cellar instead (`data/generals.json`, §7.8), with its changelog entry and goldens, in S5 in T068's place. S11 then re-reads G14 with the drafts in, and #69's several openers per general (S7) can give her an aggressive opener from battle 2.
+
+**Decided** 2026-11-03 (T029; the user: "Soften Mold's opener"): as recommended, in [clarify.md](tasks/clarify.md)'s R2-Q13 and SPEC §7.8.
 
 ## R2a S21b · a fixed round cap, for R2b's S0 (2026-11-03)
 
