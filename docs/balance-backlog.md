@@ -22,6 +22,70 @@ v1's backlog is archived at [docs/archive/v1/balance-backlog.md](archive/v1/bala
 - **The pace of a battle in rounds** (R2a S10b, below): step 3 misses its median rounds and its round-9 share. It waits for S18's G4 run and the user's call on #35's bands.
 - **X8's readouts** (R2a S15, below): your colony is full from round 5, and once both colonies are full, half the clashes replay the last one. They go to S18's pace call and S21's playtest, with X8's two knobs still off.
 - **Gill Archers tie Swarm and Ranged** (R2a S15, below): the noise, not #14's tie order, picks between them. A rule change waits for the user.
+- **The Burster's seat effect** (R2a S17, below): a mirror of Bursters goes to whichever side's ids come first. A rule change waits for the user.
+- **The first fighting tick's frame in Chromium** (R2a S17, below): 4.8–11.4 ms once a page, against §13.7's 8 ms.
+
+## R2a S17 · the round bench against §13.7, and the first `g4` in rounds (2026-11-03)
+
+T114's, T115's and T117's readings, on `feature/r2a-tools`. Nothing was tuned.
+
+```bash
+npm run bench -- --rounds
+npx vitest run tests/browser/rounds/perf.test.ts
+npm run experiment -- --rounds --checks g4
+```
+
+**The bench against §13.7** (this machine; Node unless marked):
+
+| §13.7 | Budget | Measured | |
+|---|---|---|---|
+| A full colony at the arrival | at most 150 live units a side | one lane: 12 plots of 8 Sporelings, 96. Twin Roots: 15 plots, 120 | pass |
+| The clash's first tick, both armies arriving | ≤ 5 ms | 0.26 ms on each field | pass |
+| A sim tick of bench-300 at 300 live units | mean ≤ 1.0 ms, p99 ≤ 2.5 ms | mean 0.40, p95 0.80, p99 0.91, max 1.60; peak 300 | pass |
+| The general's planning turn | ≤ 20 ms | mean 0.09, max 0.43 (Mold, seed 1, round 4) | pass |
+| The sim part of a planning command | 2 ms (S17's Node budget) | at most 0.41 (mean 0.10), on Twin Roots' 15th plot | pass |
+| One battle, bots on both sides | ≤ 3 s | 39 ms, 9 rounds | pass |
+| A plant and the preview it updates (Chromium) | ≤ 4 ms | 0.2–1.0 ms a frame | pass |
+| A render frame at 300 units (Chromium) | ≤ 8 ms | at most 3.4 (median 0.8) after the first fighting tick; that tick's frame 4.8–11.4 | **miss**, one frame a page |
+
+- **bench-300 in rounds** plays 150 units a side in blocks on test-3lane, merging off. Every lane draws at the 900-tick cap, and live units thin from 300 to about 180 by tick 300. So the bench times 2,000 fighting ticks over 3 fresh clashes and weights each by its live units: 177 on average.
+- **The full colonies' clashes** tick at a mean of 0.27 ms and a p99 of 0.77 on one lane, and 0.32 and 0.79 on Twin Roots, inside G11's.
+- **Twin Roots' full colony holds 15 buildings, not 16:** one front-rank plot a side is a stump. That's 120 units a side, where §13.7 says 128.
+- **The general's turn** is timed from round 2 on, in 68 turns against the scripted general, Mold and the Baron. Round 1's runs inside `createBattle`.
+- **The cold frame:**
+  - The first tick after the muster runs the clash's targeting, movement and attacks in the page for the first time. Its frame took 4.8–11.4 ms over seven runs, over 8 ms in five. Node's warm bench times that tick under 2 ms, so the cost is cold code, once a page.
+  - T115 holds the budget on the frames after it.
+  - The lever: warm the clash's systems when the preview opens, say by stepping a throwaway clash. That's a change to `src/app/rounds/main.ts`, S19's file, so it waits for the user's call.
+- **New budgets:** the planning command's 2 ms Node budget is S17's call, half of Chromium's 4 ms. It, the arrival's 5 ms and the turn's 20 ms sit in `ROUND_BUDGETS` (`tools/lib/rounds/bench.ts`) until T119 writes G11's round form.
+- **Guardrail:** G11 (§12.3). `npm run verify` runs the round bench quick (T118).
+
+**The first `g4` in rounds:** `bot:balanced` against the scripted general on Bogwater Hollow, 40 battles with the default flags. The results were the same on 6 workers as on 1.
+
+| §12.3's first guess | Measured | |
+|---|---|---|
+| G4: a median of 6–8 rounds | 9 | **miss** |
+| G4: at most 15% reach round 9 | 73% | **miss** |
+| G4: the bot wins 30–70% | 60% | within |
+| G13: at most 15% of clashes at the cap | 29 of 346 lane clashes, 8% | within |
+| G13: a median clash of 20–40 s | 17.5 s | **outside** |
+
+- **These are S10b's step-3 battles** (above), with the same seeds and flags, so the pace misses are the same. The lead in the Heartcap race changed hands 30 times, in 53% of battles.
+- **The tournament's other bots** (`npm run balance -- tournament --rounds`), against the same general:
+  - `bot:rush` wins 90%, with a median of 9 rounds and 53% reaching round 9;
+  - `bot:turtle` wins 65%, at 9 rounds, 85% and 18% of clashes capped;
+  - `bot:greedy` wins 15%, at 8 rounds and 40%.
+- **Recommended:** no retune here. S18's G4 run (T124) plays more bots and reads the pace levers, and the bands go to the user at T125.
+
+**T148, a Burster mirror by seat:**
+
+- **The mirror mono** (two Burster Pods a side): whichever side's ids come first bursts first, at clash tick 56. Its bursts fell the other side's Bursters before they burst on it, in the same attack step, and it wins the lane 4–0 at tick 60, 100 Heartcap damage. Bursters behind a Sporeling front end the same either way. `seats.test.ts` holds the mono case as an `it.fails`.
+- **On `playRoundClash`:** 100 one-lane mirrors of `bot:balanced`'s army (5 budgets × 20 seeds).
+  - Those with Bursters went 13 to the player (whose ids come first), 6 to the enemy, with 18 drawn.
+  - Those without drew 58 of 63. The other 5 all field Rhizomorph Tunnels, 2 won by the player and 3 by the enemy, so they show no seat tilt.
+  - Twin Roots' mirrors aren't level by design: each side's stump plot is in a different lane.
+- **The lever:** the attack step skips a unit that a burst has struck down earlier in the same step (`attackSystem`). Letting it still attack that tick, as §5.3's "deaths are processed after all hits resolve on a tick" suggests, would let both sides' Bursters burst together. A fix is a rule change that moves the round goldens, so it waits for the user's OK.
+- **Guardrails:** G7's merge mirror and every clash read with Bursters. G3 and G12 play both seats, so the tilt cancels in their means.
+- **Recommended:** settle the burst order before S18's guardrails read Burster builds on round clashes.
 
 ## R2a S15 · X8's readouts against Mold and the Baron (2026-11-03)
 
