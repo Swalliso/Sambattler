@@ -504,9 +504,9 @@ S1 to S4: the data, the colony, the round state machine and the planning command
   - `until` takes `'end'`, `{round}` and `{round, tick}`, with `tick` counted within the clash;
   - a human planning phase with no commands throws a clear error rather than looping;
   - planning and aftermath steps don't count as stalls.
-- [ ] T060 [US2] Build `runHeadless` in `src/sim/rounds/headless.ts` (new): it steps by phase, records hashes and summaries at Call 17's checkpoints, and catches a planning phase that never Begins (§14.6, §15.2, §15.5) (A036, A115)
-- [ ] T061 [US2] Extend `tools/lib/asserts.ts` with the `@r<n>` and `@r<n>:<t>` checkpoints; v1's `@<tick>` stays (§15.2)
-- [ ] T062 [US2] Build `runRoundBattle` in `tools/lib/rounds/run.ts` (new) and a `--rounds` switch in `tools/sim.ts` (§15.2)
+- [x] T060 [US2] Build `runHeadless` in `src/sim/rounds/headless.ts` (new): it steps by phase, records hashes and summaries at Call 17's checkpoints, and catches a planning phase that never Begins (§14.6, §15.2, §15.5) (A036, A115)
+- [x] T061 [US2] Extend `tools/lib/asserts.ts` with the `@r<n>` and `@r<n>:<t>` checkpoints; v1's `@<tick>` stays (§15.2)
+- [x] T062 [US2] Build `runRoundBattle` in `tools/lib/rounds/run.ts` (new) and a `--rounds` switch in `tools/sim.ts` (§15.2)
   - The result has §15.2's keys: `seed`, `map`, `winner`, `by`, `rounds`, `clashTicks`, `clashTime`, `wallMs`, `finalHash`, `hashes`, `heartcap`, `dealt`, `roundLog`, `fielded`, `merges`, `goldEarned`, `counters`, `events`, `stats` and `rejectedCommands`.
   - The multi-seed summary gives each side's win rate; the median, min and max rounds; the share reaching round 9; the share of clashes at the cap; the median clash length; the mean `wallMs`; and failed asserts.
   - The options are §15.2's, without `--run` or `--meta-progress` (R2b, M6).

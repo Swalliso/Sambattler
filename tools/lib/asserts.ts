@@ -1,12 +1,14 @@
-// `--assert "<path>[@<tick>]<op><value>"` (SPEC §15.2).
+// `--assert "<path>[@<checkpoint>]<op><value>"` (SPEC §15.2). v1's checkpoint is a tick, `@<tick>`. A battle in
+// rounds' is the end of round n, `@r<n>`, or tick t of its clash, `@r<n>:<t>` (R2a plan Call 17).
 
-export interface Assertion { text: string; path: string; tick?: number; op: string; value: string }
+export interface Assertion { text: string; path: string; tick?: number; checkpoint?: string; op: string; value: string }
 
 export function parseAssert(text: string): Assertion {
-  const m = text.match(/^([^@<>=!]+?)(?:@(\d+))?\s*(<=|>=|!=|=|<|>)\s*(.+)$/);
-  if (!m) throw new Error(`bad --assert "${text}" (expected <path>[@<tick>]<op><value>)`);
-  const a: Assertion = { text, path: m[1]!.trim(), op: m[3]!, value: m[4]!.trim() };
+  const m = text.match(/^([^@<>=!]+?)(?:@(?:(\d+)|(r\d+(?::\d+)?)))?\s*(<=|>=|!=|=|<|>)\s*(.+)$/);
+  if (!m) throw new Error(`bad --assert "${text}" (expected <path>[@<tick> | @r<n> | @r<n>:<tick>]<op><value>)`);
+  const a: Assertion = { text, path: m[1]!.trim(), op: m[4]!, value: m[5]!.trim() };
   if (m[2] !== undefined) a.tick = Number(m[2]);
+  if (m[3] !== undefined) a.checkpoint = m[3];
   return a;
 }
 
@@ -22,9 +24,14 @@ export function getPath(obj: unknown, path: string): unknown {
 /** Returns null if the assertion holds, else a description of the failure. */
 export function checkAssert(result: Record<string, unknown>, a: Assertion): string | null {
   let source: unknown = result;
-  if (a.tick !== undefined) {
-    const at = (result.at as Record<string, unknown> | undefined)?.[String(a.tick)];
-    if (!at) return `${a.text}: no summary recorded at tick ${a.tick} (battle ended at ${String(result.durationTicks)})`;
+  const key = a.tick !== undefined ? String(a.tick) : a.checkpoint;
+  if (key !== undefined) {
+    const at = (result.at as Record<string, unknown> | undefined)?.[key];
+    if (!at) {
+      return a.tick !== undefined
+        ? `${a.text}: no summary recorded at tick ${a.tick} (battle ended at ${String(result.durationTicks)})`
+        : `${a.text}: no summary recorded at ${key} (the battle reached round ${String(result.rounds)})`;
+    }
     source = at;
   }
   let actual = getPath(source, a.path);
