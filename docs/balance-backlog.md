@@ -19,11 +19,93 @@ v1's backlog is archived at [docs/archive/v1/balance-backlog.md](archive/v1/bala
 ## Open
 
 - **R1's review gate** (S8, T049): the user reads R1's entry below and settles §18.2 #7–#15, X4, X5, #36's reading and each knob's outcome (A109). R2a starts after that.
-- **The pace of a battle in rounds** (R2a S10b, below): step 3 misses its median rounds and its round-9 share. It waits for S18's G4 run and the user's call on #35's bands.
+- **The pace of a battle in rounds and #35's bands** (R2a S18, below): G4 misses at 9 rounds and 73% reaching round 9. S18 proposes `heartcapDamagePerSupply` 75 and a band for each of G4, G6, G8, G13 and G16, for the user's call at T125.
+- **S18's other guardrail misses** (below): G1, G2, G3, G7, G8's mono drops and G16 (the formation rule loses to its ranks traded). Each waits for the user.
 - **X8's readouts** (R2a S15, below): your colony is full from round 5, and once both colonies are full, half the clashes replay the last one. They go to S18's pace call and S21's playtest, with X8's two knobs still off.
 - **Gill Archers tie Swarm and Ranged** (R2a S15, below): the noise, not #14's tie order, picks between them. A rule change waits for the user.
 - **The Burster's seat effect** (R2a S17, below): a mirror of Bursters goes to whichever side's ids come first. A rule change waits for the user.
 - **The first fighting tick's frame in Chromium** (R2a S17, below): 4.8–11.4 ms once a page, against §13.7's 8 ms.
+
+## R2a S18 · the round guardrails, the answer bot and the pace levers (2026-11-03)
+
+T122–T124's readings, on `feature/r2a-guardrails`. Nothing was tuned: #35's bands and the pace go to the user at T125.
+
+```bash
+npx vitest run tests/slow/rounds
+npm run balance -- guardrails --rounds
+npm run sim -- --rounds --seeds 1..40 --player bot:answer --enemy general:lichen-baron --flags merging,adaptive --summary   # and bot:balanced
+npm run experiment -- --rounds --checks g4,g6 --proto <lever>
+```
+
+**Runtimes** (R2-Q9; this machine, 6 workers a file, the files one at a time): `duels` 1 s, `battles` 17 s, `formation` 8 s, `counters` 333 s (G3 35 s, G12 300 s), `perf` about 4 s. The whole round suite takes 6 minutes, inside R2-Q9's 15, so G12 stays in the suite.
+
+**The guardrails** (the `rounds` targets; the battle-level bands are §12.3's first guesses):
+
+| | The bar | Reading | |
+|---|---|---|---|
+| G1 | No building wins over 80% of its squad-duel pairings; each wins one and loses one clearly | The Sporeling Burrow wins 9 of 10 and never loses clearly; the Rhizomorph Tunnel wins none | miss |
+| G2 | Every unit beats one and loses to one in supply duels; M4's two edges hold | The Gill Archer beats none and the Amanita Knight loses to none. Hammercap > Amanita Knight holds in 3 of 5 seeds, under the 4 asserted. Gill Archer > Capguard holds in 0 of 5, and Gill Archer > Rootbreaker in 2 (report only) | miss |
+| G3 | Every mono against `bot:balanced`: mean ≤ 55%, worst map ≤ 60% | 8 of 16 miss: Veilstalker 75% mean (94% on Stumpfield), Sporeling 71% (83%), Hammercap 57% (93%), Gill 50% (84%), Scythecap 46% (87%), Rootbreaker 45% (84%), Amanita 36% (89%), Capguard 31% (65%). Every one of the 8 is worst on Stumpfield, and Twin Roots is the hardest map for every mono | miss |
+| G4 | `bot:balanced` against the scripted general: median 6–8 rounds, ≤ 15% reach round 9, the bot wins 30–70% | 9 rounds, 73%, 60% | miss |
+| G5 | +150 starting gold wins 55–75% | 63% of 80 | pass |
+| G6 | From `comeback-r4`, both seats, equal max HP: the behind side wins 20–45%. In G4's battles the winner's Heartcap is hit in ≥ 50% | 44% of 80; 75% | pass |
+| G7 | Merge-on beats its merge-off twin 55–70%; ≤ 50% with about 25% Slayers | 87% of 200; 72% of 200, Slayers 25% of fielded supply | miss |
+| G8 | Each mono drops ≥ 20 points against the adaptive Baron (report only under 20% without it); `bot:balanced` wins 40–65% | 1 of 8 asserted monos drops 20 (Scythecap, 37% → 17%). Sporeling 83 → 83, Veilstalker 100 → 100, Rootbreaker 60 → 60, Morel 70 → 67, Gill 97 → 90, Hammercap 80 → 70, and the Burster rises, 27 → 47. `bot:balanced` 53%; `bot:answer` 70% (reported) | miss |
+| G11 | S17's budgets, now the `rounds` block's | as S17's entry | pass |
+| G12 | Each mono above 40% in G3 has an answer passing G3 that wins ≥ 60% on every map | 6 builds, each answered on every map: Sporeling and Veilstalker by mono Burster (100%), the rest by even pairs (91–100%) | pass |
+| G13 | ≤ 15% of clashes at the cap; a median clash of 20–40 s | 8%; 17.5 s | miss |
+| G16 | The formation rule beats its front and back ranks traded in ≥ 60%, pooled over role-split pairs | 24% of 2,298 clashes (8% at 300 gold, 23–28% above). Same-role pairs 50% | miss |
+
+**The full reveal's risk** (X7, A198). Against the adaptive Lichen Baron at battle index 1, 30 seeds (G8), `bot:answer` wins 70% to `bot:balanced`'s 53%. Over `sim`'s 40 seeds with merging and the counter cycle on, it's 63% to 48%: rounds median 9 for both, 65% and 75% reaching round 9, 6% and 12% of clashes capped. Reading the general's army is worth about 15–17 points to a planner with the same weights. That's the information edge §1.3 #3 gives the player by design, and it isn't so large that the general is easy.
+
+**#35's battle-level bands, a proposal for T125:**
+
+- **G4: keep the band** (6–8 rounds, ≤ 15% at round 9, the bot 30–70%), **and retune the pace** (below). The miss is the pace's, not the band's: S14b's playtest found the late rounds empty once the colony was full, and X8's readouts have both colonies full from round 5–6.
+- **G6's first clause: keep 20–45%, and derive the deficit from the agreed pace.** It reads 44% at today's pace, but 48–50% under every faster lever. The scenario's 700 HP is what losing rounds 1–3 cost at 25 a supply. Under a faster pace those rounds cost more, so the deficit should come from G4's battles at the agreed pace, as #35's approach says (G4 and G6 start from X5's race model).
+- **G6's second clause: keep ≥ 50%.** 75%, the same under every lever measured.
+- **G8: keep 40–65% for `bot:balanced` (53%), and give `bot:answer` a ceiling, 80% (70%).** Above that, reading the general's army would make it too easy. The mono-drop clause misses on its own: Lichen Baron's counter cycle barely dents most monos (above). That's a finding about the counter cycle, not a band.
+- **G13: keep ≤ 15% capped (8%), and lower the clash band to 15–40 s (17.5 s).** None of the pace levers moves clash length (17.4–17.7 s under each). Nothing in S14b's playtest said clashes felt short, and S21 reads it.
+- **G16: keep ≥ 60%, and treat 24% as a finding.** The rule loses to its own ranks traded. A Gill Archer's range is 5 and its aggro 6, and the front ranks stand 6 apart with the back rank 2 behind. So archers in the front rank start within aggro of the enemy's front, and archers in the back rank start 8 tiles out. Whichever side's archers stand in front fires first. With Capguard and Gill at 600 gold, the traded colony wins 12 survivors to 0. Same-role pairs read 50%. The fix is the formation's geometry or the general's placement rule (§4.6, §7.3), so it's a rule change.
+
+**The pace levers** (G4's 40 battles, `bot:balanced` against the scripted general; G6 from `comeback-r4`; one lever at a time, from today's values):
+
+| Lever | Median rounds | Reach round 9 | Bot wins | Capped clashes | Behind side wins (G6) |
+|---|---|---|---|---|---|
+| Today: 25 a supply, cap 25%, HP 3,000/2,000, storm from round 5 at +20% | 9 | 73% | 60% | 8% | 44% |
+| `heartcapDamagePerSupply` 35 | 9 | 53% | 60% | 9% | 48% |
+| `heartcapDamagePerSupply` 50 | 8 | 38% | 60% | 9% | 49% |
+| **`heartcapDamagePerSupply` 75** | **7** | **18%** | **60%** | **9%** | **49%** |
+| `heartcapDamagePerSupply` 100 | 7 | 15% | 60% | 9% | 49% |
+| `roundDamageCap` 34% | 9 | 68% | 60% | 8% | 44% |
+| `roundDamageCap` 40% | 9 | 68% | 60% | 9% | 44% |
+| Heartcaps × 0.75 (2,250/1,500) | 9 | 53% | 60% | 9% | – |
+| Heartcaps × 0.5 (1,500/1,000) | 8 | 38% | 60% | 9% | – |
+| Sporestorm from round 3 | 9 | 60% | 60% | 9% | 45% |
+| Sporestorm +40% a round | 9 | 60% | 60% | 9% | 45% |
+| 75 a supply and the cap at 34% | 7 | 13% | 60% | 10% | 50% |
+
+- **The cap rarely binds:** at 25% of max HP, raising it barely moves the pace. A round's damage is small next to the Heartcaps. Damage per supply is the lever that moves it, and HP does the same more weakly, since the cap scales with max HP.
+- **Recommended: `heartcapDamagePerSupply` 25 → 75**, one number in `balance.rounds`. It brings the median to 7 rounds and round 9 to 18%, just over the 15% limit, without changing who wins. 100 meets the 15% exactly, but at 4× a won lane's survivors hit the cap more often, and the margin then counts for less. Adding the cap at 34% to 75 a supply reaches 13%, but that's two levers. G6's deficit is re-derived at whichever pace is agreed (above).
+- **What 75 a supply does to the rest** (`npm run experiment -- --rounds --checks duels,g3,g4,g5,g6,g7,g8,counters,formation --proto rounds.heartcapDamagePerSupply:75`): G1, G2 and G16 are single clashes and don't change. G5 63% (the same), G6's second clause 75%, G12 still passes, and G13 17.4 s. G6's first clause rises to 49%. G7 reads 87% and 74%. G8's `bot:balanced` reads 50% and `bot:answer` 70%, and still one asserted mono drops 20 points, the Hammercap now (87% → 63%) where it was the Scythecap. In G3 the same 8 builds miss: the Sporeling reads 75% (71%) and the Rootbreaker 52% (45%), 58% on Twin Roots.
+
+**R1's watch items in round battles:**
+
+- **Capguard Hall at 3, round by round** (mono Capguard against `bot:balanced`, 50 seeds a seat): it wins round 1 every time on every map, and round 2 in 79–91%. Then it fades: 18–33% of round 4s, and 2–8% of round 5s on Bogwater Hollow and Twin Roots. On Stumpfield it holds, winning 46–65% of rounds 5–9. That's R1's early-strong, late-weak reading (92% at 300 gold, 2% at 1,500), except on Stumpfield.
+- **The answers to the Sporeling and the Capguard, with `pinned` on:** mono Sporeling (G3 71%) is answered on every map by mono Burster (100%), then the Scythecap–Burster pair (94% worst map). Mono Capguard is under G12's 40% bar (31% in G3, worst 65% on Stumpfield).
+- **G2's Gill Archer under the adopted set** (A116): it beats no unit in supply duels, and loses its two intended edges (Capguard 0 of 5 seeds, Rootbreaker 2 of 5).
+
+**The findings left for the user, as the guardrails show them:**
+
+- **S15's Gill Archer tie** (Swarm and Ranged at 1.0 each): mono Gill drops only 7 points under the Baron's counter cycle (97% → 90%). The noise picks the counter kind against a Gill Archer army.
+- **S17's Burster seat effect** (T148): G1, G3, G5–G7, G12 and G16 play both seats or both orientations, so it cancels in their tallies. G8 plays the mono as the player only, and mono Burster rises under adaptation (27% → 47%). That fits a counter that adds Bursters, which then lose their mirrors on seat, but the run doesn't prove it.
+- **G3 on the Sporeling's worst field:** in rounds, the Sporeling's worst map is Stumpfield (83%), not Twin Roots (64%), where R1's clashes put it. Bogwater Hollow reads 67%.
+
+**Other misses, for the user** (no retune across several units without your OK):
+
+- **Stumpfield favours every mono** (G3): 8 builds read 65–94% there. A colony with fewer open plots may cost `bot:balanced`'s economy cards more than a mono's army. That's a lead, not measured here.
+- **Merging is worth too much** (G7): merge-on wins 87% of the mirror (55–70%), and 72% with Slayers fielding 25% of supply (≤ 50%).
+- **The Baron's counter cycle doesn't answer monos** (G8): one of eight asserted monos drops 20 points.
+- **Squad duels at 600 gold** (G1): the Sporeling Burrow wins 9 of 10 pairings and the Rhizomorph Tunnel none.
 
 ## R2a S17 · the round bench against §13.7, and the first `g4` in rounds (2026-11-03)
 
