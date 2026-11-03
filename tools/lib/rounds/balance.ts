@@ -220,6 +220,9 @@ export interface RoundBattleRecord extends RoundBattleJob {
   damageTaken: Record<Side, number>;
   /** The supply each side fielded over the battle at its units' tiers, and its Slayers' part, from the `fielded` record (G7). */
   supply: Record<Side, { all: number; slayers: number }>;
+  /** Rounds that dealt Heartcap damage, and how many of them the round's damage cap bound (§6.7 step 4, G4). */
+  damageRounds: number;
+  cappedRounds: number;
 }
 
 export function playRoundBattle(content: Content, job: RoundBattleJob): RoundBattleRecord {
@@ -252,6 +255,8 @@ export function playRoundBattle(content: Content, job: RoundBattleJob): RoundBat
     leads, rejected: result.rejectedCommands,
     damageTaken: { player: max.player - state.sides.player.heartcapHp, enemy: max.enemy - state.sides.enemy.heartcapHp },
     supply: { player: supplyOf('player'), enemy: supplyOf('enemy') },
+    damageRounds: state.rounds.filter((r) => r.damage.player + r.damage.enemy > 0).length,
+    cappedRounds: state.rounds.filter((r) => r.capped).length,
   };
 }
 
@@ -577,7 +582,11 @@ export function evaluateG4(content: Content, records: readonly RoundBattleRecord
     [win >= t.botWinMin && win <= t.botWinMax, `bot:balanced wins ${rate(win)} (band ${rate(t.botWinMin)}–${rate(t.botWinMax)})`],
     [row.rejected === 0, `${row.rejected} commands rejected`],
   ];
-  return { id: 'G4', pass: checks.every(([p]) => p), row, summary: `rounds per battle: bot:balanced vs the scripted general on ${records[0]?.map}, ${records.length} battles`, details: checks.map(([p, d]) => `${ok(p)} ${d}`) };
+  const damaging = records.reduce((n, r) => n + r.damageRounds, 0), capped = records.reduce((n, r) => n + r.cappedRounds, 0);
+  return {
+    id: 'G4', pass: checks.every(([p]) => p), row, summary: `rounds per battle: bot:balanced vs the scripted general on ${records[0]?.map}, ${records.length} battles`,
+    details: [...checks.map(([p, d]) => `${ok(p)} ${d}`), `info the round's damage cap bound in ${capped} of ${damaging} rounds with Heartcap damage, ${rate(capped / Math.max(1, damaging))}`],
+  };
 }
 
 /** G13 in rounds (§12.3), over G4's battles: at most `maxCappedShare` of clashes reach the 45 s cap, and the median clash within its band. */

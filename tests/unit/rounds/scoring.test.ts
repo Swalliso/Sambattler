@@ -33,7 +33,7 @@ function clashIn(opts: { map?: string; round?: number; sides?: Partial<Sides> } 
 
 /**
  * §6.7's rule at its first value, 25 a supply, which these tests' numbers are worked at: they check the rule's steps
- * (the storm, siege counted twice, each cap shape, E8), so a retune of the number (75 since T125) moves the rule
+ * (the storm, siege counted twice, each cap shape, E8), so a retune of the number (100 since T125) moves the rule
  * scenarios and the goldens, not them.
  */
 function at25(s: BattleState): BattleState {

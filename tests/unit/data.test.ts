@@ -118,7 +118,7 @@ describe('data', () => {
 
     it("the rounds block validates, with the user's cap, Decision and interest (X5, R2-Q2)", () => {
       expect(c.balance.rounds).toEqual({
-        maxRounds: 9, clashCapSeconds: 45, musterSeconds: 1, formationGapTiles: 6, heartcapDamagePerSupply: 75, siegeHeartcapMult: 2,
+        maxRounds: 9, clashCapSeconds: 45, musterSeconds: 1, formationGapTiles: 6, heartcapDamagePerSupply: 100, siegeHeartcapMult: 2,
         arrivalShield: { minTypes: 2, shieldFrac: 0.2 },
         roundDamageCap: { maxHpBp: 2500 }, decision: { by: 'shareOfMaxHp' }, interestPer: 10, interestCap: 30,
         sporestorm: { startRound: 5, stepBp: 2000, maxBp: 20000 },

@@ -1,6 +1,6 @@
 {
   "id": "lane-empty-both",
-  "description": "SPEC §6.7 E2 on Twin Roots: neither side fields anything in the bottom lane, so it has no clash and is drawn on the first tick, with no damage either way. In the top lane your Capguards wipe the general's Tenders, which never attack, and deal 75 × 6 = 450. Merging is off.",
+  "description": "SPEC §6.7 E2 on Twin Roots: neither side fields anything in the bottom lane, so it has no clash and is drawn on the first tick, with no damage either way. In the top lane your Capguards wipe the general's Tenders, which never attack, and deal 100 × 6 = 600, capped at the general's 500 (25% of its 2000). Merging is off.",
   "map": "twin-roots",
   "sides": {
     "player": {

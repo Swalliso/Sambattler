@@ -842,14 +842,11 @@ S1 to S4: the data, the colony, the round state machine and the planning command
 - [x] T125 [US6] [USER] Agree the bands with the user, write them into `data/balance-targets.json`'s `rounds` block, and close #35's battle-level part in `SPEC.md` §12.3 (§12.3, §18.2 #35) ⛔ #35 (A204)
   - The split with R2b: R2a sets G4, G6 (both clauses, single battle), G8 under both policies, G13 and G16. R2b sets G14 and G15 and re-reads G8 beside G14 (A204). Say so in #35's Decision line.
   - Bring T124's pace retune, if it proposed one, for the user's OK beside the bands, so S21's playtest runs at the agreed pace (S14b, 2026-11-02). S18 makes an agreed retune: it gets its `data/CHANGELOG-balance.md` entry, and the round goldens are refreshed (`npm run golden -- update`).
-  - As built (S18, 2026-11-03; the user: "Take them all", and through the hub "Yes, with the rerun"):
-    - **The pace:** `heartcapDamagePerSupply` 75, in SPEC §6.7, §14.6, §18.3 and its table. The five round replays were refreshed and v1's eight didn't move.
-    - **The rerun:** over 200 battles, 75 a supply reaches round 9 in 23.5% (100: 18.5%, with the damage cap binding in 70% of rounds against 60%). So 75 stays and G4's limit is 20%, by the user's rule. 23.5% misses that too; the suite's 40 battles read 18%.
-    - **The bands** are in the `rounds` targets, SPEC §12.3 and #35's Decision line: G4 6–8 rounds, ≤ 20% at round 9, the bot 30–70%; G6 20–45% and ≥ 50%; G8 40–65% for `bot:balanced` and ≤ 80% for `bot:answer`, one band per policy; G13 15–40 s; G16 ≥ 60%. #35 stays open for R2b's G14 and G15.
-    - **G6's deficit** is 1275 (it was 700), derived from G4's battles at 75 a supply.
-    - **Two rule scenarios were re-set to keep their rule:** `decision-round-9`'s Heartcap starts at 1800, and `both-heartcaps-zero`'s general has 3000 max HP. The scoring and stats tests keep §6.7's steps worked at 25 a supply, set on their states.
-    - **At the agreed pace:** G5, G12 and G13 pass, and so do G8's two bands (50%, 70%). G4 passes at 18% on its 40 battles (23.5% over 200), and G6 misses at 46%. G1, G2, G3, G7, G8's mono clause and G16 miss as at T124.
-
+  - As built (S18, 2026-11-03; the user: "Take them all", then through the hub "Yes, with the rerun" and "Go to 100"):
+    - **The pace:** `heartcapDamagePerSupply` 100, in SPEC §6.7, §14.6, §18.3 and its table. A 200-battle rerun put 75 at 23.5% reaching round 9 and 100 at 18.5%, the median 7 rounds and the bot's 58.5% the same, the damage cap binding in 70% of damaging rounds against 60%. The five round replays were refreshed and v1's eight didn't move.
+    - **The bands** are in the `rounds` targets, SPEC §12.3 and #35's Decision line. G4 now plays 200 battles, with 6–8 rounds, ≤ 20% at round 9 (was 15%) and the bot 30–70%. G6 is 20–45% and ≥ 50%. G8 is 40–65% for `bot:balanced` and ≤ 80% for `bot:answer`, one band per policy. G13 is 15–40 s and G16 ≥ 60%. #35 stays open for R2b's G14 and G15.
+    - **G6's deficit** is 1550 (it was 700), derived from G4's 200 battles at 100 a supply. G4's verdict also reports how often the damage cap binds.
+    - **Three rule scenarios were re-set to keep their rule:** `decision-round-9`'s Heartcap starts at 1800, `both-heartcaps-zero`'s general has 3600 max HP and `split-lanes`'s 3000. The scoring and stats tests keep §6.7's steps worked at 25 a supply, set on their states, and a headless test counts events by the rounds played.
 **Checkpoint:** `npx vitest run tests/slow/rounds` passes, or each miss is recorded with its numbers and the user's call; `npm run bench -- --rounds` is inside §13.7; `npm run verify` is green.
 
 ## Phase 9: US7 — Measures for the playtest (P3)

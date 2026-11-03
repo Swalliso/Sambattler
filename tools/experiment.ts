@@ -573,6 +573,8 @@ if (roundChecks.size) {
   const pool = workers > 1 ? roundPool(spec, workers) : undefined;
   const run = pool?.run ?? inProcessRounds(rc);
   const maxRounds = rc.balance.rounds.maxRounds;
+  // G4's battles in rounds: the `rounds` target's 200 unless `--g4seeds` says otherwise
+  const roundG4Seeds = Number(opt('--g4seeds') ?? 0) || rc.targets.rounds.G4.seeds;
   const verdict = (v: Verdict): Verdict => {
     lines.push(`${v.pass ? 'PASS' : 'FAIL'}  ${v.id}: ${v.summary}`, ...v.details.map((d) => `        ${d}`));
     return v;
@@ -595,7 +597,7 @@ if (roundChecks.size) {
     if (roundChecks.has('g4')) {
       const rows = [];
       for (const map of maps) {
-        const records = await timed(`g4 on ${map}`, () => g4Battles(rc, run, { map, seeds: g4Seeds }));
+        const records = await timed(`g4 on ${map}`, () => g4Battles(rc, run, { map, seeds: roundG4Seeds }));
         g4 ??= records;
         const row = tournamentRow(records, maxRounds);
         lines.push(...g4Lines(rc, row));
@@ -611,7 +613,7 @@ if (roundChecks.size) {
     }
     if (roundChecks.has('g5')) out.G5 = verdict(await timed('g5', () => roundG5(rc, run)));
     if (roundChecks.has('g6')) {
-      g4 ??= await g4Battles(rc, run, { seeds: g4Seeds });
+      g4 ??= await g4Battles(rc, run, { seeds: roundG4Seeds });
       out.G6 = verdict(await timed('g6', () => roundG6(rc, run, g4!)));
     }
     if (roundChecks.has('g7')) out.G7 = verdict(await timed('g7', () => roundG7(rc, run)));

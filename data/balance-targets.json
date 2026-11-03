@@ -24,7 +24,7 @@
   "rounds": {
     "G1": { "seeds": 3, "goldBudget": 600, "maxPairingWinShare": 0.8, "clearLossRatio": 1.3 },
     "G3": { "seeds": 50, "maxMeanWinRate": 0.55, "maxMapWinRate": 0.60 },
-    "G4": { "seeds": 40, "medianMinRounds": 6, "medianMaxRounds": 8, "maxRound9Share": 0.2, "botWinMin": 0.3, "botWinMax": 0.7 },
+    "G4": { "seeds": 200, "medianMinRounds": 6, "medianMaxRounds": 8, "maxRound9Share": 0.2, "botWinMin": 0.3, "botWinMax": 0.7 },
     "G5": { "seeds": 40, "bonusGold": 150, "minWinRate": 0.55, "maxWinRate": 0.75 },
     "G6": { "seeds": 40, "scenario": "comeback-r4", "bot": "balanced", "minBehindWinRate": 0.2, "maxBehindWinRate": 0.45, "winnerHitShare": 0.5 },
     "G7": {
