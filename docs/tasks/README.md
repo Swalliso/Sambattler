@@ -8,10 +8,10 @@ SPEC v2, broken into task lists that later sessions work through one row of a Se
 
 | Now | Session | Waits on |
 |---|---|---|
-| 1 | **R2b S4** (T055–T061, T152) in [r2b-run-in-rounds.md](r2b-run-in-rounds.md), the presets and the switch-over check | Running since 2026-11-03 |
-| 2 | **R2b S5, S6 and S9**, side by side, by R2b's Sessions table | S4 merged, and the decisions in each row's Gate column |
+| 1 | **R2b S5, S6 and S9** in [r2b-run-in-rounds.md](r2b-run-in-rounds.md), side by side: drafts, relics and the run screens | Running since 2026-11-03 |
+| 2 | **R2b S5b, S7 and S8**, by R2b's Sessions table | S5b and S8 need S5 merged, and S7 needs S6 |
 
-R1, R4a, records-1 and R2a are done. R2a's playtest gate passed on 2026-11-03 (S21, [#108](https://github.com/Swalliso/Sambattler/pull/108)), and S21b ([#109](https://github.com/Swalliso/Sambattler/pull/109)) fixed what it found. The user settled T125 the same day: the pace at 100 damage a supply, and R2a's bands. R2b's plan was agreed at its S0 ([#111](https://github.com/Swalliso/Sambattler/pull/111)), S1 ([#113](https://github.com/Swalliso/Sambattler/pull/113)) made the run play rounds, S2 ([#115](https://github.com/Swalliso/Sambattler/pull/115)) made every battle the round battle, and S3 ([#118](https://github.com/Swalliso/Sambattler/pull/118)) deleted v1's battle. R2b's sessions are in its Sessions table.
+R1, R4a, records-1 and R2a are done. R2a's playtest gate passed on 2026-11-03 (S21, [#108](https://github.com/Swalliso/Sambattler/pull/108)), and S21b ([#109](https://github.com/Swalliso/Sambattler/pull/109)) fixed what it found. The user settled T125 the same day: the pace at 100 damage a supply, and R2a's bands. R2b's plan was agreed at its S0 ([#111](https://github.com/Swalliso/Sambattler/pull/111)), S1 ([#113](https://github.com/Swalliso/Sambattler/pull/113)) made the run play rounds, S2 ([#115](https://github.com/Swalliso/Sambattler/pull/115)) made every battle the round battle, S3 ([#118](https://github.com/Swalliso/Sambattler/pull/118)) deleted v1's battle, and S4 ([#120](https://github.com/Swalliso/Sambattler/pull/120)) and S4c ([#121](https://github.com/Swalliso/Sambattler/pull/121)) cut the presets. R2b's sessions are in its Sessions table.
 
 ## Milestones
 
@@ -19,7 +19,7 @@ R1, R4a, records-1 and R2a are done. R2a's playtest gate passed on 2026-11-03 (S
 |---|---|---|---|---|
 | R1, the clash check | [r1-clash-check.md](r1-clash-check.md), plan [r1-plan.md](../r1-plan.md) | S0–S8 | Done 2026-11-02 | One PR per session into `develop`. No rule changes, so no golden moves |
 | R2a, a battle in rounds | [r2a-battle-in-rounds.md](r2a-battle-in-rounds.md), plan [r2a-plan.md](../r2a-plan.md) | S0–S21 (S3 and S10 in two parts, with S14b) | Done 2026-11-03: the gate passed, and S21b's fixes land with #109 | Beside v1 on `develop`, behind a preview entry (X2). Ends with a playtest gate on the dev site |
-| R2b, the run in rounds | [r2b-run-in-rounds.md](r2b-run-in-rounds.md) | S0–S14 (with S1b and S5b) | S0–S3 and S1b done 2026-11-03; S4 now | One PR per session into `develop`: S0 dropped the cutover branch on 2026-11-03 (Call 14) |
+| R2b, the run in rounds | [r2b-run-in-rounds.md](r2b-run-in-rounds.md) | S0–S14 (with S1b and S5b) | S0–S4, S1b and S4c done 2026-11-03; S5, S6 and S9 now | One PR per session into `develop`: S0 dropped the cutover branch on 2026-11-03 (Call 14) |
 | R3, the kit | [r3-kit.md](r3-kit.md) | S0–S15 | After R2b | One PR per session into `develop` |
 | R4a, shapes on the field | [r4-readable-armies.md](r4-readable-armies.md), part 1 | R4a-S0–S5 (with S2b) | Now, beside R1 (X3). Lands before R2a's playtest | One PR per session into `develop` |
 | R4b, readable cards | [r4-readable-armies.md](r4-readable-armies.md), part 2 | R4b-S0–S7 | After R3 | One PR per session into `develop` |
