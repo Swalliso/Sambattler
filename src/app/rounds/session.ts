@@ -37,6 +37,8 @@ export class RoundSession {
   speed: number = loadSettings().defaultSpeed;
   /** In a clash only: a pause never carries into the next clash (§13.5). */
   paused = false;
+  /** Help or the settings screen is open: it holds a clash and the aftermath, as a pause does (§10.2, A078). */
+  overlayOpen = false;
   /** `phase=planning` or `paused=1` keeps planning's queued commands unrun until input (plan Call 14). */
   hold = false;
   /** When this round's planning opened (performance.now()), for Begin by key (R2-Q12). */
@@ -47,7 +49,7 @@ export class RoundSession {
   /** The tile under the cursor. */
   hover: { col: number; row: number } | null = null;
   shift = false;
-  /** A building, yours or the general's. */
+  /** A building, yours or the general's, or in a clash a unit: inspect shows it (§10.4). */
   selected: number | null = null;
   /** X's first press on this building showed its refund; a second press sells it (§10.3). */
   sellArmed: number | null = null;
@@ -201,6 +203,20 @@ export class RoundSession {
     }
     this.selected = id;
     this.sellArmed = null;
+  }
+
+  /**
+   * A click in a clash or the aftermath (§10.3): the unit nearest the point within about a tile, else the
+   * building on the plot under it, yours or the general's.
+   */
+  selectIn(x: number, y: number, col: number, row: number): void {
+    let best: number | null = null, d2 = 0.9 * 0.9;
+    for (const u of this.state.units) {
+      const d = (u.x - x) ** 2 + (u.y - y) ** 2;
+      if (d < d2) { d2 = d; best = u.id; }
+    }
+    if (best !== null) { this.selected = best; this.sellArmed = null; return; }
+    this.selectAt(col, row);
   }
 
   /** The lanes where you'd field nothing and the general fields something (§10.2): on a one-lane map, your whole formation. */

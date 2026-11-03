@@ -76,6 +76,8 @@ export class RoundRenderer {
   private goldSeen = new Map<string, number>();
   /** This step's formations, read as its `arrived` events come, one per squad in arrival order. */
   private arrivals: Record<Side, { plans: SquadPlan[]; n: number }> | null = null;
+  /** The units the muster knit inside Begin, which glow through its 1 s (§5.6, §10.4). */
+  private mustered = new Set<number>();
   /** The unit drawer's options, refilled for each unit so a frame allocates none. */
   private unitOpts: UnitSpriteOpts = {
     sprite: '', faction: 'velvet-bloom', frame: 0, flip: false, x: 0, y: 0, tier: 1, side: 'player', id: 0, hpFrac: 1, glow: '', time: 0,
@@ -202,7 +204,11 @@ export class RoundRenderer {
         const eff = e.eff === 'strong' ? 1 : e.eff === 'weak' ? 3 : 2;
         this.effects.add(eff, e.x, e.y, now, e.splash ? 1 : 0);
         if (this.damageNumbers === 'all' || (this.damageNumbers === 'big' && e.amount >= BIG_HIT)) this.labels.add(9, e.x, e.y, now, eff, e.amount);
-      } else if (e.t === 'merged') this.labels.add(8, e.x, e.y, now, e.tier, e.side === 'player' ? 0 : 1);
+      } else if (e.t === 'merged') {
+        // a pop for your merges and every Elder; the general's Bloomed show their glow and pips only (§10.4)
+        if (e.side === 'player' || e.tier === 3) this.labels.add(8, e.x, e.y, now, e.tier, e.side === 'player' ? 0 : 1);
+      } else if (e.t === 'clashStarted') this.mustered.clear();
+      else if (e.t === 'musterKnit') this.mustered.add(e.id);
       else if (e.t === 'died') this.effects.add(e.side === 'player' ? 4 : 5, e.x, e.y, now, 0);
       else if (e.t === 'healed') this.effects.add(10, e.x, e.y, now, 0);
       else if (e.t === 'burst') this.effects.add(13, e.x, e.y, now, e.side === 'player' ? 0 : 1, e.radius);
@@ -272,6 +278,7 @@ export class RoundRenderer {
     us.length = 0;
     for (const u of state.units) us.push(u);
     us.sort((a, b) => a.y - b.y || a.id - b.id);
+    if (state.phase === 'clash') this.drawKnitGlow(state, us, alpha, t);
     for (const u of us) this.drawUnit(state, view, u, alpha, t, calm, over);
 
     for (const h of state.hits) {
@@ -294,6 +301,28 @@ export class RoundRenderer {
     if (planning) this.preview.drawOverlays(g, state, this.toScreen);
     if (view.ghost) this.drawGhost(state, view.ghost);
     if (view.debug) this.drawDebug(state);
+  }
+
+  /**
+   * Under the units, a pulsing glow in its side's colour: behind each unit the muster knit, through the muster's
+   * 1 s, so the field shows the knits the merge preview promised (§5.6, §10.2), and behind each unit knitting
+   * later in the clash, wherever v1's rule finds a trio (§10.4).
+   */
+  private drawKnitGlow(state: BattleState, us: readonly UnitState[], alpha: number, t: number): void {
+    const muster = state.clash ? state.tick - state.clash.startTick < state.rules.musterTicks : false;
+    if (!muster && !us.some((u) => u.knit)) return;
+    const g = this.ctx;
+    const pulse = this.still ? 1 : 0.5 + 0.5 * Math.sin(t / 110);
+    for (const u of us) {
+      if (!u.knit && !(muster && this.mustered.has(u.id))) continue;
+      const x = this.sx(u.px + (u.x - u.px) * alpha), y = (u.py + (u.y - u.py) * alpha) * TILE;
+      g.globalAlpha = 0.3 + 0.3 * pulse;
+      g.fillStyle = this.mat(u.side).glow;
+      g.beginPath();
+      g.arc(x, y, 6 + 2 * pulse + (u.tier === 3 ? 2 : 0), 0, Math.PI * 2);
+      g.fill();
+    }
+    g.globalAlpha = 1;
   }
 
   /** The free plots a chosen card could go on: a soft lilac wash and outline. */

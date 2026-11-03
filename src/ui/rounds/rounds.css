@@ -62,3 +62,30 @@ html.assist .tally .pip.lost, html.assist .tally .pip .half.lost { background: r
 .rounds-intent .changes #intent-sold { flex: none; max-width: 50%; }
 .rounds-intent .changes #intent-sold:empty { display: none; }
 .rounds-intent.tip-open, .rounds-intent:focus-visible { border-color: var(--lilac); box-shadow: var(--shadow-glow); }
+
+/* The bottom band (§10.2): the tray and inspect lay straight into footer.bottom's grid, as v1's do. */
+#mount-tray, #mount-inspect { display: contents; }
+
+/* The kit tray: an army card's squad (its unit's sprite and "×N") on the card's output line; in a clash the
+   tray takes no clicks, but stays lit and readable, and its tooltips still open. */
+.rounds-tray .squad { display: inline-flex; align-items: center; gap: 3px; vertical-align: middle; font: 700 13px/16px var(--font-text); font-variant-numeric: tabular-nums; color: var(--text); }
+.rounds-tray .squad-art { width: 16px; height: 16px; image-rendering: pixelated; image-rendering: crisp-edges; }
+/* compact: the line keeps v1's 12 px row, the sprite overhanging it by its own 2 px above and below */
+.tray.compact.rounds-tray .squad { font-size: 12px; line-height: 12px; }
+.tray.compact.rounds-tray .squad-art { margin: -2px 0; }
+.rounds-tray.locked .card { cursor: default; }
+.rounds-tray.locked .card:hover { border-color: var(--line-strong); box-shadow: var(--shadow-bevel); }
+.rounds-tray .card.tip-open { border-color: var(--lilac); }
+.hud-tip.card-tip .tip-head .price { margin-left: auto; }
+.hud-tip.card-tip .tip-foot { color: var(--muted); border-top: 1px dashed var(--line); padding-top: 4px; margin-top: 2px; }
+
+/* Inspect: its rows, and the merge preview's words (§10.4). */
+.inspect .details { display: flex; flex-direction: column; gap: 3px; min-height: 0; }
+
+/* The round's result banner, pinned through the aftermath (§10.2, A071): violet when won, ash when lost. */
+.callout.banner-callout { font-weight: 700; }
+.callout.banner-callout.good { box-shadow: 0 0 10px var(--glow-lilac); }
+
+/* The report by round (§10.4): the round chart, and the Twin Roots half-pips under its columns. */
+#report-rounds { display: block; max-width: 100%; height: auto; }
+.rounds-report .actions .btn.primary { width: auto; font-size: 24px; line-height: 24px; }

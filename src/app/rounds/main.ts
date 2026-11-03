@@ -51,7 +51,14 @@ export function startRounds(content: Content, atlas: Atlas, errors: string[]): v
   // a pause or `phase=planning` holds planning until input, and a pause never carries into a clash (plan Call 14)
   if (state.phase === 'planning') session.hold = params.phase === 'planning' || params.paused;
   else session.paused = params.paused;
-  view = new RoundsView(session, content, atlas, { begin: () => { session.begin(); } }, params.test);
+  // the report's Again and Rematch reopen the preview on the same parameters, from round 1's planning
+  const reopen = (next: number) => {
+    const q = new URLSearchParams(location.search);
+    for (const k of ['round', 'phase', 'ticks', 'paused']) q.delete(k);
+    q.set('seed', String(next));
+    location.search = `?${q.toString()}`;
+  };
+  view = new RoundsView(session, content, atlas, { begin: () => { session.begin(); }, again: () => reopen(seed), rematch: () => reopen(randomSeed()) }, params.test);
   document.getElementById('app')!.replaceChildren(view.root);
   view.fit();
   loop = new RoundLoop(session, view, { holdAftermath: params.test && params.phase !== null, measure: params.measure === 'frames' });
