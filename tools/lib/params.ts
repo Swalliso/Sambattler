@@ -8,6 +8,8 @@ import {
   createBattle, createFromScenario, makeConfig, parseController, parseFlags, queueCommand, runHeadless,
 } from '../../src/sim/index.ts';
 import type { BattleState } from '../../src/sim/index.ts';
+import { createBattle as createRoundBattle } from '../../src/sim/rounds/index.ts';
+import type { BattleState as RoundState } from '../../src/sim/rounds/index.ts';
 
 const BATTLE_PARAMS = ['player', 'enemy', 'ticks', 'scenario', 'map', 'battleIndex', 'flags', 'paused'];
 export const RUN_SCENES = ['run', 'route', 'draft', 'summary'];
@@ -47,8 +49,11 @@ export function stateForParams(content: Content, q: URLSearchParams): BattleStat
   return state;
 }
 
-/** Run scenes: the run state, plus the battle on screen for `scene=draft`. */
-export function runForParams(content: Content, q: URLSearchParams): { run: RunState; battle: BattleState | null } {
+/**
+ * Run scenes: the run state, plus the battle on screen for `scene=draft`, which is in rounds since R2b's S1, at
+ * round 1's planning (a run's battle takes no `ticks`). Its draft opens in planning from R2b's T067 and T115.
+ */
+export function runForParams(content: Content, q: URLSearchParams): { run: RunState; battle: RoundState | null } {
   const scene = sceneOf(q);
   const auto = q.get('autoplay');
   const am = auto?.match(/^battles:(\d+)$/);
@@ -58,11 +63,5 @@ export function runForParams(content: Content, q: URLSearchParams): { run: RunSt
     autoplay: auto === 'run' ? { battles: 'all' } : am ? { battles: Number(am[1]) } : null,
   });
   if (scene !== 'draft' || run.screen.kind !== 'battle') return { run, battle: null };
-  const battle = createBattle(content, run.screen.config);
-  const ticks = ticksOf(q);
-  if (battle.phase === 'deploy' && (battle.config.player.controller.kind !== 'human' || ticks !== null)) {
-    queueCommand(battle, { tick: 0, side: 'player', type: 'begin' });
-  }
-  if (ticks !== null) runHeadless(battle, { until: ticks });
-  return { run, battle };
+  return { run, battle: createRoundBattle(content, run.screen.config) };
 }

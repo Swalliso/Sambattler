@@ -13,8 +13,10 @@ const CAP_H = 84;
 export interface TitleActions {
   /** Present when a saved run exists. */
   continueRun?: () => void;
-  /** One line on the saved run, under Continue ("Row 3 of 6 · Heartcap 2400/3000"). */
+  /** One line on the saved run, under Continue ("Row 3 of 6 · 2 Regrowths"). */
   saved?: string;
+  /** A status line about the saved run: one migrated from before R2, or one that can't be read (§8.9). */
+  notice?: string;
   newRun(): void;
   help(): void;
   /** The button that opens the settings screen (src/ui/settingsScreen.ts), labelled Settings. */
@@ -54,6 +56,7 @@ export function titleScreen(atlas: Atlas, actions: TitleActions, still: boolean,
         h('h1', { class: 'wordmark' }, 'Spore ', h('span', { class: 'amp' }, '&'), ' Sprawl'),
         h('p', { class: 'title-blurb' }, 'Grow a fungal colony under the roots, push the front line across the lanes, and outlast the Gray Rot’s generals over a run of battles.'),
         menu,
+        actions.notice ? h('p', { class: 'hint title-notice', id: 'run-notice', role: 'status' }, actions.notice) : null,
       ),
       art,
     ),

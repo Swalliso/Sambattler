@@ -1925,11 +1925,11 @@ export interface CommanderRow {
   reachedBoss: number;
   battlesWon: number;
   battles: number;
+  /** Lives left at each run's end, summed (§8.5). */
+  livesLeft: number;
   powerUses: number;
   powerDamage: number;
-  powerCaptures: number;
   powerMerges: number;
-  powerGold: number;
 }
 
 /**
@@ -1940,7 +1940,7 @@ export function commanderTournament(content: Content, commanders: string[], seed
   const rows: CommanderRow[] = [];
   for (const commander of commanders) {
     const row: CommanderRow = {
-      commander, runs: 0, victories: 0, reachedBoss: 0, battlesWon: 0, battles: 0, powerUses: 0, powerDamage: 0, powerCaptures: 0, powerMerges: 0, powerGold: 0,
+      commander, runs: 0, victories: 0, reachedBoss: 0, battlesWon: 0, battles: 0, livesLeft: 0, powerUses: 0, powerDamage: 0, powerMerges: 0,
     };
     for (let seed = 1; seed <= seeds; seed++) {
       const r = simulateRun(content, seed, { route: 'random', draft: 'greedy', player: 'bot:balanced', power: 'auto' }, {
@@ -1949,9 +1949,7 @@ export function commanderTournament(content: Content, commanders: string[], seed
           const st = state.stats.player;
           row.powerUses += st.powerUses ?? 0;
           row.powerDamage += st.powerDamage ?? 0;
-          row.powerCaptures += st.powerCaptures ?? 0;
           row.powerMerges += st.powerMerges ?? 0;
-          row.powerGold += st.powerGold ?? 0;
         },
       });
       row.runs++;
@@ -1959,6 +1957,7 @@ export function commanderTournament(content: Content, commanders: string[], seed
       if (r.reachedBoss) row.reachedBoss++;
       row.battles += r.battleCount;
       row.battlesWon += r.battles.filter((b) => b.winner === 'player').length;
+      row.livesLeft += r.lives.left;
     }
     rows.push(row);
   }
@@ -1972,7 +1971,7 @@ export function commanderTournament(content: Content, commanders: string[], seed
       id: 'M5', pass,
       summary: `commander run win rates within ${COMMANDER_SPREAD} points (${seeds} seeds each): spread ${spread.toFixed(0)} points`,
       details: rows.map((r) => `${r.commander}: ${rate(r).toFixed(0)}% runs won (${r.victories}/${r.runs}) · boss reached ${r.reachedBoss}/${r.runs} · ` +
-        `battles won ${r.battlesWon}/${r.battles} · power used ${r.powerUses}× (damage ${r.powerDamage}, columns ${r.powerCaptures}, trios ${r.powerMerges}, gold ${r.powerGold})`),
+        `battles won ${r.battlesWon}/${r.battles} · lives left ${(r.livesLeft / Math.max(1, r.runs)).toFixed(1)} a run · power used ${r.powerUses}× (damage ${r.powerDamage}, trios ${r.powerMerges})`),
     },
   };
 }

@@ -72,10 +72,10 @@ describe('the title', () => {
     expect(await clipped(p)).toEqual([]);
   });
 
-  it('offers Continue for a saved run and resumes it', async () => {
+  it('offers Continue for a saved run, naming its row and Regrowths, and resumes it', async () => {
     const run = mid();
     const p = await open('/?debug=1', { run });
-    expect(await p.locator('#title-continue').textContent()).toContain(`Heartcap ${run.heartcap.hp}/${run.heartcap.max}`);
+    expect(await p.locator('#title-continue').textContent()).toContain(`Row ${run.path.length + 1} of ${run.route.length} · ${run.lives.left} Regrowth`);
     await p.locator('#title-continue').click();
     await p.waitForSelector('#route');
     expect(await p.evaluate(() => window.__GAME__!.run()?.battles.length)).toBe(run.battles.length);
@@ -144,19 +144,48 @@ describe('spoils, events and the Grove', () => {
     const p = await open('/?scene=run&debug=1', { run });
     expect(await p.locator('#event .vignette canvas.scene').count()).toBe(1);
     const chips = await p.locator('#event .choice').first().locator('.outcome').allTextContents();
-    expect(chips).toEqual(['+1 rare relic', '−15% max Heartcap']);
+    expect(chips).toEqual(['+1 rare relic', '−15% max Heartcap, every battle']);
     expect(await p.locator('#event .choice').first().locator('.outcome.cost').count()).toBe(1);
     expect(await clipped(p)).toEqual([]);
   });
 
-  it('the Grove disables Graft with its reason once every track is maxed', async () => {
+  it('the Grove offers three choices: a Regrowth unlit at full lives, Graft disabled once every track is maxed, and Leave', async () => {
     const run = createRun(content, { seed: 9 });
     for (const id of run.kit) run.upgrades[id] = content.upgrades[id]!.levels.length;
     run.screen = { kind: 'grove' };
     const p = await open('/?scene=run&debug=1', { run });
-    const graft = p.locator('#grove .choice').nth(1);
-    expect(await graft.isDisabled()).toBe(true);
-    expect(await graft.textContent()).toContain('last level');
+    const choices = p.locator('#grove .choice');
+    expect(await choices.count()).toBe(3);
+    expect(await choices.nth(0).isDisabled()).toBe(true);
+    expect(await choices.nth(0).textContent()).toContain('Regrowths are full');
+    expect(await choices.nth(1).isDisabled()).toBe(true);
+    expect(await choices.nth(1).textContent()).toContain('last level');
+    expect(await choices.nth(2).isDisabled()).toBe(false);
+    await choices.nth(2).click();
+    await p.waitForFunction(() => window.__GAME__!.run()?.screen === 'route');
+  });
+
+  it('the Grove regains a Regrowth when one is lost', async () => {
+    const run = createRun(content, { seed: 9 });
+    run.lives.left = 2;
+    run.screen = { kind: 'grove' };
+    const p = await open('/?scene=run&debug=1', { run });
+    expect(await p.locator('#run-regrowths').textContent()).toBe('2/3');
+    await p.locator('#grove .choice').nth(0).click();
+    await p.waitForFunction(() => window.__GAME__!.run()?.screen === 'route');
+    expect(await p.evaluate(() => window.__GAME__!.run()!.lives)).toEqual({ left: 3, max: 3 });
+  });
+});
+
+describe('the summary', () => {
+  it('shows each battle\'s rounds and Regrowths lost, with no Length, Heartcap or Front line columns', async () => {
+    const p = await open('/?scene=summary&seed=7&autoplay=run&test=1');
+    const heads = await p.locator('#summary-battles th').allTextContents();
+    expect(heads).toEqual(['#', 'Node', 'Map', 'General', 'Result', 'Rounds', 'Regrowths', 'Countered']);
+    for (const gone of ['Length', 'Heartcap', 'Front line']) expect(heads).not.toContain(gone);
+    expect(await p.locator('#summary-battles .sparkline').count()).toBe(0);
+    const run = await p.evaluate(() => window.__GAME__!.run()!);
+    expect(await p.locator('#summary-battles .lives').allTextContents()).toEqual(run.battles.map((b) => (b.lifeLost ? '−1' : '-')));
   });
 });
 

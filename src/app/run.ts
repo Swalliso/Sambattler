@@ -1,17 +1,18 @@
-// The run controller (SPEC §8): shows the current run screen, plays each battle in a BattleView,
-// applies results through the pure run layer, and autosaves at every node boundary. Battles in
-// progress are saved at each wave boundary and when the tab is hidden, then resumed by replaying
-// their command log (SPEC §8.9).
+// The run controller (SPEC §8): shows the current run screen, plays each battle in rounds on the battle
+// scene (`openRoundBattle`), applies results through the pure run layer, and autosaves at every node
+// boundary. Until R2b's S8 saves a battle between rounds (T095, T096), a battle in progress isn't saved: a
+// reload restarts it at round 1's planning, with a notice when an older battle save was found (SPEC §8.9).
 import type { Atlas } from '../render/atlas.ts';
 import { runItBackSetup, setLastSetup, updateRecords } from '../meta/index.ts';
 import {
-  battleRewards, chooseNode, clearBattle, clearRun, createRun, currentRow, eventChoose, finishBattle, groveChoose, loadBattle, promptAnswer,
-  recoverPendingChoice, resumeBattle, saveBattle, saveRun, spoilsPick, spoilsReroll,
+  BATTLE_KEY, battleRewards, chooseNode, clearBattle, clearRun, createRun, currentRow, eventChoose, finishBattle, groveChoose, promptAnswer,
+  recoverPendingChoice, rewardRules, saveRun, spoilsPick, spoilsReroll,
 } from '../run/index.ts';
 import type { RunState, Storage } from '../run/index.ts';
 import type { RunEffect } from '../data/schema.ts';
-import { createBattle, queueCommand, runHeadless } from '../sim/index.ts';
-import type { BattleState, Content } from '../sim/index.ts';
+import type { Content } from '../sim/index.ts';
+import { createBattle } from '../sim/rounds/index.ts';
+import type { BattleState } from '../sim/rounds/index.ts';
 import {
   eventResultScreen, eventScreen, groveScreen, promptScreen, routeScreen, runChanges, runSnapshot, spoilsScreen, summaryScreen,
 } from '../ui/screens/run.ts';
@@ -20,12 +21,9 @@ import { h } from '../ui/h.ts';
 import { sporeWipe } from '../ui/motion.ts';
 import { closeSettings, openSettings, settingsButton } from '../ui/settingsScreen.ts';
 import { sporeLayer } from '../render/spores.ts';
-import type { ReportRewards } from '../ui/report.ts';
-import { BattleView } from './battleView.ts';
 import { storageKey } from './channel.ts';
-import { bindInput } from './input.ts';
-import { GameLoop } from './loop.ts';
-import { Session } from './session.ts';
+import { openRoundBattle } from './rounds/main.ts';
+import type { RoundBattle } from './rounds/main.ts';
 import { settingsStore } from './settings.ts';
 import { soundPrefs, soundToggle } from './sound.ts';
 
@@ -59,7 +57,8 @@ export interface RunEnv {
   setup?: () => void;
 }
 
-interface LiveBattle { state: BattleState; view: BattleView; loop: GameLoop; unbind: () => void }
+/** Why a battle opened at round 1's planning though a save was found (§8.9, #32). */
+export const RESTART_NOTICE = 'The saved battle could not be restored. This battle restarted from round 1\'s planning; your run progress is preserved.';
 
 /** An outcome the run rolls for you: a random relic, a random upgrade track, or relics for a sacrifice. */
 const isRandom = (e: RunEffect): boolean => 'gainRelic' in e || 'sacrificeRelic' in e || ('upgrade' in e && e.upgrade.pick === 'random');
@@ -68,27 +67,26 @@ const isRandom = (e: RunEffect): boolean => 'gainRelic' in e || 'sacrificeRelic'
 interface EventTrail { before: RunSnapshot; event: string | null; title: string; choice: string | null; random: boolean }
 
 export class RunController {
-  private battle: LiveBattle | null = null;
+  private battle: RoundBattle | null = null;
   private rewardRecoveryNotice: string | null = null;
+  /** A migrated save's notice (§8.9, #32), shown on the run's first screen. */
+  private runNotice: string | null = null;
   private trail: EventTrail | null = null;
   /** What a random event outcome gave, shown before the route (UI only: the run is already saved at the route). */
   private result: { event: string | null; title: string; choice: string | null; changes: RunChange[] } | null = null;
-  /** `?ticks=` fast-forwards the first battle this page starts (screenshots, testing), then is spent. */
-  pendingTicks: number | 'end' | null = null;
-  private onHidden = () => { if (document.hidden && this.battle) this.saveBattle(this.battle.state); };
   onFrame: (() => void) | null = null;
 
-  constructor(private env: RunEnv, public run: RunState) {
+  /** @param notice a migrated save's notice, shown on the first screen (§8.9) */
+  constructor(private env: RunEnv, public run: RunState, notice?: string) {
+    this.runNotice = notice ?? null;
     this.rewardRecoveryNotice = recoverPendingChoice(env.content, run);
     if (this.rewardRecoveryNotice) this.save();
-    document.addEventListener('visibilitychange', this.onHidden);
   }
 
   /** The battle on screen, if any (for the debug bridge). */
   get battleState(): BattleState | null { return this.battle?.state ?? null; }
 
   private save(): void { if (this.env.persist) saveRun(this.env.storage, this.run); }
-  private saveBattle(state: BattleState): void { if (this.env.persist && state.phase === 'live') saveBattle(this.env.storage, state); }
 
   /** Applies one decision, autosaves and redraws. */
   private act(f: () => void): void {
@@ -116,17 +114,13 @@ export class RunController {
     });
   }
 
-  /** Leaves the run's screens (to the title or the Underroot): stops any battle and the hidden-tab save. */
+  /** Leaves the run's screens (to the title or the Underroot): stops any battle. */
   stop(): void {
     this.stopBattle();
-    document.removeEventListener('visibilitychange', this.onHidden);
   }
 
   private stopBattle(): void {
-    if (!this.battle) return;
-    this.battle.loop.stop();
-    this.battle.unbind();
-    this.battle.view.dispose();
+    this.battle?.stop();
     this.battle = null;
   }
 
@@ -154,12 +148,9 @@ export class RunController {
           ...(this.env.toTitle ? { toTitle: this.env.toTitle } : {}),
         });
         break;
-      case 'battle': {
-        const ticks = this.pendingTicks;
-        this.pendingTicks = null;
-        this.startBattle(ticks);
+      case 'battle':
+        this.startBattle();
         break;
-      }
       case 'spoils':
         el = spoilsScreen(content, atlas, run, {
           pick: (card) => this.act(() => spoilsPick(content, run, card)),
@@ -202,61 +193,49 @@ export class RunController {
       el.prepend(sky);
       requestAnimationFrame(() => sporeLayer(sky, { scale: 3, density: 1.2, still: this.env.still }));
       if (this.rewardRecoveryNotice) el.prepend(h('div', { class: 'hint', id: 'reward-recovery', role: 'status' }, this.rewardRecoveryNotice));
+      if (this.runNotice) el.prepend(h('div', { class: 'hint', id: 'run-notice', role: 'status' }, this.runNotice));
+      this.runNotice = null;
       app.replaceChildren(el);
       // run screens have no game loop: report readiness on the next frame
       requestAnimationFrame(() => this.onFrame?.());
     }
   }
 
-  private startBattle(ticks: number | 'end' | null): void {
+  /**
+   * The battle on R2a's battle scene (§10.2), from round 1's planning: the general has planned, and a bot player
+   * plans and begins on its own. A battle save found here can't be restored (R2b saves none until S8), so it's
+   * cleared and the battle restarts with the notice (§8.9).
+   */
+  private startBattle(): void {
     if (this.run.screen.kind !== 'battle') return;
     const { content, atlas } = this.env;
-    const config = this.run.screen.config;
-    let resumed: BattleState | null = null;
-    let recoveryNotice = false;
-    const saved = this.env.persist ? loadBattle(this.env.storage) : null;
-    if (saved && JSON.stringify(saved.config) === JSON.stringify(config)) {
-      try { resumed = resumeBattle(content, saved); } catch (e) {
-        console.warn(`could not resume the saved battle: ${(e as Error).message}`);
-        clearBattle(this.env.storage);
-        recoveryNotice = true;
-      }
-    }
-    const state = resumed ?? createBattle(content, config);
-    const session = new Session(state, content);
-    const begin = () => { session.begin(); };
-    const view = new BattleView(session, content, atlas, {
-      begin, again: () => {}, rematch: () => {}, continueRun: () => this.finish(), rewards: (st) => this.rewardsOf(st),
-    }, this.env.debug, this.env.still);
-    if (recoveryNotice) {
-      view.notice('save-recovery', 'The saved battle could not be restored. This battle restarted from deployment; your run progress is preserved.');
-    }
-    document.getElementById('app')!.replaceChildren(view.root);
-    if (state.phase === 'deploy' && (config.player.controller.kind !== 'human' || ticks !== null)) {
-      queueCommand(state, { tick: 0, side: 'player', type: 'begin' });
-    }
-    if (ticks !== null) runHeadless(state, { until: ticks, onTick: (st) => view.log.onTick(st) });
-    view.fit();
-    const loop = new GameLoop(session, view);
-    loop.onStep = (st) => { if (st.events.some((e) => e.t === 'wave')) this.saveBattle(st); };
-    loop.onFrame = () => this.onFrame?.();
-    loop.debugOverlay = this.env.debug;
-    const unbind = bindInput(session, view, { begin, toggleDebug: () => { if (this.env.debug) loop.debugOverlay = !loop.debugOverlay; } });
-    this.battle = { state, view, loop, unbind };
-    loop.start();
+    const restarted = this.env.persist && this.env.storage.get(BATTLE_KEY) !== null;
+    if (restarted) clearBattle(this.env.storage);
+    const state = createBattle(content, this.run.screen.config);
+    this.battle = openRoundBattle(content, atlas, state, {
+      actions: { continueRun: () => this.finish(), runNote: (st) => this.runNoteOf(st) },
+      still: this.env.still, debug: this.env.debug, onFrame: () => this.onFrame?.(),
+    });
+    if (restarted) this.battle.view.notice('save-recovery', RESTART_NOTICE);
+    if (this.runNotice) this.battle.view.notice('run-notice', this.runNotice);
+    this.runNotice = null;
   }
 
-  /** What the battle on screen earns the run beyond gold, for its report (the rewards table, SPEC §8.6). */
-  private rewardsOf(state: BattleState): ReportRewards {
+  /** What the battle on screen means for the run, for its report (the rewards table, SPEC §8.5, §8.6). */
+  private runNoteOf(state: BattleState): string {
     const run = this.run;
     const row = currentRow(run) - 1;
     const node = run.route[row]?.[run.path[row]!];
-    if (!node || !state.outcome) return { spores: 0, amber: 0, amberChance: 0 };
-    const b = this.env.content.balance;
-    const r = battleRewards(node.kind, state.outcome.winner, state.outcome.by, {
-      routRepair: b.routRepair, decisionLossDamage: b.decisionLossDamage, rarityBiasStep: b.draft.rarityBiasStep, eliteRareBonus: b.draft.eliteRareBonus,
-    });
-    return { spores: r.spores, amber: r.amber, amberChance: r.amberChance };
+    if (!node || !state.outcome) return '';
+    const r = battleRewards(node.kind, state.outcome.winner, state.outcome.by, rewardRules(this.env.content));
+    if (state.outcome.winner !== 'player') {
+      const left = run.lives.left - 1;
+      const end = left <= 0 || node.kind === 'boss' ? ' The run ends.' : '';
+      return `You lose a Regrowth: ${Math.max(0, left)} of ${run.lives.max} left.${end}`;
+    }
+    const amber = r.amber ? ` · +${r.amber} Amber` : r.amberChance ? ` · ${Math.round(r.amberChance * 100)}% chance of +1 Amber` : '';
+    const plot = node.kind !== 'boss' && run.plotsGained < this.env.content.balance.rounds.plotGrowth.max ? ' · your colony gains a plot' : '';
+    return `+${r.spores} Spores${amber}${plot}.`;
   }
 
   /** The report's Continue: applies the battle to the run. */

@@ -620,15 +620,16 @@ kbd { font-family: var(--font-mono); font-size: 12px; line-height: 16px; padding
 
 /* ---- run screens (Phase 2): the run bar, the footer and the route ---- */
 .runbar { display: flex; align-items: center; gap: var(--space-6); min-height: 52px; padding: var(--space-3) var(--space-6); background: var(--panel); border-bottom: 1px solid var(--line); font-size: 14px; }
-.rb-heart { display: grid; grid-template-columns: 16px 150px; column-gap: var(--space-4); align-items: center; }
-.rb-hp { display: flex; flex-direction: column; gap: 3px; }
+/* Regrowths (lives, §8.5): a cap per life, lit for each one left */
+.rb-lives { display: flex; align-items: center; gap: var(--space-4); }
+.rb-caps { display: flex; gap: var(--space-2); }
+.rb-caps .cap { display: flex; }
+.rb-caps .cap:not(.lit) { opacity: 0.3; filter: grayscale(1); }
 .rb-num { display: flex; align-items: baseline; gap: var(--space-3); }
 .rb-num b, .rb-stat b { font: 400 24px/20px var(--font-display); font-synthesis: none; font-variant-numeric: tabular-nums; }
 .rb-num b { color: var(--lilac); }
-.rb-heart.low .rb-num b { color: var(--danger-soft); }
+.rb-lives.low .rb-num b { color: var(--danger-soft); }
 .rb-num small, .rb-stat small { font: 12px/16px var(--font-text); color: var(--muted); font-variant-numeric: tabular-nums; }
-.rb-bar { display: flex; height: 6px; background: var(--well); border: 1px solid var(--line-strong); border-radius: var(--radius-xs); overflow: hidden; }
-.rb-bar i { display: block; height: 100%; background: repeating-linear-gradient(90deg, var(--lilac) 0 6px, var(--violet) 6px 8px); }
 .rb-stat { display: flex; align-items: center; gap: var(--space-3); white-space: nowrap; }
 .rb-group { display: flex; align-items: center; gap: var(--space-4); min-width: 0; }
 .relics-group { flex: 1; }
