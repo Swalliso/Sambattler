@@ -20,7 +20,7 @@ import { hashRun, intelDots } from '../src/run/index.ts';
 import { COUNTER_KINDS } from '../src/sim/index.ts';
 import { hashState, summarize } from '../src/sim/index.ts';
 import type { BattleState } from '../src/sim/index.ts';
-import { hashState as hashRoundState, summarize as summarizeRound } from '../src/sim/rounds/index.ts';
+import { formationOf as roundFormationOf, hashState as hashRoundState, summarize as summarizeRound } from '../src/sim/rounds/index.ts';
 import type { BattleState as RoundState } from '../src/sim/rounds/index.ts';
 
 interface Args {
@@ -412,11 +412,16 @@ async function main(): Promise<number> {
 }
 
 /**
- * R2a's preview of a battle in rounds (`scene=rounds`, plan Call 2), checked with §15.6's assertions 2, 3 and 5
- * after assertion 1's errors: the page's hash against `roundStateForParams`'s at the same round, phase and
- * tick, a canvas that isn't blank with each team's mycelium inside its own colony's columns, and the PNG with
- * a JSON of the round, phase, tick and hash. Assertion 4 needs the HUD and the preview, so it lands in T143.
+ * R2a's preview of a battle in rounds (`scene=rounds`, plan Call 2), checked with §15.6's assertions 2–5 after
+ * assertion 1's errors: the page's hash against `roundStateForParams`'s at the same round, phase and tick; a
+ * canvas that isn't blank with each team's mycelium inside its own colony's columns; the band's gold, plots,
+ * round and Heartcaps against the bridge's summary, with no lives in a single battle, and in planning the
+ * general's formation as drawn against Node's `formationOf`, unit for unit (T143); and the PNG with a JSON of
+ * the round, phase, tick and hash.
  */
+/** What assertion 4 reads off the top band: the gold, plots and round chips and both Heartcaps' numbers. */
+type HudField = 'gold' | 'plots' | 'round' | 'hpPlayer' | 'hpEnemy';
+
 async function roundCapture(page: Page, q: URLSearchParams, args: Args, url: string, failures: string[]): Promise<number> {
   const content = nodeContent();
   const got = await page.evaluate(() => {
@@ -467,13 +472,41 @@ async function roundCapture(page: Page, q: URLSearchParams, args: Args, url: str
     if (!canvas.playerTint) failures.push('violet mat tint missing from your colony\'s columns');
     if (!canvas.enemyTint) failures.push('gray mat tint missing from the general\'s colony\'s columns');
   }
+  // 4. the band agrees with the summary, with no lives in a single battle (A063), and in planning the general's
+  //    whole colony and formation are drawn before your first command, as Node's formationOf has them (§7.5, §10.2)
+  // (a script string, not a function: tsx would inject __name helpers the page does not have)
+  const hud = await page.evaluate(`(() => {
+    const t = (sel) => document.querySelector(sel)?.textContent ?? null;
+    const s = window.__GAME__.summary();
+    return {
+      shown: { gold: t('#hud-gold'), plots: t('#hud-plots'), round: t('#hud-round'), hpPlayer: t('#hud-hp-player .heart-hp b'), hpEnemy: t('#hud-hp-enemy .heart-hp b') },
+      want: s ? {
+        gold: String(s.gold.player), plots: s.plots.player.planted + '/' + s.plots.player.owned, round: String(s.round),
+        hpPlayer: String(s.heartcap.player), hpEnemy: String(s.heartcap.enemy),
+      } : null,
+      lives: document.querySelectorAll('#hud-lives').length,
+    };
+  })()`) as { shown: Record<HudField, string | null>; want: Record<HudField, string> | null; lives: number };
+  if (!hud.want) failures.push('the bridge has no summary');
+  else for (const k of Object.keys(hud.want) as HudField[]) if (hud.shown[k] !== hud.want[k]) failures.push(`HUD ${k} shows "${hud.shown[k]}", summary ${hud.want[k]}`);
+  if (hud.lives) failures.push('#hud-lives shows in a single battle');
+  let preview: { squads: number; units: number } | null = null;
+  if (node?.phase === 'planning') {
+    const drawn = await page.evaluate(() => (window.__GAME__ as unknown as { preview(): { enemy: { squads: { building: number; ghost?: true; units: { x: number; y: number }[] }[] } } | null }).preview()?.enemy ?? null);
+    const plans = roundFormationOf(node, 'enemy');
+    const want = plans.map((q) => ({ building: q.building, units: q.units.map((u) => ({ x: u.x, y: u.y })) }));
+    const got = drawn ? drawn.squads.filter((q) => !q.ghost).map((q) => ({ building: q.building, units: q.units.map((u) => ({ x: u.x, y: u.y })) })) : null;
+    if (!got) failures.push('preview().enemy is null in planning: the general\'s formation isn\'t drawn');
+    else if (JSON.stringify(got) !== JSON.stringify(want)) failures.push(`preview().enemy ${JSON.stringify(got)} != Node's formationOf(state, 'enemy') ${JSON.stringify(want)}`);
+    preview = { squads: want.length, units: want.reduce((n, q) => n + q.units.length, 0) };
+  }
   // 5. the PNG and its JSON
   const dir = join(ROOT, 'artifacts', 'screenshots');
   mkdirSync(dirname(join(dir, args.name)), { recursive: true });
   await page.screenshot({ path: join(dir, `${args.name}.png`) });
   const report = {
     name: args.name, url, browser: args.browser, filter: args.filter ?? null, size: `${args.width}x${args.height}`, clicks: args.clicks,
-    scene: 'rounds', round: got.round, phase: got.phase, tick: got.tick, browserHash: got.hash, nodeHash, canvas,
+    scene: 'rounds', round: got.round, phase: got.phase, tick: got.tick, browserHash: got.hash, nodeHash, canvas, hud: hud.shown, preview,
     summary: node ? { ...summarizeRound(node), stats: undefined } : null,
     failures,
   };

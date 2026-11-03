@@ -677,7 +677,7 @@ S1 to S4: the data, the colony, the round state machine and the planning command
   - Also damage by building over the battle, units fielded and merged from `fielded`, gold by source, the general's counters by round, and a slot for the planning seconds, which the app passes in (T128).
   - It has no lives line (R2b). Its buttons are Again (same seed) and Rematch (new seed), both reopening `scene=rounds` with the same parameters.
 - [x] T097 [US3] Wire the three phase views into `src/app/rounds/battleView.ts`: planning, clash and aftermath, each switching its chrome on and off. The aftermath holds while Help or settings is open, and the speed control stays live there, without pause. The bands and panels are already mounted (T088–T094), and Space, Enter or a click already skip the aftermath (T078) (§10.2, §13.5) (A078)
-- [ ] T143 [US3] Add §15.6's assertion 4 for `scene=rounds` to `tools/screenshot.ts` (§15.6, §16 R2 step 9) (A076)
+- [x] T143 [US3] Add §15.6's assertion 4 for `scene=rounds` to `tools/screenshot.ts` (§15.6, §16 R2 step 9) (A076)
   - `#hud-gold`, `#hud-plots`, `#hud-round` and both Heartcap values equal `summary()`, and there's no `#hud-lives`.
   - With `phase=planning`, `preview().enemy` equals Node's `formationOf(state, 'enemy')` from `roundStateForParams`, unit for unit: the general's whole colony and formation are drawn before the player's first command (§7.5, §10.2).
   - Run it on T135's captures; a mismatch fails the capture with both values.
