@@ -6,6 +6,8 @@
 // it copies.
 import type { Content } from '../../../data/registry.ts';
 import type { Atlas } from '../../../render/atlas.ts';
+import { heldUntilBegin } from '../../../render/rounds/preview.ts';
+import type { Reveal } from '../../../render/rounds/preview.ts';
 import { incomePreview, survivingSupply } from '../../../sim/rounds/index.ts';
 import type { BattleState, LaneResult, Side } from '../../../sim/rounds/index.ts';
 import { interestCapOf } from '../../../sim/rounds/systems/economy.ts';
@@ -307,18 +309,20 @@ export function stormTip(content: Content, atlas: Atlas, state: BattleState): Ti
  * passive (§7.7) and its kit. R2a's single battles have no copies (D45), so a card shows the general's
  * `maxOwned` cap where it has one.
  */
-export function intentTip(content: Content, atlas: Atlas, state: BattleState): TipSource {
+export function intentTip(content: Content, atlas: Atlas, state: BattleState, reveal: Reveal = 'full'): TipSource {
   return {
-    key: () => `${state.round}|${state.sides.enemy.ai?.plans.length ?? 0}`,
+    key: () => `${state.round}|${state.sides.enemy.ai?.plans.length ?? 0}|${heldUntilBegin(reveal, state)}`,
     build: () => {
       const i = intentOf(content, state);
+      // under `reveal=last` its changes this round show at Begin (T127)
+      const held = heldUntilBegin(reveal, state);
       const out: Node[] = [h('div', { class: 'tip-head' }, h('b', null, i.name), h('span', { class: 'tip-num' }, i.doctrine))];
       if (i.title) out.push(h('p', { class: 'muted' }, i.title));
       if (i.plan) {
         out.push(
           sec(`Round ${i.plan.round}`),
-          row('Planted', i.planted.join(', ') || 'nothing'),
-          row('Sold', i.sold.join(', ') || 'nothing'),
+          row('Planted', held ? 'shows at Begin' : i.planted.join(', ') || 'nothing'),
+          row('Sold', held ? 'shows at Begin' : i.sold.join(', ') || 'nothing'),
           row('Income', plus(i.plan.income), i.plan.round === 1 ? 'none in round 1' : undefined),
           row('Banked', String(i.plan.banked), 'held at Begin, for interest'),
         );

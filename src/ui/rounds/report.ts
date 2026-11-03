@@ -4,7 +4,7 @@
 // hanging in ash, each Heartcap's HP after the round as a line, Sporestorm rounds marked and, on Twin Roots,
 // each lane's result as a half-pip under its column; then damage by building over the battle, units fielded
 // and merged from the fielded record, gold by source with the gold banked at each Begin (R2-Q2), the general's
-// counters by round, and a slot for the planning seconds the app passes in (T128). There are no lives in a
+// counters by round, and the play clock's line, which the app passes in (X6, T128). There are no lives in a
 // single battle (R2b). Again replays the seed and Rematch draws a new one, both on the same parameters. Its
 // figures are plain functions of the state, which `tests/unit/rounds/report.test.ts` reads. It stands beside
 // v1's `src/ui/report.ts`, whose banner art, MVP callout and styles it reuses.
@@ -192,8 +192,25 @@ export interface RoundsReportActions {
   rematch(): void;
 }
 
-/** @param planningSeconds your planning time each round, which the app passes in (T128); left out until then */
-export function roundsReport(content: Content, state: BattleState, actions: RoundsReportActions, atlas?: Atlas, planningSeconds?: readonly number[]): HTMLElement {
+/** The play clock's readout (§8.2, X6, RB-Q3; T128), which the app passes in, since `src/ui` can't import `src/app`. */
+export interface PlayTimeReadout {
+  /** Each planning phase the clock timed, in order, with its active seconds. */
+  planning: readonly { round: number; seconds: number }[];
+  /** Their median, or null when it timed none. */
+  medianPlanningSeconds: number | null;
+  /** The battle's active minutes: its planning, clash and aftermath seconds summed. */
+  minutes: number;
+}
+
+/** The report's play-time line (X6): your planning seconds by round, their median, and the battle's active minutes. */
+export function playTimeText(t: PlayTimeReadout): string {
+  if (t.medianPlanningSeconds === null) return 'Planning time: none timed, since the preview opened past planning';
+  const rounds = t.planning.map((p) => `R${p.round} ${Math.round(p.seconds)} s`).join(' · ');
+  return `Planning time by round: ${rounds} · median ${Math.round(t.medianPlanningSeconds)} s · ${t.minutes.toFixed(1)} min of active play`;
+}
+
+/** @param playTime the play clock's readout, which the app passes in (T128) */
+export function roundsReport(content: Content, state: BattleState, actions: RoundsReportActions, atlas?: Atlas, playTime?: PlayTimeReadout): HTMLElement {
   const o = state.outcome!;
   const won = o.winner === 'player';
   const st = state.stats;
@@ -240,7 +257,7 @@ export function roundsReport(content: Content, state: BattleState, actions: Roun
         h('h3', null, 'Gold by source', h('span', { class: 'legend' }, h('i', { class: 'player' }), NAME.player, h('i', { class: 'enemy' }), NAME.enemy)),
         bars('report-gold', gold),
         h('div', { class: 'hint', id: 'report-banked' }, `You banked at each Begin: ${banked.join(' · ') || '—'}`),
-        planningSeconds ? h('div', { class: 'hint', id: 'report-planning' }, `Planning time by round: ${planningSeconds.map((x) => `${Math.round(x)} s`).join(' · ')}`) : null,
+        playTime ? h('div', { class: 'hint', id: 'report-planning' }, playTimeText(playTime)) : null,
       ),
     ),
     h('div', { class: 'actions' },

@@ -11,6 +11,8 @@ import '../rounds.css';
 import type { Content } from '../../../data/registry.ts';
 import type { Atlas } from '../../../render/atlas.ts';
 import { spriteToCanvas } from '../../../render/atlas.ts';
+import { heldUntilBegin } from '../../../render/rounds/preview.ts';
+import type { Reveal } from '../../../render/rounds/preview.ts';
 import { incomePreview, SIDES } from '../../../sim/rounds/index.ts';
 import type { BattleState, Side } from '../../../sim/rounds/index.ts';
 import { stormBpFor } from '../../../sim/rounds/systems/victory.ts';
@@ -66,11 +68,13 @@ export interface HudContext {
   /** The chips', the tally's, the tug's and the Intent panel's tooltips (src/ui/tooltip.ts): one tip, under whichever is hovered or focused. The top band owns it. */
   tip: AnchoredTip;
   aftermath: AftermathClock;
+  /** How the general shows from round 2 (`reveal=`, T127): under `last`, its changes this round wait for Begin. */
+  reveal: Reveal;
 }
 
 /** @param still motion holds still (`?test=1`), so the aftermath shows its final frame at once */
-export function hudContext(content: Content, atlas: Atlas, speed: () => number, still: boolean): HudContext {
-  return { content, atlas, tip: new AnchoredTip('hud-tip', 'below'), aftermath: new AftermathClock(speed, still) };
+export function hudContext(content: Content, atlas: Atlas, speed: () => number, still: boolean, reveal: Reveal = 'full'): HudContext {
+  return { content, atlas, tip: new AnchoredTip('hud-tip', 'below'), aftermath: new AftermathClock(speed, still), reveal };
 }
 
 /** A clash's clock, m:ss. */
@@ -257,21 +261,23 @@ export class IntentPanel implements HudPart {
       h('div', { class: 'econ' }, this.income, this.banked),
       h('div', { class: 'changes' }, this.planted, this.sold),
     );
-    hud.tip.attach(el, intentTip(hud.content, hud.atlas, state));
+    hud.tip.attach(el, intentTip(hud.content, hud.atlas, state, hud.reveal));
     mount.append(el);
   }
 
   update(state: BattleState): void {
     const i = intentOf(this.hud.content, state);
-    const key = JSON.stringify([i.doctrine, i.plan]);
+    // under `reveal=last` its plantings and sales this round show at Begin, with its colony (§7.5, T127)
+    const held = heldUntilBegin(this.hud.reveal, state);
+    const key = JSON.stringify([i.doctrine, i.plan, held]);
     if (key === this.key) return;
     this.key = key;
     setText(this.doctrine, i.doctrine);
     setText(this.income, i.plan ? `income ${i.plan.income}` : '');
     setText(this.banked, i.plan ? `banked ${i.plan.banked}` : '');
     // a sale shares the line, so the plantings make room for it
-    setText(this.planted, i.planted.length ? `New: ${cutShort(i.planted, i.sold.length ? 1 : 2)}` : 'Nothing new');
-    setText(this.sold, i.sold.length ? `Sold: ${cutShort(i.sold, 1)}` : '');
+    setText(this.planted, held ? 'Changes show at Begin' : i.planted.length ? `New: ${cutShort(i.planted, i.sold.length ? 1 : 2)}` : 'Nothing new');
+    setText(this.sold, !held && i.sold.length ? `Sold: ${cutShort(i.sold, 1)}` : '');
   }
 
   dispose(): void {}
