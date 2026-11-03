@@ -231,6 +231,20 @@ function parseRoundUntil(v: string): HeadlessUntil {
   return m[2] === undefined ? { round: Number(m[1]) } : { round: Number(m[1]), tick: Number(m[2]) };
 }
 
+/**
+ * A scenario's human player has no one to plan for it from the CLI, so it plants nothing more and Begins each round
+ * from the scenario's own, as `playerScript` does in the tests (§16 R2 step 4, R2a/T132). A bot player Begins itself.
+ */
+function scenarioBegins(content: ReturnType<typeof nodeContent>, id: string, player: string | undefined): RoundCommand[] {
+  const def = content.roundScenarios[id];
+  if ((player ?? def?.controllers?.player ?? 'human') !== 'human') return [];
+  const out: RoundCommand[] = [];
+  for (let round = def?.round ?? 1; round <= content.balance.rounds.maxRounds; round++) {
+    out.push({ round, tick: 0, side: 'player', seq: out.length, type: 'beginClash' });
+  }
+  return out;
+}
+
 function mainRounds(args: Args, content: ReturnType<typeof nodeContent>): number {
   if (args.commander && args.scenario) throw new Error('--commander does not apply to a scenario (it names its own commander)');
   const recordAt = [...new Set(args.asserts.flatMap((x) => (x.checkpoint ? [x.checkpoint] : [])))];
@@ -246,6 +260,7 @@ function mainRounds(args: Args, content: ReturnType<typeof nodeContent>): number
     if (args.player) spec.player = args.player;
     if (args.enemy) spec.enemy = args.enemy;
     if (args.scenario) spec.scenario = args.scenario;
+    if (args.scenario && !replay) spec.commands = scenarioBegins(content, args.scenario, args.player);
     if (args.battleIndex) spec.battleIndex = args.battleIndex;
     if (args.flags) spec.flags = args.flags;
     if (args.commander) spec.commander = args.commander;

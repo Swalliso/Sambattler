@@ -303,4 +303,20 @@ describe('the report by round (§10.4, §10.5)', () => {
     expect(url.searchParams.get('seed')).not.toBe('1');
     expect(url.searchParams.has('phase')).toBe(false);
   });
+
+  it('draws a Sporestorm round\'s multiplier clear of its damage label, the tallest bar\'s included (S20, T135)', async () => {
+    // seed 1 against the scripted general ends in round 7, and rounds 5–7 each deal the round's cap: the tallest bars
+    page = await open('scene=rounds&seed=1&test=1&player=bot:balanced&enemy=general:scripted&phase=ended');
+    await page.locator('#report').waitFor();
+    const storms = await page.locator('#report-rounds [data-round]').evaluateAll((gs) => gs.flatMap((g) => {
+      const texts = [...g.querySelectorAll('text')] as SVGTextElement[];
+      const storm = texts.find((t) => t.textContent?.startsWith('☁'));
+      const dealt = texts.find((t) => t.textContent === g.getAttribute('data-dealt'));
+      if (!storm || !dealt) return [];
+      const a = storm.getBBox(), b = dealt.getBBox();
+      return [{ round: Number(g.getAttribute('data-round')), stormBottom: a.y + a.height, dealtTop: b.y }];
+    }));
+    expect(storms.length).toBeGreaterThan(0);
+    for (const s of storms) expect(s.stormBottom, `round ${s.round}`).toBeLessThanOrEqual(s.dealtTop);
+  });
 });

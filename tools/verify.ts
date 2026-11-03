@@ -36,6 +36,8 @@ const steps: [string, string[]][] = [
     ['run', 'sim', '--', '--rounds', ...args, '--player', 'bot:balanced', '--commander', c, '--power-policy', 'auto', '--flags', 'merging,powers', '--summary',
       '--assert', 'rejectedCommands=0', '--assert', `stats.player.${stat}>=1`],
   ]),
+  // a rule scenario from the CLI (§16 R2 step 4, R2a/T132): the 45 s cap decides the lane on surviving supply
+  ['round scenario, clash-cap', ['run', 'sim', '--', '--rounds', '--scenario', 'clash-cap', '--until', 'r1', '--assert', 'roundLog[0].lanes[0].capped=true']],
   ['bench --quick', ['run', 'bench', '--', '--quick']],
   // G11's round budgets on the round bench's cases (R2a/T118); `--rounds` goes when R2b makes rounds the battle
   ['bench --rounds --quick', ['run', 'bench', '--', '--rounds', '--quick']],

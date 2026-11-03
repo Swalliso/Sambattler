@@ -18,13 +18,52 @@ v1's backlog is archived at [docs/archive/v1/balance-backlog.md](archive/v1/bala
 
 ## Open
 
-- **R1's review gate** (S8, T049): the user reads R1's entry below and settles §18.2 #7–#15, X4, X5, #36's reading and each knob's outcome (A109). R2a starts after that.
 - **The pace after T125** (R2a S18, below): at 100 a supply, agreed on 2026-11-03, battles take a median of 7 rounds, 18.5% of 200 reach round 9 (G4: ≤ 20%), and the damage cap binds in 70% of damaging rounds. S21's playtest reads whether a win's size still counts.
-- **S18's other guardrail misses** (below): G1, G2, G3, G7, G8's mono drops and G16 (the formation rule loses to its ranks traded). Each waits for the user.
+- **The round guardrails that miss on the final data** (R2a S20, confirming S18's, below): G1, G2, G3, G7, G8's mono drops and G16 (the formation rule loses to its ranks traded). Each waits for the user, G16 best before S21.
+- **Step 3's round-9 limit** (R2a S20, below): SPEC §16 R2 step 3 still says 15%, where G4's agreed band says 20% over 200 battles. Its 40 battles read 15%, at the limit.
 - **X8's readouts** (R2a S15, below): your colony is full from round 5, and once both colonies are full, half the clashes replay the last one. They go to S18's pace call and S21's playtest, with X8's two knobs still off.
 - **Gill Archers tie Swarm and Ranged** (R2a S15, below): the noise, not #14's tie order, picks between them. A rule change waits for the user.
 - **The Burster's seat effect** (R2a S17, below): a mirror of Bursters goes to whichever side's ids come first. A rule change waits for the user.
 - **The first fighting tick's frame in Chromium** (R2a S17, below): 4.8–11.4 ms once a page, against §13.7's 8 ms.
+
+## R2a S20 · R2's verification steps on the final data (2026-11-03)
+
+T131, T133 and T134 on `develop` at `6f99d2f` (S18 merged), at 100 damage a supply. Nothing was tuned. The other steps' results are in `docs/r2a-plan.md`'s As built.
+
+**Step 3** (T131): `npm run sim -- --rounds --seeds 1..40 --player bot:balanced --enemy general:scripted --summary`, read against SPEC §16 R2 step 3, with S10b's reading of the same 40 battles at 25 a supply beside it:
+
+| Step 3 expects | At 100 a supply (S20) | At 25 (S10b, T073) | |
+|---|---|---|---|
+| every battle ends, with no rejected command | 40 of 40, none rejected | 40 of 40, none | pass |
+| a median of 6–8 rounds | 7 (5 to 9) | 9 | pass |
+| at most 15% reach round 9 | 15% (6 of 40) | 73% | pass, at the limit |
+| at most 15% of clashes at the 45 s cap | 9% (25 of 281) | 8% | pass |
+| the bot wins 30–70% | 60% | 60% | pass |
+| mean wall time within §13.7's 3 s a battle | 36 ms | 50 ms | pass |
+
+- **Where step 3 and the agreed band differ:** step 3's "at most 15% reach round 9" is §12.3's first guess, from before T125. The user's G4 band (T125) allows 20% over 200 battles, since 40 battles can't tell 18% from 15%. These 40 read exactly 15%, and G4's 200 read 18.5%, inside G4's band and over step 3's number. R2b, which runs step 3 again, could align its number with G4's band. That's SPEC text, so it waits for the user's OK.
+- **X8's readouts on the same battles:** your colony is full from round 5 (in 37 of 40), and you then bank a median of 320 gold a round; the general's from round 5 too, banking 324. 63 of the 281 rounds (22%) replay the last clash exactly.
+
+**Step 7** (T133): `npx vitest run tests/slow/rounds`, 4 minutes on this machine (counters 210 s, the battles 14 s, G16 8 s, the duels 1 s). The same verdicts as S18's suite at 100 a supply:
+
+| | Reading | |
+|---|---|---|
+| G1 | the Sporeling Burrow wins 9 of 10 pairings and never loses clearly; the Rhizomorph Tunnel wins none | miss |
+| G2 | the Gill Archer beats no unit and the Amanita Knight loses to none; Hammercap > Amanita Knight holds in 3 of 5 seeds (4 asserted) | miss |
+| G3 | 8 of 16 monos miss, each worst on Stumpfield: Sporeling 78% mean (83% worst), Veilstalker 78% (96%), Hammercap 60% (83%), Rootbreaker 51% (71%), Scythecap 51% (86%), Capguard 47% (67%), Gill 40% (75%), Amanita 40% (88%) | miss |
+| G4 | 200 battles: a median of 7 rounds, 18.5% reach round 9, the bot wins 58.5%, no rejected command; the cap binds in 70% of damaging rounds | pass |
+| G5 | +150 gold wins 63% of 80 | pass |
+| G6 | the behind side wins 38% of 80 from `comeback-r4`; the winner is hit in 75% of G4's 200 | pass |
+| G7 | merge-on wins 88% of 200 mirrors; 75% with Slayers at 24% of fielded supply | miss |
+| G8 | `bot:balanced` 50% and `bot:answer` 70% against the adaptive Baron, inside their bands; 1 of 8 asserted monos drops 20 points (the Hammercap, 83% → 63%), and the Burster (23% → 40%) and Morel (63% → 77%) rise | the bands pass; the mono clause misses |
+| G11 | the round budgets (`perf.test.ts`) | pass |
+| G12 | each of the 6 monos above 40% in G3 has an answer winning on every map | pass |
+| G13 | 9% of 1,417 clashes capped; a median clash of 18.6 s | pass |
+| G16 | the formation rule beats its ranks traded in 24% of 2,298 role-split clashes (8% at 300 gold, 23–28% above); same-role pairs 50% | miss |
+
+- **The six misses wait for the user** (`.claude/rules/balance.md`), with the leads in S18's entry below: G1's Sporeling and Rhizomorph, G2's Gill Archer, G3's Stumpfield, G7's merging, the Baron's counter cycle against monos (G8), and G16's formation geometry, where front-rank Gill Archers start within aggro of the enemy's front and fire first. G16 is a rule change worth deciding before S21, since the playtest tests formations. The task list sends the tuning calls to S21 (T139) unless the user decides earlier.
+
+**Step 8** (T134): `npm run bench -- --rounds`, inside §13.7 with wide margins. R1's full-colony clash: one lane, 96 units a side, a mean tick of 0.27 ms and a p99 of 0.79 ms; Twin Roots, 120 a side, 0.33 ms and 0.80 ms (budgets 1 and 2.5 ms). Bench-300 weighted by live units: 0.41 ms and 0.94 ms. The arrival 0.26 ms (5 ms), the general's turn 0.39 ms at most (20 ms), a planning command's sim part 0.41 ms at most (2 ms), and one battle 29 ms (3 s).
 
 ## R2a S18 · the round guardrails, the answer bot and the pace levers (2026-11-03)
 

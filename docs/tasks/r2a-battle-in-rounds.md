@@ -875,13 +875,19 @@ S1 to S4: the data, the colony, the round state machine and the planning command
 
 **S20: verification and the docs**
 
-- [ ] T129 Step 1: `npm run verify`. The unit suite covers §15.7's round rows for single battles: the order of a round's events; income by round; the formation from the plots; how a clash ends (a lane wiped, the cap, the difference in supply); the damage formula (merged supply, siege counting double, the cap, the storm); merging at the muster, with the preview equal to what fields; the Heartcap race and the Decision after round 9; refunds by phase; the general planning first and never reading what the player plants in the same phase; a snapshot round trip between rounds. Lives and the run's save round trip are R2b's (§16 R2 step 1, `tests/unit/rounds/`)
-- [ ] T130 Step 2: `npm run golden -- verify` passes v1's eight replays and the round replays (one single battle at least, Twin Roots, the merge mirror, Vesper's and Cordis's powers). The run replay is R2b's (§16 R2 step 2, `tests/golden/`)
-- [ ] T131 Step 3: rerun `npm run sim -- --rounds --seeds 1..40 --player bot:balanced --enemy general:scripted --summary` on the final data and record it against step 3's expectations in `docs/balance-backlog.md` (§16 R2 step 3)
-- [ ] T132 Step 4: every scenario in `data/scenarios/rounds/` asserts its outcome exactly in `tests/unit/rounds/scenarios.test.ts`, and `npm run sim -- --rounds --scenario clash-cap --until r1 --assert roundLog[0].lanes[0].capped=true` passes from the CLI (§16 R2 step 4)
+- [x] T129 Step 1: `npm run verify`. The unit suite covers §15.7's round rows for single battles: the order of a round's events; income by round; the formation from the plots; how a clash ends (a lane wiped, the cap, the difference in supply); the damage formula (merged supply, siege counting double, the cap, the storm); merging at the muster, with the preview equal to what fields; the Heartcap race and the Decision after round 9; refunds by phase; the general planning first and never reading what the player plants in the same phase; a snapshot round trip between rounds. Lives and the run's save round trip are R2b's (§16 R2 step 1, `tests/unit/rounds/`)
+  - As built (S20): green on `develop` at `6f99d2f`: 60 unit files, 1,066 cases and the Burster seat case's expected fail (T148). Each round row above has its cases in `tests/unit/rounds/`, listed in `docs/r2a-plan.md`'s As built.
+- [x] T130 Step 2: `npm run golden -- verify` passes v1's eight replays and the round replays (one single battle at least, Twin Roots, the merge mirror, Vesper's and Cordis's powers). The run replay is R2b's (§16 R2 step 2, `tests/golden/`)
+  - As built (S20): v1's eight replays and the five round replays pass: `r2-balanced-vs-scripted-s1`, `r2-twin-roots-balanced-vs-scripted-s3`, `r2-merge-mirror-s3`, `r2-vesper-power-s3` and `r2-cordis-power-s3`.
+- [x] T131 Step 3: rerun `npm run sim -- --rounds --seeds 1..40 --player bot:balanced --enemy general:scripted --summary` on the final data and record it against step 3's expectations in `docs/balance-backlog.md` (§16 R2 step 3)
+  - As built (S20): at 100 a supply every expectation passes: 40 of 40 end with no rejected command, a median of 7 rounds, 15% reach round 9 (at the limit), 9% of clashes capped, the bot wins 60%, 36 ms a battle. Step 3's 15% predates T125's G4 band of 20% over 200 battles, where 18.5% reach round 9 (`docs/balance-backlog.md`).
+- [x] T132 Step 4: every scenario in `data/scenarios/rounds/` asserts its outcome exactly in `tests/unit/rounds/scenarios.test.ts`, and `npm run sim -- --rounds --scenario clash-cap --until r1 --assert roundLog[0].lanes[0].capped=true` passes from the CLI (§16 R2 step 4)
+  - As built (S20): the 21 round scenarios assert exactly (34 cases). The CLI check stopped in round 1's planning, since a scenario's player is human and nothing Began for it: `tools/sim.ts` now Begins each round for a human player, and `tools/verify.ts` runs the check.
 - [ ] T133 Step 7: `npx vitest run tests/slow/rounds` asserts and passes the round guardrails, G4, G13 and G16 among them. v1's `tests/slow/guardrails.test.ts` still runs until R2b retires it (§16 R2 step 7)
-- [ ] T134 Step 8: `npm run bench -- --rounds`: R1's full-colony clash inside §13.7's budget (§16 R2 step 8, `tools/bench.ts`)
-- [ ] T135 Step 9: capture with `npm run screenshot` (`tools/screenshot.ts`), so T141's and T143's assertions run on each capture (§15.6's assertions 1–5), then Read each PNG against §16 R2 step 9's checklist, minus lives and the route (R2b) (§16 R2 step 9, §15.6) (A076, A077). The captures, each on `scene=rounds&seed=1&player=bot:balanced&enemy=general:scripted` plus the parameters given:
+  - Not ticked (S20): the suite asserts every round guardrail and runs in 4 minutes, but six miss on the final data, each waiting for the user's call: G1, G2, G3, G7, G8's mono clause and G16 (front-rank Gill Archers start within aggro of the enemy's front and fire first, so the formation rule wins 24% against its ranks traded). G4, G5, G6, G11, G12, G13 and G8's bands pass. Every verdict is in `docs/balance-backlog.md`'s S20 entry, and nothing was tuned. The calls go to S21 (T139) unless the user decides earlier; tick this once the suite passes on what they decide.
+- [x] T134 Step 8: `npm run bench -- --rounds`: R1's full-colony clash inside §13.7's budget (§16 R2 step 8, `tools/bench.ts`)
+  - As built (S20): R1's full-colony clash, 96 units a side on the one-lane field and 120 on Twin Roots, ticks at a mean of 0.27–0.33 ms and a p99 of 0.79–0.80 ms, inside G11's 1 and 2.5 ms. Every other round budget passes.
+- [x] T135 Step 9: capture with `npm run screenshot` (`tools/screenshot.ts`), so T141's and T143's assertions run on each capture (§15.6's assertions 1–5), then Read each PNG against §16 R2 step 9's checklist, minus lives and the route (R2b) (§16 R2 step 9, §15.6) (A076, A077). The captures, each on `scene=rounds&seed=1&player=bot:balanced&enemy=general:scripted` plus the parameters given:
   - `r2a-planning-1`: `round=1&phase=planning`;
   - `r2a-planning-4`: `round=4&phase=planning`, with `--click '[data-building=sporelingBurrow]'` on its tray card, so the marks show;
   - `r2a-clash-start`: `round=4&phase=clash&ticks=1&paused=1`;
@@ -890,8 +896,10 @@ S1 to S4: the data, the colony, the round state machine and the planning command
   - `r2a-report`: `phase=ended`;
   - `r2a-planning-twin`: `map=twin-roots&round=2&phase=planning`, for #52's reading;
   - and the deuteranopia and protanopia filters on `r2a-planning-4`.
-- [ ] T136 Write the test inventory for R2b into `docs/r2a-plan.md`'s As built: for each v1 test file, the round file that replaces it at the switch-over, kept, rewritten or retired, by §15.7 (A104)
-- [ ] T138 Update `docs/status.md`, `docs/balance-backlog.md`, `data/CHANGELOG-balance.md`, `docs/r2a-plan.md`, `CLAUDE.md` and `.claude/rules/v1-code.md` before the playtest (§12.4, §16 R2, CLAUDE.md "How we work"):
+  - As built (S20): all nine pass assertions 1–5 and read right against the checklist (`docs/r2a-plan.md`'s As built). The report's chart drew a storm round's multiplier over the tallest bar's damage label; its top pad now holds both, with a case in `tests/browser/rounds/inspect.test.ts`.
+- [x] T136 Write the test inventory for R2b into `docs/r2a-plan.md`'s As built: for each v1 test file, the round file that replaces it at the switch-over, kept, rewritten or retired, by §15.7 (A104)
+  - As built (S20): in `docs/r2a-plan.md`'s As built, "The test inventory for R2b": every unit, browser and slow test file of v1's, the goldens and `tests/helpers.ts`.
+- [x] T138 Update `docs/status.md`, `docs/balance-backlog.md`, `data/CHANGELOG-balance.md`, `docs/r2a-plan.md`, `CLAUDE.md` and `.claude/rules/v1-code.md` before the playtest (§12.4, §16 R2, CLAUDE.md "How we work"):
   - `docs/status.md`: R2a built, the preview link, what waits on the user (the playtest, S21), what R2b needs;
   - `docs/balance-backlog.md`: the measurements, misses and candidates;
   - `data/CHANGELOG-balance.md`: check that every R2a data change has its entry (T014, T101, T121 and T123 each add their own), with the user's approval where it needed one;
@@ -899,6 +907,7 @@ S1 to S4: the data, the colony, the round state machine and the planning command
   - `CLAUDE.md`'s "Dev-site builds": `scene=rounds` opens R2a's preview on dev builds;
   - `.claude/rules/v1-code.md`: one line saying `rounds/` folders are v2's staging and never import v1's `BattleState`, with one exception until R2b rewrites Help. S14's `src/app/rounds/battleView.ts` builds the preview's Help from a v1 rules-only battle, as the title's Help does;
   - this file's ticks.
+  - As built (S20): `docs/status.md`'s S20 bullet, the backlog's S20 entry, the plan's As built with the names R2b/T001 takes, a line each in `CLAUDE.md` and `.claude/rules/v1-code.md`. The changelog holds an entry for every R2a data change, with the user's approval where one was needed; S17's `bench-300` in round form, test data only, gets its own.
 
 **S21: the playtest gate** (docs, plus any data tuning T139 agrees; once S20's PR is merged and deployed to the dev site)
 

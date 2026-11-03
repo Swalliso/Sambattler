@@ -125,7 +125,8 @@ export function fieldedByTier(state: BattleState, side: Side): [number, number, 
 function chartSvg(state: BattleState, width = 900): SVGElement {
   const cols = roundChart(state);
   const slots = Math.max(state.rules.maxRounds, cols.length);
-  const pad = { l: 40, r: 10, t: 18, b: state.lanes.length > 1 ? 30 : 20 };
+  // the top pad holds a storm round's multiplier above the tallest bar's damage label (S20)
+  const pad = { l: 40, r: 10, t: 30, b: state.lanes.length > 1 ? 30 : 20 };
   const height = 210;
   const plotW = width - pad.l - pad.r, plotH = height - pad.t - pad.b;
   const mid = pad.t + plotH / 2;
@@ -142,7 +143,7 @@ function chartSvg(state: BattleState, width = 900): SVGElement {
     const g = svg('g', { 'data-round': c.round, 'data-dealt': c.dealt, 'data-taken': c.taken });
     if (c.storm) {
       g.append(svg('rect', { x: cx(i) - step / 2 + 1, y: pad.t, width: step - 2, height: plotH, fill: '#c9a2ff', 'fill-opacity': 0.08 }));
-      g.append(svg('text', { x: cx(i), y: pad.t - 5, fill: '#c9a2ff', 'font-size': 11, 'text-anchor': 'middle' }, `☁ ${stormText(c.stormBp)}`));
+      g.append(svg('text', { x: cx(i), y: pad.t - 15, fill: '#c9a2ff', 'font-size': 11, 'text-anchor': 'middle' }, `☁ ${stormText(c.stormBp)}`));
     }
     g.append(svg('rect', { x: cx(i) - barW / 2, y: mid - c.dealt * k, width: barW, height: c.dealt * k, fill: COLOR.player }));
     g.append(svg('rect', { x: cx(i) - barW / 2, y: mid, width: barW, height: c.taken * k, fill: COLOR.enemy }));
