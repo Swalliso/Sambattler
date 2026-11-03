@@ -563,7 +563,7 @@ S1 to S4: the data, the colony, the round state machine and the planning command
 
 **S11: the entry, the loop and the parameters**
 
-- [ ] T074 [US3] Write `tests/browser/rounds/rounds.test.ts` (new), on the Vite dev server as `tests/browser/hud.test.ts` starts it (§10.2, §13.5, §15.6) (A059, A075):
+- [x] T074 [US3] Write `tests/browser/rounds/rounds.test.ts` (new), on the Vite dev server as `tests/browser/hud.test.ts` starts it (§10.2, §13.5, §15.6) (A059, A075):
   - `/?scene=rounds&seed=1&test=1` holds phase `planning` at tick 0 for 1 s with no input;
   - with the empty colony, after about 400 ms, Enter warns and a second Enter starts the clash (tick > 0); once the clash ends the phase is `aftermath`, and input opens round + 1's planning;
   - `paused=1` in planning doesn't carry into the clash;
