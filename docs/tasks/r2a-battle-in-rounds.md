@@ -512,10 +512,16 @@ S1 to S4: the data, the colony, the round state machine and the planning command
   - The options are §15.2's, without `--run` or `--meta-progress` (R2b, M6).
 - [x] T063 [US2] Make `tools/golden.ts` verify and update `kind: "rounds"` replays through the rounds API with Call 17's keys, reporting the first key that diverges; v1's replays are unchanged (§15.5) (A115)
   - The tool records replays from lists in code (`REPLAYS`, `RUN_REPLAYS`). Add a `ROUND_REPLAYS` list beside them, each entry `{name, seed, player, enemy, flags, commander, powerPolicy, map}`, and teach `update()`'s unknown-file check about it (`tools/golden.ts:157`). `npm run golden -- update` writes a round golden only for a listed entry.
-- [ ] T064 [US2] Write `tests/unit/rounds/determinism.test.ts` (new) (§13.3, §15.5) (A206):
+- [x] T064 [US2] Write `tests/unit/rounds/determinism.test.ts` (new) (§13.3, §15.5) (A206):
   - the same config and commands twice give equal hashes at every phase boundary and every 200 clash ticks;
   - a snapshot at any checkpoint or clash tick, restored and continued, gives the same final hash;
-  - a round in which neither colony changed and no power fired replays the last clash exactly.
+  - a round in which neither colony changed and no power fired replays the last clash exactly. It doesn't yet, so this case is `it.fails` until T149.
+
+**S9b: a clash with no change replays the last one** (found by S9's T064, 2026-11-02; the hub places it)
+
+- [ ] T149 [US2] Make the kept systems' staggers and periodic checks count from the clash's start, in rounds' copies only, so a round in which neither colony changed and no power fired replays the last clash exactly (§7.2 X8, §13.3, A206). T064 found that rounds 3 and 4 of a battle with unchanged colonies differ: a hit lands a tick apart, at about tick 480 of the clash.
+  - The checks read `state.tick` and `u.id`, and each clash starts from a later tick and a higher id: the retarget stagger (`systems/targeting.ts:37`, `:45`), the pin gate (`systems/combat.ts:52`), heals and regen (`systems/healing.ts:20`, `:21`), trio checks (`systems/merging.ts:25`) and cloud pulses (`systems/clouds.ts:32`). Count from `clash.startTick` and from the clash's first unit id instead.
+  - Round 1's timings may move, so the combat-decided numbers in `scenarios.test.ts` may move, as T147's did. No golden moves if it lands before T072. Then switch T064's last case from `it.fails` to `it`. X8's readout, whether the clash replayed the last one exactly (T100), depends on it.
 
 **S10a: the general plans first, and the bots**
 
@@ -905,6 +911,7 @@ Each session is about a day, ends in one PR into `develop` (opened when the user
 | S7b | T147 | `feature/r2a-seat-fix` | S7 merged | No seat decides a clash: separation and movement read positions independently of unit order |
 | S8 | T053–T057 | `feature/r2a-economy` | S7b merged | Opening a round, income, stats per round, the summary |
 | S9 | T058–T064 | `feature/r2a-headless` | S8 merged | `runHeadless` by phase, `npm run sim -- --rounds`, round asserts, `ROUND_REPLAYS` in the golden tool, determinism tests |
+| S9b | T149 | `feature/r2a-replay-fix` | S9 merged | A clash with no change replays the last one: the kept systems' periodic checks count from the clash's start |
 | S10a | T065–T069 | `feature/r2a-general` | S9 merged | The general plans first through `planningView`; its scores, turn and profiles; bots plan after it |
 | S10b | T070–T073 | `feature/r2a-general-check` | S10a merged | `general-plans-first`, the round smoke, the first round golden, step 3's reading (US2 done) |
 | S11 | T074–T080, T141, T081 | `feature/r2a-ui-loop` | S10b merged | The preview entry with its defaults, the loop by phase with `battleView.ts`'s mounts, input, the bridge, params and assertions 1–3; plots on the field |
@@ -1028,5 +1035,5 @@ Each session is about a day, ends in one PR into `develop` (opened when the user
 | A145 copies in single battles (medium, R3) | X4 (no); Call 29; R3 |
 | A156 who writes the round Help and tips (medium) | R2b; R2a ships no tips or round Help |
 | A200 the full colony over 100 supply (medium) | #7 and R1-Q5 (at most 150 live units a side); T114 |
-| Lows: A031 (T015, T016), A032 (Call 4; T019, T034, T042), A033 (X4: no copies in R2a), A034 (Call 8; T030, T031), A035 and A209 (R2-Q11; T047, T052), A036 and A121 (Call 7; T059, T060), A038 (T010), A040 (R2-Q11; T019), A047 (#30; T023, T042, T067), A049 and A206 (X8; T064, T100, T101), A051 (T098), A052 (Call 10; T027, T069), A053 (R2-Q11; T104), A055 (#15; T098), A068 (Call 13; T051, T092, T096), A069 (Call 22; T084), A070 (Call 12; T023, T068, T091), A071 (Call 23; T092, T095), A072 (Call 21; T081), A075 (Call 16; T074, T076), A078 (R2-Q12; T085, T097), A110 (Call 20; T035), A112 (Call 24; T114), A113 (Call 24; T113, T115), A115 (Call 17; T060, T063, T112), A116 (R1's gate; T002, T014), A118 (T011, T012), A120 (R2-Q10; T123), A162 (R4/T039; T137), A187 (`measure=frames` in the preview's bridge only; T079, T115), A202 (X3; T137), A203 (X6, X10; T126, T128), A204 (#35; T124, T125), A205 (R2-Q2; T008, T053, T055) | as listed |
+| Lows: A031 (T015, T016), A032 (Call 4; T019, T034, T042), A033 (X4: no copies in R2a), A034 (Call 8; T030, T031), A035 and A209 (R2-Q11; T047, T052), A036 and A121 (Call 7; T059, T060), A038 (T010), A040 (R2-Q11; T019), A047 (#30; T023, T042, T067), A049 and A206 (X8; T064, T100, T101, T149), A051 (T098), A052 (Call 10; T027, T069), A053 (R2-Q11; T104), A055 (#15; T098), A068 (Call 13; T051, T092, T096), A069 (Call 22; T084), A070 (Call 12; T023, T068, T091), A071 (Call 23; T092, T095), A072 (Call 21; T081), A075 (Call 16; T074, T076), A078 (R2-Q12; T085, T097), A110 (Call 20; T035), A112 (Call 24; T114), A113 (Call 24; T113, T115), A115 (Call 17; T060, T063, T112), A116 (R1's gate; T002, T014), A118 (T011, T012), A120 (R2-Q10; T123), A162 (R4/T039; T137), A187 (`measure=frames` in the preview's bridge only; T079, T115), A202 (X3; T137), A203 (X6, X10; T126, T128), A204 (#35; T124, T125), A205 (R2-Q2; T008, T053, T055) | as listed |
 | Lows that are R2b's: A037 (R2-Q20), A050 (R2-Q17), A054 (the Sigil), A067 (tips), A073 (the run summary's columns), A074 (the title blurb and og image), A079 (`scene=draft`), A114 (Appendix A's tags), A117 (old `?proto=` links), A201 (R2-Q13) | R2b |
