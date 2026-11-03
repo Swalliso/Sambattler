@@ -81,6 +81,7 @@ Updated 2026-11-03, on `docs/r2b-s4-done` (the hub's docs PR into `develop`). Th
   - **Old Mother Mold** opens battle 1 with a Sporeling Burrow and a Truffle Cellar (T068, R2-Q13).
   - **Today's dialog** (T153) shows the draft over the field, with keys 1–3, and Begin unlit until you pick or skip.
   - **Goldens:** `r2-run-s7` moved (drafts in runs, Mold's opener). The five single-battle goldens hold, since a battle without drafts compiles as before.
+  - **Mold's opener is her round-1 buys in every battle,** single battles and run battles 2–3 included, until T165 gives each general 2–3 openers. Against a mono Sporeling bot she now falls in round 3 on most seeds, so verify's adaptive-general smoke moved from seeds 4–5 to 20–21, which still reach her first counter in round 4.
   - **Not built:** the relics-and-upgrades popover listed under S2 as "S5, S6": no S5 task names it, and `src/ui/hud/kit.ts` is imported by nothing.
 - **The stand-ins open on `develop`** from S1 (Call 14), each with the session that lifts it (checked at S4, T152):
   - relics on retired systems do nothing in a round battle until S6, and passives until S7, which also ends Rhizome Tithe's refusal (T082);
