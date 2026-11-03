@@ -265,6 +265,49 @@ describe('movement in rounds (SPEC §5.2)', () => {
     };
     expect(closest(2)).toBeGreaterThan(closest(1));
   });
+
+  it('pushes a mirror-image crowd apart in mirror image, the same whatever the units’ ids (T147)', () => {
+    // three Capguards a side crowd the field's middle, each player one the mirror of an enemy one
+    const at: [number, number][] = [[-0.25, 4], [-0.125, 4.25], [-0.375, 3.875]];
+    const crowd = (enemyFirst: boolean) => {
+      const s = clash();
+      still(s);
+      const mid = s.map.width / 2;
+      const add = (side: Side) => at.map(([dx, y]) => unit(s, side, 'capguard', side === 'player' ? mid + dx : mid - dx, y));
+      const [first, second] = enemyFirst ? [add('enemy'), add('player')] : [add('player'), add('enemy')];
+      movementSystem(s);
+      const [player, enemy] = enemyFirst ? [second, first] : [first, second];
+      return { mid, player: player.map((u) => [u.x, u.y]), enemy: enemy.map((u) => [u.x, u.y]) };
+    };
+    const a = crowd(false);
+    expect(crowd(true)).toEqual(a);
+    a.player.forEach(([x, y], i) => {
+      expect(a.enemy[i]![0]! - a.mid).toBeCloseTo(a.mid - x!, 12);
+      expect(a.enemy[i]![1]).toBeCloseTo(y!, 12);
+    });
+  });
+
+  it('splits an exact stack by a mirror-image rule that no id decides: across sides toward each one’s own side, on one side toward each one’s slot (T147)', () => {
+    const stack = (sides: [Side, Side], slotY?: [number, number]) => {
+      const s = clash();
+      still(s);
+      const us = sides.map((side, i) => {
+        const u = unit(s, side, 'capguard', 16, 4);
+        if (slotY) u.slotY = slotY[i]!;
+        return u;
+      });
+      movementSystem(s);
+      return us.map((u) => [u.x, u.y]);
+    };
+    const close = (got: number[][], want: number[][]) => got.forEach((p, i) => p.forEach((v, k) => expect(v).toBeCloseTo(want[i]![k]!, 6)));
+    // Capguards 0.7 apart in all, half the overlap each
+    close(stack(['player', 'enemy']), [[15.65, 4], [16.35, 4]]);
+    close(stack(['enemy', 'player']), [[16.35, 4], [15.65, 4]]);
+    close(stack(['player', 'player'], [5, 3]), [[16, 4.35], [16, 3.65]]);
+    close(stack(['enemy', 'enemy'], [3, 5]), [[16, 3.65], [16, 4.35]]);
+    // two of a side with the same slot are alike, so neither moves
+    expect(stack(['player', 'player'], [4, 4])).toEqual([[16, 4], [16, 4]]);
+  });
 });
 
 describe('damage in rounds (SPEC §5.3)', () => {
