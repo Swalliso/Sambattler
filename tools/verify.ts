@@ -1,6 +1,7 @@
 // npm run verify (SPEC §15.1): typecheck → lint → validate:data → test → golden verify → a sim
 // smoke test (3 seeds, scripted general) → an adaptive-general smoke (2 seeds) → the commander-power
-// smokes (SPEC §16 M5, verification 2) → bench --quick. Stops at the first failure with a non-zero exit code.
+// smokes (SPEC §16 M5, verification 2) → a round smoke (3 battles in rounds, R2a) → bench --quick. Stops at
+// the first failure with a non-zero exit code.
 import { spawnSync } from 'node:child_process';
 import { ROOT } from './lib/content.ts';
 
@@ -19,6 +20,8 @@ const steps: [string, string[]][] = [
     ['run', 'sim', '--', '--seed', '3', '--player', 'bot:balanced', '--commander', c, '--power-policy', 'auto', '--flags', 'merging,adaptive,powers', '--summary',
       '--assert', 'rejectedCommands=0', '--assert', `stats.player.${stat}>=1`],
   ]),
+  // a battle in rounds against a general that plans first (R2a/T071); `--rounds` goes when R2b makes rounds the battle
+  ['round smoke (3 seeds)', ['run', 'sim', '--', '--rounds', '--seeds', '1..3', '--player', 'bot:balanced', '--enemy', 'general:scripted', '--summary', '--assert', 'rejectedCommands=0', '--assert', 'rounds<=9']],
   ['bench --quick', ['run', 'bench', '--', '--quick']],
 ];
 

@@ -551,7 +551,7 @@ S1 to S4: the data, the colony, the round state machine and the planning command
 **S10b: the general's checks, the first round golden and step 3**
 
 - [x] T070 [US2] Write `data/scenarios/rounds/general-plans-first.json` (new) and its case in `tests/unit/rounds/scenarios.test.ts`. The general's colony and army are fixed before the player's first command, and two different player plans in that phase leave the general's plan hash-equal (§4.7, §16 R2 step 4)
-- [ ] T071 [US2] Add the round smoke to `tools/verify.ts`: `npm run sim -- --rounds --seeds 1..3 --player bot:balanced --enemy general:scripted --summary --assert rejectedCommands=0 --assert rounds<=9` (§15.1)
+- [x] T071 [US2] Add the round smoke to `tools/verify.ts`: `npm run sim -- --rounds --seeds 1..3 --player bot:balanced --enemy general:scripted --summary --assert rejectedCommands=0 --assert rounds<=9` (§15.1)
 - [ ] T072 [US2] Record the first round golden, `tests/golden/r2-balanced-vs-scripted-s1.replay.json` (new), a battle of rounds against a general that plans first (§15.5)
   - Add its entry to `ROUND_REPLAYS` in `tools/golden.ts` (T063), run `npm run golden -- update`, then check that `git diff --stat tests/golden/m*` shows no change.
 - [ ] T073 [US2] Run §16 R2 step 3 in round form and record the numbers in `docs/balance-backlog.md`: `npm run sim -- --rounds --seeds 1..40 --player bot:balanced --enemy general:scripted --summary`. It reports the median rounds, the share reaching round 9, the share of clashes at the cap, the bot's win rate and the mean wall time. Report a miss with its numbers; don't tune (§12.4, §16 R2 step 3)
