@@ -18,8 +18,10 @@ import type { BattleState, BuildingState, Effectiveness, MergePreview, PlanChang
 import type { Atlas } from '../atlas.ts';
 import { pixelText, textWidth } from '../pixelText.ts';
 import { TILE, factionOf } from '../renderer.ts';
-import { INK_DEEP, PIP_SIZE, drawPips, drawUnitSprite, emplacementSprite } from '../unitSprite.ts';
+import { INK_DEEP, PIP_SIZE, drawPips, drawUnitSprite } from '../unitSprite.ts';
 import type { UnitSpriteOpts } from '../unitSprite.ts';
+import { unitLook } from './unitLook.ts';
+import type { UnitLook } from './unitLook.ts';
 
 /** A matchup mark's class: a normal matchup has no mark (§10.4). */
 export type MarkClass = Exclude<Effectiveness, 'normal'>;
@@ -164,6 +166,7 @@ export class FormationPreview {
   private hovered: Record<Side, number | null> = { player: null, enemy: null };
   /** Whose hits the marks show: the chosen card's unit, or your hovered squad's; null hides them. */
   private attacker: string | null = null;
+  private look: UnitLook = { sprite: '', frame: 0, flip: false };
   private opts: UnitSpriteOpts = {
     sprite: '', faction: 'velvet-bloom', frame: 0, flip: false, x: 0, y: 0, tier: 1, side: 'player', id: 0, hpFrac: 1, glow: '', time: 0,
   };
@@ -296,7 +299,6 @@ export class FormationPreview {
       g.globalAlpha = 1;
       const o = this.opts;
       o.faction = factionOf(side);
-      o.flip = side === 'enemy';
       o.side = side;
       o.glow = glowOf(side);
       o.assist = assist;
@@ -304,7 +306,10 @@ export class FormationPreview {
       o.time = t;
       for (const [i, j] of c.order) {
         const q = c.squads[i]!, at = q.units[j]!;
-        o.sprite = this.content.units[q.unitId]?.sprite ?? emplacementSprite(this.content, q.unitId);
+        const look = unitLook(this.content, q.unitId, !!state.compiled[side].units[q.unitId]?.emplacement, side, 'still', 0, this.look);
+        o.sprite = look.sprite;
+        o.frame = look.frame;
+        o.flip = look.flip;
         o.x = sx(at.x);
         o.y = at.y * TILE;
         o.id = q.building * 16 + j;
