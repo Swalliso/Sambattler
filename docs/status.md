@@ -62,11 +62,11 @@ Updated 2026-11-03, on `docs/r2b-s2-done` (the hub's docs PR into `develop`). Th
   - **Goldens:** `r2-run-s7` moved, because the general's upgrade levels now draw from `ai.enemy`, since v1's `ai` stream is gone (T044). The five battle goldens keep their hashes.
   - **For S4 and the hub:** no battle in rounds reads A2's or B3's key, so T055's list keeps two presets that do nothing. [r2b-plan.md](r2b-plan.md)'s "What S3 left" has T054's list and the rest.
 - **S4** (`feature/r2b-presets`, T055–T061 and T152): in review. The presets are the agreed list:
-  - **`PROTO_PRESETS`** is `a2`, `b3`, `flyers` and `bosslives` (T055). The retired systems' presets are gone with the schema keys only they set (T058), and R1's outcomes are applied (T059): `mixedwave`, `clashshield`, `swarmread`, `noeldersplash`, `clashpace` and `rework` are gone, and the arrival shield stays as data.
+  - **`PROTO_PRESETS`** is `flyers` and `bosslives` (T055). The retired systems' presets are gone with the schema keys only they set (T058), and R1's outcomes are applied (T059): `mixedwave`, `clashshield`, `swarmread`, `noeldersplash`, `clashpace` and `rework` are gone, and the arrival shield stays as data.
   - **v1's keys in the data wait for T129:** `laneStance` and the timed storm's `heartcapTakenPerStack` are in `data/balance.json`, and the battle state hashes the balance, so removing them would move every golden. No golden moved.
   - **Flyers in squad form** (T060): the Drift Stalk fields a squad of 6 Driftlings, with no HP and no spawn timer. A spawner needs a `squad` block, only a tower needs `hp`, and the tools read `squad`. The round sim has no flyer rules yet, so Driftlings fight as ground units.
   - **An unknown preset is visible** (T061): a `?proto=` spec naming one shows a notice on the page and saves the run nowhere, and the tools refuse it.
-  - **A2 and B3** stay as agreed, though no battle in rounds reads them. The hub recommends dropping them, and that's your call.
+  - **A2 and B3 are gone too:** you dropped them on 2026-11-03 ("Drop both"), since no battle in rounds read them. `?proto=a2` and `?proto=b3` now show the unknown-preset notice.
   - **T152's switch-over check:** verify, the browser suite and both builds pass, and test:slow fails only R2a's six known misses. US1's 20 runs all complete, with no life lost in a won battle, but seed 4 fights 3 battles, as in S1, so §16 R2 step 5's "4–5 battles" still waits for your wording call.
 - **The stand-ins open on `develop`** from S1 (Call 14), each with the session that lifts it (checked at S4, T152):
   - run battles open no in-battle drafts until S5 (T067);

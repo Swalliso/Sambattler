@@ -1,10 +1,11 @@
 // Prototype knobs (`?proto=`, `--proto`): named presets and `path:value` overrides applied to the raw content
 // before validation, so a knob can be measured by the tools (`--proto`) or playtested in the browser (`?proto=`)
 // without editing data. Every knob here is absent from balance.json by default, so without a spec the rules are
-// unchanged. Since R2b's S4 the presets are the agreed list (SPEC §16 R2, A109): A2 and B3, which tune systems
-// that stay, the flyers, for the later flyer (§1.3 #11), and lives at the boss, for R2b's playtest (#16). R1's
-// chosen set and the arrival shield are default data since R2a, and the presets of retired systems are gone
-// (Appendix A); a spec that names one reports it as unknown (A117). Log new knobs in docs/balance-backlog.md.
+// unchanged. Since R2b's S4 the presets are the agreed list (SPEC §16 R2, A109): the flyers, for the later flyer
+// (§1.3 #11), and lives at the boss, for R2b's playtest (#16). R1's chosen set and the arrival shield are default
+// data since R2a, the presets of retired systems are gone (Appendix A), and the user dropped A2 and B3, which no
+// battle in rounds read (2026-11-03). A spec that names a gone preset reports it as unknown (A117). Log new knobs
+// in docs/balance-backlog.md.
 import type { RawContent } from './registry.ts';
 
 type Json = Record<string, unknown>;
@@ -42,10 +43,6 @@ const FLYERS: Json = {
 
 /** Presets: the settings each knob is measured with (see the backlog's results tables). */
 export const PROTO_PRESETS: Record<string, Json> = {
-  /** A2: counter-set buildings get base weight ≥ 1 while their counter is active. No battle in rounds reads it yet. */
-  a2: { 'ai.counter.counterFloorWeight': 1 },
-  /** B3: a ranged shot deals half damage behind two friendly ranged units in its line of fire. No battle in rounds reads it yet. */
-  b3: { firingCongestion: { freeRanks: 2, corridorHalfWidth: 0.6, blockedDamageMult: 0.5 } },
   /** Flyers (above), for the later flyer (§1.3 #11). */
   flyers: FLYERS,
   /** Lives left count at the boss (§8.5, #16): +250 to your boss battle's Heartcap for each life left. For R2b's playtest. */
@@ -114,7 +111,7 @@ function parseValue(v: string): unknown {
 }
 
 /**
- * A spec's settings in order, as (path, value) pairs: each preset name (`b3`) expands to its paths,
+ * A spec's settings in order, as (path, value) pairs: each preset name (`bosslives`) expands to its paths,
  * and each `path:value` override parses its value as JSON when it can
  * (`cleave.units:["scythecap","hammercap"]`), else as a string. Unknown presets are reported.
  */
@@ -149,8 +146,8 @@ function entryKind(path: string): string | undefined {
 }
 
 /**
- * Applies a comma-separated prototype spec to a copy of `balance`: preset names (`b3`) and
- * `path:value` overrides (`firingCongestion.freeRanks:3`, `livesAtBoss.heartcapPerLife:300`), in order. Paths into
+ * Applies a comma-separated prototype spec to a copy of `balance`: preset names (`bosslives`) and
+ * `path:value` overrides (`livesAtBoss.heartcapPerLife:300`, `cleave:null`), in order. Paths into
  * content entries (`unit.…`, `building.…`) need {@link applyProto}; here they are reported, not applied.
  */
 export function applyProtoToBalance(balance: unknown, spec: string): { balance: Json; problems: string[] } {

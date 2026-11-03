@@ -1,9 +1,8 @@
 // Prototype knobs (src/data/proto.ts, SPEC §15.7 Prototypes): since R2b's S4 only the agreed default-off knobs
 // remain (§16 R2, A109), each absent from data/balance.json, so the shipped rules are unchanged. The `proto`
 // spec (tools `--proto`, browser `?proto=`) applies presets and overrides to the content, and a preset that
-// doesn't exist, such as a retired one, is reported (A117). A2's counter floor and B3's firing congestion
-// still set their keys, but no battle in rounds reads either, so their behaviour cases went with v1's battle
-// (R2b S3). The flyers have their own file (flyers.test.ts).
+// doesn't exist, such as a retired one, is reported (A117). The user dropped A2 and B3, which no battle in rounds
+// read (2026-11-03). The flyers have their own file (flyers.test.ts).
 import { describe, expect, it } from 'vitest';
 import { applyProto, applyProtoToBalance, PROTO_PRESETS, unknownPresets } from '../../src/data/proto.ts';
 import { protoContent, readRawContent } from '../../tools/lib/content.ts';
@@ -20,8 +19,8 @@ function at(obj: unknown, path: string): unknown {
 const CONTENT_PATH = /^(building|unit|bot|general|faction)\./;
 
 describe('the presets are the agreed list (§16 R2, A109)', () => {
-  it("are A2, B3, the flyers and lives at the boss: R1's review kept no knob, and the retired systems' presets are gone", () => {
-    expect(Object.keys(PROTO_PRESETS).sort()).toEqual(['a2', 'b3', 'bosslives', 'flyers']);
+  it("are the flyers and lives at the boss: R1's review kept no knob, the user dropped A2 and B3, and the retired systems' presets are gone", () => {
+    expect(Object.keys(PROTO_PRESETS).sort()).toEqual(['bosslives', 'flyers']);
   });
 
   it('set nothing data/balance.json sets, so without a spec the rules are unchanged', () => {
@@ -36,31 +35,30 @@ describe('the presets are the agreed list (§16 R2, A109)', () => {
     expect(content.balance.rounds.ai.replaceWhenFull).toBe(false);
   });
 
-  it('a2 and b3 set their keys in the content', () => {
-    expect(protoContent('a2').balance.ai.counter.counterFloorWeight).toBe(1);
-    expect(protoContent('b3').balance.firingCongestion).toEqual(PROTO_PRESETS.b3!.firingCongestion);
+  it('bosslives sets its key in the content', () => {
+    expect(protoContent('bosslives').balance.livesAtBoss).toEqual({ heartcapPerLife: 250 });
   });
 });
 
 describe('the proto spec', () => {
   it('applies presets and path:value overrides in order, parsing JSON values', () => {
-    const { balance, problems } = applyProtoToBalance(content.balance, 'b3,firingCongestion.freeRanks:3,a2');
+    const { balance, problems } = applyProtoToBalance(content.balance, 'bosslives,livesAtBoss.heartcapPerLife:300,cleave:null');
     expect(problems).toEqual([]);
-    expect(balance.firingCongestion).toEqual({ ...PROTO_PRESETS.b3!.firingCongestion as object, freeRanks: 3 });
-    expect(at(balance, 'ai.counter.counterFloorWeight')).toBe(1);
-    expect(content.balance.firingCongestion).toBeUndefined(); // a copy, not the shared content
+    expect(balance.livesAtBoss).toEqual({ ...PROTO_PRESETS.bosslives!.livesAtBoss as object, heartcapPerLife: 300 });
+    expect(balance.cleave).toBeUndefined(); // null removes a setting
+    expect([content.balance.livesAtBoss, content.balance.cleave]).toEqual([undefined, { units: ['scythecap'] }]); // a copy, not the shared content
     const lists = applyProtoToBalance(content.balance, 'cleave.units:["scythecap","hammercap"]').balance;
     expect(at(lists, 'cleave.units')).toEqual(['scythecap', 'hammercap']);
   });
 
-  it('reports a preset that does not exist, a retired one among them, and applies the rest (A117)', () => {
-    const { balance, problems } = applyProtoToBalance(content.balance, 'rework,b3,Hold,constructor');
+  it('reports a preset that does not exist, a retired or dropped one among them, and applies the rest (A117)', () => {
+    const { balance, problems } = applyProtoToBalance(content.balance, 'rework,bosslives,B3,constructor');
     expect(problems).toEqual([
-      expect.stringContaining('unknown preset "rework"'), expect.stringContaining('unknown preset "Hold"'), expect.stringContaining('unknown preset "constructor"'),
+      expect.stringContaining('unknown preset "rework"'), expect.stringContaining('unknown preset "B3"'), expect.stringContaining('unknown preset "constructor"'),
     ]);
-    expect(balance.firingCongestion).toEqual(PROTO_PRESETS.b3!.firingCongestion);
-    expect(unknownPresets('rework,b3,Hold,constructor,firingCongestion.freeRanks:3')).toEqual(['rework', 'hold', 'constructor']);
-    expect(unknownPresets('B3,bosslives,flying.meleeMult:1')).toEqual([]);
+    expect(balance.livesAtBoss).toEqual(PROTO_PRESETS.bosslives!.livesAtBoss);
+    expect(unknownPresets('rework,bosslives,B3,a2,hold,constructor,livesAtBoss.heartcapPerLife:300')).toEqual(['rework', 'b3', 'a2', 'hold', 'constructor']);
+    expect(unknownPresets('Flyers,bosslives,flying.meleeMult:1')).toEqual([]);
     expect(() => protoContent('rework')).toThrow(/unknown preset "rework"/);
   });
 });

@@ -171,14 +171,6 @@ export const BalanceSchema = z.object({
   besiegedSeconds: Seconds,
   besiegedRate: z.number().min(0).max(1),
   /**
-   * Prototype B3 (`b3`), absent by default: a ranged unit's shot deals `blockedDamageMult` × damage when at
-   * least `freeRanks` friendly ranged units stand between it and its target, within
-   * `corridorHalfWidth` tiles of the line of fire. No battle in rounds reads it yet.
-   */
-  firingCongestion: z.object({
-    freeRanks: z.number().int().positive(), corridorHalfWidth: Pos, blockedDamageMult: z.number().min(0).max(1),
-  }).strict().optional(),
-  /**
    * E1 (engagement review; adopted 2026-10-28, set in balance.json): a per-lane Hold / Advance
    * command. While a side holds a lane, its idle units gather at a rally line `rallyBack` tiles
    * behind the front edge of its border column; units that dealt or took damage in the last 2 s fight as usual. A held lane
@@ -320,12 +312,6 @@ export const BalanceSchema = z.object({
       maxSells: z.number().int().nonnegative(),
       /** Intel: weight of the previous file in `intel = keep × intel + (1 − keep) × profile`. */
       intelKeep: z.number().min(0).max(1),
-      /**
-       * Prototype A2 (`a2`), absent by default: while a counter is active, every counter-set building in
-       * the kit has at least this base purchase weight (before the ×counterMult), even one outside
-       * the general's weights. No battle in rounds reads it yet.
-       */
-      counterFloorWeight: Pos.optional(),
     }).strict(),
     score: z.object({
       spawnerDepth: z.number(), spawnerThreat: z.number(), spawnerSurcharge: z.number(),

@@ -24,7 +24,7 @@ paths:
 - **Balance method** (SPEC §12.1): playtests decide what's fun; bots catch degenerate builds. The
   main bar is the counter matrix's: a strong build is fine if it has an answer.
 - **Prototypes:** `src/data/proto.ts` holds the default-off knobs (`?proto=`): since R2b's S4 only the
-  agreed list, `a2`, `b3`, `flyers` and `bosslives` (T055). A spec naming any other preset is refused by
+  agreed list, `flyers` and `bosslives` (T055). A spec naming any other preset is refused by
   the tools and shown as unknown on the page, which then saves the run nowhere (T061).
   Adopting a new rule is the user's call, and v2's milestones land on `develop` as the new default
   (CLAUDE.md).

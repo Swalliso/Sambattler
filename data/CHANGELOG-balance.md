@@ -12,10 +12,11 @@ v1's, now [archived](../docs/archive/v1/balance-backlog.md).
 
 **No data value changed, and no golden moved.** The deletions are §16 R2's list and R1's knob outcomes (A109), which
 the user approved at R1's review gate (2026-11-02) and R2b's S0.
-- **`src/data/proto.ts`** keeps the agreed default-off knobs: `a2`, `b3`, `flyers` and `bosslives`. Gone: `b1`, `a3`,
-  `b4`, `hold`, `nohold`, `t1`, `t2`, `t3`, `diver`, `diverleap`, `hotstart`, `breach`, `bigdrafts`, `callforhelp`,
-  `waves`, `mixedwave`, `stormwaves`, `swarmread`, `rework`, `noeldersplash`, `clashpace` and `clashshield`. A spec
-  naming one is refused by the tools and shown as unknown on the page (A117).
+- **`src/data/proto.ts`** keeps the agreed default-off knobs: `flyers` and `bosslives`. Gone: `b1`, `a3`, `b4`,
+  `hold`, `nohold`, `t1`, `t2`, `t3`, `diver`, `diverleap`, `hotstart`, `breach`, `bigdrafts`, `callforhelp`, `waves`,
+  `mixedwave`, `stormwaves`, `swarmread`, `rework`, `noeldersplash`, `clashpace` and `clashshield`, and `a2` and `b3`,
+  which the user dropped on 2026-11-03 ("Drop both") since no battle in rounds read them. A spec naming one is
+  refused by the tools and shown as unknown on the page (A117).
 - **Schema keys that only those presets set** are gone from `src/data/schema.ts`. v1's keys still in the data
   (`laneStance`, the timed storm's `heartcapTakenPerStack`, the `waveStart` and `buildingDestroyed` triggers) wait for
   T129, since the battle state hashes the balance.
