@@ -2,16 +2,16 @@
 // simulated: in each lane the winner's survivors surge into the loser's Heartcap and burst into spores on it, the
 // loser's survivors at the 45 s cap wilt where they stand, and so do a drawn lane's. The damage rises over each
 // struck Heartcap, with the Sporestorm's multiplier and "capped" beside it when they apply. It runs about 3 s at
-// 1× on the loop's clock, at the clash's speed (`src/app/rounds/phases/aftermath.ts`, which asks
+// 1× on the loop's clock, at the clash's speed (`src/app/phases/aftermath.ts`, which asks
 // `aftermathLength` when it's done), and at a battle's end it holds about 1 s more on the fallen Heartcap, which
 // wilts and sheds spores of its own faction's glow. Under reduced motion it's a fade of 120 ms or less with no
-// surge; under `?test=1` it's its final frame throughout. It stands beside v1's renderer until R2b moves it.
-import { other } from '../../sim/rounds/index.ts';
-import type { BattleState, RoundResult, Side, UnitState } from '../../sim/rounds/index.ts';
-import type { Effects } from '../effects.ts';
-import { pixelText } from '../pixelText.ts';
-import { TILE } from '../renderer.ts';
-import { INK_DEEP } from '../unitSprite.ts';
+// surge; under `?test=1` it's its final frame throughout.
+import { other } from '../sim/rounds/index.ts';
+import type { BattleState, RoundResult, Side, UnitState } from '../sim/rounds/index.ts';
+import type { Effects } from './effects.ts';
+import { pixelText } from './pixelText.ts';
+import { TILE } from './renderer.ts';
+import { INK_DEEP } from './unitSprite.ts';
 
 /** About 3 s at 1× (§10.2). */
 export const AFTERMATH_MS = 3000;

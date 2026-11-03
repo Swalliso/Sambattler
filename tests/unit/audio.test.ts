@@ -5,13 +5,14 @@ import { AudioEngine } from '../../src/audio/engine.ts';
 import { VoiceLimiter } from '../../src/audio/limits.ts';
 import type { Voice } from '../../src/audio/limits.ts';
 import { soundSeconds } from '../../src/audio/synth.ts';
-import { BattleSound } from '../../src/app/battleSound.ts';
+import { BattleSound, HIT_AT_MS } from '../../src/app/battleSound.ts';
 import { ContentError, REQUIRED_SOUNDS, loadContent } from '../../src/data/registry.ts';
 import { SoundBankSchema } from '../../src/data/schema.ts';
 import type { SoundDef } from '../../src/data/schema.ts';
-import { createBattle, makeConfig, nextCommandTick, queueCommand, step } from '../../src/sim/index.ts';
+import { commandStamp, createBattle as createRoundBattle, makeRoundConfig, queueCommand, step } from '../../src/sim/rounds/index.ts';
 import { readRawContent } from '../../tools/lib/content.ts';
 import { content } from '../helpers.ts';
+import { planningState, plant, sell } from '../roundHelpers.ts';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Loose = Record<string, any>;
@@ -106,8 +107,8 @@ describe('sound bank', () => {
     for (const s of quiet['sounds.json'].sounds) s.gain = 0;
     const loud = loadContent(quiet);
     const run = (c: typeof content) => {
-      const s = createBattle(c, makeConfig(c, { seed: 9, mapId: 'bogwater-hollow', player: 'bot:balanced', enemy: 'general:scripted' }));
-      queueCommand(s, { tick: 0, side: 'player', type: 'begin' });
+      const s = createRoundBattle(c, makeRoundConfig(c, { seed: 9, mapId: 'bogwater-hollow', player: 'bot:balanced', enemy: 'general:scripted' }));
+      queueCommand(s, { ...commandStamp(s), side: 'player', type: 'beginClash' });
       for (let i = 0; i < 1200; i++) step(s);
       return JSON.stringify(s.sides) + s.tick;
     };
@@ -188,69 +189,84 @@ describe('audio engine without WebAudio', () => {
   });
 });
 
-describe('battle sounds', () => {
-  function playBattle(seed: number, ticks: number) {
-    const s = createBattle(content, makeConfig(content, { seed, mapId: 'bogwater-hollow', player: 'bot:balanced', enemy: 'general:scripted' }));
-    const played: { id: string; gain: number; key?: string; tick: number }[] = [];
-    const bs = new BattleSound(s, content.audio.enemyGain, (id, o) => played.push({ id, gain: o?.gain ?? 1, ...(o?.key ? { key: o.key } : {}), tick: s.tick }));
-    queueCommand(s, { tick: 0, side: 'player', type: 'begin' });
-    for (let i = 0; i < ticks && s.phase !== 'ended'; i++) { step(s); bs.onTick(s); }
+describe('battle sounds (§13.9), by phase', () => {
+  type Played = { id: string; gain: number; key?: string; phase: string; round: number };
+  /** A whole battle of bots, each step heard, and each aftermath's frames from its start to its end. */
+  function playBattle(seed: number) {
+    const s = createRoundBattle(content, makeRoundConfig(content, { seed, mapId: 'bogwater-hollow', player: 'bot:balanced', enemy: 'general:scripted' }));
+    const played: Played[] = [];
+    const bs = new BattleSound(content.audio.enemyGain, (id, o) => played.push({ id, gain: o?.gain ?? 1, ...(o?.key ? { key: o.key } : {}), phase: s.phase, round: s.round }));
+    for (let i = 0; i < 200_000 && s.phase !== 'ended'; i++) {
+      if (s.phase === 'planning' && !s.queue.some((c) => c.type === 'beginClash')) queueCommand(s, { ...commandStamp(s), side: 'player', type: 'beginClash' });
+      if (s.phase === 'aftermath') bs.frame(s, HIT_AT_MS);
+      step(s);
+      bs.onTick(s);
+    }
     return { s, played };
   }
 
-  it('plays only defined sounds, and the sounds a battle should have', () => {
-    const { played } = playBattle(2, 6000);
+  it("plays only defined sounds: each phase's, and none of the retired events'", () => {
+    const { s, played } = playBattle(2);
+    expect(s.phase).toBe('ended');
     for (const p of played) expect(content.sounds[p.id], p.id).toBeDefined();
     const ids = new Set(played.map((p) => p.id));
-    for (const id of ['begin', 'place', 'spawn', 'income', 'wave']) expect(ids.has(id), id).toBe(true);
-    // wave 1 comes with Begin, so only later waves pulse
-    expect(played.filter((p) => p.id === 'wave').every((p) => p.tick > 1)).toBe(true);
+    for (const id of ['place', 'income', 'plan', 'begin', 'arrive', 'heartcap-hit']) expect(ids.has(id), id).toBe(true);
+    expect(ids.has('lane-won') || ids.has('lane-lost')).toBe(true);
+    expect(played.filter((p) => p.id === 'win' || p.id === 'loss')).toHaveLength(1);
+    for (const id of ['spawn', 'column-gained', 'column-lost', 'building-lost', 'building-razed', 'counter-warn', 'wave']) expect(ids.has(id), id).toBe(false);
   });
 
-  it('plays the enemy quieter, and no hit sounds but the Heartcaps\'', () => {
-    const { s, played } = playBattle(2, 6000);
+  it("plays the enemy quieter, the player's income once a round, and no hit sounds but the Heartcaps'", () => {
+    const { s, played } = playBattle(2);
     const enemyPlaces = played.filter((p) => p.id === 'place' && p.gain < 1);
     expect(enemyPlaces.length).toBeGreaterThan(0);
     expect(enemyPlaces.every((p) => p.gain === content.audio.enemyGain)).toBe(true);
-    for (const p of played.filter((x) => x.id === 'heartcap-hit')) expect(p.key).toMatch(/^heartcap-hit:(player|enemy)$/);
     const income = played.filter((p) => p.id === 'income');
-    expect(income.every((p) => p.gain === 1)).toBe(true); // the player's income only
-    expect(income.length).toBeLessThanOrEqual(Math.ceil(s.tick / (content.balance.incomeTickSeconds * 20)) + 1);
+    expect(income.every((p) => p.gain === 1 && p.phase === 'planning')).toBe(true);
+    expect(income.length).toBeLessThanOrEqual(s.round);
+    for (const p of played.filter((x) => x.id === 'heartcap-hit')) {
+      expect(p.key).toMatch(/^heartcap-hit:(player|enemy)$/);
+      expect(p.phase).toBe('aftermath');
+    }
   });
 
-  it('says whose building was sold from the sold counts', () => {
-    const s = createBattle(content, makeConfig(content, { seed: 1, mapId: 'test-flat', player: 'human', enemy: 'human' }));
-    const played: { id: string; gain: number }[] = [];
-    const bs = new BattleSound(s, 0.5, (id, o) => played.push({ id, gain: o?.gain ?? 1 }));
-    queueCommand(s, { tick: 0, side: 'player', type: 'place', buildingId: 'truffleCellar', lane: 0, col: 1, row: 1 });
-    queueCommand(s, { tick: 0, side: 'enemy', type: 'place', buildingId: 'truffleCellar', lane: 0, col: 29, row: 1 });
-    step(s); bs.onTick(s);
-    const [mine, theirs] = [s.buildings.find((b) => b.side === 'player')!, s.buildings.find((b) => b.side === 'enemy')!];
-    queueCommand(s, { tick: nextCommandTick(s), side: 'enemy', type: 'sell', entityId: theirs.id });
-    step(s); bs.onTick(s);
-    queueCommand(s, { tick: nextCommandTick(s), side: 'player', type: 'sell', entityId: mine.id });
-    step(s); bs.onTick(s);
-    expect(played).toEqual([
-      { id: 'place', gain: 1 }, { id: 'place', gain: 0.5 },
-      { id: 'sell', gain: 0.5 }, { id: 'sell', gain: 1 },
-    ]);
-  });
-
-  it('plays a lost column only for one that was yours', () => {
-    const s = createBattle(content, makeConfig(content, { seed: 1, mapId: 'test-flat', player: 'human', enemy: 'human' }));
+  it("lands each damaged Heartcap's hit with the aftermath's drain, not with the sim's event", () => {
+    const s = createRoundBattle(content, makeRoundConfig(content, { seed: 2, mapId: 'bogwater-hollow', player: 'bot:balanced', enemy: 'general:scripted' }));
     const played: string[] = [];
-    const bs = new BattleSound(s, 0.5, (id) => played.push(id));
-    const owner = s.lanes[0]!.owner;
-    const flip = (column: number, to: 'player' | 'enemy') => {
-      owner[column] = to === 'player' ? 1 : 2;
-      s.events = [{ t: 'columnFlipped', lane: 0, column, to }];
+    const bs = new BattleSound(0.5, (id, o) => { if (id === 'heartcap-hit') played.push(o!.key!); });
+    const dealt = () => { const d = s.rounds.at(-1)?.damage; return d ? d.player + d.enemy : 0; };
+    // the first round whose clash hit a Heartcap
+    while (!(s.phase === 'aftermath' && dealt() > 0)) {
+      expect(s.phase).not.toBe('ended');
+      if (s.phase === 'planning' && !s.queue.some((c) => c.type === 'beginClash')) queueCommand(s, { ...commandStamp(s), side: 'player', type: 'beginClash' });
+      step(s);
       bs.onTick(s);
-    };
-    const unclaimed = owner.indexOf(0), yours = owner.indexOf(1);
-    expect(unclaimed).toBeGreaterThan(yours);
-    flip(unclaimed, 'enemy'); // the enemy taking unclaimed ground is quiet
-    flip(yours, 'enemy');
-    flip(unclaimed, 'player');
-    expect(played).toEqual(['column-lost', 'column-gained']);
+    }
+    expect(played).toEqual([]);
+    bs.frame(s, HIT_AT_MS - 1);
+    expect(played).toEqual([]);
+    bs.frame(s, HIT_AT_MS);
+    bs.frame(s, HIT_AT_MS + 500);
+    // `damage` is by the side that dealt it, and a hit names the Heartcap that took it
+    const hit = s.rounds.at(-1)!.damage;
+    const took = (['player', 'enemy'] as const).filter((side) => hit[side === 'player' ? 'enemy' : 'player'] > 0);
+    expect([...played].sort()).toEqual(took.map((side) => `heartcap-hit:${side}`).sort());
+  });
+
+  it("names a sale by the event's side, and plays a refused command for the player only", () => {
+    const s = planningState({ gold: { player: 500 } });
+    const played: { id: string; gain: number }[] = [];
+    const bs = new BattleSound(0.5, (id, o) => played.push({ id, gain: o?.gain ?? 1 }));
+    plant(s, 'player', 'truffleCellar', { lane: 0, rank: 0, file: 1 });
+    bs.onTick(s);
+    const mine = s.buildings.find((b) => b.side === 'player')!;
+    sell(s, 'player', mine.id);
+    bs.onTick(s);
+    sell(s, 'player', mine.id); // sold already: refused
+    bs.onTick(s);
+    // the general sells in its plan, and its refusals are its own
+    s.events = [{ t: 'buildingSold', id: 99, side: 'enemy', refund: 50 }, { t: 'commandRejected', side: 'enemy', seq: 9, reason: 'plotTaken' }];
+    bs.onTick(s);
+    expect(played).toEqual([{ id: 'place', gain: 1 }, { id: 'sell', gain: 1 }, { id: 'illegal', gain: 1 }, { id: 'sell', gain: 0.5 }]);
   });
 });

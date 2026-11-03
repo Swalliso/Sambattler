@@ -5,8 +5,8 @@
 import { describe, expect, it } from 'vitest';
 import { atlasLayout, regionKey } from '../../../src/render/compose.ts';
 import { factionOf } from '../../../src/render/renderer.ts';
-import { unitLook } from '../../../src/render/rounds/unitLook.ts';
-import type { UnitPose } from '../../../src/render/rounds/unitLook.ts';
+import { unitLook } from '../../../src/render/unitLook.ts';
+import type { UnitPose } from '../../../src/render/unitLook.ts';
 import { SIDES } from '../../../src/sim/rounds/index.ts';
 import { content } from '../../roundHelpers.ts';
 

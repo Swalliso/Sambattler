@@ -4,8 +4,8 @@
 import { createServer } from 'vite';
 import type { ViteDevServer } from 'vite';
 
-/** The prototype preset the dev-site cases run. R2b retires `hotstart` (SPEC §16 R2): change it here. */
-export const PROTO = 'hotstart';
+/** The prototype preset the dev-site cases run: `b3`, a preset that stays after R2b's S4 (T055). */
+export const PROTO = 'b3';
 
 const servers: ViteDevServer[] = [];
 

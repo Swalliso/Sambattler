@@ -64,11 +64,15 @@ export const REQUIRED_SPRITES = [
   'i-pip',
 ];
 
-/** Sounds the game plays by id (src/app/sound.ts, src/app/battleSound.ts), besides the ambient drips. */
+/**
+ * Sounds the game plays by id (src/app/sound.ts, src/app/battleSound.ts), besides the ambient drips. The ids of
+ * v1's retired events stay until R2b's T129 drops them (§13.9).
+ */
 export const REQUIRED_SOUNDS = [
   'place', 'sell', 'illegal', 'income', 'spawn', 'column-gained', 'column-lost', 'building-lost', 'building-razed',
   'knit', 'merge', 'merge-elder', 'heartcap-hit', 'counter-warn', 'counter-active', 'sporestorm', 'wave', 'begin',
   'draft-open', 'draft-pick', 'win', 'loss', 'ui-hover', 'ui-click', 'ui-node', 'ui-choice', 'ui-toggle',
+  'arrive', 'plan', 'counter', 'power', 'lane-won', 'lane-lost',
 ];
 
 export function loadContent(raw: RawContent): Content {

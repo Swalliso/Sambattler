@@ -1,23 +1,89 @@
-// Top band (SPEC §10.2): your Heartcap at the left end and theirs at the right, so the win condition
-// frames the band, with the territory tug between them (one bar per lane, a tick per column, a glowing
-// frontier) under icon chips for gold and income, supply, wave and clock, and Sporestorm. The General's
-// Intent panel (SPEC §7.5) closes the band: portrait, the active doctrine's icon and any pending warning
-// with a pulsing countdown in waves. It names counter kinds, never units.
+// The top band of a battle in rounds (SPEC §10.2): your Heartcap at the left end and the general's at the
+// right, so the win condition frames the band, with the stat chips between them: gold with what the next round
+// pays if you Begin now (`incomePreview`), plots planted of open plots, the round of 9 with the clash clock
+// against the 45 s cap, and the Sporestorm's multiplier on round damage. The round tally and the lane tug sit
+// under the chips in their own mount (`tally.ts`), and the General's Intent panel closes the band in its own.
+// The sim scores a round on its clash's last tick, so a Heartcap's number holds at the round's starting HP
+// through the clash and drains in the aftermath. The Intent panel shows the general's plan for the round, with
+// no countdown (`doctrine.ts`). The Heartcap block, chips, tightening fit and Intent panel are v1's, on rounds'
+// state, in v1's styles.
+import '../battle.css';
 import type { Content } from '../../data/registry.ts';
-import { formatClock, incomePerMinute } from '../../sim/index.ts';
-import type { BattleState, Side } from '../../sim/index.ts';
-import { columnsOwned } from '../../sim/world.ts';
 import type { Atlas } from '../../render/atlas.ts';
 import { spriteToCanvas } from '../../render/atlas.ts';
+import { heldUntilBegin } from '../../render/preview.ts';
+import type { Reveal } from '../../render/preview.ts';
+import { incomePreview, SIDES } from '../../sim/rounds/index.ts';
+import type { BattleState, Side } from '../../sim/rounds/index.ts';
+import { stormBpFor } from '../../sim/rounds/systems/victory.ts';
 import { h, setText, toggleClass } from '../h.ts';
 import { uiIcon } from '../icons.ts';
-import { KIND_HINT, KIND_ICON, KIND_LABEL, intentOf, wavesText } from '../doctrine.ts';
-import type { Intent } from '../doctrine.ts';
+import { reducedMotion } from '../motion.ts';
 import { AnchoredTip } from '../tooltip.ts';
-import { beatTip, goldTip, stormTip, supplyTip, territoryTip, waitingUnits, waveTip } from './explain.ts';
-import { KitView } from './kit.ts';
+import { cutShort, intentOf } from '../doctrine.ts';
+import { goldTip, intentTip, plotsTip, roundTip, stormText, stormTip } from './explain.ts';
 
-/** A Heartcap's block: its cap, HP and a bar that drains toward the field's centre. */
+/** A band or panel in its mount (T088–T091): drawn each frame, laid out afresh on a resize, removed with the view. */
+export interface HudPart {
+  update(state: BattleState, now: number): void;
+  fit?(): void;
+  dispose(): void;
+}
+
+/** About 3 s at 1× (§10.2), as the loop's aftermath (`src/app/phases/aftermath.ts`) times it. */
+const AFTERMATH_MS = 3000;
+/**
+ * The aftermath's beats in the band, as shares of its time: the survivors surge, the loser's bar drains as they
+ * burst on its Heartcap, then the result banner, when the tally takes the round's pip (§10.2).
+ */
+export const DRAIN_FROM = 0.3, DRAIN_TO = 0.6;
+
+/**
+ * How far the aftermath's drain has run, render-side: it counts the aftermath's time at the speed, as the loop
+ * does, from the frame the aftermath opens. Under `?test=1` it's done at once (plan Call 15), and under reduced
+ * motion the bars change at once (§10.2).
+ */
+export class AftermathClock {
+  private round = 0;
+  private elapsed = 0;
+  private last = 0;
+
+  constructor(private speed: () => number, private still: boolean) {}
+
+  /** 0 before the drain, 1 once it's done; 1 outside the aftermath, where the band shows the live state. */
+  drained(state: BattleState, now: number): number {
+    if (state.phase !== 'aftermath') { this.round = 0; return 1; }
+    if (this.round !== state.round) { this.round = state.round; this.elapsed = 0; this.last = now; }
+    this.elapsed += (now - this.last) * this.speed();
+    this.last = now;
+    if (this.still || reducedMotion()) return 1;
+    return Math.min(1, Math.max(0, (this.elapsed / AFTERMATH_MS - DRAIN_FROM) / (DRAIN_TO - DRAIN_FROM)));
+  }
+}
+
+/** What the band's parts share: content for names, the atlas for sprites, one tooltip and the aftermath's clock. */
+export interface HudContext {
+  content: Content;
+  atlas: Atlas;
+  /** The chips', the tally's, the tug's and the Intent panel's tooltips (src/ui/tooltip.ts): one tip, under whichever is hovered or focused. The top band owns it. */
+  tip: AnchoredTip;
+  aftermath: AftermathClock;
+  /** How the general shows from round 2 (`reveal=`, T127): under `last`, its changes this round wait for Begin. */
+  reveal: Reveal;
+}
+
+/** @param still motion holds still (`?test=1`), so the aftermath shows its final frame at once */
+export function hudContext(content: Content, atlas: Atlas, speed: () => number, still: boolean, reveal: Reveal = 'full'): HudContext {
+  return { content, atlas, tip: new AnchoredTip('hud-tip', 'below'), aftermath: new AftermathClock(speed, still), reveal };
+}
+
+/** A clash's clock, m:ss. */
+const clock = (ticks: number, rate: number): string => {
+  const s = Math.floor(Math.max(0, ticks) / rate);
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+};
+
+/** A Heartcap's block: its cap, the HP shown and a bar that drains toward the field's centre. */
 class HeartBar {
   readonly el: HTMLElement;
   private hp = h('b');
@@ -25,7 +91,7 @@ class HeartBar {
   private fill = h('i');
   private pct = -1;
 
-  constructor(atlas: Atlas, private side: Side, label: string, title: string) {
+  constructor(atlas: Atlas, side: Side, label: string, title: string) {
     const cap = spriteToCanvas(atlas, 'heartcap-cap', side === 'player' ? 'velvet-bloom' : 'gray-rot');
     cap.className = 'heart-cap';
     cap.setAttribute('aria-hidden', 'true');
@@ -37,202 +103,103 @@ class HeartBar {
     );
   }
 
-  update(state: BattleState): void {
-    const s = state.sides[this.side];
-    setText(this.hp, String(s.heartcapHp));
-    setText(this.max, `/${s.heartcapMaxHp}`);
-    const pct = Math.max(0, Math.round((1000 * s.heartcapHp) / s.heartcapMaxHp) / 10);
+  /** Shows `hp` of `maxHp`; under a third, the number turns danger red as well as the bar's length (§10.2). */
+  show(hp: number, maxHp: number): void {
+    setText(this.hp, String(hp));
+    setText(this.max, `/${maxHp}`);
+    toggleClass(this.el, 'low', 3 * hp < maxHp);
+    const pct = Math.max(0, Math.round((1000 * hp) / maxHp) / 10);
     if (pct === this.pct) return;
     this.pct = pct;
     this.fill.style.width = `${pct}%`;
     this.fill.parentElement!.setAttribute('aria-valuenow', String(pct));
-    // under a third, the number says it in danger red as well as the bar's length
-    toggleClass(this.el, 'low', pct < 34);
   }
 }
 
 /**
- * How tightly the chips sit when they don't fit between the Heartcaps (a 1280-wide window, most of all
- * with the combat rework's beat chip): closer together, then also without the words their icons and
- * tips carry ("supply", "Storm") and R's keycap. Each step is a class on the row.
+ * How tightly the chips sit when they don't fit between the Heartcaps (a narrow window, big late numbers):
+ * closer together, then also without the words their icons and tips carry. Each step is a class on the row,
+ * as v1's (`src/ui/styles.css`).
  */
 const TIGHT = ['', 'snug', 'terse'] as const;
 
-/** One lane's territory: your striped columns, the unclaimed ones, theirs, and the frontier between. */
-class LaneTug {
-  readonly el: HTMLElement;
-  private p = h('div', { class: 'p' });
-  private n = h('div', { class: 'n' });
-  private e = h('div', { class: 'e' });
-  private front = h('div', { class: 'front' });
-  private key = '';
-
-  constructor(private lane: number, columns: number) {
-    this.el = h('div', { class: 'tugbar', style: `--cols:${columns}` }, this.p, this.n, this.e, this.front);
-  }
-
-  update(state: BattleState): void {
-    const L = state.lanes[this.lane]!, W = state.map.width;
-    const key = `${L.pBorder}|${L.eBorder}`;
-    if (key === this.key) return;
-    this.key = key;
-    const pc = L.pBorder + 1, ec = W - L.eBorder;
-    this.p.style.width = `${(100 * pc) / W}%`;
-    this.n.style.width = `${(100 * (W - pc - ec)) / W}%`;
-    this.e.style.width = `${(100 * ec) / W}%`;
-    this.front.style.left = `${(100 * pc) / W}%`;
-  }
-}
-
-export class TopBand {
-  readonly el: HTMLElement;
+export class TopBand implements HudPart {
   private gold = h('b', { id: 'hud-gold' });
   private goldStat: HTMLElement;
   private income = h('small', { id: 'hud-income' });
-  private supply = h('b', { id: 'hud-supply' });
-  private wave = h('b', { id: 'hud-wave' });
+  private plots = h('b', { id: 'hud-plots' });
+  private round = h('b', { id: 'hud-round' });
+  private roundStat: HTMLElement;
   private clock = h('small', { id: 'hud-clock' });
   private storm = h('b', { id: 'hud-storm' });
   private stormStat: HTMLElement;
-  /** Combat rework `waves`: seconds to the next beat, the units waiting for it, and a bar filling toward it. */
-  private beat = h('b', { id: 'hud-beat' });
-  private beatWaiting = h('small', { id: 'hud-beat-waiting' });
-  private beatFill = h('i');
-  private beatStat: HTMLElement | null = null;
   private chips: HTMLElement;
   /** The step of TIGHT the chips sit at, and their text's length when last measured (they're measured again only once it grows). */
   private tight = 0;
   private chipsLen = -1;
-  private colsP = h('span', { class: 'p' });
-  private colsE = h('span', { class: 'e' });
-  private hearts: HeartBar[];
-  private lanes: LaneTug[];
-  private doctrine = h('div', { class: 'doctrine', id: 'hud-doctrine' });
-  private warning = h('div', { class: 'warning', id: 'hud-warning', hidden: true });
-  private intentKey = '';
-  private fallback: string;
-  /** The chips' and the tug's tooltips (src/ui/hud/explain.ts): one tip, under whichever is hovered or focused. */
-  readonly tip = new AnchoredTip('hud-tip', 'below');
-  /** Your relics and upgrades: a chip and its popover. */
-  readonly kit: KitView;
+  private hearts: Record<Side, HeartBar>;
+  /** Each Heartcap's HP before the aftermath, which its number holds until the aftermath drains it. */
+  private shownHp: Record<Side, number>;
+  /** The round and phase last drawn, so the gold chip pulses once as income lands. */
+  private seen: string;
 
-  constructor(content: Content, private atlas: Atlas, state: BattleState) {
-    const ctl = state.config.enemy.controller;
-    const general = ctl.kind === 'general' ? content.generals[ctl.id] : undefined;
-    const portrait = spriteToCanvas(atlas, general?.sprite ?? 'g-scripted', 'gray-rot');
-    portrait.className = 'portrait';
-    portrait.setAttribute('aria-hidden', 'true');
-    const enemyName = general ? general.name : ctl.kind === 'bot' ? `Bot: ${ctl.id}` : 'Gray Rot (idle)';
-    this.hearts = [
-      new HeartBar(atlas, 'player', 'Your Heartcap', 'Your Heartcap: if it falls, the battle is lost'),
-      new HeartBar(atlas, 'enemy', 'Gray Rot Heartcap', "The Gray Rot's Heartcap: bring it down to win"),
-    ];
-    this.lanes = state.lanes.map((_, i) => new LaneTug(i, state.map.width));
-    this.goldStat = h('span', { class: 'chip gold', id: 'chip-gold' }, uiIcon(atlas, 'i-gold'), this.gold, this.income);
-    this.stormStat = h('span', { class: 'chip storm', id: 'chip-storm' }, uiIcon(atlas, 'i-storm'), h('small', { class: 'word' }, 'Storm'), this.storm);
-    const supplyStat = h('span', { class: 'chip', id: 'chip-supply' }, uiIcon(atlas, 'i-supply'), this.supply, h('small', { class: 'word' }, 'supply'));
-    const waveStat = h('span', { class: 'chip', id: 'chip-wave' }, uiIcon(atlas, 'i-wave'), h('small', null, 'Wave'), this.wave, this.clock);
-    this.kit = new KitView(content, atlas, state);
-    const lanes = state.lanes.length;
-    const tug = h('div', { class: `tug lanes-${lanes}`, id: 'hud-tug', role: 'img', 'aria-label': 'Territory: columns owned' }, ...this.lanes.map((l) => l.el));
-    this.tip.attach(this.goldStat, goldTip(content, atlas, state));
-    this.tip.attach(supplyStat, supplyTip(content, atlas, state));
-    this.tip.attach(waveStat, waveTip(content, atlas, state));
-    this.tip.attach(this.stormStat, stormTip(content, atlas, state));
-    if (state.rules.waves) {
-      // the wave sets out (Advance's chevrons), not Hold's shield: the beat is when a lane that isn't held advances
-      this.beatStat = h('span', { class: 'chip beat', id: 'chip-beat', 'aria-label': 'Next wave' }, uiIcon(atlas, 'i-advance'), this.beat, this.beatWaiting,
-        h('span', { class: 'beatbar', 'aria-hidden': 'true' }, this.beatFill));
-      this.tip.attach(this.beatStat, beatTip(content, atlas, state));
-    }
-    this.tip.attach(tug, territoryTip(content, atlas, state));
-    this.chips = h('div', { class: 'chips', 'data-native-tab': '' }, this.goldStat, supplyStat, waveStat, this.beatStat, this.stormStat, this.kit.chip);
-    this.el = h('header', { class: 'top' },
-      this.hearts[0]!.el,
-      h('div', { class: 'mid' },
-        this.chips,
-        tug,
-        h('div', { class: 'tug-label', id: 'hud-columns' }, this.colsP, h('span', { class: 'muted' }, 'territory'), this.colsE),
-      ),
-      this.hearts[1]!.el,
-      h('aside', { class: 'intent', id: 'hud-intent' },
-        portrait,
-        h('div', { class: 'title' }, "General's intent"),
-        h('div', { class: 'name', id: 'hud-general' }, enemyName),
-        this.doctrine,
-        this.warning,
-      ),
-      this.tip.el,
-      this.kit.el,
-    );
-    this.fallback = !general ? 'No doctrine' : general.adaptive ? 'Adaptation off' : 'Scripted: never adapts';
-    this.renderIntent(intentOf(state));
-  }
-
-  /** Doctrine row and warning row; rebuilt only when the intent changes. */
-  private renderIntent(i: Intent): void {
-    const key = JSON.stringify(i);
-    if (key === this.intentKey) return;
-    this.intentKey = key;
-    const icon = (kind: keyof typeof KIND_ICON) => {
-      const c = spriteToCanvas(this.atlas, KIND_ICON[kind], 'velvet-bloom');
-      c.className = 'kind-icon';
-      c.title = KIND_HINT[kind];
-      return c;
+  constructor(mount: HTMLElement, private hud: HudContext, state: BattleState) {
+    const { atlas } = hud;
+    this.hearts = {
+      player: new HeartBar(atlas, 'player', 'Your Heartcap', 'Your Heartcap: if it falls, the battle is lost'),
+      enemy: new HeartBar(atlas, 'enemy', 'Gray Rot Heartcap', "The Gray Rot's Heartcap: bring it down to win"),
     };
-    const kinds: HTMLElement[] = [];
-    if (i.active) kinds.push(h('span', { class: 'kind', 'data-kind': i.active }, icon(i.active), `Countering ${KIND_LABEL[i.active]}`));
-    if (i.opening.length) {
-      kinds.push(h('span', { class: 'kind', 'data-kind': i.opening.join('+') }, ...i.opening.map(icon),
-        `${i.dual ? 'Dual doctrine' : 'Remembers'}: ${i.opening.map((k) => KIND_LABEL[k]).join(' + ')}`));
-    }
-    if (!kinds.length) kinds.push(h('span', { class: 'kind none' }, i.adaptive ? 'Watching your army' : this.fallback));
-    this.doctrine.replaceChildren(...kinds);
-    this.warning.hidden = !i.pending;
-    if (i.pending) {
-      // one lit pip per wave left; the pips and the count pulse, and hold still under reduced motion
-      const pips = h('span', { class: 'pips', 'aria-hidden': 'true' }, ...Array.from({ length: Math.min(i.pending.waves, 4) }, () => h('i')));
-      this.warning.replaceChildren(icon(i.pending.kind), h('span', { class: 'what' }, 'Preparing to counter your ', h('b', null, KIND_LABEL[i.pending.kind])),
-        h('span', { class: 'when' }, pips, h('span', { class: 'countdown', id: 'hud-countdown' }, wavesText(i.pending.waves))));
-      this.warning.dataset.kind = i.pending.kind;
-    }
+    this.shownHp = { player: state.sides.player.heartcapHp, enemy: state.sides.enemy.heartcapHp };
+    this.goldStat = h('span', { class: 'chip gold', id: 'chip-gold' }, uiIcon(atlas, 'i-gold'), this.gold, this.income);
+    const plotsStat = h('span', { class: 'chip', id: 'chip-plots' }, uiIcon(atlas, 'i-supply'), this.plots, h('small', { class: 'word' }, 'plots'));
+    this.roundStat = h('span', { class: 'chip round', id: 'chip-round' },
+      uiIcon(atlas, 'i-wave'), h('small', { class: 'word' }, 'Round'), this.round, h('small', null, `of ${state.rules.maxRounds}`), this.clock);
+    this.stormStat = h('span', { class: 'chip storm', id: 'chip-storm' }, uiIcon(atlas, 'i-storm'), h('small', { class: 'word' }, 'Storm'), this.storm);
+    const { content } = hud;
+    hud.tip.attach(this.goldStat, goldTip(content, atlas, state));
+    hud.tip.attach(plotsStat, plotsTip(content, atlas, state));
+    hud.tip.attach(this.roundStat, roundTip(content, atlas, state));
+    hud.tip.attach(this.stormStat, stormTip(content, atlas, state));
+    this.chips = h('div', { class: 'chips', 'data-native-tab': '' }, this.goldStat, plotsStat, this.roundStat, this.stormStat);
+    mount.append(this.hearts.player.el, this.chips, this.hearts.enemy.el, hud.tip.el);
+    this.seen = `${state.round}|${state.phase}`;
   }
 
-  /** Pulses the gold counter as income lands, matching the coin pops on the field. */
-  bump(): void {
+  update(state: BattleState, now: number): void {
+    const p = state.sides.player, r = state.rules;
+    setText(this.gold, String(p.gold));
+    // no round follows the last one, so nothing more comes in
+    setText(this.income, state.round < r.maxRounds && !state.outcome ? `+${incomePreview(state, 'player').total}` : '');
+    const open = p.plots.filter((x) => x.open && x.terrain !== 'stump');
+    setText(this.plots, `${open.filter((x) => x.building).length}/${open.length}`);
+    setText(this.round, String(state.round));
+    const t = state.phase === 'clash' && state.clash ? state.tick - state.clash.startTick : -1;
+    setText(this.clock, t < 0 ? '' : clock(t, r.tickRate));
+    toggleClass(this.roundStat, 'soon', t >= r.clashCapTicks - 5 * r.tickRate);
+    const bp = stormBpFor(r.storm, state.round);
+    setText(this.storm, stormText(bp));
+    toggleClass(this.stormStat, 'on', bp > 10000);
+    const drained = this.hud.aftermath.drained(state, now);
+    for (const s of SIDES) {
+      const ss = state.sides[s];
+      if (state.phase !== 'aftermath') this.shownHp[s] = ss.heartcapHp;
+      this.hearts[s].show(Math.round(this.shownHp[s] + (ss.heartcapHp - this.shownHp[s]) * drained), ss.heartcapMaxHp);
+    }
+    const seen = `${state.round}|${state.phase}`;
+    if (seen !== this.seen) {
+      // income lands as each planning phase from round 2 opens (§6.2)
+      if (state.phase === 'planning' && state.round > 1) this.bump();
+      this.seen = seen;
+    }
+    this.hud.tip.refresh();
+    this.fitChips();
+  }
+
+  /** Pulses the gold chip as income lands. */
+  private bump(): void {
     this.goldStat.classList.remove('bump');
     void this.goldStat.offsetWidth; // restart the animation
     this.goldStat.classList.add('bump');
-  }
-
-  update(state: BattleState): void {
-    const p = state.sides.player;
-    setText(this.gold, String(p.gold));
-    setText(this.income, `+${incomePerMinute(state, 'player')}/min`);
-    setText(this.supply, `${p.supplyUsed}/${p.supplyCap}`);
-    const wave = Math.floor(state.tick / state.rules.waveTicks) + 1;
-    setText(this.wave, String(state.phase === 'deploy' ? 0 : wave));
-    setText(this.clock, formatClock(state.tick, state.rules.tickRate));
-    setText(this.storm, String(state.sporestorm));
-    if (this.beatStat) {
-      const beat = state.compiled.player.waveBeatTicks!;
-      const left = state.phase === 'deploy' ? beat : beat - (state.tick % beat);
-      setText(this.beat, `${Math.ceil(left / state.rules.tickRate)}s`);
-      const waiting = waitingUnits(state, 'player');
-      setText(this.beatWaiting, waiting ? `+${waiting}` : '');
-      this.beatFill.style.width = `${Math.round((100 * (beat - left)) / beat)}%`;
-      toggleClass(this.beatStat, 'soon', left <= 3 * state.rules.tickRate);
-    }
-    toggleClass(this.stormStat, 'on', state.sporestorm > 0);
-    for (const b of this.hearts) b.update(state);
-    for (const l of this.lanes) l.update(state);
-    const pc = columnsOwned(state, 'player'), ec = columnsOwned(state, 'enemy');
-    setText(this.colsP, `${pc} column${pc === 1 ? '' : 's'}`);
-    setText(this.colsE, `${ec} column${ec === 1 ? '' : 's'}`);
-    this.renderIntent(intentOf(state));
-    this.tip.refresh();
-    this.kit.update(state);
-    this.fitChips();
   }
 
   /** Lays the chips out afresh (a resize, or the fonts arriving): as designed, and tighter only if they don't fit. */
@@ -244,9 +211,9 @@ export class TopBand {
   }
 
   /**
-   * Tightens the chips a step at a time until the row fits between the Heartcaps. Their numbers grow
-   * during a battle (four-digit gold, two-digit relics), so the row is measured whenever its text gets
-   * longer; it never loosens until the next fit(), so the chips don't flicker as a count crosses a digit.
+   * Tightens the chips a step at a time until the row fits between the Heartcaps. Their numbers grow during a
+   * battle, so the row is measured whenever its text gets longer; it never loosens until the next fit(), so the
+   * chips don't flicker as a count crosses a digit.
    */
   private fitChips(): void {
     if (this.tight === TIGHT.length - 1 || !this.chips.isConnected) return;
@@ -259,11 +226,59 @@ export class TopBand {
     }
   }
 
-  /** Puts keyboard focus on the gold chip (its tip opens); Tab then moves along the band's chips. */
+  /** Puts keyboard focus on the gold chip (its tip opens); Tab then moves along the band. */
   focusChips(): void { this.goldStat.focus(); }
 
   dispose(): void {
-    this.tip.dispose();
-    this.kit.dispose();
+    this.hud.tip.dispose();
   }
+}
+
+/**
+ * The General's Intent panel (§7.5, §10.2), at the band's right end: its portrait at 48 px, its name and
+ * doctrine, its income this round and the gold it banked, and the buildings it planted and sold, from its plan
+ * for the round, cut short to fit. There's no countdown. Its tooltip gives the whole plan, the passive and the kit.
+ */
+export class IntentPanel implements HudPart {
+  private doctrine = h('div', { class: 'doctrine', id: 'hud-doctrine' });
+  private income = h('span', { id: 'intent-income' });
+  private banked = h('span', { id: 'intent-banked' });
+  private planted = h('span', { id: 'intent-planted' });
+  private sold = h('span', { id: 'intent-sold' });
+  /** The doctrine and plan last shown, so the panel changes only with them. */
+  private key = '';
+
+  constructor(mount: HTMLElement, private hud: HudContext, state: BattleState) {
+    const i = intentOf(hud.content, state);
+    const portrait = spriteToCanvas(hud.atlas, i.sprite, 'gray-rot');
+    portrait.className = 'portrait';
+    portrait.setAttribute('aria-hidden', 'true');
+    const el = h('aside', { class: 'intent rounds-intent', id: 'hud-intent', 'aria-label': "General's intent" },
+      portrait,
+      h('div', { class: 'title' }, "General's intent"),
+      h('div', { class: 'name', id: 'hud-general' }, i.name),
+      this.doctrine,
+      h('div', { class: 'econ' }, this.income, this.banked),
+      h('div', { class: 'changes' }, this.planted, this.sold),
+    );
+    hud.tip.attach(el, intentTip(hud.content, hud.atlas, state, hud.reveal));
+    mount.append(el);
+  }
+
+  update(state: BattleState): void {
+    const i = intentOf(this.hud.content, state);
+    // under `reveal=last` its plantings and sales this round show at Begin, with its colony (§7.5, T127)
+    const held = heldUntilBegin(this.hud.reveal, state);
+    const key = JSON.stringify([i.doctrine, i.plan, held]);
+    if (key === this.key) return;
+    this.key = key;
+    setText(this.doctrine, i.doctrine);
+    setText(this.income, i.plan ? `income ${i.plan.income}` : '');
+    setText(this.banked, i.plan ? `banked ${i.plan.banked}` : '');
+    // a sale shares the line, so the plantings make room for it
+    setText(this.planted, held ? 'Changes show at Begin' : i.planted.length ? `New: ${cutShort(i.planted, i.sold.length ? 1 : 2)}` : 'Nothing new');
+    setText(this.sold, !held && i.sold.length ? `Sold: ${cutShort(i.sold, 1)}` : '');
+  }
+
+  dispose(): void {}
 }

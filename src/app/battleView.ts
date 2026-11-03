@@ -1,317 +1,293 @@
-// The battle screen (SPEC §10.2): the top band (both Heartcaps, the territory tug, stat chips and the
-// General's Intent), the callout lane, the pixel-scaled battlefield inside its frame of roots and soil,
-// and the bottom band (Begin in deploy, then speed and pause; the commander power; Hold / Advance;
-// sound, settings and help; the building tray; the inspect panel). The power button shows its cooldown
-// as a ring; `Q` or a click aims it (also while paused) and a click on the field fires it next tick. The cog opens the settings screen and pauses the battle while
-// it is open; settings that touch the field (damage numbers, color-blind assist, screen shake) apply live.
+// The battle screen for a battle in rounds (SPEC §10.2): the layout of v1's screen with the field drawn by
+// `src/render/renderer.ts` inside its frame of roots and soil, the callout lane, and the bands and panels
+// in their mounts, each filled with one line: S13's top band, tally and Intent panel, and S14's tray and inspect
+// (`src/ui/hud/`, `src/ui/inspect.ts`). One layout serves the three views, which switch their chrome on and off by phase (T097):
+// planning shows Begin, the one primary button, and pins the planning hint; a clash puts the speed control and
+// pause in Begin's place, locks the tray and calls out a Twin Roots lane's end; the aftermath keeps the speed
+// control without pause and pins the round's result banner once the bars have drained (A071). The commander
+// power's button leads the controls, lit only in a clash (§6.6, §10.2, T109): Ready, Aiming, Next tick and Used
+// this clash, with its reticle and aim callout while aiming. Help and the settings screen hold a clash and the
+// aftermath while they're open (A078). At the battle's end the report by round arrives behind the spore wipe.
+// Its sounds come from each step's events (`battleSound.ts`), and the speaker button sits beside the cog.
 import type { Content } from '../data/registry.ts';
-import { Renderer, TILE } from '../render/renderer.ts';
 import type { Atlas } from '../render/atlas.ts';
 import { FieldFrame } from '../render/frame.ts';
-import { Callouts } from '../ui/callouts.ts';
+import type { Reveal } from '../render/preview.ts';
+import { RoundRenderer, STRIP, TILE } from '../render/renderer.ts';
+import type { BattleState, SimEvent } from '../sim/rounds/index.ts';
 import { h, setText, toggleClass } from '../ui/h.ts';
 import { helpOverlay } from '../ui/help.ts';
 import { uiIcon } from '../ui/icons.ts';
-import { calm, sporeWipe } from '../ui/motion.ts';
+import { sporeWipe } from '../ui/motion.ts';
 import { uiScale } from '../ui/scale.ts';
 import { closeSettings, openSettings, settingsButton, settingsOpen } from '../ui/settingsScreen.ts';
-import { battleReport } from '../ui/report.ts';
-import type { ReportRewards } from '../ui/report.ts';
-import { activeText, generalName, intentOf, rememberText, warningText } from '../ui/doctrine.ts';
-import { DraftOverlay } from '../ui/draftOverlay.ts';
-import { TopBand } from '../ui/hud/top.ts';
 import { AnchoredTip } from '../ui/tooltip.ts';
-import { powerAim, powerTiming } from '../ui/words.ts';
-import { powerCooldownTicks, powerFirstReadyTicks } from '../sim/index.ts';
-import { Tray } from '../ui/hud/tray.ts';
-import { trayOrder } from '../ui/buildingInfo.ts';
-import { CombatLog, InspectPanel } from '../ui/inspect.ts';
-import type { BattleState } from '../sim/index.ts';
-import { BattleSound } from './battleSound.ts';
-import type { Session } from './session.ts';
+import { RoundCallouts } from '../ui/callouts.ts';
+import type { RoundCalloutKind } from '../ui/callouts.ts';
+import { hudContext, IntentPanel, TopBand } from '../ui/hud/top.ts';
+import type { HudContext, HudPart } from '../ui/hud/top.ts';
+import { RoundTally } from '../ui/hud/tally.ts';
+import { RoundTray } from '../ui/hud/tray.ts';
+import { RoundCombatLog, RoundInspect } from '../ui/inspect.ts';
+import { roundsReport } from '../ui/report.ts';
+import type { PlayTimeReadout } from '../ui/report.ts';
 import { loadSettings, onSettings, settingsStore } from './settings.ts';
-import { TipCoach, tipWord } from './tips.ts';
+import { BattleSound } from './battleSound.ts';
 import { sfx, soundDim, soundPrefs, soundSpeed, soundToggle } from './sound.ts';
+import { resultBanner } from './phases/aftermath.ts';
+import { aimText, laneCallout, powerButton, powerNews, powerRefusal, powerText, powerUse } from './phases/clash.ts';
+import { generalNews, planningHint } from './phases/planning.ts';
+import type { RoundSession } from './session.ts';
 
-/** The ghost tip's gap from the footprint, and its margin inside the field (layout px). */
-const TIP_GAP = 14;
-const TIP_MARGIN = 4;
-/** Battle 1's economy tip (playtest 2026-10-28): when it fires, and how long the economy cards pulse. */
-const NUDGE_AT_SECONDS = 30;
-const NUDGE_PULSE_MS = 12000;
-/** Screen shake on a Heartcap hit: how long, how far (screen px, by damage) and how often per Heartcap. */
-const SHAKE_MS = 180;
-const SHAKE_MAX_PX = 3;
-const SHAKE_EVERY_MS = 1500;
-
-export interface ViewActions {
-  begin(): void;
-  again(): void;
-  rematch(): void;
-  /** In a run, the report offers only Continue (back to the run). */
-  continueRun?: () => void;
-  /** In a run, what the battle earns beyond gold (Spores, Amber), shown on the report. */
-  rewards?: (state: BattleState) => ReportRewards;
+/** The mounts the bands and panels fill (T077): S13's T088, T089 and T091, S14's T093 and T094. */
+export interface RoundMounts {
+  top: HTMLElement;
+  tally: HTMLElement;
+  intent: HTMLElement;
+  tray: HTMLElement;
+  inspect: HTMLElement;
+  callouts: HTMLElement;
 }
 
-export class BattleView {
+export interface RoundViewActions {
+  begin(): void;
+  /** A single battle's report buttons: the same seed, or a new one, on the same parameters (§10.4). */
+  again?(): void;
+  rematch?(): void;
+  /** A run's battle: the report's Continue, and its line on what the battle meant for the run (R2b). */
+  continueRun?(): void;
+  runNote?(state: BattleState): string;
+  /** The play clock's readout, which the report shows (X6, T128). */
+  playTime?(): PlayTimeReadout;
+}
+
+export class RoundsView {
   readonly root: HTMLElement;
-  readonly renderer: Renderer;
+  readonly renderer: RoundRenderer;
   readonly canvas: HTMLCanvasElement;
   /** The roots ceiling, soil bed and ambient spores around the field. */
   readonly frameArt: FieldFrame;
-  readonly callouts = new Callouts();
-  /** First-time tips in battles 1 and 2, through the callout lane. */
-  private coach = new TipCoach(this.callouts);
-  readonly log = new CombatLog();
-  readonly inspect: InspectPanel;
-  readonly draft: DraftOverlay;
-  private sound: BattleSound;
-  readonly top: TopBand;
-  private tray: Tray;
-  private trayKit = '';
-  private onResize = () => this.fit();
-  private report: HTMLElement | null = null;
-  private fieldWrap: HTMLElement;
+  readonly callouts = new RoundCallouts();
+  readonly mounts: RoundMounts;
+  /**
+   * Counts colony changes: a planted, sold or toggled building, and each round's opening, when the general
+   * plans. The formation preview (T083) recomputes only when it moves (§13.5, §13.6).
+   */
+  colonyVersion = 0;
+  /** Each unit's damage and kills in the clash, for inspect (§10.4). */
+  readonly log = new RoundCombatLog();
+  /** The bands and panels in their mounts, each drawn every frame. */
+  private bands: HudPart[] = [];
+  private hud: HudContext;
+  private topBand: TopBand;
+  private top: HTMLElement;
   private field: HTMLElement;
   private tip = h('div', { class: 'ghost-tip', id: 'ghost-tip', hidden: true });
-  /** Pinned in the callout lane: the deploy hint and "Paused". */
-  private deployCallout: HTMLElement;
-  private pausedCallout: HTMLElement;
-  /** One gold icon, moved into each frame's ghost tip. */
-  private tipGold: HTMLCanvasElement;
-  private beginBox: HTMLElement;
+  private beginBtn: HTMLButtonElement;
+  private beginLabel = h('span', null, 'Begin');
   private speedSeg: HTMLElement;
   private speedBtns: HTMLButtonElement[] = [];
-  private stanceRows: { hold: HTMLButtonElement; advance: HTMLButtonElement; status: HTMLElement }[] = [];
   private pauseBtn: HTMLButtonElement;
-  /** The commander power (absent in battles without one). */
+  private settingsBtn: HTMLButtonElement;
+  /** The commander power's button, absent in a battle without one (§6.6). */
   private powerBtn: HTMLButtonElement | null = null;
   private powerState = h('small', { class: 'power-state', id: 'power-state' });
   private powerTip = new AnchoredTip('power-tip', 'above');
+  /** What a click does while aiming, pinned in the callout lane (§10.2). */
   private aimCallout = h('div', { class: 'callout aim', id: 'aim-callout', role: 'status' });
-  private settingsBtn: HTMLButtonElement;
-  private settingsShown = false;
-  private pausedBeforeSettings = false;
-  private unsubscribe: () => void;
-  private screenShake: boolean;
-  private shake = { start: -1e9, px: 0 };
-  private shakenAt = new Map<number, number>();
+  private pausedCallout: HTMLElement;
+  /** The planning hint, pinned through planning (§10.2). */
+  private hintText = h('span');
+  private hint = h('div', { class: 'callout planning', id: 'planning-hint', role: 'status' }, this.hintText, h('kbd', null, 'Space'));
+  /** The empty-lane warning, pinned while it stands (§10.2). */
+  private warningText = h('span');
+  private warning = h('div', { class: 'callout bad', id: 'empty-lane-warning', role: 'status' }, this.warningText, h('kbd', null, 'Esc'));
+  /** The round's result banner, pinned through the aftermath once the bars have drained (A071). */
+  private banner = h('div', { class: 'callout banner-callout', id: 'round-banner', role: 'status' });
+  private bannerFor = 0;
   private help: HTMLElement | null = null;
-  private pausedBeforeHelp = false;
-  private disposed = false;
-  private ended = false;
-  private nudged = false;
-  private nudgeUntil = 0;
-  /** Each lane's column owners as the view last saw them (0 unclaimed, 1 yours, 2 theirs): a flip names only who took the column. */
-  private owners: number[][];
+  /** The battle's sounds, from each step's events (§13.9). */
+  private sound: BattleSound;
+  private settingsShown = false;
+  private report: HTMLElement | null = null;
+  private onResize = () => this.fit();
+  private unsubscribe: () => void;
   scale = 1;
 
-  /** @param still ambient motion holds still (`?test=1`), so screenshots and browser tests are stable */
-  constructor(private session: Session, content: Content, private atlas: Atlas, private actions: ViewActions, debug: boolean, still = false) {
+  /**
+   * @param still ambient motion holds still (`?test=1`), so captures and browser tests are stable
+   * @param reveal how the general shows from round 2 (`reveal=`, §7.5, T127)
+   */
+  constructor(private session: RoundSession, private content: Content, private atlas: Atlas, private actions: RoundViewActions, still = false, reveal: Reveal = 'full') {
     const state = session.state;
-    this.owners = state.lanes.map((l) => l.owner.slice());
+    this.sound = new BattleSound(content.audio.enemyGain, sfx);
     this.canvas = h('canvas', { id: 'battlefield', 'aria-label': 'Battlefield' });
-    this.renderer = new Renderer(this.canvas, content, atlas, state);
+    this.renderer = new RoundRenderer(this.canvas, content, atlas, state);
     this.renderer.still = still;
+    this.renderer.preview.reveal = reveal;
     this.frameArt = new FieldFrame(content, atlas, this.renderer.width, this.renderer.height, still);
-    this.sound = new BattleSound(state, content.audio.enemyGain, sfx);
-    this.top = new TopBand(content, atlas, state);
-    this.tray = new Tray(content, atlas, state, (id) => this.pick(id));
-    this.trayKit = state.sides.player.kit.join();
-    this.draft = new DraftOverlay(content, atlas, {
-      pick: (cardId) => session.issue({ type: 'draftPick', cardId }),
-      reroll: () => session.issue({ type: 'draftReroll' }),
-      skip: () => session.issue({ type: 'draftSkip' }),
+    const settings = loadSettings();
+    this.renderer.damageNumbers = settings.damageNumbers;
+    this.renderer.colorAssist = settings.colorAssist;
+    this.unsubscribe = onSettings((next) => {
+      this.renderer.damageNumbers = next.damageNumbers;
+      this.renderer.colorAssist = next.colorAssist;
     });
-    this.inspect = new InspectPanel(content, atlas, this.log, (id) => session.issue({ type: 'sell', entityId: id }),
-      (id) => session.toggleMerge(id), (_state, id) => session.mergeShown(id));
-    this.tipGold = uiIcon(atlas, 'i-gold');
-    this.fieldWrap = h('div', { class: 'fieldwrap' }, this.canvas, this.tip);
-    this.field = h('main', { class: 'field' }, this.frameArt.el, this.fieldWrap);
-    this.deployCallout = h('div', { class: 'callout deploy', id: 'deploy-hint' },
-      `Deploy phase: place your opener with ${state.sides.player.gold} gold, then press Begin`, h('kbd', null, 'Space'));
-    this.pausedCallout = h('div', { class: 'callout paused', id: 'paused-callout' }, uiIcon(atlas, 'i-pause'), 'Paused', h('kbd', null, 'Space'));
-    // deploy: Begin is the one primary button; once the battle is live, speed and pause take its place
-    this.beginBox = h('div', { class: 'begin', id: 'begin-box' },
-      h('button', { class: 'btn primary', id: 'begin-btn', title: 'Start the battle (Space or Enter)', onclick: () => actions.begin() }, 'Begin', h('kbd', null, 'Space')),
-    );
+    const mount = (id: string) => h('div', { class: 'rounds-mount', id: `mount-${id}` });
+    this.mounts = {
+      top: mount('top'), tally: mount('tally'), intent: mount('intent'), tray: mount('tray'), inspect: mount('inspect'), callouts: mount('callouts'),
+    };
+    this.mounts.callouts.style.display = 'contents';
+    this.mounts.callouts.append(this.callouts.el);
+    // the aftermath's drain holds while Help or the settings screen is open, as the loop's aftermath does
+    const hud = this.hud = hudContext(content, atlas, () => (session.overlayOpen ? 0 : session.speed), still, reveal);
+    this.topBand = new TopBand(this.mounts.top, hud, state);
+    this.bands.push(this.topBand);
+    this.bands.push(new RoundTally(this.mounts.tally, hud, state));
+    this.bands.push(new IntentPanel(this.mounts.intent, hud, state));
+    this.bands.push(new RoundTray(this.mounts.tray, hud, state, { available: () => session.available(), placing: () => session.placing, pick: (id) => session.pick(id) }));
+    this.bands.push(new RoundInspect(this.mounts.inspect, hud, this.log, {
+      selected: () => session.selected, sellArmed: () => session.sellArmed, mergeShown: (id) => session.mergeShown(id), sell: () => this.sell(), toggleMerge: () => { session.toggleMerge(); },
+    }));
+    this.top = h('header', { class: 'top rounds-top' }, this.mounts.top, this.mounts.tally, this.mounts.intent);
+    this.field = h('main', { class: 'field' }, this.frameArt.el, h('div', { class: 'fieldwrap' }, this.canvas, this.tip));
+    this.beginBtn = h('button', { class: 'btn primary', id: 'begin-btn', title: 'Start the clash (Space or Enter)', onclick: () => actions.begin() },
+      this.beginLabel, h('kbd', null, 'Space'));
     for (const s of [1, 2, 3]) {
       this.speedBtns.push(h('button', { class: 'btn', 'data-speed': s, title: `Speed ${s}× ([ and ] change it)`, 'aria-pressed': 'false', onclick: () => { session.speed = s; } }, `${s}×`));
     }
     this.pauseBtn = h('button', {
       class: 'btn has-ico', id: 'pause-btn', title: 'Pause (Space)', 'aria-label': 'Pause', 'aria-pressed': 'false', onclick: () => { session.paused = !session.paused; },
     }, uiIcon(atlas, 'i-pause'));
-    this.speedSeg = h('div', { class: 'seg speed', role: 'group', 'aria-label': 'Speed and pause' }, ...this.speedBtns, this.pauseBtn);
+    this.speedSeg = h('div', { class: 'seg speed', id: 'speed-seg', role: 'group', 'aria-label': 'Speed and pause' }, ...this.speedBtns, this.pauseBtn);
+    this.pausedCallout = h('div', { class: 'callout paused', id: 'paused-callout' }, uiIcon(atlas, 'i-pause'), 'Paused', h('kbd', null, 'Space'));
+    this.settingsBtn = settingsButton(atlas, () => this.toggleSettings());
     const power = session.power();
     if (power) {
       this.powerBtn = h('button', {
         class: 'btn power-btn', id: 'power-btn', 'aria-pressed': 'false', 'aria-label': `${power.name} (Q)`, onclick: () => this.togglePower(),
       },
-        h('span', { class: 'power-ring', 'aria-hidden': 'true' }, uiIcon(atlas, 'i-power')),
-        h('span', { class: 'power-label' }, h('b', null, power.name), this.powerState),
-        h('kbd', null, 'Q'));
+      h('span', { class: 'power-ring', 'aria-hidden': 'true' }, uiIcon(atlas, 'i-power')),
+      h('span', { class: 'power-label' }, h('b', null, power.name), this.powerState),
+      h('kbd', null, 'Q'));
       this.powerTip.attach(this.powerBtn, {
-        key: () => `${this.powerState.textContent}|${session.state.compiled.player.powerCooldownMult ?? 1}`,
+        key: () => this.powerState.textContent ?? '',
         build: () => [
           h('div', { class: 'tip-head' }, h('b', null, power.name), h('span', { class: 'tip-num lit' }, this.powerState.textContent ?? '')),
-          h('span', null, power.text),
-          h('span', { class: 'muted' }, `${powerAim(power)}. ${powerTiming(power, session.state.compiled.player.powerCooldownMult ?? 1)}.`),
-          h('span', { class: 'muted' }, 'Press Q or click here, then click the field. You can aim while paused; it goes off on the next tick.'),
+          h('span', null, powerText(power)),
+          h('span', { class: 'muted' }, powerUse(power)),
         ],
       });
     }
-    const settings = loadSettings();
-    this.renderer.damageNumbers = settings.damageNumbers;
-    this.renderer.colorAssist = settings.colorAssist;
-    this.renderer.spawnTimers = settings.spawnTimers;
-    this.screenShake = settings.screenShake;
-    this.unsubscribe = onSettings((next) => {
-      this.renderer.damageNumbers = next.damageNumbers;
-      this.renderer.colorAssist = next.colorAssist;
-      this.renderer.spawnTimers = next.spawnTimers;
-      this.screenShake = next.screenShake;
-    });
-    this.settingsBtn = settingsButton(atlas, () => this.toggleSettings());
-    // E1: a Hold / Advance switch per lane, with what the lane is doing (and any timer) beside it
-    const lanes = state.lanes.length;
-    const stance = state.rules.stance ? h('div', { class: 'stance', id: 'stance' },
-      ...state.lanes.map((_, i) => {
-        const which = lanes > 1 ? `lane ${i + 1}` : 'the lane';
-        const holdWhat = state.rules.waves ? 'its next wave stays home for one beat, and the beat after sends both waves' : 'units gather at the rally line';
-        const hold = h('button', { class: 'btn has-ico', 'data-stance': 'hold', 'data-lane': i, 'aria-pressed': 'false', title: `Hold ${which}: ${holdWhat} (F: every lane)`, 'aria-label': `Hold ${which}`, onclick: () => { if (!session.stanceShown(i)) session.toggleStance(i); } }, uiIcon(atlas, 'i-hold'));
-        const advance = h('button', { class: 'btn has-ico', 'data-stance': 'advance', 'data-lane': i, 'aria-pressed': 'true', title: `Advance ${which} (F: every lane)`, 'aria-label': `Advance ${which}`, onclick: () => { if (session.stanceShown(i)) session.toggleStance(i); } }, uiIcon(atlas, 'i-advance'));
-        const status = h('span', { class: 'status' });
-        this.stanceRows.push({ hold, advance, status });
-        return h('div', { class: 'stance-row' },
-          lanes > 1 ? h('span', { class: 'lane', title: `Lane ${i + 1}` }, String(i + 1)) : null,
-          h('div', { class: 'seg', role: 'group', 'aria-label': `Stance, ${which}` }, hold, advance), status);
-      }),
-    ) : null;
     const controls = h('div', { class: 'controls' },
-      this.beginBox,
-      this.speedSeg,
       this.powerBtn,
-      stance,
+      h('div', { class: 'begin', id: 'begin-box' }, this.beginBtn),
+      this.speedSeg,
       h('div', { class: 'row' },
         soundToggle(atlas, 'up'),
         this.settingsBtn,
         h('button', { class: 'btn', id: 'help-btn', title: 'Help: the matrix, merging, the general and every hotkey', onclick: () => this.toggleHelp() }, 'Help', h('kbd', null, 'H')),
       ),
-      debug ? h('div', { class: 'hint' }, 'F3 debug overlay') : null,
-    );
-    this.root = h('div', { id: 'battle', style: 'display:contents' },
-      this.top.el,
-      this.callouts.el,
-      this.field,
-      h('footer', { class: 'bottom' }, controls, this.tray.el, this.inspect.el),
-      this.draft.el,
       this.powerTip.el,
+    );
+    this.root = h('div', { id: 'battle', class: 'rounds', style: 'display:contents' },
+      this.top,
+      this.mounts.callouts,
+      this.field,
+      h('footer', { class: 'bottom' }, controls, this.mounts.tray, this.mounts.inspect),
     );
     window.addEventListener('resize', this.onResize);
     // the self-hosted fonts change the bands' heights when they swap in
     void document.fonts.ready.then(this.onResize);
+    // the opening's news, such as round 1's intel, came before the view, so its first callout is said here
+    const news = session.state.phase === 'planning' ? generalNews(content, session.state) : null;
+    if (news) this.say('counter', news);
   }
 
-  /** Removes window listeners and overlays this view added (a run plays several battles). */
   dispose(): void {
-    this.disposed = true;
     window.removeEventListener('resize', this.onResize);
-    this.unsubscribe();
-    this.top.dispose();
-    this.powerTip.dispose();
-    this.coach.dispose();
-    if (this.settingsShown) closeSettings();
     soundSpeed(1);
     soundDim(false);
+    this.unsubscribe();
+    for (const b of this.bands) b.dispose();
+    this.powerTip.dispose();
+    if (this.settingsShown) closeSettings();
     this.help?.remove();
     this.report?.remove();
   }
 
-  /** Opens or closes the settings screen; the battle pauses while it is open. */
-  toggleSettings(): void {
-    if (this.settingsShown) { closeSettings(); return; }
-    if (settingsOpen() || this.ended) return;
-    this.pausedBeforeSettings = this.session.paused;
-    this.session.paused = true;
-    this.settingsShown = true;
-    this.settingsBtn.setAttribute('aria-expanded', 'true');
-    openSettings(this.session.content, this.atlas, settingsStore, soundPrefs, {
-      paused: this.session.state.phase === 'live',
-      onClose: () => {
-        this.settingsShown = false;
-        this.settingsBtn.setAttribute('aria-expanded', 'false');
-        this.session.paused = this.pausedBeforeSettings;
-      },
-    });
-  }
-
-  get settingsOpen(): boolean { return this.settingsShown; }
-
-  /** Opens or closes the help overlay; the battle pauses while it is open. */
-  toggleHelp(): void {
-    if (this.help) {
-      this.help.remove();
-      this.help = null;
-      this.session.paused = this.pausedBeforeHelp;
-      return;
-    }
-    this.pausedBeforeHelp = this.session.paused;
-    this.session.paused = true;
-    this.help = helpOverlay(this.session.content, this.session.state, () => this.toggleHelp());
-    document.body.append(this.help);
-  }
-
-  get helpOpen(): boolean { return this.help !== null; }
-
-  /** `Q` or the power button: start or stop aiming the commander power (refused, with a callout, while it recharges). */
-  togglePower(): void {
-    const s = this.session;
-    const def = s.power();
-    if (!def || s.state.phase === 'ended') return;
-    // a global power also waits for a click on the field, so a stray Q never fires it
-    if (s.toggleTargeting()) return;
-    sfx('illegal');
-    const st = s.state;
-    const why = st.phase !== 'live' ? `${def.name} works once the battle begins`
-      : s.powerPending() ? `${def.name} goes off on the next tick`
-        : `${def.name} is ready in ${Math.ceil(st.sides.player.powerCooldown / st.rules.tickRate)} s`;
-    this.callouts.push('refused', why, '', performance.now());
-  }
-
-  /** `F`: holds every lane that can, or advances them all; when no lane can hold yet, a callout says when one can. */
-  toggleAllStances(): void {
-    const s = this.session, st = s.state;
-    if (!st.rules.stance || st.phase === 'ended' || s.toggleAllStances()) return;
-    sfx('illegal');
-    // the lane that isn't held and can hold soonest
-    let at = Infinity;
-    st.lanes.forEach((_, i) => { if (!s.stanceShown(i)) at = Math.min(at, st.sides.player.stance![i]!.readyAt); });
-    const beat = st.compiled.player.waveBeatTicks;
-    const toBeat = beat ? beat - (st.tick % beat) : 0;
-    const secs = (ticks: number) => Math.max(1, Math.ceil(ticks / st.rules.tickRate));
-    // combat rework `waves`: a hold the beat spent can't hold again until the next beat has sent both waves
-    const why = beat && at === st.tick + toBeat + 1 ? `Hold is ready once both waves leave, in ${secs(toBeat)} s` : `Hold is ready in ${secs(at - st.tick)} s`;
-    this.callouts.push('refused', why, '', performance.now());
-  }
-
-  /** A notice pinned in the callout lane while the battle is in deploy (e.g. a save that couldn't be restored). */
+  /** A notice pinned in the callout lane, such as a battle that restarted because its save couldn't be restored (§8.9). */
   notice(id: string, text: string): void {
     this.callouts.pin(id, h('div', { class: 'callout bad notice', id, role: 'status' }, text));
   }
 
-  pick(id: string): void {
+  /** `I`: keyboard focus on the gold chip, whose tip opens; Tab then moves along the band (§10.2). */
+  focusChips(): void { this.topBand.focusChips(); }
+
+  /** A callout in the lane: a refused key, a sell's refund, news. */
+  say(kind: RoundCalloutKind, text: string, tone: 'good' | 'bad' | '' = ''): void {
+    this.callouts.push(kind, text, tone, performance.now());
+  }
+
+  /** X, Delete or the inspector's sell button: the first press shows the refund, the second sells (§10.3). */
+  sell(): void {
+    const s = this.session;
+    const name = this.content.buildings[s.state.buildings.find((b) => b.id === s.selected)?.buildingId ?? '']?.name;
+    const r = s.sell();
+    if (r && !r.sold) this.say('info', `Sell ${name ?? 'it'} for ${r.refund} gold? Press X again`);
+  }
+
+  /** `Q` or the power button: starts or stops aiming, or a callout says why it can't (§6.6, §10.3). */
+  togglePower(): void {
+    const s = this.session, def = s.power();
+    if (!def) { this.say('refused', 'No commander power in this battle'); return; }
+    if (s.state.phase === 'ended' || s.toggleTargeting()) return;
+    this.say('refused', powerRefusal(def.name, s.aimProblem() ?? 'wrongPhase'));
+  }
+
+  /** A click while aiming: the power fires on the next tick, or a callout says why it can't fire there. */
+  firePower(): void {
+    const def = this.session.power();
+    const why = this.session.firePower();
+    if (def && why) this.say('refused', powerRefusal(def.name, why));
+  }
+
+  get helpOpen(): boolean { return this.help !== null; }
+
+  /** H or the Help button: v1's Help, which holds a clash and the aftermath while it's open. */
+  toggleHelp(): void {
+    if (this.help) {
+      this.help.remove();
+      this.help = null;
+      this.session.overlayOpen = this.settingsShown;
+      return;
+    }
     if (this.session.state.phase === 'ended') return;
-    this.session.placing = this.session.placing === id ? null : id;
-    this.session.selected = null;
-    this.session.targeting = false;
+    this.help = helpOverlay(this.content, this.session.state, () => this.toggleHelp());
+    this.session.overlayOpen = true;
+    document.body.append(this.help);
+  }
+
+  /** The settings cog: the settings screen, which holds a clash and the aftermath while it's open. */
+  toggleSettings(): void {
+    if (this.settingsShown) { closeSettings(); return; }
+    if (settingsOpen() || this.session.state.phase === 'ended') return;
+    this.settingsShown = true;
+    this.session.overlayOpen = true;
+    this.settingsBtn.setAttribute('aria-expanded', 'true');
+    openSettings(this.content, this.atlas, settingsStore, soundPrefs, {
+      paused: this.session.state.phase === 'clash',
+      onClose: () => {
+        this.settingsShown = false;
+        this.session.overlayOpen = this.help !== null;
+        this.settingsBtn.setAttribute('aria-expanded', 'false');
+      },
+    });
   }
 
   /**
-   * Integer scaling when it wastes ≤30% of the area, else fractional (SPEC §10.1). The scale is in
-   * screen pixels, so under UI scale (src/ui/scale.ts) the field still lands on whole screen pixels.
-   * Nothing sits on the field's edges any more (Heartcap HP lives in the top band), so it keeps 8 px
-   * of margin on each side.
+   * Integer scaling when it wastes ≤30% of the area, else fractional (SPEC §10.1), in screen pixels, so
+   * under UI scale the field still lands on whole screen pixels; 8 px of margin on each side, as v1's.
    */
   fit(): void {
     const r = this.field.getBoundingClientRect(), ui = uiScale();
@@ -322,292 +298,172 @@ export class BattleView {
     this.scale = int >= 1 && (int * int) / (frac * frac) >= 0.7 ? int : frac;
     this.canvas.style.width = `${Math.round(nw * this.scale) / ui}px`;
     this.canvas.style.height = `${Math.round(nh * this.scale) / ui}px`;
-    // the frame fills everything between the bands: from the top band down, past the callout lane
-    this.frameArt.el.style.top = `${(this.top.el.getBoundingClientRect().bottom - r.top) / ui}px`;
+    this.frameArt.el.style.top = `${(this.top.getBoundingClientRect().bottom - r.top) / ui}px`;
     this.frameArt.layout(this.canvas.getBoundingClientRect(), this.frameArt.el.getBoundingClientRect(), ui);
-    this.top.fit();
-    this.tray.fit();
+    for (const b of this.bands) b.fit?.();
   }
 
-  /** Converts a mouse event to world tile coordinates. */
+  /** A mouse event in world tiles. */
   tileAt(ev: MouseEvent): { x: number; y: number; col: number; row: number } {
     const rect = this.canvas.getBoundingClientRect();
     const px = ((ev.clientX - rect.left) / rect.width) * this.renderer.width;
     const py = ((ev.clientY - rect.top) / rect.height) * this.renderer.height;
-    const x = px / TILE - 2, y = py / TILE;
+    const x = px / TILE - STRIP, y = py / TILE;
     return { x, y, col: Math.floor(x), row: Math.floor(y) };
   }
 
-  /** Per-tick feed: effects, sounds, callouts, combat log. */
+  /**
+   * Each step's feed: the field's effects, the colony's changes, the combat log, and the lane's news by §10.2's
+   * priority: a counter the general brings into the round, a Twin Roots lane's end, and an Elder on either side.
+   */
   onTick(state: BattleState, now: number): void {
     this.renderer.onTick(state, now);
-    this.sound.onTick(state);
     this.log.onTick(state);
-    this.economyNudge(state);
-    this.coach.onTick(state);
+    this.sound.onTick(state);
     for (const e of state.events) {
-      if (e.t === 'income' && e.side === 'player') {
-        this.top.bump();
-      } else if (e.t === 'columnFlipped') {
-        // "lost" only for a column that was yours; the enemy taking unclaimed ground shows on the tug, not in the lane
-        const owners = this.owners[e.lane]!;
-        const was = owners[e.column];
-        owners[e.column] = e.to === 'player' ? 1 : 2;
-        if (e.to === 'player') this.callouts.push('column', `Column ${e.column} claimed`, 'good', now);
-        else if (was === 1) this.callouts.push('column', `Column ${e.column} lost`, 'bad', now);
-      } else if (e.t === 'buildingDestroyed') {
-        const name = this.session.content.buildings[e.buildingId]?.name ?? e.buildingId;
-        this.callouts.push('buildingLost', e.side === 'player' ? `${name} lost` : `Enemy ${name} destroyed`, e.side === 'player' ? 'bad' : 'good', now);
-      } else if (e.t === 'hit' && e.target < 0) {
-        if (e.target === -1) this.callouts.push('heartcap', 'Your Heartcap is under attack!', 'bad', now);
-        this.shakeOn(e.target, e.amount, now);
-      } else if (e.t === 'sporestorm') {
-        this.callouts.push('info', `The Sporestorm thickens (${e.stacks})`, '', now);
-      } else if (e.t === 'heartcapBreach') {
-        const pct = Math.round(e.at * 100);
-        this.callouts.push('counter', e.side === 'player' ? `Your Heartcap is breached (${pct}%)!` : `Enemy Heartcap breached (${pct}%)!`, e.side === 'player' ? 'bad' : 'good', now);
-      } else if (e.t === 'begin') {
-        this.callouts.push('info', 'The battle begins', '', now);
-        const opening = intentOf(state).opening;
-        if (opening.length) this.callouts.push('counter', rememberText(opening), 'bad', now);
-      } else if (e.t === 'counterWarned' && e.side === 'enemy') {
-        const waves = Math.max(1, Math.ceil((e.activatesAtTick - state.tick) / state.rules.waveTicks));
-        this.callouts.push('counter', warningText(generalName(this.session.content, state), e.kind, waves), 'bad', now);
-      } else if (e.t === 'counterActive' && e.side === 'enemy') {
-        this.callouts.push('counter', activeText(generalName(this.session.content, state), e.kind), 'bad', now);
-      } else if (e.t === 'stance' && (e.side === 'enemy' || e.auto) && !e.hold) {
-        const lane = state.lanes.length > 1 ? ` in lane ${e.lane + 1}` : '';
-        // combat rework `waves`: the beat spent the hold, keeping that wave home
-        const spent = state.rules.waves ? `Wave kept home${lane}: the next beat sends both waves` : `Hold time is up: advancing${lane}`;
-        this.callouts.push('info', e.side === 'player' ? spent : `The Gray Rot advances${lane}`, e.side === 'player' ? '' : 'bad', now);
-      } else if (e.t === 'release' && e.side === 'player' && e.shielded.length) {
-        // combat rework `mixedWave`
-        const lanes = state.lanes.length > 1 ? ` in lane ${e.shielded.map((l) => l + 1).join(' and ')}` : '';
-        this.callouts.push('info', `Mixed wave${lanes}: shields up`, '', now);
-      } else if (e.t === 'power' && e.side === 'player') {
-        const def = state.library.powers?.[e.power];
-        const name = def?.name ?? 'Power';
-        const what = def?.kind === 'tithe' ? `paid ${e.gold ?? 0} gold`
-          : def?.kind === 'surge' ? `took ${e.lanes.length} column${e.lanes.length === 1 ? '' : 's'}`
-          : def?.kind === 'bloom' ? `merged ${e.merges} trio${e.merges === 1 ? '' : 's'}` : `hit ${e.hits} target${e.hits === 1 ? '' : 's'}`;
-        this.callouts.push('merge', `${name} ${what}!`, 'good', now);
-      } else if (e.t === 'merged' && (e.side === 'player' || e.tier === 3)) {
-        const name = this.session.content.units[e.unitId]?.name ?? e.unitId;
-        const tier = e.tier === 3 ? 'Elder' : 'Bloomed';
-        this.callouts.push('merge', e.side === 'player' ? `${tier} ${name}!` : `Enemy ${tier} ${name}`, e.side === 'player' ? 'good' : 'bad', now);
+      if (e.t === 'buildingPlanted' || e.t === 'buildingSold' || e.t === 'mergeToggled' || e.t === 'roundStarted') this.colonyVersion++;
+      if (e.t === 'generalPlanned') {
+        const news = e.side === 'enemy' ? generalNews(this.content, state) : null;
+        if (news) this.say('counter', news);
+      } else if (e.t === 'laneWon') {
+        const c = laneCallout(state, e);
+        if (c) this.callouts.push('lane', c.text, c.tone, now);
+      } else if (e.t === 'merged' && e.tier === 3) {
+        const unit = this.content.units[e.unitId]?.name ?? e.unitId;
+        this.say('elder', e.side === 'player' ? `Your ${unit}s knit an Elder` : `The Gray Rot's ${unit}s knit an Elder`, e.side === 'player' ? 'good' : '');
+      } else if ((e.t === 'power' || e.t === 'commandRejected' || e.t === 'commandDropped') && e.side === 'player') {
+        this.powerNews(state, e);
       }
     }
-    // back in step with the sim, also after ticks it ran without the view (a `?ticks=` fast-forward)
-    this.owners = state.lanes.map((l) => l.owner.slice());
   }
 
-  /**
-   * A restrained shake when a Heartcap is hit (off by default, SPEC §10.4): up to 3 screen px by damage,
-   * 180 ms, at most once every 1.5 s per Heartcap, and never under reduced motion or `?test=1`.
-   */
-  private shakeOn(target: number, amount: number, now: number): void {
-    if (!this.screenShake || calm()) return;
-    if (now - (this.shakenAt.get(target) ?? -1e9) < SHAKE_EVERY_MS) return;
-    this.shakenAt.set(target, now);
-    this.shake = { start: now, px: Math.min(SHAKE_MAX_PX, 1 + amount / 60) };
+  /** Your power going off, or refused when it ran, or dropped as its clash ended (§6.6, §14.5). */
+  private powerNews(state: BattleState, e: Extract<SimEvent, { t: 'power' | 'commandRejected' | 'commandDropped' }>): void {
+    const def = this.session.power();
+    if (!def) return;
+    if (e.t === 'power') { this.say('info', powerNews(def.name, e, def.kind), 'good'); return; }
+    if (e.t === 'commandDropped') { this.say('refused', `${def.name}: the clash ended first`); return; }
+    // a rejection names its command by seq, and only the power's are news here
+    if (state.log.find((c) => c.side === 'player' && c.seq === e.seq)?.type === 'power') this.say('refused', powerRefusal(def.name, e.reason));
   }
 
-  /** The field's offset this frame: a jolt that dies away in a beat and a half. */
-  private shakeFrame(now: number): void {
-    const k = (now - this.shake.start) / SHAKE_MS;
-    if (k >= 1 || k < 0) {
-      if (this.fieldWrap.style.transform) this.fieldWrap.style.transform = '';
-      return;
-    }
-    const a = this.shake.px * (1 - k) * (1 - k) / uiScale();
-    const x = Math.round(a * Math.cos(k * Math.PI * 3)), y = Math.round(a * 0.5 * Math.sin(k * Math.PI * 3));
-    this.fieldWrap.style.transform = `translate(${x}px, ${y}px)`;
-  }
-
-  /** Does the player have, or are they placing, an economy building? */
-  private hasEconomy(state: BattleState): boolean {
-    const s = this.session;
-    const eco = (id: string | null | undefined) => !!id && s.content.buildings[id]?.kind === 'economy';
-    return eco(s.placing) || state.buildings.some((b) => b.side === 'player' && eco(b.buildingId))
-      || s.pending().some((c) => c.type === 'place' && eco(c.buildingId));
-  }
-
-  /** Battle 1 only, once: a tip and a pulse on the economy cards if none is built 30 s in. */
-  private economyNudge(state: BattleState): void {
-    if (this.nudged || state.phase !== 'live' || state.tick < NUDGE_AT_SECONDS * state.rules.tickRate) return;
-    this.nudged = true;
-    if (state.config.battleIndex !== 1 || this.hasEconomy(state)) return;
-    const content = this.session.content;
-    const order = trayOrder(content, state.sides.player.kit);
-    const i = order.findIndex((id) => content.buildings[id]!.kind === 'economy');
-    if (i < 0) return;
-    const b = content.buildings[order[i]!]!;
-    // the cards pulse while the tip is up (it waits its turn behind any first-time tip)
-    this.coach.offer(state, 'economy', [tipWord(), `A ${b.name} `, ...(i < 9 ? [h('kbd', null, String(i + 1)), ' '] : []), `earns gold every ${content.balance.incomeTickSeconds} s all battle. Build one early!`],
-      { remember: false, onShow: (now) => { this.nudgeUntil = now + NUDGE_PULSE_MS; } });
-  }
-
-  frame(state: BattleState, alpha: number, now: number, debugOverlay: boolean): void {
+  /** Draws a frame, and switches each phase's chrome on and off (T097). */
+  frame(state: BattleState, alpha: number, now: number, debug: boolean): void {
     const s = this.session;
     const ghost = s.ghost();
+    // aiming stops once it can't fire: the clash ended, or the use is queued
+    if (s.targeting && s.aimProblem()) s.targeting = false;
+    const preview = s.powerPreview();
     const def = s.power();
-    if (s.targeting && !s.powerReady()) s.targeting = false; // the battle ended, or the use is already queued
-    const preview = s.targeting ? s.powerPreview() : null;
-    const pending = s.pending();
-    const powerView = def ? {
-      reticle: preview && def.target === 'point' && s.aim ? { x: s.aim.x, y: s.aim.y, radius: def.radius, valid: preview.valid } : null,
-      lanes: preview?.lanes ?? null,
-      pending: pending.flatMap((c) => (c.type === 'power' && c.x !== undefined && c.y !== undefined && def.target === 'point' ? [{ x: c.x, y: c.y, radius: def.radius }] : [])),
-    } : null;
+    const reticle = preview && def?.target === 'point' && s.aim ? { x: s.aim.x, y: s.aim.y, radius: def.radius, valid: preview.valid } : null;
     this.renderer.draw(state, alpha, {
-      ghost: ghost ? { buildingId: ghost.buildingId, col: ghost.col, row: ghost.row, legal: ghost.legal } : null,
+      ghost: ghost ? { buildingId: ghost.buildingId, plot: ghost.plot, legal: ghost.legal } : null,
+      lit: s.lit(),
       selected: s.selected,
-      pending,
-      placeable: s.legalTiles(),
-      debug: debugOverlay,
+      debug,
       timeMs: now,
-      power: powerView,
+      hover: s.hover,
+      placing: s.placing,
+      colony: this.colonyVersion,
+      aftermathMs: s.aftermathMs,
+      power: def ? {
+        reticle,
+        marks: preview?.reach.map((u) => ({ x: u.x, y: u.y, r: state.compiled[u.side].units[u.unitId]!.tiers[u.tier - 1]!.radius })) ?? [],
+        pending: def.target === 'point' ? state.queue.flatMap((c) => (c.side === 'player' && c.type === 'power' && c.x !== undefined && c.y !== undefined ? [{ x: c.x, y: c.y, radius: def.radius }] : [])) : [],
+      } : null,
     });
-    this.canvas.classList.toggle('aiming', s.targeting);
-    if (powerView?.reticle) this.canvas.dataset.reticle = `${powerView.reticle.x.toFixed(2)},${powerView.reticle.y.toFixed(2)},${powerView.reticle.radius}`;
+    toggleClass(this.canvas, 'aiming', s.targeting);
+    if (reticle) this.canvas.dataset.reticle = `${reticle.x.toFixed(2)},${reticle.y.toFixed(2)},${reticle.radius}`;
     else delete this.canvas.dataset.reticle;
     this.updatePower(state, preview);
-    // spores drift at the game's speed, and stop while it is paused, held for a draft or over
-    const running = state.phase === 'deploy' || (state.phase === 'live' && !s.paused && !state.held);
-    this.frameArt.frame(state.sporestorm, now, running ? (state.phase === 'live' ? s.speed : 1) : 0);
-    this.shakeFrame(now);
-    this.top.update(state);
-    const kit = state.sides.player.kit.join();
-    if (kit !== this.trayKit) {
-      // a drafted blueprint joins the tray
-      const next = new Tray(s.content, this.atlas, state, (id) => this.pick(id));
-      this.tray.el.replaceWith(next.el);
-      this.tray = next;
-      this.trayKit = kit;
-      next.fit();
-    }
-    if (this.nudgeUntil > now && this.hasEconomy(state)) this.nudgeUntil = 0;
-    this.tray.update(state, s.available(), s.placing, this.nudgeUntil > now);
-    this.draft.update(state, s.pending().some((c) => c.type === 'draftPick' || c.type === 'draftReroll' || c.type === 'draftSkip'));
-    this.inspect.update(state, s.selected);
-    this.coach.frame(now);
-    this.callouts.update(now);
-    this.speedBtns.forEach((b, i) => this.lit(b, s.speed === i + 1));
-    this.stanceRows.forEach((row, i) => {
-      const st = state.sides.player.stance![i]!;
-      const held = s.stanceShown(i);
-      const secs = (ticks: number) => `${Math.max(0, Math.ceil(ticks / state.rules.tickRate))} s`;
-      const beat = state.compiled.player.waveBeatTicks;
-      // combat rework `waves`: a held lane keeps its wave home until the next beat, and can't hold past it (the beat after
-      // sends both waves). Short words, so they fit beside the switch at 1280 px; the Hold button's title says it in full
-      const text = held
-        ? beat ? `Home · ${secs(beat - (state.tick % beat))}`
-          : st.hold ? `Hold · ${secs(state.rules.stance!.maxHoldTicks - (state.tick - st.since))}` : 'Holding'
-        : s.canHold(i) ? 'Advancing'
-          : beat && st.readyAt > state.tick + beat - (state.tick % beat) ? `Out in ${secs(beat - (state.tick % beat))}`
-            : `Hold in ${secs(st.readyAt - state.tick)}`;
-      this.lit(row.hold, held);
-      this.lit(row.advance, !held);
-      // a hold on cooldown is unlit (src/app/session.ts refuses it); advancing back is always open
-      row.hold.disabled = !held && !s.canHold(i);
-      setText(row.status, text);
-    });
-    this.lit(this.pauseBtn, s.paused);
-    soundSpeed(s.speed);
-    soundDim(s.paused && state.phase === 'live');
-    if (s.paused && state.phase === 'live') this.callouts.pin('paused', this.pausedCallout);
+    this.ghostTip(state, ghost);
+    const phase = state.phase;
+    const clash = phase === 'clash', planning = phase === 'planning', aftermath = phase === 'aftermath';
+    const held = s.overlayOpen || (clash && s.paused);
+    this.frameArt.frame(state.sporestorm, now, held ? 0 : clash || aftermath ? s.speed : planning ? 1 : 0);
+    // sound: the Heartcap hits land with the aftermath's drain, and the ambience dims while a clash is paused (§13.9)
+    this.sound.frame(state, s.aftermathMs);
+    soundSpeed(clash || aftermath ? s.speed : 1);
+    soundDim(clash && s.paused);
+    // planning: Begin, the hint, and the empty-lane warning while it stands
+    this.beginBtn.hidden = !planning;
+    this.beginBtn.disabled = state.queue.some((c) => c.type === 'beginClash');
+    setText(this.beginLabel, s.warned ? 'Begin anyway' : 'Begin');
+    if (planning) {
+      setText(this.hintText, planningHint(state));
+      this.callouts.pin('planning-hint', this.hint);
+    } else this.callouts.unpin('planning-hint');
+    if (s.warned && planning) {
+      const where = state.lanes.length > 1 ? ` lane ${s.warnedLanes.map((l) => l + 1).join(' and ')}` : ' this lane';
+      setText(this.warningText, `The general takes${where} unopposed`);
+      this.callouts.pin('empty-lane', this.warning);
+    } else this.callouts.unpin('empty-lane');
+    // a clash and the aftermath: the speed control in Begin's place, with pause only in a clash
+    this.speedSeg.hidden = !clash && !aftermath;
+    this.pauseBtn.hidden = !clash;
+    this.speedBtns.forEach((b, i) => { toggleClass(b, 'on', s.speed === i + 1); b.setAttribute('aria-pressed', String(s.speed === i + 1)); });
+    this.pauseBtn.setAttribute('aria-pressed', String(s.paused));
+    if (clash && s.paused) this.callouts.pin('paused', this.pausedCallout);
     else this.callouts.unpin('paused');
-    const deploy = state.phase === 'deploy';
-    if (deploy) this.callouts.pin('deploy', this.deployCallout);
-    else { this.callouts.unpin('deploy'); this.callouts.unpin('save-recovery'); }
-    this.beginBox.hidden = !deploy;
-    this.speedSeg.hidden = deploy;
-    if (ghost && s.hover) {
-      this.tip.hidden = false;
-      const name = s.content.buildings[ghost.buildingId]!.name;
-      // the forward price in plain words: how far from home, and what that adds (your own rate, so Forward Spores shows)
-      const surcharge = ghost.depth > 0 ? ` (+${Math.round((ghost.depth * state.compiled.player.supplyLineBp) / 100)}%: ${ghost.depth} column${ghost.depth === 1 ? '' : 's'} from home)` : ' (home ground)';
-      const def = s.content.buildings[ghost.buildingId]!;
-      const loam = def.economy && ghost.loam ? ` · Rich Loam +${Math.round(s.content.balance.loamBonus * 100)}%` : '';
-      this.tip.replaceChildren(
-        h('div', null, `${name} · `, h('b', { class: 'gold' }, this.tipGold, String(ghost.price)), h('span', { class: 'muted' }, surcharge + loam)),
-        ghost.legal ? h('div', { class: 'good' }, 'Click to place' + (s.shift ? ' (Shift: keep placing)' : '')) : h('div', { class: 'bad' }, ghost.reason ?? 'illegal'),
-      );
-      this.placeTip(ghost.col, ghost.row, s.state.compiled.player.buildings[ghost.buildingId]!);
-    } else {
-      this.tip.hidden = true;
-    }
-    if (state.phase === 'ended' && !this.ended) {
-      this.ended = true;
-      s.placing = null;
-      if (this.help) this.toggleHelp();
-      if (this.settingsShown) closeSettings();
-      const a = this.actions;
-      const report = battleReport(s.content, state, {
-        again: a.again, rematch: a.rematch, ...(a.continueRun ? { continueRun: a.continueRun } : {}),
-      }, this.atlas, a.rewards?.(state));
-      this.report = report;
-      // the report is a new screen: it arrives behind a spore wipe
-      sporeWipe(() => { if (!this.disposed) document.body.append(report); });
-    }
+    // the aftermath: the result banner once the bars have drained, as the tally takes the round's pip (§10.2)
+    if (aftermath && this.hud.aftermath.drained(state, now) >= 1) {
+      if (this.bannerFor !== state.round) {
+        this.bannerFor = state.round;
+        const b = resultBanner(this.content, state);
+        setText(this.banner, b.text);
+        this.banner.className = `callout banner-callout ${b.tone}`.trim();
+      }
+      this.callouts.pin('round-banner', this.banner);
+    } else this.callouts.unpin('round-banner');
+    this.callouts.update(now);
+    for (const b of this.bands) b.update(state, now);
+    if (phase === 'ended' && !this.report) this.openReport(state);
   }
 
-  /** The power button (its cooldown ring and state) and, while aiming, the callout that says what a click does. */
-  private updatePower(state: BattleState, preview: ReturnType<Session['powerPreview']> | null): void {
-    const s = this.session;
-    const def = s.power();
-    const btn = this.powerBtn;
+  /** The power button's state and label, lit only in a clash, and while aiming the callout that says what a click does (§10.2). */
+  private updatePower(state: BattleState, preview: ReturnType<RoundSession['powerPreview']>): void {
+    const def = this.session.power(), btn = this.powerBtn;
     if (!def || !btn) return;
-    const cd = state.sides.player.powerCooldown;
-    const total = (state.stats.player.powerUses ?? 0) > 0 ? powerCooldownTicks(state, 'player', def) : powerFirstReadyTicks(state, def);
-    const k = state.phase === 'deploy' ? 0 : cd <= 0 ? 1 : Math.max(0, Math.min(1, 1 - cd / Math.max(1, total)));
-    btn.style.setProperty('--charge', k.toFixed(3));
-    const label = state.phase === 'deploy' ? `Ready at ${Math.floor(def.firstReady / 60)}:${String(Math.round(def.firstReady) % 60).padStart(2, '0')}`
-      : s.powerPending() ? 'Next tick' : s.targeting ? 'Aiming' : cd > 0 ? `${Math.ceil(cd / state.rules.tickRate)} s` : 'Ready';
-    setText(this.powerState, label);
-    btn.dataset.state = s.targeting ? 'aiming' : s.powerPending() ? 'pending' : cd > 0 || state.phase !== 'live' ? 'charging' : 'ready';
-    this.lit(btn, s.targeting);
+    const b = powerButton(state, this.session);
+    setText(this.powerState, b.label);
+    btn.dataset.state = b.state;
+    btn.style.setProperty('--charge', b.state === 'idle' || b.state === 'used' ? '0' : '1');
+    toggleClass(btn, 'on', b.state === 'aiming');
+    btn.setAttribute('aria-pressed', String(b.state === 'aiming'));
     this.powerTip.refresh();
-    if (preview) {
-      const what = def.kind === 'burst' ? `${preview.count} target${preview.count === 1 ? '' : 's'} in range`
-        : def.kind === 'bloom' ? `${preview.count} trio${preview.count === 1 ? '' : 's'} to merge`
-          : def.kind === 'tithe' ? `${preview.count} column${preview.count === 1 ? '' : 's'} held · +${def.goldPerColumn * preview.count} gold`
-          : `${preview.count} column${preview.count === 1 ? '' : 's'} to take`;
-      const act = def.target === 'point' ? (s.aim ? (preview.valid ? 'click to fire' : preview.reason ?? '') : 'move over the field') : (preview.valid ? 'click the field to fire' : preview.reason ?? '');
-      this.aimCallout.replaceChildren(uiIcon(this.atlas, 'i-power'), h('b', null, def.name), `${s.aim || def.target === 'global' ? `${what} · ` : ''}${act}`, h('kbd', null, 'Esc'));
-      toggleClass(this.aimCallout, 'bad', !preview.valid && (def.target === 'global' || !!s.aim));
+    if (this.session.targeting) {
+      this.aimCallout.replaceChildren(uiIcon(this.atlas, 'i-power'), h('b', null, def.name), aimText(def, preview), h('kbd', null, 'Esc'));
+      toggleClass(this.aimCallout, 'bad', !!preview && !preview.valid);
       this.callouts.pin('aim', this.aimCallout);
-    } else {
-      this.callouts.unpin('aim');
-    }
+    } else this.callouts.unpin('aim');
   }
 
-  /** Sets a toggle's lit state and its aria-pressed. */
-  private lit(b: HTMLButtonElement, on: boolean): void {
-    if (b.classList.contains('on') === on) return;
-    toggleClass(b, 'on', on);
-    b.setAttribute('aria-pressed', String(on));
+  /** The report by round, behind the spore wipe (§10.5); Help and the settings screen close first. */
+  private openReport(state: BattleState): void {
+    if (this.help) this.toggleHelp();
+    if (this.settingsShown) closeSettings();
+    this.session.placing = null;
+    const a = this.actions;
+    const buttons = a.continueRun
+      ? { continueRun: a.continueRun, ...(a.runNote ? { runNote: a.runNote(state) } : {}) }
+      : { ...(a.again ? { again: a.again } : {}), ...(a.rematch ? { rematch: a.rematch } : {}) };
+    const report = roundsReport(this.content, state, buttons, this.atlas, a.playTime?.());
+    this.report = report;
+    sporeWipe(() => { if (this.report === report) document.body.append(report); });
   }
 
-  /**
-   * Puts the ghost tip beside the footprint, inside the field, so it never covers the ghost, the
-   * bands or the callout lane: to the right, or to the left when the right has no room, vertically
-   * centred on the footprint and clamped to the field.
-   */
-  private placeTip(col: number, row: number, def: { w: number; h: number }): void {
-    const rect = this.canvas.getBoundingClientRect();
-    const wrap = this.fieldWrap.getBoundingClientRect();
-    // screen pixels back to layout pixels under UI scale
+  /** The ghost's tip beside its plot: the card, its price and the plot's rank and file, or why it can't go there (§10.2). */
+  private ghostTip(state: BattleState, ghost: ReturnType<RoundSession['ghost']>): void {
+    if (!ghost) { this.tip.hidden = true; return; }
+    const p = state.sides.player.plots[ghost.plot]!;
+    const name = this.content.buildings[ghost.buildingId]?.name ?? ghost.buildingId;
+    const where = `rank ${p.rank + 1}, file ${p.file}`;
+    setText(this.tip, ghost.reason ? `${name}: ${ghost.reason}` : `${name} · ${ghost.price} gold · ${where}`);
+    toggleClass(this.tip, 'bad', !!ghost.reason);
     const ui = uiScale();
-    const px = rect.width / this.renderer.width / ui;
-    const fieldL = (rect.left - wrap.left) / ui, fieldT = (rect.top - wrap.top) / ui;
-    const fieldR = fieldL + rect.width / ui, fieldB = fieldT + rect.height / ui;
-    const left = fieldL + (col + 2) * TILE * px, right = left + def.w * TILE * px;
-    const top = fieldT + row * TILE * px, bottom = top + def.h * TILE * px;
-    const w = this.tip.offsetWidth, hgt = this.tip.offsetHeight;
-    const x = right + TIP_GAP + w <= fieldR - TIP_MARGIN ? right + TIP_GAP : Math.max(fieldL + TIP_MARGIN, left - TIP_GAP - w);
-    const y = Math.min(Math.max(fieldT + TIP_MARGIN, (top + bottom - hgt) / 2), fieldB - TIP_MARGIN - hgt);
-    this.tip.style.left = `${x}px`;
-    this.tip.style.top = `${y}px`;
+    const k = this.scale / ui;
+    this.tip.style.left = `${Math.round((p.col + STRIP + 2) * TILE * k + 6)}px`;
+    this.tip.style.top = `${Math.round(p.row * TILE * k)}px`;
+    this.tip.hidden = false;
   }
 }

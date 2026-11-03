@@ -1,6 +1,6 @@
 // The settings screen (SPEC §10.5): an overlay opened from the title's Settings button, the battle's cog
 // (the battle pauses while it is open) and the run bar's cog. It holds sound (master, effects and
-// ambience volume, and mute), damage numbers, default speed, spawn timers, screen shake, first-time tips
+// ambience volume, and mute), damage numbers, default speed, screen shake, first-time tips
 // (with "Show tips again"), UI scale, reduced motion and color-blind assist, with a live preview of the
 // assist drawn the way the field draws it. Every change
 // saves at once, into the one settings record (src/app/settings.ts).
@@ -34,8 +34,6 @@ export interface ScreenSettings {
   colorAssist: boolean;
   /** First-time tips in battles 1 and 2 (playtest round 3). */
   tips: boolean;
-  /** A ring on each of your spawners showing time to its next spawn. */
-  spawnTimers: boolean;
 }
 
 export interface SettingsStore {
@@ -131,9 +129,10 @@ export function openSettings(content: Content, atlas: Atlas, store: SettingsStor
     class: 'preview-art', 'aria-hidden': 'true', width: PREVIEW_COLS * TILE, height: PREVIEW_ROWS * TILE,
     style: `width:${PREVIEW_COLS * TILE * PREVIEW_SCALE}px;height:${PREVIEW_ROWS * TILE * PREVIEW_SCALE}px`,
   });
-  const previewTug = h('div', { class: 'tugbar', style: `--cols:${PREVIEW_COLS}` }, h('div', { class: 'p', style: 'width:50%' }), h('div', { class: 'e', style: 'width:50%' }));
+  // the round tally's pips (src/ui/hud/tally.ts): rounds won in violet, rounds lost in ash, hatched under the assist
+  const previewPips = h('div', { class: 'tally' }, h('div', { class: 'pips' }, ...(['won', 'lost', 'won', 'lost'] as const).map((r) => h('span', { class: `pip ${r}` }))));
   const preview = h('figure', { class: 'set-preview', id: 'assist-preview', role: 'img' },
-    previewArt, previewTug,
+    previewArt, previewPips,
     h('figcaption', null, h('span', { class: 'p' }, 'Your units'), h('span', { class: 'e' }, 'Gray Rot units')));
   syncs.push(() => {
     drawAssistPreview(previewArt, content, atlas, current.colorAssist);
@@ -175,8 +174,6 @@ export function openSettings(content: Content, atlas: Atlas, store: SettingsStor
             { id: 'numbers' }),
           choice('defaultSpeed', 'Default speed', [[1, '1×'], [2, '2×'], [3, '3×']],
             () => 'Each battle runs at this speed once it begins.'),
-          choice('spawnTimers', 'Spawn timers', [[false, 'Off'], [true, 'On']],
-            () => (current.spawnTimers ? 'A thin bar under each of your spawners fills toward its next spawn.' : 'No timers on the field; the inspect panel still shows them.')),
           choice('screenShake', 'Screen shake', [[false, 'Off'], [true, 'On']],
             () => (current.screenShake ? 'The field jolts a little when a Heartcap is hit.' : 'Off by default. Never shakes under reduced motion.')))),
       h('div', { class: 'settings-col' },

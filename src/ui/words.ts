@@ -66,10 +66,9 @@ export function powerAim(p: PowerDef): string {
     : p.kind === 'tithe' ? 'No aim: pays for all your ground' : 'No aim: every lane at once';
 }
 
-/** A power's timing in plain words ("Ready at 0:45, then every 75 s"). */
-export function powerTiming(p: PowerDef, cooldownMult = 1): string {
-  const first = Math.round(p.firstReady);
-  return `Ready at ${Math.floor(first / 60)}:${String(first % 60).padStart(2, '0')}, then every ${Math.round(p.cooldown * cooldownMult)} s`;
+/** A power's timing in plain words: it fires once a clash (§6.6). */
+export function powerTiming(): string {
+  return 'Once a clash, from its first tick';
 }
 
 /** The plain rewordings, for the test that keeps their numbers in step with the data. */

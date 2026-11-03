@@ -33,7 +33,7 @@ for (const [width, height] of [[1366, 650], [1024, 600]] as const) {
   describe(`a ${width}×${height} window`, () => {
     it('fits both bands and keeps the mouse on the right tile', async () => {
       page = await browser!.newPage({ viewport: { width, height } });
-      await page.goto(`${base}/?scene=deploy&map=test-flat&enemy=human&seed=1&test=1&paused=1`);
+      await page.goto(`${base}/?scene=battle&map=test-flat&seed=1&test=1&phase=planning`);
       await page.waitForFunction(() => window.__GAME__?.ready === true);
       await page.evaluate(() => document.fonts.ready.then(() => true));
 
@@ -47,22 +47,28 @@ for (const [width, height] of [[1366, 650], [1024, 600]] as const) {
 
       // test-flat is 32×8 tiles plus a two-tile Heartcap strip at each end
       const box = (await page.locator('#battlefield').boundingBox())!;
-      const at = (col: number, row: number) => ({ x: box.x + ((col + 2.5) * box.width) / 36, y: box.y + ((row + 0.5) * box.height) / 8 });
+      const tile = box.width / 36;
+      const at = (col: number, row: number) => ({ x: box.x + (col + 2.5) * tile, y: box.y + (row + 0.5) * tile });
+      const plot = await page.evaluate(() => window.__GAME__!.battle()!.sides.player.plots.find((q) => q.open && q.terrain !== 'stump')!);
 
-      // hovering: the ghost tip sits just right of the hovered 2×2 footprint (columns 20–21), inside the field
+      // hovering a plot: the ghost tip sits just right of it, inside the field
       await page.locator('[data-building="sporelingBurrow"]').click();
-      await page.mouse.move(at(20, 5).x, at(20, 5).y);
+      await page.mouse.move(at(plot.col, plot.row).x, at(plot.col, plot.row).y);
+      await page.waitForFunction(() => !(document.getElementById('ghost-tip') as HTMLElement).hidden);
       const tip = (await page.locator('#ghost-tip').boundingBox())!;
-      expect(Math.abs(tip.x - (box.x + ((20 + 2 + 2) * box.width) / 36 + 14 * ui))).toBeLessThan(1.5);
+      const right = box.x + (plot.col + 2 + 2) * tile;
+      expect(tip.x).toBeGreaterThanOrEqual(right - 0.5);
+      expect(tip.x - right).toBeLessThan(14);
       expect(tip.y).toBeGreaterThanOrEqual(box.y);
       expect(tip.y + tip.height).toBeLessThanOrEqual(box.y + box.height + 0.5);
 
-      // placing and inspecting: the building lands under the mouse and a click on it selects it
-      await page.mouse.click(at(1, 5).x, at(1, 5).y);
-      await page.waitForFunction(() => window.__GAME__?.summary()?.buildings.player === 1);
-      await page.mouse.click(at(2, 6).x, at(2, 6).y);
+      // planting and inspecting: the building lands on the plot under the mouse and a click on it selects it
+      await page.mouse.click(at(plot.col, plot.row).x, at(plot.col, plot.row).y);
+      await page.waitForFunction(() => window.__GAME__!.battle()!.buildings.filter((x) => x.side === 'player').length === 1);
+      await page.mouse.click(at(plot.col + 1, plot.row + 1).x, at(plot.col + 1, plot.row + 1).y);
       await expect.poll(() => page!.locator('#inspect h3').textContent()).toBe('Sporeling Burrow · yours');
-      await page.mouse.click(at(3, 6).x, at(3, 6).y);
+      // off any plot, in the arena: nothing is selected
+      await page.mouse.click(at(16, plot.row).x, at(16, plot.row).y);
       await expect.poll(() => page!.locator('#inspect h3').textContent()).toBe('INSPECT');
     });
   });

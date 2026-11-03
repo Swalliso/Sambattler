@@ -14,12 +14,10 @@ import type { Page } from 'playwright';
 import { nodeContent, ROOT } from './lib/content.ts';
 import { CVD_MATRICES, cvdMatrixValues } from './lib/cvd.ts';
 import type { CvdFilter } from './lib/cvd.ts';
-import { RUN_SCENES, runForParams, sceneOf, stateForParams } from './lib/params.ts';
+import { RUN_SCENES, runForParams, sceneOf } from './lib/params.ts';
 import { roundStateForParams } from './lib/rounds/params.ts';
 import { hashRun, intelDots } from '../src/run/index.ts';
 import { COUNTER_KINDS } from '../src/sim/index.ts';
-import { hashState, summarize } from '../src/sim/index.ts';
-import type { BattleState } from '../src/sim/index.ts';
 import { formationOf as roundFormationOf, hashState as hashRoundState, summarize as summarizeRound } from '../src/sim/rounds/index.ts';
 import type { BattleState as RoundState } from '../src/sim/rounds/index.ts';
 
@@ -132,108 +130,28 @@ async function main(): Promise<number> {
     for (const e of [...consoleErrors, ...bridgeErrors]) failures.push(`console/page error: ${e}`);
 
     const scene = sceneOf(q);
-    if (scene === 'rounds') return await roundCapture(page, q, args, url, failures);
+    if (scene === 'battle' || scene === 'report') return await roundCapture(page, q, args, url, failures);
 
-    // 2. browser hash == Node hash at the same tick (the battle's state, or the run's on run screens)
+    // 2. browser hash == Node hash at the same tick (a run's battle, or the run's state on run screens)
     const browserTick = await page.evaluate(() => window.__GAME__!.tick);
     const browserHash = await page.evaluate(() => window.__GAME__!.hash);
-    const summary = await page.evaluate(() => window.__GAME__!.summary());
     const content = nodeContent();
-    let node: BattleState | null;
-    let nodeHash: string;
+    let nodeHash = '';
     let nodeTick = 0;
     let runBattle: RoundState | null = null;
     let runBrief: unknown = null;
-    if (scene === 'title' || scene === 'underroot') {
-      // the title and the Underroot hold no run or battle yet: the bridge's hash is empty
-      node = null;
-      nodeHash = '';
-    } else if (RUN_SCENES.includes(scene)) {
-      // a run's battle is in rounds since R2b's S1; T039 captures it at the final scenes
+    // the title and the Underroot hold no run or battle yet: the bridge's hash is empty
+    if (RUN_SCENES.includes(scene)) {
       const r = runForParams(content, q);
-      node = null;
       runBattle = r.battle;
       nodeHash = runBattle ? hashRoundState(runBattle) : hashRun(r.run);
       nodeTick = runBattle?.tick ?? 0;
       runBrief = await page.evaluate(() => window.__GAME__!.run());
-    } else {
-      node = stateForParams(content, q);
-      nodeHash = hashState(node);
-      nodeTick = node.tick;
     }
     if (nodeTick !== browserTick) failures.push(`tick mismatch: browser ${browserTick}, node ${nodeTick}`);
     if (nodeHash !== browserHash) failures.push(`hash mismatch at tick ${browserTick}: browser ${browserHash}, node ${nodeHash}`);
 
-    let canvasCheck: { distinct: number; playerTint: boolean; enemyTint: boolean } | null = null;
-    let hud: { gold?: string | null; supply?: string | null } | null = null;
     let dom: Record<string, unknown> | null = null;
-    if (node && summary) {
-      // 3. canvas not blank: ≥12 distinct colours on a sampled grid; both team tints in their home columns
-      const pal = { player: content.factions['velvet-bloom']!.mat.strand, enemy: content.factions['gray-rot']!.mat.strand };
-      // (a script string, not a function: tsx would inject __name helpers the page does not have)
-      canvasCheck = await page.evaluate(`(() => {
-        const pal = ${JSON.stringify(pal)}, homeCols = ${node.map.homeCols}, mapW = ${node.map.width};
-        const c = document.getElementById('battlefield');
-        const img = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
-        const hex = (i) => '#' + [img[i], img[i + 1], img[i + 2]].map((v) => v.toString(16).padStart(2, '0')).join('');
-        const colors = new Set();
-        for (let y = 2; y < c.height; y += 6) for (let x = 2; x < c.width; x += 6) colors.add(hex((y * c.width + x) * 4));
-        // a pixel counts as a team tint if it is within a small RGB distance of that team's strand colour
-        // (the Sporestorm haze and capture fills shift colours slightly) and nearer to it than to the other team's
-        const rgb = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
-        const P = rgb(pal.player), E = rgb(pal.enemy);
-        const d2 = (i, q) => (img[i] - q[0]) ** 2 + (img[i + 1] - q[1]) ** 2 + (img[i + 2] - q[2]) ** 2;
-        const has = (x0, x1, color) => {
-          const mine = color === pal.player ? P : E, theirs = color === pal.player ? E : P;
-          for (let y = 0; y < c.height; y++) for (let x = x0; x < x1; x++) {
-            const i = (y * c.width + x) * 4;
-            if (d2(i, mine) <= 40 * 40 && d2(i, mine) < d2(i, theirs)) return true;
-          }
-          return false;
-        };
-        const T = 16, strip = 2;
-        return {
-          distinct: colors.size,
-          playerTint: has(strip * T, (strip + homeCols) * T, pal.player),
-          enemyTint: has((strip + mapW - homeCols) * T, (strip + mapW) * T, pal.enemy),
-        };
-      })()`) as { distinct: number; playerTint: boolean; enemyTint: boolean };
-      if (canvasCheck.distinct < 12) failures.push(`canvas looks blank: ${canvasCheck.distinct} distinct colours sampled (need ≥12)`);
-      if (!canvasCheck.playerTint) failures.push('violet mat tint missing from the player home columns');
-      if (!canvasCheck.enemyTint) failures.push('gray mat tint missing from the enemy home columns');
-
-      // 4. the HUD agrees with the state
-      hud = await page.evaluate(() => ({
-        gold: document.getElementById('hud-gold')?.textContent,
-        supply: document.getElementById('hud-supply')?.textContent,
-      }));
-      if (hud.gold !== String(summary.gold.player)) failures.push(`#hud-gold "${hud.gold}" != summary gold ${summary.gold.player}`);
-      if (hud.supply !== summary.supply.player.text) failures.push(`#hud-supply "${hud.supply}" != summary supply ${summary.supply.player.text}`);
-
-      // 4c. the General's Intent panel (SPEC §7.5): the pending warning's kind and countdown, never units
-      const intent = await page.evaluate(() => ({
-        text: document.getElementById('hud-intent')?.textContent ?? '',
-        general: document.getElementById('hud-general')?.textContent ?? '',
-        doctrine: document.getElementById('hud-doctrine')?.textContent ?? '',
-        warningShown: !(document.getElementById('hud-warning')?.hidden ?? true),
-        warningKind: document.getElementById('hud-warning')?.dataset.kind ?? null,
-        countdown: document.getElementById('hud-countdown')?.textContent ?? null,
-      }));
-      dom = { ...(dom ?? {}), intent };
-      const names = [...Object.values(content.units).map((u) => u.name), ...Object.values(content.buildings).map((b) => b.name)];
-      for (const n of names) if (intent.text.includes(n)) failures.push(`the Intent panel names "${n}" (it must stay vague)`);
-      const c = node.sides.enemy.ai?.counter;
-      const pending = c?.history.filter((r) => !r.active).sort((a, b) => a.activeAt - b.activeAt)[0];
-      if (pending) {
-        const waves = Math.max(1, Math.ceil((pending.activeAt - node.tick) / node.rules.waveTicks));
-        if (!intent.warningShown) failures.push('a counter warning is pending but the Intent panel shows none');
-        if (intent.warningKind !== pending.kind) failures.push(`Intent warning kind ${intent.warningKind} != pending ${pending.kind}`);
-        if (intent.countdown !== `${waves} wave${waves === 1 ? '' : 's'}`) failures.push(`Intent countdown "${intent.countdown}" != ${waves} waves`);
-      } else if (intent.warningShown) {
-        failures.push('the Intent panel shows a warning with none pending');
-      }
-    }
-
     // 4b. run screens: the DOM shows what the run state holds
     if (scene === 'title') {
       dom = await page.evaluate(() => ({
@@ -317,45 +235,6 @@ async function main(): Promise<number> {
       for (const b of u.bans) if (chosen && chosen.core.includes(b.id) !== b.core) failures.push(`ban ${b.id}: core marking is wrong for ${chosen.name}`);
     }
 
-    // 4f. power targeting (SPEC §16 M5, `targeting=1`): the power button is aiming and the reticle with its radius is on the field
-    if (q.get('targeting') === '1' && node) {
-      const def = node.config.player.power ? content.commanders[node.config.player.commander!]!.power : null;
-      const aim = await page.evaluate(() => ({
-        pressed: document.getElementById('power-btn')?.getAttribute('aria-pressed') ?? null,
-        state: document.getElementById('power-btn')?.dataset.state ?? null,
-        reticle: document.getElementById('battlefield')?.dataset.reticle ?? null,
-        callout: document.getElementById('aim-callout')?.textContent ?? null,
-        paused: !!document.getElementById('paused-callout')?.isConnected,
-      }));
-      dom = { ...(dom ?? {}), aim };
-      if (!def) failures.push('targeting=1 but the player has no commander power');
-      else {
-        if (aim.pressed !== 'true' || aim.state !== 'aiming') failures.push(`the power button is not aiming (pressed ${aim.pressed}, state ${aim.state})`);
-        if (!aim.callout?.includes(def.name)) failures.push(`the aim callout doesn't name ${def.name}: "${aim.callout}"`);
-        if (def.target === 'point') {
-          const r = aim.reticle?.split(',').map(Number);
-          if (!r || r.length !== 3) failures.push('no reticle on the field');
-          else {
-            if (r[2] !== def.radius) failures.push(`reticle radius ${r[2]} != ${def.name}'s ${def.radius}`);
-            // the ring itself: lilac pixels on the circle around the aim point
-            const hits = await page.evaluate(`(() => {
-              const c = document.getElementById('battlefield'), g = c.getContext('2d');
-              const T = 16, cx = Math.round((${r[0]} + 2) * T), cy = Math.round(${r[1]} * T), rad = ${r[2]} * T;
-              let n = 0;
-              for (let i = 0; i < 48; i++) {
-                const a = (i / 48) * Math.PI * 2;
-                const d = g.getImageData(Math.round(cx + Math.cos(a) * rad), Math.round(cy + Math.sin(a) * rad), 1, 1).data;
-                if (d[2] > 150 && d[0] > 120 && d[2] > d[1] + 30) n++;
-              }
-              return n;
-            })()`) as number;
-            dom = { ...(dom ?? {}), aim: { ...aim, ringPixels: hits } };
-            if (hits < 24) failures.push(`the reticle ring is hard to see: ${hits}/48 sampled points are lilac`);
-          }
-        }
-      }
-    }
-
     // 4c. intel bars (SPEC §7.6) on the route and the summary: four kinds with the run's dots once a battle has been read
     if (scene === 'route' || scene === 'run' || scene === 'summary') {
       const intelDom = await page.evaluate(() => [...document.querySelectorAll('#route-intel .intel-kind')].map((e) => ({
@@ -375,27 +254,9 @@ async function main(): Promise<number> {
       }
     }
 
-    // 4d. the settings screen, when a --click opened it: every setting, the three volumes, and it fits the window
-    const settingsDom = await page.evaluate(() => {
-      const card = document.getElementById('settings');
-      if (!card) return null;
-      const r = card.getBoundingClientRect();
-      return {
-        settings: [...card.querySelectorAll<HTMLElement>('[data-setting]')].map((e) => e.dataset.setting ?? ''),
-        sliders: card.querySelectorAll('input[data-level]').length,
-        preview: !!card.querySelector('#assist-preview canvas'),
-        overflow: card.scrollHeight - card.clientHeight,
-        inside: r.top >= 0 && r.left >= 0 && r.bottom <= window.innerHeight && r.right <= window.innerWidth,
-      };
-    });
-    if (settingsDom) {
-      dom = { ...(dom ?? {}), settings: settingsDom };
-      const want = ['damageNumbers', 'defaultSpeed', 'screenShake', 'uiScale', 'reducedMotion', 'colorAssist'];
-      for (const k of want) if (!settingsDom.settings.includes(k)) failures.push(`the settings screen has no ${k} row`);
-      if (settingsDom.sliders !== 3) failures.push(`the settings screen shows ${settingsDom.sliders} volume sliders (expected 3)`);
-      if (!settingsDom.preview) failures.push('the settings screen has no color-blind assist preview');
-      if (settingsDom.overflow > 0 || !settingsDom.inside) failures.push(`the settings screen doesn't fit the window (scrolls ${settingsDom.overflow} px)`);
-    }
+    // 4d. the settings screen, when a --click opened it
+    const settingsDom = await settingsCheck(page, failures);
+    if (settingsDom) dom = { ...(dom ?? {}), settings: settingsDom };
 
     // 5. artifacts
     const dir = join(ROOT, 'artifacts', 'screenshots');
@@ -403,12 +264,11 @@ async function main(): Promise<number> {
     await page.screenshot({ path: join(dir, `${args.name}.png`) });
     const report = {
       name: args.name, url, browser: args.browser, filter: args.filter ?? null, size: `${args.width}x${args.height}`, clicks: args.clicks,
-      scene, tick: browserTick, browserHash, nodeHash, canvas: canvasCheck, hud, dom, run: runBrief,
-      summary: node ? { ...summarize(node), stats: undefined } : null,
+      scene, tick: browserTick, browserHash, nodeHash, dom, run: runBrief,
       failures,
     };
     writeFileSync(join(dir, `${args.name}.json`), JSON.stringify(report, null, 2));
-    console.log(`${failures.length ? 'FAIL' : 'PASS'}  ${args.name}: ${scene} · tick ${browserTick} · hash ${browserHash} (node ${nodeHash})${canvasCheck ? ` · ${canvasCheck.distinct} colours` : ''} · artifacts/screenshots/${args.name}.png`);
+    console.log(`${failures.length ? 'FAIL' : 'PASS'}  ${args.name}: ${scene} · tick ${browserTick} · hash ${browserHash} (node ${nodeHash}) · artifacts/screenshots/${args.name}.png`);
     for (const f of failures) console.log(`      - ${f}`);
   } finally {
     await browser.close();
@@ -417,9 +277,68 @@ async function main(): Promise<number> {
   return failures.length ? 1 : 0;
 }
 
+/** 4d. The settings screen, when a --click opened it: every setting, the three volumes, and it fits the window. */
+async function settingsCheck(page: Page, failures: string[]): Promise<Record<string, unknown> | null> {
+  const settingsDom = await page.evaluate(() => {
+    const card = document.getElementById('settings');
+    if (!card) return null;
+    const r = card.getBoundingClientRect();
+    return {
+      settings: [...card.querySelectorAll<HTMLElement>('[data-setting]')].map((e) => e.dataset.setting ?? ''),
+      sliders: card.querySelectorAll('input[data-level]').length,
+      preview: !!card.querySelector('#assist-preview canvas'),
+      overflow: card.scrollHeight - card.clientHeight,
+      inside: r.top >= 0 && r.left >= 0 && r.bottom <= window.innerHeight && r.right <= window.innerWidth,
+    };
+  });
+  if (!settingsDom) return null;
+  const want = ['damageNumbers', 'defaultSpeed', 'screenShake', 'uiScale', 'reducedMotion', 'colorAssist'];
+  for (const k of want) if (!settingsDom.settings.includes(k)) failures.push(`the settings screen has no ${k} row`);
+  if (settingsDom.sliders !== 3) failures.push(`the settings screen shows ${settingsDom.sliders} volume sliders (expected 3)`);
+  if (!settingsDom.preview) failures.push('the settings screen has no color-blind assist preview');
+  if (settingsDom.overflow > 0 || !settingsDom.inside) failures.push(`the settings screen doesn't fit the window (scrolls ${settingsDom.overflow} px)`);
+  return settingsDom;
+}
+
 /**
- * R2a's preview of a battle in rounds (`scene=rounds`, plan Call 2), checked with §15.6's assertions 2–5 after
- * assertion 1's errors: the page's hash against `roundStateForParams`'s at the same round, phase and tick; a
+ * 4f. Power targeting (`targeting=1`, in a clash): the power button is aiming, the aim callout names the power,
+ * and a point power's reticle with its radius is on the field, its ring easy to see.
+ */
+async function targetingCheck(page: Page, node: RoundState, failures: string[]): Promise<Record<string, unknown>> {
+  const content = nodeContent();
+  const commander = node.config.player.power ? Object.values(content.commanders).find((c) => c.power.id === node.config.player.power) : undefined;
+  const def = commander?.power ?? null;
+  const aim = await page.evaluate(() => ({
+    pressed: document.getElementById('power-btn')?.getAttribute('aria-pressed') ?? null,
+    state: document.getElementById('power-btn')?.dataset.state ?? null,
+    reticle: document.getElementById('battlefield')?.dataset.reticle ?? null,
+    callout: document.getElementById('aim-callout')?.textContent ?? null,
+  }));
+  if (!def) { failures.push('targeting=1 but the player has no commander power'); return aim; }
+  if (aim.pressed !== 'true' || aim.state !== 'aiming') failures.push(`the power button is not aiming (pressed ${aim.pressed}, state ${aim.state})`);
+  if (!aim.callout?.includes(def.name)) failures.push(`the aim callout doesn't name ${def.name}: "${aim.callout}"`);
+  if (def.target !== 'point') return aim;
+  const r = aim.reticle?.split(',').map(Number);
+  if (!r || r.length !== 3) { failures.push('no reticle on the field'); return aim; }
+  if (r[2] !== def.radius) failures.push(`reticle radius ${r[2]} != ${def.name}'s ${def.radius}`);
+  // the ring itself: lilac pixels on the circle around the aim point
+  const hits = await page.evaluate(`(() => {
+    const c = document.getElementById('battlefield'), g = c.getContext('2d');
+    const T = 16, cx = Math.round((${r[0]} + 2) * T), cy = Math.round(${r[1]} * T), rad = ${r[2]} * T;
+    let n = 0;
+    for (let i = 0; i < 48; i++) {
+      const a = (i / 48) * Math.PI * 2;
+      const d = g.getImageData(Math.round(cx + Math.cos(a) * rad), Math.round(cy + Math.sin(a) * rad), 1, 1).data;
+      if (d[2] > 150 && d[0] > 120 && d[2] > d[1] + 30) n++;
+    }
+    return n;
+  })()`) as number;
+  if (hits < 24) failures.push(`the reticle ring is hard to see: ${hits}/48 sampled points are lilac`);
+  return { ...aim, ringPixels: hits };
+}
+
+/**
+ * A battle scene (`scene=battle`, `scene=report`), checked with §15.6's assertions 2–5 after assertion 1's errors: the page's hash against `roundStateForParams`'s at the same round, phase and tick; a
  * canvas that isn't blank with each team's mycelium inside its own colony's columns; the band's gold, plots,
  * round and Heartcaps against the bridge's summary, with no lives in a single battle, and in planning the
  * general's formation as drawn against Node's `formationOf`, unit for unit (T143); and the PNG with a JSON of
@@ -506,18 +425,22 @@ async function roundCapture(page: Page, q: URLSearchParams, args: Args, url: str
     else if (JSON.stringify(got) !== JSON.stringify(want)) failures.push(`preview().enemy ${JSON.stringify(got)} != Node's formationOf(state, 'enemy') ${JSON.stringify(want)}`);
     preview = { squads: want.length, units: want.reduce((n, q) => n + q.units.length, 0) };
   }
+  const dom: Record<string, unknown> = {};
+  if (q.get('targeting') === '1' && node) dom.aim = await targetingCheck(page, node, failures);
+  const settingsDom = await settingsCheck(page, failures);
+  if (settingsDom) dom.settings = settingsDom;
   // 5. the PNG and its JSON
   const dir = join(ROOT, 'artifacts', 'screenshots');
   mkdirSync(dirname(join(dir, args.name)), { recursive: true });
   await page.screenshot({ path: join(dir, `${args.name}.png`) });
   const report = {
     name: args.name, url, browser: args.browser, filter: args.filter ?? null, size: `${args.width}x${args.height}`, clicks: args.clicks,
-    scene: 'rounds', round: got.round, phase: got.phase, tick: got.tick, browserHash: got.hash, nodeHash, canvas, hud: hud.shown, preview,
+    scene: sceneOf(q), round: got.round, phase: got.phase, tick: got.tick, browserHash: got.hash, nodeHash, canvas, hud: hud.shown, preview, dom,
     summary: node ? { ...summarizeRound(node), stats: undefined } : null,
     failures,
   };
   writeFileSync(join(dir, `${args.name}.json`), JSON.stringify(report, null, 2));
-  console.log(`${failures.length ? 'FAIL' : 'PASS'}  ${args.name}: rounds · round ${got.round} ${got.phase} · tick ${got.tick} · hash ${got.hash} (node ${nodeHash})${canvas ? ` · ${canvas.distinct} colours` : ''} · artifacts/screenshots/${args.name}.png`);
+  console.log(`${failures.length ? 'FAIL' : 'PASS'}  ${args.name}: ${sceneOf(q)} · round ${got.round} ${got.phase} · tick ${got.tick} · hash ${got.hash} (node ${nodeHash})${canvas ? ` · ${canvas.distinct} colours` : ''} · artifacts/screenshots/${args.name}.png`);
   for (const f of failures) console.log(`      - ${f}`);
   return failures.length ? 1 : 0;
 }

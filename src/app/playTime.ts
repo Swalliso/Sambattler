@@ -5,7 +5,7 @@
 // one play-time module: records-2 adds the run's total, `restore` and `still` (run-it-back.md T016), and R2b
 // moves it to `src/app/playTime.ts` and shows it on the run's summary (R2b/T109). It never saves, and nothing in
 // it enters the battle state or its hash (§13.3, A185).
-import type { PlayTimeReadout } from '../../ui/rounds/report.ts';
+import type { PlayTimeReadout } from '../ui/report.ts';
 
 /** A battle's phase as the clock counts it: the report, after the battle's end, counts toward none. */
 export type PlayPhase = 'planning' | 'clash' | 'aftermath' | 'ended';

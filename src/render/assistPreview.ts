@@ -3,7 +3,7 @@
 // tiles, the unit drawer's team marks and the unit sprites, so it shows exactly what the field will with
 // the assist on or off.
 import type { Content } from '../data/registry.ts';
-import type { Side } from '../sim/index.ts';
+import type { Side } from '../sim/rounds/index.ts';
 import type { Atlas } from './atlas.ts';
 import { TILE, factionOf, matTile } from './renderer.ts';
 import { teamMark } from './unitSprite.ts';
@@ -12,7 +12,7 @@ export const PREVIEW_COLS = 8;
 export const PREVIEW_ROWS = 2;
 /** Where the units stand: feet this far down (native px), leaving room for the marks below them. */
 const FOOT_Y = 26;
-/** Each unit by the building that spawns it, and its x in native px. */
+/** Each unit by the building whose squad fields it, and its x in native px. */
 const CAST: [Side, string, number][] = [
   ['player', 'sporelingBurrow', 22], ['player', 'gillNest', 44], ['enemy', 'capguardHall', 84], ['enemy', 'sporelingBurrow', 106],
 ];
@@ -40,7 +40,7 @@ export function drawAssistPreview(canvas: HTMLCanvasElement, content: Content, a
     }
   }
   for (const [side, building, x] of CAST) {
-    const unit = content.units[content.buildings[building]?.spawn?.unit ?? '']!;
+    const unit = content.units[content.buildings[building]?.squad?.unit ?? '']!;
     const r = atlas.get(unit.sprite, factionOf(side), 0, side === 'enemy');
     if (!r) continue;
     if (assist) teamMark(g, x, FOOT_Y, r.w, side);

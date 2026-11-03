@@ -3,23 +3,24 @@
 // units dimmed inside a faint outline of its slot, with its merge preview from `mergePreview`, pips for the
 // Bloomed and Elder units it fields after the muster, then the count of base units left. A plot and its slot
 // light together while either is hovered, and the ghost's squad stands in its slot through `formationOf(…,
-// change)`, unboxed: while a card is chosen only the plot lights, since you place on plots (S21b/T161). While a card is chosen or one of your squads is hovered, the general's squads carry the marks of
-// your hits on them from `matchupClass`: on their base-tier units, plus a pips mark when their merged units take
-// a different class (Call 22). The reverse direction and the cards' marks are R4b's. Under `reveal=last` the
-// general's colony and squads stand as it fielded them last round, from round 2 (§7.5, R2-Q1, T127): a view
-// rule, so the sim never sees it. The squads and merge previews are cached by the colony's version and the
-// ghost (§13.6), and what it drew is kept for the bridge's `preview()` (T079). It stands beside v1's renderer
-// until R2b moves it to `src/render/`.
-import type { Content } from '../../data/registry.ts';
-import { formationBox } from '../../sim/formation.ts';
-import type { Slot } from '../../sim/formation.ts';
-import { SIDES, formationOf, matchupClass, mergePreview } from '../../sim/rounds/index.ts';
-import type { BattleState, BuildingState, Effectiveness, MergePreview, PlanChange, Side, SquadPlan, TierCounts } from '../../sim/rounds/index.ts';
-import type { Atlas } from '../atlas.ts';
-import { pixelText, textWidth } from '../pixelText.ts';
-import { TILE, factionOf } from '../renderer.ts';
-import { INK_DEEP, PIP_SIZE, drawPips, drawUnitSprite } from '../unitSprite.ts';
-import type { UnitSpriteOpts } from '../unitSprite.ts';
+// change)`, unboxed: while a card is chosen only the plot under the cursor lights, since you place on plots
+// (S21b/T161), and your slots light nothing (T167). While a card is chosen or one of your squads is hovered, the
+// general's squads carry the marks of your hits on them from `matchupClass`: on their base-tier units, plus a
+// pips mark when their merged units take a different class (Call 22). The reverse direction and the cards'
+// marks are R4b's. Under `reveal=last` the general's colony and squads stand as it fielded them last round,
+// from round 2 (§7.5, R2-Q1, T127): a view rule, so the sim never sees it. The squads and merge previews are
+// cached by the colony's version and the ghost (§13.6), and what it drew is kept for the bridge's `preview()`
+// (T079).
+import type { Content } from '../data/registry.ts';
+import { formationBox } from '../sim/formation.ts';
+import type { Slot } from '../sim/formation.ts';
+import { SIDES, formationOf, matchupClass, mergePreview } from '../sim/rounds/index.ts';
+import type { BattleState, BuildingState, Effectiveness, MergePreview, PlanChange, Side, SquadPlan, TierCounts } from '../sim/rounds/index.ts';
+import type { Atlas } from './atlas.ts';
+import { pixelText, textWidth } from './pixelText.ts';
+import { TILE, factionOf } from './renderer.ts';
+import { INK_DEEP, PIP_SIZE, drawPips, drawUnitSprite } from './unitSprite.ts';
+import type { UnitSpriteOpts } from './unitSprite.ts';
 import { unitLook } from './unitLook.ts';
 import type { UnitLook } from './unitLook.ts';
 
@@ -188,11 +189,11 @@ export class FormationPreview {
       this.cache = { player: this.sideCache(state, 'player', ghost), enemy: this.sideCache(this.fielded?.state ?? state, 'enemy', null) };
       this.stale = true;
     }
+    this.placing = v.placing !== null;
     for (const side of SIDES) {
       const i = this.plotUnder(state, side, v.hover);
       if (i !== this.hovered[side]) { this.hovered[side] = i; this.stale = true; }
     }
-    this.placing = v.placing !== null;
     const attacker = this.attackerOf(state, v.placing);
     if (attacker !== this.attacker) { this.attacker = attacker; this.stale = true; }
     if (this.stale) {
@@ -239,14 +240,18 @@ export class FormationPreview {
     return { squads, merge, slots, order, ghost: change ? state.nextId : 0, knits };
   }
 
-  /** The open plot of a side under the tile, or the one whose slot covers it: hovering either lights both (§10.2). */
+  /**
+   * The open plot of a side under the tile, or the one whose slot covers it: hovering either lights both (§10.2).
+   * While a card is chosen your slots light nothing, since you place on plots only (T167).
+   */
   private plotUnder(state: BattleState, side: Side, tile: PreviewView['hover']): number | null {
     if (!tile || !this.cache) return null;
     const inSquare = (c: number, r: number) => tile.col >= c && tile.col < c + 2 && tile.row >= r && tile.row < r + 2;
     const plots = state.sides[side].plots, slots = this.cache[side].slots;
+    const bySlot = side === 'enemy' || !this.placing;
     for (let i = 0; i < plots.length; i++) {
       const p = plots[i]!, s = slots[i]!;
-      if (p.open && (inSquare(p.col, p.row) || inSquare(s.col, s.row))) return i;
+      if (p.open && (inSquare(p.col, p.row) || (bySlot && inSquare(s.col, s.row)))) return i;
     }
     return null;
   }
