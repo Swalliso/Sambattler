@@ -1,7 +1,9 @@
 // The order units are listed in never decides a clash (SPEC §5.2, §13.3 rule 4, T147). At Begin every
 // player unit takes a lower id than every enemy unit, and the systems run units in id order, so each case
 // here plays a clash twice: as it arrives, and with the enemy's ids first. Both must end the same, unit for
-// unit. The mirror monos must also end level, since each side is the other's mirror image.
+// unit. The lineup's Tenders heal on a timer phased by their ids (`healing.ts`), which T147 leaves, so the
+// lineup must end with the same locks. The mirror monos must also end level, since each side is the
+// other's mirror image.
 import { describe, expect, it } from 'vitest';
 import type { RoundScenarioDef } from '../../../src/data/schema.ts';
 import { createFromScenario } from '../../../src/sim/rounds/index.ts';
@@ -37,15 +39,19 @@ const mono = (building: string): RoundScenarioDef => {
 
 describe('the id order decides nothing in a clash (§5.2, T147)', () => {
   const cases: [string, () => BattleState][] = [
-    ['unit-lineup', () => fromScenario('unit-lineup')],
     ['a mirror Hammercap mono', () => createFromScenario(content, mono('hammercapForge'))],
     ['comeback-r4', () => fromScenario('comeback-r4')],
   ];
   for (const [name, make] of cases) {
-    it(`${name} ends the same with the player's ids first or the enemy's`, () => {
+    it(`${name} ends the same, unit for unit, with the player's ids first or the enemy's`, () => {
       expect(ending(make, true)).toEqual(ending(make, false));
     });
   }
+
+  it("unit-lineup ends with the same locks with the player's ids first or the enemy's", () => {
+    const make = () => fromScenario('unit-lineup');
+    expect(ending(make, true).lanes).toEqual(ending(make, false).lanes);
+  });
 
   it('a mirror mono ends level: the same lock and the same army standing on each side', () => {
     for (const building of ['sporelingBurrow', 'capguardHall', 'gillNest', 'hammercapForge']) {

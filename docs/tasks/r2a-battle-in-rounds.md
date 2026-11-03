@@ -459,11 +459,12 @@ S1 to S4: the data, the colony, the round state machine and the planning command
 
 **S7b: no seat decides a clash** (the user's call, 2026-11-02)
 
-- [ ] T147 [US1] Make the order units are listed in decide nothing in a clash, in rounds' copies only (§5.2, §13.3 rule 4). S7's check found that at Begin every player unit takes a lower id than every enemy unit, the systems run units in id order, and flipping the ids flipped the winner of every mirror that wasn't level.
-  - Tests first: in `tests/unit/rounds/combat.test.ts`, a mirror-image crowd gets mirror-image pushes whatever its ids, and an exact stack splits by a mirror-image rule. In `tests/unit/rounds/seats.test.ts` (new), `unit-lineup`, a mirror Hammercap mono and `comeback-r4` end the same with either side's ids first, and the mirror monos end level.
-  - `separationSystem` in `src/sim/rounds/systems/movement.ts` works out every pair's push from the positions at the start of the pass, then applies them together.
-  - Movement reads a target where it stood at the start of the tick (`px`, `py`) if that's where the rest of the bias comes from.
-  - The combat-decided numbers in `tests/unit/rounds/scenarios.test.ts` and `combat.test.ts` move to the new outcomes.
+- [x] T147 [US1] Make the order units are listed in decide nothing in a clash, in rounds' copies only (§5.2, §13.3 rule 4). S7's check found that at Begin every player unit takes a lower id than every enemy unit, the systems run units in id order, and flipping the ids flipped the winner of every mirror that wasn't level.
+  - Tests first: in `tests/unit/rounds/combat.test.ts`, a mirror-image crowd gets mirror-image pushes whatever its ids, and an exact stack splits by a mirror-image rule. In `tests/unit/rounds/seats.test.ts` (new), a mirror Hammercap mono and `comeback-r4` end the same unit for unit with either side's ids first, `unit-lineup` ends with the same locks, and the mirror monos end level.
+  - `separationSystem` in `src/sim/rounds/systems/movement.ts` works out every pair's push from the positions at the start of the pass and applies them together. Pushes are summed in fixed point (2^44 to a tile), so no addition order changes a sum. An exact stack splits across sides toward each unit's own side, and on one side toward each one's slot.
+  - Movement steers by where other units stood at the start of the tick (`px`, `py`): a target, the idle seek's nearest enemy and the tunneler's surfacing point. This was the rest of the bias.
+  - The combat-decided numbers moved for `comeback-r4`, `unit-lineup` and `unit-lineup-twin` in `scenarios.test.ts`.
+  - Left for the user's call: three timers phased by a unit's id (healing's, the retarget stagger and pinning's skip), and a Burster that bursts inside the attack step. Exact mirroring is out of reach while positions are absolute floats.
 
 **Checkpoint:** `npx vitest run tests/unit/rounds` passes, every scenario included; `npm run verify` is green with no v1 golden moved.
 

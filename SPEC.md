@@ -527,6 +527,7 @@ Units exist only during a clash. At Begin, each squad appears in its slot of its
 - **Emplacements:** a tower card fields itself as an emplacement, one unit in its slot (§4.4; the Puffball Mortar, as an unlockable or as the sixth archetype, §1.3 #6, §11.2). It never moves. It targets and is targeted as a unit does, with its building's HP and attack, restored each round. §6.7 owns the rest: its armor, its supply, and how it counts when a lane ends.
 - **Separation:**
   - After moving, overlapping units (from either side) are pushed apart by half their overlap each, for at most 2 passes, using the spatial hash.
+  - Each pass computes every push from the positions at its start, then applies them together, so the order units are listed in never decides who moves. Two units stacked exactly split by a mirror-image rule: from opposite sides, each toward its own side; from one side, each toward its slot's y (R2a, 2026-11-02, the user's OK).
   - Positions are then clamped to the lane.
   - Units do **not** collide with buildings, stumps or Heartcaps. Burrowed units collide with nothing, and flyers only with other flyers.
 - **No pathfinding.** Lanes are open fields, and avoiding a pathfinder is a deliberate performance and determinism choice.
