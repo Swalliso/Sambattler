@@ -632,22 +632,22 @@ S1 to S4: the data, the colony, the round state machine and the planning command
 
 **S13: the top band and the Intent panel** (may run beside S12 and S10b)
 
-- [ ] T087 [US3] Write `tests/browser/rounds/hud.test.ts` (new) and `tests/unit/rounds/teachingText.test.ts` (new) (§10.2, §6.2, §6.4) (A063, A064):
+- [x] T087 [US3] Write `tests/browser/rounds/hud.test.ts` (new) and `tests/unit/rounds/teachingText.test.ts` (new) (§10.2, §6.2, §6.4) (A063, A064):
   - both Heartcaps frame the band, and the chips stay clear of their labels at 1280×720, 1366×768 and 1440×900;
   - `#hud-gold`, `#hud-plots`, `#hud-round` and `#hud-storm` agree with `summary()`, and there's no `#hud-lives` in a single battle;
   - the tally's past pips match `rounds[].damage`, the current pip is outlined, and "dealt" is their sum;
   - in a clash the tug's numbers equal `survivingSupply` per lane, and `split-lanes` shows halves;
   - the Intent panel lists this round's planted and sold buildings and has no countdown;
   - the gold tip's rows add up to the chip's +N, holding 140 shows its interest, and the storm tip lists ×1.2 to ×2.0 from round 5.
-- [ ] T088 [US3] Build the top band in `src/ui/rounds/hud/top.ts` (new) (§10.2)
+- [x] T088 [US3] Build the top band in `src/ui/rounds/hud/top.ts` (new) (§10.2)
   - Both Heartcaps: the display value holds at the round's starting HP until the aftermath drains it, and turns danger red below a third.
   - The chips: gold with `incomePreview`'s figure, plots planted of open plots, the round of 9 with the clash clock (glowing in the cap's last 5 s), and the storm, unlit at ×1.0 and lilac from round 5. They keep v1's tightening fit and stable ids.
   - Mount it in `src/app/rounds/battleView.ts`'s top-band mount (T077). T089 and T091 fill the tally's and the Intent panel's mounts the same way, so T087's browser cases pass at the end of S13.
-- [ ] T089 [US3] Build `RoundTally` and `LaneTug` in `src/ui/rounds/hud/tally.ts` (new) (§10.2, §6.7) (A064)
+- [x] T089 [US3] Build `RoundTally` and `LaneTug` in `src/ui/rounds/hud/tally.ts` (new) (§10.2, §6.7) (A064)
   - Pips are violet, ash, a dash or hollow, with lane halves on Twin Roots, and dealt and taken under the ends. A past pip's tooltip gives each lane's result and survivors, the damage both ways and your top squads (`damageByBuilding`).
   - The tug shows `survivingSupply` per lane, locks with the lane's result, goes neutral when drawn, and hatches the Rot's half under the color-blind assist.
-- [ ] T090 [US3] Build the chip tooltips in `src/ui/rounds/hud/explain.ts` (new): gold, plots, round and storm as §10.2 words them, computed from the sim's functions; `I` focuses the gold chip, Tab moves along the band, Esc closes (§10.2)
-- [ ] T091 [US3] Build the Intent panel in `src/ui/rounds/doctrine.ts` (new) and `src/ui/rounds/hud/top.ts`, read from `ai.plans[round]`: the portrait at 48 px, the name and doctrine, its income this round and the gold it banked, and the buildings it planted and sold. It has no countdown and truncates long lists; its tooltip gives the passive and the kit (§7.5, §10.2) (A070)
+- [x] T090 [US3] Build the chip tooltips in `src/ui/rounds/hud/explain.ts` (new): gold, plots, round and storm as §10.2 words them, computed from the sim's functions; `I` focuses the gold chip, Tab moves along the band, Esc closes (§10.2)
+- [x] T091 [US3] Build the Intent panel in `src/ui/rounds/doctrine.ts` (new) and `src/ui/rounds/hud/top.ts`, read from `ai.plans[round]`: the portrait at 48 px, the name and doctrine, its income this round and the gold it banked, and the buildings it planted and sold. It has no countdown and truncates long lists; its tooltip gives the passive and the kit (§7.5, §10.2) (A070)
 
 **S14: the tray, inspect, the planning and clash chrome, and the report**
 

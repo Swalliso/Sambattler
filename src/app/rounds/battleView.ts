@@ -1,8 +1,8 @@
 // The battle screen for a battle in rounds (SPEC §10.2), as S11 leaves it: the layout of v1's screen with the
 // field drawn by `src/render/rounds/renderer.ts` inside its frame of roots and soil, Begin in planning, then
-// speed and pause, and the callout lane. The bands and panels are empty mounts, each filled by a later UI task
-// with one line, so S12, S13 and S14 each end green and S12 and S13 don't collide: the top band, the tally and
-// the Intent panel (S13), the tray and inspect (S14). The callout lane holds v1's `Callouts` until S14's own
+// speed and pause, and the callout lane. The bands and panels are mounts, each filled by a UI task with one
+// line, so S12, S13 and S14 each end green and S12 and S13 don't collide: S13 filled the top band, the tally and
+// the Intent panel (`src/ui/rounds/`), and S14 fills the tray and inspect. The callout lane holds v1's `Callouts` until S14's own
 // (T095). It stands beside v1's `src/app/battleView.ts`.
 import type { Content } from '../../data/registry.ts';
 import type { Atlas } from '../../render/atlas.ts';
@@ -14,6 +14,9 @@ import type { CalloutKind } from '../../ui/callouts.ts';
 import { h, setText, toggleClass } from '../../ui/h.ts';
 import { uiIcon } from '../../ui/icons.ts';
 import { uiScale } from '../../ui/scale.ts';
+import { hudContext, IntentPanel, TopBand } from '../../ui/rounds/hud/top.ts';
+import type { HudPart } from '../../ui/rounds/hud/top.ts';
+import { RoundTally } from '../../ui/rounds/hud/tally.ts';
 import { loadSettings, onSettings } from '../settings.ts';
 import type { RoundSession } from './session.ts';
 
@@ -44,6 +47,9 @@ export class RoundsView {
    * plans. The formation preview (T083) recomputes only when it moves (§13.5, §13.6).
    */
   colonyVersion = 0;
+  /** The bands and panels in their mounts, each drawn every frame (S13: the top band, the tally, the Intent panel). */
+  private bands: HudPart[] = [];
+  private topBand: TopBand;
   private top: HTMLElement;
   private field: HTMLElement;
   private tip = h('div', { class: 'ghost-tip', id: 'ghost-tip', hidden: true });
@@ -80,6 +86,11 @@ export class RoundsView {
     };
     this.mounts.callouts.style.display = 'contents';
     this.mounts.callouts.append(this.callouts.el);
+    const hud = hudContext(content, atlas, () => session.speed, still);
+    this.topBand = new TopBand(this.mounts.top, hud, state);
+    this.bands.push(this.topBand);
+    this.bands.push(new RoundTally(this.mounts.tally, hud, state));
+    this.bands.push(new IntentPanel(this.mounts.intent, hud, state));
     this.top = h('header', { class: 'top rounds-top' }, this.mounts.top, this.mounts.tally, this.mounts.intent);
     this.field = h('main', { class: 'field' }, this.frameArt.el, h('div', { class: 'fieldwrap' }, this.canvas, this.tip));
     this.beginBtn = h('button', { class: 'btn primary', id: 'begin-btn', title: 'Start the clash (Space or Enter)', onclick: () => actions.begin() },
@@ -107,7 +118,11 @@ export class RoundsView {
   dispose(): void {
     window.removeEventListener('resize', this.onResize);
     this.unsubscribe();
+    for (const b of this.bands) b.dispose();
   }
+
+  /** `I`: keyboard focus on the gold chip, whose tip opens; Tab then moves along the band (§10.2). */
+  focusChips(): void { this.topBand.focusChips(); }
 
   /** A callout in the lane: a refused key, a sell's refund, news. */
   say(kind: CalloutKind, text: string, tone: 'good' | 'bad' | '' = ''): void {
@@ -129,6 +144,7 @@ export class RoundsView {
     this.canvas.style.height = `${Math.round(nh * this.scale) / ui}px`;
     this.frameArt.el.style.top = `${(this.top.getBoundingClientRect().bottom - r.top) / ui}px`;
     this.frameArt.layout(this.canvas.getBoundingClientRect(), this.frameArt.el.getBoundingClientRect(), ui);
+    for (const b of this.bands) b.fit?.();
   }
 
   /** A mouse event in world tiles. */
@@ -175,6 +191,7 @@ export class RoundsView {
     if (clash && s.paused) this.callouts.pin('paused', this.pausedCallout);
     else this.callouts.unpin('paused');
     this.callouts.update(now);
+    for (const b of this.bands) b.update(state, now);
   }
 
   /** The ghost's tip beside its plot: the card, its price and the plot's rank and file, or why it can't go there (§10.2). */
