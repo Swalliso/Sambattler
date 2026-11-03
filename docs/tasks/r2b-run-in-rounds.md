@@ -388,7 +388,8 @@ S4 (the presets):
 
 S4's last task (S0 dropped S4b with the cutover branch, 2026-11-03):
 
-- [ ] T152 [US3] Check the switch-over once S4's tasks are done (Call 14, X2): `npm run verify`, `npm run test:slow`, `npm run test:browser`, both builds and US1's sim command pass, and `docs/status.md` lists each stand-in still open with the session that lifts it (§16 R2, X2)
+- [x] T152 [US3] Check the switch-over once S4's tasks are done (Call 14, X2): `npm run verify`, `npm run test:slow`, `npm run test:browser`, both builds and US1's sim command pass, and `docs/status.md` lists each stand-in still open with the session that lifts it (§16 R2, X2)
+  - S4 (2026-11-03): verify, test:browser (124 cases) and both builds pass. test:slow fails only R2a's six known misses (G1, G2, G3, G7, G8's mono clause, G16), which T168 makes expected fails. US1's sim command: all 20 runs complete and no life is lost in a won battle, but 19 of 20 fight 4–5 battles: seed 4 loses its first three and ends after 3, as in S1, so §16 R2 step 5's wording waits for the user (S13 needs it). `docs/status.md` lists the open stand-ins, each with its session.
 
 **Checkpoint:** `npm run verify`, `npm run test:slow`, `npm run test:browser` and both builds pass; T158's two clash-check commands run on the round sim; T054's list holds only schema and data keys; `find src tools tests data -type d -name rounds` finds nothing; `PROTO_PRESETS` equals the agreed list. The dev site plays a whole run in rounds from S1 on.
 

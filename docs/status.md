@@ -61,14 +61,22 @@ Updated 2026-11-03, on `docs/r2b-s2-done` (the hub's docs PR into `develop`). Th
   - **The tests** are R2a's, moved over their v1 namesakes (T151), with v1's kept cases rewritten on the round helpers (T041, T042).
   - **Goldens:** `r2-run-s7` moved, because the general's upgrade levels now draw from `ai.enemy`, since v1's `ai` stream is gone (T044). The five battle goldens keep their hashes.
   - **For S4 and the hub:** no battle in rounds reads A2's or B3's key, so T055's list keeps two presets that do nothing. [r2b-plan.md](r2b-plan.md)'s "What S3 left" has T054's list and the rest.
-- **The stand-ins open on `develop`** from S1 (Call 14):
+- **S4** (`feature/r2b-presets`, T055–T061 and T152): in review. The presets are the agreed list:
+  - **`PROTO_PRESETS`** is `a2`, `b3`, `flyers` and `bosslives` (T055). The retired systems' presets are gone with the schema keys only they set (T058), and R1's outcomes are applied (T059): `mixedwave`, `clashshield`, `swarmread`, `noeldersplash`, `clashpace` and `rework` are gone, and the arrival shield stays as data.
+  - **v1's keys in the data wait for T129:** `laneStance` and the timed storm's `heartcapTakenPerStack` are in `data/balance.json`, and the battle state hashes the balance, so removing them would move every golden. No golden moved.
+  - **Flyers in squad form** (T060): the Drift Stalk fields a squad of 6 Driftlings, with no HP and no spawn timer. A spawner needs a `squad` block, only a tower needs `hp`, and the tools read `squad`. The round sim has no flyer rules yet, so Driftlings fight as ground units.
+  - **An unknown preset is visible** (T061): a `?proto=` spec naming one shows a notice on the page and saves the run nowhere, and the tools refuse it.
+  - **A2 and B3** stay as agreed, though no battle in rounds reads them. The hub recommends dropping them, and that's your call.
+  - **T152's switch-over check:** verify, the browser suite and both builds pass, and test:slow fails only R2a's six known misses. US1's 20 runs all complete, with no life lost in a won battle, but seed 4 fights 3 battles, as in S1, so §16 R2 step 5's "4–5 battles" still waits for your wording call.
+- **The stand-ins open on `develop`** from S1 (Call 14), each with the session that lifts it (checked at S4, T152):
   - run battles open no in-battle drafts until S5 (T067);
-  - relics and passives on retired systems do nothing in a round battle until S6 and S7, and Rhizome Tithe is refused until T082;
+  - relics on retired systems do nothing in a round battle until S6, and passives until S7, which also ends Rhizome Tithe's refusal (T082);
   - a reload mid-battle restarts it at round 1's planning, with the notice when a battle save was found, until S8 (T095, T096);
   - the route's intel bars show v1's four kinds, without Anti-Ranged, until S9;
-  - `scene=draft` opens a run battle with no draft until S5 and T115, and its capture waits for T039.
-  - from S3 until S12 (T129), retired selectors and triggers still in the data compile to no-ops, their schema keys remain, and R2a's `rounds` data blocks sit beside v1's keys.
-- **Next:** S1b (T028–T029) once S1 merges, then S2 to S4.
+  - `scene=draft` opens a run battle with no draft, so its capture finds none, until S5 (T067) and S10 (T115);
+  - retired selectors and triggers still in the data compile to no-ops, v1's keys stay in the data and the schema, and R2a's `rounds` data blocks sit beside them, until S12 (T129);
+  - from S5 (T153) until S10 (T116), the draft will be today's centred dialog, which covers the general's formation.
+- **Next:** S5 (drafts), S6 (relics) and S9 (run screens) can start side by side once S4 merges.
 
 ## R2a, a battle in rounds
 
