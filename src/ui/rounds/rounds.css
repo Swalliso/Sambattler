@@ -1,0 +1,19 @@
+/* The bands and panels of a battle in rounds (SPEC §10.2), beside v1's src/ui/styles.css, whose tokens and
+   classes (.top, .heart, .chips, .chip, .tug, .tugbar, .intent, .hud-tip) they build on. R2b folds them in. */
+
+/* The top band: your Heartcap, the chips over the tally (or the tug in a clash), the general's Heartcap and the
+   Intent panel. The top mount lays its parts straight into the band's grid, and the spacer rows centre the chips
+   and the tally between the Heartcaps. */
+.top.rounds-top { grid-template-rows: minmax(0, 1fr) auto auto minmax(0, 1fr); }
+.rounds-top #mount-top { display: contents; }
+.rounds-top .heart.player { grid-column: 1; grid-row: 1 / -1; }
+.rounds-top .chips { grid-column: 2; grid-row: 2; }
+.rounds-top .heart.enemy { grid-column: 3; grid-row: 1 / -1; }
+.rounds-top #mount-tally { grid-column: 2; grid-row: 3; min-width: 0; margin-top: var(--space-2); }
+.rounds-top #mount-intent { grid-column: 4; grid-row: 1 / -1; align-self: stretch; display: flex; min-width: 0; }
+.rounds-top #mount-tally > [hidden] { display: none; }
+
+/* The round chip: the clock shows only in a clash, and glows in the cap's last 5 s (§6.7). */
+.chip.round small:empty { display: none; }
+.chip.round.soon { border-color: var(--lilac); box-shadow: 0 0 8px var(--glow-lilac); }
+.chip.round.soon #hud-clock { color: var(--lilac); }

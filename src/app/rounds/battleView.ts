@@ -14,6 +14,8 @@ import type { CalloutKind } from '../../ui/callouts.ts';
 import { h, setText, toggleClass } from '../../ui/h.ts';
 import { uiIcon } from '../../ui/icons.ts';
 import { uiScale } from '../../ui/scale.ts';
+import { hudContext, TopBand } from '../../ui/rounds/hud/top.ts';
+import type { HudPart } from '../../ui/rounds/hud/top.ts';
 import { loadSettings, onSettings } from '../settings.ts';
 import type { RoundSession } from './session.ts';
 
@@ -44,6 +46,9 @@ export class RoundsView {
    * plans. The formation preview (T083) recomputes only when it moves (§13.5, §13.6).
    */
   colonyVersion = 0;
+  /** The bands and panels in their mounts, each drawn every frame (S13: the top band, the tally, the Intent panel). */
+  private bands: HudPart[] = [];
+  private topBand: TopBand;
   private top: HTMLElement;
   private field: HTMLElement;
   private tip = h('div', { class: 'ghost-tip', id: 'ghost-tip', hidden: true });
@@ -80,6 +85,9 @@ export class RoundsView {
     };
     this.mounts.callouts.style.display = 'contents';
     this.mounts.callouts.append(this.callouts.el);
+    const hud = hudContext(content, atlas, () => session.speed, still);
+    this.topBand = new TopBand(this.mounts.top, hud, state);
+    this.bands.push(this.topBand);
     this.top = h('header', { class: 'top rounds-top' }, this.mounts.top, this.mounts.tally, this.mounts.intent);
     this.field = h('main', { class: 'field' }, this.frameArt.el, h('div', { class: 'fieldwrap' }, this.canvas, this.tip));
     this.beginBtn = h('button', { class: 'btn primary', id: 'begin-btn', title: 'Start the clash (Space or Enter)', onclick: () => actions.begin() },
@@ -107,7 +115,11 @@ export class RoundsView {
   dispose(): void {
     window.removeEventListener('resize', this.onResize);
     this.unsubscribe();
+    for (const b of this.bands) b.dispose();
   }
+
+  /** `I`: keyboard focus on the gold chip, whose tip opens; Tab then moves along the band (§10.2). */
+  focusChips(): void { this.topBand.focusChips(); }
 
   /** A callout in the lane: a refused key, a sell's refund, news. */
   say(kind: CalloutKind, text: string, tone: 'good' | 'bad' | '' = ''): void {
@@ -129,6 +141,7 @@ export class RoundsView {
     this.canvas.style.height = `${Math.round(nh * this.scale) / ui}px`;
     this.frameArt.el.style.top = `${(this.top.getBoundingClientRect().bottom - r.top) / ui}px`;
     this.frameArt.layout(this.canvas.getBoundingClientRect(), this.frameArt.el.getBoundingClientRect(), ui);
+    for (const b of this.bands) b.fit?.();
   }
 
   /** A mouse event in world tiles. */
@@ -175,6 +188,7 @@ export class RoundsView {
     if (clash && s.paused) this.callouts.pin('paused', this.pausedCallout);
     else this.callouts.unpin('paused');
     this.callouts.update(now);
+    for (const b of this.bands) b.update(state, now);
   }
 
   /** The ghost's tip beside its plot: the card, its price and the plot's rank and file, or why it can't go there (§10.2). */

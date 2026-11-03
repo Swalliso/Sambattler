@@ -639,7 +639,7 @@ S1 to S4: the data, the colony, the round state machine and the planning command
   - in a clash the tug's numbers equal `survivingSupply` per lane, and `split-lanes` shows halves;
   - the Intent panel lists this round's planted and sold buildings and has no countdown;
   - the gold tip's rows add up to the chip's +N, holding 140 shows its interest, and the storm tip lists ×1.2 to ×2.0 from round 5.
-- [ ] T088 [US3] Build the top band in `src/ui/rounds/hud/top.ts` (new) (§10.2)
+- [x] T088 [US3] Build the top band in `src/ui/rounds/hud/top.ts` (new) (§10.2)
   - Both Heartcaps: the display value holds at the round's starting HP until the aftermath drains it, and turns danger red below a third.
   - The chips: gold with `incomePreview`'s figure, plots planted of open plots, the round of 9 with the clash clock (glowing in the cap's last 5 s), and the storm, unlit at ×1.0 and lilac from round 5. They keep v1's tightening fit and stable ids.
   - Mount it in `src/app/rounds/battleView.ts`'s top-band mount (T077). T089 and T091 fill the tally's and the Intent panel's mounts the same way, so T087's browser cases pass at the end of S13.
