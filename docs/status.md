@@ -328,7 +328,7 @@ Updated 2026-11-03, on `docs/r2b-s0-done` (the hub's docs PR into `develop`). Th
 
 ## Waiting on the user
 
-1. **R2b's S1** (T006–T027 and T164): the run plays rounds with lives, with `RUN_VERSION` 2, its migration and the fixed cap of 750. It waits for you to start it, as a card in the hub's session. Its gate is clear: S0 ([#111](https://github.com/Swalliso/Sambattler/pull/111)) settled every decision S1 needs.
+1. **R2b's S1** (T006–T027 and T164): the run plays rounds with lives, with `RUN_VERSION` 2, its migration and the fixed cap of 750. It starts when you tell the hub's session to start it. Its gate is clear: S0 ([#111](https://github.com/Swalliso/Sambattler/pull/111)) settled every decision S1 needs.
 
    You took every recommendation at R2b's S0 on 2026-11-03, recorded in [clarify.md](tasks/clarify.md), SPEC and [r2b-plan.md](r2b-plan.md). Still open:
    - R2-Q13, from S1b's table, before S5;
