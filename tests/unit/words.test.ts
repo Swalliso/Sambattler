@@ -1,6 +1,6 @@
-// Plain words (src/ui/words.ts): the UI's rewording of relics, upgrade levels and building descriptions,
-// kept until the next golden refresh moves it into data. Every rewording must name an id and level that
-// exist and keep every number the data's own text gives, so the two can't drift apart.
+// Plain words (src/ui/words.ts): the UI's rewording of upgrade levels and building descriptions, kept until
+// it moves into data. Every rewording must name an id and level that exist and keep every number the data's
+// own text gives, so the two can't drift apart. Relics read their v2 text from the data since R2b's S6 (T077).
 import { describe, expect, it } from 'vitest';
 import { REWORDED, buildingDescription, relicText, upgradeText } from '../../src/ui/words.ts';
 import { content } from '../helpers.ts';
@@ -8,12 +8,11 @@ import { content } from '../helpers.ts';
 const numbers = (s: string) => (s.match(/\d+(\.\d+)?/g) ?? []).map(Number);
 
 describe('plain words', () => {
-  it('rewords only relics that exist, keeping their numbers', () => {
-    for (const [id, text] of Object.entries(REWORDED.relics)) {
-      const r = content.relics[id];
-      expect(r, id).toBeDefined();
-      for (const n of numbers(r!.text)) expect(numbers(text), `${id}: ${n}`).toContain(n);
-      expect(relicText(content, id)).toBe(text);
+  it("reads every relic's text from the data, so no v1 sentence shows over a v2 effect (T077)", () => {
+    expect(REWORDED).not.toHaveProperty('relics');
+    for (const id of Object.keys(content.relics)) {
+      expect(relicText(content, id)).toBe(content.relics[id]!.text);
+      expect(relicText(content, id), id).not.toMatch(/wave|column|turret|capture|supply cap|supply.line|cooldown|destroyed|building.*HP|per income/i);
     }
   });
 

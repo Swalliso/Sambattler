@@ -1,14 +1,19 @@
 // The modifier DSL in rounds (SPEC §14.2, §14.6): v1's stat resolution over the stats, selectors, triggers
 // and actions a battle in rounds reads. Modifiers resolve in v1's order: sum every `add`, multiply every
 // `mul`, then the last `set` wins (§14.1). Content on a stat rounds retire, or on a trigger or action they
-// don't run, compiles to nothing and is listed by its source (plan Call 19).
+// don't run, compiles to nothing and is listed by its source (plan Call 19). R2b adds what §11.7's relics need:
+// a squad's planting and the counter sets as selectors, conditions by round and storm, and the actions that
+// burst, cloud and heal, with gold earned in a clash on one path (R2-Q20).
 import { UNIT_STATS } from '../data/schema.ts';
 import type { ModifierDef, SelectorDef } from '../data/schema.ts';
 import type { Terrain } from './colony.ts';
+import { formationBox } from './formation.ts';
+import { insertHit } from './hits.ts';
 import { ROUND_TRIGGERS, SIDES, other } from './state.ts';
 import type {
-  BattleConfig, BattleModifier, IgnoredEffect, Library, LibraryUnit, RoundAction, RoundTrigger, RoundTriggerOn, Side, SimEvent,
+  BattleConfig, BattleModifier, BattleState, IgnoredEffect, Library, LibraryUnit, RoundAction, RoundTrigger, RoundTriggerOn, Side,
 } from './state.ts';
+import { addCloud } from './systems/clouds.ts';
 
 /** `battle.*` modifiers from the battle's modifier list (each counted once, whichever side it names). */
 export function battleModifiers(battle: BattleModifier[] = []): ModifierDef[] {
@@ -35,14 +40,17 @@ export function resolveStat(base: number, mods: readonly ModifierDef[], stat: st
 }
 
 /**
- * The stats a battle in rounds reads (§14.2): v1's unit and tower stats, and the side and battle stats v2
- * keeps. A modifier on any other compiles to nothing and is listed: v1's building HP, spawn timers, spawn
- * counts and gold a tick, the supply cap, capture, supply lines, turrets, power cooldowns and waves.
+ * The stats a battle in rounds reads (§14.2): v1's unit and tower stats, the side and battle stats v2 keeps,
+ * and v2's own: a squad's count, gold a round, the colony's plots, the Heartcap's damage taken, income and the
+ * power's effect. A modifier on any other compiles to nothing and is listed: v1's building HP, spawn timers,
+ * spawn counts and gold a tick, the supply cap, capture, supply lines, turrets, power cooldowns and waves, and
+ * R3's corner combos.
  */
 export const ROUND_STATS: readonly string[] = [
-  ...UNIT_STATS, 'tower.damage', 'tower.range', 'tower.splashRadius',
+  ...UNIT_STATS, 'tower.damage', 'tower.range', 'tower.splashRadius', 'building.squadCount', 'building.goldPerRound',
   'side.interestCap', 'side.stipend', 'side.startingGold', 'side.sellRefund', 'side.knitTicks', 'side.mergeRadius',
   'side.rerollCost', 'side.draftCards', 'side.heartcapMaxHp', 'side.comebackEnabled', 'side.loamBonus',
+  'side.plots', 'side.heartcapDamageTaken', 'side.incomeMult', 'side.powerEffectMult',
   'battle.sporestormStart',
 ];
 
@@ -91,8 +99,8 @@ export function collectRoundEffects(battle: readonly BattleModifier[] = []): Rec
         if (!isRoundTrigger(t.on)) { ignore(s, { source: bm.source, trigger: t.on }); continue; }
         const run: RoundAction[] = [];
         for (const a of t.do) {
-          if ('gainGold' in a) run.push({ gainGold: a.gainGold });
-          else ignore(s, { source: bm.source, action: Object.keys(a)[0]! });
+          if ('repairHeartcapPct' in a) ignore(s, { source: bm.source, action: 'repairHeartcapPct' });
+          else run.push(a);
         }
         if (run.length) out[s].triggers.push({ on: t.on, ...(t.if ? { if: t.if } : {}), do: run });
       }
@@ -103,24 +111,42 @@ export function collectRoundEffects(battle: readonly BattleModifier[] = []): Rec
 
 export type Match = (w: SelectorDef | undefined) => boolean;
 
-/** Where a squad's or building's plot stands, which `rank` and `onLoam` read (§4.6). */
-export interface Place { rank: number; terrain: Terrain }
+/**
+ * Where a squad's or building's plot stands, which `rank` and `onLoam` read (§4.6), and what holds for its
+ * building as it fields, which `plantedThisRound` and `inCounterSet` read (§14.2).
+ */
+export interface Place {
+  rank: number;
+  terrain: Terrain;
+  /** Planted in this planning phase (Fresh Spores, §11.7). */
+  planted?: boolean;
+  /** In its side's counter sets in force at this Begin (the Pale Sovereign, §7.7, R2-Q17). */
+  inCounterSet?: boolean;
+}
 
-/** Does a selector read a squad's or building's plot, by its `rank` or `onLoam` (§4.6, T046)? */
-export const onPlot = (w: SelectorDef | undefined): boolean => !!w && (w.rank !== undefined || w.onLoam !== undefined);
+/** Does a selector read a squad's or building's place: its plot's `rank` or `onLoam`, its planting or the counter sets (§4.6, T046)? */
+export const onPlot = (w: SelectorDef | undefined): boolean =>
+  !!w && (w.rank !== undefined || w.onLoam !== undefined || w.plantedThisRound !== undefined || w.inCounterSet !== undefined);
 
 /**
- * Does a selector's plot part hold at `place`: `rank` the plot's rank, `onLoam` whether it's a loam plot.
- * Without a place it never does, so a side-wide compile leaves the modifier to each squad's plot (T046).
- * v1's `zone` and adjacency went with territory (§14.2): they never match in rounds.
+ * Does a selector's place part hold at `place`: `rank` the plot's rank, `onLoam` whether it's a loam plot,
+ * `plantedThisRound` and `inCounterSet` what holds for its building. Without a place it never does, so a
+ * side-wide compile leaves the modifier to each squad's place (T046). v1's `zone` and adjacency went with
+ * territory (§14.2): they never match in rounds.
  */
 export function placeMatches(w: SelectorDef, place?: Place): boolean {
   if (w.zone !== undefined || w.adjacentOwnBuildingsGte !== undefined) return false;
-  if (w.rank === undefined && w.onLoam === undefined) return true;
+  if (!onPlot(w)) return true;
   if (!place) return false;
   if (w.rank !== undefined && w.rank !== place.rank) return false;
-  return w.onLoam === undefined || w.onLoam === (place.terrain === 'loam');
+  if (w.onLoam !== undefined && w.onLoam !== (place.terrain === 'loam')) return false;
+  if (w.plantedThisRound !== undefined && w.plantedThisRound !== !!place.planted) return false;
+  return w.inCounterSet === undefined || w.inCounterSet === !!place.inCounterSet;
 }
+
+/** Does `melee` hold for a unit with these tags: a melee unit is one without the `ranged` tag (Call 13)? */
+const meleeMatches = (w: SelectorDef, tags: readonly string[] | undefined): boolean =>
+  w.melee === undefined || (!!tags && w.melee !== tags.includes('ranged'));
 
 /** Selector match for a unit at a tier, on its squad's plot if given. `building` matches the units that building's squad fields. */
 export function unitMatcher(lib: Library, u: LibraryUnit, tier: number, place?: Place): Match {
@@ -128,6 +154,7 @@ export function unitMatcher(lib: Library, u: LibraryUnit, tier: number, place?: 
     if (!w) return true;
     if (w.unit !== undefined && w.unit !== u.id) return false;
     if (w.tag !== undefined && !u.tags.includes(w.tag)) return false;
+    if (!meleeMatches(w, u.tags)) return false;
     if (w.tier !== undefined && w.tier !== tier) return false;
     if (w.building !== undefined && lib.buildings[w.building]?.squad?.unit !== u.id) return false;
     return placeMatches(w, place);
@@ -143,8 +170,22 @@ export function buildingMatcher(lib: Library, id: string, place?: Place): Match 
     if (w.building !== undefined && w.building !== id) return false;
     if (w.unit !== undefined && w.unit !== unitId) return false;
     if (w.tag !== undefined && !unit?.tags.includes(w.tag)) return false;
+    if (!meleeMatches(w, unit?.tags)) return false;
     return placeMatches(w, place);
   };
+}
+
+/** Does a modifier's condition hold in this round, at this storm step: from its `roundGte`, and from its `sporestormGte` (§11.7, R2-Q19)? */
+export const holdsNow = (m: ModifierDef, round: number, sporestorm: number): boolean =>
+  !m.if || ((m.if.roundGte === undefined || round >= m.if.roundGte) && (m.if.sporestormGte === undefined || sporestorm >= m.if.sporestormGte));
+
+/**
+ * × the side's commander power's effect as the battle stands (§6.6, §11.7): its `side.powerEffectMult`
+ * modifiers that hold now, such as the Sporestorm Sigil's 1.5 from the storm's first round. The powers read it.
+ */
+export function powerEffectMult(state: BattleState, side: Side): number {
+  const mods = state.compiled[side].powerMods.filter((m) => holdsNow(m, state.round, state.sporestorm));
+  return resolveStat(1, mods, 'side.powerEffectMult');
 }
 
 // ---- triggers ----
@@ -163,38 +204,63 @@ export interface TriggerContext {
   sourceBuildingId: number;
 }
 
-/** What firing a trigger reads and writes. A battle in rounds' state has all of it. */
-export interface TriggerScope {
-  /** The round's storm step, which `sporestormGte` reads (§6.4). */
-  sporestorm: number;
-  compiled: Record<Side, { triggers: readonly RoundTrigger[] }>;
-  sides: Record<Side, { gold: number }>;
-  stats: Record<Side, { goldEarned: { effects: number } }>;
-  events: SimEvent[];
-}
-
-function triggerMatches(state: TriggerScope, t: RoundTrigger, ctx: TriggerContext): boolean {
+function triggerMatches(state: BattleState, t: RoundTrigger, ctx: TriggerContext): boolean {
   const w = t.if;
   if (!w) return true;
   if (w.sporestormGte !== undefined && state.sporestorm < w.sporestormGte) return false;
   if (w.unit !== undefined && w.unit !== ctx.unitId) return false;
   if (w.tag !== undefined && !ctx.tags?.includes(w.tag)) return false;
+  if (!meleeMatches(w, ctx.tags)) return false;
   if (w.tier !== undefined && w.tier !== ctx.tier) return false;
   if (w.building !== undefined && w.building !== ctx.buildingId) return false;
   return placeMatches(w, ctx.place);
 }
 
 /** Fires `side`'s triggers of one kind, each once, in source order. Cheap when the side has none. */
-export function fireTriggers(state: TriggerScope, side: Side, on: RoundTriggerOn, ctx: TriggerContext): void {
+export function fireTriggers(state: BattleState, side: Side, on: RoundTriggerOn, ctx: TriggerContext): void {
   for (const t of state.compiled[side].triggers) {
     if (t.on !== on || !triggerMatches(state, t, ctx)) continue;
-    for (const a of t.do) runAction(state, side, a);
+    for (const a of t.do) runAction(state, side, a, ctx);
   }
 }
 
-/** Runs one action for `side`: `gainGold` pays its own side at once. */
-export function runAction(state: TriggerScope, side: Side, a: RoundAction): void {
-  state.sides[side].gold += a.gainGold;
-  state.stats[side].goldEarned.effects += a.gainGold;
-  state.events.push({ t: 'effectGold', side, amount: a.gainGold });
+/**
+ * Runs one action for `side` (§14.2). `gainGold` credits its own side at once, with a `gold` event: in a
+ * clash it's clash gold, which the next opening shows as its "from the clash" row (§6.2, R2-Q20). `explode`
+ * is v1's ground burst where it fired, at full damage within its radius, next tick. `cloud` leaves a spore
+ * cloud there, or on the middle of each lane's enemy front rank (Forward Spores). `healHeartcap` heals the
+ * side's Heartcap up to its max, but never one that has fallen, so a heal never undoes a Rout (§6.7, #24).
+ */
+export function runAction(state: BattleState, side: Side, a: RoundAction, ctx: TriggerContext): void {
+  if ('gainGold' in a) {
+    const source = state.phase === 'clash' ? 'clash' : 'effects';
+    state.sides[side].gold += a.gainGold;
+    state.stats[side].goldEarned[source] += a.gainGold;
+    state.events.push({ t: 'gold', side, amount: a.gainGold, source });
+  } else if ('explode' in a) {
+    insertHit(state, {
+      tick: state.tick + 1, sourceId: 0, seq: state.nextHitSeq++, side, targetId: 0,
+      x: ctx.x, y: ctx.y, fromX: ctx.x, fromY: ctx.y, fireTick: state.tick, lane: ctx.lane,
+      damage: a.explode.damage, damageType: a.explode.damageType, splashRadius: a.explode.radius,
+      siegeMult: 1, slayerMult: 1, sourceBuildingId: ctx.sourceBuildingId, sourceType: 'effect', ranged: false,
+    });
+  } else if ('cloud' in a) {
+    const tr = state.rules.tickRate, c = a.cloud;
+    const spec = { radius: c.radius, ticks: Math.round(c.seconds * tr), pulseTicks: tr, damage: Math.max(1, Math.round(c.damagePerSecond)) };
+    const at = c.at === 'enemyFrontRank' ? frontRanks(state, other(side)) : [{ lane: ctx.lane, x: ctx.x, y: ctx.y }];
+    state.clouds ??= [];
+    for (const p of at) addCloud(state, side, p.lane, p.x, p.y, ctx.sourceBuildingId, spec);
+  } else {
+    const ss = state.sides[side];
+    const amount = ss.heartcapHp > 0 ? Math.min(a.healHeartcap, ss.heartcapMaxHp - ss.heartcapHp) : 0;
+    if (amount <= 0) return;
+    ss.heartcapHp += amount;
+    state.events.push({ t: 'heartcapHealed', side, amount });
+  }
+}
+
+/** The middle of `side`'s front rank in each lane (§4.6): its formation box's front column, at the lane's middle row. */
+function frontRanks(state: BattleState, side: Side): { lane: number; x: number; y: number }[] {
+  const front = formationBox({ width: state.map.width, lanes: state.lanes, gapTiles: state.rules.formationGapTiles }, side, 1);
+  return state.lanes.map((l, lane) => ({ lane, x: front.find((slot) => slot.lane === lane)!.col + 1, y: (l.rowStart + l.rowEnd + 1) / 2 }));
 }

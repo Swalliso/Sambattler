@@ -17,7 +17,7 @@ import { uiIcon } from '../icons.ts';
 import { rollUp } from '../motion.ts';
 import { uiScale } from '../scale.ts';
 import { settingsOpen } from '../settingsScreen.ts';
-import { buildingDescription, relicDiagram, relicText, upgradeText } from '../words.ts';
+import { buildingDescription, relicText, upgradeText } from '../words.ts';
 
 const NODE_ICON: Record<RouteNode['kind'], string> = { battle: 'i-battle', elite: 'i-elite', event: 'i-event', grove: 'i-grove', boss: 'i-boss' };
 const NODE_NAME: Record<RouteNode['kind'], string> = { battle: 'Battle', elite: 'Elite battle', event: 'Event', grove: 'Grove', boss: 'Boss' };
@@ -39,8 +39,7 @@ export function relicBadge(content: Content, atlas: Atlas, id: string): HTMLElem
     art,
     h('span', { class: 'relic-tip', role: 'tooltip' },
       h('span', { class: 'tip-head' }, h('b', null, r.name), h('span', { class: `rarity ${r.rarity}` }, RARITY_NAME[r.rarity])),
-      h('span', null, text),
-      relicDiagram(id)));
+      h('span', null, text)));
 }
 
 /** Lives' name on the game's screens, with "lives" in the tooltip (§2, #56). */
@@ -436,8 +435,7 @@ function changeCard(content: Content, atlas: Atlas, c: RunChange, run: RunState)
       h('div', { class: 'result-main' },
         h('div', { class: 'result-head' }, h('span', { class: 'eyebrow' }, c.lost ? 'Relic given up' : 'New relic'), h('span', { class: `rarity ${r.rarity}` }, RARITY_NAME[r.rarity])),
         h('b', null, r.name),
-        c.lost ? null : h('span', { class: 'result-text' }, relicText(content, c.id)),
-        c.lost ? null : relicDiagram(c.id)));
+        c.lost ? null : h('span', { class: 'result-text' }, relicText(content, c.id))));
   }
   const b = content.buildings[c.id]!;
   const art = spriteToCanvas(atlas, b.sprite, 'velvet-bloom');

@@ -13,8 +13,11 @@
 // preview (plan call 6), and the arrival puts units where `formationOf` says, so the preview and the clash
 // can't disagree.
 import type { BuildingDef } from '../data/schema.ts';
+import { counterKindsOf, doctrineKinds } from './ai/counter.ts';
+import { buildingMatcher, resolveStat } from './effects.ts';
+import type { Place } from './effects.ts';
 import { plantProblem, sellProblem, toggleProblem } from './planning.ts';
-import type { BattleState, CompiledUnit, Side, Tier } from './state.ts';
+import type { BattleState, CompiledBuilding, CompiledUnit, Side, Tier } from './state.ts';
 
 /** A field's geometry: its width in tiles, its lanes' tile rows, and the tiles between the two front ranks. */
 export interface FieldGeom {
@@ -430,11 +433,25 @@ export function mergePreview(state: BattleState, side: Side, change?: PlanChange
   return musterFor({ ...formationInput(state, side, change), mergeRadius, radiusOf: (unitId, tier) => units[unitId]!.tiers[tier - 1]!.radius });
 }
 
+/**
+ * What a building's squad reads as it fields (§14.2): its plot's rank and terrain, whether it was planted in
+ * this planning phase, and whether it's in its side's counter sets in force (R2-Q17). Begin's per-squad stats
+ * and the formation's squad counts read the same place, so a preview equals the arrival (A028).
+ */
+export function fieldPlace(state: BattleState, side: Side, plot: number, buildingId: string, plantedRound: number): Place {
+  const p = state.sides[side].plots[plot]!, c = state.compiled[side];
+  const kinds = doctrineKinds(state.sides[side].ai?.counter);
+  return {
+    rank: p.rank, terrain: p.terrain, planted: plantedRound === state.round,
+    inCounterSet: kinds.length > 0 && counterKindsOf({ cards: c.buildings, units: c.units }, buildingId).some((k) => kinds.includes(k)),
+  };
+}
+
 /** T020's plain input from the state: the map's geometry and the side's plots, each with its building as the formation reads it. */
 function formationInput(state: BattleState, side: Side, change: PlanChange | undefined): FormationInput {
-  const plots: FormationPlot[] = state.sides[side].plots.map((p) => {
+  const plots: FormationPlot[] = state.sides[side].plots.map((p, i) => {
     const b = p.building ? state.buildings.find((x) => x.id === p.building) : undefined;
-    return { lane: p.lane, rank: p.rank, file: p.file, building: b ? fielding(state, side, b.id, b.buildingId, b.mergeOn) : null };
+    return { lane: p.lane, rank: p.rank, file: p.file, building: b ? fielding(state, side, b.id, b.buildingId, b.mergeOn, i, b.plantedRound) : null };
   });
   if (change) applyChange(state, side, plots, change);
   return { geom: { width: state.map.width, lanes: state.lanes, gapTiles: state.rules.formationGapTiles }, side, plots };
@@ -446,7 +463,7 @@ function applyChange(state: BattleState, side: Side, plots: FormationPlot[], cha
   if ('plant' in change) {
     const { buildingId, plot } = change.plant;
     // with the id `plant` would give it, and its toggle on
-    if (!plantProblem(state, side, buildingId, plot)) plots[plot]!.building = fielding(state, side, state.nextId, buildingId, true);
+    if (!plantProblem(state, side, buildingId, plot)) plots[plot]!.building = fielding(state, side, state.nextId, buildingId, true, plot, state.round);
   } else if ('sell' in change) {
     if (!sellProblem(state, side, change.sell)) at(change.sell).building = null;
   } else if (!toggleProblem(state, side, change.toggle.id)) {
@@ -456,11 +473,24 @@ function applyChange(state: BattleState, side: Side, plots: FormationPlot[], cha
 }
 
 /** A building as the formation reads it, from its compiled card (§4.4): a spawner's squad, or a tower's one emplacement. */
-function fielding(state: BattleState, side: Side, id: number, buildingId: string, mergeOn: boolean): FieldingBuilding {
+function fielding(state: BattleState, side: Side, id: number, buildingId: string, mergeOn: boolean, plot: number, plantedRound: number): FieldingBuilding {
   const card = state.compiled[side].buildings[buildingId]!;
   if (!card.squad) return { id, kind: card.kind, mergeOn };
   const unit = state.compiled[side].units[card.squad.unit]!;
-  return { id, kind: card.kind, squad: { unitId: unit.id, count: card.squad.count, radius: unit.tiers[0].radius, eligible: knitsAtMuster(state, unit) }, mergeOn };
+  const count = squadCount(state, side, card, plot, plantedRound);
+  return { id, kind: card.kind, squad: { unitId: unit.id, count, radius: unit.tiers[0].radius, eligible: knitsAtMuster(state, unit) }, mergeOn };
+}
+
+/**
+ * A spawner's squad at its plot (§4.4, §14.2): its count with the side's `building.squadCount` modifiers that
+ * its place meets, such as Fresh Spores' +1 in the clash after planting, and at least 1. A tower fields one
+ * emplacement whatever they say.
+ */
+function squadCount(state: BattleState, side: Side, card: CompiledBuilding, plot: number, plantedRound: number): number {
+  const mods = state.compiled[side].squadMods, base = card.squad!.count;
+  if (card.kind !== 'spawner' || !mods.length) return base;
+  const place = fieldPlace(state, side, plot, card.id, plantedRound);
+  return Math.max(1, Math.round(resolveStat(base, mods, 'building.squadCount', buildingMatcher(state.library, card.id, place))));
 }
 
 /**

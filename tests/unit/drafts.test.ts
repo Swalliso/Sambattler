@@ -11,10 +11,11 @@ const starter = (): Loadout => ({ kit: ['sporelingBurrow', 'capguardHall', 'truf
 const bigKit = (): Loadout => ({ kit: ['sporelingBurrow', 'capguardHall', 'truffleCellar', 'gillNest', 'rootbreakerDen'], upgrades: {}, relics: [] });
 
 describe('draft offers (SPEC §8.3–8.4)', () => {
-  it('the pool: Vesper core, the rest of the roster shared, Sporestorm Sigil held until powers', () => {
+  it('the pool: Vesper core, the rest of the roster shared, Sporestorm Sigil held until powers and Mycorrhizal Link until combos', () => {
     expect(pool.core).toEqual(content.commanders.vesper!.core);
-    expect(pool.shared).toEqual(['scythecapGrove', 'veilstalkerHollow', 'tendersRing', 'hammercapForge', 'amanitaLodge', 'morelWarren', 'rhizomeVault', 'sporeExchange', 'bursterPod', 'rhizomorphTunnel']);
-    expect(pool.relics).toHaveLength(20);
+    expect(pool.shared).toEqual(['scythecapGrove', 'veilstalkerHollow', 'tendersRing', 'hammercapForge', 'amanitaLodge', 'morelWarren', 'sporeExchange', 'bursterPod', 'rhizomorphTunnel']);
+    expect(pool.relics).toHaveLength(19);
+    expect(pool.relics).not.toContain('mycorrhizalLink');
     expect(pool.relics).not.toContain('sporestormSigil');
     expect(draftPool(content, 'velvet-bloom', 'vesper', { ...flags, powers: true }).relics).toContain('sporestormSigil');
   });

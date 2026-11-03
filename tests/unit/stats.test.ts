@@ -186,12 +186,12 @@ describe('stats per round (§5.7, A064)', () => {
     rounds.forEach((r, i) => {
       for (const side of SIDES) {
         const g = s.rounds[i]!.stats[side].goldEarned;
-        expect(g.stipend + g.economy + g.interest + g.comeback + g.pending, `${side} round ${i + 1}`).toBe(paidAt(r.opening, side));
+        expect(g.stipend + g.economy + g.interest + g.comeback, `${side} round ${i + 1}`).toBe(paidAt(r.opening, side));
       }
     });
     // round 1 pays nothing, and round 2 pays the Cellar's 75 on loam
     expect([s.rounds[0]!.stats.player.goldEarned, s.rounds[1]!.stats.player.goldEarned.economy]).toEqual([
-      { stipend: 0, economy: 0, interest: 0, comeback: 0, pending: 0, effects: 0 }, 75,
+      { stipend: 0, economy: 0, interest: 0, comeback: 0, clash: 0, effects: 0 }, 75,
     ]);
   });
 
@@ -291,7 +291,7 @@ describe('summarize (§5.7, §14.4, §15.2)', () => {
     const { s, ledger } = three();
     const { stats } = summarize(s);
     for (const side of SIDES) {
-      const rows = (g: RoundStats['goldEarned']) => g.stipend + g.economy + g.interest + g.comeback + g.pending + g.effects;
+      const rows = (g: RoundStats['goldEarned']) => g.stipend + g.economy + g.interest + g.comeback + g.clash + g.effects;
       const earned = rows(stats[side].goldEarned);
       expect(stats[side].rounds.reduce((n, r) => n + rows(r.goldEarned), 0)).toBe(earned);
       const { spent, refunded } = side === 'player' ? ledger : { spent: 0, refunded: 0 };

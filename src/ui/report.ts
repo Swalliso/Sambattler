@@ -125,7 +125,7 @@ export function goldBySource(state: BattleState, side: Side): { label: string; v
     { label: 'Economy buildings', value: g.economy },
     { label: 'Interest', value: g.interest },
     { label: 'Comeback', value: g.comeback },
-    { label: 'Clash gold', value: g.pending },
+    { label: 'Clash gold', value: g.clash },
     { label: 'Effects', value: g.effects },
   ].filter((r) => r.value > 0);
 }

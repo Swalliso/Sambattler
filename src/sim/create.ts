@@ -5,10 +5,10 @@ import type { Content } from '../data/registry.ts';
 import type { ScenarioDef } from '../data/schema.ts';
 import { seedStream } from './rng.ts';
 import { resolveProfile } from './ai/profiles.ts';
-import { basePlots, colonyPlots } from './colony.ts';
+import { basePlots, colonyPlots, openOrder } from './colony.ts';
 import { buildRoundLibrary, compileRoundRules, compileRoundSides } from './compile.ts';
 import { collectRoundEffects, resolveStat, roundModifiers } from './effects.ts';
-import { kitCards, kitOf } from './kit.ts';
+import { featureReady, kitCards, kitOf } from './kit.ts';
 import { newClash, openRound } from './round.ts';
 import { emptyRoundStats, emptyStats } from './stats.ts';
 import { SIDES, other } from './state.ts';
@@ -63,19 +63,17 @@ export const MAX_BANS = 3;
 
 /**
  * A commander's draft pool (SPEC §8.4): its core buildings, every other building of the faction
- * (the shared pool, minus bans; core buildings can't be banned) and every relic whose required
- * feature is on.
+ * (the shared pool, minus bans; core buildings can't be banned) and every relic, each only once the
+ * feature it requires is here (`featureReady`). Spoils and events draw from it too.
  */
 export function draftPool(content: Content, faction: string, commanderId: string, flags: Flags, bans: string[] = []): DraftPool {
   const cmd = content.commanders[commanderId];
   if (!cmd) throw new Error(`unknown commander ${commanderId}`);
+  const ready = (id: string) => featureReady(content.buildings[id]?.requires, flags);
   const roster = content.factions[faction]?.buildings ?? [];
-  const core = cmd.core.filter((id) => roster.includes(id));
-  const shared = roster.filter((id) => !core.includes(id) && !bans.includes(id));
-  const relics = content.relicOrder.filter((id) => {
-    const r = content.relics[id]!;
-    return r.requires !== 'powers' || flags.powers;
-  });
+  const core = cmd.core.filter((id) => roster.includes(id) && ready(id));
+  const shared = roster.filter((id) => !cmd.core.includes(id) && !bans.includes(id) && ready(id));
+  const relics = content.relicOrder.filter((id) => featureReady(content.relics[id]!.requires, flags));
   return { core, shared, relics };
 }
 
@@ -177,8 +175,10 @@ function newBattle(content: Content, config: BattleConfig): BattleState {
   const fx = collectRoundEffects(roundModifiers(library, config));
   const sideState = (s: Side): SideState => {
     const sc = config[s];
-    // a modifier on side.heartcapMaxHp or side.startingGold reaches the battle's creation (§4.5, §6.1)
+    // a modifier on side.heartcapMaxHp, side.startingGold or side.plots reaches the battle's creation (§4.5, §4.6, §6.1)
     const maxHp = Math.max(1, Math.round(resolveStat(sc.heartcapMaxHp, fx[s].mods, 'side.heartcapMaxHp')));
+    // a plot gained opens the next closed one by #19's order; past the map's last, it's dropped (Call 4)
+    const plots = Math.min(openOrder(map).length, Math.max(0, Math.round(resolveStat(sc.plots, fx[s].mods, 'side.plots'))));
     const st: SideState = {
       gold: Math.max(0, Math.round(resolveStat(sc.startingGold, fx[s].mods, 'side.startingGold'))),
       heartcapHp: maxHp,
@@ -187,9 +187,8 @@ function newBattle(content: Content, config: BattleConfig): BattleState {
       augments: Object.fromEntries(Object.entries(sc.augments ?? {}).map(([id, list]) => [id, [...list]])),
       upgrades: { ...sc.upgrades },
       relics: [...sc.relics],
-      plots: colonyPlots(map, s, sc.plots).map((p) => ({ ...p, building: 0 })),
+      plots: colonyPlots(map, s, plots).map((p) => ({ ...p, building: 0 })),
       bankedAtBegin: 0,
-      pendingGold: 0,
       powerUsed: false,
       draftsOpened: 0,
     };

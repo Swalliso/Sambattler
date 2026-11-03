@@ -8,6 +8,33 @@ replaces. None of it is open work, including headings that say "Open:". From mil
 entries measure or tune v2's round battle (SPEC §11, §12). "The backlog" in the entries below means
 v1's, now [archived](../docs/archive/v1/balance-backlog.md).
 
+## R2b-S6 T070–T078: the relics in v2 form, the `requires` gates and one path for clash gold (2026-11-03)
+
+**Content the user approved at R2b's S0** (2026-11-03, "Take them all": R2-Q19, R2-Q20, #24 and #26, SPEC §11.7). No
+unit, building or rule number was retuned.
+- **The 21 relics** (`data/relics.json`) take §11.7's v2 effects, and every text is rewritten for v2:
+  - New effects: Thick Caps `unit.hp` ×1.15 at rank 0 (was buildings +15% HP); Fruiting Season `building.goldPerRound`
+    +12 (was `building.goldPerTick` +1); Rot Ward `side.heartcapDamageTaken` ×0.85, 8500 bp at §6.7 step 3 (was turrets
+    +25%); Quick Roots `unit.openingSpeed` ×1.25 on melee units (was capture +20%); Fresh Spores `building.squadCount` +1
+    where `plantedThisRound` (was an instant first spawn); Root Stipend `side.stipend` +24 (was +2 a tick); Forward
+    Spores a `clashStart` cloud on each lane's enemy front rank, 1.5 tiles, 4 s, 10 a second (was the supply-line
+    surcharge halved); Mycelial Web `side.plots` +1 (was supply cap +6); Mending Moss a `roundWon` `healHeartcap` of 100
+    (was 2% a wave); Mycorrhizal Link `side.comboCorners` behind `requires: combos`, so out of the pool until R3; the
+    Sporestorm Sigil `side.powerEffectMult` ×1.5 from the storm's first round (was cooldown −30%; S7's T084 applies it
+    to each power); Rot-Eater +1 gold an enemy unit killed from the storm's first round; Martyr's Bloom a `squadWiped`
+    burst of 60 crush within 2.0 (was on a building destroyed).
+  - Kept: Hardy Spores, Deep Cellars, Spore Tithe, Knitting Circle, Second Flush, Bloom Vigor, Spore Cloud (its death
+    burst now runs in rounds, where R2a listed it and ran nothing) and Elder's Patience.
+- **The Rhizome Vault** (`data/factions/velvet-bloom/buildings.json`) gets `requires: combos` (#26): it leaves drafts,
+  spoils, events, every general's kit and a single battle's roster, so Armilla's core offers five cards. With
+  Mycorrhizal Link out too, the draft pool holds 19 relics with powers on.
+- **Clash gold** (R2-Q20): `pendingGold` is gone. An effect's gold in a clash is credited at once, with a `gold` event
+  of source `clash`, counted in `goldEarned.clash`, and shown as the next income's "from the clash" row.
+- **Goldens:** all six moved at round 1's first checkpoint, since the state's shape changed (`goldEarned.clash` for
+  `pending`, the compiled side's new fields, the gated kits). The five battle replays play out as they did on
+  `develop`: the same winners, rounds, damage and gold on their recorded commands. `r2-run-s7` moves further, since the
+  run's pool and relics changed.
+
 ## R2b-S4c T170–T174: the flyers preset deleted, and no new presets (2026-11-03)
 
 **No balance value changed, and no golden moved.** The user, 2026-11-03: "I'm not personally a fan of having a bunch

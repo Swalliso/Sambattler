@@ -3,12 +3,26 @@
 // Call 29); R3 adds copies here. The general keeps v1's `limits.*.maxOwned` in their place (§7.8), until R3
 // gives it copies by #42.
 import type { Content } from '../data/registry.ts';
+import type { RequiresDef } from '../data/schema.ts';
 import type { BattleState, BattleConfig, Controller, KitCard, Side } from './state.ts';
 
-/** A single battle's kit for a side (§18.1 D45): its faction's roster, a general's cards carrying its `maxOwned`. */
+/**
+ * A single battle's kit for a side (§18.1 D45): its faction's roster, but what waits for a feature it lacks
+ * (`featureReady`), a general's cards carrying its `maxOwned`.
+ */
 export function kitOf(content: Content, side: Side, config: BattleConfig): KitCard[] {
   const sc = config[side];
-  return kitCards(content, sc.controller, content.factions[sc.faction]?.buildings ?? []);
+  const roster = (content.factions[sc.faction]?.buildings ?? []).filter((id) => featureReady(content.buildings[id]?.requires, config.flags));
+  return kitCards(content, sc.controller, roster);
+}
+
+/**
+ * Is the feature that content `requires` here (§8.4, §11.7, R2-Q19)? `powers` with the battle's powers on;
+ * `combos` not until R3 builds them, so the Rhizome Vault and Mycorrhizal Link are dealt nowhere until then.
+ * Content that needs nothing always is.
+ */
+export function featureReady(requires: RequiresDef | undefined, flags: BattleConfig['flags']): boolean {
+  return requires === undefined || (requires === 'powers' && flags.powers);
 }
 
 /** Kit cards for these buildings, in order: a general's carry its `limits.*.maxOwned` until R3's copies (§7.8, D45). */

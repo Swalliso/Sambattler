@@ -250,7 +250,7 @@ describe("a round's order (§4.7, §14.6's opening steps 1–7, §15.7 Rounds)",
     }];
     return createBattle(content, config);
   }
-  const kinds = (s: BattleState) => s.events.map((e) => (e.t === 'effectGold' ? `${e.t}:${e.amount}` : e.t));
+  const kinds = (s: BattleState) => s.events.map((e) => (e.t === 'gold' ? `${e.t}:${e.amount}` : e.t));
   const scenario = (round: number, sides: ScenarioDef['sides'] = { player: {}, enemy: {} }): ScenarioDef => ({
     id: 'order', description: 'A round-order test.', map: 'bogwater-hollow', round, sides,
   });
@@ -258,7 +258,7 @@ describe("a round's order (§4.7, §14.6's opening steps 1–7, §15.7 Rounds)",
   it("opens round 1 with its storm, then battleStart and roundStart, then the general's plan, then the player's planning", () => {
     const s = ordered();
     // the general's opener, two Sporeling Burrows, runs at once before generalPlanned (T068)
-    expect(kinds(s)).toEqual(['roundStarted', 'effectGold:7', 'effectGold:5', 'buildingPlanted', 'buildingPlanted', 'generalPlanned']);
+    expect(kinds(s)).toEqual(['roundStarted', 'gold:7', 'gold:5', 'buildingPlanted', 'buildingPlanted', 'generalPlanned']);
     expect([s.events[0], s.sporestorm, s.phase]).toEqual([{ t: 'roundStarted', round: 1, stormBp: 10000 }, 0, 'planning']);
   });
 
@@ -266,7 +266,7 @@ describe("a round's order (§4.7, §14.6's opening steps 1–7, §15.7 Rounds)",
     const s = ordered();
     finishRound(s);
     step(s);
-    expect(kinds(s)).toEqual(['income', 'income', 'interest', 'interest', 'roundStarted', 'effectGold:5', 'buildingPlanted', 'generalPlanned']);
+    expect(kinds(s)).toEqual(['income', 'income', 'interest', 'interest', 'roundStarted', 'gold:5', 'buildingPlanted', 'generalPlanned']);
     expect([s.round, s.phase]).toEqual([2, 'planning']);
     // its Burrows won round 1 against nobody: the general's 100 and 8 on the 80 it banked, then the Burster Pod it carried
     expect(s.sides.enemy.ai!.plans[1]).toMatchObject({ round: 2, income: 108, planted: [{ building: 'bursterPod' }] });

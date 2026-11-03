@@ -1,26 +1,12 @@
 // Plain words for player-facing text (playtest round 3: "orthogonally adjacent" lost a player, and
-// "income tick", "surcharge" and "knit" read as jargon). Every battle copies the data's own text into its
-// state, so rewording data/*.json would move the golden hashes. Until the next golden refresh the plain
-// wording lives here, keyed by id, and every screen reads relics, upgrade levels and building
-// descriptions through it. tests/unit/words.test.ts checks that each rewording keeps the data's numbers.
+// "income tick", "surcharge" and "knit" read as jargon). v1's battles copied the data's own text into their
+// state, so its plain wording lived here, keyed by id, and every screen reads relics, upgrade levels and
+// building descriptions through it. A battle in rounds holds no text (R2-Q8), so wording moves into the data:
+// relics' since R2b's S6, in their v2 form (T077). tests/unit/words.test.ts checks that each rewording left
+// keeps the data's numbers.
 import type { Content } from '../data/registry.ts';
 import type { PowerDef } from '../data/schema.ts';
-import { h } from './h.ts';
 
-const RELICS: Record<string, string> = {
-  fruitingSeason: 'Economy buildings earn +1 gold more every 5 s.',
-  rootStipend: 'Your Heartcap pays +2 gold more every 5 s.',
-  quickRoots: 'Your units claim columns 20% faster.',
-  deepCellars: 'Interest cap +10: each new wave can pay up to 10 more gold of interest.',
-  sporeTithe: '+4 gold each time your units merge.',
-  forwardSpores: 'Building farther from home costs half as much extra.',
-  knittingCircle: 'Merging takes 50% less time, and units can merge from 0.5 tiles farther apart.',
-  mycorrhizalLink: 'Buildings touching 2 or more of your buildings on a side, not just a corner, spawn 15% faster.',
-  sporeCloud: 'Your units burst as they die: 10 Crush damage to everything within 1.0 tile.',
-  eldersPatience: 'Elders +25% HP; out of combat they heal 2% of their HP every second.',
-  rotEater: '+1 gold for each enemy unit killed while the Sporestorm is on.',
-  martyrsBloom: 'When one of your buildings is destroyed, it bursts: 60 Crush damage to everything within 2.0 tiles.',
-};
 
 /** Upgrade levels by `<building>:<level>` (1-based). */
 const UPGRADES: Record<string, string> = {
@@ -45,9 +31,9 @@ const BUILDINGS: Record<string, string> = {
   puffballMortar: 'A tower that lobs bursting puffballs: Crush damage to everything near where they land. It can\'t hit units right next to it.',
 };
 
-/** The relic's effect in plain words. */
+/** The relic's effect in plain words: its data's text, written for v2 (§11.7). */
 export function relicText(content: Content, id: string): string {
-  return RELICS[id] ?? content.relics[id]?.text ?? id;
+  return content.relics[id]?.text ?? id;
 }
 
 /** One upgrade level's effect in plain words (`level` counts from 1). */
@@ -72,20 +58,4 @@ export function powerTiming(): string {
 }
 
 /** The plain rewordings, for the test that keeps their numbers in step with the data. */
-export const REWORDED = { relics: RELICS, upgrades: UPGRADES, buildings: BUILDINGS } as const;
-
-/**
- * A tiny picture for a relic whose rule is about layout, or null. Mycorrhizal Link: a building in the
- * middle, two buildings on its sides (they count) and one on a corner (it doesn't).
- */
-export function relicDiagram(id: string): HTMLElement | null {
-  if (id !== 'mycorrhizalLink') return null;
-  // a 3×3 patch of ground: the middle building, side neighbours that count, a corner one that doesn't
-  const cells = ['corner', 'side', '', 'side', 'mid', '', '', '', ''];
-  return h('span', { class: 'adj-diagram', role: 'img', 'aria-label': 'Touching on a side counts; touching only at a corner does not' },
-    h('span', { class: 'adj-grid', 'aria-hidden': 'true' }, ...cells.map((c) => h('i', { class: c }))),
-    h('span', { class: 'adj-key', 'aria-hidden': 'true' },
-      h('span', null, h('i', { class: 'mid' }), 'this building'),
-      h('span', null, h('i', { class: 'side' }), 'counts'),
-      h('span', null, h('i', { class: 'corner' }), 'doesn\'t')));
-}
+export const REWORDED = { upgrades: UPGRADES, buildings: BUILDINGS } as const;

@@ -1,7 +1,7 @@
 // A battle in rounds' runtime state (SPEC §14.4, §14.5): plain, JSON-serializable data only (§13.3 rule 8).
 // The library and the compiled sides hold ids and numbers only, so rewording a card never moves a golden
 // (R2-Q8, A152).
-import type { BalanceDef, BuildingDef, EffectBundle, ModifierDef, PowerDef, TriggerDef, UnitDef } from '../data/schema.ts';
+import type { BalanceDef, BuildingDef, EffectAction, EffectBundle, ModifierDef, PowerDef, TriggerDef, UnitDef } from '../data/schema.ts';
 import type { Slot } from './formation.ts';
 import type { ColonyPlot } from './colony.ts';
 
@@ -60,6 +60,8 @@ export interface CompiledTier {
   attackTicks: number;
   range: number;
   speedPerTick: number;
+  /** × its speed until its first attack in a clash: `unit.openingSpeed`, 1 unless a modifier sets it (Quick Roots, §11.7). */
+  openingSpeedMult: number;
   radius: number;
   splashRadius: number;
   /** Multiplier against Bloomed and Elder targets (1 for units without the slayer tag). */
@@ -247,10 +249,13 @@ export interface CompiledBuilding {
 }
 
 /** The triggers a battle in rounds fires (§14.2, §14.6). */
-export const ROUND_TRIGGERS = ['battleStart', 'roundStart', 'clashStart', 'unitDeath', 'merge', 'roundWon'] as const;
+export const ROUND_TRIGGERS = ['battleStart', 'roundStart', 'clashStart', 'unitDeath', 'enemyUnitKilled', 'squadWiped', 'merge', 'roundWon'] as const;
 export type RoundTriggerOn = (typeof ROUND_TRIGGERS)[number];
-/** The actions rounds run: `gainGold` pays its own side at once. */
-export type RoundAction = { gainGold: number };
+/**
+ * The actions rounds run (§14.2): `gainGold` pays its own side at once, `explode` bursts where it fired,
+ * `cloud` leaves a spore cloud there or on the enemy's front rank, and `healHeartcap` heals its side's Heartcap.
+ */
+export type RoundAction = Exclude<EffectAction, { repairHeartcapPct: number }>;
 export interface RoundTrigger { on: RoundTriggerOn; if?: TriggerDef['if']; do: RoundAction[] }
 
 /**
@@ -278,6 +283,12 @@ export interface CompiledSide {
   loamBonusPct: number;
   mergeRadius: number;
   knitTicks: number;
+  /** × the Heartcap damage it takes, each in basis points and applied in turn (§6.7 step 3): Rot Ward's 8500. */
+  heartcapTakenBp: number[];
+  /** Its modifiers on a squad's count, which each squad resolves at its plot as it fields (§4.6, §14.2). */
+  squadMods: ModifierDef[];
+  /** Its modifiers on its power's effect, with their conditions, read when the power is (`powerEffectMult`, §6.6). */
+  powerMods: ModifierDef[];
   /** Triggers from the battle's modifiers, in source order, holding only the actions rounds run. */
   triggers: RoundTrigger[];
   /** What this side's content compiles to nothing (plan Call 19). */
@@ -585,8 +596,6 @@ export interface SideState {
   plots: PlotState[];
   /** Gold held when this side's planning ended, which interest reads (§6.2). */
   bankedAtBegin: number;
-  /** Gold a clash won, paid with the next round's income and lost if the battle ends first (§14.4, plan Call 25). */
-  pendingGold: number;
   /** In this clash (§6.6). */
   powerUsed: boolean;
   draft?: OpenDraft;
@@ -612,8 +621,11 @@ export interface RoundStats {
   /** Heartcap damage after the storm and the cap, before the HP floor (§6.7, R2-Q11). */
   heartcapDamageDealt: number;
   heartcapDamageTaken: number;
-  /** By source (§6.2): the opening's income, and effects' gold paid at once. Pending gold counts when it's paid. */
-  goldEarned: { stipend: number; economy: number; comeback: number; interest: number; pending: number; effects: number };
+  /**
+   * By source (§6.2): the opening's income, gold effects earned in a clash, paid at once (R2-Q20), and gold
+   * effects earned out of one, such as at a round's opening.
+   */
+  goldEarned: { stipend: number; economy: number; comeback: number; interest: number; clash: number; effects: number };
   /** Building entity id → its economy gold. */
   goldByBuilding: Record<string, number>;
   healingDone: number;
@@ -665,7 +677,8 @@ export type Command = { round: number; tick: number; side: Side; seq: number } &
 
 export type SimEvent =
   // a round opens
-  | { t: 'income'; side: Side; amount: number }
+  /** Every source the opening pays but interest; `clash`, when there was some, is the last clash's gold, already paid (R2-Q20). */
+  | { t: 'income'; side: Side; amount: number; clash?: number }
   | { t: 'interest'; side: Side; amount: number }
   | { t: 'roundStarted'; round: number; stormBp: number }
   | { t: 'draftOpen'; side: Side; index: number }
@@ -693,8 +706,8 @@ export type SimEvent =
   | { t: 'knitCancel'; side: Side; ids: number[] }
   | { t: 'merged'; side: Side; id: number; unitId: string; tier: 2 | 3; x: number; y: number }
   | { t: 'burst'; side: Side; id: number; x: number; y: number; radius: number }
-  /** `pending`: into `pendingGold`. */
-  | { t: 'effectGold'; side: Side; amount: number; pending?: boolean }
+  /** An effect's gold, credited at once: `clash` in a clash, else `effects` (§6.2, R2-Q20). */
+  | { t: 'gold'; side: Side; amount: number; source: 'clash' | 'effects' }
   | { t: 'power'; side: Side; power: string; x?: number; y?: number; hits: number; merges: number }
   /** R3: icon flashes (§13.6). */
   | { t: 'augmentActed' | 'comboActed'; side: Side; id: string; x: number; y: number }
@@ -703,6 +716,8 @@ export type SimEvent =
   | { t: 'commandDropped'; side: Side; seq: number }
   // scoring, on the clash's last tick: `side` took it
   | { t: 'heartcapDamaged'; side: Side; amount: number; stormBp: number; capped: boolean }
+  /** A heal on the round's result, after its damage (Mending Moss, §6.7, #24): what it added, up to the max. */
+  | { t: 'heartcapHealed'; side: Side; amount: number }
   // the aftermath's step, after the battle's last round
   | { t: 'battleEnded'; winner: Side; by: 'rout' | 'decision'; round: number };
 

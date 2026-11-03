@@ -210,10 +210,11 @@ describe('planning commands and their refusals (§4.4, §14.5, plan Call 8)', ()
 });
 
 describe('the kit (§4.4, §7.8, §18.1 D45, plan Call 29)', () => {
-  it("is a single battle's faction roster on each side, and a card outside it is refused", () => {
+  it("is a single battle's faction roster on each side, but the Rhizome Vault, and a card outside it is refused", () => {
     const config = makeRoundConfig(content, { seed: 1, enemy: 'general:mother-mold' });
     for (const side of SIDES) {
-      expect(kitOf(content, side, config).map((c) => c.building)).toEqual(content.factions[config[side].faction]!.buildings);
+      // the Vault waits for R3's combos (#26)
+      expect(kitOf(content, side, config).map((c) => c.building)).toEqual(content.factions[config[side].faction]!.buildings.filter((id) => id !== 'rhizomeVault'));
       expect(config[side].kit).toEqual(kitOf(content, side, config));
     }
     const s = planningState({ kits: { player: ['sporelingBurrow', 'gillNest'] } });

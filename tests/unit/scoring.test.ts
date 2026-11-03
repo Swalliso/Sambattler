@@ -202,10 +202,11 @@ describe('scoreRound (§6.7, §14.4, §14.6 clash step 13)', () => {
     const mods: BattleModifier[] = [{ side: 'player', source: 'test', effects: gain(7) }, { side: 'enemy', source: 'test', effects: gain(5) }];
     const won = withEffects(mods);
     addBuilding(won, 'player', 'capguardHall', plotAt(won, 'player', { lane: 0, rank: 0, file: 2 }), 0);
-    expect(finishRound(won).filter((e) => e.t === 'effectGold')).toEqual([{ t: 'effectGold', side: 'player', amount: 7 }]);
+    // a roundWon trigger fires as the clash ends, so its gold is clash gold (R2-Q20)
+    expect(finishRound(won).filter((e) => e.t === 'gold')).toEqual([{ t: 'gold', side: 'player', amount: 7, source: 'clash' }]);
     expect([won.sides.player.gold, won.sides.enemy.gold]).toEqual([307, 300]);
     const drawn = withEffects(mods);
-    expect(finishRound(drawn).filter((e) => e.t === 'effectGold')).toEqual([]);
+    expect(finishRound(drawn).filter((e) => e.t === 'gold')).toEqual([]);
     expect([drawn.rounds[0]!.damage, drawn.sides.player.gold, drawn.sides.enemy.gold]).toEqual([{ player: 0, enemy: 0 }, 300, 300]);
   });
 });

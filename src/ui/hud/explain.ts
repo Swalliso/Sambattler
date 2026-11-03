@@ -105,7 +105,10 @@ export interface IncomeRow { label: string; gold: number; note?: string }
 
 /** The gold tip's figures (§6.2, §10.2): next round's income by source, interest, and the comeback a lost round would add. */
 export interface GoldLesson {
-  /** Next round's income by source, as `incomePreview` pays it: they add up to `total`, the gold chip's +N. */
+  /**
+   * Next round's income by source, as `incomePreview` pays it: they add up to `total`, the gold chip's +N, but
+   * the clash's row, which is already in your gold (R2-Q20).
+   */
   rows: IncomeRow[];
   total: number;
   /** No round follows this one, so no more income comes in. */
@@ -144,7 +147,7 @@ export function goldLesson(content: Content, state: BattleState): GoldLesson {
   const held = planning ? ss.gold : ss.bankedAtBegin;
   rows.push({ label: 'Interest', gold: inc.interest, note: planning ? `on the ${held} you hold` : `on the ${held} you banked` });
   if (inc.comeback) rows.push({ label: 'Comeback', gold: inc.comeback, note: 'you lost the round' });
-  if (inc.pending) rows.push({ label: 'Pending', gold: inc.pending, note: 'earned in the last clash' });
+  if (inc.clash) rows.push({ label: 'From the clash', gold: inc.clash, note: 'already in your gold' });
   const scored = state.phase === 'aftermath' || state.phase === 'ended';
   return {
     rows,

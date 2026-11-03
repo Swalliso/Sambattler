@@ -130,7 +130,7 @@ function compileRoundSide(lib: Library, side: Side, kit: readonly KitCard[], fx:
   const buildings: Record<string, CompiledBuilding> = {};
   const units: Record<string, CompiledUnit> = {};
   for (const { building: id } of kit) {
-    const cb = compileRoundBuilding(lib, id);
+    const cb = compileRoundBuilding(lib, id, fx.mods);
     buildings[id] = cb;
     if (cb.kind === 'tower') units[id] = compileEmplacement(lib, id, fx.mods);
     else if (cb.squad && !(cb.squad.unit in units)) units[cb.squad.unit] = compileRoundUnit(lib, cb.squad.unit, fx.mods);
@@ -140,20 +140,28 @@ function compileRoundSide(lib: Library, side: Side, kit: readonly KitCard[], fx:
     buildings,
     stipend: Math.round(m('side.stipend', r.stipendPerRound)),
     interestCap: Math.round(m('side.interestCap', r.interestCap)),
-    incomeBp: side === 'enemy' ? Math.round(r.enemyIncomeMult * 10000) : 10000,
+    // the general's income starts at `enemyIncomeMult` (§7.1)
+    incomeBp: Math.round(m('side.incomeMult', side === 'enemy' ? r.enemyIncomeMult : 1) * 10000),
     comebackEnabled: m('side.comebackEnabled', 1) > 0,
     sellRefundPlantedPct: Math.round(r.sellRefundPlanted * 100),
     sellRefundPct: Math.round(m('side.sellRefund', bal.sellRefund) * 100),
     loamBonusPct: Math.round(m('side.loamBonus', bal.loamBonus) * 100),
     mergeRadius: m('side.mergeRadius', bal.mergeRadius),
     knitTicks: secToTicks(m('side.knitTicks', bal.mergeKnitSeconds), bal.tickRate),
+    heartcapTakenBp: fx.mods.filter((x) => x.stat === 'side.heartcapDamageTaken').map((x) => Math.round(x.value * 10000)),
+    squadMods: fx.mods.filter((x) => x.stat === 'building.squadCount'),
+    powerMods: fx.mods.filter((x) => x.stat === 'side.powerEffectMult'),
     triggers: fx.triggers,
     ignored: fx.ignored,
   };
 }
 
-/** A building as a battle in rounds fields it (§4.4): a spawner's squad, a tower's one emplacement, or its gold a round. */
-function compileRoundBuilding(lib: Library, id: string): CompiledBuilding {
+/**
+ * A building as a battle in rounds fields it (§4.4): a spawner's squad, a tower's one emplacement, or its gold
+ * a round with the side's `building.goldPerRound` modifiers (Fruiting Season, §11.7). A squad's count takes its
+ * side's modifiers at its plot as it fields (`squadMods`).
+ */
+function compileRoundBuilding(lib: Library, id: string, mods: readonly ModifierDef[]): CompiledBuilding {
   const b = lib.buildings[id];
   if (!b) throw new Error(`unknown building ${id}`);
   const out: CompiledBuilding = { id, kind: b.kind, cost: b.cost };
@@ -163,7 +171,8 @@ function compileRoundBuilding(lib: Library, id: string): CompiledBuilding {
   } else if (b.kind === 'tower') out.squad = { unit: id, count: 1 };
   if (b.economy) {
     if (b.economy.goldPerRound === undefined) throw new Error(`economy building ${id} has no goldPerRound`);
-    out.economy = { goldPerRound: b.economy.goldPerRound, ...(b.economy.interestCapAdd ? { interestCapAdd: b.economy.interestCapAdd } : {}) };
+    const goldPerRound = Math.max(0, Math.round(resolveStat(b.economy.goldPerRound, mods, 'building.goldPerRound', buildingMatcher(lib, id))));
+    out.economy = { goldPerRound, ...(b.economy.interestCapAdd ? { interestCapAdd: b.economy.interestCapAdd } : {}) };
   }
   return out;
 }
@@ -219,6 +228,7 @@ function compileTier(lib: Library, u: LibraryUnit, tier: Tier, mods: readonly Mo
     attackTicks: Math.max(1, secToTicks(m('unit.attackInterval', u.attackInterval) * (p.attackIntervalMult ?? 1), tr)),
     range: m('unit.range', u.range) + (p.rangeAdd ?? 0),
     speedPerTick: (m('unit.speed', u.speed) * (p.speedMult ?? 1)) / tr,
+    openingSpeedMult: m('unit.openingSpeed', 1),
     radius: u.radius * size + (p.radiusAdd ?? 0),
     splashRadius: m('unit.splashRadius', p.splashRadius ?? u.splashRadius ?? 0),
     slayerMult: u.tags.includes('slayer') ? (p.slayerMult ?? b.tagMult.slayerVsElite) : 1,
@@ -249,7 +259,7 @@ function compileEmplacement(lib: Library, id: string, mods: readonly ModifierDef
   const range = m('tower.range', clouds && bal.sporeCloud!.range !== undefined ? bal.sporeCloud!.range : a.range);
   const tier = (): CompiledTier => ({
     hp, damage: m('tower.damage', a.damage), attackTicks: Math.max(1, secToTicks(a.interval, bal.tickRate)), range,
-    speedPerTick: 0, radius: MAX_RADIUS, splashRadius: m('tower.splashRadius', a.splashRadius ?? 0), slayerMult: 1,
+    speedPerTick: 0, openingSpeedMult: 1, radius: MAX_RADIUS, splashRadius: m('tower.splashRadius', a.splashRadius ?? 0), slayerMult: 1,
     resist: { slash: 1, pierce: 1, crush: 1 }, supply: 0, siegeMult: 1, healAmount: 0, healTicks: 0, healTargets: 0, regenPct: 0,
   });
   return {
