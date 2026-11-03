@@ -25,7 +25,6 @@ import { closeSettings, openSettings, settingsButton, settingsOpen } from '../..
 import { AnchoredTip } from '../../ui/tooltip.ts';
 import { RoundCallouts } from '../../ui/rounds/callouts.ts';
 import type { RoundCalloutKind } from '../../ui/rounds/callouts.ts';
-import { intentOf, KIND_LABEL } from '../../ui/rounds/doctrine.ts';
 import { hudContext, IntentPanel, TopBand } from '../../ui/rounds/hud/top.ts';
 import type { HudContext, HudPart } from '../../ui/rounds/hud/top.ts';
 import { RoundTally } from '../../ui/rounds/hud/tally.ts';
@@ -36,7 +35,7 @@ import { loadSettings, onSettings, settingsStore } from '../settings.ts';
 import { soundPrefs } from '../sound.ts';
 import { resultBanner } from './phases/aftermath.ts';
 import { aimText, laneCallout, powerButton, powerNews, powerRefusal, powerText, powerUse } from './phases/clash.ts';
-import { planningHint } from './phases/planning.ts';
+import { generalNews, planningHint } from './phases/planning.ts';
 import type { RoundSession } from './session.ts';
 
 /** The mounts the bands and panels fill (T077): S13's T088, T089 and T091, S14's T093 and T094. */
@@ -197,6 +196,9 @@ export class RoundsView {
     window.addEventListener('resize', this.onResize);
     // the self-hosted fonts change the bands' heights when they swap in
     void document.fonts.ready.then(this.onResize);
+    // the opening's news, such as round 1's intel, came before the view, so its first callout is said here
+    const news = session.state.phase === 'planning' ? generalNews(content, session.state) : null;
+    if (news) this.say('counter', news);
   }
 
   dispose(): void {
@@ -310,8 +312,10 @@ export class RoundsView {
     this.log.onTick(state);
     for (const e of state.events) {
       if (e.t === 'buildingPlanted' || e.t === 'buildingSold' || e.t === 'mergeToggled' || e.t === 'roundStarted') this.colonyVersion++;
-      if (e.t === 'generalPlanned' && e.counter) this.say('counter', `${intentOf(this.content, state).name} now counters your ${KIND_LABEL[e.counter]}`);
-      else if (e.t === 'laneWon') {
+      if (e.t === 'generalPlanned') {
+        const news = e.side === 'enemy' ? generalNews(this.content, state) : null;
+        if (news) this.say('counter', news);
+      } else if (e.t === 'laneWon') {
         const c = laneCallout(state, e);
         if (c) this.callouts.push('lane', c.text, c.tone, now);
       } else if (e.t === 'merged' && e.tier === 3) {

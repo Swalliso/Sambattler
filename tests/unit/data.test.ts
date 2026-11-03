@@ -128,6 +128,8 @@ describe('data', () => {
           economyEarly: { beforeRound: 3, mult: 1.5 }, economyLate: { fromRound: 7, mult: 0.3 }, towerAfterLossMult: 2,
           score: { depth: 10, offCentre: 1, besideSame: 2, frontSupport: 3, loam: 8, backThird: 2, noise: 0.5 },
           counter: { cycles: [{ round: 4, from: 1 }, { round: 7, from: 4 }], bossCycles: [{ round: 3, from: 1 }], freePlots: 2 },
+          // X8's two knobs ship off (R2a/T101)
+          leanToLastAnswer: 0, replaceWhenFull: false,
         },
       });
       // T124 measures the other caps and the Decision by damage; a cap names one base

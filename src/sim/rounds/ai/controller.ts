@@ -4,13 +4,15 @@
 // only `planningView` and draws only on its own side's AI stream (plan Call 10). It acts only through
 // `planning.ts`'s executors, run at once, since a queued enemy plan is refused (plan Call 8), so it stamps,
 // logs and counts its own refusals as the queue does. Its plan for the round goes in `ai.plans` (plan Call
-// 12). It stands beside v1's `src/sim/ai/controller.ts` until R2b moves it there.
+// 12). An adaptive general's counter cycle (`counter.ts`) is step 1, and X8's two default-off knobs are read
+// here (§7.2). It stands beside v1's `src/sim/ai/controller.ts` until R2b moves it there.
 import { nextFloat } from '../../rng.ts';
 import { commandStamp, queueCommand } from '../commands.ts';
-import { plant, sell, toggleMerge } from '../planning.ts';
+import { plant, sell, sellValue, toggleMerge } from '../planning.ts';
 import { other } from '../state.ts';
 import type { AiPlan, AiState, AiWeight, BattleState, BuildingState, Command, CommandBody, Side } from '../state.ts';
 import { roundOutcome } from '../systems/victory.ts';
+import { counterKindsOf, doctrineMult, lastAnswer, runCycle } from './counter.ts';
 import { choosePlot, freePlots } from './formationScore.ts';
 import { planningView } from './view.ts';
 import type { PlanningView } from './view.ts';
@@ -25,16 +27,25 @@ export type PlanBody = Extract<CommandBody, { type: 'plant' | 'sell' | 'toggleMe
 export function planTurn(state: BattleState, side: Side, income = 0): void {
   const ai = state.sides[side].ai;
   if (!ai) throw new Error(`the ${side} side has no AI to plan`);
-  // 1. a due doctrine or counter change, which may sell for room (§7.4): T099
-  // 2. buy and plant in a loop
+  const sold: AiPlan['sold'] = [];
+  const sellNow = (b: BuildingState): boolean => {
+    if (runAtOnce(state, side, { type: 'sell', entityId: b.id })) return false;
+    sold.push({ building: b.buildingId, plot: b.plot });
+    return true;
+  };
+  // 1. a due counter, which may sell for room (§7.4); round 1's opening doctrine came with the profile (§7.6)
+  const counter = runCycle(planningView(state, side), ai, sellNow);
+  // 2. buy and plant in a loop, then X8's replace-when-full when it's on
   const planted = buy(state, side, ai);
+  if (ai.counter && state.library.balance.rounds.ai.replaceWhenFull) replaceWhenFull(state, side, sellNow, planted);
   // 3. set the merge toggles
   setToggles(state, side);
   const plan: AiPlan = {
-    round: state.round, planted: planted.map((b) => ({ building: b.buildingId, plot: b.plot })), sold: [], income, banked: state.sides[side].gold,
+    round: state.round, planted: planted.map((b) => ({ building: b.buildingId, plot: b.plot })), sold, income, banked: state.sides[side].gold,
+    ...(counter ? { counter: counter.kind } : {}),
   };
   ai.plans.push(plan);
-  state.events.push({ t: 'generalPlanned', side, planted: planted.map((b) => b.id), sold: [] });
+  state.events.push({ t: 'generalPlanned', side, planted: planted.map((b) => b.id), sold: sold.map((x) => x.building), ...(counter ? { counter: counter.kind } : {}) });
   if (side === 'player') queueCommand(state, { ...commandStamp(state), side, type: 'beginClash' });
 }
 
@@ -60,14 +71,17 @@ export function runAtOnce(state: BattleState, side: Side, body: PlanBody): strin
  * picks again. It stops when the target is out of reach, which it carries into the next planning phase
  * once, or when nothing it buys has a free plot. It keeps no reserve (#29). It returns what it planted.
  */
+/** Plants the card at its best plot (§7.3), adding it to `planted`; false when it has no plot or was refused. */
+function plantBest(state: BattleState, side: Side, view: PlanningView, buildingId: string, planted: BuildingState[]): boolean {
+  const plot = choosePlot(view, buildingId, merges(view, buildingId));
+  if (plot === null || runAtOnce(state, side, { type: 'plant', buildingId, plot })) return false;
+  planted.push(state.buildings.at(-1)!);
+  return true;
+}
+
 function buy(state: BattleState, side: Side, ai: AiState): BuildingState[] {
   const planted: BuildingState[] = [];
-  const plantAt = (view: PlanningView, buildingId: string): boolean => {
-    const plot = choosePlot(view, buildingId, merges(view, buildingId));
-    if (plot === null || runAtOnce(state, side, { type: 'plant', buildingId, plot })) return false;
-    planted.push(state.buildings.at(-1)!);
-    return true;
-  };
+  const plantAt = (view: PlanningView, buildingId: string): boolean => plantBest(state, side, view, buildingId, planted);
   if (state.round === 1) {
     for (const id of ai.opener) {
       const view = planningView(state, side);
@@ -105,12 +119,50 @@ function setToggles(state: BattleState, side: Side): void {
 /**
  * The weights the side would pick a target by now (§7.2), for each card its profile lists: its doctrine
  * weight × the situational multipliers (economy × 1.5 before round 3 and × 0.3 from round 7, towers × 2
- * after a round it lost) × the counter's (§7.4, T099). A card it may not buy now weighs 0.
+ * after a round it lost) × the counter's and the intel's (§7.4, §7.6) × X8's lean. A card it may not buy now weighs 0.
  */
 export function targetWeights(view: PlanningView): Record<string, number> {
   const out: Record<string, number> = {};
-  for (const w of view.ai?.weights ?? []) out[w.building] = canBuy(view, w.building) ? w.weight * situational(view, w.building) : 0;
+  const answer = leanKind(view);
+  for (const w of view.ai?.weights ?? []) out[w.building] = canBuy(view, w.building) ? weightOf(view, w, answer) : 0;
   return out;
+}
+
+/** A listed card's weight, whether or not it may be bought now: `answer` is the kind X8's lean favours, if any. */
+function weightOf(view: PlanningView, w: AiWeight, answer: ReturnType<typeof leanKind>): number {
+  const lean = answer && counterKindsOf(view, w.building).includes(answer) ? 1 + view.knobs.leanToLastAnswer : 1;
+  return w.weight * situational(view, w.building) * doctrineMult(view, w.building) * lean;
+}
+
+/** X8's `leanToLastAnswer` (default off, §7.2): from round 2, the kind that answers last round's army, for a general that runs the counter cycle. */
+function leanKind(view: PlanningView) {
+  return view.knobs.leanToLastAnswer > 0 && view.round >= 2 && view.ai?.counter ? lastAnswer(view) : null;
+}
+
+/**
+ * X8's `replaceWhenFull` (default off, §7.2): with no plot free once it has bought, it sells its lowest-weighted
+ * spawner that has fielded, at 60%, for the heaviest card that outweighs it and that its gold and the refund
+ * afford, at most once a turn. The spawner's ties go rearmost, then the lower file, the building id and the
+ * entity id; the card's go to the dearer, then by id.
+ */
+function replaceWhenFull(state: BattleState, side: Side, sellNow: (b: BuildingState) => boolean, planted: BuildingState[]): void {
+  const view = planningView(state, side);
+  if (freePlots(view).length > 0) return;
+  const answer = leanKind(view);
+  const listed = new Map(view.ai!.weights.map((w) => [w.building, w]));
+  const weigh = (id: string) => { const w = listed.get(id); return w ? weightOf(view, w, answer) : 0; };
+  const plot = (b: BuildingState) => view.plots[b.plot]!;
+  const [low] = view.buildings
+    .filter((b) => b.fielded && view.cards[b.buildingId]?.kind === 'spawner')
+    .sort((a, b) => weigh(a.buildingId) - weigh(b.buildingId) || plot(b).rank - plot(a).rank || plot(a).file - plot(b).file
+      || (a.buildingId < b.buildingId ? -1 : a.buildingId > b.buildingId ? 1 : 0) || a.id - b.id);
+  if (!low) return;
+  const gold = view.gold + sellValue(state, low.id), floor = weigh(low.buildingId);
+  const [card] = [...listed.keys()]
+    .filter((id) => weigh(id) > floor && withinLimits(view, id, low) && view.cards[id]!.cost <= gold)
+    .sort((a, b) => weigh(b) - weigh(a) || view.cards[b]!.cost - view.cards[a]!.cost || (a < b ? -1 : a > b ? 1 : 0));
+  if (!card || !sellNow(low)) return;
+  plantBest(state, side, planningView(state, side), card, planted);
 }
 
 /** A weighted pick from its stream (§7.2), in the profile's order, by building id; null when nothing weighs anything. */
@@ -151,13 +203,17 @@ function situational(view: PlanningView, buildingId: string): number {
  * `maxOwned` (the profile's limit, or a general's kit card's), its `afterRound` has come, and a plot is free.
  */
 function canBuy(view: PlanningView, buildingId: string): boolean {
+  return withinLimits(view, buildingId) && freePlots(view).length > 0;
+}
+
+/** `canBuy`'s rules but the free plot, counting what it owns without `sold`, a building it is about to sell. */
+function withinLimits(view: PlanningView, buildingId: string, sold?: BuildingState): boolean {
   const card = view.kit.find((c) => c.building === buildingId);
   if (!card || !view.cards[buildingId]) return false;
   const limit: AiWeight | undefined = view.ai?.weights.find((w) => w.building === buildingId);
-  const owned = view.buildings.filter((b) => b.buildingId === buildingId).length;
+  const owned = view.buildings.filter((b) => b.buildingId === buildingId && b.id !== sold?.id).length;
   if ([limit?.maxOwned, card.maxOwned].some((max) => max !== undefined && owned >= max)) return false;
-  if (limit?.afterRound !== undefined && view.round < limit.afterRound) return false;
-  return freePlots(view).length > 0;
+  return limit?.afterRound === undefined || view.round >= limit.afterRound;
 }
 
 const inReach = (view: PlanningView, buildingId: string): boolean => view.gold >= view.cards[buildingId]!.cost;

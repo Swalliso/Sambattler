@@ -28,7 +28,7 @@ Drafted 2026-11-01 from SPEC v2 and `docs/tasks/spec-analysis.md`, and refreshed
   - **X5**: the cap is 25% of the loser's max HP, and a Decision goes by share.
 - **R2a's S0** (2026-11-02, every recommendation): X6, X7, X8, RB-Q3, R2-Q1 to R2-Q12, #19, #22, #23, #25, #29, #30, #31, M6-Q1, M7-Q1's trait (dropped) and #35's approach. T124 measures #35's battle-level bands and T125 sets them. #53 (`tierRadiusMult` 1.0) was decided at R4a-S0.
 - **X10** (records in two parts), 2026-11-01: R2a builds the one play-time module (T126, T128), and records-2 adds the run total (run-it-back.md T015, T016).
-- **Still open for R2a:** #35's bands (T125), the rough playtest (T145) and the gate (T137, T139).
+- **Still open for R2a:** #35's bands, with a pace retune beside them if G4 misses (T125), and the gate (T137, T139). The rough playtest (T145) was answered on 2026-11-02.
 
 **Results it builds on** (R1's entry in `docs/balance-backlog.md`, agreed at R1's review gate on 2026-11-02):
 
@@ -686,12 +686,14 @@ S1 to S4: the data, the colony, the round state machine and the planning command
 
 **S14b: the rough playtest** (the user, on the dev site, once S14's PR is merged and deployed; R2-Q25, agreed 2026-11-01)
 
-- [ ] T145 [USER] The rough playtest. The user plays two or three battles at `https://swalliso.github.io/Sambattler/dev/?scene=rounds`, as S14 leaves them, and answers §16 R2 gate questions 1, 2, 3 and 6 in rough form, plus one more: is anything about the loop wrong enough to change S15–S20? It tests the core bet, planning with the general's army in view and then watching both whole armies clash, before the counter cycle, the power, the round tools and the polish are built (§16 R2 step 10, R2-Q25)
+- [x] T145 [USER] The rough playtest. The user plays two or three battles at `https://swalliso.github.io/Sambattler/dev/?scene=rounds`, as S14 leaves them, and answers §16 R2 gate questions 1, 2, 3 and 6 in rough form, plus one more: is anything about the loop wrong enough to change S15–S20? It tests the core bet, planning with the general's army in view and then watching both whole armies clash, before the counter cycle, the power, the round tools and the polish are built (§16 R2 step 10, R2-Q25)
   - Tell the user first what isn't in yet: the general doesn't adapt (S15), there's no commander power (S16), Twin Roots has no replays and the bench isn't in round form (S17), there are no round guardrails (S18), and there's no "last fielded" view (S19). Help still describes v1, and the preview plays no battle sounds.
   - It isn't a gate on numbers. A balance miss is written down for S18 and S21, not tuned here.
-- [ ] T146 Write the rough playtest down: the answers in `docs/playtest-feedback.md`, newest first, and one line in `docs/status.md`. Agree with the user what, if anything, changes in S15–S20, and edit those tasks in this file in the same PR (R2-Q25, CLAUDE.md "Where things get written down")
+  - As built (2026-11-02): the user played `?scene=rounds` on the dev site. Their answers to questions 1, 2, 3 and 6, and to whether S15–S20 change, are in `docs/playtest-feedback.md`: the core loop works, and nothing needs a dramatic change. Once the colony was full the late rounds ran empty, which went to S18 (T124, T125) and SPEC §18.2 #67.
+- [x] T146 Write the rough playtest down: the answers in `docs/playtest-feedback.md`, newest first, and one line in `docs/status.md`. Agree with the user what, if anything, changes in S15–S20, and edit those tasks in this file in the same PR (R2-Q25, CLAUDE.md "Where things get written down")
+  - As built (2026-11-02): the notes are in `docs/playtest-feedback.md` and a line is in `docs/status.md`. The user agreed three changes. SPEC §18.2 #67 asks what gold does once the colony is full, with an **Open:** line in §6.1. S18's T124 and T125 take a pace retune, if G4 misses, and its Sessions row says so. R3's Read first points its S0 to the builds note. Nothing else in S15–S20 changed, and the grid stays as it is.
 
-**Checkpoint:** the notes are in `docs/playtest-feedback.md`, and the user has said S15 and S16 may start, as planned or with the changes T146 wrote in.
+**Checkpoint:** the notes are in `docs/playtest-feedback.md`, and the user has said S15 and S16 may start, as planned or with the changes T146 wrote in (2026-11-02: they started beside S14b).
 
 ## Phase 6: US4 — The general adapts by rounds (P2)
 
@@ -699,7 +701,7 @@ S1 to S4: the data, the colony, the round state machine and the planning command
 
 **S15: the counter cycle, intel in a single battle, and X8's readouts**
 
-- [ ] T098 [US4] Add the counter-cycle cases to `tests/unit/rounds/ai.test.ts` (§7.4, §7.6, §15.7 AI) (A041, A051, A055, A056):
+- [x] T098 [US4] Add the counter-cycle cases to `tests/unit/rounds/ai.test.ts` (§7.4, §7.6, §15.7 AI) (A041, A051, A055, A056):
   - cycles at rounds 4 and 7, the boss also at 3, stored as `{round, from}`;
   - from hand-built records: Amanita reads Armor, Capguard Line, Sporelings Swarm, Gill Archers Ranged (#14);
   - eliteShare counts Elder units only, at their parts' base supply, with no swarm read (R2-Q3);
@@ -710,15 +712,17 @@ S1 to S4: the data, the colony, the round state machine and the planning command
   - with fewer than 2 free plots it sells up to 2 spawners outside the set, worst against the dominant armor, rearmost first, then the lower file, then the id, at 60%;
   - `generalPlanned.counter` and `ai.plans[round].counter` are set, and the state survives a snapshot round trip;
   - with `config.intel` set, the opening doctrine is ×2 and ×0.8 until the first activation, and the boss's dual doctrine is ×2.5 for the whole battle.
-- [ ] T099 [US4] Build the counter cycle in `src/sim/rounds/ai/counter.ts` (new), called from `planTurn`'s step 1 in `src/sim/rounds/ai/controller.ts` (§7.2, §7.4, §7.6) (A041, A051, A055, A056)
+- [x] T099 [US4] Build the counter cycle in `src/sim/rounds/ai/counter.ts` (new), called from `planTurn`'s step 1 in `src/sim/rounds/ai/controller.ts` (§7.2, §7.4, §7.6) (A041, A051, A055, A056)
   - The parts: the schedule, `analyzeFielded` (R2-Q3's reading), the scores with noise of ±0.03, activation, the missing answer, selling for room, and a record by round.
   - Also the opening doctrine from `config.intel` and the boss's dual doctrine. A single battle carries no intel unless a test sets it; R2-Q18's opener swap is R2b's.
   - The Anti-Ranged kind (#14): it scores `rangedShare`, with `swarm` spawners as its set.
-- [ ] T100 [US4] Add X8's readouts to `tools/lib/rounds/run.ts`'s summary: per round, the general's banked gold, its free plots, what it planted and sold, and whether the clash replayed the last one exactly (§7.2) (A049, A206)
-- [ ] T101 [US4] Add X8's two default-off knobs to `balance.rounds.ai` in `data/balance.json` (`leanToLastAnswer`, a light lean from round 2 toward the answer to last round's army; `replaceWhenFull`, which sells its lowest-weighted fielded spawner at 60% for a heavier card when the colony is full). Read both in `src/sim/rounds/ai/controller.ts`, with a case each in `tests/unit/rounds/ai.test.ts` (§7.2, §12.4) (A049)
+- [x] T100 [US4] Add X8's readouts to `tools/lib/rounds/run.ts`'s summary: per round, the general's banked gold, its free plots, what it planted and sold, and whether the clash replayed the last one exactly; and, on both sides, each side's free open plots and the gold it banked at Begin per round, and the first round its colony has no free open plot (§7.2) (A049, A206)
+  - The player's side was added after the rough playtest (the user, 2026-11-02): the late rounds felt empty once the colony was full, and these numbers feed S18's pace call and S21.
+- [x] T101 [US4] Add X8's two default-off knobs to `balance.rounds.ai` in `data/balance.json` (`leanToLastAnswer`, a light lean from round 2 toward the answer to last round's army; `replaceWhenFull`, which sells its lowest-weighted fielded spawner at 60% for a heavier card when the colony is full). Read both in `src/sim/rounds/ai/controller.ts`, with a case each in `tests/unit/rounds/ai.test.ts` (§7.2, §12.4) (A049)
   - Add its entry to `data/CHANGELOG-balance.md` in this PR. `balance.rounds` stays out of v1's library (Call 27), so v1's goldens don't move; if the round goldens move, refresh them with `npm run golden -- update` and say so in the commit.
-- [ ] T102 [US4] Show counters in `src/ui/rounds/doctrine.ts` and `src/app/rounds/phases/planning.ts`: "Countering SWARM" and "New: Capguard Hall" in the Intent panel, a counter callout in the activation round, and round 1's "The Gray Rot remembers your SWARM" when intel is set (§7.4, §7.5, §10.2)
-- [ ] T103 [US4] Add the adaptive round smoke to `tools/verify.ts`: `npm run sim -- --rounds --seeds 4..5 --player bot:mono:sporelingBurrow --enemy general:mother-mold --flags merging,adaptive --summary --assert rejectedCommands=0 --assert counters[0].round=4`, with `counters[0].kind` asserted as T098's cases read that army (R2-Q3) (§15.1, §7.4)
+- [x] T102 [US4] Show counters in `src/ui/rounds/doctrine.ts` and `src/app/rounds/phases/planning.ts`: "Countering SWARM" and "New: Capguard Hall" in the Intent panel, a counter callout in the activation round, and round 1's "The Gray Rot remembers your SWARM" when intel is set (§7.4, §7.5, §10.2)
+- [x] T103 [US4] Add the adaptive round smoke to `tools/verify.ts`: `npm run sim -- --rounds --seeds 4..5 --player bot:mono:sporelingBurrow --enemy general:mother-mold --flags merging,adaptive --summary --assert rejectedCommands=0 --assert counters[0].round=4`, with `counters[0].kind` asserted as T098's cases read that army (R2-Q3) (§15.1, §7.4)
+  - As built: `counters[0].kind=elite`. The mono Sporelings knit mostly into Elders (an Elite score of 0.90 against Swarm's 0.63 on both seeds), and Mold adds the Veilstalker Hollow as the missing answer.
 
 **Checkpoint:** the independent test passes; `npm run verify` is green; X8's readouts for 40 seeds against Mold and the Baron are in `docs/balance-backlog.md`.
 
@@ -802,8 +806,10 @@ S1 to S4: the data, the colony, the round state machine and the planning command
   - Record each guardrail's numbers, each file's runtime (R2-Q9), both bots' readings as the full reveal's risk, and a proposal for #35's battle-level bands (G4, G6 both clauses, G8 under both policies, G13, G16) in `docs/balance-backlog.md` (A204).
   - Read R1's watch items on round battles: Capguard Hall at 3 by round (R1: 92% at 300 gold, 2% at 1,500), the answers to the Sporeling and the Capguard with `pinned` on, and G2's Gill Archer under the adopted set (A116).
   - Report a miss with its numbers; a retune across several units waits for the user.
+  - If G4 misses (S10b's step 3 did: a median of 9 rounds, and 73% of battles reaching round 9; S14b's rough playtest found the late rounds empty once the colony was full, §18.2 #67), measure the pace levers and propose one retune, with the numbers behind it, beside the bands in `docs/balance-backlog.md`. The levers are `heartcapDamagePerSupply` (25), `roundDamageCap` (25% of max HP), the Heartcaps' HP and the Sporestorm (§18.3). Don't make it here: T125 takes it to the user (S14b, 2026-11-02).
 - [ ] T125 [US6] [USER] Agree the bands with the user, write them into `data/balance-targets.json`'s `rounds` block, and close #35's battle-level part in `SPEC.md` §12.3 (§12.3, §18.2 #35) ⛔ #35 (A204)
   - The split with R2b: R2a sets G4, G6 (both clauses, single battle), G8 under both policies, G13 and G16. R2b sets G14 and G15 and re-reads G8 beside G14 (A204). Say so in #35's Decision line.
+  - Bring T124's pace retune, if it proposed one, for the user's OK beside the bands, so S21's playtest runs at the agreed pace (S14b, 2026-11-02). S18 makes an agreed retune: it gets its `data/CHANGELOG-balance.md` entry, and the round goldens are refreshed (`npm run golden -- update`).
 
 **Checkpoint:** `npx vitest run tests/slow/rounds` passes, or each miss is recorded with its numbers and the user's call; `npm run bench -- --rounds` is inside §13.7; `npm run verify` is green.
 
@@ -878,7 +884,7 @@ S1 to S4: the data, the colony, the round state machine and the planning command
   - S9 and S10a, after S8 (the user, 2026-11-02). S9 owns `src/sim/rounds/headless.ts` and the tools; S10a owns `src/sim/rounds/ai/**` and `openRound`'s turn hooks. Their PRs were checked together before either merged.
   - S9b beside S11 (the user, 2026-11-02). S9b worked in `src/sim/rounds/systems/` and the tests; S11 owned `src/app/rounds/**`, `src/render/rounds/**`, `tools/screenshot.ts` and `tools/lib/rounds/params.ts`. #89's CI ran before #88 landed, so the hub checked the two together before #89 merged.
   - S12, S13 and S10b, once S11 has merged (the user, 2026-11-02). S10b owns `data/scenarios/rounds/general-plans-first.json`, `tests/unit/rounds/scenarios.test.ts`, `tools/verify.ts`, `tools/golden.ts`, the first round golden and `docs/balance-backlog.md`. S12 and S13 change nothing the sim hashes, so S10b's golden holds, and T073's wall time, read beside the other two, is re-run alone if it misses. S12 owns `src/render/rounds/**`, `src/sim/rounds/matchups.ts` with its export line in `src/sim/rounds/index.ts`, and `src/app/rounds/phases/aftermath.ts`'s hook for the aftermath view; it doesn't edit `src/app/rounds/battleView.ts`. S13 owns `src/ui/rounds/hud/top.ts`, `tally.ts`, `explain.ts`, `src/ui/rounds/doctrine.ts` and its mount lines in `src/app/rounds/battleView.ts` (T077's mounts). The hub checked the three together before #91 and #93 merged.
-  - S15 and S16, after S14 and its rough playtest (S14b): S15 owns `src/sim/rounds/ai/**`, `src/ui/rounds/doctrine.ts` and `src/app/rounds/phases/planning.ts`; S16 owns `src/sim/rounds/powers.ts`, `step.ts`'s power calls and `src/app/rounds/phases/clash.ts`. Both add a line to `tools/verify.ts`, so the later merge rebases.
+  - S15 and S16, after S14 and its rough playtest (S14b). They started beside S14b, which is docs only (the user, 2026-11-02). S15 owns `src/sim/rounds/ai/**`, `src/ui/rounds/doctrine.ts` and `src/app/rounds/phases/planning.ts`; S16 owns `src/sim/rounds/powers.ts`, `step.ts`'s power calls and `src/app/rounds/phases/clash.ts`. Both add a line to `tools/verify.ts`, so the later merge rebases.
   - Everything else is in order.
 - **From R1:**
   - R1/T004 and R1/T006 (`formationBox`, `slotPositions`, `emplacementPosition`, `overflows`, `findTrios`, `musterKnits` in `src/sim/formation.ts`) → T020 and T043.
@@ -926,7 +932,7 @@ Each session is about a day, ends in one PR into `develop` (opened when the user
 | S15 | T098–T103 | `feature/r2a-counters` | S14b done | The counter cycle in rounds; X8's readouts and knobs; the adaptive smoke (US4 done) |
 | S16 | T104–T111 | `feature/r2a-powers` | S14b done | The power once per clash, its controls, its smokes and replays (US5 done) |
 | S17 | T148, T112–T118 | `feature/r2a-tools` | S15 and S16 merged | Twin Roots and merge-mirror replays, the round bench and frame check, balance and experiment in rounds with `playRoundClash` |
-| S18 | T119–T125 | `feature/r2a-guardrails` | S17 merged; #35's approach agreed at S0 (T124 and T125 set its battle-level bands) | The round guardrails in `tests/slow/rounds/`, the answer bot, the bands agreed (US6 done) |
+| S18 | T119–T125 | `feature/r2a-guardrails` | S17 merged; #35's approach agreed at S0 (T124 and T125 set its battle-level bands) | The round guardrails in `tests/slow/rounds/`, the answer bot, the bands agreed, and a pace retune agreed with them if G4 misses (US6 done) |
 | S19 | T126–T128 | `feature/r2a-measures` | S18 merged | The "last fielded" view and planning seconds per round on the report (US7 done) |
 | S20 | T129–T136, T138 | `feature/r2a-verify` | S19 merged | Steps 1–4 and 7–9 passing; T136's inventory; the docs and As built before the playtest |
 | S21 | T137, T144, T139 | `feature/r2a-gate` | S20 merged and deployed to the dev site; R4/T039 passed (2026-11-02) | The playtest answered and written down; the user's tuning calls; R2b may start |

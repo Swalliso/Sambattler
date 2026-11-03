@@ -855,6 +855,8 @@ Gold is an integer per side. It carries from round to round within a battle, and
 
 Starting gold for round 1 is `300 + 75 × (battleIndex − 1)`, the same for both sides (`startingGold`, `startingGoldPerBattle` in `data/balance.json`). Traits, relics and events may modify it (Mold Bloom: +150, §8.7). Gold is spent only in planning: on planting (§4.4), and on draft rerolls (§8.3).
 
+**Open:** what gold does once the colony is full (§18.2 #67). R2a's rough playtest (2026-11-02) ran out of ways to spend it in a battle's later rounds: R2a has no drafts, so no upgrades, and a full colony's gold bought only swaps (a pivot costs 40% of a building's price, §4.4). First guess: nothing new. S18's pace call and R2b's drafts cover it, since upgrades come as draft picks and rerolls cost gold (§8.3). Revisit it if R2a's playtest gate (S21) still finds empty late rounds.
+
 ### 6.2 Income per round
 
 **At the start of each planning phase from round 2 on** (§4.7), each side gains:
@@ -4259,7 +4261,7 @@ Items 1–6 are v1's and keep their numbers; an item v2 settles is marked "(clos
 5. After the first release: a second playable faction? A daily-seed mode (the infrastructure is already deterministic)?
 6. **(closed in v2)** Should more relics and events bend territory rules (e.g. "the first column you lose each battle doesn't flip")? Territory is retired. Relics and events that bent it get new effects (§11.7).
 
-Items from 7 on are v2's, one row per question: each is a rule the user hasn't decided, marked **Open:** in the section the row names. Where several sections carry the marker, the first one named holds the rule and the rest point to it. The rows run in the order of the milestone that settles them (§16): R1, R2, R3, R4, M6, M7, then later. §0.1's **Open:** list names the main ones. The number of lives (3) is a first guess like any number, not an Open rule (D30). A commander power's delay into a clash and the siege count in the 45 s comparison were settled in review (§6.6, §6.7), so they have no row.
+Items from 7 on are v2's, one row per question: each is a rule the user hasn't decided, marked **Open:** in the section the row names. Where several sections carry the marker, the first one named holds the rule and the rest point to it. The rows run in the order of the milestone that settles them (§16): R1, R2, R3, R4, M6, M7, then later. A row opened after that pass (from #67) goes at the end. §0.1's **Open:** list names the main ones. The number of lives (3) is a first guess like any number, not an Open rule (D30). A commander power's delay into a clash and the siege count in the 45 s comparison were settled in review (§6.6, §6.7), so they have no row.
 
 | # | Question | First guess | Section | Settled by |
 |---|---|---|---|---|
@@ -4323,6 +4325,7 @@ Items from 7 on are v2's, one row per question: each is a rule the user hasn't d
 | 64 | Gray Rot counterparts for the healer, fast swarm, tunneler and flyer roles | M7 names them, one per role, each with its role's body and damage type | §11.12 | M7 |
 | 65 | Do surviving flyers count toward Heartcap damage in the aftermath? | Yes, like any living unit | §5.3 | Later (with flyers) |
 | 66 | An Anti-Air counter kind for flyers | None until flyers arrive | §7.4 | Later (with flyers) |
+| 67 | What does gold do once the colony is full? In R2a's rough playtest (2026-11-02, `docs/playtest-feedback.md`) the user ran out of ways to spend it in a battle's later rounds, and was bored then | Nothing new. S18's pace call (T124, T125) and R2b's drafts cover it: upgrades come as draft picks (v1's cards in R2b, then R3's augments), so a full colony's gold buys rerolls and swaps. Revisit if R2a's playtest gate (S21) still finds empty late rounds | §6.1 | R2b (S0), R3 |
 
 ### 18.3 Tuning knobs: where to turn first
 

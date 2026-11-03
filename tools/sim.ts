@@ -11,7 +11,7 @@ import { checkAssert, parseAssert } from './lib/asserts.ts';
 import type { Assertion } from './lib/asserts.ts';
 import { MILESTONE, parseFlags } from '../src/sim/index.ts';
 import type { BattleConfig, Command, PowerPolicy } from '../src/sim/index.ts';
-import { runRoundBattle } from './lib/rounds/run.ts';
+import { paceLines, runRoundBattle } from './lib/rounds/run.ts';
 import type { RoundBattleResult, RoundRunSpec } from './lib/rounds/run.ts';
 import type { BattleConfig as RoundConfig, Command as RoundCommand, HeadlessUntil } from '../src/sim/rounds/index.ts';
 
@@ -310,6 +310,7 @@ export function printRoundSummary(results: RoundBattleResult[], maxRounds: numbe
     const some = (xs: number[]) => `${median(xs)} (mean ${(xs.reduce((a, x) => a + x, 0) / xs.length).toFixed(2)}, ≥1 in ${pct(xs.filter((x) => x >= 1).length, xs.length)})`;
     console.log(`Puppet Bloom trios a clash: after the muster ${some(atMuster)} · best before use ${some(best)} · fired in ${blooms.filter((b) => b.fired).length} of ${blooms.length} clashes, ${blooms.reduce((a, b) => a + b.merged, 0)} trios merged`);
   }
+  for (const l of paceLines(results)) console.log(l);
 }
 
 // ---- whole runs (SPEC §15.2 --run) ----

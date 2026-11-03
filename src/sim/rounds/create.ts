@@ -137,7 +137,7 @@ function newBattle(content: Content, config: BattleConfig): BattleState {
       powerUsed: false,
       draftsOpened: 0,
     };
-    if (sc.controller.kind !== 'human') st.ai = resolveProfile(content, sc.controller, sc);
+    if (sc.controller.kind !== 'human') st.ai = resolveProfile(content, sc.controller, sc, config.flags);
     return st;
   };
   const state: BattleState = {

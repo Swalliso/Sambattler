@@ -58,6 +58,10 @@ export interface RoundBattleResult {
   goldEarned: Record<Side, SideStats['goldEarned']>;
   /** Each of the general's counter cycles: its kind, and the round its buildings first stood in its colony (§7.4). */
   counters: { kind: CounterKind; round: number }[];
+  /** X8's readouts, one a round (§7.2, A049, A206). */
+  byRound: RoundPace[];
+  /** The first round each side's colony had no free open plot at Begin, or null if it never filled (X8). */
+  fullAt: Record<Side, number | null>;
   events: Record<string, number>;
   stats: RoundSummary['stats'];
   rejectedCommands: number;
@@ -69,6 +73,20 @@ export interface RoundBattleResult {
    * was used, with whether it fired and the trios it merged.
    */
   bloom?: { round: number; atMuster: number; best: number; fired: boolean; merged: number }[];
+}
+
+/** X8's readouts for one round (§7.2): the colonies at Begin, an AI side's plan, and whether the clash replayed the last. */
+export interface RoundPace {
+  round: number;
+  /** Open plots with no building at Begin; a stump plot takes none (§4.6). */
+  free: Record<Side, number>;
+  /** The gold each side held at Begin, which interest reads (§6.2). */
+  banked: Record<Side, number>;
+  /** What an AI side planted and sold this round, by building id, from its plan (`ai.plans`); nothing for a human. */
+  planted: Record<Side, string[]>;
+  sold: Record<Side, string[]>;
+  /** Whether the clash replayed the last round's exactly: the same squads fielded, the same lane ends and the same damage and survivors by building (A206). */
+  replayed: boolean;
 }
 
 export function buildRoundState(content: Content, spec: RoundRunSpec): BattleState {
@@ -100,15 +118,32 @@ export function buildRoundState(content: Content, spec: RoundRunSpec): BattleSta
 const per = <T>(f: (s: Side) => T): Record<Side, T> => ({ player: f('player'), enemy: f('enemy') });
 const label = (c: Controller): string => (c.kind === 'human' ? 'human' : `${c.kind}:${c.id}`);
 
-/** The general's counter cycles from its plans: a plan that names a counter its last plan didn't starts one. */
+/** The general's counter cycles: each activation, the round it landed in (§7.4, #31). */
 function roundCounters(state: BattleState): RoundBattleResult['counters'] {
-  const out: RoundBattleResult['counters'] = [];
-  let last: CounterKind | undefined;
-  for (const p of state.sides.enemy.ai?.plans ?? []) {
-    if (p.counter && p.counter !== last) out.push({ kind: p.counter, round: p.round });
-    last = p.counter;
-  }
-  return out;
+  return (state.sides.enemy.ai?.counter?.history ?? []).map((c) => ({ kind: c.kind, round: c.round }));
+}
+
+/** Each side's free open plots and banked gold, read at a clash's first tick, as Begin left them. */
+type AtBegin = Pick<RoundPace, 'free' | 'banked'>;
+const atBegin = (state: BattleState): AtBegin => ({
+  free: per((s) => state.sides[s].plots.filter((p) => p.open && p.terrain !== 'stump' && p.building === 0).length),
+  banked: per((s) => state.sides[s].bankedAtBegin),
+});
+
+/** X8's readouts from the battle's rounds, its AI plans and what each Begin left (§7.2). */
+function roundPace(state: BattleState, begins: Map<number, AtBegin>): { byRound: RoundPace[]; fullAt: RoundBattleResult['fullAt'] } {
+  const plan = (s: Side, round: number) => state.sides[s].ai?.plans.find((p) => p.round === round);
+  const key = (r: BattleState['rounds'][number]) => JSON.stringify([
+    r.lanes.map((l) => [l.winner, l.survivors, l.ticks, l.capped]), r.fielded, r.damageByBuilding, r.survivorsByBuilding,
+  ]);
+  const byRound = state.rounds.map((r, i): RoundPace => ({
+    round: r.round,
+    ...(begins.get(r.round) ?? { free: per(() => 0), banked: per(() => 0) }),
+    planted: per((s) => plan(s, r.round)?.planted.map((x) => x.building) ?? []),
+    sold: per((s) => plan(s, r.round)?.sold.map((x) => x.building) ?? []),
+    replayed: i > 0 && key(r) === key(state.rounds[i - 1]!),
+  }));
+  return { byRound, fullAt: per((s) => byRound.find((x) => x.free[s] === 0)?.round ?? null) };
 }
 
 /** The player's Puppet Bloom clash by clash, read after each of the auto policy's think ticks (clash ticks 1, 21, 41 …). */
@@ -131,13 +166,17 @@ function bloomReadout(state: BattleState): { onTick: (s: BattleState) => void; c
 export function runRoundBattle(content: Content, spec: RoundRunSpec): { state: BattleState; result: RoundBattleResult } {
   const state = buildRoundState(content, spec);
   const bloom = bloomReadout(state);
+  const begins = new Map<number, AtBegin>();
   const t0 = performance.now();
   const res = runHeadless(state, {
     until: spec.until ?? 'end',
     ...(spec.commands ? { commands: spec.commands } : {}),
     ...(spec.hashEvery ? { hashEvery: spec.hashEvery } : {}),
     ...(spec.recordAt ? { recordAt: spec.recordAt } : {}),
-    ...(bloom ? { onTick: bloom.onTick } : {}),
+    onTick: (s) => {
+      if (s.tick - s.clash!.startTick === 1) begins.set(s.round, atBegin(s));
+      bloom?.onTick(s);
+    },
   });
   const wallMs = performance.now() - t0;
   const sum = summarize(state);
@@ -166,6 +205,7 @@ export function runRoundBattle(content: Content, spec: RoundRunSpec): { state: B
     merges: per((s) => ({ ...sum.stats[s].merges })),
     goldEarned: per((s) => ({ ...sum.stats[s].goldEarned })),
     counters: roundCounters(state),
+    ...roundPace(state, begins),
     events: res.eventCounts,
     stats: sum.stats,
     rejectedCommands: sum.rejectedCommands,
@@ -173,4 +213,39 @@ export function runRoundBattle(content: Content, spec: RoundRunSpec): { state: B
     ...(bloom ? { bloom: bloom.clashes } : {}),
   };
   return { state, result };
+}
+
+const median = (xs: number[]): number | null => {
+  if (!xs.length) return null;
+  const v = [...xs].sort((a, b) => a - b), m = v.length >> 1;
+  return v.length % 2 ? v[m]! : (v[m - 1]! + v[m]!) / 2;
+};
+
+/**
+ * X8's readouts over a set of battles (§7.2, A049, A206), for the summary: by round, each side's median free open
+ * plots and banked gold at Begin among the battles that reached it; the round each side's colony fills, and the gold
+ * it banks from then on; and the share of clashes that replayed the last one exactly.
+ */
+export function paceLines(results: RoundBattleResult[]): string[] {
+  const last = Math.max(0, ...results.map((r) => r.byRound.length));
+  const both = (f: (p: RoundPace, s: Side) => number) => (round: number) => {
+    const at = results.flatMap((r) => r.byRound.filter((p) => p.round === round));
+    return `r${round} ${median(at.map((p) => f(p, 'player')))}/${median(at.map((p) => f(p, 'enemy')))}`;
+  };
+  const rounds = Array.from({ length: last }, (_, i) => i + 1);
+  const fills = (s: Side) => {
+    const at = results.map((r) => r.fullAt[s]).filter((x): x is number => x !== null);
+    const after = results.flatMap((r) => r.byRound.filter((p) => r.fullAt[s] !== null && p.round >= r.fullAt[s]!).map((p) => p.banked[s]));
+    const mean = after.length ? Math.round(after.reduce((a, b) => a + b, 0) / after.length) : null;
+    return `${s} round ${median(at) ?? '-'} (never ${results.length - at.length} of ${results.length}), then banks a median ${median(after) ?? '-'} (mean ${mean ?? '-'})`;
+  };
+  const all = results.flatMap((r) => r.byRound);
+  const replays = all.filter((p) => p.replayed).length;
+  const sold = results.reduce((n, r) => n + r.byRound.reduce((k, p) => k + p.sold.enemy.length, 0), 0);
+  return [
+    `X8 free plots at Begin, median player/enemy: ${rounds.map(both((p, s) => p.free[s])).join(' · ')}`,
+    `X8 banked at Begin, median player/enemy: ${rounds.map(both((p, s) => p.banked[s])).join(' · ')}`,
+    `X8 colony full at Begin from: ${fills('player')}; ${fills('enemy')}`,
+    `X8 the general sold ${sold} buildings · exact replays ${replays} of ${all.length} rounds`,
+  ];
 }

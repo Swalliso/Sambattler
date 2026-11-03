@@ -20,6 +20,50 @@ v1's backlog is archived at [docs/archive/v1/balance-backlog.md](archive/v1/bala
 
 - **R1's review gate** (S8, T049): the user reads R1's entry below and settles §18.2 #7–#15, X4, X5, #36's reading and each knob's outcome (A109). R2a starts after that.
 - **The pace of a battle in rounds** (R2a S10b, below): step 3 misses its median rounds and its round-9 share. It waits for S18's G4 run and the user's call on #35's bands.
+- **X8's readouts** (R2a S15, below): your colony is full from round 5, and once both colonies are full, half the clashes replay the last one. They go to S18's pace call and S21's playtest, with X8's two knobs still off.
+- **Gill Archers tie Swarm and Ranged** (R2a S15, below): the noise, not #14's tie order, picks between them. A rule change waits for the user.
+
+## R2a S15 · X8's readouts against Mold and the Baron (2026-11-03)
+
+T100's readouts, on `feature/r2a-counters` with the counter cycle in rounds (T099). Nothing was tuned, and X8's two knobs are off.
+
+```bash
+npm run sim -- --rounds --seeds 1..40 --player bot:balanced --enemy general:mother-mold --summary
+npm run sim -- --rounds --seeds 1..40 --player bot:balanced --enemy general:lichen-baron --summary
+```
+
+That's Bogwater Hollow, battle 1, with the default flags. There's no commander, so no power fires. "Off" below is the same run with `--flags merging,powers`, without the counter cycle.
+
+| | Against Mold | Against the Baron |
+|---|---|---|
+| Your colony is full at Begin from | round 5 (27 battles) or 6 (13) | round 5 (24) or 6 (16) |
+| You then bank a round (median, mean) | 582, 610 | 542, 583 |
+| You bank at round 9's Begin (median) | 1,133 | 1,129 |
+| The general's colony is full from (median) | round 7, 2 never | round 6 |
+| It then banks a round (median, mean) | 200, 276 | 366, 437 |
+| Its counters at rounds 4; 7 | Swarm 40; Swarm 32, Line 8 | Swarm 40; Swarm 33, Line 6 (one battle ended first) |
+| Buildings it sold | 39, all at round 7 | 48, all at round 7 |
+| Clashes that replayed the last one exactly | 61 of 351 (17%); 52 of 105 once both colonies were full | 79 of 345 (23%); 77 of 141 once both were full |
+| The general wins (off) | 70% (68%) | 53% (60%) |
+| Median rounds; battles that reach round 9 | 9; 80% | 9; 75% |
+
+- **The rough playtest's empty late rounds** (2026-11-02) have numbers.
+  - bot:balanced fills its 8 plots by round 5 or 6 and never plants again, since it doesn't sell.
+  - Its gold then piles up past 1,100 by round 9, though interest stops at 30 a round.
+  - The general changes its army only at round 7's activation. Round 4's never sells, since it still has free plots then.
+- **Exact replays** (A206): once both colonies are full, about half the clashes replay the last one.
+- **The counter cycle barely moves the win rate** against bot:balanced: Mold 70% (68% off), the Baron 53% (60% off).
+- **Guardrails:** G4 (rounds per battle) and G8 (the adaptive general), which S18 asserts in round form (T119–T125).
+- **Recommended: no change here.**
+  - These numbers go to S18's pace call and S21's playtest.
+  - X8's knobs change only the general. On these numbers your side runs out of decisions sooner: your colony fills two rounds before Mold's.
+  - Turning a knob on, or anything for your side, is the user's call (`.claude/rules/balance.md`).
+
+**Gill Archers tie Swarm and Ranged** (T098). A record of Gill Archers alone scores Swarm 1.0 (light armor) and Ranged 1.0 (ranged) before the noise. The ±0.03 noise then picks between them about half and half, so #14's tie order, Ranged before Swarm, decides only when there's no noise. Once the archers knit an Elder, `eliteShare` lowers Swarm and Ranged wins outright. Two possible fixes, each a rule change for the user:
+- read Anti-Swarm from the light share without its ranged units;
+- apply the tie order to kinds within the noise of the top score.
+
+**The smoke reads Elite** (T103). Mono Sporeling Burrow against Mold, seeds 4 and 5, reads Elite at round 4: the Sporelings knit mostly into Elders, Elite scores 0.90 against Swarm's 0.63, and Mold adds the Veilstalker Hollow. That's R2-Q3's reading.
 
 ## R2a S16 · Puppet Bloom's trios in rounds, R2-Q7 (2026-11-03)
 
