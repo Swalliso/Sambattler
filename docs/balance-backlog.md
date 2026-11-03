@@ -54,7 +54,7 @@ v1's backlog is archived at [docs/archive/v1/balance-backlog.md](archive/v1/bala
 
 **For the user** (a rule or stat change each, not made):
 - **Readability:** a pair that charges in a column reads as one runner. A rule could have melee units fan out to a free side of their target, or put knit units side by side in the slot. Either changes how every melee squad moves, so it's a rule change.
-- **The runners' role:** at speed 1.8 they reach the enemy's front well ahead of the rest of your army and fight it alone. That's the fast skirmisher's job as §11 has it, but it's why they die first against Capguards and Rootbreakers.
+- **The runners' role:** at speed 1.8 they reach the enemy's front well ahead of the rest of your army and fight it alone. That fits §11.2's "Fast swarm", but it's why they die first against Capguards and Rootbreakers.
 
 ## R2a S21b · the Burster in the front line (2026-11-03)
 
