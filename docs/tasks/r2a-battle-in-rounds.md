@@ -819,7 +819,7 @@ S1 to S4: the data, the colony, the round state machine and the planning command
 
 **S19: the playtest's measures**
 
-- [ ] T126 [US7] Write the cases first in `tests/unit/rounds/playTime.test.ts` (new) and `tests/browser/rounds/reveal.test.ts` (new) (§7.5, §10.2, §16 R2 gate) (A198, A203):
+- [x] T126 [US7] Write the cases first in `tests/unit/rounds/playTime.test.ts` (new) and `tests/browser/rounds/reveal.test.ts` (new) (§7.5, §10.2, §16 R2 gate) (A198, A203):
   - play time, with an injected clock: planning seconds are kept per round, and the planning, clash and aftermath seconds add up; the clock stops while the tab is hidden and after 60 s without input; Help and settings count; a paused clash counts until the idle cutoff; nothing enters the state or the hash. records-2 adds its run-total cases to this file (run-it-back.md T015);
   - the reveal: with `reveal=last`, round 2's planning shows no "New" sprout before Begin and draws the general's last fielded formation; the clash's first tick puts its units where its real formation says; `round=4&reveal=last` (with `player=bot:balanced`) draws round 3's fielded colony after a headless fast-forward; `general-plans-first` hashes equal in both modes.
 - [ ] T127 [US7] Build the "last fielded" view in `src/app/rounds/urlParams.ts` and `src/render/rounds/preview.ts` (§7.5, §10.2) (A198)
