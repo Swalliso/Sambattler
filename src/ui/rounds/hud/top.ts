@@ -4,8 +4,9 @@
 // against the 45 s cap, and the Sporestorm's multiplier on round damage. The round tally and the lane tug sit
 // under the chips in their own mount (`tally.ts`), and the General's Intent panel closes the band in its own.
 // The sim scores a round on its clash's last tick, so a Heartcap's number holds at the round's starting HP
-// through the clash and drains in the aftermath. It stands beside v1's `src/ui/hud/top.ts`, whose Heartcap
-// block, chips and tightening fit it copies onto rounds' state, in v1's styles.
+// through the clash and drains in the aftermath. The Intent panel shows the general's plan for the round, with
+// no countdown (`doctrine.ts`). It stands beside v1's `src/ui/hud/top.ts`, whose Heartcap block, chips,
+// tightening fit and Intent panel it copies onto rounds' state, in v1's styles.
 import '../rounds.css';
 import type { Content } from '../../../data/registry.ts';
 import type { Atlas } from '../../../render/atlas.ts';
@@ -17,7 +18,8 @@ import { h, setText, toggleClass } from '../../h.ts';
 import { uiIcon } from '../../icons.ts';
 import { reducedMotion } from '../../motion.ts';
 import { AnchoredTip } from '../../tooltip.ts';
-import { goldTip, plotsTip, roundTip, stormText, stormTip } from './explain.ts';
+import { cutShort, intentOf } from '../doctrine.ts';
+import { goldTip, intentTip, plotsTip, roundTip, stormText, stormTip } from './explain.ts';
 
 /** A band or panel in its mount (T088–T091): drawn each frame, laid out afresh on a resize, removed with the view. */
 export interface HudPart {
@@ -226,4 +228,51 @@ export class TopBand implements HudPart {
   dispose(): void {
     this.hud.tip.dispose();
   }
+}
+
+/**
+ * The General's Intent panel (§7.5, §10.2), at the band's right end: its portrait at 48 px, its name and
+ * doctrine, its income this round and the gold it banked, and the buildings it planted and sold, from its plan
+ * for the round, cut short to fit. There's no countdown. Its tooltip gives the whole plan, the passive and the kit.
+ */
+export class IntentPanel implements HudPart {
+  private doctrine = h('div', { class: 'doctrine', id: 'hud-doctrine' });
+  private income = h('span', { id: 'intent-income' });
+  private banked = h('span', { id: 'intent-banked' });
+  private planted = h('span', { id: 'intent-planted' });
+  private sold = h('span', { id: 'intent-sold' });
+  /** The doctrine and plan last shown, so the panel changes only with them. */
+  private key = '';
+
+  constructor(mount: HTMLElement, private hud: HudContext, state: BattleState) {
+    const i = intentOf(hud.content, state);
+    const portrait = spriteToCanvas(hud.atlas, i.sprite, 'gray-rot');
+    portrait.className = 'portrait';
+    portrait.setAttribute('aria-hidden', 'true');
+    const el = h('aside', { class: 'intent rounds-intent', id: 'hud-intent', 'aria-label': "General's intent" },
+      portrait,
+      h('div', { class: 'title' }, "General's intent"),
+      h('div', { class: 'name', id: 'hud-general' }, i.name),
+      this.doctrine,
+      h('div', { class: 'econ' }, this.income, this.banked),
+      h('div', { class: 'changes' }, this.planted, this.sold),
+    );
+    hud.tip.attach(el, intentTip(hud.content, hud.atlas, state));
+    mount.append(el);
+  }
+
+  update(state: BattleState): void {
+    const i = intentOf(this.hud.content, state);
+    const key = JSON.stringify([i.doctrine, i.plan]);
+    if (key === this.key) return;
+    this.key = key;
+    setText(this.doctrine, i.doctrine);
+    setText(this.income, i.plan ? `income ${i.plan.income}` : '');
+    setText(this.banked, i.plan ? `banked ${i.plan.banked}` : '');
+    // a sale shares the line, so the plantings make room for it
+    setText(this.planted, i.planted.length ? `New: ${cutShort(i.planted, i.sold.length ? 1 : 2)}` : 'Nothing new');
+    setText(this.sold, i.sold.length ? `Sold: ${cutShort(i.sold, 1)}` : '');
+  }
+
+  dispose(): void {}
 }

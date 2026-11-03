@@ -1,8 +1,8 @@
 // The battle screen for a battle in rounds (SPEC §10.2), as S11 leaves it: the layout of v1's screen with the
 // field drawn by `src/render/rounds/renderer.ts` inside its frame of roots and soil, Begin in planning, then
-// speed and pause, and the callout lane. The bands and panels are empty mounts, each filled by a later UI task
-// with one line, so S12, S13 and S14 each end green and S12 and S13 don't collide: the top band, the tally and
-// the Intent panel (S13), the tray and inspect (S14). The callout lane holds v1's `Callouts` until S14's own
+// speed and pause, and the callout lane. The bands and panels are mounts, each filled by a UI task with one
+// line, so S12, S13 and S14 each end green and S12 and S13 don't collide: S13 filled the top band, the tally and
+// the Intent panel (`src/ui/rounds/`), and S14 fills the tray and inspect. The callout lane holds v1's `Callouts` until S14's own
 // (T095). It stands beside v1's `src/app/battleView.ts`.
 import type { Content } from '../../data/registry.ts';
 import type { Atlas } from '../../render/atlas.ts';
@@ -14,7 +14,7 @@ import type { CalloutKind } from '../../ui/callouts.ts';
 import { h, setText, toggleClass } from '../../ui/h.ts';
 import { uiIcon } from '../../ui/icons.ts';
 import { uiScale } from '../../ui/scale.ts';
-import { hudContext, TopBand } from '../../ui/rounds/hud/top.ts';
+import { hudContext, IntentPanel, TopBand } from '../../ui/rounds/hud/top.ts';
 import type { HudPart } from '../../ui/rounds/hud/top.ts';
 import { RoundTally } from '../../ui/rounds/hud/tally.ts';
 import { loadSettings, onSettings } from '../settings.ts';
@@ -90,6 +90,7 @@ export class RoundsView {
     this.topBand = new TopBand(this.mounts.top, hud, state);
     this.bands.push(this.topBand);
     this.bands.push(new RoundTally(this.mounts.tally, hud, state));
+    this.bands.push(new IntentPanel(this.mounts.intent, hud, state));
     this.top = h('header', { class: 'top rounds-top' }, this.mounts.top, this.mounts.tally, this.mounts.intent);
     this.field = h('main', { class: 'field' }, this.frameArt.el, h('div', { class: 'fieldwrap' }, this.canvas, this.tip));
     this.beginBtn = h('button', { class: 'btn primary', id: 'begin-btn', title: 'Start the clash (Space or Enter)', onclick: () => actions.begin() },

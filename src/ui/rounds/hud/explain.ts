@@ -1,6 +1,6 @@
 // What the top band of a battle in rounds means (SPEC §10.2, playtest round 3: "what is interest?", "the storm
-// isn't explained anywhere"): the tooltips for the gold, plots, round and storm chips, the round tally's pips and
-// the lane tug. Everything is computed from render-side state and content, through the sim's own functions
+// isn't explained anywhere"): the tooltips for the gold, plots, round and storm chips, the round tally's pips,
+// the lane tug and the General's Intent panel. Everything is computed from render-side state and content, through the sim's own functions
 // (`incomePreview`, `survivingSupply`, the storm's `stormBpFor`) where it has them, without adding to sim state,
 // so the numbers match the band and the field. It stands beside v1's `src/ui/hud/explain.ts`, whose tip layout
 // it copies.
@@ -14,6 +14,7 @@ import { trayOrder } from '../../buildingInfo.ts';
 import { h } from '../../h.ts';
 import { uiIcon } from '../../icons.ts';
 import type { TipSource } from '../../tooltip.ts';
+import { intentOf, passiveOf } from '../doctrine.ts';
 
 /** A round's storm as the band shows it: ×1.0 to ×2.0 (§6.4). */
 export const stormText = (bp: number): string => {
@@ -296,6 +297,42 @@ export function stormTip(content: Content, atlas: Atlas, state: BattleState): Ti
         out.push(h('p', { class: 'muted' }, `A round's damage to a Heartcap is capped at ${capDef.maxHpBp / 100}% of its max HP: ${capOf('player')} of yours, ${capOf('enemy')} of the general's`
           + `${capDef.stormScales ? ', and the storm raises the cap too' : ''}.`));
       }
+      return out;
+    },
+  };
+}
+
+/**
+ * The General's Intent panel (§7.5, §10.2): the whole of its plan for the round, which the panel cuts short, its
+ * passive (§7.7) and its kit. R2a's single battles have no copies (D45), so a card shows the general's
+ * `maxOwned` cap where it has one.
+ */
+export function intentTip(content: Content, atlas: Atlas, state: BattleState): TipSource {
+  return {
+    key: () => `${state.round}|${state.sides.enemy.ai?.plans.length ?? 0}`,
+    build: () => {
+      const i = intentOf(content, state);
+      const out: Node[] = [h('div', { class: 'tip-head' }, h('b', null, i.name), h('span', { class: 'tip-num' }, i.doctrine))];
+      if (i.title) out.push(h('p', { class: 'muted' }, i.title));
+      if (i.plan) {
+        out.push(
+          sec(`Round ${i.plan.round}`),
+          row('Planted', i.planted.join(', ') || 'nothing'),
+          row('Sold', i.sold.join(', ') || 'nothing'),
+          row('Income', plus(i.plan.income), i.plan.round === 1 ? 'none in round 1' : undefined),
+          row('Banked', String(i.plan.banked), 'held at Begin, for interest'),
+        );
+      }
+      const passive = passiveOf(content, state);
+      out.push(sec('Passive'), para(passive ? passive.text : 'None.'));
+      if (passive && !passive.inRounds) out.push(h('p', { class: 'muted' }, 'It does nothing in a battle in rounds yet.'));
+      const kit = state.sides.enemy.kit;
+      const names = trayOrder(content, kit.map((k) => k.building)).map((id) => {
+        const cap = kit.find((k) => k.building === id)?.maxOwned;
+        return `${content.buildings[id]?.name ?? id}${cap !== undefined ? ` (at most ${cap})` : ''}`;
+      });
+      out.push(sec('Kit'), para(names.join(', ')),
+        h('p', { class: 'muted' }, 'It plays by your rules: its gold is public, and its whole army is on the field before you plan.'));
       return out;
     },
   };
