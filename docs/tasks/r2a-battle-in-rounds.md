@@ -510,7 +510,7 @@ S1 to S4: the data, the colony, the round state machine and the planning command
   - The result has §15.2's keys: `seed`, `map`, `winner`, `by`, `rounds`, `clashTicks`, `clashTime`, `wallMs`, `finalHash`, `hashes`, `heartcap`, `dealt`, `roundLog`, `fielded`, `merges`, `goldEarned`, `counters`, `events`, `stats` and `rejectedCommands`.
   - The multi-seed summary gives each side's win rate; the median, min and max rounds; the share reaching round 9; the share of clashes at the cap; the median clash length; the mean `wallMs`; and failed asserts.
   - The options are §15.2's, without `--run` or `--meta-progress` (R2b, M6).
-- [ ] T063 [US2] Make `tools/golden.ts` verify and update `kind: "rounds"` replays through the rounds API with Call 17's keys, reporting the first key that diverges; v1's replays are unchanged (§15.5) (A115)
+- [x] T063 [US2] Make `tools/golden.ts` verify and update `kind: "rounds"` replays through the rounds API with Call 17's keys, reporting the first key that diverges; v1's replays are unchanged (§15.5) (A115)
   - The tool records replays from lists in code (`REPLAYS`, `RUN_REPLAYS`). Add a `ROUND_REPLAYS` list beside them, each entry `{name, seed, player, enemy, flags, commander, powerPolicy, map}`, and teach `update()`'s unknown-file check about it (`tools/golden.ts:157`). `npm run golden -- update` writes a round golden only for a listed entry.
 - [ ] T064 [US2] Write `tests/unit/rounds/determinism.test.ts` (new) (§13.3, §15.5) (A206):
   - the same config and commands twice give equal hashes at every phase boundary and every 200 clash ticks;
