@@ -28,6 +28,54 @@ v1's backlog is archived at [docs/archive/v1/balance-backlog.md](archive/v1/bala
 - **Gill Archers tie Swarm and Ranged** (R2a S15, below): the noise, not #14's tie order, picks between them. A rule change waits for the user.
 - **The Burster's seat effect** (R2a S17, below): a mirror of Bursters goes to whichever side's ids come first. A rule change waits for the user.
 - **The first fighting tick's frame in Chromium** (R2a S17, below): 4.8–11.4 ms once a page, against §13.7's 8 ms.
+- **Battle 1 misses G14** (R2b S1b, below; for R2-Q13): `bot:balanced` wins 52%, 29% and 45% of battle 1s for Vesper, Armilla and Cordis, against 70–90%. Old Mother Mold wins 73–94% of her pairings. A free blueprint lifts those by at most 21 points, while a softer Mold opener brings Vesper and Cordis inside the band.
+
+## R2b S1b · battle 1 per commander and general, for R2-Q13 (2026-11-03)
+
+**Measured** (T028; no rule changed):
+- **What:** battle 1 of 100 runs for each commander, read by battle 1's general: `npm run sim -- --run --seeds 1..100 --player bot:balanced --commander <c> --auto-draft greedy --auto-route random --power-policy auto --summary`, with `--out` for the battle records.
+- **Where:** `develop` after S1 (#113): 100 a supply, the fixed round cap of 750, and Heartcaps of 3,000 (yours) and 2,000 (battle 1's general).
+- **The stand-ins:** run battles open no in-battle drafts until S5 (T067), so both sides fight battle 1 on their starting kits: your starter (§8.1) and the general's battle-1 kit (§7.8: Mold a Sporeling Burrow; the Baron a Capguard Hall and a Truffle Cellar). Armilla's Rhizome Tithe is refused until T082, so her power never fires.
+- **The guardrail:** G14, the bot wins 70–90% of battle 1s for each commander. S12 sets its band.
+
+**Result** (battle 1s won). The route draws battle 1's general from the seed, so each commander meets Mold in the same 52 seeds and the Baron in the same 48:
+
+| Commander (starter) | Battle 1 | vs Old Mother Mold | vs the Lichen Baron | `bot:answer`: battle 1 · Mold · Baron |
+|---|---|---|---|---|
+| Vesper (Sporeling Burrow, Capguard Hall, Truffle Cellar) | **52%** | 27% (14/52) | 79% (38/48) | 55% · 33% · 79% |
+| Armilla (Capguard Hall, Truffle Cellar, Puffball Mortar) | **29%** | 6% (3/52) | 54% (26/48) | 38% · 13% · 65% |
+| Cordis (Sporeling Burrow, Gill Archer Nest, Truffle Cellar) | **45%** | 8% (4/52) | 85% (41/48) | 58% · 31% · 88% |
+
+- **Round 1:** no commander wins round 1 of battle 1 in any of the 300 runs. Mold's four Sporelings beat your four, and the Baron's lone Capguard beats four Sporelings and deals 400.
+- **The armies against Mold** (median units fielded): even in round 1 at 4 each, then hers, with 6 to your 4 in round 2 and 8–10 to your 6 in round 3. Her one army card is the Sporeling Burrow, the building G1 already flags (it wins 9 of 10 squad duels). Armilla fields a median of 1–2 units in rounds 1–3.
+- **Maps against Mold:** the two-lane Twin Roots is kindest (6, 3 and 3 wins of 11), and Stumpfield hardest (1, 0 and 0 of 15).
+
+**What would close it.** Battle 1 only, over the same 100 seeds per commander, with `bot:balanced` unless marked. A throwaway script calls `simulateRun` with `maxBattles: 1` on edited content, and its unedited rows match the table above exactly. Bold is inside G14's band.
+
+| Variant | Vesper: battle 1 · Mold · Baron | Armilla | Cordis |
+|---|---|---|---|
+| Today | 52% · 27% · 79% | 29% · 6% · 54% | 45% · 8% · 85% |
+| The Burster Pod in the starter, from round 1 | 61% · 44% · 79% | 52% · 27% · 79% | 54% · 25% · 85% |
+| The same, `bot:answer` | 62% · 44% · 81% | 57% · 33% · 83% | 61% · 33% · 92% |
+| The Gill Archer Nest in the starter | 52% · 23% · 83% | 47% · 13% · 83% | (has it) |
+| The Capguard Hall in the starter | (has it) | (has it) | 49% · 21% · 79% |
+| The Sporeling Burrow in the starter | (has it) | 32% · 13% · 52% | (has it) |
+| The Hammercap Forge in the starter | 52% · 27% · 79% | 40% · 6% · 77% | 45% · 8% · 85% |
+| The Amanita Lodge in the starter | 52% · 27% · 79% | 29% · 6% · 54% | 45% · 8% · 85% |
+| Mold out of battle 1 (her `appearsIn` [2, 3]) | **78%** · – · 78% | 55% · – · 55% | **83%** · – · 83% |
+| The same, `bot:answer` | **77%** | **71%** | 91% |
+| Mold's opener a Sporeling Burrow and a Truffle Cellar | **82%** · 85% · 79% | 52% · 50% · 54% | **76%** · 67% · 85% |
+| The same, `bot:answer` | **84%** · 88% · 79% | 65% · 65% · 65% | **83%** · 79% · 88% |
+
+**Reading:**
+- **Battle 1 misses G14 for every commander, and the miss is Old Mother Mold.** She wins 73–94% of her battle-1 pairings. Against the Baron, Vesper (79%) and Cordis (85%) are inside the band and Armilla (54%) isn't. So A201's "each starter answers one of the two" doesn't hold here: no starter answers Mold, and every starter beats the Baron more often than not.
+- **A free blueprint doesn't close it.** A card held from round 1 is the most an opening pick could give. The best one, the Burster Pod (the always-in set's swarm answer), lifts Mold's pairings by 17–21 points and still leaves her winning 56–75% of them, so battle 1 reaches only 61%, 52% and 54%. The other always-in cards do less, and the Amanita Lodge changes no result.
+- **Mold's battle-1 opener is the lever.** With a Sporeling Burrow and a Truffle Cellar, the shape of the Baron's opener, she stays in battle 1, and Vesper (82%) and Cordis (76%) land inside the band.
+  - The opener also brings her Gill Archer Nest forward to battle 2, since her preferred list starts with the Truffle Cellar (§7.8). Her later battles weren't measured with it.
+  - Keeping her out of battle 1 works as well (78% and 83%), but every battle 1 is then the Baron's. It also moves her to battle 2, where she's already hard: Vesper 53%, Cordis 35% and Armilla 6%, over 17 battles each.
+- **Armilla is short under every variant** (52–55%): she fields 1–2 units in rounds 1–3, and her Tithe is refused. That's her own problem, not the pairing's, so it waits for T082 and S11's re-read. The Burster Pod or the Gill Archer Nest in her starter would bring her to 79–83% against the Baron.
+
+**For R2-Q13** (the user's call, T029): don't adopt the opening pick, so T068 builds nothing. Give Mold's opener a Sporeling Burrow and a Truffle Cellar instead (`data/generals.json`, §7.8), with its changelog entry and goldens, in S5 in T068's place. S11 then re-reads G14 with the drafts in, and #69's several openers per general (S7) can give her an aggressive opener from battle 2.
 
 ## R2a S21b · a fixed round cap, for R2b's S0 (2026-11-03)
 

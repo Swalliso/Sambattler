@@ -43,6 +43,7 @@ Updated 2026-11-03, on `docs/r2b-s0-done` (the hub's docs PR into `develop`). Th
   - **The fixed cap** (#68): 750 a round for both Heartcaps. The five round goldens moved; v1's battle goldens didn't. `r2-run-s7` replaces v1's run golden.
   - **A run's relics and upgrade levels** compile in a round battle as passives do: those on stats rounds keep apply, the rest are listed and do nothing (R2a's Call 19).
   - **For S1b and the hub:** 20 bot runs (`npm run sim -- --run --seeds 1..20 --summary`) all complete, and no life is lost in a won battle. 19 fight 4–5 battles; seed 4 lost its first three and ended after 3, which the lives rule allows but §16 R2 step 5's "4–5 battles" doesn't. `bot:balanced` loses battle 1 in 9 of 20 runs, which S1b's table measures (R2-Q13, G14).
+- **S1b** (`feature/r2b-battle1`, T028): battle 1's table is in [balance-backlog.md](balance-backlog.md). Over 100 runs each, `bot:balanced` wins 52%, 29% and 45% of battle 1s for Vesper, Armilla and Cordis, against G14's 70–90%, and Old Mother Mold wins 73–94% of her pairings. R2-Q13 (T029) waits for you. The recommendation is a softer Mold opener, not the opening pick.
 - **The stand-ins open on `develop`** from S1 (Call 14):
   - run battles open no in-battle drafts until S5 (T067);
   - relics and passives on retired systems do nothing in a round battle until S6 and S7, and Rhizome Tithe is refused until T082;
