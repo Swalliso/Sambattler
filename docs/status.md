@@ -27,11 +27,9 @@ Updated 2026-11-02, on `docs/r2a-s14` (the hub's docs PR into `develop`). This i
 
   [docs/tasks/README.md](tasks/README.md) has the full order and every milestone's sessions.
 
-## Next: your rough playtest (S14b)
+## Next: S15 and S16, side by side
 
-- **S14** (`feature/r2a-ui-panels`, T092–T097, T143, [#95](https://github.com/Swalliso/Sambattler/pull/95)) passed the hub's review. It merges itself once CI passes, and the dev site deploys it then. It ends US3.
-- **Then S14b, your rough playtest** on the dev site (R2-Q25, T145, T146). Press "A battle in rounds (preview)" on [the dev site](https://swalliso.github.io/Sambattler/dev/)'s title, or open `?scene=rounds` there. The hub waits for your notes. Watch the pace (S10b, below). Your notes go into `docs/playtest-feedback.md`, and any change to S15–S20 into the task list.
-- **After it:** S15 (the counter cycle) and S16 (powers), side by side.
+- Your rough playtest's notes are in ([playtest-feedback.md](playtest-feedback.md#2026-11-02-r2as-rough-playtest-a-battle-in-rounds-the-user)), and S15 (the counter cycle) and S16 (powers) run side by side, by your choice.
 
 ## R2a, a battle in rounds
 
@@ -146,6 +144,7 @@ Updated 2026-11-02, on `docs/r2a-s14` (the hub's docs PR into `develop`). This i
   - **How it was checked:** on the dev build, the title's button opened the preview and a battle played to the report (a Rout in round 7). T135's captures pass §15.6's assertions 1–5.
   - **A small change to Call 14:** choosing a card no longer releases a `phase=planning` or `paused=1` hold, so a capture of the marks can click a card. Every other key or press still releases it.
   - **For S20 (T138):** Help in the preview is v1's. It's read from a v1 rules-only battle, the way the title's Help builds it. That's the one place a `rounds/` file uses v1's `BattleState`, so T138's line in `.claude/rules/v1-code.md` keeps it as an exception until R2b rewrites Help.
+- **S14b** (`feature/r2a-rough-playtest`, T145, T146, docs only): your rough playtest, written down in [playtest-feedback.md](playtest-feedback.md#2026-11-02-r2as-rough-playtest-a-battle-in-rounds-the-user). The core loop works and nothing needs a dramatic change. The grid stays as it is, SPEC §18.2 #67 asks what a full colony's gold does, S18 may bring a pace retune beside the bands (T124, T125), and R3's S0 reads your note on builds and synergies.
 - **What R2a starts from:** R1's chosen set as default data (all of `kept`, the arrival shield, Capguard Hall's squad at 3, the Elder's splash on); X5's cap and Decision by share; no copies before R3 (D45); the Anti-Ranged kind and the three fixes to the counter sets (§7.4); and eliteShare by Elder parts.
 - **For R2a to watch** (R1, and the readings of S1 and S7b):
   - Capguard Hall at 3 still won 92% at 300 gold and 2% at 1,500;
@@ -155,8 +154,7 @@ Updated 2026-11-02, on `docs/r2a-s14` (the hub's docs PR into `develop`). This i
   - at `tierRadiusMult` 1.0 (S1), R1's chosen set fails G3 on the Sporeling's worst field in R1's tool: 62% on Twin Roots against a 60% bar, where 1.25 passed. Nothing changed for it; S17 and S18 read G3 in rounds;
   - a Burster's strike lands at once inside the attack step, so it may fell a later unit before that unit attacks (S7b, unmeasured). T148 adds a Burster mirror to the seat tests in S17.
 - **Open for you in R2a:**
-  - the rough playtest after S14 (S14b, T145);
-  - the battle-level bands at S18 (T125);
+  - the battle-level bands at S18 (T125), with a pace retune beside them if G4 misses;
   - the playtest gate at S21 (T137, T139).
 
 ## R1, the clash check: done (2026-11-02)
@@ -227,7 +225,7 @@ Updated 2026-11-02, on `docs/r2a-s14` (the hub's docs PR into `develop`). This i
 
 ## Waiting on the user
 
-1. **R2a's next calls:** S14b, your rough playtest, once S14's [#95](https://github.com/Swalliso/Sambattler/pull/95) is on the dev site (T145). Press "A battle in rounds (preview)" on [the dev site](https://swalliso.github.io/Sambattler/dev/)'s title. Help there is still v1's, since R2b and R4b bring v2's. Watch the pace: S10b's step 3 reading has battles running long (a median of 9 rounds, and 73% reach round 9), and each lever for it is a retune that waits for your OK. Then #35's battle-level bands at S18 (T125), and the playtest gate at S21. R2a's plan and its 26 calls were settled at S0 on 2026-11-02.
+1. **R2a's next calls:** #35's battle-level bands at S18 (T125), with a pace retune beside them if G4 misses (S10b's step 3 had a median of 9 rounds, and 73% reaching round 9, and each lever is a retune that waits for your OK), then the playtest gate at S21. Your rough playtest's notes are in, and S15 and S16 run side by side. R2a's plan and its 26 calls were settled at S0 on 2026-11-02.
 2. **The decisions that shape the milestones**, X1–X10 in [clarify.md](tasks/clarify.md#index). Each has a recommendation. The task lists assume them and say what changes otherwise.
    - X1 and X2 were decided on 2026-11-02. R2 splits into R2a and R2b, and R2a is built beside v1 on `develop`. You also said `develop` may switch wholly to v2 from now on, so R2b's switch-over needn't go through `feature/r2b-cutover`. Verify still stays green on every PR, since a failing `develop` blocks every deploy. X3 (split R4, the field's shapes first) and X10 (Run it back in two parts) were agreed on 2026-11-01.
    - X4 and X5 were decided at R1's review gate on 2026-11-02: no copies before R3, and a cap of 25% of the loser's max HP with a Decision by share.

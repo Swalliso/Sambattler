@@ -25,11 +25,45 @@ Entries before 2026-10-31 describe the v1 battle, which [SPEC v2](../SPEC.md) re
 | F15 | A building that spreads the fungus to capture territory over time | §4.3 | **SPEC v2 (2026-10-31):** superseded. There's no territory; your colony gains plots over a run instead (§4.6). Before v2: open, waits on the user |
 | F16 | A benefit for fighting on your own territory (home ground) | §4.3, §5.3 | **SPEC v2 (2026-10-31):** superseded. There's no territory (Appendix A). Before v2: open, waits on the user |
 | F17 | Units are hard to tell apart, and knowing which one counters what takes "a wall of text" | §5.8, §10.4, §11.2 | **SPEC v2 (2026-10-31):** the shape language (body size shows armor, a weapon mark shows damage type, pips mark merges), six core archetypes, and matchup marks on cards and the planning screen. The art and card text are milestone R4. **2026-11-01:** the user dropped weapon marks from units (R4/T077): body size and a distinct silhouette per archetype tell units apart, and the matchup marks say what counters what **2026-11-02:** R4a drew the shape language on the field (R4a-S1 to S5, `docs/r4a-plan.md` As built): size by armor, a silhouette per unit, pips and an Elder rim for merges, and a lighter Gray Rot that stays apart under colour filters. It waits on the user's review (R4/T039) and R2a's playtest; R4b does the cards and matchup marks |
-| F18 | The opener feels like a gamble: you can't tell whether the general will rush you or build economy | §7.1, §7.5 | **SPEC v2:** the general plans first each round, and you see its whole army before you plan |
-| F19 | Waves mix real time with turns and are hard to follow; a build phase, then a fight phase, was suggested | §4.2, §4.7 | **SPEC v2:** battles are rounds of planning, clash and aftermath. Waves and Hold are retired |
-| F20 | Placement doesn't matter: the player fills the home zone from the top left down | §4.6, §11.14 | **SPEC v2:** the colony is the formation (front and back ranks), plus combos by position |
+| F18 | The opener feels like a gamble: you can't tell whether the general will rush you or build economy | §7.1, §7.5 | **SPEC v2:** the general plans first each round, and you see its whole army before you plan. **2026-11-02:** R2a's rough playtest found it works: "no longer a gamble" ([entry](#2026-11-02-r2as-rough-playtest-a-battle-in-rounds-the-user)) |
+| F19 | Waves mix real time with turns and are hard to follow; a build phase, then a fight phase, was suggested | §4.2, §4.7 | **SPEC v2:** battles are rounds of planning, clash and aftermath. Waves and Hold are retired. **2026-11-02:** R2a's rough playtest found rounds read as plan, then fight ([entry](#2026-11-02-r2as-rough-playtest-a-battle-in-rounds-the-user)) |
+| F20 | Placement doesn't matter: the player fills the home zone from the top left down | §4.6, §11.14 | **SPEC v2:** the colony is the formation (front and back ranks), plus combos by position. **2026-11-02:** R2a's rough playtest found placement mattered ("ranged in the back"). The grid stays as it is, and what a full colony's gold does is §18.2 #67 ([entry](#2026-11-02-r2as-rough-playtest-a-battle-in-rounds-the-user)) |
 | F21 | Unit cards and buildings are too word-dense | §10.4 | Postponed by the user until combat is settled: milestone R4 |
 | F22 | Nothing pulls you into another run: the research has examples, and none are built | §8, §9, §16 | **SPEC v2:** lives instead of a run lost in one battle, run packs, augments and combos; M6 rewritten for v2. Run it back and records were agreed as separate work (X10, 2026-11-01). records-1, Run it back and the remembered setup, is on `develop` and passed the user's check on 2026-11-01; records-2 follows R2b |
+
+## 2026-11-02: R2a's rough playtest, a battle in rounds (the user)
+
+The user played a battle in rounds on the dev site (`?scene=rounds`, as S14 left it in [#95](https://github.com/Swalliso/Sambattler/pull/95)). This is S14b, the rough playtest agreed on 2026-11-01 (T145 in [r2a-battle-in-rounds.md](tasks/r2a-battle-in-rounds.md), R2-Q25, SPEC §16 R2 step 10). It answers gate questions 1, 2, 3 and 6 in rough form and asks whether anything about the loop needs to change in S15–S20. It isn't a gate on numbers: S21's playtest stays R2a's gate. The verdict: the core loop works, and nothing needs a dramatic change.
+
+**1. Did seeing the general's army first turn the opener into a plan rather than a gamble? (F18)** "yes, this is much more fun already. This is no longer a gamble and requires me to think about how to counter the enemy general while also planning ahead about where I might want to place units"
+- Yes. The reveal does what SPEC §1.3 #3 meant it to.
+
+**2. Did where you planted change how a clash went? (F20)** "Where I planted buildings impacted battles (e.g. ranged in the back), although I think we might need more than a 4x2 grid down the line, as it kind of limits what you can build, not to mention in later rounds you kind of run out of a use of gold since you can't upgrade units/buildings yet it seems"
+- Yes. Two worries came with it: the size of the grid, and gold in the later rounds.
+
+**3. Did rounds read as "plan, then fight"? (F19)** "Yes, rounds were more plan and then fight coded, with the exception of running out of the ability to plan towards the end of the round due to placement issues."
+- Yes. The hub read "the end of the round" as the battle's later rounds, when the colony is full.
+
+**6. When were you bored, and when did you feel clever?** "I was mostly bored when I ran out of options on how to keep expanding or upgrading after reaching the limit of the buildable space."
+- Bored with a full colony. Answers 1 and 2 carry the clever half: countering the general, and ranged in the back.
+
+**Does anything about the loop need to change in S15–S20?** "So far I think things are feeling good and nothing needs dramatic changes, but I'd like to check against the spec."
+- The hub checked the worries against SPEC and told the user what it found. The readings and the user's replies:
+
+**The hub's readings, and the user's replies** (2026-11-02):
+- **The grid: no change.** Plots are scarce on purpose (§4.1, "Scarcity"). Sprawl grows the colony over a run in R2b: the first guess is +1 plot per battle won, up to a third rank, which gives 12 plots on one lane (§4.6). §13.7's budget caps it: a full colony fields at most 150 live units a side, and the bench's worst case is 12 plots on one lane and 16 on Twin Roots. The user: "okay that makes sense to push back. I wanted to make sure this wasn't as big as the grid got."
+- **The empty late rounds come mostly from the pace.** §6.2 plans about one new spawner a round after the opener, so 8 plots fill around round 7, sooner with Truffle Cellars. That is about when a battle of the target length (6–8 rounds) ends. S10b measured a median of 9 rounds, with 73% of battles reaching round 9 ([balance-backlog.md](balance-backlog.md), "R2a S10b · step 3 in rounds"). S15's counter cycle also gives a full colony a reason to sell and replant.
+- **Gold once the colony is full** is left open by the spec. Upgrades come as draft picks (v1's cards in R2b, then R3's augments), so a full colony's gold buys only rerolls and swaps.
+- **Builds and synergies, for R3's S0.** The user: "I think we might also want to look at more combos and interactions between placing units/buildings outside of just the sort of rock/paper/scissors counterplay we've got. Right now I think we've got a good foundation that we just need to build off of and allow various builds and synergies that go with relics/upgrades/etc. to spice up the gameplay on a match by match basis."
+  - SPEC v2 plans this for R3: augments (§1.3 #7, §11.13), combos (§11.14), run packs (§1.3 #8, §11.15) and relics (§11.7), in [r3-kit.md](tasks/r3-kit.md).
+  - The hub's two cautions, which the user accepted. Keep combos few and rule-changing, since a small percentage per neighbor measured below noise (§11.14, DR-7). And copies come before combos: with no copy limit, a strong pair fills the colony, such as four Capguard Halls with a Gill Archer Nest behind each (§11.14's Shield Wall, four times).
+
+**What changes** (agreed with the user on 2026-11-02):
+- **The grid** stays as it is, and nothing in S15–S20 changes for it.
+- **SPEC §18.2 #67,** "What does gold do once the colony is full?", goes to R2b's S0 and R3, and §6.1 carries its **Open:** line. First guess: S18's pace call and R2b's drafts cover it, unless S21's playtest still finds empty late rounds.
+- **S18:** if G4 misses, T124 measures the pace levers (`heartcapDamagePerSupply`, `roundDamageCap`, the Heartcaps' HP and the Sporestorm) and proposes one retune. T125 brings it for the user's OK beside the bands, so S21's playtest runs at the agreed pace.
+- **R3's S0** reads the builds note above (a line in [r3-kit.md](tasks/r3-kit.md)'s Read first).
+- **S15** (the counter cycle) and **S16** (powers) start side by side, beside these notes (the user's choice).
 
 ## 2026-11-01: records-1's check on the dev site (the user)
 

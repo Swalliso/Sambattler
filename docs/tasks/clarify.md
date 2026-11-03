@@ -17,7 +17,7 @@ This is the clarify step for SPEC v2. SPEC.md is the spec, `docs/<milestone>-pla
 - Session names follow each task file's Sessions table: R4's rows are "R4a-S0", "R4b-S0" and so on.
 - Findings are cited by A-ID (A001–A209), the review's numbering. `docs/tasks/spec-analysis.md` lists them. Each block quotes the evidence it rests on, so it reads on its own.
 - A recommendation that disagrees with SPEC's first guess says so and why. Where the evidence doesn't warrant a challenge, the block agrees plainly.
-- Each §18.2 row from #7 to #66 has exactly one block. #34 is X7.
+- Each §18.2 row from #7 to #67 has exactly one block. #34 is X7.
 
 ## Index
 
@@ -109,6 +109,7 @@ This is the clarify step for SPEC v2. SPEC.md is the spec, `docs/<milestone>-pla
 | #32 | A run saved before R2 | R2b S0 | Migrate, with lives by losses |
 | #56 | A name for lives | R2b S0 (R4b-S0 at the latest) | Regrowths, "lives" in its tooltip |
 | #33 | The battle-1 economy tip | R2b gate | Keep |
+| #67 | What gold does once the colony is full | R2b S0, R3 S0 | Nothing new; S18's pace call and R2b's drafts cover it |
 | X9 | Flyers in the first release? | R3 S0 | No; runs deal 4 of 9 packs |
 | R3-Q1 | R3's data work during R2's tuning | R3 S0 | Yes |
 | R3-Q2 | R3's augment scope | R3 S0 | Retire all 42 levels; 7 pack augments |
@@ -880,6 +881,15 @@ The R2a plan settles these itself, with no call from you: A027, A032, A034, A036
 - **Recommendation:** Agree; R2b's playtest decides. **Why:** it costs nothing to keep, and the playtest shows whether greed is punished.
 - **Alternatives:** drop it.
 - **Blocks:** R2b's gate.
+- **Decision:** _open_
+
+### #67 · What gold does once the colony is full
+
+- **Question:** What does gold do once the colony is full? R2a's rough playtest (2026-11-02, `docs/playtest-feedback.md`) ran out of ways to spend it in a battle's later rounds, and was bored then.
+- **SPEC's first guess:** nothing new. S18's pace call (T124, T125) and R2b's drafts cover it (§6.1).
+- **Recommendation:** Agree, and revisit it if R2a's playtest gate (S21) still finds empty late rounds. **Why:** the empty rounds come mostly from the pace. §6.2 plans about one new spawner a round after the opener, so 8 plots fill around round 7, about when a battle of the target length (6–8 rounds) ends, while S10b measured a median of 9 rounds, with 73% of battles reaching round 9. Upgrades come as draft picks (v1's cards in R2b, then R3's augments), so a full colony's gold buys rerolls and swaps, and S15's counter cycle gives it a reason to sell and replant.
+- **Alternatives:** a new use for gold once the plots are full, such as an upgrade bought with gold. That is a rule change, for the user to make if S21 still finds empty late rounds.
+- **Blocks:** R2b's S0 (the drafts) and R3's S0 (the augments).
 - **Decision:** _open_
 
 The R2b plan settles these itself, with no call from you: A063, A073, A074, A079, A088, A089, A093, A117.
