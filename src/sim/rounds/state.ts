@@ -411,7 +411,8 @@ export interface SideStats {
   /** Attacker kind (unit id or tower building id) → damage dealt. */
   damageBySource: Record<string, number>;
   heartcapDamageTaken: number;
-  goldEarned: { stipend: number; economy: number; comeback: number; interest: number; effects: number };
+  /** By source (§6.2): the opening's income, and effects' gold paid at once. Pending gold counts when it's paid. */
+  goldEarned: { stipend: number; economy: number; comeback: number; interest: number; pending: number; effects: number };
   goldByBuilding: Record<string, number>;
   healingDone: number;
   buildingsPlanted: number;

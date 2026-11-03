@@ -147,14 +147,16 @@ describe('each scenario’s own rule', () => {
     expect([roundOutcome(s.rounds.at(-1)!.damage).winner, s.outcome?.winner]).toEqual(['player', 'enemy']);
   });
 
-  it('comeback-r4: round 4 opens with equal colonies, gold and max HP, your Heartcap 700 below full, after three lost rounds (G6)', () => {
+  it('comeback-r4: round 4 opens with equal colonies, banked gold and max HP, your Heartcap 700 below full, after three lost rounds (G6)', () => {
     const s = fromScenario('comeback-r4');
     const colony = (side: Side) => s.buildings.filter((b) => b.side === side).map((b) => {
       const p = s.sides[side].plots[b.plot]!;
       return [b.buildingId, p.lane, p.rank, p.file];
     });
     expect(colony('player')).toEqual(colony('enemy'));
-    expect([s.round, s.sides.player.gold, s.sides.player.heartcapMaxHp]).toEqual([4, s.sides.enemy.gold, s.sides.enemy.heartcapMaxHp]);
+    expect([s.round, s.sides.player.bankedAtBegin, s.sides.player.heartcapMaxHp]).toEqual([4, s.sides.enemy.bankedAtBegin, s.sides.enemy.heartcapMaxHp]);
+    // round 4's opening pays you the comeback gold for round 3 (§6.2)
+    expect([s.sides.player.gold - s.sides.enemy.gold, s.stats.player.goldEarned.comeback]).toEqual([40, 40]);
     expect(s.sides.enemy.heartcapHp - s.sides.player.heartcapHp).toBe(700);
     expect(s.rounds.map((r) => roundOutcome(r.damage).loser)).toEqual(['player', 'player', 'player']);
     // the record of rounds 1–3 is what this colony musters now

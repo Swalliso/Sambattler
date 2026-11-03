@@ -13,6 +13,8 @@ export { inKit, kitOf } from './kit.ts';
 export { formationOf, mergePreview } from './formation.ts';
 export type { MergePreview, MusterTrio, PlanChange, SquadPlan, TierCounts } from './formation.ts';
 export { survivingSupply } from './round.ts';
+export { incomePreview } from './systems/economy.ts';
+export type { IncomeBreakdown } from './systems/economy.ts';
 export { step } from './step.ts';
 export { hashState, snapshot, restore } from './snapshot.ts';
 export * from './state.ts';

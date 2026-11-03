@@ -135,8 +135,9 @@ describe('planning commands and their refusals (§4.4, §14.5, plan Call 8)', ()
     const hall = s.buildings[0]!, burrow = s.buildings[1]!;
     burrow.pricePaid = 111; // a price 60% doesn't divide
     expect([sellValue(s, hall.id), sellValue(s, burrow.id)]).toEqual([90, 66]);
+    const gold = s.sides.player.gold; // round 2's income has landed at its opening (§6.2)
     expect(sell(s, 'player', burrow.id)).toEqual([{ t: 'buildingSold', id: burrow.id, side: 'player', refund: 66 }]);
-    expect([s.sides.player.gold, s.buildings, sellValue(s, burrow.id)]).toEqual([66, [hall], 0]);
+    expect([s.sides.player.gold, s.buildings, sellValue(s, burrow.id)]).toEqual([gold + 66, [hall], 0]);
     expect(s.sides.player.plots.some((p) => p.building === burrow.id)).toBe(false);
   });
 

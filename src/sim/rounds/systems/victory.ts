@@ -35,6 +35,9 @@ export function stormBpFor(storm: Rules['storm'], round: number): number {
   return round < storm.startRound ? BP : Math.min(storm.maxBp, BP + storm.stepBp * (round - storm.startRound + 1));
 }
 
+/** The round's storm step (§6.4, §14.4), which `sporestormGte` reads: 0 before its first round, then 1 in it, 2 in the next, and on. */
+export const stormStep = (storm: Rules['storm'], round: number): number => Math.max(0, round - storm.startRound + 1);
+
 /** The round's result (§6.7): the side that dealt more wins it, and its loser gets the comeback gold (§6.2). Equal damage, none included, draws. */
 export function roundOutcome(damage: Record<Side, number>): { winner: Side | null; loser: Side | null } {
   if (damage.player === damage.enemy) return { winner: null, loser: null };
