@@ -218,7 +218,7 @@ describe("placement by §7.3's scores (plan Call 11, A043)", () => {
   });
 
   it.each([1, 2, 3, 4, 5, 6])('never puts a back-liner in the front rank while a back or third-rank plot is free (Call 11), on seed %i', (seed) => {
-    const back = ['truffleCellar', 'sporeExchange', 'rhizomeVault', 'sporeExchange'].map((building, i) => ({ building, lane: 0, rank: 1, file: i + 1 }));
+    const back = ['truffleCellar', 'sporeExchange', 'truffleCellar', 'sporeExchange'].map((building, i) => ({ building, lane: 0, rank: 1, file: i + 1 }));
     const s = generalTurn({ seed, gold: 1000, plots: 12, colony: back, opener: ['gillNest', 'puffballMortar'], weights: {} });
     expect(places(s).slice(4).map((p) => p.rank)).toEqual([2, 2]);
     // the third rank's worst plot outscores the front rank's best, noise and all
@@ -266,8 +266,8 @@ describe("Twin Roots' lanes (§7.3, #30, A047)", () => {
   });
 
   it('falls back to the other lane when its lane is full', () => {
-    // round 1's tie goes to lane 0, which economy and utility fill
-    const full = [0, 1].flatMap((rank) => [1, 2, 3].map((file) => ({ building: rank ? 'sporeExchange' : 'rhizomeVault', lane: 0, rank, file })));
+    // round 1's tie goes to lane 0, which economy buildings fill
+    const full = [0, 1].flatMap((rank) => [1, 2, 3].map((file) => ({ building: rank ? 'sporeExchange' : 'truffleCellar', lane: 0, rank, file })));
     expect(halls({ gold: 150, colony: full }).at(-1)).toBe(1);
   });
 });

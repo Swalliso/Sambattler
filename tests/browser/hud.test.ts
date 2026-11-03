@@ -234,7 +234,8 @@ const inside = (a: Box, b: Box) => a.x >= b.x - 0.5 && a.y >= b.y - 0.5 && a.x +
 
 describe('the tray (§10.2)', () => {
   for (const [width, height] of [[1280, 720], [1366, 650], [1920, 1080]] as const) {
-    it(`fits the whole kit's 16 cards in a ${width}×${height} window in two compact rows, with nothing clipped`, async () => {
+    // the roster's 16 but the Rhizome Vault, which waits for R3's combos (#26): 1920 wide holds them in one row
+    it(`fits the whole kit's 15 cards in a ${width}×${height} window, in two compact rows where one won't hold them, with nothing clipped`, async () => {
       page = await open(PLANNING, width, height);
       const m = await page.evaluate(() => {
         const tray = document.getElementById('tray')!;
@@ -253,8 +254,8 @@ describe('the tray (§10.2)', () => {
           })),
         };
       });
-      expect(m.cards).toHaveLength(16);
-      expect(m.compact).toBe(true);
+      expect(m.cards).toHaveLength(15);
+      expect(m.compact).toBe(width < 1920);
       expect(m.scroll).toBeLessThanOrEqual(0);
       for (const c of m.cards) {
         expect(inside(c.box, m.tray)).toBe(true);

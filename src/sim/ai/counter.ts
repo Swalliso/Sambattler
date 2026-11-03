@@ -90,7 +90,7 @@ export function dominantArmor(shares: FieldedAnalysis['shares']): BodyArmor {
 }
 
 /** The unit a spawner fields, or undefined for any other building. */
-function spawnerUnit(view: PlanningView, buildingId: string): CompiledUnit | undefined {
+function spawnerUnit(view: Pick<PlanningView, 'cards' | 'units'>, buildingId: string): CompiledUnit | undefined {
   const card = view.cards[buildingId];
   return card?.kind === 'spawner' && card.squad ? view.units[card.squad.unit] : undefined;
 }
@@ -101,7 +101,7 @@ function spawnerUnit(view: PlanningView, buildingId: string): CompiledUnit | und
  * answers neither a swarm nor a line (A056), and a unit that deals no damage, such as a healer, is in no set
  * (A055). Towers, economy and utility buildings field no squad, so they're in no set.
  */
-export function counterKindsOf(view: PlanningView, buildingId: string): CounterKind[] {
+export function counterKindsOf(view: Pick<PlanningView, 'cards' | 'units'>, buildingId: string): CounterKind[] {
   const u = spawnerUnit(view, buildingId);
   if (!u || u.support || u.tiers[0].damage <= 0) return [];
   const swarm = u.tags.includes('swarm');
@@ -223,6 +223,19 @@ export function doctrineMult(view: PlanningView, buildingId: string): number {
     m *= c.opening.dual ? (hit ? k.dualMult : 1) : hit ? k.openingMult : k.openingOtherMult;
   }
   return m;
+}
+
+/**
+ * The kinds of a side's doctrine in force (§7.4, §7.6), whose sets `inCounterSet` reads at each Begin (R2-Q17):
+ * the counter in force, and the opening doctrine's while it holds, as `doctrineMult` weighs them. Empty with
+ * no counter cycle, so with no doctrine there's no bonus.
+ */
+export function doctrineKinds(c: CounterState | undefined): CounterKind[] {
+  if (!c) return [];
+  const now = c.history.at(-1);
+  const kinds: CounterKind[] = now ? [now.kind] : [];
+  if (c.opening && (c.opening.dual || !now)) for (const k of c.opening.kinds) if (!kinds.includes(k)) kinds.push(k);
+  return kinds;
 }
 
 /** The kind that answers what the other side fielded last round, before any noise; null in round 1 or after a round it fielded nothing. */

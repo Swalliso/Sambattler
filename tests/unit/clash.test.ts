@@ -537,7 +537,7 @@ describe('the muster inside Begin (SPEC §5.6, plan Call 4)', () => {
     expect(s.nextId).toBe(first + arrived.length + trios.length);
     // the muster's ticks knit nothing more and pay nothing more
     const later = stepClash(s, 40);
-    expect(later.filter((e) => e.t === 'merged' || e.t === 'knitStart' || e.t === 'effectGold')).toEqual([]);
+    expect(later.filter((e) => e.t === 'merged' || e.t === 'knitStart' || e.t === 'gold')).toEqual([]);
     expect(s.sides.player.gold - gold).toBe(trios.length);
   });
 
@@ -546,8 +546,8 @@ describe('the muster inside Begin (SPEC §5.6, plan Call 4)', () => {
     const gold = s.sides.player.gold;
     const kinds = begin(s).map((e) => e.t);
     expect(kinds[0]).toBe('clashStarted');
-    expect(kinds.filter((t) => t === 'effectGold')).toHaveLength(1);
-    expect(kinds.lastIndexOf('musterKnit')).toBeLessThan(kinds.indexOf('effectGold'));
+    expect(kinds.filter((t) => t === 'gold')).toHaveLength(1);
+    expect(kinds.lastIndexOf('musterKnit')).toBeLessThan(kinds.indexOf('gold'));
     expect(kinds.lastIndexOf('arrived')).toBeLessThan(kinds.indexOf('merged'));
     expect([s.tick, s.sides.player.gold - gold]).toEqual([s.clash!.startTick, 7]);
     stepClash(s, 40);

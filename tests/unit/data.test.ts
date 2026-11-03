@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ContentError, loadContent } from '../../src/data/registry.ts';
 import { bodyOf, shapeProblems } from '../../src/data/shapes.ts';
+import { createBattle, makeRoundConfig } from '../../src/sim/index.ts';
 import { readRawContent } from '../../tools/lib/content.ts';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -47,12 +48,40 @@ describe('data', () => {
     const tracked = Object.keys(c.buildings).filter((id) => id !== 'bursterPod' && id !== 'rhizomorphTunnel');
     expect(Object.keys(c.upgrades).sort()).toEqual(tracked.sort());
     expect(c.relicOrder).toHaveLength(21);
-    expect(c.relicOrder.filter((id) => c.relics[id]!.requires === undefined)).toHaveLength(20);
+    // the Sporestorm Sigil needs powers, and Mycorrhizal Link R3's combos (§11.7, R2-Q19)
+    expect(c.relicOrder.filter((id) => c.relics[id]!.requires !== undefined)).toEqual(['mycorrhizalLink', 'sporestormSigil']);
     expect(c.eventOrder).toHaveLength(8);
     expect(c.eliteOrder).toEqual(['fortified', 'veteran', 'swift']);
     const v = c.commanders.vesper!;
     expect(v.starter).toEqual(['sporelingBurrow', 'capguardHall', 'truffleCellar']);
     for (const id of v.starter) expect(v.core).toContain(id);
+  });
+
+  it('relics validate in v2 form: none uses a stat, selector, trigger or action that rounds retired (§11.7, §15.7)', () => {
+    const c = loadContent(raw);
+    const retired = {
+      stats: ['building.hp', 'building.spawnInterval', 'building.spawnCount', 'building.goldPerTick', 'building.firstSpawnFraction', 'side.supplyCap',
+        'side.captureSpeed', 'side.supplyLineRate', 'side.turretDamage', 'side.powerCooldown'],
+      selectors: ['zone', 'adjacentOwnBuildingsGte'],
+      triggers: ['buildingDestroyed', 'waveStart'],
+      actions: ['repairHeartcapPct'],
+    };
+    for (const id of c.relicOrder) {
+      const fx = c.relics[id]!.effects;
+      for (const m of fx.modifiers ?? []) {
+        expect(retired.stats, `${id}: ${m.stat}`).not.toContain(m.stat);
+        for (const k of Object.keys(m.where ?? {})) expect(retired.selectors, `${id}: ${k}`).not.toContain(k);
+      }
+      for (const t of fx.triggers ?? []) {
+        expect(retired.triggers, `${id}: ${t.on}`).not.toContain(t.on);
+        for (const k of Object.keys(t.if ?? {})) expect(retired.selectors, `${id}: ${k}`).not.toContain(k);
+        for (const a of t.do) expect(retired.actions, `${id}: ${Object.keys(a)[0]}`).not.toContain(Object.keys(a)[0]);
+      }
+    }
+    // and every relic compiles in a round battle, but Mycorrhizal Link's corner rule, which waits for R3's combos
+    const cfg = makeRoundConfig(c, { seed: 1, player: 'human', enemy: 'human' });
+    cfg.player.relics = [...c.relicOrder];
+    expect(createBattle(c, cfg).compiled.player.ignored).toEqual([{ source: 'relic:mycorrhizalLink', stat: 'side.comboCorners' }]);
   });
 
   it('rejects malformed effects', () => {

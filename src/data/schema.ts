@@ -29,23 +29,35 @@ const MatrixRow = z.object({ light: Pos, medium: Pos, heavy: Pos, structure: Pos
 export const UNIT_STATS = [
   'unit.hp', 'unit.damage', 'unit.attackInterval', 'unit.range', 'unit.speed', 'unit.splashRadius',
   'unit.resist.slash', 'unit.resist.pierce', 'unit.resist.crush', 'unit.siegeMult', 'unit.regenPctPerSec', 'unit.healAmount',
+  // R2b: × speed until a unit's first attack in a clash (Quick Roots, §11.7)
+  'unit.openingSpeed',
 ] as const;
 export const BUILDING_STATS = [
   'building.hp', 'building.spawnInterval', 'building.spawnCount', 'building.goldPerTick', 'building.goldPerRound', 'building.firstSpawnFraction',
   'tower.damage', 'tower.range', 'tower.splashRadius',
+  // R2b: v2's squad and gold a round, which replace `spawnCount` and `goldPerTick` (§14.2)
+  'building.squadCount', 'building.goldPerRound',
 ] as const;
 export const SIDE_STATS = [
   'side.supplyCap', 'side.interestCap', 'side.stipend', 'side.captureSpeed', 'side.startingGold', 'side.sellRefund',
   'side.supplyLineRate', 'side.knitTicks', 'side.mergeRadius', 'side.rerollCost', 'side.draftCards', 'side.heartcapMaxHp',
   'side.turretDamage', 'side.comebackEnabled', 'side.loamBonus', 'side.powerCooldown',
+  // R2b (§14.2): the colony's plots, × the Heartcap damage it takes (in basis points, §6.7 step 3), × its income, × its
+  // power's effect, and, for R3's combos only, plots touching at a corner
+  'side.plots', 'side.heartcapDamageTaken', 'side.incomeMult', 'side.powerEffectMult', 'side.comboCorners',
 ] as const;
 export const BATTLE_STATS = ['battle.sporestormStart'] as const;
-export const StatKey = z.enum([...UNIT_STATS, ...BUILDING_STATS, ...SIDE_STATS, ...BATTLE_STATS]);
+/** The run's max lives (§8.5): in the schema only, for traits to change (§9.4). */
+export const RUN_STATS = ['run.maxLives'] as const;
+export const StatKey = z.enum([...UNIT_STATS, ...BUILDING_STATS, ...SIDE_STATS, ...BATTLE_STATS, ...RUN_STATS]);
 /** Building stats that may use positional selectors; they are evaluated when used, not compiled once. */
-export const POSITIONAL_STATS: readonly string[] = ['building.spawnInterval', 'building.goldPerTick'];
+export const POSITIONAL_STATS: readonly string[] = ['building.spawnInterval', 'building.goldPerTick', 'building.squadCount'];
+/** Stats read each time they're used, so a modifier on one may hold only from a round or with the storm on (`if`). */
+export const CONDITIONAL_STATS: readonly string[] = ['side.powerEffectMult'];
 /**
- * Unit stats may also select by a plot's `rank` and `onLoam`: a battle in rounds compiles them per squad at
- * Begin (§14.2, T046). v1's compile skips them, since v1 has no ranks and its units stand on no plot.
+ * Unit stats may also select by a plot's `rank` and `onLoam`, its building's planting and the general's counter
+ * sets: a battle in rounds compiles them per squad at Begin (§14.2, T046). v1's compile skips them, since v1 has
+ * no ranks and its units stand on no plot.
  */
 const byPlot = (stat: string, w: { zone?: unknown; adjacentOwnBuildingsGte?: unknown }): boolean =>
   stat.startsWith('unit.') && w.zone === undefined && w.adjacentOwnBuildingsGte === undefined;
@@ -57,33 +69,58 @@ export const SelectorSchema = z.object({
   adjacentOwnBuildingsGte: z.number().int().positive().optional(),
   /** R2a: the plot's rank in a battle in rounds, 0 at the front (§4.6, §14.2); positional, and v1 has no ranks. */
   rank: z.union([z.literal(0), z.literal(1), z.literal(2)]).optional(),
+  /** R2b, positional: a building planted in this planning phase (Fresh Spores, §11.7). */
+  plantedThisRound: z.boolean().optional(),
+  /** R2b, positional: a squad whose building is in its side's counter sets in force, read at each Begin (the Pale Sovereign, §7.7, R2-Q17). */
+  inCounterSet: z.boolean().optional(),
+  /** R2b: a unit without the `ranged` tag (Quick Roots, Call 13). */
+  melee: z.boolean().optional(),
 }).strict();
+
+/** A selector's parts that need a squad's plot, so they reach a squad only as it fields (§14.2). */
+const isPositional = (w: z.infer<typeof SelectorSchema>): boolean =>
+  w.zone !== undefined || w.onLoam !== undefined || w.adjacentOwnBuildingsGte !== undefined || w.rank !== undefined
+  || w.plantedThisRound !== undefined || w.inCounterSet !== undefined;
 
 export const ModifierSchema = z.object({
   stat: StatKey, op: z.enum(['add', 'mul', 'set']), value: z.number(),
   /** Whose stats change: the owner of the source (default) or the opponent. */
   side: z.enum(['self', 'opponent']).optional(),
   where: SelectorSchema.optional(),
+  /** R2b: the modifier holds from this round, or from this storm step (1: the storm's first round), on a stat read when it's used (§11.7, R2-Q19). */
+  if: z.object({ roundGte: z.number().int().positive().optional(), sporestormGte: z.number().int().positive().optional() }).strict().optional(),
 }).strict().superRefine((m, ctx) => {
   const w = m.where ?? {};
   const scope = m.stat.split('.')[0];
-  const positional = w.zone !== undefined || w.onLoam !== undefined || w.adjacentOwnBuildingsGte !== undefined || w.rank !== undefined;
-  if ((scope === 'side' || scope === 'battle') && m.where) ctx.addIssue({ code: 'custom', message: `${m.stat} applies to the whole ${scope}; it takes no "where"` });
-  if (positional && !POSITIONAL_STATS.includes(m.stat) && !byPlot(m.stat, w)) {
-    ctx.addIssue({ code: 'custom', message: `positional selectors (zone, onLoam, adjacentOwnBuildingsGte, rank) only work on ${POSITIONAL_STATS.join(' and ')}, and rank and onLoam on unit stats` });
+  if ((scope === 'side' || scope === 'battle' || scope === 'run') && m.where) ctx.addIssue({ code: 'custom', message: `${m.stat} applies to the whole ${scope}; it takes no "where"` });
+  if (isPositional(w) && !POSITIONAL_STATS.includes(m.stat) && !byPlot(m.stat, w)) {
+    ctx.addIssue({ code: 'custom', message: `positional selectors (zone, onLoam, adjacentOwnBuildingsGte, rank, plantedThisRound, inCounterSet) only work on ${POSITIONAL_STATS.join(', ')} and unit stats` });
   }
   if (w.tier !== undefined && scope !== 'unit') ctx.addIssue({ code: 'custom', message: 'a tier selector only applies to unit stats' });
+  if (m.if && !CONDITIONAL_STATS.includes(m.stat)) ctx.addIssue({ code: 'custom', message: `an "if" only works on a stat read when it's used: ${CONDITIONAL_STATS.join(', ')}` });
+  // each one multiplies the damage in turn, in basis points (§6.7 step 3)
+  if (m.stat === 'side.heartcapDamageTaken' && m.op !== 'mul') ctx.addIssue({ code: 'custom', message: 'side.heartcapDamageTaken only multiplies' });
 });
 
 export const EffectActionSchema = z.union([
   z.object({ gainGold: z.number().int() }).strict(),
   z.object({ explode: z.object({ damage: Pos, damageType: DamageType, radius: Pos }).strict() }).strict(),
+  /** v1's, retired with the run's Heartcap (§1.3 #2): rounds list it and run nothing, until T129 removes it. */
   z.object({ repairHeartcapPct: z.number().positive().max(1) }).strict(),
+  /** R2b: a spore cloud where the trigger fired, or on the middle of the enemy's front rank in each lane (Forward Spores, §11.7). */
+  z.object({
+    cloud: z.object({ radius: Pos, seconds: Pos, damagePerSecond: Pos, at: z.enum(['self', 'enemyFrontRank']).optional() }).strict(),
+  }).strict(),
+  /** R2b: the side's Heartcap regains this much HP, up to its max (Mending Moss, §6.7, #24). */
+  z.object({ healHeartcap: z.number().int().positive() }).strict(),
 ]);
 
 export const TriggerSchema = z.object({
-  /** `roundStart`, `clashStart` and `roundWon` are R2a's, for a battle in rounds (§14.2, §14.6); v1's battle never fires them. */
-  on: z.enum(['merge', 'unitDeath', 'buildingDestroyed', 'enemyUnitKilled', 'waveStart', 'battleStart', 'roundStart', 'clashStart', 'roundWon']),
+  /**
+   * `roundStart`, `clashStart` and `roundWon` are R2a's, and `squadWiped` R2b's, for a battle in rounds (§14.2,
+   * §14.6). `buildingDestroyed` and `waveStart` went with v1's battle: rounds list them and fire nothing.
+   */
+  on: z.enum(['merge', 'unitDeath', 'buildingDestroyed', 'enemyUnitKilled', 'waveStart', 'battleStart', 'roundStart', 'clashStart', 'roundWon', 'squadWiped']),
   if: SelectorSchema.extend({ sporestormGte: z.number().int().nonnegative().optional() }).strict().optional(),
   do: z.array(EffectActionSchema).min(1),
 }).strict();
@@ -409,8 +446,16 @@ export const UnitSchema = z.object({
   if (u.heal && !u.tags.includes('support')) ctx.addIssue({ code: 'custom', message: `unit ${u.id}: healers need the support tag` });
 });
 
+/**
+ * A feature content needs before it's dealt (§8.4, §11.7, R2-Q19): `powers` while the battle's powers are on, and
+ * `combos` from R3, so until then nothing with it is offered or joins a kit.
+ */
+export const Requires = z.enum(['powers', 'combos']);
+
 export const BuildingSchema = z.object({
   id: Id, name: z.string().min(1), sprite: Id, description: z.string(), milestone: z.number().int().positive(),
+  /** A feature it needs: it stays out of drafts, spoils, events and every kit until that exists (the Rhizome Vault, #26). */
+  requires: Requires.optional(),
   /** Draft rarity of the blueprint card (default common). */
   rarity: Rarity.optional(),
   kind: z.enum(['spawner', 'tower', 'economy', 'utility']),
@@ -744,8 +789,8 @@ export const RelicSchema = z.object({
   id: Id, name: z.string().min(1), rarity: Rarity, text: z.string().min(1), effects: EffectBundleSchema,
   /** A feat that unlocks it (M6). Until meta-progression exists every relic counts as unlocked. */
   unlockedBy: Id.optional(),
-  /** A feature the relic needs; it stays out of the draft pool while that feature is off. */
-  requires: z.enum(['powers']).optional(),
+  /** A feature the relic needs; it stays out of the draft pool while that feature is off (§8.4, §11.7). */
+  requires: Requires.optional(),
 }).strict();
 
 /**
@@ -835,6 +880,7 @@ export type PowerDef = z.infer<typeof PowerSchema>;
 export type RunEffect = z.infer<typeof RunEffectSchema>;
 export type ModifierDef = z.infer<typeof ModifierSchema>;
 export type SelectorDef = z.infer<typeof SelectorSchema>;
+export type RequiresDef = z.infer<typeof Requires>;
 export type TriggerDef = z.infer<typeof TriggerSchema>;
 export type EffectAction = z.infer<typeof EffectActionSchema>;
 export type EffectBundle = z.infer<typeof EffectBundleSchema>;

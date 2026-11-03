@@ -82,7 +82,7 @@
     "squad": { "unit": "morelRunner", "count": 6 }
   },
   {
-    "id": "rhizomeVault", "name": "Rhizome Vault", "sprite": "b-rhizomeVault", "milestone": 4, "rarity": "uncommon",
+    "id": "rhizomeVault", "name": "Rhizome Vault", "sprite": "b-rhizomeVault", "milestone": 4, "rarity": "uncommon", "requires": "combos",
     "description": "Stores nutrients in a root mass: +6 supply cap while it stands (at most 2 Vaults count).",
     "kind": "utility", "footprint": { "w": 2, "h": 2 }, "cost": 140, "hp": 500,
     "utility": { "supplyCapAdd": 6, "maxCount": 2 }

@@ -4,8 +4,8 @@
 // Battles themselves run in the sim; the run only sees their final state.
 import type { RunEffect } from '../data/schema.ts';
 import {
-  POWER_SOURCE_ID, RARITIES, applyCard, basePlots, draftLibrary, draftPool, generateOffer, hashState, kitCards, levelsLeft, nextFloat, nextInt,
-  nextLevel, openOrder, parseCard, parseController, seedStream, setCommander, setPassives, topKinds,
+  POWER_SOURCE_ID, RARITIES, applyCard, basePlots, draftLibrary, draftPool, featureReady, generateOffer, hashState, kitCards, levelsLeft, nextFloat,
+  nextInt, nextLevel, openOrder, parseCard, parseController, seedStream, setCommander, setPassives, topKinds,
 } from '../sim/index.ts';
 import type {
   BattleConfig, BattleState, Content, Controller, DraftLibrary, DraftPool, IntelProfile, Loadout, Rarity, SideConfig,
@@ -174,16 +174,17 @@ export function generalIntel(content: Content, run: RunState, node: RouteNode): 
  * A level lands only on a level that is offered, past any that isn't, up to each track's length in the
  * data (#27, A100). The random levels come from the `ai` stream, sub-seeded per battle index so they
  * don't depend on the path taken. A general without a preferred list fields its whole faction roster.
+ * A building that waits for a feature the run lacks never joins it (`featureReady`, §8.4, A083).
  */
 export function generalKit(content: Content, run: RunState, node: RouteNode, index: number): { kit: string[]; upgrades: Record<string, number> } {
   const rules = content.balance.enemyKit;
   const g = content.generals[node.general ?? 'scripted']!;
-  const roster = content.factions[g.faction]?.buildings ?? [];
+  const roster = (content.factions[g.faction]?.buildings ?? []).filter((id) => featureReady(content.buildings[id]?.requires, run.flags));
   const boss = node.kind === 'boss';
   let kit: string[];
   if (!g.preferred) kit = [...roster];
   else {
-    kit = [...new Set(g.opener)];
+    kit = [...new Set(g.opener)].filter((id) => roster.includes(id));
     const size = boss ? rules.bossBuildings : kit.length + rules.blueprintsPerBattle * (index - 1);
     for (const id of [...bossCounters(content, run, node, roster), ...g.preferred]) {
       if (kit.length >= size) break;

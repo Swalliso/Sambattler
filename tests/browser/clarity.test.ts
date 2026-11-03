@@ -121,11 +121,10 @@ describe('labels', () => {
     await p.close();
     const run = mid();
     run.screen = { kind: 'spoils', picks: [{ label: 'Spoils', battleIndex: 2, freeRerolls: 0, cards: 3, rareBonus: 0, relicsOnly: false,
-      offer: [{ id: 'bp:hammercapForge', type: 'blueprint', rarity: 'uncommon' }, { id: 'up:gillNest', type: 'upgrade', rarity: 'common' }, { id: 'relic:mycorrhizalLink', type: 'relic', rarity: 'rare' }] }] };
+      offer: [{ id: 'bp:hammercapForge', type: 'blueprint', rarity: 'uncommon' }, { id: 'up:gillNest', type: 'upgrade', rarity: 'common' }, { id: 'relic:martyrsBloom', type: 'relic', rarity: 'rare' }] }] };
     const q = await open('/?scene=run&debug=1', { run, reduced: true });
     expect(await q.locator('#spoils-what').textContent()).toContain('the same kinds of cards as the drafts in battle');
-    // the relic card reads in plain words, with its picture
-    expect(await q.locator('[data-card="relic:mycorrhizalLink"] .draft-text').textContent()).toContain('touching 2 or more');
-    expect(await q.locator('[data-card="relic:mycorrhizalLink"] .adj-diagram').count()).toBe(1);
+    // the relic card reads in plain words, its v2 effect (§11.7)
+    expect(await q.locator('[data-card="relic:martyrsBloom"] .draft-text').textContent()).toContain('last unit of one of your squads');
   });
 });

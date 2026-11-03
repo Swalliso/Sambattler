@@ -65,7 +65,8 @@ describe('bans (SPEC §8.1, §8.4)', () => {
     const pool = draftPool(content, 'velvet-bloom', 'vesper', FLAGS, bans);
     expect(pool.core).toEqual(content.commanders.vesper!.core);
     for (const b of bans) expect(pool.shared).not.toContain(b);
-    expect(pool.shared).toEqual(ROSTER.filter((id) => !pool.core.includes(id) && !bans.includes(id)));
+    // the Rhizome Vault waits for R3's combos (#26)
+    expect(pool.shared).toEqual(ROSTER.filter((id) => !pool.core.includes(id) && !bans.includes(id) && id !== 'rhizomeVault'));
     const lib = draftLibrary(content, ROSTER, pool.relics);
     const lo: Loadout = { kit: ['sporelingBurrow', 'capguardHall', 'truffleCellar'], upgrades: {}, relics: [] };
     for (let s = 1; s <= 400; s++) {

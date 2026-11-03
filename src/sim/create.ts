@@ -2,13 +2,13 @@
 // with the general's plan made, or from a round scenario (§15.2, plan Call 18); and the flags, controllers
 // and draft pools that a battle's and a run's configs are made of.
 import type { Content } from '../data/registry.ts';
-import type { ScenarioDef } from '../data/schema.ts';
+import type { ModifierDef, ScenarioDef } from '../data/schema.ts';
 import { seedStream } from './rng.ts';
 import { resolveProfile } from './ai/profiles.ts';
-import { basePlots, colonyPlots } from './colony.ts';
+import { basePlots, colonyPlots, openOrder } from './colony.ts';
 import { buildRoundLibrary, compileRoundRules, compileRoundSides } from './compile.ts';
 import { collectRoundEffects, resolveStat, roundModifiers } from './effects.ts';
-import { kitCards, kitOf } from './kit.ts';
+import { featureReady, kitCards, kitOf } from './kit.ts';
 import { newClash, openRound } from './round.ts';
 import { emptyRoundStats, emptyStats } from './stats.ts';
 import { SIDES, other } from './state.ts';
@@ -63,19 +63,17 @@ export const MAX_BANS = 3;
 
 /**
  * A commander's draft pool (SPEC §8.4): its core buildings, every other building of the faction
- * (the shared pool, minus bans; core buildings can't be banned) and every relic whose required
- * feature is on.
+ * (the shared pool, minus bans; core buildings can't be banned) and every relic, each only once the
+ * feature it requires is here (`featureReady`). Spoils and events draw from it too.
  */
 export function draftPool(content: Content, faction: string, commanderId: string, flags: Flags, bans: string[] = []): DraftPool {
   const cmd = content.commanders[commanderId];
   if (!cmd) throw new Error(`unknown commander ${commanderId}`);
+  const ready = (id: string) => featureReady(content.buildings[id]?.requires, flags);
   const roster = content.factions[faction]?.buildings ?? [];
-  const core = cmd.core.filter((id) => roster.includes(id));
-  const shared = roster.filter((id) => !core.includes(id) && !bans.includes(id));
-  const relics = content.relicOrder.filter((id) => {
-    const r = content.relics[id]!;
-    return r.requires !== 'powers' || flags.powers;
-  });
+  const core = cmd.core.filter((id) => roster.includes(id) && ready(id));
+  const shared = roster.filter((id) => !cmd.core.includes(id) && !bans.includes(id) && ready(id));
+  const relics = content.relicOrder.filter((id) => featureReady(content.relics[id]!.requires, flags));
   return { core, shared, relics };
 }
 
@@ -178,8 +176,9 @@ function newBattle(content: Content, config: BattleConfig): BattleState {
   const fx = collectRoundEffects(roundModifiers(library, config));
   const sideState = (s: Side): SideState => {
     const sc = config[s];
-    // a modifier on side.heartcapMaxHp or side.startingGold reaches the battle's creation (§4.5, §6.1)
+    // a modifier on side.heartcapMaxHp, side.startingGold or side.plots reaches the battle's creation (§4.5, §4.6, §6.1)
     const maxHp = Math.max(1, Math.round(resolveStat(sc.heartcapMaxHp, fx[s].mods, 'side.heartcapMaxHp')));
+    const plots = plotCount(openOrder(map).length, sc.plots, fx[s].mods);
     const st: SideState = {
       gold: Math.max(0, Math.round(resolveStat(sc.startingGold, fx[s].mods, 'side.startingGold'))),
       heartcapHp: maxHp,
@@ -188,9 +187,8 @@ function newBattle(content: Content, config: BattleConfig): BattleState {
       augments: Object.fromEntries(Object.entries(sc.augments ?? {}).map(([id, list]) => [id, [...list]])),
       upgrades: { ...sc.upgrades },
       relics: [...sc.relics],
-      plots: colonyPlots(map, s, sc.plots).map((p) => ({ ...p, building: 0 })),
+      plots: colonyPlots(map, s, plots).map((p) => ({ ...p, building: 0 })),
       bankedAtBegin: 0,
-      pendingGold: 0,
       powerUsed: false,
       draftsOpened: 0,
     };
@@ -216,7 +214,7 @@ function newBattle(content: Content, config: BattleConfig): BattleState {
     rules,
     library,
     // the colony block's tiles: R2's arena is plain soil (§11.9)
-    map: { id: map.id, width: map.width, height: map.height, homeCols: map.colony.homeCols, tiles: [...map.colony.tiles] },
+    map: { id: map.id, width: map.width, height: map.height, homeCols: map.colony.homeCols, tiles: [...map.colony.tiles], openOrder: openOrder(map) },
     sides: { player: sideState('player'), enemy: sideState('enemy') },
     lanes: map.lanes.map((l) => ({ rowStart: l.rowStart, rowEnd: l.rowEnd })),
     buildings: [],
@@ -235,6 +233,23 @@ function newBattle(content: Content, config: BattleConfig): BattleState {
     if (library.powers?.[config[s].power ?? '']) Object.assign(state.stats[s], { powerUses: 0, powerDamage: 0, powerMerges: 0 });
   }
   return state;
+}
+
+/**
+ * A side's plot count (§4.6): its config's, with its `side.plots` modifiers such as Mycelial Web's +1, and at
+ * most the colony's `max`. A plot gained past the map's last closed plot is dropped (Call 4).
+ */
+function plotCount(max: number, base: number, mods: readonly ModifierDef[]): number {
+  return Math.min(max, Math.max(0, Math.round(resolveStat(base, mods, 'side.plots'))));
+}
+
+/**
+ * Opens a side's plots up to its count with `mods`, in the map's open order (§4.6, #19): a plot a draft's pick
+ * gains mid-battle, such as Mycelial Web's, opens at once (§11.7). A plot never closes mid-battle.
+ */
+export function openPlots(state: BattleState, side: Side, mods: readonly ModifierDef[]): void {
+  const order = state.map.openOrder, plots = state.sides[side].plots;
+  for (const i of order.slice(0, plotCount(order.length, state.config[side].plots, mods))) plots[i]!.open = true;
 }
 
 export interface RoundScenarioOverrides {

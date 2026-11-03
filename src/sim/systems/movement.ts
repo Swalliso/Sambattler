@@ -13,6 +13,9 @@ import { buildGrid, nearBuffer, queryNear } from '../spatial.ts';
 import { MAX_RADIUS } from '../targets.ts';
 import { clampToLane, findUnit, frozen, isEmplacement, tierDef, unitDef, unitRadius } from '../world.ts';
 
+/** A unit's speed this tick: × its opening multiplier until its first attack in the clash (Quick Roots, §11.7). */
+const speedOf = (u: UnitState, t: CompiledTier): number => (u.lastAttackTick < 0 ? t.speedPerTick * t.openingSpeedMult : t.speedPerTick);
+
 export function movementSystem(state: BattleState): void {
   const r = state.rules;
   prepareSeek(state);
@@ -21,7 +24,7 @@ export function movementSystem(state: BattleState): void {
     if (def.emplacement || frozen(state, u.lane)) continue; // it never moves, nor does an ended lane (§6.7)
     const t = tierDef(state, u);
     const rad = t.radius;
-    const speed = t.speedPerTick;
+    const speed = speedOf(u, t);
     if (u.burrowed) { tunnel(state, u, t); continue; }
     if (u.knit) {
       const dx = u.knit.x - u.x, dy = u.knit.y - u.y;
@@ -150,7 +153,7 @@ function tunnel(state: BattleState, u: UnitState, t: CompiledTier): void {
   if (bestD <= t.range + 1e-6) { u.burrowed = false; return; } // the attack check's tolerance
   const dx = px - u.x, dy = py - u.y;
   const dist = Math.sqrt(dx * dx + dy * dy);
-  const step = Math.min(t.speedPerTick, bestD - t.range);
+  const step = Math.min(speedOf(u, t), bestD - t.range);
   if (dist > 1e-9) { u.x += (dx / dist) * step; u.y += (dy / dist) * step; }
   clampToLane(state, u, t.radius);
 }

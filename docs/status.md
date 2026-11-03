@@ -83,6 +83,13 @@ Updated 2026-11-03, on `docs/r2b-s4-done` (the hub's docs PR into `develop`). Th
   - **Goldens:** `r2-run-s7` moved (drafts in runs, Mold's opener). The five single-battle goldens hold, since a battle without drafts compiles as before.
   - **Mold's opener is her round-1 buys in every battle,** single battles and run battles 2–3 included, until T165 gives each general 2–3 openers. Against a mono Sporeling bot she now falls in round 3 on most seeds, so verify's adaptive-general smoke moved from seeds 4–5 to 20–21, which still reach her first counter in round 4.
   - **Not built:** the relics-and-upgrades popover listed under S2 as "S5, S6": no S5 task names it, and `src/ui/hud/kit.ts` is imported by nothing.
+- **S6** (`feature/r2b-relics`, T070–T078): in review. The relics in v2 form, as you decided at S0 (R2-Q19, R2-Q20, #24, #26):
+  - **All 21 relics** have §11.7's v2 effects and texts. The eleven new effects work in rounds, and the eight kept ones as before, Spore Cloud's death burst included, which R2a's compile had listed and skipped. The Sporestorm Sigil's ×1.5 is in the DSL (`powerEffectMult`), and S7's T084 applies it to each power.
+  - **`requires: combos`** keeps the Rhizome Vault and Mycorrhizal Link out of drafts, spoils, events and every kit until R3, so Armilla's core offers five cards.
+  - **Clash gold** is credited at once, with a `gold` event of source `clash`, and shows as one "from the clash" row in the next income. `pendingGold` is gone.
+  - **Goldens:** all six moved at round 1's first checkpoint, by the state's new shape, regenerated after S5 and S9 merged. The five battle replays play out as on `develop`; `r2-run-s7` moved further, with the run's pool and relics.
+  - **Mycelial Web's plot** opens when a battle is created, and at once when a draft picks it (S5's pick recompile).
+  - **Not built:** the relics-and-upgrades popover, as S5 found: no S6 task names it either.
 - **S9** (`feature/r2b-run-screens`, T101–T110 and T157): in review. The run screens for lives:
   - **Regrowths** name lives on the run bar, the Grove, event chips, the report, the title and the battle's top band, each with "lives" in its tooltip (`src/ui/words.ts`). A run battle shows a cap per Regrowth under your Heartcap (`#hud-lives`); a single battle shows none.
   - **The route's battle nodes** show their general's kit as 1× sprites with v1's random levels standing in for augments, at the node's nominal battle index or, in the row you choose from, the index it's fought at. The boss's node says its first extra cards answer your intel, and shows the `bosslives` bonus when that knob is on. The intel bars show Anti-Ranged too, with a new icon.
@@ -90,7 +97,7 @@ Updated 2026-11-03, on `docs/r2b-s4-done` (the hub's docs PR into `develop`). Th
   - **The title and the link previews** describe rounds, and `public/og-image.png` is regenerated from the new title.
   - **`scene=run&round=&phase=`** opens the run's first battle at that checkpoint with Node's hash (T157), and `tools/screenshot.ts` checks the run capture's lives, the route's kits and the summary's battles (T110). No golden moved.
 - **The stand-ins open on `develop`** from S1 (Call 14), each with the session that lifts it (checked at S4, T152):
-  - relics on retired systems do nothing in a round battle until S6, and passives until S7, which also ends Rhizome Tithe's refusal (T082);
+  - passives on retired systems do nothing in a round battle until S7, which also ends Rhizome Tithe's refusal (T082) and applies the Sporestorm Sigil to each power (T084); relics have their v2 effects since S6;
   - a reload mid-battle restarts it at round 1's planning, with the notice when a battle save was found, until S8 (T095, T096);
   - `scene=draft` opens round 1's planning of a run battle, so its capture shows no draft until round 3, until S10 (T115);
   - retired selectors and triggers still in the data compile to no-ops, v1's keys stay in the data and the schema, and R2a's `rounds` data blocks sit beside them, until S12 (T129);

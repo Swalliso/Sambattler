@@ -5,7 +5,10 @@
 import type { Content } from '../data/registry.ts';
 import type { BalanceDef } from '../data/schema.ts';
 import { compileRoundSides, drafting } from './compile.ts';
+import { openPlots } from './create.ts';
+import { collectRoundEffects, roundModifiers } from './effects.ts';
 import { nextFloat } from './rng.ts';
+import { SIDES } from './state.ts';
 import type { AiState, BattleState, CardType, DraftCard, DraftPool, Loadout, Rarity, Rng4, Side } from './state.ts';
 
 /** An upgrade track as an offer reads it (§11.6): each level's rarity, and `offered: false` on a level that does nothing in rounds (#27). */
@@ -292,9 +295,12 @@ function adoptWeight(ai: AiState, building: string): void {
 
 /**
  * Recompiles both sides from the library after a pick changed a loadout (§8.3). In planning nothing stands on the
- * field, so no HP rescales: each squad is fielded fresh from the compiled side at Begin (§14.4).
+ * field, so no HP rescales: each squad is fielded fresh from the compiled side at Begin (§14.4). A plot the pick
+ * gained opens at once (Mycelial Web, §11.7).
  */
 function recompile(state: BattleState): void {
   state.compiled = compileRoundSides(state.library, state.config, state.sides);
+  const fx = collectRoundEffects(roundModifiers(state.library, state.config, state.sides));
+  for (const s of SIDES) openPlots(state, s, fx[s].mods);
 }
 

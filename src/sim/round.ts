@@ -14,7 +14,7 @@ import { squadStats } from './compile.ts';
 import { addUnit } from './create.ts';
 import { openDraft } from './draft.ts';
 import { collectRoundEffects, fireTriggers, roundModifiers } from './effects.ts';
-import { formationOf } from './formation.ts';
+import { fieldPlace, formationOf } from './formation.ts';
 import type { MusterTrio, SquadPlan } from './formation.ts';
 import { closeRound, emptyRoundStats } from './stats.ts';
 import { SIDES, other } from './state.ts';
@@ -92,10 +92,13 @@ export function startClash(state: BattleState): void {
   for (const s of SIDES) fireTriggers(state, s, 'clashStart', { x: 0, y: 0, lane: -1, sourceBuildingId: 0 });
 }
 
-/** A squad as it arrives (§14.4), with its own stats where a patch reaches its plot (T046). An emplacement has its tower's. */
+/**
+ * A squad as it arrives (§14.4), with its own stats where a patch reaches its place: its plot, its planting or
+ * the counter sets read at this Begin (T046, R2-Q17). An emplacement has its tower's.
+ */
 function squadFor(state: BattleState, side: Side, p: SquadPlan, mods: readonly ModifierDef[]): SquadState {
-  const terrain = state.sides[side].plots[p.plot]!.terrain;
-  const stats = p.emplacement ? undefined : squadStats(state.library, p.unitId, mods, { rank: p.rank, terrain });
+  const b = state.buildings.find((x) => x.id === p.building)!;
+  const stats = p.emplacement ? undefined : squadStats(state.library, p.unitId, mods, fieldPlace(state, side, p.plot, b.buildingId, b.plantedRound));
   const base = (stats ?? state.compiled[side].units[p.unitId]!).tiers[0];
   return {
     building: p.building, side, lane: p.lane, unitId: p.unitId, rank: p.rank, file: p.file, slot: p.slot,
@@ -166,13 +169,17 @@ function fieldedOf(state: BattleState, side: Side): FieldedSquad[] {
 
 /**
  * The clash's end (§4.7 step 17, §14.6 clash step 13), on the tick its last lane ends: the round is scored
- * from the lanes' locks, the round's winner fires its `roundWon` triggers (none after a drawn round), the
- * round's stats close (§5.7), and the battle's end is checked, which sets `outcome`. Either way the battle
- * enters the aftermath, whose step ends the battle or opens the next round.
+ * from the lanes' locks, the round's winner fires its `roundWon` triggers (none after a drawn round), whose
+ * heals land after the round's damage and leave it as recorded (#24), the round's stats close (§5.7), and the
+ * battle's end is checked, which sets `outcome`. Either way the battle enters the aftermath, whose step ends
+ * the battle or opens the next round.
  */
 export function endClash(state: BattleState): void {
-  const { winner } = roundOutcome(scoreRound(state).damage);
+  const result = scoreRound(state);
+  const { winner } = roundOutcome(result.damage);
   if (winner) fireTriggers(state, winner, 'roundWon', { x: 0, y: 0, lane: -1, sourceBuildingId: 0 });
+  // each Heartcap as the round leaves it, a heal included
+  result.heartcaps = { player: state.sides.player.heartcapHp, enemy: state.sides.enemy.heartcapHp };
   closeRound(state);
   const outcome = battleOutcome(state);
   if (outcome) state.outcome = outcome;
@@ -229,13 +236,9 @@ export function scoreRound(state: BattleState): RoundResult {
   return result;
 }
 
-/**
- * A side's damage-taken modifiers in basis points, applied in turn (§6.7 step 3), such as Rot Ward's 8500.
- * None reaches a battle in R2a: relics aren't in its single battles, and `side.heartcapDamageTaken` comes
- * with content's v2 effects in R2b (plan Call 19).
- */
-function damageTakenBp(_state: BattleState, _side: Side): number[] {
-  return [];
+/** A side's damage-taken modifiers in basis points, applied in turn (§6.7 step 3), such as Rot Ward's 8500. */
+function damageTakenBp(state: BattleState, side: Side): number[] {
+  return state.compiled[side].heartcapTakenBp;
 }
 
 /** A side's damage by building this round (A064): its battle's counters (§5.7) less what the rounds before recorded. */
@@ -291,7 +294,7 @@ export function openRound(state: BattleState): void {
     state.hits.length = 0;
     if (state.clouds) state.clouds.length = 0;
   }
-  // 2. income for both sides from round 2, with any pending gold (§6.2); round 1 has its starting gold
+  // 2. income for both sides from round 2 (§6.2); round 1 has its starting gold
   const income = state.round > 1 ? payIncome(state) : undefined;
   // 3. the round's Sporestorm (§6.4), then `roundStarted`
   const stormBp = stormBpFor(state.rules.storm, state.round);

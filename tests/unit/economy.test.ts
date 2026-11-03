@@ -42,7 +42,7 @@ describe("income at a round's opening (§4.7 step 5, §6.2, §14.6 opening step 
     const s = opened({ player: { gold: 0 }, enemy: { gold: 0 } });
     expect(paid(s)).toEqual({ player: { income: 100, interest: 0 }, enemy: { income: 100, interest: 0 } });
     expect([s.sides.player.gold, s.sides.enemy.gold]).toEqual([100, 100]);
-    expect(s.stats.player.goldEarned).toEqual({ stipend: 100, economy: 0, interest: 0, comeback: 0, pending: 0, effects: 0 });
+    expect(s.stats.player.goldEarned).toEqual({ stipend: 100, economy: 0, interest: 0, comeback: 0, clash: 0, effects: 0 });
   });
 
   it('pays each economy building its gold a round, × 1.5 on a loam plot rounded down', () => {
@@ -88,17 +88,6 @@ describe("income at a round's opening (§4.7 step 5, §6.2, §14.6 opening step 
     expect(paid(drawn)).toEqual({ player: { income: 100, interest: 30 }, enemy: { income: 100, interest: 30 } });
   });
 
-  it('pays pending gold once, with the next round’s income, then zeroes it (plan Call 25)', () => {
-    const s = createBattle(content, makeRoundConfig(content, { seed: 1, enemy: 'human' }));
-    s.sides.player.pendingGold = 25; // nothing pays into it in R2a; R2b's Rhizome Tithe does (R2-Q20)
-    finishRound(s);
-    step(s);
-    expect([s.round, paid(s).player.income, s.sides.player.pendingGold, s.stats.player.goldEarned.pending]).toEqual([2, 125, 0, 25]);
-    finishRound(s);
-    step(s);
-    expect([s.round, paid(s).player.income, s.stats.player.goldEarned.pending]).toEqual([3, 100, 25]);
-  });
-
   it("multiplies the general's income by enemyIncomeMult, source by source, rounded down (§6.2, §7.1)", () => {
     const s = opened(
       { enemy: { gold: 140, heartcapHp: 1900, colony: [on('truffleCellar', SOIL)] } },
@@ -106,7 +95,7 @@ describe("income at a round's opening (§4.7 step 5, §6.2, §14.6 opening step 
       withRounds({ enemyIncomeMult: 1.5 }),
     );
     expect(paid(s)).toEqual({ player: { income: 100, interest: 30 }, enemy: { income: 150 + 75 + 60, interest: 21 } });
-    expect(s.stats.enemy.goldEarned).toEqual({ stipend: 150, economy: 75, interest: 21, comeback: 60, pending: 0, effects: 0 });
+    expect(s.stats.enemy.goldEarned).toEqual({ stipend: 150, economy: 75, interest: 21, comeback: 60, clash: 0, effects: 0 });
   });
 });
 
@@ -115,7 +104,7 @@ describe('incomePreview (§6.2, §10.2, §14.6)', () => {
     const s = createBattle(content, makeRoundConfig(content, { seed: 1, enemy: 'human' }));
     plant(s, 'player', 'truffleCellar', LOAM);
     // 150 held pays 15; nobody fields an army, so the round is drawn
-    const next = { stipend: 100, economy: 75, interest: 15, comeback: 0, pending: 0, total: 190 };
+    const next = { stipend: 100, economy: 75, interest: 15, comeback: 0, clash: 0, total: 190 };
     expect(incomePreview(s, 'player')).toEqual(next);
     finishRound(s);
     expect(incomePreview(s, 'player')).toEqual(next);

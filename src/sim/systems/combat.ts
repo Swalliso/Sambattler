@@ -205,10 +205,16 @@ function burstFallen(state: BattleState): void {
   }
 }
 
-/** Removes dead units after all hits resolve (SPEC §5.3), then fires `unitDeath` triggers. */
+/**
+ * Removes dead units after all hits resolve (SPEC §5.3), then fires `unitDeath` triggers for each, and the other
+ * side's `enemyUnitKilled` (Rot-Eater). A squad is its units by source building after the muster (A099): when
+ * its last unit dies, its side's `squadWiped` triggers fire once, where that unit fell (Martyr's Bloom). A
+ * squad the muster absorbed whole has no units left to die, and one that has died out can't again.
+ */
 export function deathSystem(state: BattleState): void {
   const units = state.units;
   if (state.rules.burst) burstFallen(state);
+  const fallen: UnitState[] = [];
   let w = 0;
   for (let i = 0; i < units.length; i++) {
     const u = units[i]!;
@@ -217,9 +223,27 @@ export function deathSystem(state: BattleState): void {
     state.events.push({ t: 'died', id: u.id, side: u.side, unitId: u.unitId, x: u.x, y: u.y });
     for (const h of state.hits) if (h.targetId === u.id) { h.x = u.x; h.y = u.y; }
     const def = unitDef(state, u);
-    fireTriggers(state, u.side, 'unitDeath', {
+    const ctx = {
       x: u.x, y: u.y, lane: u.lane, unitId: u.unitId, tier: u.tier, tags: def.tags, sourceBuildingId: u.sourceBuildingId, place: placeOf(state, u),
-    });
+    };
+    fireTriggers(state, u.side, 'unitDeath', ctx);
+    fireTriggers(state, other(u.side), 'enemyUnitKilled', ctx);
+    fallen.push(u);
   }
   units.length = w;
+  wipedSquads(state, fallen);
+}
+
+/** Fires `squadWiped` for each squad whose last unit fell this tick, at that unit, in the order they fell. */
+function wipedSquads(state: BattleState, fallen: readonly UnitState[]): void {
+  for (let i = 0; i < fallen.length; i++) {
+    const u = fallen[i]!;
+    if (!state.compiled[u.side].triggers.some((t) => t.on === 'squadWiped')) continue;
+    // its last unit is the latest of its squad to fall, and none of the squad still stands
+    if (fallen.some((v, j) => j > i && v.side === u.side && v.sourceBuildingId === u.sourceBuildingId)) continue;
+    if (state.units.some((v) => v.side === u.side && v.sourceBuildingId === u.sourceBuildingId)) continue;
+    fireTriggers(state, u.side, 'squadWiped', {
+      x: u.x, y: u.y, lane: u.lane, unitId: u.unitId, tier: u.tier, tags: unitDef(state, u).tags, sourceBuildingId: u.sourceBuildingId, place: placeOf(state, u),
+    });
+  }
 }

@@ -25,7 +25,7 @@ export function emptyRoundStats(): RoundStats {
     damageByTag: {},
     heartcapDamageDealt: 0,
     heartcapDamageTaken: 0,
-    goldEarned: { stipend: 0, economy: 0, comeback: 0, interest: 0, pending: 0, effects: 0 },
+    goldEarned: { stipend: 0, economy: 0, comeback: 0, interest: 0, clash: 0, effects: 0 },
     goldByBuilding: {},
     healingDone: 0,
     buildingsPlanted: 0,

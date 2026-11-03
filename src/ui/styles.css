@@ -403,18 +403,6 @@ body:has(.draft-overlay:not([hidden])) .callouts { position: relative; z-index: 
 .kit-ups ol { margin: 2px 0 0; padding-left: 18px; font-size: 12px; color: var(--muted); }
 .kit-ups ol li.on { color: var(--text); }
 .kit-ups ol li.on::marker { color: var(--lilac); }
-/* a relic's layout rule as a picture (src/ui/words.ts): a building, two that touch it on a side, one only on a corner */
-.adj-diagram { display: flex; align-items: center; gap: var(--space-5); margin-top: 3px; }
-.adj-grid { display: grid; grid-template-columns: repeat(3, 12px); grid-auto-rows: 12px; gap: 2px; padding: 3px; background: var(--well); border: 1px solid var(--line); border-radius: var(--radius-xs); }
-.adj-grid i, .adj-key i { display: block; width: 12px; height: 12px; border-radius: 2px; }
-.adj-grid i { background: var(--soil-deep); }
-.adj-grid i.mid { background: var(--lilac); }
-.adj-key i.mid { background: var(--lilac); }
-.adj-grid i.side, .adj-key i.side { background: var(--violet); box-shadow: inset 0 0 0 1px var(--lilac); }
-.adj-grid i.corner, .adj-key i.corner { background: repeating-linear-gradient(135deg, var(--line-strong) 0 2px, transparent 2px 4px); box-shadow: inset 0 0 0 1px var(--line-strong); }
-.adj-key { display: flex; flex-direction: column; gap: 3px; font-size: 12px; color: var(--muted); }
-.adj-key span { display: inline-flex; align-items: center; gap: var(--space-3); }
-.draft-card .adj-diagram { justify-content: center; }
 .inspect { border: 1px solid var(--line); background: var(--panel-2); border-radius: 4px; padding: 6px 8px; font-size: 12px; overflow: hidden; display: flex; flex-direction: column; gap: 3px; }
 .inspect h3 { margin: 0 0 2px; font-size: 13px; letter-spacing: .04em; }
 .inspect .muted { color: var(--muted); }

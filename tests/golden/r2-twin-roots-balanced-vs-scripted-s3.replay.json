@@ -49,9 +49,6 @@
           "building": "morelWarren"
         },
         {
-          "building": "rhizomeVault"
-        },
-        {
           "building": "sporeExchange"
         },
         {
@@ -111,9 +108,6 @@
           "building": "morelWarren"
         },
         {
-          "building": "rhizomeVault"
-        },
-        {
           "building": "sporeExchange"
         },
         {
@@ -137,29 +131,29 @@
   },
   "commands": [],
   "expected": {
-    "r1.planning": "0a6294a769809471",
-    "r1.clash": "468b8777d0983b64",
-    "r1:200": "706534874139c3e5",
-    "r1.aftermath": "74df6d3af47b21e0",
-    "r2.planning": "f6d51bc674037295",
-    "r2.clash": "df1bf3726a6aacf1",
-    "r2.aftermath": "ffe3d61ebeda730f",
-    "r3.planning": "323234f3238f091c",
-    "r3.clash": "62ce3bbf6144d824",
-    "r3:200": "9fe5e28721c461a6",
-    "r3:400": "876f72cd3c912775",
-    "r3.aftermath": "7f24d34a6620831d",
-    "r4.planning": "f9fea7cc192fedb1",
-    "r4.clash": "fb0310a32d456b1d",
-    "r4:200": "caf0680e75c31e06",
-    "r4.aftermath": "5c5d8a0d82d26eba",
-    "r5.planning": "7914ca54b3d03905",
-    "r5.clash": "801047a7a1e7be53",
-    "r5:200": "4b2b05779b1665dd",
-    "r5:400": "c81f4717f0864692",
-    "r5:600": "6d335906629a2ddd",
-    "r5:800": "f066e81f04d8388b",
-    "r5.aftermath": "a64b3f2d9d878ac8",
-    "final": "2ee124aea5513103"
+    "r1.planning": "714c1d188dab4bf2",
+    "r1.clash": "80bb5a83ad9dabc7",
+    "r1:200": "c1c6b1589834d6aa",
+    "r1.aftermath": "27bc5697a514d1bb",
+    "r2.planning": "992e7cec10d45992",
+    "r2.clash": "15a87a7919f7680c",
+    "r2.aftermath": "16e7861df7d7878c",
+    "r3.planning": "d2c95a4e006f0f79",
+    "r3.clash": "8497cbeeecf7b533",
+    "r3:200": "22d903e5568a9145",
+    "r3:400": "b4e84a5ebf79d2a4",
+    "r3.aftermath": "d626516cc7145188",
+    "r4.planning": "3a6fc8eee2da808a",
+    "r4.clash": "1304b6f98448d5f2",
+    "r4:200": "9827474443340671",
+    "r4.aftermath": "1d2404424b2d9149",
+    "r5.planning": "0a773a6db8f6e1ba",
+    "r5.clash": "e45b5f91c43f4c4c",
+    "r5:200": "261a34a1d9308000",
+    "r5:400": "6a4c5ef61a2a151f",
+    "r5:600": "78a25a9ae86780cc",
+    "r5:800": "6cd407767719e2b2",
+    "r5.aftermath": "b913f7dd106c0311",
+    "final": "4f4b2fcb28513bd4"
   }
 }
