@@ -54,6 +54,8 @@ export function bindRoundInput(session: RoundSession, view: RoundsView, hooks: R
 
   const onKeyDown = (ev: KeyboardEvent) => {
     if (ev.target instanceof HTMLInputElement) return;
+    // Tab moves along the top band once `I` has put focus there (§10.2)
+    if (ev.key === 'Tab' && ev.target instanceof Element && ev.target.closest('[data-native-tab]')) return;
     session.hold = false;
     session.shift = ev.shiftKey;
     const phase = session.state.phase;
@@ -93,6 +95,7 @@ export function bindRoundInput(session: RoundSession, view: RoundsView, hooks: R
       case 'q': case 'Q':
         if (phase !== 'clash') view.say('refused', 'The commander power works only in a clash');
         break;
+      case 'i': case 'I': view.focusChips(); break;
       case 'F3': ev.preventDefault(); hooks.toggleDebug(); break;
     }
   };

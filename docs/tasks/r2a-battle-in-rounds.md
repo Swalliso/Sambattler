@@ -646,7 +646,7 @@ S1 to S4: the data, the colony, the round state machine and the planning command
 - [x] T089 [US3] Build `RoundTally` and `LaneTug` in `src/ui/rounds/hud/tally.ts` (new) (§10.2, §6.7) (A064)
   - Pips are violet, ash, a dash or hollow, with lane halves on Twin Roots, and dealt and taken under the ends. A past pip's tooltip gives each lane's result and survivors, the damage both ways and your top squads (`damageByBuilding`).
   - The tug shows `survivingSupply` per lane, locks with the lane's result, goes neutral when drawn, and hatches the Rot's half under the color-blind assist.
-- [ ] T090 [US3] Build the chip tooltips in `src/ui/rounds/hud/explain.ts` (new): gold, plots, round and storm as §10.2 words them, computed from the sim's functions; `I` focuses the gold chip, Tab moves along the band, Esc closes (§10.2)
+- [x] T090 [US3] Build the chip tooltips in `src/ui/rounds/hud/explain.ts` (new): gold, plots, round and storm as §10.2 words them, computed from the sim's functions; `I` focuses the gold chip, Tab moves along the band, Esc closes (§10.2)
 - [ ] T091 [US3] Build the Intent panel in `src/ui/rounds/doctrine.ts` (new) and `src/ui/rounds/hud/top.ts`, read from `ai.plans[round]`: the portrait at 48 px, the name and doctrine, its income this round and the gold it banked, and the buildings it planted and sold. It has no countdown and truncates long lists; its tooltip gives the passive and the kit (§7.5, §10.2) (A070)
 
 **S14: the tray, inspect, the planning and clash chrome, and the report**

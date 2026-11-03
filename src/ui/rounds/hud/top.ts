@@ -17,7 +17,7 @@ import { h, setText, toggleClass } from '../../h.ts';
 import { uiIcon } from '../../icons.ts';
 import { reducedMotion } from '../../motion.ts';
 import { AnchoredTip } from '../../tooltip.ts';
-import { stormText } from './explain.ts';
+import { goldTip, plotsTip, roundTip, stormText, stormTip } from './explain.ts';
 
 /** A band or panel in its mount (T088–T091): drawn each frame, laid out afresh on a resize, removed with the view. */
 export interface HudPart {
@@ -149,6 +149,11 @@ export class TopBand implements HudPart {
     this.roundStat = h('span', { class: 'chip round', id: 'chip-round' },
       uiIcon(atlas, 'i-wave'), h('small', { class: 'word' }, 'Round'), this.round, h('small', null, `of ${state.rules.maxRounds}`), this.clock);
     this.stormStat = h('span', { class: 'chip storm', id: 'chip-storm' }, uiIcon(atlas, 'i-storm'), h('small', { class: 'word' }, 'Storm'), this.storm);
+    const { content } = hud;
+    hud.tip.attach(this.goldStat, goldTip(content, atlas, state));
+    hud.tip.attach(plotsStat, plotsTip(content, atlas, state));
+    hud.tip.attach(this.roundStat, roundTip(content, atlas, state));
+    hud.tip.attach(this.stormStat, stormTip(content, atlas, state));
     this.chips = h('div', { class: 'chips', 'data-native-tab': '' }, this.goldStat, plotsStat, this.roundStat, this.stormStat);
     mount.append(this.hearts.player.el, this.chips, this.hearts.enemy.el, hud.tip.el);
     this.seen = `${state.round}|${state.phase}`;
