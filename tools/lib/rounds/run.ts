@@ -2,7 +2,7 @@
 // round tools after it will share. It stands beside v1's `tools/lib/run.ts` until R2b moves it there.
 import { performance } from 'node:perf_hooks';
 import {
-  createBattle, createFromScenario, makeRoundConfig, runHeadless, summarize,
+  bestBloom, createBattle, createFromScenario, kitCards, makeRoundConfig, powerOf, runHeadless, summarize,
 } from '../../../src/sim/rounds/index.ts';
 import type {
   BattleConfig, BattleState, Command, Content, Controller, CounterKind, Flags, HeadlessResult, HeadlessUntil, PowerPolicy,
@@ -23,6 +23,8 @@ export interface RoundRunSpec {
   commander?: string;
   /** Whether a bot player fires its power, at most once per clash (§6.6). */
   powerPolicy?: PowerPolicy;
+  /** The player's kit by building id, in place of its faction's roster (R2-Q7: a commander's starter). */
+  kit?: string[];
   /** Use this exact config instead of building one (replays). */
   config?: BattleConfig;
   commands?: Command[];
@@ -65,6 +67,12 @@ export interface RoundBattleResult {
   rejectedCommands: number;
   /** Summaries recorded at checkpoints, for `path@r<n>` asserts. */
   at: HeadlessResult['summaries'];
+  /**
+   * With the player's Puppet Bloom, a clash each (R2-Q7, A057): the most trios a 3-tile circle could merge on
+   * the clash's first tick, after the muster, and at any of the auto policy's think ticks before the power
+   * was used, with whether it fired and the trios it merged.
+   */
+  bloom?: { round: number; atMuster: number; best: number; fired: boolean; merged: number }[];
 }
 
 /** X8's readouts for one round (§7.2): the colonies at Begin, an AI side's plan, and whether the clash replayed the last. */
@@ -103,6 +111,7 @@ export function buildRoundState(content: Content, spec: RoundRunSpec): BattleSta
     ...(spec.commander ? { commander: spec.commander } : {}),
   });
   if (spec.powerPolicy) config.player.powerPolicy = spec.powerPolicy;
+  if (spec.kit) config.player.kit = kitCards(content, config.player.controller, spec.kit);
   return createBattle(content, config);
 }
 
@@ -137,8 +146,26 @@ function roundPace(state: BattleState, begins: Map<number, AtBegin>): { byRound:
   return { byRound, fullAt: per((s) => byRound.find((x) => x.free[s] === 0)?.round ?? null) };
 }
 
+/** The player's Puppet Bloom clash by clash, read after each of the auto policy's think ticks (clash ticks 1, 21, 41 …). */
+function bloomReadout(state: BattleState): { onTick: (s: BattleState) => void; clashes: NonNullable<RoundBattleResult['bloom']> } | null {
+  if (powerOf(state, 'player')?.kind !== 'bloom') return null;
+  const clashes: NonNullable<RoundBattleResult['bloom']> = [];
+  const onTick = (s: BattleState) => {
+    const t = s.tick - s.clash!.startTick;
+    let c = clashes.at(-1);
+    if (c?.round !== s.round) clashes.push(c = { round: s.round, atMuster: 0, best: 0, fired: false, merged: 0 });
+    for (const e of s.events) if (e.t === 'power' && e.side === 'player') { c.fired = true; c.merged += e.merges; }
+    if ((t - 1) % 20 !== 0 || s.sides.player.powerUsed) return;
+    const trios = bestBloom(s, 'player')?.trios ?? 0;
+    if (t === 1) c.atMuster = trios;
+    c.best = Math.max(c.best, trios);
+  };
+  return { onTick, clashes };
+}
+
 export function runRoundBattle(content: Content, spec: RoundRunSpec): { state: BattleState; result: RoundBattleResult } {
   const state = buildRoundState(content, spec);
+  const bloom = bloomReadout(state);
   const begins = new Map<number, AtBegin>();
   const t0 = performance.now();
   const res = runHeadless(state, {
@@ -146,7 +173,10 @@ export function runRoundBattle(content: Content, spec: RoundRunSpec): { state: B
     ...(spec.commands ? { commands: spec.commands } : {}),
     ...(spec.hashEvery ? { hashEvery: spec.hashEvery } : {}),
     ...(spec.recordAt ? { recordAt: spec.recordAt } : {}),
-    onTick: (s) => { if (s.tick - s.clash!.startTick === 1) begins.set(s.round, atBegin(s)); },
+    onTick: (s) => {
+      if (s.tick - s.clash!.startTick === 1) begins.set(s.round, atBegin(s));
+      bloom?.onTick(s);
+    },
   });
   const wallMs = performance.now() - t0;
   const sum = summarize(state);
@@ -180,6 +210,7 @@ export function runRoundBattle(content: Content, spec: RoundRunSpec): { state: B
     stats: sum.stats,
     rejectedCommands: sum.rejectedCommands,
     at: { ...res.summaries },
+    ...(bloom ? { bloom: bloom.clashes } : {}),
   };
   return { state, result };
 }

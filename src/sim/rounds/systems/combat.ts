@@ -170,8 +170,8 @@ export function resolveHitsSystem(state: BattleState): void {
 
 /**
  * A burst at a point that strikes at once (Spore Burst, SPEC §11.10): full damage, through the matrix, to
- * every enemy unit whose body is within `radius`, emplacements included (§6.7), in any lane. Returns the
- * number of units struck.
+ * every enemy unit whose body is within `radius`, emplacements included (§6.7), in any lane still fighting:
+ * an ended lane holds still (R2-Q11, A053). Returns the number of units struck.
  */
 export function burstAt(state: BattleState, side: Side, x: number, y: number, radius: number, damage: number, damageType: DamageType, sourceType: string): number {
   const enemy = other(side);
@@ -181,7 +181,7 @@ export function burstAt(state: BattleState, side: Side, x: number, y: number, ra
   };
   let n = 0;
   for (const u of state.units) {
-    if (u.side !== enemy || u.hp <= 0 || u.burrowed) continue;
+    if (u.side !== enemy || u.hp <= 0 || u.burrowed || frozen(state, u.lane)) continue;
     const dx = u.x - x, dy = u.y - y;
     if (Math.sqrt(dx * dx + dy * dy) - unitRadius(state, u) > radius) continue;
     applyDamage(state, h, u.id, 1, u.x, u.y);

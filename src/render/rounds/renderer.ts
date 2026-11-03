@@ -34,6 +34,16 @@ export interface RoundGhost {
   legal: boolean;
 }
 
+/**
+ * The commander power while aiming (§10.3): its reticle at the cursor, red where it can't fire, and a mark on
+ * each unit it would strike or knit (§6.6); and a dashed ring on a use queued while paused.
+ */
+export interface RoundPowerAim {
+  reticle: { x: number; y: number; radius: number; valid: boolean } | null;
+  marks: { x: number; y: number; r: number }[];
+  pending: { x: number; y: number; radius: number }[];
+}
+
 /** What the view adds to the state for a frame. */
 export interface RoundView {
   ghost: RoundGhost | null;
@@ -50,6 +60,8 @@ export interface RoundView {
   colony: number;
   /** Time into the aftermath at the clash's speed, on the loop's clock (`phases/aftermath.ts`). */
   aftermathMs: number;
+  /** The commander power's reticle and its marks while aiming, and a use queued while paused. */
+  power?: RoundPowerAim | null;
 }
 
 export class RoundRenderer {
@@ -300,7 +312,54 @@ export class RoundRenderer {
     if (over) this.aftermath.draw(g, state, this.toScreen, this.glowOf);
     if (planning) this.preview.drawOverlays(g, state, this.toScreen);
     if (view.ghost) this.drawGhost(state, view.ghost);
+    if (view.power) this.drawPowerAim(view.power, t);
     if (view.debug) this.drawDebug(state);
+  }
+
+  /** v1's reticle (`src/render/renderer.ts`): a breathing wash in a steady ring with a dark edge, and a crosshair; lilac, or red where it can't fire. */
+  private drawPowerAim(aim: RoundPowerAim, t: number): void {
+    const g = this.ctx;
+    const r = aim.reticle;
+    if (r) {
+      const color = r.valid ? '#c9a2ff' : '#e0645a';
+      const cx = Math.round(this.sx(r.x)), cy = Math.round(r.y * TILE), rad = r.radius * TILE;
+      g.fillStyle = color;
+      g.globalAlpha = 0.1 + 0.05 * Math.sin(t / 140);
+      g.beginPath();
+      g.arc(cx, cy, rad, 0, Math.PI * 2);
+      g.fill();
+      g.globalAlpha = 0.7;
+      g.strokeStyle = '#120a16';
+      g.lineWidth = 4;
+      g.beginPath();
+      g.arc(cx, cy, rad, 0, Math.PI * 2);
+      g.stroke();
+      g.globalAlpha = 1;
+      g.strokeStyle = color;
+      g.lineWidth = 2;
+      g.stroke();
+      g.lineWidth = 1;
+      g.fillRect(cx, cy, 1, 1);
+      g.fillRect(cx - 6, cy, 4, 1);
+      g.fillRect(cx + 3, cy, 4, 1);
+      g.fillRect(cx, cy - 6, 1, 4);
+      g.fillRect(cx, cy + 3, 1, 4);
+      // each unit it would strike or knit
+      g.strokeStyle = color;
+      for (const m of aim.marks) {
+        g.beginPath();
+        g.arc(Math.round(this.sx(m.x)) + 0.5, Math.round(m.y * TILE) + 0.5, m.r * TILE + 2, 0, Math.PI * 2);
+        g.stroke();
+      }
+    }
+    g.strokeStyle = '#c9a2ff';
+    g.setLineDash([3, 3]);
+    for (const p of aim.pending) {
+      g.beginPath();
+      g.arc(Math.round(this.sx(p.x)) + 0.5, Math.round(p.y * TILE) + 0.5, p.radius * TILE, 0, Math.PI * 2);
+      g.stroke();
+    }
+    g.setLineDash([]);
   }
 
   /**

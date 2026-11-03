@@ -2,7 +2,8 @@
 // advances exactly one tick through the kept systems in §14.6's order, the aftermath opens the next round or
 // ends the battle, and an ended battle does nothing. It stands beside v1's `src/sim/step.ts` until R2b moves
 // it there.
-import { executeCommands } from './commands.ts';
+import { dropClashCommands, executeCommands } from './commands.ts';
+import { powerThink } from './powers.ts';
 import { endClash, openRound } from './round.ts';
 import type { BattleState } from './state.ts';
 import { clashOver, inMuster, laneEndSystem } from './systems/clash.ts';
@@ -40,9 +41,10 @@ function clashTick(state: BattleState): void {
   state.events.length = 0;
   state.tick++;
   for (const u of state.units) { u.px = u.x; u.py = u.y; }
-  // 2. the commands due this tick (the power), the player's first
+  // 2. the commands due this tick (the power, from the clash's first tick, the muster's included), the player's first
   executeCommands(state);
-  // 3. the clash clock runs against the cap, which lane ends read (12); 4. the AI thinks only of the power (S16)
+  // 3. the clash clock runs against the cap, which lane ends read (12); 4. the AI thinks only of the power, every 20 ticks
+  powerThink(state);
   // 5–7. targeting, movement and separation, and attacks, none on the muster's ticks (§5.6, R2-Q11)
   if (!inMuster(state)) {
     targetingSystem(state);
@@ -58,8 +60,12 @@ function clashTick(state: BattleState): void {
   mergingSystem(state);
   // 12. lane ends: each lane's lock, and its freeze
   laneEndSystem(state);
-  // 13. once every lane has ended, the round is scored, the battle's end checked, and the battle enters the aftermath
-  if (clashOver(state)) endClash(state);
+  // 13. once every lane has ended, the round is scored, the battle's end checked, and the battle enters the
+  // aftermath; a power still queued is dropped (plan Call 9)
+  if (clashOver(state)) {
+    endClash(state);
+    dropClashCommands(state);
+  }
   // 14. stats sampling: none is needed, since the most Elders alive is noted at each merge and the
   // round's stats close as it's scored (`stats.ts`)
 }

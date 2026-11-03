@@ -58,7 +58,8 @@ export function newClash(state: BattleState): ClashState {
  */
 export function startClash(state: BattleState): void {
   const begun = state.events.length;
-  for (const s of SIDES) state.sides[s].bankedAtBegin = state.sides[s].gold;
+  // the power is ready again from this clash's first tick (§6.6)
+  for (const s of SIDES) { state.sides[s].bankedAtBegin = state.sides[s].gold; state.sides[s].powerUsed = false; }
   for (const b of state.buildings) b.fielded = true;
   state.phase = 'clash';
   const clash = (state.clash = newClash(state));

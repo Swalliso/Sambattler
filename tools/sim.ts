@@ -29,6 +29,8 @@ interface Args {
   commander?: string; powerPolicy?: PowerPolicy;
   /** R2a: single battles in rounds, stopping at `roundUntil`. */
   rounds: boolean; roundUntil?: HeadlessUntil;
+  /** R2a: the player's kit by building id, such as a commander's starter (R2-Q7's measure). */
+  kit?: string[];
 }
 
 function parseUntil(v: string): 'end' | number {
@@ -86,6 +88,7 @@ function parseArgs(argv: string[]): Args {
         break;
       }
       case '--commander': a.commander = v(); break;
+      case '--kit': a.kit = v().split(',').filter(Boolean); break;
       case '--power-policy': {
         const p = v();
         if (!POWER_POLICIES.includes(p)) throw new Error(`--power-policy expects ${POWER_POLICIES.join(' | ')}`);
@@ -106,6 +109,8 @@ function parseArgs(argv: string[]): Args {
     if (runOnly.length) throw new Error(`${runOnly.join(', ')}: a single battle in rounds has no run or drafts until R2b`);
     const byTick = a.asserts.find((x) => x.tick !== undefined);
     if (byTick) throw new Error(`--assert "${byTick.text}": a battle in rounds checks at @r<n> or @r<n>:<tick>`);
+  } else if (a.kit) {
+    throw new Error('--kit needs --rounds');
   } else {
     const byRound = a.asserts.find((x) => x.checkpoint !== undefined);
     if (byRound) throw new Error(`--assert "${byRound.text}": @r<n> needs --rounds`);
@@ -245,6 +250,7 @@ function mainRounds(args: Args, content: ReturnType<typeof nodeContent>): number
     if (args.flags) spec.flags = args.flags;
     if (args.commander) spec.commander = args.commander;
     if (args.powerPolicy) spec.powerPolicy = args.powerPolicy;
+    if (args.kit) spec.kit = args.kit;
     if (args.hashEvery) spec.hashEvery = args.hashEvery;
     const { result } = runRoundBattle(content, spec);
     results.push(result);
@@ -297,6 +303,13 @@ export function printRoundSummary(results: RoundBattleResult[], maxRounds: numbe
   console.log(`rounds median ${median(rounds)} · min ${Math.min(...rounds)} · max ${Math.max(...rounds)} · reached round ${maxRounds} ${last} (${pct(last, n)})`);
   console.log(`clashes ${clashes.length} · at the cap ${capped} (${pct(capped, clashes.length)}) · length median ${clashes.length ? fmtTicks(median(clashes.map((c) => c.ticks))) : '-'}`);
   console.log(`mean wall ${(results.reduce((a, r) => a + r.wallMs, 0) / n).toFixed(0)} ms · rejected commands ${results.reduce((a, r) => a + r.rejectedCommands, 0)}`);
+  // the player's Puppet Bloom (R2-Q7): the trios a 3-tile circle could merge in each clash, and the auto policy's uses
+  const blooms = results.flatMap((r) => r.bloom ?? []);
+  if (blooms.length) {
+    const atMuster = blooms.map((b) => b.atMuster), best = blooms.map((b) => b.best);
+    const some = (xs: number[]) => `${median(xs)} (mean ${(xs.reduce((a, x) => a + x, 0) / xs.length).toFixed(2)}, ≥1 in ${pct(xs.filter((x) => x >= 1).length, xs.length)})`;
+    console.log(`Puppet Bloom trios a clash: after the muster ${some(atMuster)} · best before use ${some(best)} · fired in ${blooms.filter((b) => b.fired).length} of ${blooms.length} clashes, ${blooms.reduce((a, b) => a + b.merged, 0)} trios merged`);
+  }
   for (const l of paceLines(results)) console.log(l);
 }
 
