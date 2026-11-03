@@ -474,14 +474,14 @@ S1 to S4: the data, the colony, the round state machine and the planning command
 
 **S8: opening a round, the economy and the stats**
 
-- [ ] T053 [US2] Write `tests/unit/rounds/economy.test.ts` (new) (§6.2, §6.4):
+- [x] T053 [US2] Write `tests/unit/rounds/economy.test.ts` (new) (§6.2, §6.4):
   - round 1 has no income; the stipend is 100 from round 2;
   - a Cellar pays 50, and floor(50 × 1.5) = 75 on loam; the Exchange pays 12 and raises the interest cap by 10;
   - interest is min(`interestCap`, floor(bankedAtBegin / `interestPer`)), with both read from `balance.rounds` in the case: 140 banked gives 7 at 20 per (SPEC's first guess) and 14 at 10 per (R2-Q2's recommendation);
   - +40 goes to the last round's loser, and nothing after a draw;
   - `pendingGold` is paid once, then zeroed; the enemy's income is × `enemyIncomeMult`;
   - `incomePreview` equals the next round's income.
-- [ ] T054 [US2] Add the round-order cases to `tests/unit/rounds/rounds.test.ts` (§15.7 Rounds row): income, interest, `roundStarted {stormBp}`, `roundStart` triggers, `generalPlanned`, then the player's planning; only the colony and gold carry between rounds; every squad is fielded fresh; the last round has its aftermath, then the battle ends
+- [x] T054 [US2] Add the round-order cases to `tests/unit/rounds/rounds.test.ts` (§15.7 Rounds row): income, interest, `roundStarted {stormBp}`, `roundStart` triggers, `generalPlanned`, then the player's planning; only the colony and gold carry between rounds; every squad is fielded fresh; the last round has its aftermath, then the battle ends
 - [ ] T055 [US2] Build `openRound` in `src/sim/rounds/round.ts` and the economy in `src/sim/rounds/systems/economy.ts` (new), following §14.6's opening steps 1–7 (§4.7 steps 5–10, §6.2, §6.4, §14.6) (A205)
   - Clear the field and advance the round; pay income from round 2, with any `pendingGold`; set the storm and emit `roundStarted`; fire `roundStart`.
   - The general's turn (T068), an empty draft hook (Call 26), and a player-side bot's turn (T069); then enter planning.
