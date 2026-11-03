@@ -223,6 +223,13 @@ Updated 2026-11-03, on `docs/r2a-s20-g16` (the hub's docs PR into `develop`). Th
   - **Two small fixes:** `npm run sim -- --rounds --scenario` now Begins for a scenario's human player, so step 4's CLI check passes, and verify runs it. The report's chart no longer draws a storm round's multiplier over the tallest bar's label.
   - **For R2b:** the As built has the names R2b/T001 takes, the state beyond §14.4's listing and the test inventory (T136). Left for S21 or R2b: S19's four `reveal=last` gaps, S17's cold first fighting tick in Chromium, and `power-demo`'s clash form.
   - **Next:** your playtest gate, S21 (T137, T144, T139), once this PR is merged and deployed.
+- **S21b** (`feature/r2a-playtest-fixes`, T159–T163, beside S21): the fixes from your playtest on 2026-11-03. It changes `src/sim/` and `tools/lib/`, so it waits for the hub's review.
+  - **T159, the Burster in the front line** (your OK, "Yes, start both"): §7.3's back-line tags lose `burst`, in the general's and the bots' placement and the tools' formation. G16 reads 40%, from 24%, and what's left is the Gill Archer and Mortar pairs. G3, G4, G12 and G13 hold. One round replay moved (Twin Roots); v1's eight didn't.
+  - **T160, the Mortar's emplacement:** the Gray Rot's Mortar was invisible in the clash, and either side's blinked out as it fired. It draws now.
+  - **T161, one highlight when placing:** with a card over a plot, only the plot lights; the ghost squad still stands in the field, unboxed.
+  - **T162, the Morel Runners:** intended under §5.2, not a bug. Both runners of a pair attack, but they charge in a column and the rear one stands behind its partner, so the pair reads as one. The runners that ran to the general's end were striking its invisible Mortar.
+  - **T163, a fixed round cap** (measured only): a fixed 750 for both sides passes every band measured (6 rounds, 13% reach round 9); a fixed 500 fails G4 (34%). Today's 25% is even in capped rounds, 4 each. For R2b's S0.
+  - **Questions for you:** whether placing by hovering a slot in the field should go too (it still works); whether melee squads should fan out around a target (a rule change, T162); the round cap (T163). The readings are in [balance-backlog.md](balance-backlog.md).
 - **What R2a starts from:** R1's chosen set as default data (all of `kept`, the arrival shield, Capguard Hall's squad at 3, the Elder's splash on); X5's cap and Decision by share; no copies before R3 (D45); the Anti-Ranged kind and the three fixes to the counter sets (§7.4); and eliteShare by Elder parts.
 - **For R2a to watch** (R1, and the readings of S1 and S7b):
   - Capguard Hall at 3 still won 92% at 300 gold and 2% at 1,500;
