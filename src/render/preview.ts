@@ -292,7 +292,7 @@ export class FormationPreview {
   }
 
   /** Layer 4: both formations' slots and dimmed squads, the ghost's included, with their merge previews. */
-  drawSquads(g: CanvasRenderingContext2D, state: BattleState, sx: (x: number) => number, glowOf: (side: Side) => string, assist: boolean, calm: boolean, t: number): void {
+  drawSquads(g: CanvasRenderingContext2D, state: BattleState, sx: (x: number) => number, glowOf: (side: Side) => string, assist: boolean, t: number): void {
     if (!this.cache) return;
     for (const side of SIDES) {
       const c = this.cache[side];
@@ -309,7 +309,6 @@ export class FormationPreview {
       o.side = side;
       o.glow = glowOf(side);
       o.assist = assist;
-      o.calm = calm;
       o.time = t;
       for (const [i, j] of c.order) {
         const q = c.squads[i]!, at = q.units[j]!;

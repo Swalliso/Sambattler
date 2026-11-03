@@ -135,8 +135,6 @@ export interface PendingHit {
   /** Unit id or tower building id (for damage-by-source stats). */
   sourceType: string;
   ranged: boolean;
-  /** `flyers`: the attacker can't reach flyers, so its splash skips them. Absent otherwise. */
-  noAir?: boolean;
 }
 
 /** The counter kinds in rounds (§7.4): v1's four, and Anti-Ranged (#14). */
@@ -495,10 +493,9 @@ export interface UnitState {
   sourceBuildingId: number;
   /** What is left of its arrival shield (§5.3, #8). Absent when it has none. */
   shield?: number;
-  /** The tunneler, the Burster and flyers (§5.3). */
+  /** The tunneler and the Burster (§5.3). */
   burrowed?: boolean;
   burst?: boolean;
-  flying?: boolean;
   /** R3: timed statuses, and its blows this clash for `everyNth` and `firstInClash` (§14.2). */
   statuses?: { kind: 'slow' | 'sunder'; mult: number; untilTick: number }[];
   blows?: number;

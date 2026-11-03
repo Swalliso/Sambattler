@@ -12,7 +12,7 @@ export const ArmorType = z.enum(['light', 'medium', 'heavy', 'structure']);
  * `burrow` (combat rework, the Rhizomorph's preset): the unit spawns underground and tunnels at its
  * speed until it surfaces beside an enemy ranged unit or spawner behind the enemy front.
  */
-export const Tag = z.enum(['siege', 'slayer', 'ranged', 'swarm', 'support', 'burrow', 'burst', 'flying']);
+export const Tag = z.enum(['siege', 'slayer', 'ranged', 'swarm', 'support', 'burrow', 'burst']);
 export const Rarity = z.enum(['common', 'uncommon', 'rare']);
 const Seconds = z.number().nonnegative();
 /** A unit id, optionally at a merge tier: `capguard` or `capguard@2`. */
@@ -224,16 +224,6 @@ export const BalanceSchema = z.object({
    * `cloud.damagePerSecond` (each second) to the enemy units inside it. Never buildings or friends.
    */
   burst: z.object({ cloud: z.object({ radius: Pos, seconds: Pos, damagePerSecond: Pos }).strict() }).strict().optional(),
-  /**
-   * Flyers (`flyers`; §5.3, §1.3 #11, docs/archive/v1/ideas/flyers.md), absent by default: a `flying` unit
-   * passes over ground units, and only attacks with reach can hit it: ranged units, other flyers, commander
-   * powers, spore clouds (with `cloudsReach`), emplacements that don't lob (the Mortar's splashing shell
-   * does), and melee unit types of at least `reachSupply` supply (a merged unit's own supply with
-   * `mergedReach`). Melee hits on a flyer deal × `meleeMult`. The round sim reads none of it yet.
-   */
-  flying: z.object({
-    reachSupply: Pos, meleeMult: z.number().nonnegative(), mergedReach: z.boolean(), cloudsReach: z.boolean(),
-  }).strict().optional(),
   firstSpawnFraction: z.number().min(0).max(1),
   timeLimitSeconds: Pos,
   heartcapPlayerHp: z.number().int().positive(),
@@ -428,7 +418,7 @@ export const BuildingSchema = z.object({
   cost: z.number().int().positive(),
   /**
    * A tower's emplacement's HP (§6.7). v1's buildings took damage, so the data's other buildings still carry
-   * one until R2b's T129 moves the tower's to `attack.hp`; a building in squad form has none (the flyers' Drift Stalk).
+   * one until R2b's T129 moves the tower's to `attack.hp`; a building in squad form needs none.
    */
   hp: z.number().int().positive().optional(),
   /** v1's spawn timer, still in the data until R2b's T129; nothing in rounds reads it, and a building in squad form has none. */

@@ -9,15 +9,12 @@
 // (§5.8, 2026-11-01). For a unit's sprite it adds strips of frame 0 on its squad's k × k grid in a 32 px slot,
 // at the base squad, base + 1 (a Rhizome Vault beside it) and base + 2 (the Velvet Shrine), and lists each
 // overflow: for a sprite with a shape, a squad of base or base + 1 that its width overflows is a problem
-// (§14.3); base + 2 is §18.2 #11's, listed only. Units come from the default data plus the units that exist
-// only under ?proto=flyers (the Driftling). --filter shows the art through tools/lib/cvd.ts's matrices (the annotations stay
-// unfiltered). Writes artifacts/sprite-sheet/<name>.png and <name>.json (the name is the sheet's file name by
+// (§14.3); base + 2 is §18.2 #11's, listed only. Units come from the default data. --filter shows the art
+// through tools/lib/cvd.ts's matrices (the annotations stay unfiltered). Writes artifacts/sprite-sheet/<name>.png and <name>.json (the name is the sheet's file name by
 // default, with -d or -p under a filter) and exits 1 if any sprite has a problem.
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { basename, join, resolve } from 'node:path';
 import { chromium } from 'playwright';
-import { applyProto } from '../src/data/proto.ts';
-import type { RawContent } from '../src/data/registry.ts';
 import { BuildingSchema, FactionSchema, SpriteSheetSchema, UnitSchema } from '../src/data/schema.ts';
 import type { BuildingDef, SpriteBands, SpriteDef, UnitDef } from '../src/data/schema.ts';
 import { baseSquad, bodyBox, emplacementShapeProblems, shapeProblems, unitShapeProblems, widthBound } from '../src/data/shapes.ts';
@@ -45,7 +42,7 @@ function parseArgs(argv: string[]): Args {
   return a;
 }
 
-/** What the sheet is checked against: units and buildings (preset-only ones too), the Gray Rot's swap and the soil. */
+/** What the sheet is checked against: units and buildings, the Gray Rot's swap and the soil. */
 interface World { units: UnitDef[]; buildings: BuildingDef[]; gray: Record<string, string>; soil?: SpriteDef }
 
 /**
@@ -54,17 +51,10 @@ interface World { units: UnitDef[]; buildings: BuildingDef[]; gray: Record<strin
  */
 function loadWorld(): World {
   const raw = readRawContent();
-  const { raw: flyers, problems } = applyProto(raw, 'flyers');
-  for (const p of problems) console.warn(`warning: ${p}`);
-  const entries = <T extends { id: string }>(from: RawContent, file: RegExp, parse: (v: unknown) => T[]): T[] =>
-    Object.keys(from).sort().filter((p) => file.test(p)).flatMap((p) => parse(from[p]));
-  /** The default data's entries, then the ones only the flyers preset adds. */
-  const both = <T extends { id: string }>(file: RegExp, parse: (v: unknown) => T[]): T[] => {
-    const base = entries(raw, file, parse), ids = new Set(base.map((e) => e.id));
-    return [...base, ...entries(flyers, file, parse).filter((e) => !ids.has(e.id))];
-  };
-  const units = both(/^factions\/[^/]+\/units\.json$/, (v) => UnitSchema.array().parse(v));
-  const buildings = both(/^factions\/[^/]+\/buildings\.json$/, (v) => BuildingSchema.array().parse(v));
+  const entries = <T extends { id: string }>(file: RegExp, parse: (v: unknown) => T[]): T[] =>
+    Object.keys(raw).sort().filter((p) => file.test(p)).flatMap((p) => parse(raw[p]));
+  const units = entries(/^factions\/[^/]+\/units\.json$/, (v) => UnitSchema.array().parse(v));
+  const buildings = entries(/^factions\/[^/]+\/buildings\.json$/, (v) => BuildingSchema.array().parse(v));
   const sheetOf = (file: string) => {
     const r = SpriteSheetSchema.safeParse(raw[file]);
     if (!r.success) console.warn(`warning: data/${file} doesn't validate, so its sprites are left out`);

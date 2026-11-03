@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ContentError, loadContent } from '../../src/data/registry.ts';
 import { bodyOf, shapeProblems } from '../../src/data/shapes.ts';
-import { protoContent, readRawContent } from '../../tools/lib/content.ts';
+import { readRawContent } from '../../tools/lib/content.ts';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Loose = Record<string, any>;
@@ -213,16 +213,15 @@ describe('data', () => {
       expect(() => loadContent(withSprite(s))).toThrow(/shape: Unrecognized key: "mark"/);
     });
 
-    it('every sprite that declares a shape passes, in the default content and under ?proto=flyers', () => {
-      for (const c of [loadContent(raw), protoContent('flyers')]) {
-        for (const id of c.spriteOrder) {
-          const s = c.sprites[id]!;
-          if (s.shape) expect(shapeProblems(s, c.bands[c.spriteSheet[id]!]), id).toEqual([]);
-        }
-        for (const u of Object.values(c.units)) {
-          const shape = c.sprites[u.sprite]!.shape;
-          if (shape) expect(shape.body, u.id).toBe(bodyOf(u.armor));
-        }
+    it('every sprite that declares a shape passes', () => {
+      const c = loadContent(raw);
+      for (const id of c.spriteOrder) {
+        const s = c.sprites[id]!;
+        if (s.shape) expect(shapeProblems(s, c.bands[c.spriteSheet[id]!]), id).toEqual([]);
+      }
+      for (const u of Object.values(c.units)) {
+        const shape = c.sprites[u.sprite]!.shape;
+        if (shape) expect(shape.body, u.id).toBe(bodyOf(u.armor));
       }
     });
   });

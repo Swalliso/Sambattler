@@ -1,5 +1,5 @@
 // The one unit drawer (SPEC §5.8, §10.4, §13.6): a unit's sprite at its foot point and its own size, with
-// its team mark, flyer shadow, Elder aura and gold rim under it, and its shield ring, selection box, tier
+// its team mark, Elder aura and gold rim under it, and its shield ring, selection box, tier
 // pips and HP bar over it, drawn in that order. v1's renderer draws every unit through it, and R2a's views
 // will too (R4a, call 5). It takes the foot point in native pixels and imports nothing from the renderer,
 // so any view can use it.
@@ -7,8 +7,6 @@ import type { Content } from '../data/registry.ts';
 import type { Side, Tier } from '../sim/index.ts';
 import type { Atlas, Faction, Region } from './atlas.ts';
 
-/** Combat rework `flyers`: how far a flyer's sprite floats above its shadow, in pixels (half a tile). */
-export const FLY_LIFT = 8;
 export const INK_DEEP = '#120a16';
 /** A pip's size (the `i-pip` sprite, a gold core in a dark outline), and the gap between two pips. */
 export const PIP_SIZE = { w: 5, h: 5 };
@@ -18,9 +16,6 @@ const PIP_GAP = 1;
 export interface Box { x: number; y: number; w: number; h: number }
 
 export interface LayoutOpts {
-  /** A flyer floats `FLY_LIFT` px up, plus its bob (0 or 1). */
-  flying?: boolean;
-  bob?: number;
   /** Below full HP: the HP bar shows, and the pips sit above it. */
   damaged?: boolean;
   /** The pip sprite's size; `PIP_SIZE` when unset. */
@@ -37,8 +32,6 @@ export interface UnitLayout {
   pips: Box[];
   /** The HP bar's fill, on a 1-px dark backing; null at full HP. */
   bar: Box | null;
-  /** How far a flyer is raised, in px. */
-  lift: number;
 }
 
 /** `tier - 1` pip boxes, centred on `cx`, with their tops at `top`. */
@@ -54,13 +47,12 @@ export function pipBoxes(cx: number, top: number, tier: Tier, pip: { w: number; 
  * the HP bar's backing when the unit is damaged, else above the rim or the sprite, so they touch neither.
  */
 export function unitLayout(region: Region, footX: number, footY: number, tier: Tier, opts: LayoutOpts = {}): UnitLayout {
-  const lift = opts.flying ? FLY_LIFT + (opts.bob ?? 0) : 0;
-  const body = { x: Math.round(footX - region.ax), y: Math.round(footY - region.ay) - lift, w: region.w, h: region.h };
+  const body = { x: Math.round(footX - region.ax), y: Math.round(footY - region.ay), w: region.w, h: region.h };
   const rim = tier === 3 ? { x: body.x - 1, y: body.y - 1, w: body.w + 2, h: body.h + 2 } : null;
   const bar = opts.damaged ? { x: body.x + 1, y: body.y - 3, w: body.w - 2, h: 2 } : null;
   const pip = opts.pip ?? PIP_SIZE;
   const under = bar ? bar.y - 1 : rim ? rim.y : body.y;
-  return { body, rim, pips: pipBoxes(body.x + body.w / 2, under - 1 - pip.h, tier, pip), bar, lift };
+  return { body, rim, pips: pipBoxes(body.x + body.w / 2, under - 1 - pip.h, tier, pip), bar };
 }
 
 export interface UnitSpriteOpts {
@@ -74,13 +66,12 @@ export interface UnitSpriteOpts {
   y: number;
   tier: Tier;
   side: Side;
-  /** The unit's id, which staggers its flyer bob, Elder pulse and mound crumbs. */
+  /** The unit's id, which staggers its Elder pulse and mound crumbs. */
   id: number;
   /** HP left as a fraction of the most it has; below 1 shows the HP bar. */
   hpFrac: number;
   /** The arrival shield (§5.3, #8): what's left of it, or undefined for none. */
   shieldFrac?: number;
-  flying?: boolean;
   /** Combat rework (the Rhizomorph): tunnelling, so drawn as a moving mound. */
   burrowed?: boolean;
   /** The faction's glow (its mat's), for the Elder's aura and a mound's seam. */
@@ -88,10 +79,8 @@ export interface UnitSpriteOpts {
   /** The color-blind assist's team mark under the unit. */
   assist?: boolean;
   selected?: boolean;
-  /** The clock in ms, for the pulses, the bob and the crumbs. */
+  /** The clock in ms, for the pulses and the crumbs. */
   time: number;
-  /** Ambient motion holds still (`?test=1` or reduced motion), so a flyer doesn't bob. */
-  calm?: boolean;
   /** Opacity, for R2a's dimmed preview; 1 when unset. */
   alpha?: number;
 }
@@ -99,8 +88,7 @@ export interface UnitSpriteOpts {
 /**
  * One unit: its sprite at its foot point and its own size whatever its tier, with tier pips (and an
  * Elder's gold rim under the sprite), its shield ring, HP bar and selection box. A tunnelling Rhizomorph
- * is a mound; a flyer floats `FLY_LIFT` px above a shadow on the ground, bobbing a pixel unless ambient
- * motion holds still.
+ * is a mound.
  */
 export function drawUnitSprite(g: CanvasRenderingContext2D, atlas: Atlas, o: UnitSpriteOpts): void {
   const a = o.alpha ?? 1;
@@ -108,12 +96,10 @@ export function drawUnitSprite(g: CanvasRenderingContext2D, atlas: Atlas, o: Uni
   if (o.burrowed) { mound(g, o.x, o.y, o.side, o.id, o.glow, o.time, !!o.selected); g.globalAlpha = 1; return; }
   const r = atlas.get(o.sprite, o.faction, o.frame, o.flip);
   if (!r) { g.globalAlpha = 1; return; }
-  const bob = o.flying && !o.calm ? Math.floor(o.time / 320 + o.id) % 2 : 0;
-  const L = unitLayout(r, o.x, o.y, o.tier, { flying: o.flying, bob, damaged: o.hpFrac < 1, pip: atlas.get('i-pip', 'velvet-bloom', 0) });
+  const L = unitLayout(r, o.x, o.y, o.tier, { damaged: o.hpFrac < 1, pip: atlas.get('i-pip', 'velvet-bloom', 0) });
   const { body } = L;
   if (o.assist) teamMark(g, Math.round(o.x), Math.round(o.y), body.w, o.side);
-  if (o.flying) flyerShadow(g, o.x, o.y, body.w);
-  if (o.tier === 3) elderAura(g, o.x, o.y - L.lift, body.w, o.glow, o.time + o.id * 37, a);
+  if (o.tier === 3) elderAura(g, o.x, o.y, body.w, o.glow, o.time + o.id * 37, a);
   const rim = L.rim && atlas.rim(o.sprite, o.frame, o.flip);
   if (L.rim && rim) g.drawImage(atlas.canvas as CanvasImageSource, rim.x, rim.y, rim.w, rim.h, L.rim.x, L.rim.y, rim.w, rim.h);
   g.drawImage(atlas.canvas as CanvasImageSource, r.x, r.y, r.w, r.h, body.x, body.y, body.w, body.h);
@@ -157,16 +143,6 @@ export function teamMark(g: CanvasRenderingContext2D, cx: number, footY: number,
     g.fillStyle = '#b8c4a8';
     for (let x = x0 + 1; x < x1; x += 3) g.fillRect(x, footY + 2, 1, 1);
   }
-}
-
-/** Combat rework `flyers`: a soft dark oval on the ground under a flyer, where it really stands. */
-export function flyerShadow(g: CanvasRenderingContext2D, cx: number, footY: number, w: number): void {
-  const x = Math.round(cx), y = Math.round(footY);
-  const half = Math.max(3, Math.round(w * 0.3));
-  g.fillStyle = 'rgba(18, 10, 22, 0.4)';
-  g.fillRect(x - half, y - 1, half * 2, 2);
-  g.fillRect(x - half + 2, y - 2, half * 2 - 4, 1);
-  g.fillRect(x - half + 2, y + 1, half * 2 - 4, 1);
 }
 
 /** Combat rework (the Rhizomorph): a tunnelling unit is a mound of earth on the move, kicking up crumbs behind it. */

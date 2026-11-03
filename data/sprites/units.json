@@ -502,42 +502,6 @@
         "kdvvvvvvdk",
         ".kkkkkkkk."
       ]
-     ]},
-    {"id": "u-driftling", "w": 9, "h": 9, "anchor": [4, 8], "factionSwap": true, "palette": {".": null, "d": "#5a2f99", "k": "#1a1020", "l": "#c9a2ff", "v": "#8a4fd8"}, "shape": {"body": "small"},
-     "frames": [
-      [
-        "l.l.l.l.l",
-        ".l.lll.l.",
-        "..lllll..",
-        "....l....",
-        "...kkkk..",
-        "..kvlvvk.",
-        "..kvvvdk.",
-        "...kvdk..",
-        "....kk..."
-      ],
-      [
-        ".l.l.l.l.",
-        "l..lll..l",
-        "..lllll..",
-        "....l....",
-        "...kkkk..",
-        "..kvlvvk.",
-        "..kvvvdk.",
-        "...kvdk..",
-        "....kk..."
-      ],
-      [
-        "l.l.l.l.l",
-        ".l.lll.l.",
-        "..lllll..",
-        "....l....",
-        "...kkkk..",
-        "..kvlvvk.",
-        "...kvvvdk",
-        "....kvdk.",
-        ".....kk.."
-      ]
      ]}
   ]
 }

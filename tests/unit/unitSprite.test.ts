@@ -6,7 +6,7 @@ import type { SpriteDef } from '../../src/data/schema.ts';
 import type { Atlas } from '../../src/render/atlas.ts';
 import { atlasLayout, framePixels, regionKey, rimKey, rimPixels } from '../../src/render/compose.ts';
 import type { Region } from '../../src/render/compose.ts';
-import { FLY_LIFT, drawUnitSprite, emplacementSprite, unitLayout } from '../../src/render/unitSprite.ts';
+import { drawUnitSprite, emplacementSprite, unitLayout } from '../../src/render/unitSprite.ts';
 import type { Box } from '../../src/render/unitSprite.ts';
 import { nodeContent } from '../../tools/lib/content.ts';
 
@@ -53,16 +53,6 @@ describe('unitLayout', () => {
         if (tier === 3) expect(touch(L.pips[0]!, L.pips[1]!)).toBe(false);
       }
     }
-  });
-
-  it("a flyer's box is lifted by FLY_LIFT, plus its bob", () => {
-    const ground = unitLayout(capguard, 100, 60, 2, { damaged: true, pip: PIP });
-    const flyer = unitLayout(capguard, 100, 60, 2, { damaged: true, flying: true, pip: PIP });
-    expect(flyer.lift).toBe(FLY_LIFT);
-    expect(flyer.body).toEqual({ ...ground.body, y: ground.body.y - FLY_LIFT });
-    expect(flyer.pips.map((p) => p.y)).toEqual(ground.pips.map((p) => p.y - FLY_LIFT));
-    expect(flyer.bar!.y).toBe(ground.bar!.y - FLY_LIFT);
-    expect(unitLayout(capguard, 100, 60, 1, { flying: true, bob: 1 }).body.y).toBe(ground.body.y - FLY_LIFT - 1);
   });
 
   it('an Elder gets a rim box one pixel outside its body, and a Bloomed unit none', () => {
