@@ -2,12 +2,13 @@
 // doctrine, and what it did this round, read from its plan for the round (`ai.plans`, plan Call 12, A070), so the
 // panel survives later commands and a fast-forward to a round. There's no countdown: the general's army is on
 // the field before you plan, so v1's vague telegraph is retired (Appendix A). Its passive, for the panel's
-// tooltip, comes from content's words, flagged when rounds don't run it yet (plan Call 19). What the general
-// remembers about you joins the doctrine with the intel file (S15). It stands beside v1's `src/ui/doctrine.ts`.
+// tooltip, comes from content's words, flagged when rounds don't run it yet (plan Call 19). The doctrine is the
+// counter in force from its activation on (§7.4), or what the general remembers about you from the intel file
+// while its opening doctrine holds (§7.6). It stands beside v1's `src/ui/doctrine.ts`.
 import type { Content } from '../../data/registry.ts';
 import type { AiPlan, BattleState, CounterKind } from '../../sim/rounds/index.ts';
 
-export const KIND_LABEL: Record<CounterKind, string> = { swarm: 'SWARM', line: 'LINE', armor: 'ARMOR', elite: 'ELITE' };
+export const KIND_LABEL: Record<CounterKind, string> = { swarm: 'SWARM', line: 'LINE', armor: 'ARMOR', elite: 'ELITE', ranged: 'RANGED' };
 
 export interface Intent {
   /** The portrait's sprite, the name, and a general's title line ("Swarm and early aggression"). */
@@ -33,8 +34,12 @@ function grouped(content: Content, list: { building: string }[]): string[] {
 export function intentOf(content: Content, state: BattleState): Intent {
   const ctl = state.config.enemy.controller;
   const general = ctl.kind === 'general' ? content.generals[ctl.id] : undefined;
-  const plan = state.sides.enemy.ai?.plans.find((p) => p.round === state.round) ?? null;
-  const doctrine = plan?.counter ? `Countering ${KIND_LABEL[plan.counter]}`
+  const ai = state.sides.enemy.ai;
+  const plan = ai?.plans.find((p) => p.round === state.round) ?? null;
+  const inForce = ai?.counter?.history.at(-1);
+  const opening = ai?.counter?.opening && (ai.counter.opening.dual || !inForce) ? ai.counter.opening : undefined;
+  const doctrine = inForce ? `Countering ${KIND_LABEL[inForce.kind]}`
+    : opening ? `Remembers your ${opening.kinds.map((k) => KIND_LABEL[k]).join(' and ')}`
     : !general ? (ctl.kind === 'bot' ? 'No doctrine' : 'Idle')
       : !general.adaptive ? 'Scripted: never adapts'
         : state.config.flags.adaptiveGeneral ? 'Watching your army' : 'Adaptation off';

@@ -25,6 +25,10 @@ export interface PlanningView {
   /** The planner's knobs (§7.2, §7.3), and the Slayer share above which swarm merging goes off. */
   knobs: BalanceDef['rounds']['ai'];
   mergeOffSlayerShare: number;
+  /** The counter cycle's multipliers, noise and sells (§7.4, §7.6), which keep their v1 meaning (plan Call 1). */
+  counterKnobs: BalanceDef['ai']['counter'];
+  /** The damage matrix (§5.3), which the counter cycle reads for what beats the dominant armor. */
+  matrix: BattleState['rules']['matrix'];
   gold: number;
   kit: KitCard[];
   /** Its colony, in plot order, each plot with its building's id or 0. */
@@ -54,6 +58,8 @@ export function planningView(state: BattleState, side: Side): PlanningView {
     merging: state.config.flags.merging,
     knobs: bal.rounds.ai,
     mergeOffSlayerShare: bal.ai.mergeOffSlayerShare,
+    counterKnobs: bal.ai.counter,
+    matrix: state.rules.matrix,
     gold: ss.gold,
     kit: ss.kit.map((c) => ({ ...c })),
     ...colonyOf(state, side),

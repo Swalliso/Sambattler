@@ -701,7 +701,7 @@ S1 to S4: the data, the colony, the round state machine and the planning command
 
 **S15: the counter cycle, intel in a single battle, and X8's readouts**
 
-- [ ] T098 [US4] Add the counter-cycle cases to `tests/unit/rounds/ai.test.ts` (§7.4, §7.6, §15.7 AI) (A041, A051, A055, A056):
+- [x] T098 [US4] Add the counter-cycle cases to `tests/unit/rounds/ai.test.ts` (§7.4, §7.6, §15.7 AI) (A041, A051, A055, A056):
   - cycles at rounds 4 and 7, the boss also at 3, stored as `{round, from}`;
   - from hand-built records: Amanita reads Armor, Capguard Line, Sporelings Swarm, Gill Archers Ranged (#14);
   - eliteShare counts Elder units only, at their parts' base supply, with no swarm read (R2-Q3);
@@ -712,15 +712,17 @@ S1 to S4: the data, the colony, the round state machine and the planning command
   - with fewer than 2 free plots it sells up to 2 spawners outside the set, worst against the dominant armor, rearmost first, then the lower file, then the id, at 60%;
   - `generalPlanned.counter` and `ai.plans[round].counter` are set, and the state survives a snapshot round trip;
   - with `config.intel` set, the opening doctrine is ×2 and ×0.8 until the first activation, and the boss's dual doctrine is ×2.5 for the whole battle.
-- [ ] T099 [US4] Build the counter cycle in `src/sim/rounds/ai/counter.ts` (new), called from `planTurn`'s step 1 in `src/sim/rounds/ai/controller.ts` (§7.2, §7.4, §7.6) (A041, A051, A055, A056)
+- [x] T099 [US4] Build the counter cycle in `src/sim/rounds/ai/counter.ts` (new), called from `planTurn`'s step 1 in `src/sim/rounds/ai/controller.ts` (§7.2, §7.4, §7.6) (A041, A051, A055, A056)
   - The parts: the schedule, `analyzeFielded` (R2-Q3's reading), the scores with noise of ±0.03, activation, the missing answer, selling for room, and a record by round.
   - Also the opening doctrine from `config.intel` and the boss's dual doctrine. A single battle carries no intel unless a test sets it; R2-Q18's opener swap is R2b's.
   - The Anti-Ranged kind (#14): it scores `rangedShare`, with `swarm` spawners as its set.
-- [ ] T100 [US4] Add X8's readouts to `tools/lib/rounds/run.ts`'s summary: per round, the general's banked gold, its free plots, what it planted and sold, and whether the clash replayed the last one exactly (§7.2) (A049, A206)
-- [ ] T101 [US4] Add X8's two default-off knobs to `balance.rounds.ai` in `data/balance.json` (`leanToLastAnswer`, a light lean from round 2 toward the answer to last round's army; `replaceWhenFull`, which sells its lowest-weighted fielded spawner at 60% for a heavier card when the colony is full). Read both in `src/sim/rounds/ai/controller.ts`, with a case each in `tests/unit/rounds/ai.test.ts` (§7.2, §12.4) (A049)
+- [x] T100 [US4] Add X8's readouts to `tools/lib/rounds/run.ts`'s summary: per round, the general's banked gold, its free plots, what it planted and sold, and whether the clash replayed the last one exactly; and, on both sides, each side's free open plots and the gold it banked at Begin per round, and the first round its colony has no free open plot (§7.2) (A049, A206)
+  - The player's side was added after the rough playtest (the user, 2026-11-02): the late rounds felt empty once the colony was full, and these numbers feed S18's pace call and S21.
+- [x] T101 [US4] Add X8's two default-off knobs to `balance.rounds.ai` in `data/balance.json` (`leanToLastAnswer`, a light lean from round 2 toward the answer to last round's army; `replaceWhenFull`, which sells its lowest-weighted fielded spawner at 60% for a heavier card when the colony is full). Read both in `src/sim/rounds/ai/controller.ts`, with a case each in `tests/unit/rounds/ai.test.ts` (§7.2, §12.4) (A049)
   - Add its entry to `data/CHANGELOG-balance.md` in this PR. `balance.rounds` stays out of v1's library (Call 27), so v1's goldens don't move; if the round goldens move, refresh them with `npm run golden -- update` and say so in the commit.
-- [ ] T102 [US4] Show counters in `src/ui/rounds/doctrine.ts` and `src/app/rounds/phases/planning.ts`: "Countering SWARM" and "New: Capguard Hall" in the Intent panel, a counter callout in the activation round, and round 1's "The Gray Rot remembers your SWARM" when intel is set (§7.4, §7.5, §10.2)
-- [ ] T103 [US4] Add the adaptive round smoke to `tools/verify.ts`: `npm run sim -- --rounds --seeds 4..5 --player bot:mono:sporelingBurrow --enemy general:mother-mold --flags merging,adaptive --summary --assert rejectedCommands=0 --assert counters[0].round=4`, with `counters[0].kind` asserted as T098's cases read that army (R2-Q3) (§15.1, §7.4)
+- [x] T102 [US4] Show counters in `src/ui/rounds/doctrine.ts` and `src/app/rounds/phases/planning.ts`: "Countering SWARM" and "New: Capguard Hall" in the Intent panel, a counter callout in the activation round, and round 1's "The Gray Rot remembers your SWARM" when intel is set (§7.4, §7.5, §10.2)
+- [x] T103 [US4] Add the adaptive round smoke to `tools/verify.ts`: `npm run sim -- --rounds --seeds 4..5 --player bot:mono:sporelingBurrow --enemy general:mother-mold --flags merging,adaptive --summary --assert rejectedCommands=0 --assert counters[0].round=4`, with `counters[0].kind` asserted as T098's cases read that army (R2-Q3) (§15.1, §7.4)
+  - As built: `counters[0].kind=elite`. The mono Sporelings knit mostly into Elders (an Elite score of 0.90 against Swarm's 0.63 on both seeds), and Mold adds the Veilstalker Hollow as the missing answer.
 
 **Checkpoint:** the independent test passes; `npm run verify` is green; X8's readouts for 40 seeds against Mold and the Baron are in `docs/balance-backlog.md`.
 

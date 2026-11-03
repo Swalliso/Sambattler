@@ -6,16 +6,22 @@
 import type { BalanceDef, BuildingDef, ModifierDef, PowerDef, TriggerDef, UnitDef } from '../../data/schema.ts';
 import type { Slot } from '../formation.ts';
 import type {
-  Armor, BattleModifier, BuildingKind, CloudSpec, CloudState, CompiledTier, Controller, CounterKind, DamageType,
-  DraftPolicy, DraftPool, Effectiveness, IntelProfile, KnitState, MergePolicy, OpenDraft, PendingHit, PowerPolicy, Rng4, Side, Tier,
+  Armor, BattleModifier, BuildingKind, CloudSpec, CloudState, CompiledTier, Controller, DamageType,
+  DraftPolicy, DraftPool, Effectiveness, KnitState, MergePolicy, OpenDraft, PendingHit, PowerPolicy, Rng4, Side, Tier,
 } from '../state.ts';
 import type { ColonyPlot } from './colony.ts';
 
-export { COUNTER_KINDS, POWER_SOURCE_ID, SIDES, other } from '../state.ts';
+export { POWER_SOURCE_ID, SIDES, other } from '../state.ts';
 export type {
-  Armor, BattleModifier, BuildingKind, CloudSpec, CloudState, CompiledTier, Controller, CounterKind, DamageType,
-  DraftPolicy, DraftPool, Effectiveness, IntelProfile, KnitState, MergePolicy, OpenDraft, PendingHit, PowerPolicy, Rng4, Side, Tier,
+  Armor, BattleModifier, BuildingKind, CloudSpec, CloudState, CompiledTier, Controller, DamageType,
+  DraftPolicy, DraftPool, Effectiveness, KnitState, MergePolicy, OpenDraft, PendingHit, PowerPolicy, Rng4, Side, Tier,
 };
+
+/** The counter kinds in rounds (§7.4): v1's four, and Anti-Ranged (#14). */
+export type CounterKind = 'swarm' | 'line' | 'armor' | 'elite' | 'ranged';
+export const COUNTER_KINDS: readonly CounterKind[] = ['swarm', 'line', 'armor', 'elite', 'ranged'];
+/** An intel file (§7.6): a score per kind, built by the run (R2b). A kind it leaves out scores 0. */
+export type IntelProfile = Partial<Record<CounterKind, number>>;
 
 /** A kit card (§8.10): a building the side owns. R3 adds how many of it may stand at once. */
 export interface KitCard {
@@ -379,7 +385,33 @@ export interface AiPlan {
   sold: { building: string; plot: number }[];
   income: number;
   banked: number;
+  /** The counter that activated in this round's planning (§7.4), if one did. */
   counter?: CounterKind;
+}
+
+/** One counter the general activated (§7.4), a record by round for the Intent panel and the report. */
+export interface CounterRecord {
+  /** The round it activated in, the round of its analysis (#31). */
+  round: number;
+  /** The first round it read; it read up to the round before `round` (A051). */
+  from: number;
+  kind: CounterKind;
+  /** The kinds' scores before the noise. */
+  scores: Record<CounterKind, number>;
+  /** The answer it listed when it listed no card of the counter set. */
+  added?: string;
+  /** What it sold for room, by building id. */
+  sold: string[];
+}
+
+/** An adaptive general's counter cycle (§7.4, §7.6), with `flags.adaptiveGeneral` on. */
+export interface CounterState {
+  /** Its cycles in round order, each reading rounds `from` to `round` − 1: the boss's early one too (A051). */
+  cycles: { round: number; from: number }[];
+  /** The counters that activated, in order. The last is the doctrine in force until the next replaces it. */
+  history: CounterRecord[];
+  /** The opening doctrine from the intel file (§7.6): one kind until the first activation, or the boss's two for the whole battle. */
+  opening?: { kinds: CounterKind[]; dual: boolean };
 }
 
 /** A card an AI profile buys (§7.2): its doctrine weight, and its data limits as rounds read them (R2-Q6). */
@@ -394,8 +426,8 @@ export interface AiWeight {
 
 /**
  * An AI side's planning state (§7.1, §7.2): its profile, copied from `data/generals.json` or `data/bots.json`
- * so planning needs no content, the target it carries, and its plan per round. The counter cycle (T099) adds
- * its doctrine and schedule.
+ * so planning needs no content, the target it carries, its plan per round, and an adaptive general's counter
+ * cycle.
  */
 export interface AiState {
   profileId: string;
@@ -410,6 +442,7 @@ export interface AiState {
   target?: { building: string; round: number };
   /** One entry a round, so the Intent panel survives later commands and a fast-forward to a round. */
   plans: AiPlan[];
+  counter?: CounterState;
 }
 
 export interface SideState {
@@ -512,6 +545,7 @@ export type SimEvent =
   | { t: 'roundStarted'; round: number; stormBp: number }
   | { t: 'draftOpen'; side: Side; index: number }
   | { t: 'drafted'; side: Side; cardId: string | null; skipped: boolean }
+  /** `sold` by building id; `counter` when one activated in this planning (§7.4). */
   | { t: 'generalPlanned'; side: Side; planted: number[]; sold: string[]; counter?: CounterKind }
   // planning
   | { t: 'buildingPlanted'; id: number }

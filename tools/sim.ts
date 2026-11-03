@@ -11,7 +11,7 @@ import { checkAssert, parseAssert } from './lib/asserts.ts';
 import type { Assertion } from './lib/asserts.ts';
 import { MILESTONE, parseFlags } from '../src/sim/index.ts';
 import type { BattleConfig, Command, PowerPolicy } from '../src/sim/index.ts';
-import { runRoundBattle } from './lib/rounds/run.ts';
+import { paceLines, runRoundBattle } from './lib/rounds/run.ts';
 import type { RoundBattleResult, RoundRunSpec } from './lib/rounds/run.ts';
 import type { BattleConfig as RoundConfig, Command as RoundCommand, HeadlessUntil } from '../src/sim/rounds/index.ts';
 
@@ -297,6 +297,7 @@ export function printRoundSummary(results: RoundBattleResult[], maxRounds: numbe
   console.log(`rounds median ${median(rounds)} · min ${Math.min(...rounds)} · max ${Math.max(...rounds)} · reached round ${maxRounds} ${last} (${pct(last, n)})`);
   console.log(`clashes ${clashes.length} · at the cap ${capped} (${pct(capped, clashes.length)}) · length median ${clashes.length ? fmtTicks(median(clashes.map((c) => c.ticks))) : '-'}`);
   console.log(`mean wall ${(results.reduce((a, r) => a + r.wallMs, 0) / n).toFixed(0)} ms · rejected commands ${results.reduce((a, r) => a + r.rejectedCommands, 0)}`);
+  for (const l of paceLines(results)) console.log(l);
 }
 
 // ---- whole runs (SPEC §15.2 --run) ----
