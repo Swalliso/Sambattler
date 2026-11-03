@@ -1,15 +1,15 @@
 // G11's round budgets (SPEC §12.3, §13.7, §15.4; R2a/T113, A113), on the round bench's cases
 // (`tools/lib/rounds/bench.ts`, plan Call 24): a tick of bench-300's clash at 300 live units, the arrival of two
 // full colonies, the general's planning turn, one battle of rounds with bots on both sides, and the sim part of a
-// planning command. The tick and battle budgets are G11's in `data/balance-targets.json`; the arrival, the turn and
-// the planning command's are new in v2 and stay in `ROUND_BUDGETS` until T119 adds G11's round form to the
-// `rounds` block. The 4 ms Chromium figure for the whole command is `tests/browser/rounds/perf.test.ts`'s.
+// planning command. Every budget is G11's round form in `data/balance-targets.json`'s `rounds` block (T119): v1's
+// tick and battle budgets, and the arrival, the turn, the planning command and the full colony, new in v2. The
+// 4 ms Chromium figure for the whole command is `tests/browser/rounds/perf.test.ts`'s.
 import { describe, expect, it } from 'vitest';
 import { nodeContent } from '../../../tools/lib/content.ts';
-import { ROUND_BUDGETS, bench300, fullBattle, fullColonyClashes, generalTurns, planCommand } from '../../../tools/lib/rounds/bench.ts';
+import { bench300, fullBattle, fullColonyClashes, generalTurns, planCommand } from '../../../tools/lib/rounds/bench.ts';
 
 const content = nodeContent();
-const g = content.targets.G11;
+const g = content.targets.rounds.G11;
 
 describe("G11's round budgets (§13.7)", () => {
   it('a tick of bench-300 at 300 live units: mean ≤ 1.0 ms and p99 ≤ 2.5 ms, weighted by live units, peaking at 300', () => {
@@ -22,15 +22,15 @@ describe("G11's round budgets (§13.7)", () => {
 
   it('the arrival of two full colonies: ≤ 5 ms, with at most 150 live units a side', () => {
     for (const c of fullColonyClashes(content)) {
-      expect({ field: c.field, fits: c.units <= ROUND_BUDGETS.colonyUnits }).toEqual({ field: c.field, fits: true });
-      expect(c.arrivalMs, `${c.field}'s arrival`).toBeLessThanOrEqual(ROUND_BUDGETS.arrivalMs);
+      expect({ field: c.field, fits: c.units <= g.colonyUnits }).toEqual({ field: c.field, fits: true });
+      expect(c.arrivalMs, `${c.field}'s arrival`).toBeLessThanOrEqual(g.arrivalMs);
     }
   });
 
   it("the general's planning turn ≤ 20 ms", () => {
     const t = generalTurns(content, [1, 2, 3]);
     expect(t.turns).toBeGreaterThan(0);
-    expect(t.maxMs, `${t.worst.enemy}, seed ${t.worst.seed}, round ${t.worst.round}`).toBeLessThanOrEqual(ROUND_BUDGETS.generalTurnMs);
+    expect(t.maxMs, `${t.worst.enemy}, seed ${t.worst.seed}, round ${t.worst.round}`).toBeLessThanOrEqual(g.generalTurnMs);
   });
 
   it('one battle of rounds with bots on both sides ≤ 3 s', () => {
@@ -40,6 +40,6 @@ describe("G11's round budgets (§13.7)", () => {
   });
 
   it("a planning command's sim part, a plant then formationOf and mergePreview, under its Node budget", () => {
-    for (const c of planCommand(content, 50)) expect(c.maxMs, `${c.field}'s plant`).toBeLessThanOrEqual(ROUND_BUDGETS.planCommandMs);
+    for (const c of planCommand(content, 50)) expect(c.maxMs, `${c.field}'s plant`).toBeLessThanOrEqual(g.planCommandMs);
   });
 });

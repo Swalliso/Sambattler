@@ -16,6 +16,7 @@ else v1Bench();
 
 /** The cases in round form (§13.7, §15.4); R2b makes them the bench and removes `--rounds`. */
 function roundBench(): void {
+  const g = content.targets.rounds.G11;
   const r = runRoundBench(content, { quick });
   const ms = (x: number) => `${x.toFixed(3)} ms`;
   const within = (ok: boolean) => (ok ? 'within' : 'over');

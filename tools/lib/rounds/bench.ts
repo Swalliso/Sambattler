@@ -13,17 +13,6 @@ import type { BattleState, Content, Side } from '../../../src/sim/rounds/index.t
 import { FULL_COLONY } from '../clash.ts';
 import { buildRoundState, runRoundBattle } from './run.ts';
 
-/** §13.7's budgets that are new in v2, until T119 adds G11's round form to `data/balance-targets.json`'s `rounds` block. */
-export const ROUND_BUDGETS = {
-  /** A full colony: at most this many live units a side when the armies arrive (R1-Q5, #7). */
-  colonyUnits: FULL_COLONY.units,
-  /** The clash's first tick, both armies arriving (Node). */
-  arrivalMs: 5,
-  /** The general's planning turn (Node). */
-  generalTurnMs: 20,
-  /** The sim part of a planning command (Node, A113): half the whole command's 4 ms in Chromium, the rest the page's. */
-  planCommandMs: 2,
-} as const;
 
 /** Tick times: the mean, p95, p99 and the slowest. */
 export interface TickTimes {
@@ -182,8 +171,9 @@ function colonyClash(content: Content, field: ColonyField): FullColonyCase {
   const units = Math.max(...SIDES.map((s) => per(s).length)), supply = Math.max(...SIDES.map((s) => per(s).reduce((n, u) => n + u.supply, 0)));
   const squad = state.compiled.player.buildings[buildingId]!.squad!.count;
   const plots = def.sides.player.colony!.length;
-  const fits = units <= ROUND_BUDGETS.colonyUnits;
-  const levers = fits ? [] : [`squads of at most ${Math.floor(ROUND_BUDGETS.colonyUnits / plots)}`, `at most ${Math.floor(ROUND_BUDGETS.colonyUnits / squad)} plots`];
+  const budget = content.targets.rounds.G11.colonyUnits;
+  const fits = units <= budget;
+  const levers = fits ? [] : [`squads of at most ${Math.floor(budget / plots)}`, `at most ${Math.floor(budget / squad)} plots`];
   const times: number[] = [];
   let peak = state.units.length;
   pastMuster(state);
@@ -320,7 +310,7 @@ export interface RoundBench {
 
 /** Every case, `quick` with G11's quick ticks, one seed a general and fewer plants (verify's run, §15.1). */
 export function runRoundBench(content: Content, opts: { quick: boolean }): RoundBench {
-  const g = content.targets.G11;
+  const g = content.targets.rounds.G11;
   return {
     quick: opts.quick,
     bench: bench300(content, opts.quick ? g.quickTicks : g.benchTicks),
@@ -339,7 +329,7 @@ export const CI_GUARD = 3;
 
 /** G11's round checks (§13.7): each with whether it passed and its numbers against the budget, or against CI's guard under `process.env.CI`. */
 export function roundBenchChecks(content: Content, r: RoundBench): [string, boolean, string][] {
-  const g = content.targets.G11;
+  const g = content.targets.rounds.G11;
   const guard = process.env.CI ? CI_GUARD : 1;
   const ms = (x: number) => `${x.toFixed(3)} ms`;
   /** A timing within its budget, or within CI's guard, with the bound it was held to. */
@@ -357,10 +347,10 @@ export function roundBenchChecks(content: Content, r: RoundBench): [string, bool
     check('tick mean', r.bench.meanMs, g.tickMeanMs, `${ms(r.bench.meanMs)} at bench-300, weighted by live units`),
     check('tick p99', r.bench.p99Ms, g.tickP99Ms, ms(r.bench.p99Ms)),
     ['peak units', r.bench.peakUnits >= 300, `${r.bench.peakUnits} live (at least 300)`],
-    ['full colony', colony.fits, `${colony.units} live units a side on ${colony.field} (budget ${ROUND_BUDGETS.colonyUnits})`],
-    check('arrival', arrival.arrivalMs, ROUND_BUDGETS.arrivalMs, `${ms(arrival.arrivalMs)} on ${arrival.field}`),
-    check("general's turn", r.turns.maxMs, ROUND_BUDGETS.generalTurnMs, `${ms(r.turns.maxMs)} at most, ${w.enemy} seed ${w.seed} round ${w.round}`),
-    check('planning command', plan.maxMs, ROUND_BUDGETS.planCommandMs, `${ms(plan.maxMs)} at most on ${plan.field}, the sim part, a Node budget`),
+    ['full colony', colony.fits, `${colony.units} live units a side on ${colony.field} (budget ${g.colonyUnits})`],
+    check('arrival', arrival.arrivalMs, g.arrivalMs, `${ms(arrival.arrivalMs)} on ${arrival.field}`),
+    check("general's turn", r.turns.maxMs, g.generalTurnMs, `${ms(r.turns.maxMs)} at most, ${w.enemy} seed ${w.seed} round ${w.round}`),
+    check('planning command', plan.maxMs, g.planCommandMs, `${ms(plan.maxMs)} at most on ${plan.field}, the sim part, a Node budget`),
     check('full battle', r.battle.wallMs, g.battleWallMs, `${r.battle.wallMs} ms wall`),
   ];
 }

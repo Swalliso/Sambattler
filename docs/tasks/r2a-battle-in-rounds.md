@@ -801,12 +801,13 @@ S1 to S4: the data, the colony, the round state machine and the planning command
 
 **S18: the guardrails in round form**
 
-- [ ] T119 [US6] Add a `rounds` block to `data/balance-targets.json` and to `BalanceTargetsSchema` in `src/data/schema.ts`, with §12.3's numbers; v1's blocks stay (§12.3) ⛔ #35 (A107, A108)
+- [x] T119 [US6] Add a `rounds` block to `data/balance-targets.json` and to `BalanceTargetsSchema` in `src/data/schema.ts`, with §12.3's numbers; v1's blocks stay (§12.3) ⛔ #35 (A107, A108)
   - G1 {seeds, goldBudget, maxPairingWinShare 0.8, clearLossRatio 1.3}; G3 {seeds 50, maxMeanWinRate 0.55, maxMapWinRate 0.60}.
   - G4 {seeds 40, medianMinRounds 6, medianMaxRounds 8, maxRound9Share 0.15, botWinMin 0.3, botWinMax 0.7}.
   - G5 {bonusGold 150, 0.55–0.75}; G6 {scenario `comeback-r4`, equal max HP, both seats, minBehindWinRate 0.2, maxBehindWinRate per #35, winnerHitShare 0.5}.
   - G7 {Slayer share 0.25 read from `fielded`}; G8 {general lichen-baron, minDrop 0.2, balanced band per #35}; G11 (round form).
   - G12 {screenSeeds, confirmSeeds, top 3, minBuildMean 0.4, minAnswerRate 0.6}; G13 {maxCappedShare 0.15, clashSeconds [20, 40]}; G16 {minWinRate 0.6, pairs `roleSplit`}.
+  - As built (S18): the battle-level bands hold §12.3's first guesses until T125, G6's upper bound the first guess's 45%. G2 keeps v1's block (Kept, §12.3). G6 names its bot (`balanced`, in both seats), G8 its `policies` (`balanced`, `answer`), G7's Slayer check `slayer-rounds` and its merge-off twin (T123), and G16 10 seeds at the five budgets. G11's round form holds S17's `ROUND_BUDGETS`, which `tools/lib/rounds/bench.ts`, `tools/bench.ts` and `tests/slow/rounds/perf.test.ts` now read from it.
 - [ ] T120 [US6] Add the answer bot's case to `tests/unit/rounds/ai.test.ts`: shown a general army of mono Sporelings, `bot:answer` plants a Capguard Hall when its kit has one, and its plan follows the general's this round, not last round's (§7.1, §12.2, §18.2 #34) (A198)
 - [ ] T121 [US6] Build the answer policy in `src/sim/rounds/ai/answer.ts` (new), with `bot:answer` in `data/bots.json` and an optional `policy` in `BotSchema` (`src/data/schema.ts`) (§12.2, §18.2 #34) (A198)
   - It plans after the general, as every player-side bot does, and reads the general's current colony through `planningView` (T066). It scores each kit card by its unit's `matchupClass` (T084) against the general's planned squads, weighted by their supply, and leans ×3 toward the best.

@@ -8,6 +8,14 @@ replaces. None of it is open work, including headings that say "Open:". From mil
 entries measure or tune v2's round battle (SPEC §11, §12). "The backlog" in the entries below means
 v1's, now [archived](../docs/archive/v1/balance-backlog.md).
 
+## R2a-S18: the round guardrails' targets (2026-11-03)
+
+**Targets only so far. No golden moved**: neither v1's nor rounds' state reads `balance-targets.json`.
+- **`balance-targets.json` gets a `rounds` block** (R2a/T119, SPEC §12.3): G1, G3–G8, G11, G12, G13 and G16 in round form,
+  beside v1's blocks until R2b. The battle-level bands (G4, G6's two clauses, G8, G13, G16) are §12.3's first guesses
+  until the user sets them from T124's measurement (§18.2 #35, T125). G11's round form takes the arrival, turn,
+  planning-command and full-colony budgets S17 held in `tools/lib/rounds/bench.ts`.
+
 ## R2a-S15: X8's two knobs, both off (2026-11-03)
 
 **Data with no effect by default. v1's goldens didn't move**; the round golden `r2-balanced-vs-scripted-s1` was refreshed,
