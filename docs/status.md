@@ -30,7 +30,25 @@ Updated 2026-11-02, on `docs/r2a-s6-s7` (the hub's docs PR into `develop`). This
 ## Next session: R2a S8
 
 - **Work from** [docs/tasks/r2a-battle-in-rounds.md](tasks/r2a-battle-in-rounds.md).
-  - **S8** (`feature/r2a-economy`, T053–T057): opening a round in §14.6's order, income and the economy, stats per round and the summary. It starts US2, a whole battle headless. Its gate (S7b merged) is met, and it started on 2026-11-02.
+  - **S8** (`feature/r2a-economy`, T053–T057, [#84](https://github.com/Swalliso/Sambattler/pull/84)): built, and waiting for the hub's review. It starts US2, a whole battle headless.
+    - **Opening a round** (`openRound` in `round.ts`) follows §14.6's steps 1–7:
+      - it clears the field, pays the income from round 2, sets the storm and emits `roundStarted`;
+      - it fires `battleStart` in round 1, then `roundStart`;
+      - the general's turn and a player-side bot's turn stay hooks for T068 and T069, and the draft step is empty.
+    - **The economy** (`systems/economy.ts`):
+      - the stipend, and economy buildings at × 1.5 on loam;
+      - interest at 1 per 10 banked, up to 30, plus 10 for each Spore Exchange;
+      - +40 to the last round's loser, and nothing after a draw;
+      - `pendingGold`, paid once and then zeroed.
+
+      `incomePreview` is exported. A round scenario from round 2 on now has its income paid at its opening, so two older gold checks changed.
+    - **Stats per round** (`stats.ts`):
+      - each round's record closes into `RoundResult.stats`;
+      - `foldRounds` rebuilds the battle's figures from them;
+      - M6-Q1's feat stats are in.
+
+      `summarize` (`summary.ts`) gives §15.2's `roundLog`, `dealt` and the rest. The PR lists its readings for review.
+    - Verify and the browser tests are green, and no golden moved.
 - Then S9, once S8 has merged.
 
 ## R2a, a battle in rounds
