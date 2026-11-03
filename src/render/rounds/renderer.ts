@@ -3,12 +3,12 @@
 // never changes the sim. Layers, back to front: the terrain with both Heartcaps (baked); the colonies, each
 // side's mycelium under its open plots with their faint 2×2 grid, and closed plots as dark, unlit soil with a
 // small mark (plan Call 21, also baked); while a card is chosen, the free plots lit; the buildings, with their
-// "New" sprout in planning and the merge-off knot; in planning the formation preview (`preview.ts`), and in a
-// clash spore clouds and the units, sorted by y then id, through R4a's `drawUnitSprite` (an emplacement with its
-// `emplacementSprite`), posed by the aftermath (`aftermath.ts`) once the clash is over; projectiles; sparks,
-// puffs, merge pops and coin pops; the Sporestorm's haze; the aftermath's numbers; then the overlays: the lit
-// plot and slot, the matchup marks, the ghost and F3's debug. It stands beside v1's renderer until R2b moves
-// it to `src/render/`.
+// "New" sprout in planning (under `reveal=last` the general's from Begin, T127) and the merge-off knot; in
+// planning the formation preview (`preview.ts`), and in a clash spore clouds and the units, sorted by y then
+// id, through R4a's `drawUnitSprite` (an emplacement with its `emplacementSprite`), posed by the aftermath
+// (`aftermath.ts`) once the clash is over; projectiles; sparks, puffs, merge pops and coin pops; the
+// Sporestorm's haze; the aftermath's numbers; then the overlays: the lit plot and slot, the matchup marks, the
+// ghost and F3's debug. It stands beside v1's renderer until R2b moves it to `src/render/`.
 import type { Content } from '../../data/registry.ts';
 import { formationBox } from '../../sim/formation.ts';
 import { SIDES, formationOf } from '../../sim/rounds/index.ts';
@@ -264,7 +264,9 @@ export class RoundRenderer {
     g.drawImage(this.colonies, 0, 0);
     if (view.lit) this.drawLit(state.sides.player.plots, view.lit);
 
-    for (const b of state.buildings) {
+    // the preview says which buildings stand: under `reveal=last`, the general's as it fielded last round (T127)
+    if (planning) this.preview.update(state, view);
+    for (const b of this.preview.buildingsShown(state)) {
       const p = state.sides[b.side].plots[b.plot]!;
       const x = this.sx(p.col), y = p.row * TILE;
       this.drawSprite(g, this.content.buildings[b.buildingId]!.sprite, factionOf(b.side), this.still ? 0 : Math.floor(t / 600 + b.id) % 2, x, y);
@@ -274,15 +276,12 @@ export class RoundRenderer {
         g.strokeRect(x + 0.5, y + 0.5, 2 * TILE - 1, 2 * TILE - 1);
       }
       // the general's counters land as buildings with a "New" sprout, so you see them before you plan (§7.4, §10.4)
-      if (planning && b.plantedRound === state.round) sprout(g, x + 2, y + 2);
+      if (this.preview.sproutOn(state, b)) sprout(g, x + 2, y + 2);
       if (!b.mergeOn && state.compiled[b.side].buildings[b.buildingId]?.kind === 'spawner') knotOff(g, x + 2 * TILE - 9, y + 2 * TILE - 9, this.mat(b.side).glow);
     }
 
     const calm = this.calm();
-    if (planning) {
-      this.preview.update(state, view);
-      this.preview.drawSquads(g, state, this.toScreen, this.glowOf, this.assist, calm, t);
-    }
+    if (planning) this.preview.drawSquads(g, state, this.toScreen, this.glowOf, this.assist, calm, t);
     if (state.clouds?.length) this.drawClouds(state, t);
     const over = state.phase === 'aftermath' || state.phase === 'ended';
     if (over) this.aftermath.begin(state, view.aftermathMs, this.still || state.phase === 'ended' ? 'final' : calm ? 'calm' : 'full', t);

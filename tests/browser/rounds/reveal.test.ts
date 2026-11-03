@@ -11,6 +11,7 @@ import { roundStateForParams } from '../../../tools/lib/rounds/params.ts';
 import { formationOf, hashState } from '../../../src/sim/rounds/index.ts';
 import type { BattleState, SquadPlan } from '../../../src/sim/rounds/index.ts';
 import type { DrawnSquad, RoundsBridge } from '../../../src/app/rounds/bridge.ts';
+import { parseRoundParams } from '../../../src/app/rounds/urlParams.ts';
 import { closeServers, serve } from '../serve.ts';
 
 let browser: Browser | undefined;
@@ -107,20 +108,31 @@ describe('the "last fielded" view, reveal=last (§7.5, R2-Q1, T127)', () => {
 
   it('starts the clash from the general\'s real formation: its plantings take the field at Begin', async () => {
     const q = `${bot(1)}&round=2`;
-    const real = formationOf(node(`${q}&phase=planning`), 'enemy');
+    // the full reveal draws the real formation, as planning.test.ts checks against the clash's first tick
+    page = await open(`${q}&phase=planning`);
+    const real = (await preview(page)).enemy;
+    await page.close();
     const start = `${q}&phase=clash&ticks=0&paused=1`;
     page = await open(`${start}&reveal=last`);
     expect(await hashOf(page)).toBe(hashState(node(start)));
     const units = await page.evaluate(() => (window.__GAME__ as unknown as RoundsBridge).battle()!.units
-      .filter((u) => u.side === 'enemy' && u.tier === 1).map((u) => ({ x: u.x, y: u.y })));
+      .filter((u) => u.side === 'enemy').map((u) => ({ tier: u.tier, x: u.x, y: u.y })));
     expect(units.length).toBeGreaterThan(0);
-    const spots = real.flatMap((s) => s.units);
-    for (const u of units) expect(spots.some((s) => Math.abs(s.x - u.x) < 1e-9 && Math.abs(s.y - u.y) < 1e-9), `(${u.x}, ${u.y})`).toBe(true);
+    for (const u of units) {
+      // a base unit stands where its squad's slot puts it; a knit one where the muster put it (§5.6)
+      const spots = u.tier === 1 ? real.squads.flatMap((s) => s.units) : real.knits.filter((k) => k.tier === u.tier);
+      expect(spots.some((s) => Math.abs(s.x - u.x) < 1e-9 && Math.abs(s.y - u.y) < 1e-9), `tier ${u.tier} at (${u.x}, ${u.y})`).toBe(true);
+    }
+  });
+
+  it('refuses a reveal= it doesn\'t know, so a mistyped A/B doesn\'t show the full reveal unnoticed', () => {
+    expect(parseRoundParams('scene=rounds&reveal=lst').problems).toEqual(['reveal=lst isn\'t last or full']);
+    expect(parseRoundParams('scene=rounds&reveal=full')).toMatchObject({ reveal: null, problems: [] });
   });
 
   it('moves no hash: general-plans-first hashes equal in both modes, in round 2\'s planning and at its Begin', async () => {
     for (const at of ['round=2&phase=planning', 'round=2&phase=clash&ticks=0&paused=1']) {
-      const q = `scene=rounds&scenario=general-plans-first&test=1&${at}`;
+      const q = `scene=rounds&scenario=general-plans-first&seed=1&test=1&${at}`;
       page = await open(q);
       const full = await hashOf(page);
       await page.close();

@@ -12,6 +12,7 @@
 import type { Content } from '../../data/registry.ts';
 import type { Atlas } from '../../render/atlas.ts';
 import { FieldFrame } from '../../render/frame.ts';
+import type { Reveal } from '../../render/rounds/preview.ts';
 import { RoundRenderer, STRIP, TILE } from '../../render/rounds/renderer.ts';
 import { createBattle as createV1Battle, makeConfig, parseController } from '../../sim/index.ts';
 import type { BattleState as V1State } from '../../sim/index.ts';
@@ -31,6 +32,7 @@ import { RoundTally } from '../../ui/rounds/hud/tally.ts';
 import { RoundTray } from '../../ui/rounds/hud/tray.ts';
 import { RoundCombatLog, RoundInspect } from '../../ui/rounds/inspect.ts';
 import { roundsReport } from '../../ui/rounds/report.ts';
+import type { PlayTimeReadout } from '../../ui/rounds/report.ts';
 import { loadSettings, onSettings, settingsStore } from '../settings.ts';
 import { soundPrefs } from '../sound.ts';
 import { resultBanner } from './phases/aftermath.ts';
@@ -53,6 +55,8 @@ export interface RoundViewActions {
   /** The report's buttons: the same seed, or a new one, on the same parameters (§10.4). */
   again(): void;
   rematch(): void;
+  /** The play clock's readout, which the report shows (X6, T128). */
+  playTime?(): PlayTimeReadout;
 }
 
 /**
@@ -117,12 +121,16 @@ export class RoundsView {
   private unsubscribe: () => void;
   scale = 1;
 
-  /** @param still ambient motion holds still (`?test=1`), so captures and browser tests are stable */
-  constructor(private session: RoundSession, private content: Content, private atlas: Atlas, private actions: RoundViewActions, still = false) {
+  /**
+   * @param still ambient motion holds still (`?test=1`), so captures and browser tests are stable
+   * @param reveal how the general shows from round 2 (`reveal=`, §7.5, T127)
+   */
+  constructor(private session: RoundSession, private content: Content, private atlas: Atlas, private actions: RoundViewActions, still = false, reveal: Reveal = 'full') {
     const state = session.state;
     this.canvas = h('canvas', { id: 'battlefield', 'aria-label': 'Battlefield' });
     this.renderer = new RoundRenderer(this.canvas, content, atlas, state);
     this.renderer.still = still;
+    this.renderer.preview.reveal = reveal;
     this.frameArt = new FieldFrame(content, atlas, this.renderer.width, this.renderer.height, still);
     const settings = loadSettings();
     this.renderer.damageNumbers = settings.damageNumbers;
@@ -138,7 +146,7 @@ export class RoundsView {
     this.mounts.callouts.style.display = 'contents';
     this.mounts.callouts.append(this.callouts.el);
     // the aftermath's drain holds while Help or the settings screen is open, as the loop's aftermath does
-    const hud = this.hud = hudContext(content, atlas, () => (session.overlayOpen ? 0 : session.speed), still);
+    const hud = this.hud = hudContext(content, atlas, () => (session.overlayOpen ? 0 : session.speed), still, reveal);
     this.topBand = new TopBand(this.mounts.top, hud, state);
     this.bands.push(this.topBand);
     this.bands.push(new RoundTally(this.mounts.tally, hud, state));
@@ -429,7 +437,7 @@ export class RoundsView {
     if (this.help) this.toggleHelp();
     if (this.settingsShown) closeSettings();
     this.session.placing = null;
-    const report = roundsReport(this.content, state, { again: this.actions.again, rematch: this.actions.rematch }, this.atlas);
+    const report = roundsReport(this.content, state, { again: this.actions.again, rematch: this.actions.rematch }, this.atlas, this.actions.playTime?.());
     this.report = report;
     sporeWipe(() => { if (this.report === report) document.body.append(report); });
   }

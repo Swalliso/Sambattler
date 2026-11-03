@@ -42,7 +42,7 @@ export interface RoundParams {
   targeting: boolean;
   /** `measure=frames` records frame times into the bridge (T115). */
   measure: 'frames' | null;
-  /** `reveal=last` draws the general's colony as it fielded last round (T127). */
+  /** `reveal=last` draws the general's colony and squads as it fielded last round, from round 2 (§7.5, T127); `full`, the default, is null. */
   reveal: 'last' | null;
   /** Values the preview can't open, each refused with a message. */
   problems: string[];
@@ -60,6 +60,9 @@ export function parseRoundParams(search: string | URLSearchParams): RoundParams 
   };
   const phase = q.get('phase');
   if (phase !== null && !PHASES.includes(phase as RoundPhase)) problems.push(`phase=${phase} isn't one of ${PHASES.join(', ')}`);
+  // a mistyped A/B would show the full reveal unnoticed (R2-Q1)
+  const reveal = q.get('reveal');
+  if (reveal !== null && reveal !== 'last' && reveal !== 'full') problems.push(`reveal=${reveal} isn't last or full`);
   const flagList = q.get('flags');
   const parsed = parseFlags(flagList ?? PREVIEW_DEFAULTS.flags);
   problems.push(...parsed.problems);
@@ -81,7 +84,7 @@ export function parseRoundParams(search: string | URLSearchParams): RoundParams 
     debug: q.get('debug') === '1',
     targeting: q.get('targeting') === '1',
     measure: q.get('measure') === 'frames' ? 'frames' : null,
-    reveal: q.get('reveal') === 'last' ? 'last' : null,
+    reveal: reveal === 'last' ? 'last' : null,
     problems,
   };
 }
