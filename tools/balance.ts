@@ -52,7 +52,7 @@ if (mode === 'duel') {
   const ids = spawnerIds(content);
   matrix('Squad duels (equal gold on one building, one round clash)', d.squad, ids, (o) => (o.valueA + 1) / (o.valueB + 1));
   matrix(`Supply duels (${armySupply || content.targets.G2.supply} supply each, one round clash)`, d.supply,
-    ids.map((id) => content.buildings[id]!.spawn!.unit), (o) => (o.valueA + 0.01) / (o.valueB + 0.01));
+    ids.map((id) => content.buildings[id]!.squad!.unit), (o) => (o.valueA + 0.01) / (o.valueB + 0.01));
   const lines = duelLines(content, d);
   md.push('## Readings', '', ...lines.map((l) => `- ${l}`), '');
   for (const l of lines) console.log(l);

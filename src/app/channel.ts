@@ -2,6 +2,7 @@
 // `npm run build:dev`, served from /Sambattler/dev/). Both sites are on the swalliso.github.io
 // origin, so they share localStorage: every storage key goes through storageKey() so a dev build
 // can never resume or overwrite a saved run on the game.
+import { unknownPresets } from '../data/proto.ts';
 
 export const DEV_SITE = import.meta.env.MODE === 'develop';
 
@@ -13,6 +14,7 @@ export const storageKey = (key: string): string => (DEV_SITE ? `dev/${key}` : ke
 
 /**
  * Where a prototype run (`?proto=`) saves: on the dev site, under keys of its own for each spec, so it
- * never resumes or overwrites the real save or another prototype's run. The game never saves one (null).
+ * never resumes or overwrites the real save or another prototype's run. The game never saves one (null), and
+ * nor does a spec naming a preset that doesn't exist, such as a retired one, which the page says (A117).
  */
-export const protoSpace = (proto: string): string | null => (DEV_SITE ? `proto=${proto}/` : null);
+export const protoSpace = (proto: string): string | null => (DEV_SITE && unknownPresets(proto).length === 0 ? `proto=${proto}/` : null);

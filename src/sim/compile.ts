@@ -241,14 +241,14 @@ function compileTier(lib: Library, u: LibraryUnit, tier: Tier, mods: readonly Mo
  */
 function compileEmplacement(lib: Library, id: string, mods: readonly ModifierDef[]): CompiledUnit {
   const b = lib.buildings[id]!;
-  const a = b.attack;
-  if (!a) throw new Error(`tower ${id} has no attack`);
+  const a = b.attack, hp = b.hp;
+  if (!a || hp === undefined) throw new Error(`tower ${id} has no attack or no hp`);
   const bal = lib.balance;
   const m = (stat: string, base: number) => resolveStat(base, mods, stat, buildingMatcher(lib, id));
   const clouds = !!bal.sporeCloud?.buildings.includes(id);
   const range = m('tower.range', clouds && bal.sporeCloud!.range !== undefined ? bal.sporeCloud!.range : a.range);
   const tier = (): CompiledTier => ({
-    hp: b.hp, damage: m('tower.damage', a.damage), attackTicks: Math.max(1, secToTicks(a.interval, bal.tickRate)), range,
+    hp, damage: m('tower.damage', a.damage), attackTicks: Math.max(1, secToTicks(a.interval, bal.tickRate)), range,
     speedPerTick: 0, radius: MAX_RADIUS, splashRadius: m('tower.splashRadius', a.splashRadius ?? 0), slayerMult: 1,
     resist: { slash: 1, pierce: 1, crush: 1 }, supply: 0, siegeMult: 1, healAmount: 0, healTicks: 0, healTargets: 0, regenPct: 0,
   });

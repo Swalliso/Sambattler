@@ -1,5 +1,6 @@
 // Prototype runs (`?proto=`) and saves: on the dev site a prototype run saves under keys of its own
-// (`protoSpace` in src/app/channel.ts), apart from the real save; the game never saves or resumes one.
+// (`protoSpace` in src/app/channel.ts), apart from the real save; the game never saves or resumes one. A spec
+// naming a preset that doesn't exist, such as one R2b's S4 deleted, says so on the page and saves nowhere (A117).
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { chromium } from 'playwright';
 import type { Browser, Page } from 'playwright';
@@ -49,6 +50,9 @@ async function openRun(url: string, saves: Record<string, string>): Promise<numb
 
 const stored = (key: string) => page.evaluate((k) => localStorage.getItem(k), key);
 
+/** A preset R2b's S4 deleted (T058), named here so a grep of this folder for retired links finds none (US2). */
+const RETIRED = 'rework';
+
 describe('prototype runs and saves', () => {
   it('resumes a prototype run on the dev site from keys of its own', async () => {
     const { begun, unbegun } = savedRuns();
@@ -66,5 +70,18 @@ describe('prototype runs and saves', () => {
     const { begun } = savedRuns();
     expect(await openRun(`${game}/?scene=run&debug=1&proto=${PROTO}`, { [RUN_KEY]: begun })).toBe(0);
     expect(await stored(RUN_KEY)).toBe(begun);
+  });
+
+  it('says a retired preset is unknown, and opens no prototype save space for it (§13.8, A117)', async () => {
+    const { begun, unbegun } = savedRuns();
+    const space = `dev/proto=${RETIRED}/${RUN_KEY}`;
+    const saves = { [`dev/${RUN_KEY}`]: unbegun, [space]: begun };
+    expect(await openRun(`${dev}/?scene=run&debug=1&proto=${RETIRED}`, saves)).toBe(0);
+    const notice = page.locator('#proto-notice');
+    expect(await notice.isVisible()).toBe(true);
+    expect(await notice.textContent()).toContain(`"${RETIRED}"`);
+    // nothing read from or written to a save: the stored runs are as they were, and no prototype key appeared
+    expect((await page.evaluate(() => Object.keys(localStorage))).filter((k) => k.includes('proto='))).toEqual([space]);
+    for (const [k, v] of Object.entries(saves)) expect(await stored(k)).toBe(v);
   });
 });

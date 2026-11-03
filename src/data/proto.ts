@@ -1,107 +1,26 @@
-// Prototype knobs (`?proto=`, `--proto`). v1's presets and their results are in docs/archive/v1/balance-backlog.md;
-// log new v2 knobs in docs/balance-backlog.md. Which pieces SPEC v2 keeps or retires: SPEC §1.3 #11, §13.4, Appendix A.
-// Named presets and `path:value` overrides
-// applied to the raw balance.json before validation, so a prototype can be measured by the tools
-// (`--proto`) or playtested in the browser (`?proto=`) without editing data. Every knob here is absent
-// from balance.json by default, so without a spec the rules are unchanged. R1's chosen set (pinning, the
-// Mortar's spore clouds, cleave, the Burster and the Rhizomorph) is default data since R2a S1, and its
-// presets are gone; `rework` still builds on the constants below until R2b deletes it.
+// Prototype knobs (`?proto=`, `--proto`): named presets and `path:value` overrides applied to the raw content
+// before validation, so a knob can be measured by the tools (`--proto`) or playtested in the browser (`?proto=`)
+// without editing data. Every knob here is absent from balance.json by default, so without a spec the rules are
+// unchanged. Since R2b's S4 the presets are the agreed list (SPEC §16 R2, A109): A2 and B3, which tune systems
+// that stay, the flyers, for the later flyer (§1.3 #11), and lives at the boss, for R2b's playtest (#16). R1's
+// chosen set and the arrival shield are default data since R2a, and the presets of retired systems are gone
+// (Appendix A); a spec that names one reports it as unknown (A117). Log new knobs in docs/balance-backlog.md.
 import type { RawContent } from './registry.ts';
 
 type Json = Record<string, unknown>;
 
-// ---- the combat rework's settings (docs/archive/v1/ideas/combat-rework.md, P1 to P1d); `rework` is P2's package ----
-
-/** Pinned: a ranged unit with an enemy unit within 1 tile attacks at 0.35× its rate (default data since R2a). */
-const PINNED: Json = { pinned: { radius: 1, rateMult: 0.35 } };
-/** Call for help: friendly units within 5 tiles of a unit or building that takes damage, and have no target, take the attacker. */
-const CALL_FOR_HELP: Json = { callForHelp: { radius: 5 } };
 /**
- * The Rhizomorph: a burrowing unit (the `burrow` tag) and its spawner, in both rosters. Default data
- * since R2a, where bots and generals weigh it (R2-Q5); this copy matches the data.
- */
-const RHIZOMORPH: Json = {
-  'unit.rhizomorph': {
-    name: 'Rhizomorph', sprite: 'u-rhizomorph', milestone: 5,
-    hp: 140, armor: 'medium', damage: 16, damageType: 'slash', attackInterval: 1.0,
-    range: 0.5, projectileSpeed: 0, speed: 1.2, supply: 2, aggroRange: 4, radius: 0.3,
-    tags: ['burrow'], mergePerks: { 2: { speedMult: 1.1 }, 3: { damageMult: 1.1 } },
-  },
-  'building.rhizomorphTunnel': {
-    name: 'Rhizomorph Tunnel', sprite: 'b-rhizomorphTunnel', milestone: 5, rarity: 'uncommon',
-    description: 'Rhizomorphs tunnel under the front line and surface beside the archers or spawners behind it.',
-    kind: 'spawner', footprint: { w: 2, h: 2 }, cost: 160, hp: 450,
-    spawn: { unit: 'rhizomorph', count: 1, interval: 18 }, squad: { unit: 'rhizomorph', count: 3 },
-  },
-  'faction.velvet-bloom.buildings+': 'rhizomorphTunnel',
-  'faction.gray-rot.buildings+': 'rhizomorphTunnel',
-};
-
-/**
- * Waves: spawns wait inside their building and both sides' waves set out on a 20 s beat, spawners
- * behind a lane's front one leaving early so the wave passes it together; a wave marches at its
- * slowest unit's pace with ranged units 1 tile behind their melee front. Hold keeps a lane's wave
- * home for one beat at a time, and the AI never holds.
- */
-const WAVES: Json = { waves: { beatSeconds: 20, rangedGap: 1, matchPace: true } };
-/**
- * Mixed waves (P1b, needs waves): a lane's wave of 2 or more unit types sets out with shields of 20% of
- * each unit's max HP. P1b started at 3 types; P1c measured 2 against 3 and kept 2, which helped
- * `bot:balanced` more in G3.
- */
-const MIXED_WAVE: Json = { mixedWave: { minTypes: 2, shieldFrac: 0.2 } };
-
-/**
- * The Burster (P1c; a working name): a fast 1-supply unit with no attack. It rolls at the thickest
- * knot of enemy units in its aggro range and bursts on reaching it or on dying: 40 damage, ignoring
- * armor, to every enemy unit within 1.5 tiles, and a spore cloud there (1.5 tiles, 4 s, 10 a second).
- * Its Burster Pod costs 130 and makes one every 10 s. Default data since R2a, where bots and generals
- * weigh it (R2-Q5); this copy matches the data.
- */
-const BURSTER: Json = {
-  burst: { cloud: { radius: 1.5, seconds: 4, damagePerSecond: 10 } },
-  'unit.burster': {
-    name: 'Burster', sprite: 'u-burster', milestone: 5,
-    hp: 50, armor: 'light', damage: 40, damageType: 'crush', attackInterval: 1.0,
-    range: 0.3, projectileSpeed: 0, speed: 1.6, supply: 1, aggroRange: 5, radius: 0.3, splashRadius: 1.5,
-    tags: ['burst'], mergePerks: { 2: { hpMult: 1.1 }, 3: { hpMult: 1.2 } },
-  },
-  'building.bursterPod': {
-    name: 'Burster Pod', sprite: 'b-bursterPod', milestone: 5, rarity: 'uncommon',
-    description: 'Bursters roll at the thickest knot of enemy units and burst: damage through any armor, and a spore cloud.',
-    kind: 'spawner', footprint: { w: 2, h: 2 }, cost: 130, hp: 450,
-    spawn: { unit: 'burster', count: 1, interval: 10 }, squad: { unit: 'burster', count: 6 },
-  },
-  'faction.velvet-bloom.buildings+': 'bursterPod',
-  'faction.gray-rot.buildings+': 'bursterPod',
-};
-
-/** The Elder Sporeling's splash perk, off under `rework` (P1d): under waves it is area damage the swarm brings in numbers. */
-const NO_ELDER_SPLASH: Json = { 'unit.sporeling.mergePerks.3.splashRadius': null };
-/**
- * A storm that grows waves (P1d, needs waves): each Sporestorm stack makes both sides' waves 20%
- * bigger, ×2 at five stacks (8:00), like Clash Royale's double elixir.
- */
-const STORM_WAVES: Json = { stormWaves: { perStack: 0.2 } };
-/**
- * The general's swarm read (after P2): an adaptive general reads a 1-supply unit's spawner by its
- * armor, whether or not its units merge. Under waves nearly every cheap unit merges, and the counter
- * cycle read a merged Sporeling swarm as Elite in 155 of 199 reads (SPEC §7.4 means a merging swarm to).
- */
-const SWARM_READ: Json = { 'ai.counter.swarmMaxSupply': 1 };
-/**
- * Flyers (docs/archive/v1/ideas/flyers.md; working names): the Driftling floats over ground units and holds no
- * ground. Every unit can hit it, melee at ×0.5, but the Mortar's lobbed shell and the Burster's burst
- * never can. That's the design's rule C, which the user took for the playtest on 2026-10-31 after
- * mono Drift Stalk took over G3 under the design's first pick, reach (only ranged units, turrets,
- * other flyers, clouds, commander powers and melee types of 2 or more supply):
- * `flying.reachSupply:2,flying.meleeMult:1` brings reach back.
- * Its Drift Stalk costs 160 and makes two every 18 s. The bots and generals that weigh the Tunnel and the
- * Pod in data buy it at weight 1 (every data bot and every general, R2-Q5); mono bots and the counter
- * check's test bots don't.
+ * Flyers (docs/archive/v1/ideas/flyers.md; working names): the Driftling floats over ground units. Every unit
+ * can hit it, melee at ×0.5, but the Mortar's lobbed shell and the Burster's burst never can: the design's
+ * rule C (§5.3), which the user took for the playtest on 2026-10-31 after mono Drift Stalk took over G3 under
+ * the design's first pick, reach (only ranged units, other flyers, clouds, commander powers and melee types of
+ * 2 or more supply): `flying.reachSupply:2,flying.meleeMult:1` brings reach back. The round sim has no flyer
+ * rules yet, so in a battle Driftlings fight as ground units. The Drift Stalk is in squad form (§11.2): it costs
+ * 160 and fields a squad of 6 Driftlings a round. Every data bot and every general buys it at weight 1, as the
+ * Tunnel and the Pod (R2-Q5); mono bots and the counter check's test bots don't.
  */
 const FLYERS: Json = {
-  flying: { reachSupply: 1, meleeMult: 0.5, mergedReach: false, cloudsReach: true, holdsGround: false },
+  flying: { reachSupply: 1, meleeMult: 0.5, mergedReach: false, cloudsReach: true },
   'unit.driftling': {
     name: 'Driftling', sprite: 'u-driftling', milestone: 5,
     hp: 70, armor: 'light', damage: 8, damageType: 'slash', attackInterval: 1.0,
@@ -110,9 +29,8 @@ const FLYERS: Json = {
   },
   'building.driftStalk': {
     name: 'Drift Stalk', sprite: 'b-driftStalk', milestone: 5, rarity: 'uncommon',
-    description: "Driftlings float over the front and hold no ground. Melee hits them for half damage, and lobbed shells and bursts can't hit them.",
-    kind: 'spawner', footprint: { w: 2, h: 2 }, cost: 160, hp: 450,
-    spawn: { unit: 'driftling', count: 2, interval: 18 }, squad: { unit: 'driftling', count: 6 },
+    description: "Driftlings float over the front. Melee hits them for half damage, and lobbed shells and bursts can't hit them.",
+    kind: 'spawner', footprint: { w: 2, h: 2 }, cost: 160, squad: { unit: 'driftling', count: 6 },
   },
   'faction.velvet-bloom.buildings+': 'driftStalk',
   'faction.gray-rot.buildings+': 'driftStalk',
@@ -122,113 +40,20 @@ const FLYERS: Json = {
   ].map((path) => [path, 1])),
 };
 
-/** Presets: the settings each prototype was measured with (see the backlog's results tables). */
+/** Presets: the settings each knob is measured with (see the backlog's results tables). */
 export const PROTO_PRESETS: Record<string, Json> = {
-  /** B1: Sporelings sprint at enemy units they close on, then wait out a cooldown. */
-  b1: { approachRush: { units: ['sporeling'], speedMult: 3, seconds: 1.5, cooldownSeconds: 8 } },
-  /** A2: counter-set buildings get base weight ≥ 1 while their counter is active. */
+  /** A2: counter-set buildings get base weight ≥ 1 while their counter is active. No battle in rounds reads it yet. */
   a2: { 'ai.counter.counterFloorWeight': 1 },
-  /** A3: the first counter cycle analyses at 1:30 and activates at 3:30. */
-  a3: { 'ai.counter.cycles': [{ analyzeSeconds: 90, activeSeconds: 210 }, { analyzeSeconds: 300, activeSeconds: 420 }] },
-  /** B3: a ranged shot deals half damage behind two friendly ranged units in its line of fire. */
+  /** B3: a ranged shot deals half damage behind two friendly ranged units in its line of fire. No battle in rounds reads it yet. */
   b3: { firingCongestion: { freeRanks: 2, corridorHalfWidth: 0.6, blockedDamageMult: 0.5 } },
-  /** B4: units wither 90 s after spawning (merged units start a fresh lifespan). */
-  b4: { unitLifespan: { seconds: 90 } },
-  /** Rules without E1 Hold / Advance (adopted 2026-10-28), for measuring against the old default. */
-  nohold: { laneStance: null },
-  /**
-   * E1 (engagement review): per-lane Hold / Advance, the shipped default since 2026-10-28. Held units rally in the middle of the column
-   * behind the border column, so their spacing never spills into the frontier; holds last up to
-   * 30 s, then a 10 s cooldown. Every AI side musters: it holds until 12 supply stands in the lane,
-   * then advances, and holds again below 4.
-   */
-  hold: {
-    laneStance: { rallyBack: 1.5, maxHoldSeconds: 30, cooldownSeconds: 10, ai: { musterSupply: 12, spentSupply: 4 } },
-  },
-  /** T1: a new ranged spawner waits a full interval for its first unit (others keep half). */
-  t1: { rangedFirstSpawnFraction: 1 },
-  /** T2: melee units outnumbered near their target fall back toward home for up to 10 s. */
-  t2: { fallBack: { radius: 5, ratio: 1, maxHoldSeconds: 10 } },
-  /** Diver (step A): Veilstalkers prefer ranged units and see them from 2 tiles farther. */
-  diver: { diveRanged: { units: ['veilstalker'], aggroAdd: 2 } },
-  /** Diver with a burst: Veilstalkers also sprint at ×2.5 for 1.5 s onto a ranged target, every 8 s at most. */
-  diverleap: { diveRanged: { units: ['veilstalker'], aggroAdd: 2, burst: { speedMult: 2.5, seconds: 1.5, cooldownSeconds: 8 } } },
+  /** Flyers (above), for the later flyer (§1.3 #11). */
+  flyers: FLYERS,
   /** Lives left count at the boss (§8.5, #16): +250 to your boss battle's Heartcap for each life left. For R2b's playtest. */
   bosslives: { livesAtBoss: { heartcapPerLife: 250 } },
-  /** Hot start (step B): a free draft at deploy, and a general on ¾ income in battle 1 of a run. */
-  hotstart: {
-    hotStart: {
-      deployDraft: {},
-      battles: [{ enemy: { modifiers: [{ stat: 'side.stipend', op: 'mul', value: 0.75 }] } }],
-    },
-  },
-  /**
-   * Heartcap breach (step B): at ⅔ HP a breach (a defensive pulse in the lane, 10 s of half damage
-   * taken, +150 gold); at ⅓ a last stand (another pulse, 20 s of quarter damage, the commander power
-   * ready, +150 gold). The Sporestorm adds +10% Heartcap damage per stack instead of +20%.
-   */
-  breach: {
-    sideTriggers: [
-      {
-        on: 'heartcapBreach', at: 0.67,
-        do: [{ explode: { damage: 150, damageType: 'crush', radius: 4 } }, { shieldHeartcap: { seconds: 10, takenMult: 0.5 } }, { gainGold: 150 }],
-      },
-      {
-        on: 'heartcapBreach', at: 0.33,
-        do: [
-          { explode: { damage: 150, damageType: 'crush', radius: 4 } }, { shieldHeartcap: { seconds: 20, takenMult: 0.25 } }, { readyPower: true },
-          { gainGold: 150 },
-        ],
-      },
-    ],
-    'sporestorm.heartcapTakenPerStack': 0.1,
-  },
-  /** Bigger drafts (step B): drafts after waves 2 and 5 instead of 2, 4, 6 and 8; take 2 of 4 cards, +10 rare. */
-  bigdrafts: { draftWaves: [2, 5], 'draft.cards': 4, bigDrafts: { picks: 2, rareBonus: 10 } },
-  /** T3: home-column spawners shoot the nearest enemy unit within 6 tiles (12 Pierce per second). */
-  t3: { spawnerDefense: { damage: 12, damageType: 'pierce', interval: 1, range: 6, projectileSpeed: 12, homeOnly: true } },
-  // the combat rework (above); its pieces in R1's chosen set are default data since R2a
-  callforhelp: CALL_FOR_HELP,
-  waves: WAVES,
-  /** Mixed waves on top of waves (mixedWave means nothing without them). */
-  mixedwave: { ...WAVES, ...MIXED_WAVE },
-  stormwaves: STORM_WAVES,
-  swarmread: SWARM_READ,
-  flyers: FLYERS,
-  /**
-   * The combat rework's package for the P3 playtest: P2's (P1d's base plus the storm that grows waves),
-   * the general's swarm read and flyers. Pinned, call for help, the Rhizomorph, waves on a 20 s beat with
-   * mixed waves at two types, the Burster (whose bursts leave clouds), the Elder Sporeling's splash off,
-   * `stormwaves`, `swarmread` and `flyers`. P3 played it without the Mortar's clouds and cleave; since
-   * R2a they're default data, so they apply under it too.
-   */
-  rework: {
-    ...PINNED, ...CALL_FOR_HELP, ...RHIZOMORPH, ...WAVES, ...MIXED_WAVE, ...BURSTER, ...NO_ELDER_SPLASH, ...STORM_WAVES, ...SWARM_READ,
-    ...FLYERS,
-    // the new spawners join both rosters (spreading the presets keeps only the last one's append)
-    'faction.velvet-bloom.buildings+': ['rhizomorphTunnel', 'bursterPod', 'driftStalk'],
-    'faction.gray-rot.buildings+': ['rhizomorphTunnel', 'bursterPod', 'driftStalk'],
-  },
-  // R1's clash-check variants (SPEC §16 R1, §12.4); measured by `--checks clash`, never in a battle.
-  // R1's chosen set, `kept`, is default data since R2a; R2b/T059 deletes the rest with R1's clash tool.
-  /** The Elder Sporeling's splash perk off, alone (§18.2 #8; rework's P1d took it off with waves). */
-  noeldersplash: NO_ELDER_SPLASH,
-  /**
-   * The pace rule alone, as `waves` sets it: a lane army marches at its slowest idle unit's pace, ranged
-   * units 1 tile behind their melee front. It exists only in the clash check, which stamps each arriving
-   * unit wave 0 so the rule reads it (plan call 9); in v1's battle this is `waves`, beat and all.
-   */
-  clashpace: WAVES,
-  /**
-   * The mixed shields alone: `balance.mixedWave` without waves, so `rules.mixed` stays absent and v1's
-   * battle is unchanged. The clash check reads it and shields each lane army of 2 or more unit types at
-   * the arrival (plan call 10).
-   */
-  clashshield: MIXED_WAVE,
 };
 
 /**
- * Sets a dotted path; `null` removes the setting instead (`laneStance:null` turns Hold off). A
+ * Sets a dotted path; `null` removes the setting instead (`cleave:null` turns cleave off). A
  * trailing `+` adds to the list at the path instead (a list value adds each item), skipping items
  * already there: `faction.velvet-bloom.buildings+:"rhizomorphTunnel"`.
  */
@@ -270,21 +95,35 @@ export function specPresets(spec: string): string[] {
   return splitSpec(spec).filter((item) => !item.includes(':')).map((item) => item.toLowerCase());
 }
 
+/** The preset by name (any case), or undefined: only {@link PROTO_PRESETS}' own entries count. */
+const presetNamed = (name: string): Json | undefined => {
+  const key = name.toLowerCase();
+  return Object.hasOwn(PROTO_PRESETS, key) ? PROTO_PRESETS[key] : undefined;
+};
+
+/**
+ * The presets a spec names that don't exist, lowercased: a typo, or a preset that's gone, such as a retired
+ * system's (A117). The game shows them and saves such a run nowhere (`protoSpace`, src/app/channel.ts).
+ */
+export function unknownPresets(spec: string): string[] {
+  return specPresets(spec).filter((name) => !presetNamed(name));
+}
+
 function parseValue(v: string): unknown {
   try { return JSON.parse(v); } catch { return v; }
 }
 
 /**
- * A spec's settings in order, as (path, value) pairs: each preset name (`b1`) expands to its paths,
+ * A spec's settings in order, as (path, value) pairs: each preset name (`b3`) expands to its paths,
  * and each `path:value` override parses its value as JSON when it can
- * (`approachRush.units:["sporeling","morelRunner"]`), else as a string. Unknown presets are reported.
+ * (`cleave.units:["scythecap","hammercap"]`), else as a string. Unknown presets are reported.
  */
 function specItems(spec: string, problems: string[]): [string, unknown][] {
   const out: [string, unknown][] = [];
   for (const raw of splitSpec(spec)) {
     const colon = raw.indexOf(':');
     if (colon >= 0) { out.push([raw.slice(0, colon), parseValue(raw.slice(colon + 1))]); continue; }
-    const preset = PROTO_PRESETS[raw.toLowerCase()];
+    const preset = presetNamed(raw);
     if (!preset) { problems.push(`proto: unknown preset "${raw}" (known: ${Object.keys(PROTO_PRESETS).join(', ')})`); continue; }
     for (const [k, v] of Object.entries(preset)) out.push([k, structuredClone(v)]);
   }
@@ -310,8 +149,8 @@ function entryKind(path: string): string | undefined {
 }
 
 /**
- * Applies a comma-separated prototype spec to a copy of `balance`: preset names (`b1`) and
- * `path:value` overrides (`besiegedBy:melee`, `approachRush.speedMult:3`), in order. Paths into
+ * Applies a comma-separated prototype spec to a copy of `balance`: preset names (`b3`) and
+ * `path:value` overrides (`firingCongestion.freeRanks:3`, `livesAtBoss.heartcapPerLife:300`), in order. Paths into
  * content entries (`unit.…`, `building.…`) need {@link applyProto}; here they are reported, not applied.
  */
 export function applyProtoToBalance(balance: unknown, spec: string): { balance: Json; problems: string[] } {

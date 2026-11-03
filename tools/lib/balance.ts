@@ -24,7 +24,7 @@ export { rosterIds };
 export function spawnerIds(content: Content): string[] {
   return rosterIds(content).filter((id) => {
     const b = content.buildings[id]!;
-    return b.kind === 'spawner' && !content.units[b.spawn!.unit]!.tags.includes('support');
+    return b.kind === 'spawner' && !content.units[b.squad!.unit]!.tags.includes('support');
   });
 }
 
@@ -196,7 +196,7 @@ export async function duels(content: Content, run: RoundRunner, opts: { squadSee
   const pairs = <T>(xs: string[], f: (a: string, b: string) => T[]) => xs.flatMap((a) => xs.filter((b) => b !== a).flatMap((b) => f(a, b)));
   const seeds = (n: number) => Array.from({ length: n }, (_, i) => i + 1);
   const squadJobs = pairs(ids, (a, b) => seeds(opts.squadSeeds ?? g1.seeds).map((seed) => ({ a, b, job: squadDuel(content, a, b, seed, g1.goldBudget) })));
-  const units = ids.map((id) => content.buildings[id]!.spawn!.unit);
+  const units = ids.map((id) => content.buildings[id]!.squad!.unit);
   const supplyPairs = [...pairs(units, (a, b) => [[a, b] as const]), ...g2.intendedEdges.filter(([a, b]) => !units.includes(a) || !units.includes(b))];
   const supplyJobs = supplyPairs.flatMap(([a, b]) => seeds(opts.supplySeeds ?? g2.seeds).map((seed): SupplyDuelJob => ({ a, b, seed, supply: opts.supply ?? g2.supply })));
   const results = await run([...squadJobs.map(({ job }): RoundJob => ({ kind: 'clash', job })), ...supplyJobs.map((job): RoundJob => ({ kind: 'supply', job }))]);
@@ -699,8 +699,8 @@ function pairOpener(content: Content, a: string, b: string): string[] {
 /**
  * The answer bots the check adds to the content: one bot per pair of army buildings, weighted evenly
  * (`pair-<a>-<b>`), and hand-written counter bots in the style of round 2's D1 defenders. D1's own
- * specs weren't recorded, so `d1-*` are rebuilt from the backlog's descriptions; with `nohold` they
- * reproduce D1's table, Amanita-heavy within 2 games of 40.
+ * specs weren't recorded, so `d1-*` are rebuilt from the backlog's descriptions; on v1's battle without Hold
+ * they reproduced D1's table, Amanita-heavy within 2 games of 40.
  */
 export function counterBots(content: Content): Record<string, Omit<BotDef, 'id'>> {
   const bots: Record<string, Omit<BotDef, 'id'>> = {};
@@ -1323,8 +1323,8 @@ export async function evaluateClashCounters(content: Content, o: ClashCounterOpt
   const kindsOf = roundCounterKinds(content);
   const sets = Object.fromEntries(COUNTER_KINDS.map((k) => [k, cards.filter((id) => kindsOf(id).includes(k))])) as Record<CounterKind, string[]>;
   const swarmSpawners = cards.filter((id) => {
-    const sp = content.buildings[id]!.spawn;
-    return !!sp && content.units[sp.unit]!.tags.includes('swarm');
+    const sq = content.buildings[id]!.squad;
+    return !!sq && content.units[sq.unit]!.tags.includes('swarm');
   });
   /** The army cards an answer's armies fielded at a budget, over the screen's fields and seeds. */
   const fieldedBy = (answer: string, budget: number): string[] => {

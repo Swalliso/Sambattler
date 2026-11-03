@@ -480,11 +480,9 @@ describe("the analysis of what you fielded (§7.4, R2-Q3, #14)", () => {
     expect(a.scores.elite).toBeCloseTo(content.balance.ai.counter.eliteScoreMult / 3, 10);
     expect(a.scores.swarm).toBeCloseTo(1 - content.balance.ai.counter.swarmEliteDiscount / 3, 10);
     expect(reading([{ ...fielded('capguard', 3), tier: 2 }]).shares.elite).toBe(0);
-    // the swarm read (`swarmMaxSupply`) isn't v2's rule: a Sporeling Elder still counts
-    const swarmRead = counterTurn([{ ...fielded('sporeling', 1), tier: 3 }], {
-      round: 2, before: (s) => { const b = s.library.balance; s.library.balance = { ...b, ai: { ...b.ai, counter: { ...b.ai.counter, swarmMaxSupply: 1 } } }; },
-    });
-    expect(analyzeFielded(planningView(swarmRead, 'enemy'), 1, 1).shares.elite).toBe(1);
+    // a Sporeling Elder counts toward the Elite share: counting Elder parts replaced v1's swarm read (A109, R2-Q3)
+    const elder = counterTurn([{ ...fielded('sporeling', 1), tier: 3 }], { round: 2 });
+    expect(analyzeFielded(planningView(elder, 'enemy'), 1, 1).shares.elite).toBe(1);
   });
 
   it.each([1, 2, 3, 4, 5])("doesn't read bot:balanced's colony as Elite in round 4, its toggles at their defaults, on seed %i (A041)", (seed) => {

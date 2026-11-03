@@ -78,7 +78,7 @@ export interface UnitSpriteOpts {
   id: number;
   /** HP left as a fraction of the most it has; below 1 shows the HP bar. */
   hpFrac: number;
-  /** Combat rework `mixedWave`: what's left of the shield it set out with, or undefined for none. */
+  /** The arrival shield (§5.3, #8): what's left of it, or undefined for none. */
   shieldFrac?: number;
   flying?: boolean;
   /** Combat rework (the Rhizomorph): tunnelling, so drawn as a moving mound. */
@@ -221,7 +221,7 @@ export function elderAura(g: CanvasRenderingContext2D, cx: number, footY: number
 }
 
 /**
- * Combat rework `mixedWave`: a pale bubble round a shielded unit, fading as the shield wears down
+ * The arrival shield (§5.3, #8): a pale bubble round a shielded unit, fading as the shield wears down
  * (`frac`: what is left of the shield it set out with).
  */
 export function shieldRing(g: CanvasRenderingContext2D, cx: number, cy: number, w: number, h: number, frac: number, alpha = 1): void {

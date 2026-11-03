@@ -150,7 +150,7 @@ describe('Help (§10.3)', () => {
     expect(help(content, s).keys).toContain('1–3pick a draft card');
     s.sides.player.kit.splice(5);
     expect(help(content, s).keys).toContain('1–5choose a building; Shift-click keeps placing');
-    const big = protoContent('bigdrafts');
+    const big = protoContent('draft.cards:4');
     expect(help(big, planningState()).keys).toContain('1–4pick a draft card');
   });
 

@@ -181,7 +181,7 @@ export function generalKit(content: Content, run: RunState, node: RouteNode, ind
     }
   }
   const upgrades: Record<string, number> = {};
-  const tracks = () => kit.filter((id) => content.buildings[id]!.spawn && content.upgrades[id] && (upgrades[id] ?? 0) < 3);
+  const tracks = () => kit.filter((id) => content.buildings[id]!.squad && content.upgrades[id] && (upgrades[id] ?? 0) < 3);
   const levels = boss ? rules.bossUpgrades : rules.upgradesPerBattle * (index - 1) + (node.kind === 'elite' ? rules.eliteUpgrades : 0);
   const rng = seedStream(run.seed, 'ai.enemy', 1000 + index);
   for (let k = 0; k < levels; k++) {
@@ -191,7 +191,7 @@ export function generalKit(content: Content, run: RunState, node: RouteNode, ind
     upgrades[id] = (upgrades[id] ?? 0) + 1;
   }
   const veteran = node.elite ? content.elites[node.elite]?.upgradeLevels ?? 0 : 0;
-  if (veteran) for (const id of kit) if (content.buildings[id]!.spawn && content.upgrades[id]) upgrades[id] = Math.min(3, (upgrades[id] ?? 0) + veteran);
+  if (veteran) for (const id of kit) if (content.buildings[id]!.squad && content.upgrades[id]) upgrades[id] = Math.min(3, (upgrades[id] ?? 0) + veteran);
   return { kit, upgrades };
 }
 
@@ -203,8 +203,8 @@ export function generalKit(content: Content, run: RunState, node: RouteNode, ind
 function v1CounterSets(content: Content, roster: readonly string[]): Record<'swarm' | 'line' | 'armor' | 'elite', string[]> {
   const sets = { swarm: [] as string[], line: [] as string[], armor: [] as string[], elite: [] as string[] };
   for (const id of roster) {
-    const sp = content.buildings[id]?.spawn;
-    const u = sp ? content.units[sp.unit] : undefined;
+    const sq = content.buildings[id]?.squad;
+    const u = sq ? content.units[sq.unit] : undefined;
     if (!u || u.heal) continue;
     if ((u.splashRadius ?? 0) > 0 || u.damageType === 'slash') sets.swarm.push(id);
     if (u.damageType === 'pierce') sets.line.push(id);

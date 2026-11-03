@@ -23,8 +23,9 @@ paths:
   pass it.
 - **Balance method** (SPEC §12.1): playtests decide what's fun; bots catch degenerate builds. The
   main bar is the counter matrix's: a strong build is fine if it has an answer.
-- **Prototypes:** `src/data/proto.ts` holds the default-off knobs (`?proto=`). Most are v1's and do
-  nothing in a battle in rounds; R2b's S4 deletes those and keeps the agreed list (T055, T058).
+- **Prototypes:** `src/data/proto.ts` holds the default-off knobs (`?proto=`): since R2b's S4 only the
+  agreed list, `a2`, `b3`, `flyers` and `bosslives` (T055). A spec naming any other preset is refused by
+  the tools and shown as unknown on the page, which then saves the run nowhere (T061).
   Adopting a new rule is the user's call, and v2's milestones land on `develop` as the new default
   (CLAUDE.md).
 - **Log every data change** in `data/CHANGELOG-balance.md`, newest first: what changed, the
@@ -33,8 +34,10 @@ paths:
   the PR. Display text counts too: every battle copies the data's text into its state, so
   player-facing rewording goes in `src/ui/words.ts` until the next golden refresh.
 - **Guardrails:** `npm run test:slow` asserts the round guardrails (SPEC §12.3, R2a's T119–T125); v1's
-  went with its battle in R2b's S3. R2a's known misses (T133: G1, G2, G3, G7, G8's mono clause and
-  G16) wait for the user's calls, so a code change keeps the rest passing and leaves those as they read.
+  went with its battle in R2b's S3. R2a's six known misses (T133: G1, G2, G3, G7, G8's mono clause and
+  G16) are expected fails through R2b, as the user decided at R2b's S0 (T168): S14 tunes G1, G2 and G7,
+  R3's copies take G3 and G8's mono clause, and R3's combos take G16's pairs. A code change keeps the
+  rest passing and leaves those as they read.
 - **Where results go:** v2's candidates and results go in `docs/balance-backlog.md`. v1's backlog
   is history, in `docs/archive/v1/balance-backlog.md`.
 - **Sweeps:** `nodeContent()` (`tools/lib/content.ts`) is cached for the whole process, so a sweep

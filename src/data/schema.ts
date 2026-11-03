@@ -38,8 +38,6 @@ export const SIDE_STATS = [
   'side.supplyCap', 'side.interestCap', 'side.stipend', 'side.captureSpeed', 'side.startingGold', 'side.sellRefund',
   'side.supplyLineRate', 'side.knitTicks', 'side.mergeRadius', 'side.rerollCost', 'side.draftCards', 'side.heartcapMaxHp',
   'side.turretDamage', 'side.comebackEnabled', 'side.loamBonus', 'side.powerCooldown',
-  // combat rework `waves` (hooks for relics and perks): seconds between a side's wave releases, and × units per release
-  'side.waveBeat', 'side.waveSize',
 ] as const;
 export const BATTLE_STATS = ['battle.sporestormStart'] as const;
 export const StatKey = z.enum([...UNIT_STATS, ...BUILDING_STATS, ...SIDE_STATS, ...BATTLE_STATS]);
@@ -81,22 +79,14 @@ export const EffectActionSchema = z.union([
   z.object({ gainGold: z.number().int() }).strict(),
   z.object({ explode: z.object({ damage: Pos, damageType: DamageType, radius: Pos }).strict() }).strict(),
   z.object({ repairHeartcapPct: z.number().positive().max(1) }).strict(),
-  /** The side's Heartcap takes × `takenMult` damage for `seconds` (a last stand's shield). */
-  z.object({ shieldHeartcap: z.object({ seconds: Pos, takenMult: z.number().min(0).max(1) }).strict() }).strict(),
-  /** The side's commander power is ready at once. */
-  z.object({ readyPower: z.literal(true) }).strict(),
 ]);
 
 export const TriggerSchema = z.object({
   /** `roundStart`, `clashStart` and `roundWon` are R2a's, for a battle in rounds (§14.2, §14.6); v1's battle never fires them. */
-  on: z.enum(['merge', 'unitDeath', 'buildingDestroyed', 'enemyUnitKilled', 'waveStart', 'battleStart', 'heartcapBreach', 'roundStart', 'clashStart', 'roundWon']),
-  /** `heartcapBreach` only: the fraction of max HP that the owner's Heartcap falls to or below. */
-  at: z.number().gt(0).lt(1).optional(),
+  on: z.enum(['merge', 'unitDeath', 'buildingDestroyed', 'enemyUnitKilled', 'waveStart', 'battleStart', 'roundStart', 'clashStart', 'roundWon']),
   if: SelectorSchema.extend({ sporestormGte: z.number().int().nonnegative().optional() }).strict().optional(),
   do: z.array(EffectActionSchema).min(1),
-}).strict().superRefine((t, ctx) => {
-  if ((t.on === 'heartcapBreach') !== (t.at !== undefined)) ctx.addIssue({ code: 'custom', message: 'a heartcapBreach trigger needs "at", and only it takes one' });
-});
+}).strict();
 
 export const EffectBundleSchema = z.object({
   modifiers: z.array(ModifierSchema).optional(),
@@ -181,32 +171,13 @@ export const BalanceSchema = z.object({
   besiegedSeconds: Seconds,
   besiegedRate: z.number().min(0).max(1),
   /**
-   * Which hits suppress production (half-speed spawns and income) while a building is besieged:
-   * any damage (default), melee and other non-projectile hits only, or none. Selling stays locked
-   * under any damage.
-   */
-  besiegedBy: z.enum(['all', 'melee', 'none']).optional(),
-  /**
-   * Prototype B1 (balance backlog), absent by default: listed units sprint at `speedMult` for up to
-   * `seconds` when they close on a target they acquired out of range, then wait `cooldownSeconds`
-   * before the next rush. Targeting is unchanged.
-   */
-  approachRush: z.object({
-    units: z.array(z.string()).min(1), speedMult: Pos, seconds: Pos, cooldownSeconds: Seconds,
-  }).strict().optional(),
-  /**
-   * Prototype B3, absent by default: a ranged unit's shot deals `blockedDamageMult` × damage when at
+   * Prototype B3 (`b3`), absent by default: a ranged unit's shot deals `blockedDamageMult` × damage when at
    * least `freeRanks` friendly ranged units stand between it and its target, within
-   * `corridorHalfWidth` tiles of the line of fire.
+   * `corridorHalfWidth` tiles of the line of fire. No battle in rounds reads it yet.
    */
   firingCongestion: z.object({
     freeRanks: z.number().int().positive(), corridorHalfWidth: Pos, blockedDamageMult: z.number().min(0).max(1),
   }).strict().optional(),
-  /**
-   * Prototype B4, absent by default: every unit withers `seconds` after it spawns (a merged unit
-   * starts a fresh lifespan, × `tierMult` per tier above 1).
-   */
-  unitLifespan: z.object({ seconds: Pos, tierMult: Pos.optional() }).strict().optional(),
   /**
    * E1 (engagement review; adopted 2026-10-28, set in balance.json): a per-lane Hold / Advance
    * command. While a side holds a lane, its idle units gather at a rally line `rallyBack` tiles
@@ -226,74 +197,15 @@ export const BalanceSchema = z.object({
     }).strict().optional(),
   }).strict().optional(),
   /**
-   * Prototype T1, absent by default: the first-spawn fraction (of the interval) for spawners whose
-   * unit fires projectiles, in place of `firstSpawnFraction`. 1 makes a new Gill Nest wait a full
-   * interval before its first archer.
-   */
-  rangedFirstSpawnFraction: z.number().min(0).max(2).optional(),
-  /**
-   * Prototype T2, absent by default: a melee unit closing on an enemy unit falls back toward its own
-   * Heartcap while its side's supply within `radius` of it is below `ratio` × the enemy supply
-   * within `radius` of its target, for at most `maxHoldSeconds` from its first hold; then it commits
-   * for the rest of its life. A change to SPEC §5.2 ("units always advance") if adopted.
-   */
-  fallBack: z.object({ radius: Pos, ratio: Pos, maxHoldSeconds: Pos }).strict().optional(),
-  /**
-   * Prototype T3, absent by default: spawners (optionally only those in their side's home columns)
-   * shoot the nearest enemy unit within `range` tiles of their edge.
-   */
-  spawnerDefense: z.object({
-    damage: Pos, damageType: DamageType, interval: Pos, range: Pos, projectileSpeed: Pos, homeOnly: z.boolean(),
-  }).strict().optional(),
-  /**
-   * Diver prototype (step A of docs/archive/v1/ideas/one-more-run-review.md), absent by default: listed units
-   * prefer `ranged`-tagged enemy units over other targets and see them from `aggroAdd` tiles
-   * farther. With `burst`, a diver closing on a ranged unit sprints at `speedMult` for up to
-   * `seconds`, then waits `cooldownSeconds` before the next burst.
-   */
-  diveRanged: z.object({
-    units: z.array(z.string()).min(1),
-    aggroAdd: z.number().nonnegative().optional(),
-    burst: z.object({ speedMult: Pos, seconds: Pos, cooldownSeconds: Seconds }).strict().optional(),
-  }).strict().optional(),
-  /**
-   * Hot-start prototype (step B of docs/archive/v1/ideas/one-more-run-review.md), absent by default. With
-   * `deployDraft`, a side that drafts this battle gets a free draft before the clock starts (`cards`
-   * cards, default its usual offer). `battles[i]` gives each side effects for run battle i + 1, as
-   * battle modifiers, so the first battles can be gentler.
-   */
-  hotStart: z.object({
-    deployDraft: z.object({ cards: z.number().int().positive().optional() }).strict().optional(),
-    battles: z.array(z.object({ player: EffectBundleSchema.optional(), enemy: EffectBundleSchema.optional() }).strict()).optional(),
-  }).strict().optional(),
-  /**
    * "Lives left count at the boss" (§8.5, §18.2 #16, A199), absent by default: in the boss battle your
    * Heartcap's max gains `heartcapPerLife` for each life the run has left. A knob for R2b's playtest (`bosslives`).
    */
   livesAtBoss: z.object({ heartcapPerLife: z.number().int().positive() }).strict().optional(),
   /**
-   * Heartcap breach prototype (step B), absent by default: triggers both sides get in every battle,
-   * as if from a relic, such as `heartcapBreach` triggers for a breach and a last stand.
-   */
-  sideTriggers: z.array(TriggerSchema).optional(),
-  /**
-   * Bigger-drafts prototype (step B), absent by default: a side takes `picks` cards from each
-   * in-battle draft's offer (the cards it leaves stay on offer), and every offer moves `rareBonus`
-   * rarity points from common to rare. `draftWaves` and `draft.cards` set how many drafts and cards.
-   */
-  bigDrafts: z.object({ picks: z.number().int().positive().optional(), rareBonus: z.number().nonnegative().optional() }).strict().optional(),
-  /**
    * Pinning (§5.3; the combat rework's P1, default data since R2a): a `ranged` unit with an enemy unit
    * within `radius` tiles (edge distance) attacks at `rateMult` × its normal rate.
    */
   pinned: z.object({ radius: Pos, rateMult: z.number().gt(0).max(1) }).strict().optional(),
-  /**
-   * Combat rework `callForHelp`, absent by default: when an enemy unit or tower damages a unit or
-   * building, every friendly unit in its lane within `radius` tiles of it (edge distance) that has no
-   * target takes the attacker as its target. A unit keeps that target within the usual leash
-   * (aggro × leashMult), and also while the attacker is still attacking it or a friend within `radius`.
-   */
-  callForHelp: z.object({ radius: Pos }).strict().optional(),
   /**
    * Spore clouds (§5.3; the combat rework's, default data since R2a): every shell from a listed tower (the
    * Puffball Mortar) leaves a spore cloud of `radius` tiles where it lands, for `seconds`. Every
@@ -305,27 +217,6 @@ export const BalanceSchema = z.object({
     buildings: z.array(z.string()).min(1), radius: Pos, seconds: Pos, damagePerSecond: Pos,
     pulseSeconds: Pos.optional(), range: Pos.optional(),
   }).strict().optional(),
-  /**
-   * Combat rework `waves`, absent by default: a spawner's units wait inside it (still counting toward
-   * supply) and join its side's next wave. Every `beatSeconds` both sides' waves set out on the same
-   * tick: a lane's frontmost spawner releases on the beat, and each spawner behind it releases early
-   * by its walk to that spawner's door, so the wave passes it together. Units of one wave with no
-   * target march at the pace of the wave's slowest such unit in their lane (unless `matchPace` is
-   * false), and an idle ranged unit stays `rangedGap` tiles behind its side's frontmost melee unit in
-   * the lane (default 1). Holding a lane keeps its next wave home for one beat; the beat spends the
-   * hold, and the lane can't hold again until the next beat has sent both waves. Held lanes don't
-   * rally units on the field, and the AI never holds. `side.waveBeat` (seconds) and `side.waveSize`
-   * (× units released) are modifier stats.
-   */
-  waves: z.object({ beatSeconds: Pos, rangedGap: z.number().nonnegative().optional(), matchPace: z.boolean().optional() }).strict().optional(),
-  /**
-   * Combat rework `mixedWave`, absent by default; it needs `waves`. When a lane's wave holds
-   * `minTypes` or more unit types as it sets out (a merged form counts as its base type), each of its
-   * units gets a shield worth `shieldFrac` × its max HP. A shield soaks damage of every kind before HP
-   * until it breaks. It never regrows or decays, healing doesn't touch it, and a merge keeps the
-   * trio's shields in proportion, as it does their HP.
-   */
-  mixedWave: z.object({ minTypes: z.number().int().min(2), shieldFrac: z.number().gt(0).max(1) }).strict().optional(),
   /**
    * Cleave (§5.3; the combat rework's P1c, default data since R2a): a listed unit's splash (the Scythecap's
    * swing) hits every enemy unit within its splash radius of its target at full damage, instead of at
@@ -342,20 +233,14 @@ export const BalanceSchema = z.object({
    */
   burst: z.object({ cloud: z.object({ radius: Pos, seconds: Pos, damagePerSecond: Pos }).strict() }).strict().optional(),
   /**
-   * Combat rework `stormWaves` (P1d), absent by default; it needs `waves`. Each Sporestorm stack makes
-   * both sides' waves `perStack` bigger: a spawner releases its waiting units × (1 + perStack × stacks),
-   * on top of `side.waveSize`, carrying the fraction to its next release. Extra units need free supply.
-   */
-  stormWaves: z.object({ perStack: Pos }).strict().optional(),
-  /**
-   * Combat rework `flyers` (docs/archive/v1/ideas/flyers.md), absent by default: a `flying` unit passes over ground
-   * units and holds no ground (unless `holdsGround`), and only attacks with reach can hit it: ranged
-   * units, Heartcap turrets, other flyers, commander powers, spore clouds (with `cloudsReach`), towers
-   * that don't lob (the Mortar's splashing shell does), and melee unit types of at least `reachSupply`
-   * supply (a merged unit's own supply with `mergedReach`). Melee hits on a flyer deal × `meleeMult`.
+   * Flyers (`flyers`; §5.3, §1.3 #11, docs/archive/v1/ideas/flyers.md), absent by default: a `flying` unit
+   * passes over ground units, and only attacks with reach can hit it: ranged units, other flyers, commander
+   * powers, spore clouds (with `cloudsReach`), emplacements that don't lob (the Mortar's splashing shell
+   * does), and melee unit types of at least `reachSupply` supply (a merged unit's own supply with
+   * `mergedReach`). Melee hits on a flyer deal × `meleeMult`. The round sim reads none of it yet.
    */
   flying: z.object({
-    reachSupply: Pos, meleeMult: z.number().nonnegative(), mergedReach: z.boolean(), cloudsReach: z.boolean(), holdsGround: z.boolean(),
+    reachSupply: Pos, meleeMult: z.number().nonnegative(), mergedReach: z.boolean(), cloudsReach: z.boolean(),
   }).strict().optional(),
   firstSpawnFraction: z.number().min(0).max(1),
   timeLimitSeconds: Pos,
@@ -436,17 +321,11 @@ export const BalanceSchema = z.object({
       /** Intel: weight of the previous file in `intel = keep × intel + (1 − keep) × profile`. */
       intelKeep: z.number().min(0).max(1),
       /**
-       * Prototype A2, absent by default: while a counter is active, every counter-set building in
+       * Prototype A2 (`a2`), absent by default: while a counter is active, every counter-set building in
        * the kit has at least this base purchase weight (before the ×counterMult), even one outside
-       * the general's weights.
+       * the general's weights. No battle in rounds reads it yet.
        */
       counterFloorWeight: Pos.optional(),
-      /**
-       * Combat rework swarm read, absent by default: a spawner whose unit costs at most this much
-       * supply reads by its armor whether or not its units merge, so its merges don't count toward
-       * the Elite share. Under waves nearly every cheap unit merges, and a Sporeling swarm read as Elite.
-       */
-      swarmMaxSupply: Pos.optional(),
     }).strict(),
     score: z.object({
       spawnerDepth: z.number(), spawnerThreat: z.number(), spawnerSurcharge: z.number(),
@@ -560,9 +439,15 @@ export const BuildingSchema = z.object({
   rarity: Rarity.optional(),
   kind: z.enum(['spawner', 'tower', 'economy', 'utility']),
   footprint: z.object({ w: z.number().int().positive(), h: z.number().int().positive() }).strict(),
-  cost: z.number().int().positive(), hp: z.number().int().positive(),
+  cost: z.number().int().positive(),
+  /**
+   * A tower's emplacement's HP (§6.7). v1's buildings took damage, so the data's other buildings still carry
+   * one until R2b's T129 moves the tower's to `attack.hp`; a building in squad form has none (the flyers' Drift Stalk).
+   */
+  hp: z.number().int().positive().optional(),
+  /** v1's spawn timer, still in the data until R2b's T129; nothing in rounds reads it, and a building in squad form has none. */
   spawn: z.object({ unit: Id, count: z.number().int().positive(), interval: Pos, mergeForced: z.boolean().optional(), knitMult: Pos.optional() }).strict().optional(),
-  /** R2a: the squad a spawner fields every round (§4.4, §11.2), beside v1's `spawn` until R2b replaces it. v1 never reads it. */
+  /** The squad a spawner fields every round (§4.4, §11.2). */
   squad: z.object({ unit: Id, count: z.number().int().positive() }).strict().optional(),
   attack: z.object({
     damage: Pos, damageType: DamageType, interval: Pos, range: Pos,
@@ -575,9 +460,10 @@ export const BuildingSchema = z.object({
   /** Utility effects while the building stands (Rhizome Vault: +supply cap, at most `maxCount` count). */
   utility: z.object({ supplyCapAdd: z.number().int().positive(), maxCount: z.number().int().positive() }).strict().optional(),
 }).strict().superRefine((b, ctx) => {
-  const need = { spawner: 'spawn', tower: 'attack', economy: 'economy', utility: null } as const;
+  const need = { spawner: 'squad', tower: 'attack', economy: 'economy', utility: null } as const;
   const key = need[b.kind];
   if (key && !b[key]) ctx.addIssue({ code: 'custom', message: `${b.kind} building ${b.id} needs a "${key}" block` });
+  if (b.kind === 'tower' && b.hp === undefined) ctx.addIssue({ code: 'custom', message: `tower ${b.id} needs "hp", its emplacement's` });
 });
 
 export const FactionSchema = z.object({

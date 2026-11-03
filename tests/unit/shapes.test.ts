@@ -82,21 +82,21 @@ describe('no weapon marks (§5.8, 2026-11-01)', () => {
     }
   });
 
-  it('the data has no mark glyphs, in the default content or under ?proto=rework', () => {
-    for (const c of [content, protoContent('rework')]) expect(c.spriteOrder.filter((id) => id.startsWith('m-'))).toEqual([]);
+  it('the data has no mark glyphs, in the default content or under ?proto=flyers', () => {
+    for (const c of [content, protoContent('flyers')]) expect(c.spriteOrder.filter((id) => id.startsWith('m-'))).toEqual([]);
   });
 });
 
 // The core six and the Mortar's emplacement, redrawn from the approved sheet (§5.8, §11.2, §14.3; R4a-S3, T027).
 describe('the core six and the Mortar', () => {
-  const rework = protoContent('rework');
+  const flyers = protoContent('flyers');
   const CORE = ['u-sporeling', 'u-capguard', 'u-gillArcher', 'u-amanitaKnight', 'u-hammercap'];
 
   it('declare the body their armor gives, in band and within their squad width, in all three frames', () => {
-    for (const [c, ids] of [[content, CORE], [rework, [...CORE, 'u-burster']]] as const) {
+    for (const [c, ids] of [[content, CORE], [flyers, [...CORE, 'u-burster']]] as const) {
       for (const id of ids) {
         const s = c.sprites[id]!, u = Object.values(c.units).find((x) => x.sprite === id)!;
-        const spawner = Object.values(c.buildings).find((b) => b.spawn?.unit === u.id)!;
+        const spawner = Object.values(c.buildings).find((b) => b.squad?.unit === u.id)!;
         expect(s.shape, id).toEqual({ body: bodyOf(u.armor) });
         expect(s.frames, id).toHaveLength(3);
         expect([...shapeProblems(s, c.bands[c.spriteSheet[id]!]), ...unitShapeProblems(u, s)], id).toEqual([]);
@@ -106,7 +106,7 @@ describe('the core six and the Mortar', () => {
   });
 
   it('every tower with an attack stands on an e-<id> emplacement with a structure body, and no mark', () => {
-    for (const c of [content, rework]) {
+    for (const c of [content, flyers]) {
       const towers = Object.values(c.buildings).filter((b) => b.kind === 'tower' && b.attack);
       expect(towers.map((b) => b.id)).toContain('puffballMortar');
       for (const b of towers) {
@@ -123,7 +123,7 @@ describe('the core six and the Mortar', () => {
 // (call 8). The Velvet Shrine's +2 may overflow under §18.2 #11's first guess: `npm run sprite-sheet` lists it,
 // and nothing here fails it.
 describe('the whole roster', () => {
-  const rework = protoContent('rework');
+  const flyers = protoContent('flyers');
   const unitSprites = (c: Content) => c.spriteOrder.filter((id) => id.startsWith('u-')).map((id) => c.sprites[id]!);
   /** Frame 0's opaque pixels, as points from the sprite's anchor. */
   const mask = (s: SpriteDef) => {
@@ -140,7 +140,7 @@ describe('the whole roster', () => {
   };
 
   it('every unit sprite declares a shape, or the data fails to load', () => {
-    for (const c of [content, rework]) for (const s of unitSprites(c)) expect(s.shape, s.id).toBeDefined();
+    for (const c of [content, flyers]) for (const s of unitSprites(c)) expect(s.shape, s.id).toBeDefined();
     const raw = structuredClone(readRawContent());
     delete (raw['sprites/units.json'] as { sprites: SpriteDef[] }).sprites.find((s) => s.id === 'u-tender')!.shape;
     expect(() => loadContent(raw)).toThrow(/unit tender: sprite u-tender declares no shape, and every unit sprite needs one/);
@@ -163,10 +163,10 @@ describe('the whole roster', () => {
   it("every unit's width fits its spawner's base squad + 1, in every frame", () => {
     expect([4, 5, 9, 10].map(widthBound)).toEqual([16, 10, 10, 8]);
     const checked = new Set<string>();
-    for (const c of [content, rework]) {
+    for (const c of [content, flyers]) {
       for (const u of Object.values(c.units)) {
         const s = c.sprites[u.sprite]!;
-        for (const b of Object.values(c.buildings).filter((x) => x.spawn?.unit === u.id)) {
+        for (const b of Object.values(c.buildings).filter((x) => x.squad?.unit === u.id)) {
           const n = baseSquad(b) + 1;
           for (let f = 0; f < s.frames.length; f++) expect(bodyBox(s, f)!.w, `${s.id} frame ${f}, ${b.id}'s squad of ${n}`).toBeLessThanOrEqual(widthBound(n));
           checked.add(s.id);

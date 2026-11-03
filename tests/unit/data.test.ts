@@ -213,8 +213,8 @@ describe('data', () => {
       expect(() => loadContent(withSprite(s))).toThrow(/shape: Unrecognized key: "mark"/);
     });
 
-    it('every sprite that declares a shape passes, in the default content and under ?proto=rework', () => {
-      for (const c of [loadContent(raw), protoContent('rework')]) {
+    it('every sprite that declares a shape passes, in the default content and under ?proto=flyers', () => {
+      for (const c of [loadContent(raw), protoContent('flyers')]) {
         for (const id of c.spriteOrder) {
           const s = c.sprites[id]!;
           if (s.shape) expect(shapeProblems(s, c.bands[c.spriteSheet[id]!]), id).toEqual([]);
