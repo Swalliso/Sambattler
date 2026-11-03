@@ -23,11 +23,14 @@ paths:
   pass it.
 - **Balance method** (SPEC §12.1): playtests decide what's fun; bots catch degenerate builds. The
   main bar is the counter matrix's: a strong build is fine if it has an answer.
-- **Prototypes:** `src/data/proto.ts` holds the default-off knobs (`?proto=`): since R2b's S4 only the
-  agreed list, `flyers` and `bosslives` (T055). A spec naming any other preset is refused by
-  the tools and shown as unknown on the page, which then saves the run nowhere (T061).
-  Adopting a new rule is the user's call, and v2's milestones land on `develop` as the new default
-  (CLAUDE.md).
+- **Prototypes:** no new named presets (the user, 2026-11-03). A candidate rule is either a data change,
+  measured with the `--proto path:value` override (which needs no code), or code on a short-lived branch,
+  measured there and then merged as the default with the user's OK, or deleted. Any temporary switch names
+  the session that removes it. `src/data/proto.ts` holds one preset since R2b's S4c, `bosslives`, which
+  R2b's playtest (S14) adopts as data or deletes, and X8's two AI knobs go in S12 (T129) unless S11 shows a
+  need. A spec naming any other preset is refused by the tools and shown as unknown on the page, which then
+  saves the run nowhere (T061). Adopting a new rule is the user's call, and v2's milestones land on
+  `develop` as the new default (CLAUDE.md).
 - **Log every data change** in `data/CHANGELOG-balance.md`, newest first: what changed, the
   guardrail or measurement behind it, and whether the user approved it.
 - **Goldens:** data changes move the golden hashes, so run `npm run golden -- update` and say so in

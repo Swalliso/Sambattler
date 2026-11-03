@@ -68,6 +68,12 @@ Updated 2026-11-03, on `docs/r2b-s3-done` (the hub's docs PR into `develop`). Th
   - **An unknown preset is visible** (T061): a `?proto=` spec naming one shows a notice on the page and saves the run nowhere, and the tools refuse it.
   - **A2 and B3 are gone too:** you dropped them on 2026-11-03 ("Drop both"), since no battle in rounds read them. `?proto=a2` and `?proto=b3` now show the unknown-preset notice.
   - **T152's switch-over check:** verify, the browser suite and both builds pass, and test:slow fails only R2a's six known misses. US1's 20 runs all complete, with no life lost in a won battle, but seed 4 fights 3 battles, as in S1, so §16 R2 step 5's "4–5 battles" still waits for your wording call.
+- **S4c** (`feature/r2b-proto-cleanup`, T170–T174): in review. The last prototype switches, as you decided on 2026-11-03 ("Cleanup first"):
+  - **`PROTO_PRESETS` is `bosslives`** alone, and S14 adopts it as data or deletes it. `flyers` is gone with the code only it used: the `flying` schema block and tag, the drawer's lift and shadow, and the Driftling's and the Drift Stalk's sprites. `?proto=flyers` shows the unknown-preset notice. Flyers' design stays in SPEC for their milestone (X9). No golden moved.
+  - **X8's two AI knobs** go in S12 (T129) unless S11's measurement of the general shows a need.
+  - **The rule,** in CLAUDE.md, `.claude/rules/balance.md` and SPEC §16 R2: no new named presets. A candidate rule is a data change measured with `--proto path:value`, or code on a short-lived branch merged as the default with your OK, or it's deleted. Any temporary switch names the session that removes it.
+  - **For R3:** its task list had planned the Air pack's dealable case on the `flyers` preset. That case now adds a Drift Stalk with `path:value` overrides.
+  - S5 and S6 start once this merges, since they also edit `src/data/schema.ts`.
 - **The stand-ins open on `develop`** from S1 (Call 14), each with the session that lifts it (checked at S4, T152):
   - run battles open no in-battle drafts until S5 (T067);
   - relics on retired systems do nothing in a round battle until S6, and passives until S7, which also ends Rhizome Tithe's refusal (T082);
