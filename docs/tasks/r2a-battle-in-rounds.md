@@ -652,7 +652,7 @@ S1 to S4: the data, the colony, the round state machine and the planning command
 
 **S14: the tray, inspect, the planning and clash chrome, and the report**
 
-- [ ] T092 [US3] Write `tests/browser/rounds/inspect.test.ts` (new) and `tests/unit/rounds/report.test.ts` (new) (§4.4, §10.2, §10.4) (A068, A071):
+- [x] T092 [US3] Write `tests/browser/rounds/inspect.test.ts` (new) and `tests/unit/rounds/report.test.ts` (new) (§4.4, §10.2, §10.4) (A068, A071):
   - the tray's price is `priceOf` on any free plot, and a card is unlit only when gold is short;
   - selling takes two presses and refunds the full price in the planting phase, 60% after a clash; Enter's Begin doesn't fire a focused inspector button;
   - Begin sits in the bottom band, the planning hint is in `#callouts`, and the speed control shows only in a clash;
