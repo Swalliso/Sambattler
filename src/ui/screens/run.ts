@@ -7,7 +7,6 @@ import { formatClock } from '../../sim/index.ts';
 import {
   battleRewards, battlesWon, cardLabel, clashTicks, currentRow, groveProblem, intelDots, outcomeAvailable, rewardRules,
 } from '../../run/index.ts';
-import { COUNTER_KINDS } from '../../sim/index.ts';
 import { KIND_HINT, KIND_ICON, KIND_NAME } from '../doctrine.ts';
 import type { CounterRecordBrief, GroveChoice, RouteNode, RunState } from '../../run/index.ts';
 import type { RunEffect } from '../../data/schema.ts';
@@ -141,6 +140,9 @@ function nodeView(content: Content, atlas: Atlas, node: RouteNode, state: NodeSt
   h('span', { class: 'node-title' }, NODE_NAME[node.kind]), ...details);
 }
 
+/** The intel bars' kinds: v1's four, until S9 gives Anti-Ranged its bar. */
+const INTEL_KINDS = ['swarm', 'line', 'armor', 'elite'] as const;
+
 /**
  * The player's own intel bars (SPEC §7.6): what the Gray Rot has learned about them, shown fairly so
  * they can plan a pivot before the boss. Four dots per kind; the boss reads the whole run's average.
@@ -151,7 +153,7 @@ export function intelBars(atlas: Atlas, run: RunState): HTMLElement {
   const dots = intel ? intelDots(intel) : null;
   return h('div', { class: 'intel', id: 'route-intel', title: 'Each new general opens against your top kind; the boss reads your whole run' },
     h('span', { class: 'intel-title' }, 'Gray Rot intel on you'),
-    ...(dots ? COUNTER_KINDS.map((k) => {
+    ...(dots ? INTEL_KINDS.map((k) => {
       const c = spriteToCanvas(atlas, KIND_ICON[k], 'velvet-bloom');
       c.className = 'kind-icon';
       return h('span', { class: 'intel-kind', 'data-kind': k, 'data-dots': dots[k], title: `${KIND_HINT[k]} · ${((intel![k] ?? 0) * 100).toFixed(0)}%` },

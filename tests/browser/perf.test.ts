@@ -13,7 +13,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { chromium } from 'playwright';
 import type { Browser, Page } from 'playwright';
 import { nodeContent } from '../../tools/lib/content.ts';
-import type { BattleState } from '../../src/sim/rounds/index.ts';
+import type { BattleState } from '../../src/sim/index.ts';
 import { trayOrder } from '../../src/ui/buildingInfo.ts';
 import { closeServers, serve } from './serve.ts';
 

@@ -4,9 +4,9 @@
 // the Sporestorm by round, and every key. Each tab fits a 1280×720 window; arrow keys move between tabs, and the
 // last tab opened is the one that opens next time. R2b's T117 writes its round tabs in full.
 import type { Content } from '../data/registry.ts';
-import { powerOf } from '../sim/rounds/index.ts';
-import type { Armor, BattleState, DamageType } from '../sim/rounds/index.ts';
-import { stormBpFor } from '../sim/rounds/systems/victory.ts';
+import { powerOf } from '../sim/index.ts';
+import type { Armor, BattleState, DamageType } from '../sim/index.ts';
+import { stormBpFor } from '../sim/systems/victory.ts';
 import { KIND_LABEL } from './doctrine.ts';
 import { h } from './h.ts';
 import { stormText } from './hud/explain.ts';

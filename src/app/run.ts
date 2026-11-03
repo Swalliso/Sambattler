@@ -11,8 +11,8 @@ import {
 import type { RunState, Storage } from '../run/index.ts';
 import type { RunEffect } from '../data/schema.ts';
 import type { Content } from '../sim/index.ts';
-import { createBattle } from '../sim/rounds/index.ts';
-import type { BattleState } from '../sim/rounds/index.ts';
+import { createBattle } from '../sim/index.ts';
+import type { BattleState } from '../sim/index.ts';
 import {
   eventResultScreen, eventScreen, groveScreen, promptScreen, routeScreen, runChanges, runSnapshot, spoilsScreen, summaryScreen,
 } from '../ui/screens/run.ts';

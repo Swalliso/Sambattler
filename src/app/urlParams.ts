@@ -7,8 +7,8 @@
 import { parseFlags } from '../sim/create.ts';
 import {
   commandStamp, createBattle, createFromScenario, makeRoundConfig, queueCommand, step,
-} from '../sim/rounds/index.ts';
-import type { BattleState, Content, Flags, RoundScenarioOverrides } from '../sim/rounds/index.ts';
+} from '../sim/index.ts';
+import type { BattleState, Content, Flags, RoundScenarioOverrides } from '../sim/index.ts';
 
 export interface Params {
   scene: string;
@@ -142,7 +142,7 @@ const refuse = (message: string): never => { throw new BattleRefusal(message); }
 /** The battle the parameters set up, before any fast-forward: a single battle with Call 28's defaults, or a round scenario. */
 function setUp(content: Content, p: RoundParams, seed: number): BattleState {
   if (p.scenario) {
-    if (!content.roundScenarios[p.scenario]) refuse(`there's no round scenario ${p.scenario}`);
+    if (!content.scenarios[p.scenario]) refuse(`there's no scenario ${p.scenario}`);
     if (p.given.has('commander')) refuse('commander= does not apply to a scenario');
     const over: RoundScenarioOverrides = { seed };
     if (p.given.has('player')) over.player = p.player;

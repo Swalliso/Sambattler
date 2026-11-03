@@ -4,11 +4,12 @@
 // Battles themselves run in the sim; the run only sees their final state.
 import type { RunEffect } from '../data/schema.ts';
 import {
-  RARITIES, applyCard, buildLibrary, counterSets, draftPool, generateOffer, nextFloat, nextInt, parseCard, parseController, seedStream,
+  POWER_SOURCE_ID, RARITIES, applyCard, basePlots, draftLibrary, draftPool, generateOffer, hashState, kitCards, nextFloat, nextInt, openOrder,
+  parseCard, parseController, seedStream, setCommander, setPassives, topKinds,
 } from '../sim/index.ts';
-import type { Content, CounterKind as V1Kind, DraftPool, Library, Loadout, Rarity } from '../sim/index.ts';
-import { POWER_SOURCE_ID, basePlots, hashState, kitCards, openOrder, setCommander, setPassives, topKinds } from '../sim/rounds/index.ts';
-import type { BattleConfig, BattleState, Controller, IntelProfile, SideConfig } from '../sim/rounds/index.ts';
+import type {
+  BattleConfig, BattleState, Content, Controller, DraftLibrary, DraftPool, IntelProfile, Loadout, Rarity, SideConfig,
+} from '../sim/index.ts';
 import { averageProfile, battleProfile, scaleProfile, updateIntel } from './intel.ts';
 import { battleRewards } from './rewards.ts';
 import { isBattle } from './route.ts';
@@ -23,9 +24,9 @@ export function runPool(content: Content, run: RunState): DraftPool {
 }
 
 /** A library covering the run's kit and everything its pool can offer (for spoils offers). */
-export function runLibrary(content: Content, run: RunState): Library {
+export function runLibrary(content: Content, run: RunState): DraftLibrary {
   const pool = runPool(content, run);
-  return buildLibrary(content, new Set([...run.kit, ...pool.core, ...pool.shared]), new Set([...run.relics, ...pool.relics]));
+  return draftLibrary(content, new Set([...run.kit, ...pool.core, ...pool.shared]), new Set([...run.relics, ...pool.relics]));
 }
 
 export const loadoutOf = (run: RunState): Loadout => ({ kit: run.kit, upgrades: run.upgrades, relics: run.relics });
@@ -182,7 +183,7 @@ export function generalKit(content: Content, run: RunState, node: RouteNode, ind
   const upgrades: Record<string, number> = {};
   const tracks = () => kit.filter((id) => content.buildings[id]!.spawn && content.upgrades[id] && (upgrades[id] ?? 0) < 3);
   const levels = boss ? rules.bossUpgrades : rules.upgradesPerBattle * (index - 1) + (node.kind === 'elite' ? rules.eliteUpgrades : 0);
-  const rng = seedStream(run.seed, 'ai', 1000 + index);
+  const rng = seedStream(run.seed, 'ai.enemy', 1000 + index);
   for (let k = 0; k < levels; k++) {
     const t = tracks();
     if (!t.length) break;
@@ -195,18 +196,36 @@ export function generalKit(content: Content, run: RunState, node: RouteNode, ind
 }
 
 /**
+ * v1's four counter sets within a roster, in roster order, by each spawner's unit (Anti-Swarm: splash or
+ * slash; Anti-Line: pierce; Anti-Armor: crush or siege; Anti-Elite: slayer; healers in none), until R2b's
+ * T154 reads the round ones.
+ */
+function v1CounterSets(content: Content, roster: readonly string[]): Record<'swarm' | 'line' | 'armor' | 'elite', string[]> {
+  const sets = { swarm: [] as string[], line: [] as string[], armor: [] as string[], elite: [] as string[] };
+  for (const id of roster) {
+    const sp = content.buildings[id]?.spawn;
+    const u = sp ? content.units[sp.unit] : undefined;
+    if (!u || u.heal) continue;
+    if ((u.splashRadius ?? 0) > 0 || u.damageType === 'slash') sets.swarm.push(id);
+    if (u.damageType === 'pierce') sets.line.push(id);
+    if (u.damageType === 'crush' || u.tags.includes('siege')) sets.armor.push(id);
+    if (u.tags.includes('slayer')) sets.elite.push(id);
+  }
+  return sets;
+}
+
+/**
  * The boss's first extra blueprints: the cheapest counters to the run's top two intel kinds, so its
  * dual doctrine has buildings to lean on (empty for other generals or without intel).
  */
 function bossCounters(content: Content, run: RunState, node: RouteNode, roster: readonly string[]): string[] {
   const intel = node.kind === 'boss' ? generalIntel(content, run, node) : null;
   if (!intel) return [];
-  const lib = buildLibrary(content, roster, []);
-  const sets: Partial<Record<string, readonly string[]>> = counterSets(lib, roster);
+  const sets: Partial<Record<string, readonly string[]>> = v1CounterSets(content, roster);
   const out: string[] = [];
   // v1's counter sets, which have no Anti-Ranged set until R2b's T154 reads the round ones
   for (const k of topKinds(intel, 2)) {
-    const set = sets[k as V1Kind];
+    const set = sets[k];
     if (!set) continue;
     const cheapest = [...set].sort((a, b) => content.buildings[a]!.cost - content.buildings[b]!.cost)[0];
     if (cheapest && !out.includes(cheapest)) out.push(cheapest);

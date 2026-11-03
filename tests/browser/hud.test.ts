@@ -10,9 +10,9 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { chromium } from 'playwright';
 import type { Browser, Page } from 'playwright';
 import { nodeContent } from '../../tools/lib/content.ts';
-import { roundStateForParams } from '../../tools/lib/rounds/params.ts';
-import { incomePreview, survivingSupply } from '../../src/sim/rounds/index.ts';
-import type { BattleState } from '../../src/sim/rounds/index.ts';
+import { battleStateForParams } from '../../tools/lib/params.ts';
+import { incomePreview, survivingSupply } from '../../src/sim/index.ts';
+import type { BattleState } from '../../src/sim/index.ts';
 import { closeServers, serve } from './serve.ts';
 
 let browser: Browser | undefined;
@@ -43,7 +43,7 @@ async function open(query: string, width = 1280, height = 720): Promise<Page> {
 }
 
 /** Node's state for the same query, at the same checkpoint (T080). */
-const node = (query: string) => roundStateForParams(content, new URLSearchParams(query));
+const node = (query: string) => battleStateForParams(content, new URLSearchParams(query));
 const text = (p: Page, sel: string) => p.locator(sel).first().textContent();
 const summary = (p: Page) => p.evaluate(() => window.__GAME__!.summary()!);
 /** Changes the live state for a staged case, then waits two frames for the band to show it. */

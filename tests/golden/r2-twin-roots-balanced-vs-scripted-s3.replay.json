@@ -1,7 +1,6 @@
 {
   "name": "r2-twin-roots-balanced-vs-scripted-s3",
   "description": "bot:balanced vs the scripted general on Twin Roots, each lane its own clash, seed 3 (R2a/T112)",
-  "kind": "rounds",
   "config": {
     "seed": 3,
     "battleIndex": 1,

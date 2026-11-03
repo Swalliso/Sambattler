@@ -3,7 +3,7 @@
 // tiles, the unit drawer's team marks and the unit sprites, so it shows exactly what the field will with
 // the assist on or off.
 import type { Content } from '../data/registry.ts';
-import type { Side } from '../sim/rounds/index.ts';
+import type { Side } from '../sim/index.ts';
 import type { Atlas } from './atlas.ts';
 import { TILE, factionOf, matTile } from './renderer.ts';
 import { teamMark } from './unitSprite.ts';

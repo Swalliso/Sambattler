@@ -7,8 +7,8 @@
 import type { Content } from '../data/registry.ts';
 import type { Atlas } from '../render/atlas.ts';
 import type { Reveal } from '../render/preview.ts';
-import { step } from '../sim/rounds/index.ts';
-import type { BattleState } from '../sim/rounds/index.ts';
+import { step } from '../sim/index.ts';
+import type { BattleState } from '../sim/index.ts';
 import { playTimeText } from '../ui/report.ts';
 import { RoundsView } from './battleView.ts';
 import type { RoundViewActions } from './battleView.ts';

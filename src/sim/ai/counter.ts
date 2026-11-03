@@ -1,330 +1,235 @@
-// The counter cycle (SPEC §7.4) and intel doctrines (§7.6) of an adaptive general. At each scheduled
-// analysis it reads the opponent's spawn mix, picks one of four counter kinds (noise from the `ai`
-// stream), warns, and drafts a missing counter blueprint; two waves later the counter activates:
-// counter-set weights ×3, everything else ×0.6, selling for space if it is cramped. It acts only
-// through its kit, its purchase weights and ordinary `sell` commands, so it never cheats on gold.
-import { queueCommand } from '../commands.ts';
-import { recompile } from '../draft.ts';
-import { legalPlacements } from '../placement.ts';
+// The counter cycle in rounds (SPEC §7.4, §7.6): in the planning phase of each of its cycles an adaptive general
+// reads what the other side fielded in the rounds before, from the `fielded` record alone, picks one of five
+// kinds with seeded noise from its own AI stream, and activates the counter at once (#31): its set's weights ×3
+// and the rest ×0.6, a missing answer listed, and spawners sold for room. An intel file gives it an opening
+// doctrine (§7.6). It reads only the planning view and acts only through the planner's commands, so it never
+// cheats on gold.
 import { nextSigned } from '../rng.ts';
 import { COUNTER_KINDS, other } from '../state.ts';
-import type {
-  AiState, BattleState, BuildingState, CounterKind, CounterRecord, CounterState, IntelProfile, Library, OpeningDoctrine,
-  Rules, Side,
-} from '../state.ts';
-import { buildingDef, isBesieged } from '../world.ts';
+import type { AiState, BuildingState, CompiledUnit, CounterKind, CounterRecord, CounterState, IntelProfile } from '../state.ts';
+import { freePlots } from './formationScore.ts';
+import type { PlanningView } from './view.ts';
 
-/** Tie order when two kinds score the same: Elite, Armor, Line, Swarm (SPEC §7.4). */
-const TIE_ORDER: readonly CounterKind[] = ['elite', 'armor', 'line', 'swarm'];
+/** Ties between kinds go Elite, Armor, Line, Ranged, Swarm (§7.4; Ranged's place is #14's first guess). */
+const TIE_ORDER: readonly CounterKind[] = ['elite', 'armor', 'line', 'ranged', 'swarm'];
+/** The dominant armor's ties go Heavy, Medium, Light, the kinds' order. */
+const ARMORS = ['heavy', 'medium', 'light'] as const;
+export type BodyArmor = (typeof ARMORS)[number];
+/** A unit's parts by tier (§5.6): a Bloomed unit is 3, an Elder 9. */
+const PARTS = [1, 3, 9] as const;
 
-export const zeroProfile = (): IntelProfile => ({ swarm: 0, line: 0, armor: 0, elite: 0 });
-
-/**
- * The kinds a spawner counters, from its unit's base data (Anti-Swarm: splash or slash; Anti-Line:
- * pierce; Anti-Armor: crush or siege; Anti-Elite: slayer). Towers, economy and utility buildings have
- * no unit, so they are in no counter set (SPEC §7.4); healers neither.
- */
-export function counterKindsOf(lib: Library, buildingId: string): CounterKind[] {
-  const sp = lib.buildings[buildingId]?.spawn;
-  const u = sp ? lib.units[sp.unit] : undefined;
-  if (!u || u.heal) return [];
-  const out: CounterKind[] = [];
-  if ((u.splashRadius ?? 0) > 0 || u.damageType === 'slash') out.push('swarm');
-  if (u.damageType === 'pierce') out.push('line');
-  if (u.damageType === 'crush' || u.tags.includes('siege')) out.push('armor');
-  if (u.tags.includes('slayer')) out.push('elite');
-  return out;
-}
-
-/** Counter-set buildings per kind within a roster, in roster order. */
-export function counterSets(lib: Library, roster: readonly string[]): Record<CounterKind, string[]> {
-  const sets: Record<CounterKind, string[]> = { swarm: [], line: [], armor: [], elite: [] };
-  for (const id of roster) for (const k of counterKindsOf(lib, id)) sets[k].push(id);
-  return sets;
-}
-
-export interface MixAnalysis {
-  /** Σ spawn supply rate over the side's standing spawners (0: nothing to read). */
+export interface FieldedAnalysis {
+  /** The supply read, every unit at its parts' base supply (R2-Q3): 0 when nothing was fielded. */
   total: number;
-  shares: { light: number; medium: number; heavy: number; ranged: number; elite: number };
-  /** The four kinds' scores before noise. */
-  scores: IntelProfile;
-}
-
-/** Wave index of a tick: wave n (1-based) covers [(n − 1)·waveTicks, n·waveTicks). */
-const waveOf = (state: BattleState, tick: number): number => Math.floor(tick / state.rules.waveTicks);
-
-/**
- * Fraction of `b`'s units spawned in the two waves before `tick` that were knit into merges by now
- * (SPEC §7.4 step 3). A toggle left on with no actual merges reads 0.
- */
-export function mergedFraction(state: BattleState, track: CounterState | undefined, buildingId: number, tick = state.tick): number {
-  const t = track?.track[String(buildingId)];
-  if (!t) return 0;
-  const last = waveOf(state, Math.max(0, tick - 1));
-  let spawned = 0, merged = 0;
-  for (const w of [last - 1, last]) {
-    spawned += t.spawned[String(w)] ?? 0;
-    merged += t.merged[String(w)] ?? 0;
-  }
-  return spawned > 0 ? Math.min(1, merged / spawned) : 0;
+  shares: Record<BodyArmor, number> & { ranged: number; elite: number };
+  /** The kinds' scores before the noise. */
+  scores: Record<CounterKind, number>;
 }
 
 /**
- * The spawn-mix analysis of `observed` (SPEC §7.4): supply rates of its standing spawners turned
- * into armor, ranged and real-merging shares, and the four kinds' scores. `track` is the observer's
- * counter state (spawn and merge counts); without it the Elite share is 0. With the combat rework's
- * swarm read (`swarmMaxSupply`), a cheap unit's merges leave its spawner out of the Elite share.
+ * What the other side fielded in rounds `from` to `to` (§7.4, R2-Q3): every unit at its parts' base supply, an
+ * Elder its 9 parts' and a Bloomed unit its 3, as shares of armor, of ranged units, and of Elders, the only
+ * elite, with the five kinds' scores. The combat rework's swarm read isn't v2's rule, so `swarmMaxSupply` isn't read.
  */
-export function analyzeMix(state: BattleState, observed: Side, track?: CounterState): MixAnalysis {
-  const cr = state.rules.ai.counter;
-  const swarmMax = cr.swarmMaxSupply;
-  let total = 0, light = 0, medium = 0, heavy = 0, ranged = 0, elite = 0;
-  for (const b of state.buildings) {
-    if (b.side !== observed || b.hp <= 0) continue;
-    const sp = buildingDef(state, b).spawn;
-    if (!sp) continue;
-    const u = state.compiled[observed].units[sp.unit]!;
-    const rate = (sp.count * u.tiers[0].supply) / sp.intervalHalfTicks;
-    total += rate;
-    if (u.armor === 'light') light += rate; else if (u.armor === 'medium') medium += rate; else heavy += rate;
-    if (u.tags.includes('ranged')) ranged += rate;
-    if (b.mergeOn && !(swarmMax && u.tiers[0].supply <= swarmMax)) elite += rate * mergedFraction(state, track, b.id);
+export function analyzeFielded(view: PlanningView, from: number, to: number): FieldedAnalysis {
+  const k = view.counterKnobs;
+  const sum = { light: 0, medium: 0, heavy: 0, ranged: 0, elite: 0 };
+  let total = 0;
+  for (const r of view.rounds) {
+    if (r.round < from || r.round > to) continue;
+    for (const f of r.fielded[other(view.side)]) {
+      const u = view.theirUnits[f.unitId];
+      if (!u || u.emplacement) continue;
+      const supply = f.count * PARTS[f.tier - 1]! * u.tiers[0].supply;
+      total += supply;
+      if (u.armor !== 'structure') sum[u.armor] += supply;
+      if (u.tags.includes('ranged')) sum.ranged += supply;
+      if (f.tier === 3) sum.elite += supply;
+    }
   }
   const share = (x: number) => (total > 0 ? x / total : 0);
-  const shares = { light: share(light), medium: share(medium), heavy: share(heavy), ranged: share(ranged), elite: share(elite) };
+  const shares = { light: share(sum.light), medium: share(sum.medium), heavy: share(sum.heavy), ranged: share(sum.ranged), elite: share(sum.elite) };
   return {
     total,
     shares,
     scores: {
-      swarm: shares.light * (1 - cr.swarmEliteDiscount * shares.elite),
+      swarm: shares.light * (1 - k.swarmEliteDiscount * shares.elite),
       line: shares.medium,
       armor: shares.heavy,
-      elite: cr.eliteScoreMult * shares.elite,
+      elite: k.eliteScoreMult * shares.elite,
+      ranged: shares.ranged,
     },
   };
 }
 
-/** The highest-scoring kind, ties resolved Elite, Armor, Line, Swarm. */
-export function topKind(scores: IntelProfile): CounterKind {
-  let best: CounterKind = TIE_ORDER[0]!;
+/** The highest-scoring kind, ties by {@link TIE_ORDER}. */
+export function topKind(scores: Record<CounterKind, number>): CounterKind {
+  let best = TIE_ORDER[0]!;
   for (const k of TIE_ORDER) if (scores[k] > scores[best]) best = k;
   return best;
 }
 
-/** The top `n` kinds with a positive score, in score order (ties as {@link topKind}). */
+/** The top `n` kinds that score above 0, in score order, ties by {@link TIE_ORDER}. */
 export function topKinds(scores: IntelProfile, n: number): CounterKind[] {
-  const ranked = [...TIE_ORDER].sort((a, b) => scores[b] - scores[a] || TIE_ORDER.indexOf(a) - TIE_ORDER.indexOf(b));
-  return ranked.filter((k) => scores[k] > 0).slice(0, n);
+  const of = (k: CounterKind) => scores[k] ?? 0;
+  return [...TIE_ORDER].sort((a, b) => of(b) - of(a) || TIE_ORDER.indexOf(a) - TIE_ORDER.indexOf(b)).filter((k) => of(k) > 0).slice(0, n);
 }
 
-/** Adds the seeded noise (±`noise`, drawn Swarm, Line, Armor, Elite) and picks the kind (SPEC §7.4 step 5). */
-export function pickKind(state: BattleState, scores: IntelProfile): CounterKind {
-  const noisy = zeroProfile();
-  for (const k of COUNTER_KINDS) noisy[k] = scores[k] + nextSigned(state.rng.ai) * state.rules.ai.counter.scoreNoise;
+/** Step 5 (§7.4): seeded noise of ±`scoreNoise` on each score, drawn in `COUNTER_KINDS`' order from its own stream, and the highest. */
+function pickKind(view: PlanningView, scores: Record<CounterKind, number>): CounterKind {
+  const noisy = { ...scores };
+  for (const k of COUNTER_KINDS) noisy[k] += nextSigned(view.rng) * view.counterKnobs.scoreNoise;
   return topKind(noisy);
 }
 
-/** The schedule an adaptive general runs: the regular cycles, plus the early one for the boss. */
-export function counterSchedule(rules: Rules, boss: boolean): CounterState['schedule'] {
-  const all = [...rules.ai.counter.cycles, ...(boss ? rules.ai.counter.bossCycles : [])];
-  return all.map((c) => ({ ...c })).sort((a, b) => a.analyzeTick - b.analyzeTick);
+/** The dominant armor: the largest share, ties Heavy, Medium, Light (§7.4). */
+export function dominantArmor(shares: FieldedAnalysis['shares']): BodyArmor {
+  let best: BodyArmor = ARMORS[0];
+  for (const a of ARMORS) if (shares[a] > shares[best]) best = a;
+  return best;
 }
 
-export function newCounterState(rules: Rules, boss: boolean): CounterState {
-  return { schedule: counterSchedule(rules, boss), history: [], current: -1, track: {}, waveIds: [], samples: [] };
+/** The unit a spawner fields, or undefined for any other building. */
+function spawnerUnit(view: PlanningView, buildingId: string): CompiledUnit | undefined {
+  const card = view.cards[buildingId];
+  return card?.kind === 'spawner' && card.squad ? view.units[card.squad.unit] : undefined;
 }
 
 /**
- * The opening doctrine an intel file gives (SPEC §7.6): its top kind at ×2 / ×0.8, or for the boss
- * its top two kinds at ×2.5 each for the whole battle. An empty file gives none.
+ * The kinds a card counters (§7.4, #14, #15), from its spawner's unit: Anti-Swarm for splash or slash, Anti-Line
+ * for pierce, Anti-Armor for crush or siege, Anti-Elite for slayers, and Anti-Ranged for the swarm. A swarm unit
+ * answers neither a swarm nor a line (A056), and a unit that deals no damage, such as a healer, is in no set
+ * (A055). Towers, economy and utility buildings field no squad, so they're in no set.
  */
-export function openingDoctrine(rules: Rules, intel: IntelProfile | undefined, boss: boolean): OpeningDoctrine | undefined {
-  if (!intel) return undefined;
-  const cr = rules.ai.counter;
-  const kinds = topKinds(intel, boss ? 2 : 1);
-  if (!kinds.length) return undefined;
-  return boss
-    ? { kinds, mult: cr.dualMult, otherMult: 1, dual: true }
-    : { kinds, mult: cr.openingMult, otherMult: cr.openingOtherMult, dual: false };
+export function counterKindsOf(view: PlanningView, buildingId: string): CounterKind[] {
+  const u = spawnerUnit(view, buildingId);
+  if (!u || u.support || u.tiers[0].damage <= 0) return [];
+  const swarm = u.tags.includes('swarm');
+  const out: CounterKind[] = [];
+  if (!swarm && (u.tiers[0].splashRadius > 0 || u.damageType === 'slash')) out.push('swarm');
+  if (!swarm && u.damageType === 'pierce') out.push('line');
+  if (u.damageType === 'crush' || u.siege) out.push('armor');
+  if (u.slayer) out.push('elite');
+  if (swarm) out.push('ranged');
+  return out;
 }
 
-/** The active counter's record, if one has activated. */
-export function activeCounter(ai: AiState): CounterRecord | undefined {
+/** Each kind's set in its kit, the faction roster in a single battle (D45), by building id. */
+export function counterSets(view: PlanningView): Record<CounterKind, string[]> {
+  const sets = Object.fromEntries(COUNTER_KINDS.map((k) => [k, [] as string[]])) as Record<CounterKind, string[]>;
+  const ids = view.kit.map((c) => c.building).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+  for (const id of ids) for (const k of counterKindsOf(view, id)) sets[k].push(id);
+  return sets;
+}
+
+/** Whether a card's unit beats the armor: a matrix multiplier above 1 (§5.3). */
+const beats = (view: PlanningView, buildingId: string, armor: BodyArmor): boolean => {
+  const u = spawnerUnit(view, buildingId);
+  return !!u && view.matrix[u.damageType][armor] > 1;
+};
+
+/** The cheapest card, ties by id (§7.3). */
+function cheapest(view: PlanningView, ids: string[]): string | null {
+  let best: string | null = null;
+  for (const id of ids) {
+    const c = view.cards[id]!.cost, b = best === null ? Infinity : view.cards[best]!.cost;
+    if (c < b || (c === b && id < best!)) best = id;
+  }
+  return best;
+}
+
+/**
+ * The missing answer (§7.4, #15, A056): the cheapest card of the set whose unit beats the dominant armor, else
+ * the set's cheapest. With no card in the set, the cheapest spawner whose unit beats it, if one does.
+ */
+export function missingAnswer(view: PlanningView, set: string[], armor: BodyArmor): string | null {
+  const pool = set.length ? set : view.kit.map((c) => c.building).filter((id) => counterKindsOf(view, id).length > 0);
+  const winners = pool.filter((id) => beats(view, id, armor));
+  return cheapest(view, winners.length || !set.length ? winners : pool);
+}
+
+/**
+ * What it sells for room at an activation (§7.4): with fewer than `freePlots` free plots, enough to free them
+ * and at most `maxSells`, of its spawners outside the counter set, those whose units fare worst against the
+ * dominant armor first (the lowest matrix multiplier), then the rearmost, the lower file, the building id and the entity id.
+ */
+export function sellsForRoom(view: PlanningView, set: string[], armor: BodyArmor): BuildingState[] {
+  const need = Math.min(view.counterKnobs.maxSells, view.knobs.counter.freePlots - freePlots(view).length);
+  if (need <= 0) return [];
+  const mult = (b: BuildingState) => view.matrix[spawnerUnit(view, b.buildingId)!.damageType][armor];
+  const plot = (b: BuildingState) => view.plots[b.plot]!;
+  return view.buildings
+    .filter((b) => spawnerUnit(view, b.buildingId) && !set.includes(b.buildingId))
+    .sort((a, b) => mult(a) - mult(b) || plot(b).rank - plot(a).rank || plot(a).file - plot(b).file
+      || (a.buildingId < b.buildingId ? -1 : a.buildingId > b.buildingId ? 1 : 0) || a.id - b.id)
+    .slice(0, need);
+}
+
+/**
+ * The counter cycle's state for a new battle (§7.4, §7.6): `cycles` and, for the boss, `bossCycles`, in round
+ * order, and the opening doctrine an intel file gives: its top kind, or the boss's top two for the whole battle.
+ */
+export function newCounterState(knobs: { cycles: CounterState['cycles']; bossCycles: CounterState['cycles'] }, boss: boolean, intel?: IntelProfile): CounterState {
+  const cycles = [...knobs.cycles, ...(boss ? knobs.bossCycles : [])].map((c) => ({ ...c })).sort((a, b) => a.round - b.round || a.from - b.from);
+  const c: CounterState = { cycles, history: [] };
+  const kinds = intel ? topKinds(intel, boss ? 2 : 1) : [];
+  if (kinds.length) c.opening = { kinds, dual: boss };
+  return c;
+}
+
+/**
+ * Step 1 of the turn (§7.2, §7.4): the cycle due this round, if any. One whose rounds fielded nothing passes.
+ * Otherwise the counter activates now (#31): it's recorded, a missing answer joins the weights it buys by, and it
+ * sells for room through `sell`, which says whether the sale ran. It returns the activation's record, or null.
+ */
+export function runCycle(view: PlanningView, ai: AiState, sell: (b: BuildingState) => boolean): CounterRecord | null {
   const c = ai.counter;
-  return c && c.current >= 0 ? c.history[c.current] : undefined;
+  const cycle = c?.cycles.find((x) => x.round === view.round);
+  if (!c || !cycle) return null;
+  const a = analyzeFielded(view, cycle.from, view.round - 1);
+  if (a.total <= 0) return null;
+  const kind = pickKind(view, a.scores);
+  const rec: CounterRecord = { round: view.round, from: cycle.from, kind, scores: a.scores, sold: [] };
+  const armor = dominantArmor(a.shares);
+  const set = counterSets(view)[kind];
+  // the kit is the faction roster in a single battle (D45), and the general buys only the cards it lists (R2-Q4),
+  // so an answer is missing when it lists none of the set; v1's weight for an added card is 1
+  if (!set.some((id) => ai.weights.some((w) => w.building === id && w.weight > 0))) {
+    const id = missingAnswer(view, set, armor);
+    if (id) {
+      ai.weights = [...ai.weights.filter((w) => w.building !== id), { building: id, weight: 1 }]
+        .sort((x, y) => (x.building < y.building ? -1 : x.building > y.building ? 1 : 0));
+      rec.added = id;
+    }
+  }
+  c.history.push(rec);
+  for (const b of sellsForRoom(view, set, armor)) if (sell(b)) rec.sold.push(b.buildingId);
+  return rec;
 }
 
-/** Is the opening doctrine still in force (a single-kind one ends when the first counter activates)? */
-export function openingActive(ai: AiState): boolean {
-  return !!ai.opening && (ai.opening.dual || !activeCounter(ai));
-}
-
-/** The doctrine multiplier on a building's purchase weight: the active counter × the opening doctrine. */
-export function doctrineMult(state: BattleState, ai: AiState, buildingId: string): number {
-  const sets = ai.counterSets;
-  if (!sets) return 1;
-  let m = 1;
-  const rec = activeCounter(ai);
-  if (rec) m *= sets[rec.kind].includes(buildingId) ? state.rules.ai.counter.counterMult : state.rules.ai.counter.otherMult;
-  if (openingActive(ai)) {
-    const o = ai.opening!;
-    m *= o.kinds.some((k) => sets[k].includes(buildingId)) ? o.mult : o.otherMult;
+/**
+ * The doctrine's multiplier on a card's weight (§7.4, §7.6): the counter in force, ×3 on its set and ×0.6 on the
+ * rest, and the opening doctrine while it holds: ×2 and ×0.8 until the first activation, or the boss's ×2.5 on
+ * either of its two sets for the whole battle. 1 for a side with no counter cycle.
+ */
+export function doctrineMult(view: PlanningView, buildingId: string): number {
+  const c = view.ai?.counter;
+  if (!c) return 1;
+  const k = view.counterKnobs, kinds = counterKindsOf(view, buildingId);
+  const now = c.history.at(-1);
+  let m = now ? (kinds.includes(now.kind) ? k.counterMult : k.otherMult) : 1;
+  if (c.opening && (c.opening.dual || !now)) {
+    const hit = c.opening.kinds.some((x) => kinds.includes(x));
+    m *= c.opening.dual ? (hit ? k.dualMult : 1) : hit ? k.openingMult : k.openingOtherMult;
   }
   return m;
 }
 
-/**
- * Prototype A2 (balance `counterFloorWeight`): the least base weight a building gets while it is in
- * the active counter's set (0 when the knob is off or the building is outside the set).
- */
-export function counterFloor(state: BattleState, ai: AiState, buildingId: string): number {
-  const floor = state.rules.ai.counter.floorWeight;
-  const rec = floor ? activeCounter(ai) : undefined;
-  return rec && ai.counterSets![rec.kind].includes(buildingId) ? floor! : 0;
+/** The kind that answers what the other side fielded last round, before any noise; null in round 1 or after a round it fielded nothing. */
+export function lastAnswer(view: PlanningView): CounterKind | null {
+  const a = analyzeFielded(view, view.round - 1, view.round - 1);
+  return a.total > 0 ? topKind(a.scores) : null;
 }
 
-// ---- tracking the observed side's spawns and merges (for the Elite share) ----
-
-/** The adaptive AI watching `observed`, if any. */
-function watcher(state: BattleState, observed: Side): CounterState | undefined {
-  return state.sides[other(observed)].ai?.counter;
-}
-
-/** Spawning hook: `count` units from `b`, the first with id `firstId`. */
-export function noteSpawn(state: BattleState, b: BuildingState, firstId: number, count: number): void {
-  const c = watcher(state, b.side);
-  if (!c) return;
-  const w = waveOf(state, state.tick);
-  const key = String(b.id);
-  const t = c.track[key] ?? (c.track[key] = { spawned: {}, merged: {} });
-  t.spawned[String(w)] = (t.spawned[String(w)] ?? 0) + count;
-  const last = c.waveIds[c.waveIds.length - 1];
-  if (!last || last[0] < w) c.waveIds.push([w, firstId]);
-}
-
-/** Merging hook: tier-1 units of `side` knit into a merge count against their spawner and spawn wave. */
-export function noteMerged(state: BattleState, side: Side, unitId: number, sourceBuildingId: number): void {
-  const c = watcher(state, side);
-  if (!c) return;
-  const t = c.track[String(sourceBuildingId)];
-  if (!t) return;
-  let w = -1;
-  for (const [wave, first] of c.waveIds) if (first <= unitId) w = wave; else break;
-  if (w < 0) return;
-  t.merged[String(w)] = (t.merged[String(w)] ?? 0) + 1;
-}
-
-/** Placement hook: a counter-set building placed while that counter is active counts toward the report. */
-export function noteBuilt(state: BattleState, side: Side, buildingId: string): void {
-  const ai = state.sides[side].ai;
-  const rec = ai && activeCounter(ai);
-  if (!rec || !ai.counterSets![rec.kind].includes(buildingId)) return;
-  rec.built[buildingId] = (rec.built[buildingId] ?? 0) + 1;
-}
-
-// ---- the cycle ----
-
-/** Runs due activations and analyses (every tick; the schedule falls on AI-think ticks). */
-export function counterTick(state: BattleState, side: Side): void {
-  const ai = state.sides[side].ai;
-  const c = ai?.counter;
-  if (!ai || !c) return;
-  for (let i = 0; i < c.history.length; i++) {
-    const rec = c.history[i]!;
-    if (!rec.active && rec.activeAt <= state.tick) activate(state, side, ai, i);
-  }
-  while (c.schedule.length && c.schedule[0]!.analyzeTick <= state.tick) {
-    const cycle = c.schedule.shift()!;
-    analyze(state, side, ai, cycle.activeTick);
-  }
-}
-
-function analyze(state: BattleState, side: Side, ai: AiState, activeTick: number): void {
-  const c = ai.counter!;
-  const a = analyzeMix(state, other(side), c);
-  c.samples.push({ tick: state.tick, scores: a.scores, total: a.total });
-  if (a.total <= 0) return; // nothing to read: this cycle passes
-  const kind = pickKind(state, a.scores);
-  const rec: CounterRecord = { kind, warnedAt: state.tick, activeAt: activeTick, active: false, scores: a.scores, sold: [], built: {} };
-  const drafted = draftMissingCounter(state, side, ai, kind);
-  if (drafted) rec.drafted = drafted;
-  c.history.push(rec);
-  state.events.push({ t: 'counterWarned', side, kind, activatesAtTick: activeTick });
-}
-
-/** Adds the cheapest counter blueprint from the roster when the kit has none (SPEC §7.4, D11). */
-function draftMissingCounter(state: BattleState, side: Side, ai: AiState, kind: CounterKind): string | null {
-  const ss = state.sides[side];
-  const set = ai.counterSets?.[kind] ?? [];
-  if (!set.length || set.some((id) => ss.kit.includes(id))) return null;
-  let best: string | null = null;
-  for (const id of set) {
-    const def = state.library.buildings[id];
-    if (!def) continue;
-    if (!best || def.cost < state.library.buildings[best]!.cost) best = id;
-  }
-  if (!best) return null;
-  ss.kit.push(best);
-  recompile(state);
-  if (!ai.weights.some((w) => w.building === best)) ai.weights.push({ building: best, weight: 1, maxOwned: -1, afterTick: 0 });
-  return best;
-}
-
-function activate(state: BattleState, side: Side, ai: AiState, index: number): void {
-  const c = ai.counter!;
-  const rec = c.history[index]!;
-  rec.active = true;
-  c.current = index;
-  ai.target = null; // re-pick under the new weights
-  state.events.push({ t: 'counterActive', side, kind: rec.kind });
-  if (state.rules.ai.counter.floorWeight) {
-    // prototype A2: counter-set buildings outside the general's weights get an entry the floor lifts
-    for (const id of ai.counterSets![rec.kind]) {
-      if (state.sides[side].kit.includes(id) && !ai.weights.some((w) => w.building === id)) {
-        ai.weights.push({ building: id, weight: 0, maxOwned: -1, afterTick: 0 });
-      }
-    }
-  }
-  sellForSpace(state, side, ai, rec);
-}
-
-/** Non-overlapping legal 2×2 positions in the side's territory, counted greedily up to `want`. */
-export function freeSlots(state: BattleState, side: Side, buildingId: string, want: number): number {
-  const placed: { col: number; row: number }[] = [];
-  for (const p of legalPlacements(state, side, buildingId)) {
-    if (placed.some((q) => q.col < p.col + 2 && p.col < q.col + 2 && q.row < p.row + 2 && p.row < q.row + 2)) continue;
-    placed.push({ col: p.col, row: p.row });
-    if (placed.length >= want) break;
-  }
-  return placed.length;
-}
-
-/**
- * With fewer than `freeSlots` free 2×2 slots, sells spawners outside the counter set that fare worst
- * against the opponent's dominant armor (lowest matrix multiplier), rearmost first (SPEC §7.4).
- */
-function sellForSpace(state: BattleState, side: Side, ai: AiState, rec: CounterRecord): void {
-  const cr = state.rules.ai.counter;
-  const set = ai.counterSets![rec.kind];
-  const probe = set.find((id) => state.sides[side].kit.includes(id) && state.compiled[side].buildings[id]);
-  if (!probe) return;
-  const free = freeSlots(state, side, probe, cr.freeSlots);
-  const need = Math.min(cr.maxSells, cr.freeSlots - free);
-  if (need <= 0) return;
-  const mix = analyzeMix(state, other(side), ai.counter).shares;
-  const armor = mix.heavy > mix.medium && mix.heavy > mix.light ? 'heavy' : mix.medium > mix.light ? 'medium' : 'light';
-  const candidates = state.buildings.filter((b) => {
-    if (b.side !== side || b.hp <= 0 || set.includes(b.buildingId) || isBesieged(state, b)) return false;
-    return !!buildingDef(state, b).spawn;
-  }).map((b) => {
-    const u = state.compiled[side].units[buildingDef(state, b).spawn!.unit]!;
-    return { b, mult: state.rules.matrix[u.damageType][armor] };
-  });
-  const rear = (b: BuildingState) => (side === 'enemy' ? -b.col : b.col);
-  candidates.sort((x, y) => x.mult - y.mult || rear(x.b) - rear(y.b) || x.b.id - y.b.id);
-  for (const { b } of candidates.slice(0, need)) {
-    queueCommand(state, { tick: state.tick + 1, side, type: 'sell', entityId: b.id });
-    rec.sold.push(b.buildingId);
-  }
-}
+/** The counter in force for the Intent panel and the report (§7.5): the last activation, if any. */
+export const counterInForce = (ai: AiState | undefined): CounterRecord | undefined => ai?.counter?.history.at(-1);

@@ -1,6 +1,7 @@
-// Uniform-grid spatial hash with 2-tile cells, rebuilt every tick (SPEC §13.7). It is a transient
-// scratch structure (not part of the state) with reused typed arrays, so it never allocates in
-// the hot loop once warm. Indices refer to positions in `state.units` at build time.
+// Uniform-grid spatial hash with 2-tile cells, rebuilt every tick of a clash (SPEC §13.7): v1's
+// `src/sim/spatial.ts`, typed on rounds' state, with a grid of its own. It is a transient scratch
+// structure (not part of the state) with reused typed arrays, so it never allocates in the hot loop
+// once warm. Indices refer to positions in `state.units` at build time.
 import type { BattleState } from './state.ts';
 
 const CELL = 2;

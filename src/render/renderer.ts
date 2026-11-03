@@ -12,8 +12,8 @@
 // screen's assist preview shares (`assistPreview.ts`).
 import type { Content } from '../data/registry.ts';
 import { formationBox } from '../sim/formation.ts';
-import { SIDES, formationOf } from '../sim/rounds/index.ts';
-import type { BattleState, PlotState, Side, SquadPlan, UnitState } from '../sim/rounds/index.ts';
+import { SIDES, formationOf } from '../sim/index.ts';
+import type { BattleState, PlotState, Side, SquadPlan, UnitState } from '../sim/index.ts';
 import type { Atlas, Faction } from './atlas.ts';
 import { Effects } from './effects.ts';
 import { INK_DEEP, drawUnitSprite } from './unitSprite.ts';

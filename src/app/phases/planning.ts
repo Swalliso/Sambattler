@@ -3,8 +3,8 @@
 // queued Begin waits for input. The frame renders at alpha 1. Its chrome (§10.2, T095) is Begin, which the
 // view shows, the planning hint pinned in the callout lane, and the general's news as the phase opens, both worded here.
 import type { Content } from '../../data/registry.ts';
-import type { BattleState, Side } from '../../sim/rounds/index.ts';
-import { decisionWinner } from '../../sim/rounds/systems/victory.ts';
+import type { BattleState, Side } from '../../sim/index.ts';
+import { decisionWinner } from '../../sim/systems/victory.ts';
 import { intentOf, KIND_LABEL } from '../../ui/doctrine.ts';
 import type { RoundSession } from '../session.ts';
 

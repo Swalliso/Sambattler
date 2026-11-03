@@ -1,7 +1,9 @@
-// Runtime state: plain, JSON-serializable data only (SPEC §13.3 rule 8, §14.4).
-import type {
-  BalanceDef, BuildingDef, EffectBundle, ModifierDef, PowerDef, RelicDef, TriggerDef, UnitDef, UpgradeTrackDef,
-} from '../data/schema.ts';
+// A battle in rounds' runtime state (SPEC §14.4, §14.5): plain, JSON-serializable data only (§13.3 rule 8).
+// The library and the compiled sides hold ids and numbers only, so rewording a card never moves a golden
+// (R2-Q8, A152).
+import type { BalanceDef, BuildingDef, EffectBundle, ModifierDef, PowerDef, TriggerDef, UnitDef } from '../data/schema.ts';
+import type { Slot } from './formation.ts';
+import type { ColonyPlot } from './colony.ts';
 
 export type Side = 'player' | 'enemy';
 export const SIDES: readonly Side[] = ['player', 'enemy'];
@@ -12,11 +14,9 @@ export type Armor = 'light' | 'medium' | 'heavy' | 'structure';
 export type BuildingKind = 'spawner' | 'tower' | 'economy' | 'utility';
 export type Rng4 = [number, number, number, number];
 export type Effectiveness = 'strong' | 'normal' | 'weak';
+export type Tier = 1 | 2 | 3;
 
-/** Heartcaps are targetable but live off-grid; they use fixed negative ids. */
-export const HEARTCAP_ID: Record<Side, number> = { player: -1, enemy: -2 };
-export const NO_TARGET = 0;
-/** The damage-by-building key for a commander power's damage (turrets use 0). */
+/** The damage-by-building key for a commander power's damage. */
 export const POWER_SOURCE_ID = -3;
 
 export type Controller =
@@ -25,83 +25,32 @@ export type Controller =
   | { kind: 'bot'; id: string };
 
 export type Rarity = 'common' | 'uncommon' | 'rare';
-/** The general's four counter kinds (SPEC §7.4). */
-export type CounterKind = 'swarm' | 'line' | 'armor' | 'elite';
-export const COUNTER_KINDS: readonly CounterKind[] = ['swarm', 'line', 'armor', 'elite'];
-/** A player profile over the four kinds: an analysis's scores or the run's intel file (SPEC §7.6). */
-export type IntelProfile = Record<CounterKind, number>;
 export type CardType = 'blueprint' | 'upgrade' | 'relic';
 /** How a bot side answers its own drafts: `none` leaves them to the player (UI). */
 export type DraftPolicy = 'first' | 'random' | 'greedy' | 'none';
-/** How an AI-controlled side uses its commander power: `auto` picks targets itself (SPEC §16 M5); `none` never. */
+/** How an AI-controlled side uses its commander power: `auto` picks targets itself (§6.6); `none` never. */
 export type PowerPolicy = 'none' | 'auto';
+/** on/off: every spawner's merge toggle; auto: §7.2's merge rule (swarm merging off against Slayers). */
+export type MergePolicy = 'on' | 'off' | 'auto';
 
-/** The cards a side can be offered in battle (SPEC §8.4): blueprints split into core and shared pools. */
+/** The cards a side can be offered (§8.4): blueprints split into core and shared pools. */
 export interface DraftPool { core: string[]; shared: string[]; relics: string[] }
-
-export interface SideConfig {
-  faction: string;
-  controller: Controller;
-  kit: string[];
-  heartcapHp: number;
-  heartcapMaxHp: number;
-  startingGold: number;
-  /** Upgrade levels per building (SPEC §11.6); missing means none. */
-  upgrades?: Record<string, number>;
-  relics?: string[];
-  /** Present when this side drafts during the battle (with `flags.drafts`). */
-  draft?: DraftPool;
-  /** Draft policy for an AI-controlled side (default greedy); humans always draft through the UI. */
-  autoDraft?: DraftPolicy;
-  /** Battle-specific purchase weights, used when a run adds buildings outside the base AI profile. */
-  aiWeights?: Record<string, number>;
-  /**
-   * What an adaptive general knows of its opponent from earlier battles (SPEC §7.6): it opens with a
-   * doctrine against the top kind (the boss: a dual doctrine against the top two).
-   */
-  intel?: IntelProfile;
-  /** The side's commander (SPEC §11.10); its passive is one of the battle's modifiers. */
-  commander?: string;
-  /** The commander's active power (SPEC §6.6); usable while `flags.powers` is on. */
-  power?: string;
-  /** Power policy for an AI-controlled side (default none); humans use the power through the UI. */
-  powerPolicy?: PowerPolicy;
+/** What a side owns in a run: its kit, upgrade levels and relics, which drafts and spoils add to. */
+export interface Loadout { kit: string[]; upgrades: Record<string, number>; relics: string[] }
+export interface DraftCard { id: string; type: CardType; rarity: Rarity }
+export interface OpenDraft {
+  offer: DraftCard[];
+  /** Rerolls taken in this draft (the next one costs base + step × rerolls). */
+  rerolls: number;
+  /** 1-based draft number within the battle. */
+  index: number;
 }
 
-/** A battle-wide effect source: an event outcome, the elite modifier, later blights (SPEC §14.4). */
+/** A battle-wide effect source: an event outcome, the elite modifier, later blights (§14.4). */
 export interface BattleModifier { side: Side | 'both'; source: string; effects: EffectBundle }
 
-export interface BattleConfig {
-  seed: number;
-  battleIndex: number;
-  mapId: string;
-  player: SideConfig;
-  enemy: SideConfig;
-  flags: { merging: boolean; drafts: boolean; adaptiveGeneral: boolean; powers: boolean };
-  /** Event effects and elite modifiers for this battle (none by default). */
-  modifiers?: BattleModifier[];
-  scenario?: string;
-  /** Test-harness rule switches used by balance duels; never set in play. */
-  test?: {
-    noTurrets?: boolean; noTerritory?: boolean; noHeartcapTargets?: boolean; timeLimitSeconds?: number;
-    /**
-     * Tool-only, for R1's clash check: siege units fight the nearest enemy instead of preferring
-     * buildings, as v2's rule has it (SPEC §5.2). R2a writes the rule in its round systems
-     * (R2a/T037, T038), and R2b deletes `config.test` (R2b/T043, T158).
-     */
-    noBuildingPreference?: boolean;
-    /**
-     * Tool-only, for R1's clash check: a unit with no target walks toward the nearest enemy in its
-     * lane that it could target instead of marching to the far edge, as v2's rule has it (SPEC §5.2).
-     * R2a writes the rule in its round systems (R2a/T037, T038), and R2b deletes `config.test`
-     * (R2b/T043, T158).
-     */
-    idleSeek?: boolean;
-  };
-}
-
 /**
- * Stats of a unit at one merge tier (SPEC §5.5–5.6): HP and damage ×tierStatMult per tier, radius
+ * Stats of a unit at one merge tier (§5.5–5.6): HP and damage ×tierStatMult per tier, radius
  * ×tierRadiusMult per tier, supply ×tierSupplyMult, plus the tier's merge perks.
  */
 export interface CompiledTier {
@@ -128,283 +77,6 @@ export interface CompiledTier {
   regenPct: number;
 }
 
-/** Resolved, tick-based unit definition (SPEC §14.1 "compiled definitions"). */
-export interface CompiledUnit {
-  id: string;
-  armor: Exclude<Armor, 'structure'>;
-  damageType: DamageType;
-  projectileSpeed: number;
-  aggroRange: number;
-  siege: boolean;
-  slayer: boolean;
-  /** Support healers never attack; they hold at their range and heal allies. */
-  support: boolean;
-  tags: string[];
-  /** Index 0 is the base unit, 1 Bloomed, 2 Elder. */
-  tiers: [CompiledTier, CompiledTier, CompiledTier];
-}
-
-export interface CompiledBuilding {
-  id: string;
-  kind: BuildingKind;
-  w: number;
-  h: number;
-  cost: number;
-  hp: number;
-  spawn?: {
-    unit: string; count: number; intervalHalfTicks: number; firstHalfTicks: number;
-    /** Set when a positional modifier applies: the interval is re-resolved per building when its timer resets. */
-    positional?: PositionalStat;
-  };
-  attack?: {
-    damage: number; damageType: DamageType; intervalTicks: number; range: number;
-    minRange: number; splashRadius: number; projectileSpeed: number;
-  };
-  economy?: { goldPerTick: number; positional?: PositionalStat; interestCapAdd?: number };
-  /** Rhizome Vault: supply cap while standing, counted for at most `maxCount` buildings of this type. */
-  utility?: { supplyCapAdd: number; maxCount: number };
-}
-
-/** A building stat with modifiers that depend on where the building stands (zone, loam, adjacency). */
-export interface PositionalStat { base: number; mods: ModifierDef[] }
-
-export interface CompiledSide {
-  units: Record<string, CompiledUnit>;
-  buildings: Record<string, CompiledBuilding>;
-  supplyCap: number;
-  interestCap: number;
-  stipend: number;
-  captureSpeed: number;
-  sellRefundPct: number;
-  supplyLineBp: number;
-  loamBonusPct: number;
-  comebackEnabled: boolean;
-  mergeRadius: number;
-  knitTicks: number;
-  rerollBase: number;
-  rerollStep: number;
-  skipGold: number;
-  draftCards: number;
-  turret: { damage: number; damageType: DamageType; intervalTicks: number; range: number; projectileSpeed: number; perLane: number };
-  /** Triggers from upgrades, relics and battle modifiers, in source order. */
-  triggers: TriggerDef[];
-  /** The power's cooldown multiplier (`side.powerCooldown`); present only when it isn't 1. */
-  powerCooldownMult?: number;
-  /** Combat rework `waves`: ticks between this side's wave releases (`side.waveBeat`). Present only under waves. */
-  waveBeatTicks?: number;
-  /** Combat rework `waves`: × the units each spawner releases on a beat (`side.waveSize`). Present only under waves. */
-  waveSize?: number;
-}
-
-/**
- * The plain base definitions a battle can need (both kits, the draft pool, their units, upgrade
- * tracks and relics, and the balance constants), copied into state so `step` can recompile a side
- * after a draft pick without content lookups (SPEC §14.1). R2a's rounds data stays out (`buildLibrary`).
- */
-export interface Library {
-  balance: Omit<BalanceDef, 'rounds'>;
-  buildings: Record<string, BuildingDef>;
-  units: Record<string, UnitDef>;
-  upgrades: Record<string, UpgradeTrackDef>;
-  relics: Record<string, RelicDef>;
-  /** The commander powers in this battle (present only when a side has one). */
-  powers?: Record<string, PowerDef>;
-}
-
-/** What a side owns in this battle: the inputs to compilation besides battle modifiers. */
-export interface Loadout { kit: string[]; upgrades: Record<string, number>; relics: string[] }
-
-export interface DraftCard { id: string; type: CardType; rarity: Rarity }
-export interface OpenDraft {
-  offer: DraftCard[];
-  /** Rerolls taken in this draft (the next one costs base + step × rerolls). */
-  rerolls: number;
-  /** 1-based draft number within the battle. */
-  index: number;
-  /** Bigger-drafts prototype: cards still to take from this offer, when more than one. */
-  picks?: number;
-}
-
-/** Global rule constants, converted to ticks and integers at battle creation. */
-export interface Rules {
-  tickRate: number;
-  waveTicks: number;
-  incomeTicks: number;
-  interestPer: number;
-  comebackDivisor: number;
-  comebackMax: number;
-  fullRefundTicks: number;
-  besiegedTicks: number;
-  besiegedHalfTicks: number;
-  normalHalfTicks: number;
-  besiegedIncomePct: number;
-  /** Set only when production suppression differs from "any damage" (balance `besiegedBy`). */
-  suppressBy?: 'melee' | 'none';
-  /** Prototype B1 (balance `approachRush`); absent by default. */
-  rush?: { units: string[]; speedMult: number; ticks: number; cooldownTicks: number };
-  /** Prototype B3 (balance `firingCongestion`); absent by default. */
-  congestion?: { freeRanks: number; halfWidth: number; mult: number };
-  /** Prototype B4 (balance `unitLifespan`): lifespan ticks of a tier-1 unit and the per-tier multiplier; absent by default. */
-  lifespan?: { ticks: number; tierMult: number };
-  /** Prototype E1 (balance `laneStance`): the per-lane Hold / Advance command; absent by default. */
-  stance?: {
-    rallyBack: number; maxHoldTicks: number; cooldownTicks: number;
-    ai?: { musterSupply: number; spentSupply: number; profiles?: string[]; advanceWhenBesieged?: boolean };
-  };
-  /** Prototype T2 (balance `fallBack`); absent by default. */
-  fallBack?: { radius: number; ratio: number; maxHoldTicks: number };
-  /** Prototype T3 (balance `spawnerDefense`); absent by default. */
-  spawnerDefense?: { damage: number; damageType: DamageType; intervalTicks: number; range: number; projectileSpeed: number; homeOnly: boolean };
-  /** Diver prototype (balance `diveRanged`); absent by default. */
-  dive?: { units: string[]; aggroAdd: number; burst?: { speedMult: number; ticks: number; cooldownTicks: number } };
-  /** Hot-start prototype (balance `hotStart.deployDraft`): a free draft before the clock starts; absent by default. */
-  deployDraft?: { cards?: number };
-  /** Bigger-drafts prototype (balance `bigDrafts`): cards taken per in-battle draft and the offers' rare bonus; absent by default. */
-  bigDrafts?: { picks: number; rareBonus: number };
-  /**
-   * Combat rework `pinned` (balance `pinned`): a ranged unit with an enemy unit within `radius` runs
-   * its attack cooldown on `permille` ticks in 1000; absent by default.
-   */
-  pin?: { radius: number; permille: number };
-  /** Combat rework `callForHelp` (balance `callForHelp`): the call's radius; absent by default. */
-  help?: { radius: number };
-  /**
-   * Combat rework `sporeCloud` (balance `sporeCloud`): towers whose shells leave clouds, the clouds'
-   * radius and lifetime, the damage per pulse and the pulse cadence, and the AI's cover score per
-   * tile; absent by default.
-   */
-  cloud?: CloudSpec & { buildings: string[] };
-  /**
-   * Combat rework `waves` (balance `waves`): spawns wait in their building until their side's beat
-   * (`CompiledSide.waveBeatTicks`), spawners behind a lane's front one leaving early; idle wave units
-   * march at their wave's slowest pace (`matchPace`) and ranged units keep `rangedGap` behind their
-   * melee front. Absent by default.
-   */
-  waves?: { rangedGap: number; matchPace: boolean };
-  /**
-   * Combat rework `mixedWave` (balance `mixedWave`, only with `waves`): a lane's wave of `minTypes` or
-   * more unit types sets out with shields of `shieldFrac` × each unit's max HP. Absent by default.
-   */
-  mixed?: { minTypes: number; shieldFrac: number };
-  /** Combat rework `cleave` (balance `cleave`): units whose splash hits other units at full damage. Absent by default. */
-  cleave?: { units: string[] };
-  /** Combat rework `burster` (balance `burst`): the cloud a `burst` unit leaves where it bursts. Absent by default. */
-  burst?: { cloud: CloudSpec };
-  /** Combat rework `stormWaves` (balance `stormWaves`, only with `waves`): × (1 + perStack × storm stacks) on each wave release. Absent by default. */
-  stormWaves?: { perStack: number };
-  /** Combat rework `flyers` (balance `flying`): who can hit a flyer, and whether flyers hold ground. Absent by default. */
-  flying?: { reachSupply: number; meleeMult: number; mergedReach: boolean; cloudsReach: boolean; holdsGround: boolean };
-  timeLimitTicks: number;
-  captureThreshold: number;
-  captureStep: number;
-  captureDecay: number;
-  captureRatio: number;
-  retargetEvery: number;
-  leashMult: number;
-  splashFalloff: number;
-  storm: { startTick: number; everyTicks: number; maxStacks: number; unitDamage: number; turretDamage: number; heartcapTaken: number };
-  matrix: Record<DamageType, Record<Armor, number>>;
-  siegeMult: number;
-  slayerMult: number;
-  merge: { cooldownTicks: number; every: number };
-  /** Wave numbers whose end opens a draft (SPEC §8.3). */
-  draftWaves: number[];
-  strongAt: number;
-  weakAt: number;
-  spawnOffset: number;
-  spawnJitter: number;
-  driftPerTick: number;
-  separationPasses: number;
-  ai: {
-    thinkEvery: number; stickyTicks: number; pressureWindow: number; pressureMin: number; threatRadius: number;
-    towerRangeThreat: number; noise: number; economyEarlyTick: number; economyEarlyMult: number;
-    economyLateTick: number; economyLateMult: number; towerPressureMult: number; mergeOffSlayerShare: number;
-    counter: {
-      cycles: { analyzeTick: number; activeTick: number }[]; bossCycles: { analyzeTick: number; activeTick: number }[];
-      scoreNoise: number; swarmEliteDiscount: number; eliteScoreMult: number; counterMult: number; otherMult: number;
-      openingMult: number; openingOtherMult: number; dualMult: number; freeSlots: number; maxSells: number;
-      /** Prototype A2 (balance `counterFloorWeight`); absent by default. */
-      floorWeight?: number;
-      /** Combat rework swarm read (balance `swarmMaxSupply`); absent by default. */
-      swarmMaxSupply?: number;
-    };
-    score: { spawnerDepth: number; spawnerThreat: number; spawnerSurcharge: number; economyLoam: number;
-      economyDepth: number; economyThreat: number; towerFront: number; towerThreat: number };
-  };
-  /**
-   * `noBuildingPreference` and `idleSeek` are R1's tool-only switches (`BattleConfig.test`), present
-   * only when set, so no battle carries them.
-   */
-  test: { turrets: boolean; territory: boolean; heartcapTargets: boolean; noBuildingPreference?: true; idleSeek?: true };
-}
-
-export interface MapState {
-  id: string;
-  name: string;
-  width: number;
-  height: number;
-  homeCols: number;
-  tiles: string[];
-}
-
-export interface LaneState {
-  rowStart: number;
-  rowEnd: number;
-  /** Per column: 0 neutral, 1 player, 2 enemy. */
-  owner: number[];
-  pBorder: number;
-  eBorder: number;
-  capture: Record<Side, { column: number; progress: number }>;
-}
-
-export interface UnitState {
-  id: number;
-  side: Side;
-  lane: number;
-  unitId: string;
-  tier: Tier;
-  x: number;
-  y: number;
-  px: number;
-  py: number;
-  spawnY: number;
-  hp: number;
-  maxHp: number;
-  supply: number;
-  cooldown: number;
-  targetId: number;
-  lastCombatTick: number;
-  lastAttackTick: number;
-  mergeOn: boolean;
-  sourceBuildingId: number;
-  /** Set while the unit knits with two others (SPEC §5.6); undefined otherwise. */
-  knit?: KnitState;
-  /** Prototype B1 (and the diver's burst): the current rush ends at this tick, and the next may start at `rushReady`. Absent unless `rules.rush` or `rules.dive.burst`. */
-  rushUntil?: number;
-  rushReady?: number;
-  /** Prototype B4: the unit withers at this tick. Absent unless `rules.lifespan`. */
-  expiresTick?: number;
-  /** Prototype T2: the tick the unit started falling back (kept while committed). Absent unless `rules.fallBack`. */
-  holdSince?: number;
-  /**
-   * Combat rework: true while a `burrow` unit (the Rhizomorph) tunnels. It can't be targeted, hit,
-   * pinned or merged, doesn't collide or hold ground, and can't attack; false once it has surfaced.
-   * Absent for every other unit.
-   */
-  burrowed?: boolean;
-  /** Combat rework `waves`: the beat that released this unit (beat tick ÷ beat length). Absent for units no beat released. */
-  wave?: number;
-  /** Combat rework `mixedWave`: what is left of the shield its mixed wave set out with. Absent when it has none. */
-  shield?: number;
-  /** Combat rework `burster`: true once a `burst` unit has burst (it is spent). Absent until then, and for every other unit. */
-  burst?: boolean;
-  /**
-   * Combat rework `flyers`: true for a unit of a `flying` type while the setting is on. It passes over
-   * ground units, holds no ground, and only attacks with reach can hit it. Absent for every other unit.
-   */
-  flying?: boolean;
-}
-
 export interface KnitState {
   /** The trio's lowest unit id. */
   group: number;
@@ -416,46 +88,13 @@ export interface KnitState {
   hurt: boolean;
 }
 
-export type Tier = 1 | 2 | 3;
-
-export interface BuildingState {
-  id: number;
-  side: Side;
-  buildingId: string;
-  lane: number;
-  col: number;
-  row: number;
-  hp: number;
-  maxHp: number;
-  /** Half-ticks remaining to the next spawn. */
-  timer: number;
-  cooldown: number;
-  targetId: number;
-  lastAttackTick: number;
-  lastDamagedTick: number;
-  /** Last melee (non-projectile) hit; written only when `rules.suppressBy` is `melee`. */
-  lastMeleeDamagedTick?: number;
-  placedTick: number;
-  pricePaid: number;
-  /** A spawn, gold payout or shot ends the live placement's full-refund grace period. */
-  hasProduced: boolean;
-  mergeOn: boolean;
-  holding: boolean;
-  /** Combat rework `waves`: units waiting inside for the side's next wave (they count toward supply). Absent until one waits. */
-  stored?: number;
-  /** Combat rework `waves`: the last beat whose release this spawner made (it makes one per beat). Absent without waves. */
-  lastWave?: number;
-  /** Combat rework `stormWaves`: thousandths of a unit owed to this spawner's next release. Absent until the storm grows a wave. */
-  waveCarry?: number;
-}
-
-/** Combat rework: a spore cloud's size, lifetime, damage per pulse and pulse cadence. */
+/** A spore cloud's size, lifetime, damage per pulse and pulse cadence (§5.3). */
 export interface CloudSpec { radius: number; ticks: number; damage: number; pulseTicks: number }
 
 /**
- * Combat rework `sporeCloud` and `burster`: a spore cloud left where a tower's shell landed or a
- * Burster burst. It deals `damage` to the enemy units of `side`'s opponent inside it on each cadence
- * tick (every `pulseTicks`) after `fromTick`, up to `untilTick`. Clouds keep the order they formed in.
+ * A spore cloud left where a tower's shell landed or a Burster burst (§5.3). It deals `damage` to the
+ * enemy units of `side`'s opponent inside it on each cadence tick (every `pulseTicks`) after `fromTick`,
+ * up to `untilTick`. Clouds keep the order they formed in.
  */
 export interface CloudState {
   id: number;
@@ -493,219 +132,626 @@ export interface PendingHit {
   /** Attacker's multiplier against Bloomed and Elder targets (1 if it is not a slayer). */
   slayerMult: number;
   sourceBuildingId: number;
-  /** Unit id, tower building id or 'turret' (for damage-by-source stats). */
+  /** Unit id or tower building id (for damage-by-source stats). */
   sourceType: string;
   ranged: boolean;
-  /** Combat rework `flyers`: the attacker can't reach flyers, so its splash skips them. Absent otherwise. */
+  /** `flyers`: the attacker can't reach flyers, so its splash skips them. Absent otherwise. */
   noAir?: boolean;
 }
 
-export type CommandBody =
-  | { type: 'begin' }
-  | { type: 'place'; buildingId: string; lane: number; col: number; row: number }
-  | { type: 'sell'; entityId: number }
-  | { type: 'toggleMerge'; entityId: number; on: boolean }
-  | { type: 'stance'; lane: number; hold: boolean }
-  | { type: 'power'; x?: number; y?: number; lane?: number }
-  | { type: 'draftPick'; cardId: string }
-  | { type: 'draftReroll' }
-  | { type: 'draftSkip' };
-export type Command = { tick: number; side: Side; seq: number } & CommandBody;
+/** The counter kinds in rounds (§7.4): v1's four, and Anti-Ranged (#14). */
+export type CounterKind = 'swarm' | 'line' | 'armor' | 'elite' | 'ranged';
+export const COUNTER_KINDS: readonly CounterKind[] = ['swarm', 'line', 'armor', 'elite', 'ranged'];
+/** An intel file (§7.6): a score per kind, built by the run (R2b). A kind it leaves out scores 0. */
+export type IntelProfile = Partial<Record<CounterKind, number>>;
 
-export type SimEvent =
-  | { t: 'spawned'; id: number }
-  | { t: 'died'; id: number; side: Side; unitId: string; x: number; y: number }
-  | { t: 'hit'; target: number; src: number; amount: number; eff: Effectiveness; x: number; y: number; splash: boolean }
-  | { t: 'knitStart'; side: Side; ids: number[]; x: number; y: number }
-  | { t: 'knitCancel'; side: Side; ids: number[] }
-  | { t: 'merged'; side: Side; id: number; unitId: string; tier: 2 | 3; x: number; y: number }
-  | { t: 'columnFlipped'; lane: number; column: number; to: Side }
-  | { t: 'buildingPlaced'; id: number }
-  | { t: 'buildingDestroyed'; id: number; side: Side; buildingId: string; col: number; row: number }
-  | { t: 'buildingSold'; id: number; refund: number }
-  | { t: 'income'; side: Side; amount: number }
-  | { t: 'interest'; side: Side; amount: number }
-  | { t: 'wave'; n: number }
-  | { t: 'sporestorm'; stacks: number }
-  | { t: 'begin' }
-  | { t: 'commandRejected'; side: Side; seq: number; reason: string }
-  | { t: 'draftOpen'; side: Side; index: number }
-  | { t: 'drafted'; side: Side; cardId: string | null; skipped: boolean }
-  | { t: 'effectGold'; side: Side; amount: number }
-  | { t: 'healed'; target: number; src: number; amount: number; x: number; y: number }
-  | { t: 'counterWarned'; side: Side; kind: CounterKind; activatesAtTick: number }
-  | { t: 'counterActive'; side: Side; kind: CounterKind }
-  /** A commander power went off: its point (if it has one) and what it did. */
-  | { t: 'power'; side: Side; power: string; x?: number; y?: number; hits: number; lanes: number[]; merges: number; gold?: number }
-  /** Prototype E1: a lane switched between Hold and Advance (`auto` when the hold timer ran out). */
-  | { t: 'stance'; side: Side; lane: number; hold: boolean; auto: boolean }
-  /**
-   * Combat rework `waves`: a side's wave set out on its beat with `units` units, counting those that
-   * left early (`held`: lanes it kept home; `shielded`: lanes whose mixed wave got shields).
-   */
-  | { t: 'release'; side: Side; units: number; held: number[]; shielded: number[] }
-  /** Combat rework `stormWaves`: a spawner's release lost `units` extra units to the supply cap. */
-  | { t: 'waveCapped'; side: Side; units: number }
-  /** Combat rework `burster`: unit `id` burst at (x, y), reaching `radius` tiles. */
-  | { t: 'burst'; side: Side; id: number; x: number; y: number; radius: number }
-  /** Heartcap breach prototype: a side's Heartcap fell to `at` of its max HP, firing its `heartcapBreach` triggers. */
-  | { t: 'heartcapBreach'; side: Side; at: number; x: number; y: number }
-  | { t: 'ended'; winner: Side; by: 'rout' | 'decision' };
-
-export interface AiWeight { building: string; weight: number; maxOwned: number; afterTick: number }
-
-/** One counter cycle (SPEC §7.4): the analysis, its warning and its activation, for reports and the CLI. */
-export interface CounterRecord {
-  kind: CounterKind;
-  warnedAt: number;
-  activeAt: number;
-  /** Set once the counter has activated. */
-  active: boolean;
-  /** The analysis's scores before noise. */
-  scores: IntelProfile;
-  /** A counter blueprint added to the kit because none was there. */
-  drafted?: string;
-  /** Buildings sold for space at activation. */
-  sold: string[];
-  /** Buildings in the counter set placed while this counter was the active doctrine. */
-  built: Record<string, number>;
+/** A kit card (§8.10): a building the side owns. R3 adds how many of it may stand at once. */
+export interface KitCard {
+  building: string;
+  copies?: number;
+  /** A general's cap on how many of it stand at once, v1's `limits.*.maxOwned`, until R3 gives it copies (§7.8, D45). */
+  maxOwned?: number;
 }
 
-/** Spawn and merge counts by wave index for one of the observed side's spawners (Elite share, SPEC §7.4). */
-export interface SpawnTrack { spawned: Record<string, number>; merged: Record<string, number> }
+export interface SideConfig {
+  faction: string;
+  controller: Controller;
+  /** In a single battle, the faction roster, with no copy limit (§18.1 D45, plan Call 29). */
+  kit: KitCard[];
+  /** R3: building id → its augments (§11.13). */
+  augments?: Record<string, string[]>;
+  /** Until R3. A single battle has no upgrade levels and no relics; a run's battle has the run's (R2b). */
+  upgrades?: Record<string, number>;
+  relics: string[];
+  /** M6's traits and strains. */
+  traits?: string[];
+  strains?: Record<string, string>;
+  strainRanks?: Record<string, number>;
+  commander?: string;
+  power?: string;
+  powerPolicy?: PowerPolicy;
+  /** The plots the colony holds this battle (§4.6): the map's base plots unless set. */
+  plots: number;
+  /** This battle's Heartcap, which starts full (§4.5). */
+  heartcapMaxHp: number;
+  /** 300 + 75 per battle (§6.1). */
+  startingGold: number;
+  draft?: DraftPool;
+  autoDraft?: DraftPolicy;
+  aiWeights?: Record<string, number>;
+  intel?: IntelProfile;
+}
 
-/** The counter cycle's state for an adaptive side (absent for every other side). */
-export interface CounterState {
-  /** Analysis and activation ticks still to come, in order. */
-  schedule: { analyzeTick: number; activeTick: number }[];
-  /** Every cycle so far, in order; pending ones have `active: false`. */
-  history: CounterRecord[];
-  /** The active counter doctrine (index into `history`), or -1. */
-  current: number;
-  /** Opponent spawner id → spawns and merges per wave index. */
-  track: Record<string, SpawnTrack>;
-  /** [wave index, first unit id the opponent spawned in that wave], in order. */
-  waveIds: [number, number][];
-  /** The kind scores sampled at analysis times (the intel profile reads 2:00 and 5:00). */
-  samples: { tick: number; scores: IntelProfile; total: number }[];
+export interface BattleConfig {
+  seed: number;
+  battleIndex: number;
+  mapId: string;
+  player: SideConfig;
+  enemy: SideConfig;
+  /** Event effects, blights, the elite modifier, and the commanders' and generals' passives (§7.7, §11.10). */
+  modifiers?: BattleModifier[];
+  /** R2a refuses `drafts` in a battle in rounds (plan Call 26). */
+  flags: { merging: boolean; drafts: boolean; adaptiveGeneral: boolean; powers: boolean };
+  scenario?: string;
+}
+
+// ---- the library and the compiled sides (ids and numbers only, R2-Q8) ----
+
+type Textless<T, K extends PropertyKey> = T extends unknown ? Omit<T, K & keyof T> : never;
+export type LibraryBuilding = Textless<BuildingDef, 'name' | 'description'>;
+export type LibraryUnit = Textless<UnitDef, 'name'>;
+export type LibraryPower = Textless<PowerDef, 'name' | 'text'>;
+
+/** The data a battle in rounds needs, copied into state without display text: the UI reads names and text from content by id. */
+export interface Library {
+  balance: BalanceDef;
+  /** Both kits' buildings, and the units their squads field. */
+  buildings: Record<string, LibraryBuilding>;
+  units: Record<string, LibraryUnit>;
+  /** The commander powers in this battle (present only with `flags.powers` and a side that has one). */
+  powers?: Record<string, LibraryPower>;
+  /** A run's relics in this battle, their effects only (R2b; present only when a side holds one). */
+  relics?: Record<string, { effects: EffectBundle }>;
+  /** A run's upgrade tracks in this battle, by building id: each level's effects only (until R3; present only when a side has a level). */
+  upgrades?: Record<string, { effects: EffectBundle }[]>;
+}
+
+/** A unit at its three merge tiers (§5.5, §5.6), or a tower's emplacement. */
+export interface CompiledUnit {
+  id: string;
+  /** `structure` only on an emplacement (§11.2). */
+  armor: Armor;
+  damageType: DamageType;
+  projectileSpeed: number;
+  aggroRange: number;
+  siege: boolean;
+  slayer: boolean;
+  /** Support healers never attack; they hold at their range and heal allies. */
+  support: boolean;
+  tags: string[];
+  /** Index 0 is the base unit, 1 Bloomed, 2 Elder. An emplacement never merges, so its three are alike. */
+  tiers: [CompiledTier, CompiledTier, CompiledTier];
+  /**
+   * A tower's emplacement (§4.4, §6.7, #10): it never moves or merges and counts no supply, it fires no
+   * nearer than `minRange`, and with `clouds` its shells leave spore clouds (§5.3).
+   */
+  emplacement?: { minRange: number; clouds: boolean };
+}
+
+export interface CompiledBuilding {
+  id: string;
+  kind: BuildingKind;
+  cost: number;
+  /** What it fields each round (§4.4): a spawner's squad, or a tower's emplacement, one unit under the tower's own id. */
+  squad?: { unit: string; count: number };
+  /** An economy building's gold a round, and what it adds to the interest cap (§6.2). */
+  economy?: { goldPerRound: number; interestCapAdd?: number };
+}
+
+/** The triggers a battle in rounds fires (§14.2, §14.6). */
+export const ROUND_TRIGGERS = ['battleStart', 'roundStart', 'clashStart', 'unitDeath', 'merge', 'roundWon'] as const;
+export type RoundTriggerOn = (typeof ROUND_TRIGGERS)[number];
+/** The actions rounds run: `gainGold` pays its own side at once. */
+export type RoundAction = { gainGold: number };
+export interface RoundTrigger { on: RoundTriggerOn; if?: TriggerDef['if']; do: RoundAction[] }
+
+/**
+ * Content a battle in rounds compiles to nothing until R2b gives it a v2 effect (plan Call 19): a modifier
+ * on a stat rounds retire, or a trigger or action rounds don't run. Its source is the battle modifier's,
+ * such as `commander:vesper`.
+ */
+export type IgnoredEffect = { source: string } & ({ stat: string } | { trigger: string } | { action: string });
+
+export interface CompiledSide {
+  /** Its squads' units, and its towers' emplacements under each tower's id. */
+  units: Record<string, CompiledUnit>;
+  /** Its kit. */
+  buildings: Record<string, CompiledBuilding>;
+  /** A round's stipend, and the interest cap before any Spore Exchange (§6.2). */
+  stipend: number;
+  interestCap: number;
+  /** × its income, in basis points: 10000, or `enemyIncomeMult`'s for the general (§7.1). */
+  incomeBp: number;
+  comebackEnabled: boolean;
+  /** Refunds in percent: in the planning phase a building was planted, and once it has fielded (§4.4). */
+  sellRefundPlantedPct: number;
+  sellRefundPct: number;
+  /** A Truffle Cellar's extra gold on a loam plot, in percent (§6.2). */
+  loamBonusPct: number;
+  mergeRadius: number;
+  knitTicks: number;
+  /** Triggers from the battle's modifiers, in source order, holding only the actions rounds run. */
+  triggers: RoundTrigger[];
+  /** What this side's content compiles to nothing (plan Call 19). */
+  ignored: IgnoredEffect[];
+}
+
+/** Rule constants, converted to ticks and integers when the battle is created. */
+export interface Rules {
+  tickRate: number;
+  /** After this round a battle ends by Decision (§6.5). */
+  maxRounds: number;
+  /** A clash's 45 s cap and its 1 s muster, in ticks: the cap falls at `startTick + clashCapTicks` (§5.6, §6.7). */
+  clashCapTicks: number;
+  musterTicks: number;
+  /** Tiles between the two front ranks (§4.6). */
+  formationGapTiles: number;
+  /** Heartcap damage per supply a lane's winner has left, with siege units counting `siegeHeartcapMult` times (§6.7). */
+  heartcapDamagePerSupply: number;
+  siegeHeartcapMult: number;
+  /** Each lane's army of `minTypes` or more unit types arrives with shields of `shieldFrac` × each unit's max HP (§5.3, plan Call 30). */
+  arrivalShield: { minTypes: number; shieldFrac: number };
+  /** The most a Heartcap takes in a round (§6.7, X5): `maxHpBp` of its max HP, or `flat`, scaled by the storm with `stormScales`. */
+  roundDamageCap: { maxHpBp?: number; flat?: number; stormScales?: boolean };
+  /** A Decision after `maxRounds` (§6.5, X5). */
+  decisionBy: 'shareOfMaxHp' | 'damage';
+  /** Interest is 1 gold per `interestPer` banked (§6.2), up to each side's cap. */
+  interestPer: number;
+  /** Gold to the last round's loser (§6.2). */
+  comebackGold: number;
+  /** The storm by round (§6.4): from `startRound`, after `battle.sporestormStart`, +`stepBp` a round, at most `maxBp`. */
+  storm: { startRound: number; stepBp: number; maxBp: number };
+  // the kept combat (§5.2–§5.6), as v1 compiles it
+  retargetEvery: number;
+  leashMult: number;
+  splashFalloff: number;
+  matrix: Record<DamageType, Record<Armor, number>>;
+  siegeMult: number;
+  slayerMult: number;
+  merge: { cooldownTicks: number; every: number };
+  strongAt: number;
+  weakAt: number;
+  driftPerTick: number;
+  separationPasses: number;
+  /** A ranged unit with an enemy unit within `radius` runs its attack cooldown on `permille` ticks in 1000 (§5.3). */
+  pin?: { radius: number; permille: number };
+  /** The towers whose shells leave spore clouds, and the clouds (§5.3). */
+  cloud?: CloudSpec & { buildings: string[] };
+  /** Units whose splash hits other units at full damage (§5.3). */
+  cleave?: { units: string[] };
+  /** The cloud a `burst` unit leaves where it bursts (§5.3). */
+  burst?: { cloud: CloudSpec };
+}
+
+// ---- the battle ----
+
+/** The map a battle in rounds is fought on: its id, size, home columns and tiles (§4.1). No name (R2-Q8). */
+export interface MapState {
+  id: string;
+  width: number;
+  height: number;
+  homeCols: number;
+  tiles: string[];
+}
+
+/** A plot of a side's colony (§4.6), as `colonyPlots` gives it, with the building on it. */
+export interface PlotState extends ColonyPlot {
+  /** The building's entity id, or 0 when the plot is free. */
+  building: number;
+}
+
+export interface BuildingState {
+  id: number;
+  side: Side;
+  buildingId: string;
+  /** An index into the side's plots. */
+  plot: number;
+  plantedRound: number;
+  pricePaid: number;
+  /** True once it has been through a clash: selling it then refunds 60% (§4.4). */
+  fielded: boolean;
+  mergeOn: boolean;
+}
+
+/** A squad in this clash (§4.6). */
+export interface SquadState {
+  /** Its building's entity id. */
+  building: number;
+  side: Side;
+  lane: number;
+  unitId: string;
+  rank: number;
+  file: number;
+  /** Its slot in the formation box: 2×2 tiles from (col, row). */
+  slot: Slot;
+  /** Units and supply at the arrival. */
+  units: number;
+  supply: number;
+  /** R3: the combos it took into this clash. */
+  combos: string[];
+  /** Its units' own stats, where something reaches this squad alone (T046). Absent otherwise: its units read their side's unit. */
+  stats?: SquadStats;
 }
 
 /**
- * An opening doctrine from intel (SPEC §7.6): one kind (×2 / ×0.8) until the first counter activates,
- * or the boss's dual doctrine (×2.5 on either kind's set) for the whole battle.
+ * A squad's own unit stats (§5.6, §14.2, T046, A028): its side's unit with the patches that reach this squad
+ * alone, compiled at Begin and never per tick. Its units read them through `sourceBuildingId`, so a unit knit
+ * from two squads has its lowest-id parent's (R2-Q11). R3 adds augment and combo patches here (A131).
  */
-export interface OpeningDoctrine { kinds: CounterKind[]; mult: number; otherMult: number; dual: boolean }
-/** on/off: every spawner's merge toggle; auto: SPEC §7.2 step 5 (swarm merging off against Slayers). */
-export type MergePolicy = 'on' | 'off' | 'auto';
+export interface SquadStats {
+  /** In R2a, the side's unit modifiers whose `rank` or `onLoam` holds at the squad's plot. */
+  patches: ModifierDef[];
+  /** The unit at its three tiers: the side's modifiers, then the patches. */
+  tiers: [CompiledTier, CompiledTier, CompiledTier];
+}
+
+/** A lane's lock, written the tick it ends; the lane then freezes and scoring reads the lock, not the units (§6.7, A030). */
+export interface LaneLock {
+  ended: boolean;
+  endTick: number;
+  winner: Side | null;
+  /** Decided at the cap on surviving supply, not by a wipe: `LaneResult.capped`. */
+  capped: boolean;
+  /** Plain surviving supply: merged units count their own, siege units once (§6.7). */
+  survivors: Record<Side, number>;
+  /** The supply toward Heartcap damage, with siege units counting double. */
+  damageSupply: Record<Side, number>;
+  /** The winner's damage supply less the loser's, never below 0, and 0 for a draw (§6.7, #22). */
+  margin: number;
+}
+
+export interface ClashState {
+  /** The clash's cap falls at `startTick + rules.clashCapTicks`. */
+  startTick: number;
+  lanes: LaneLock[];
+  /** What each side fields this round, recorded at Begin as it stands after the muster; scoring puts it in the round's `RoundResult` (T051). */
+  fielded: Record<Side, FieldedSquad[]>;
+  /** The most Elders each side has had alive at once in this clash, the muster's included, for the round's stats (§5.7). */
+  maxElders: Record<Side, number>;
+  /** The units each side has put on the field this clash, merged ones included: the next one's `arrival`. */
+  arrived: Record<Side, number>;
+}
+
+export interface LaneResult {
+  winner: Side | null;
+  survivors: Record<Side, number>;
+  capped: boolean;
+  ticks: number;
+  /** What the lane's win dealt to the loser's Heartcap, after the storm and the loser's modifiers, before the round cap (A068). */
+  damage: number;
+}
+
+export interface RoundResult {
+  round: number;
+  lanes: LaneResult[];
+  /** Heartcap damage each side dealt, after the storm, the loser's damage-taken modifiers and the cap, before the HP floor (§6.7, R2-Q11). */
+  damage: Record<Side, number>;
+  /** The round's storm in basis points, 10000–20000 (§6.4), and whether the round cap cut any damage (§6.7). */
+  stormBp: number;
+  capped: boolean;
+  /** Each Heartcap's HP after the round. */
+  heartcaps: Record<Side, number>;
+  /** What each side fielded, recorded at Begin as it stands after the muster (§14.4). */
+  fielded: Record<Side, FieldedSquad[]>;
+  /** Per side and building entity: damage dealt, and units left standing at the clash's end, for inspect and the report (§5.7, A064). */
+  damageByBuilding: Record<Side, Record<number, number>>;
+  survivorsByBuilding: Record<Side, Record<number, number>>;
+  /** Each side's figures for the round (§5.7), closed once its `roundWon` triggers have fired. */
+  stats: Record<Side, RoundStats>;
+}
+
+/** One entry of the fielded record, which the counter cycle (§7.4) and the intel file (§7.6) read. */
+export interface FieldedSquad {
+  unitId: string;
+  tier: Tier;
+  count: number;
+  augments: string[];
+  /** The lane it stood in, so the general's lane rule reads only the record (§7.3, A047). */
+  lane: number;
+}
+
+export interface UnitState {
+  id: number;
+  /**
+   * Its place in the order its side's units took the field this clash, from 0: the arrivals in plot order,
+   * then each merged unit as it forms. Its staggered checks are phased by this, not its id, so they fall on
+   * the same clash ticks in every clash of the same colonies, and alike on both sides of a mirror (§5.2, T149).
+   */
+  arrival: number;
+  side: Side;
+  lane: number;
+  unitId: string;
+  tier: Tier;
+  x: number;
+  y: number;
+  px: number;
+  py: number;
+  /**
+   * The y it arrived at in its slot (its file, §4.6), which it drifts back toward while it has no enemy to
+   * seek (§5.2). A merged unit takes its parts' mean. v1's `spawnY`.
+   */
+  slotY: number;
+  hp: number;
+  maxHp: number;
+  supply: number;
+  cooldown: number;
+  targetId: number;
+  lastCombatTick: number;
+  lastAttackTick: number;
+  mergeOn: boolean;
+  /** Set while the unit knits with two others (§5.6). */
+  knit?: KnitState;
+  /** Its squad's building. */
+  sourceBuildingId: number;
+  /** What is left of its arrival shield (§5.3, #8). Absent when it has none. */
+  shield?: number;
+  /** The tunneler, the Burster and flyers (§5.3). */
+  burrowed?: boolean;
+  burst?: boolean;
+  flying?: boolean;
+  /** R3: timed statuses, and its blows this clash for `everyNth` and `firstInClash` (§14.2). */
+  statuses?: { kind: 'slow' | 'sunder'; mult: number; untilTick: number }[];
+  blows?: number;
+}
+
+/** What the general planned in one round (§7.5, plan Call 12, A070). Each entry names its building and plot. */
+export interface AiPlan {
+  round: number;
+  planted: { building: string; plot: number }[];
+  sold: { building: string; plot: number }[];
+  income: number;
+  banked: number;
+  /** The counter that activated in this round's planning (§7.4), if one did. */
+  counter?: CounterKind;
+}
+
+/** One counter the general activated (§7.4), a record by round for the Intent panel and the report. */
+export interface CounterRecord {
+  /** The round it activated in, the round of its analysis (#31). */
+  round: number;
+  /** The first round it read; it read up to the round before `round` (A051). */
+  from: number;
+  kind: CounterKind;
+  /** The kinds' scores before the noise. */
+  scores: Record<CounterKind, number>;
+  /** The answer it listed when it listed no card of the counter set. */
+  added?: string;
+  /** What it sold for room, by building id. */
+  sold: string[];
+}
+
+/** An adaptive general's counter cycle (§7.4, §7.6), with `flags.adaptiveGeneral` on. */
+export interface CounterState {
+  /** Its cycles in round order, each reading rounds `from` to `round` − 1: the boss's early one too (A051). */
+  cycles: { round: number; from: number }[];
+  /** The counters that activated, in order. The last is the doctrine in force until the next replaces it. */
+  history: CounterRecord[];
+  /** The opening doctrine from the intel file (§7.6): one kind until the first activation, or the boss's two for the whole battle. */
+  opening?: { kinds: CounterKind[]; dual: boolean };
+}
+
+/** A card an AI profile buys (§7.2): its doctrine weight, and its data limits as rounds read them (R2-Q6). */
+export interface AiWeight {
+  building: string;
+  weight: number;
+  /** At most this many of it standing at once. */
+  maxOwned?: number;
+  /** Bought only from this round on, v1's `afterSeconds` read one round a minute (§7.2, §14.2). */
+  afterRound?: number;
+}
+
+/**
+ * An AI side's planning state (§7.1, §7.2): its profile, copied from `data/generals.json` or `data/bots.json`
+ * so planning needs no content, the target it carries, its plan per round, and an adaptive general's counter
+ * cycle.
+ */
 export interface AiState {
   profileId: string;
-  mergePolicy: MergePolicy;
+  /** Round 1's buys, in order, before any weighted pick. */
   opener: string[];
+  /** Only the cards its weights list (R2-Q4), by building id. */
   weights: AiWeight[];
-  spawnerDepthWeight: number;
-  openerDone: boolean;
-  target: string | null;
-  targetSince: number;
-  draftPolicy: DraftPolicy;
-  /** Aggressive generals send spawners to the lane where the opponent holds least (SPEC §7.3). */
+  mergePolicy: MergePolicy;
+  /** The Blightwright's: spawners go to the lane you fielded least in (§7.3). */
   laneStyle?: 'aggressive';
-  /** Present only for an adaptive general with `flags.adaptiveGeneral` on. */
+  /** A bot that leans toward the answer to the general's planned army (§12.2, X7, `ai/answer.ts`). */
+  policy?: 'answer';
+  /** A target out of reach, with the round it was picked: carried into the next planning phase once (§7.2). */
+  target?: { building: string; round: number };
+  /** One entry a round, so the Intent panel survives later commands and a fast-forward to a round. */
+  plans: AiPlan[];
   counter?: CounterState;
-  /** Counter-set buildings per kind in the general's faction roster (fixed at battle start). */
-  counterSets?: Record<CounterKind, string[]>;
-  /** The doctrine intel gives it at the start of the battle. */
-  opening?: OpeningDoctrine;
-  /** The general's faction roster (missing counters are drafted from it). */
-  roster?: string[];
-  boss?: boolean;
 }
 
 export interface SideState {
   gold: number;
-  supplyUsed: number;
-  supplyCap: number;
+  /** This battle's Heartcap (§4.5). */
   heartcapHp: number;
   heartcapMaxHp: number;
-  turretCooldowns: number[];
-  /** Live ticks until the commander power is ready (0: ready, or no power). */
-  powerCooldown: number;
-  kit: string[];
+  kit: KitCard[];
+  /** R3. */
+  augments: Record<string, string[]>;
+  /** Until R3. */
   upgrades: Record<string, number>;
   relics: string[];
-  /** The open draft, while the sim is held for it. */
+  /** The colony, ordered by lane, rank, file. */
+  plots: PlotState[];
+  /** Gold held when this side's planning ended, which interest reads (§6.2). */
+  bankedAtBegin: number;
+  /** Gold a clash won, paid with the next round's income and lost if the battle ends first (§14.4, plan Call 25). */
+  pendingGold: number;
+  /** In this clash (§6.6). */
+  powerUsed: boolean;
   draft?: OpenDraft;
-  /** Drafts opened so far this battle. */
   draftsOpened: number;
-  /** Prototype E1: each lane's Hold / Advance stance. Absent unless `rules.stance`. */
-  stance?: LaneStance[];
-  /** Heartcap breach prototype: the Heartcap takes × `takenMult` damage until `untilTick` (a `shieldHeartcap` action). */
-  heartcapShield?: { untilTick: number; takenMult: number };
   ai?: AiState;
 }
 
-/** A lane's stance (prototype E1): held since `since`, or advancing; it can hold again from `readyAt`. */
-export interface LaneStance { hold: boolean; since: number; readyAt: number }
-
-export interface SideStats {
-  spawned: Record<string, number>;
+/**
+ * A side's figures for one round (§5.7, A064): its share of each counter, and its own most and least. Each
+ * round's is kept in its `RoundResult`, and a battle's figure is the sum of its rounds', or their most or
+ * least (`foldRounds` in `stats.ts`). Ids and numbers only (R2-Q8).
+ */
+export interface RoundStats {
+  /** Merges by the tier they made, at the muster and after it. */
   merges: { '2': number; '3': number };
   damageDealt: number;
-  /** Building entity id → damage dealt by it or its units. Key "0" is the Heartcap turrets. */
+  /** Building entity id → damage dealt by its units, clouds and bursts included. */
   damageByBuilding: Record<string, number>;
-  /** Building entity id → building type, for every building this side ever had (reports). */
-  buildingTypes: Record<string, string>;
-  /** Attacker kind (unit id, tower building id or 'turret') → damage dealt. */
+  /** Attacker kind (unit id, tower building id or `sporeCloud`) → damage dealt. */
   damageBySource: Record<string, number>;
+  /** Unit tag → damage dealt by the buildings whose squads carry it (M6-Q1); a tower's emplacement has no tags. */
+  damageByTag: Record<string, number>;
+  /** Heartcap damage after the storm and the cap, before the HP floor (§6.7, R2-Q11). */
+  heartcapDamageDealt: number;
   heartcapDamageTaken: number;
-  goldEarned: { stipend: number; economy: number; comeback: number; interest: number; effects: number; drafts: number };
-  healingDone: number;
-  /** Card ids picked in this battle's drafts, in order. */
-  drafted: string[];
+  /** By source (§6.2): the opening's income, and effects' gold paid at once. Pending gold counts when it's paid. */
+  goldEarned: { stipend: number; economy: number; comeback: number; interest: number; pending: number; effects: number };
+  /** Building entity id → its economy gold. */
   goldByBuilding: Record<string, number>;
-  buildingsBuilt: number;
-  buildingsLost: number;
-  buildingsDestroyed: number;
+  healingDone: number;
+  buildingsPlanted: number;
   buildingsSold: number;
+  /** M6-Q1: economy buildings planted, and buildings sold after they had fielded (selling in the phase planted is free, §4.4). */
+  economyPlanted: number;
+  soldAfterFielding: number;
   unitsLost: number;
-  maxEldersAlive: number;
-  maxGoldBanked: number;
-  columnsLost: number;
   rejectedCommands: number;
-  /** Commander power use (present only for a side with a power): uses, damage dealt, columns captured, trios merged, gold paid. */
+  /** The most Elders alive at once. */
+  maxEldersAlive: number;
+  /** The gold banked at Begin, which interest reads (§6.2). */
+  maxGoldBanked: number;
+  /** M6-Q1: the most economy buildings on loam plots at once, as Begin fields the colony. */
+  maxEconomyOnLoam: number;
+  /** M6-Q1: the side's own Heartcap's lowest HP fraction, in basis points of its max HP, as the round leaves it. */
+  lowestHeartcapBp: number;
+  /** Commander power use, for a side with a power: uses, damage dealt and trios merged (§6.6). */
   powerUses?: number;
   powerDamage?: number;
-  powerCaptures?: number;
   powerMerges?: number;
-  powerGold?: number;
 }
 
+/** A side's figures for the battle so far (§5.7): the systems count into it as they run, and each round's record closes from it. */
+export interface SideStats extends RoundStats {
+  /** Building entity id → its building's id, for reports: a sold building keeps its entry. */
+  buildingTypes: Record<string, string>;
+  /** M6-Q1: the side's damage by unit tag in the round a Heartcap fell, empty without a Rout. */
+  routRoundDamageByTag: Record<string, number>;
+}
+
+export type CommandBody =
+  // planning: each executes when queued (§13.3 rule 7)
+  | { type: 'plant'; buildingId: string; plot: number }
+  | { type: 'sell'; entityId: number }
+  | { type: 'toggleMerge'; entityId: number; on: boolean }
+  | { type: 'beginClash' }
+  | { type: 'draftPick'; cardId: string }
+  | { type: 'draftReroll' }
+  | { type: 'draftSkip' }
+  // a clash: executes on its tick
+  | { type: 'power'; x?: number; y?: number; lane?: number };
+/**
+ * A stamped command (§14.5, plan Call 7). It has no phase field, since its type implies it, and `tick` is
+ * `state.tick`, cumulative over the battle's clashes.
+ */
+export type Command = { round: number; tick: number; side: Side; seq: number } & CommandBody;
+
+export type SimEvent =
+  // a round opens
+  | { t: 'income'; side: Side; amount: number }
+  | { t: 'interest'; side: Side; amount: number }
+  | { t: 'roundStarted'; round: number; stormBp: number }
+  | { t: 'draftOpen'; side: Side; index: number }
+  | { t: 'drafted'; side: Side; cardId: string | null; skipped: boolean }
+  /** `sold` by building id; `counter` when one activated in this planning (§7.4). */
+  | { t: 'generalPlanned'; side: Side; planted: number[]; sold: string[]; counter?: CounterKind }
+  // planning
+  | { t: 'buildingPlanted'; id: number }
+  | { t: 'buildingSold'; id: number; side: Side; refund: number }
+  | { t: 'mergeToggled'; id: number; on: boolean }
+  | { t: 'commandRejected'; side: Side; seq: number; reason: string }
+  // the clash
+  | { t: 'clashStarted'; round: number; supply: Record<Side, number> }
+  /** A squad's units, on the clash's first tick. */
+  | { t: 'arrived'; side: Side; ids: number[] }
+  /**
+   * A trio the muster knits inside Begin, after its `merged` (§5.6): the arrived units it's made of, by building
+   * and index j in that squad (`MergePreview`'s trios), and the unit it made. The view animates the 1 s from it.
+   */
+  | { t: 'musterKnit'; side: Side; id: number; parts: { building: number; j: number }[]; tier: 2 | 3; x: number; y: number }
+  | { t: 'hit'; target: number; src: number; amount: number; eff: Effectiveness; x: number; y: number; splash: boolean }
+  | { t: 'died'; id: number; side: Side; unitId: string; x: number; y: number }
+  | { t: 'healed'; target: number; src: number; amount: number; x: number; y: number }
+  | { t: 'knitStart'; side: Side; ids: number[]; x: number; y: number }
+  | { t: 'knitCancel'; side: Side; ids: number[] }
+  | { t: 'merged'; side: Side; id: number; unitId: string; tier: 2 | 3; x: number; y: number }
+  | { t: 'burst'; side: Side; id: number; x: number; y: number; radius: number }
+  /** `pending`: into `pendingGold`. */
+  | { t: 'effectGold'; side: Side; amount: number; pending?: boolean }
+  | { t: 'power'; side: Side; power: string; x?: number; y?: number; hits: number; merges: number }
+  /** R3: icon flashes (§13.6). */
+  | { t: 'augmentActed' | 'comboActed'; side: Side; id: string; x: number; y: number }
+  | { t: 'laneWon'; lane: number; winner: Side | null; survivors: Record<Side, number>; capped: boolean }
+  /** A clash command still queued when its clash ended; not a rejection (plan Call 9). */
+  | { t: 'commandDropped'; side: Side; seq: number }
+  // scoring, on the clash's last tick: `side` took it
+  | { t: 'heartcapDamaged'; side: Side; amount: number; stormBp: number; capped: boolean }
+  // the aftermath's step, after the battle's last round
+  | { t: 'battleEnded'; winner: Side; by: 'rout' | 'decision'; round: number };
+
 export interface BattleState {
-  v: 1;
+  v: 2;
   config: BattleConfig;
+  phase: 'planning' | 'clash' | 'aftermath' | 'ended';
+  /** 1 to `rules.maxRounds` (§6.5). */
+  round: number;
+  /** Clash ticks so far this battle; it doesn't move in planning or the aftermath. */
   tick: number;
-  phase: 'deploy' | 'live' | 'ended';
-  held: boolean;
-  rng: Record<'combat' | 'ai' | 'draft', Rng4>;
+  /** From Begin until the next round opens. */
+  clash?: ClashState;
+  /** One per finished round, in order, with what each side fielded. */
+  rounds: RoundResult[];
+  /** An AI stream a side, `ai.player` and `ai.enemy`, seeded from the battle index (§13.3, plan Call 10). */
+  rng: { combat: Rng4; draft: Rng4; ai: Record<Side, Rng4> };
   nextId: number;
   nextSeq: Record<Side, number>;
+  /** Orders hits that land on the same tick from the same source. */
   nextHitSeq: number;
   rules: Rules;
   library: Library;
   map: MapState;
   sides: Record<Side, SideState>;
-  lanes: LaneState[];
-  units: UnitState[];
+  lanes: { rowStart: number; rowEnd: number }[];
+  /** Sorted by id. */
   buildings: BuildingState[];
+  /** This clash's, sorted by building id; empty in planning. */
+  squads: SquadState[];
+  /** Sorted by id; empty in planning. */
+  units: UnitState[];
+  /** Sorted by (tick, sourceId, seq). */
   hits: PendingHit[];
-  /** Combat rework `sporeCloud` and `burster`: the clouds on the field, oldest first. Absent unless `rules.cloud` or `rules.burst`. */
+  /** Spore clouds, oldest first. */
   clouds?: CloudState[];
+  /** This round's storm step: 0 before the storm's first round (§6.4). */
   sporestorm: number;
+  /** Pending commands, sorted by (round, tick, side, seq). */
   queue: Command[];
+  /** Every executed command, in execution order (replays). */
   log: Command[];
+  /** This step's only. */
   events: SimEvent[];
   compiled: Record<Side, CompiledSide>;
   stats: Record<Side, SideStats>;
-  /** Per lane: [tick, pBorder, eBorder] sampled every second. */
-  frontLine: [number, number, number][][];
-  outcome?: { winner: Side; by: 'rout' | 'decision'; tick: number };
+  /** Set when the last round is scored. */
+  outcome?: { winner: Side; by: 'rout' | 'decision'; round: number };
 }

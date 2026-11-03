@@ -14,8 +14,8 @@
 import type { Content } from '../data/registry.ts';
 import { formationBox } from '../sim/formation.ts';
 import type { Slot } from '../sim/formation.ts';
-import { SIDES, formationOf, matchupClass, mergePreview } from '../sim/rounds/index.ts';
-import type { BattleState, BuildingState, Effectiveness, MergePreview, PlanChange, Side, SquadPlan, TierCounts } from '../sim/rounds/index.ts';
+import { SIDES, formationOf, matchupClass, mergePreview } from '../sim/index.ts';
+import type { BattleState, BuildingState, Effectiveness, MergePreview, PlanChange, Side, SquadPlan, TierCounts } from '../sim/index.ts';
 import type { Atlas } from './atlas.ts';
 import { pixelText, textWidth } from './pixelText.ts';
 import { TILE, factionOf } from './renderer.ts';

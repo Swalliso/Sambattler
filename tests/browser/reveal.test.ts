@@ -7,9 +7,9 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { chromium } from 'playwright';
 import type { Browser, Page } from 'playwright';
 import { nodeContent } from '../../tools/lib/content.ts';
-import { roundStateForParams } from '../../tools/lib/rounds/params.ts';
-import { formationOf, hashState } from '../../src/sim/rounds/index.ts';
-import type { BattleState, SquadPlan } from '../../src/sim/rounds/index.ts';
+import { battleStateForParams } from '../../tools/lib/params.ts';
+import { formationOf, hashState } from '../../src/sim/index.ts';
+import type { BattleState, SquadPlan } from '../../src/sim/index.ts';
 import type { DrawnSquad } from '../../src/app/debugBridge.ts';
 import { parseRoundParams } from '../../src/app/urlParams.ts';
 import { closeServers, serve } from './serve.ts';
@@ -44,7 +44,7 @@ const preview = (p: Page) => p.evaluate(() => window.__GAME__!.preview()!);
 const hashOf = (p: Page) => p.evaluate(() => window.__GAME__!.hash);
 
 /** Node's state for the same query, at the same checkpoint (T080). */
-const node = (query: string): BattleState => roundStateForParams(content, new URLSearchParams(query));
+const node = (query: string): BattleState => battleStateForParams(content, new URLSearchParams(query));
 
 /** A bot plays your side, against the preview's adaptive general (Mother Mold), whose counter cycle sells for room (S15). */
 const bot = (seed: number) => `scene=battle&seed=${seed}&test=1&player=bot:balanced`;

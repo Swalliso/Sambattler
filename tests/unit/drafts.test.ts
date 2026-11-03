@@ -1,14 +1,12 @@
+// Draft offers (SPEC §8.3–8.4), which the run's spoils use. R2b's T062 adds the drafts in planning.
 import { describe, expect, it } from 'vitest';
-import {
-  buildLibrary, createBattle, draftPool, generateOffer, hashState, makeConfig, parseCard, queueCommand, rarityWeights, runHeadless,
-  seedStream, step,
-} from '../../src/sim/index.ts';
-import type { BattleState, DraftPool, Loadout } from '../../src/sim/index.ts';
-import { building, content } from '../helpers.ts';
+import { draftLibrary, draftPool, generateOffer, parseCard, rarityWeights, seedStream } from '../../src/sim/index.ts';
+import type { DraftPool, Loadout } from '../../src/sim/index.ts';
+import { content } from '../helpers.ts';
 
 const flags = { merging: true, drafts: true, adaptiveGeneral: false, powers: false };
 const pool: DraftPool = draftPool(content, 'velvet-bloom', 'vesper', flags);
-const lib = buildLibrary(content, [...pool.core, ...pool.shared], pool.relics);
+const lib = draftLibrary(content, [...pool.core, ...pool.shared], pool.relics);
 const starter = (): Loadout => ({ kit: ['sporelingBurrow', 'capguardHall', 'truffleCellar'], upgrades: {}, relics: [] });
 const bigKit = (): Loadout => ({ kit: ['sporelingBurrow', 'capguardHall', 'truffleCellar', 'gillNest', 'rootbreakerDen'], upgrades: {}, relics: [] });
 
@@ -95,98 +93,3 @@ describe('draft offers (SPEC §8.3–8.4)', () => {
 });
 
 /** A live run-style battle with drafts on: the player is `player`, the enemy the scripted general. */
-function draftBattle(player = 'human', seed = 4): BattleState {
-  const config = makeConfig(content, { seed, player, flags });
-  config.player.kit = ['sporelingBurrow', 'capguardHall', 'truffleCellar'];
-  const s = createBattle(content, config);
-  queueCommand(s, { tick: 0, side: 'player', type: 'begin' });
-  return s;
-}
-
-describe('in-battle drafts and the hold', () => {
-  it('opens at the end of wave 2 and holds the clock until the player picks', () => {
-    const s = draftBattle();
-    runHeadless(s, { until: 2399 });
-    expect(s.held).toBe(false);
-    step(s);
-    expect(s.tick).toBe(2400);
-    expect(s.held).toBe(true);
-    expect(s.events.some((e) => e.t === 'draftOpen' && e.side === 'player')).toBe(true);
-    const offer = s.sides.player.draft!.offer;
-    expect(offer).toHaveLength(3);
-    const hash = hashState(s);
-    for (let i = 0; i < 5; i++) step(s);
-    expect(s.tick).toBe(2400); // held: no tick passes
-    queueCommand(s, { tick: s.tick + 1, side: 'player', type: 'place', buildingId: 'sporelingBurrow', lane: 0, col: 0, row: 0 });
-    queueCommand(s, { tick: s.tick + 1, side: 'player', type: 'draftPick', cardId: offer[0]!.id });
-    step(s);
-    expect(s.tick).toBe(2400);
-    expect(s.held).toBe(false);
-    expect(s.stats.player.drafted).toEqual([offer[0]!.id]);
-    expect(s.queue.some((c) => c.type === 'place')).toBe(true); // ordinary commands wait for the hold to end
-    expect(hashState(s)).not.toBe(hash);
-    step(s);
-    expect(s.tick).toBe(2401);
-    expect(s.queue.some((c) => c.type === 'place' && c.side === 'player')).toBe(false);
-  });
-
-  it('a pick applies its card and recompiles (blueprint into the kit, relic stats live)', () => {
-    const s = draftBattle();
-    runHeadless(s, { until: 2400 });
-    const ss = s.sides.player;
-    ss.draft!.offer = [{ id: 'relic:mycelialWeb', type: 'relic', rarity: 'uncommon' }, { id: 'bp:gillNest', type: 'blueprint', rarity: 'common' }];
-    queueCommand(s, { tick: s.tick + 1, side: 'player', type: 'draftPick', cardId: 'relic:mycelialWeb' });
-    step(s);
-    expect(ss.relics).toEqual(['mycelialWeb']);
-    expect(ss.supplyCap).toBe(content.balance.supplyCap + 6);
-    expect(s.compiled.player.supplyCap).toBe(content.balance.supplyCap + 6);
-  });
-
-  it('standing buildings keep their HP fraction when a pick raises their maximum', () => {
-    const s = draftBattle();
-    runHeadless(s, { until: 2400 });
-    const b = building(s, 'player', 'capguardHall', 0, 0);
-    b.hp = Math.round(b.maxHp / 2);
-    s.sides.player.draft!.offer = [{ id: 'relic:thickCaps', type: 'relic', rarity: 'common' }];
-    queueCommand(s, { tick: s.tick + 1, side: 'player', type: 'draftPick', cardId: 'relic:thickCaps' });
-    step(s);
-    expect(b.maxHp).toBe(Math.round(content.buildings[b.buildingId]!.hp * 1.15));
-    expect(b.hp).toBe(Math.round(b.maxHp / 2));
-  });
-
-  it('rerolls cost 20, then 30 battle gold; a skip gives +40; an off-offer pick is rejected', () => {
-    const s = draftBattle();
-    runHeadless(s, { until: 2400 });
-    const ss = s.sides.player;
-    ss.gold = 100;
-    queueCommand(s, { tick: s.tick + 1, side: 'player', type: 'draftReroll' });
-    queueCommand(s, { tick: s.tick + 1, side: 'player', type: 'draftReroll' });
-    step(s);
-    expect(ss.gold).toBe(50);
-    expect(ss.draft!.rerolls).toBe(2);
-    queueCommand(s, { tick: s.tick + 1, side: 'player', type: 'draftPick', cardId: 'bp:nothing' });
-    step(s);
-    expect(s.events.some((e) => e.t === 'commandRejected')).toBe(true);
-    expect(s.held).toBe(true);
-    queueCommand(s, { tick: s.tick + 1, side: 'player', type: 'draftSkip' });
-    step(s);
-    expect(ss.gold).toBe(90);
-    expect(s.held).toBe(false);
-    expect(s.stats.player.goldEarned.drafts).toBe(40);
-  });
-
-  it('runHeadless refuses to spin on a held battle with no draft command', () => {
-    const s = draftBattle();
-    expect(() => runHeadless(s, { until: 3000 })).toThrow(/held for a draft/);
-  });
-
-  it('a bot side answers its own drafts; four drafts per full battle at most', () => {
-    const s = draftBattle('bot:balanced');
-    const opened: number[] = [];
-    runHeadless(s, { until: 'end', onTick: (st) => { for (const e of st.events) if (e.t === 'draftOpen') opened.push(st.tick); } });
-    expect(s.held).toBe(false);
-    expect(s.stats.player.drafted.length).toBe(s.sides.player.draftsOpened);
-    expect(opened.every((t, i) => t === 2400 * (i + 1))).toBe(true);
-    expect(opened.length).toBeLessThanOrEqual(4);
-  });
-});

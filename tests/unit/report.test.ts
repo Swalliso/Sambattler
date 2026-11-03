@@ -5,12 +5,12 @@
 // as a share of the other's max HP (X5). The report's figures are plain functions of the state, so these run
 // in Node without a page.
 import { describe, expect, it } from 'vitest';
-import type { RoundScenarioDef } from '../../src/data/schema.ts';
-import { createFromScenario, runHeadless, step } from '../../src/sim/rounds/index.ts';
-import type { BattleState, Side } from '../../src/sim/rounds/index.ts';
+import type { ScenarioDef } from '../../src/data/schema.ts';
+import { createFromScenario, runHeadless, step } from '../../src/sim/index.ts';
+import type { BattleState, Side } from '../../src/sim/index.ts';
 import { resultOf } from '../../src/ui/hud/explain.ts';
 import { bankedByRound, goldBySource, outcomeText, roundChart } from '../../src/ui/report.ts';
-import { content, finishRound, fromScenario, playerScript, scriptedBattle } from '../roundHelpers.ts';
+import { content, finishRound, fromScenario, playerScript, scriptedBattle } from '../helpers.ts';
 
 /** Plays the round to its end and steps the aftermath, which ends the battle after its last round. */
 function finish(s: BattleState): BattleState {
@@ -20,7 +20,7 @@ function finish(s: BattleState): BattleState {
 }
 
 /** Round 6, with the general's Heartcap all but gone and nothing of its own in the lane: your Capguards take it. */
-const ROUT_ROUND_6: RoundScenarioDef = {
+const ROUT_ROUND_6: ScenarioDef = {
   id: 'report-rout-6', description: 'report test: a Rout in round 6', map: 'bogwater-hollow', round: 6,
   sides: {
     player: { colony: [{ building: 'capguardHall', lane: 0, rank: 0, file: 2, merge: false }] },

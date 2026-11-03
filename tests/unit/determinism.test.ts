@@ -1,85 +1,110 @@
 import { describe, expect, it } from 'vitest';
-import {
-  createBattle, hashState, makeConfig, queueCommand, restore, runHeadless, snapshot, step,
-} from '../../src/sim/index.ts';
-import type { BattleState } from '../../src/sim/index.ts';
-import type { QueuedCommand } from '../../src/sim/commands.ts';
 import { hashValue } from '../../src/sim/hash.ts';
-import { loadContent } from '../../src/data/registry.ts';
-import type { Content } from '../../src/data/registry.ts';
-import { readRawContent } from '../../tools/lib/content.ts';
-import { content } from '../helpers.ts';
+import { hashState, legalPlots, restore, runHeadless, snapshot, step } from '../../src/sim/index.ts';
+import type { BattleState, Command, HeadlessUntil } from '../../src/sim/index.ts';
+import { begin, playerScript, scriptedBattle } from '../helpers.ts';
 
-const config = () => makeConfig(content, { seed: 11, player: 'bot:balanced', enemy: 'general:scripted' });
-
-function hashesEvery(state: BattleState, every: number, until: number): string[] {
-  const out: string[] = [];
-  runHeadless(state, { until, onTick: (s) => { if (s.tick % every === 0) out.push(hashState(s)); } });
-  return out;
+// round 2 plants a Sporeling Burrow, so its clash differs from round 1's, and from round 3 the colonies stand still
+const plot = legalPlots(scriptedBattle(), 'player', 'sporelingBurrow')[0]!;
+const script = (): Command[] => playerScript(9, { 2: [{ type: 'plant', buildingId: 'sporelingBurrow', plot }] });
+function play() {
+  const s = scriptedBattle();
+  return { s, res: runHeadless(s, { until: 'end', commands: script(), hashEvery: 200 }) };
 }
 
-describe('determinism (SPEC §13.3, §15.5)', () => {
-  it('same config and commands give equal hashes every 200 ticks', () => {
-    const a = hashesEvery(createBattle(content, config()), 200, 4000);
-    const b = hashesEvery(createBattle(content, config()), 200, 4000);
-    expect(a).toHaveLength(20);
-    expect(a).toEqual(b);
-    const other = hashesEvery(createBattle(content, makeConfig(content, { seed: 12, player: 'bot:balanced', enemy: 'general:scripted' })), 200, 4000);
-    expect(other).not.toEqual(a);
-  });
-
-  it('snapshot at T → restore → continue matches an uninterrupted run', () => {
-    const whole = createBattle(content, config());
-    runHeadless(whole, { until: 3000 });
-    const part = createBattle(content, config());
-    runHeadless(part, { until: 1234 });
-    const resumed = restore(snapshot(part));
-    expect(hashState(resumed)).toBe(hashState(part));
-    runHeadless(resumed, { until: 3000 });
-    expect(hashState(resumed)).toBe(hashState(whole));
-  });
-
-  it('a mid-battle resume from the command log matches (human player)', () => {
-    const human = makeConfig(content, { seed: 5, player: 'human', enemy: 'general:scripted' });
-    const live = createBattle(content, human);
-    const script: QueuedCommand[] = [
-      { tick: 0, side: 'player', type: 'place', buildingId: 'sporelingBurrow', lane: 0, col: 0, row: 0 },
-      { tick: 0, side: 'player', type: 'place', buildingId: 'capguardHall', lane: 0, col: 2, row: 4 },
-      { tick: 0, side: 'player', type: 'begin' },
-    ];
-    for (const c of script) queueCommand(live, c);
-    step(live);
-    for (let t = 1; t <= 2400; t++) {
-      if (t === 900) queueCommand(live, { tick: t, side: 'player', type: 'place', buildingId: 'gillNest', lane: 0, col: 0, row: 4 });
-      if (t === 1500) queueCommand(live, { tick: t, side: 'player', type: 'sell', entityId: live.buildings.find((b) => b.side === 'player')!.id });
-      step(live);
+describe('determinism in rounds (SPEC §13.3, §15.5)', () => {
+  it('the same config and commands give equal hashes at every phase boundary and every 200 clash ticks', () => {
+    const a = play(), b = play();
+    expect([a.s.stats.player.buildingsPlanted, a.s.stats.player.rejectedCommands]).toEqual([1, 0]);
+    expect(a.res.hashes).toEqual(b.res.hashes);
+    expect(a.res.finalHash).toBe(b.res.finalHash);
+    for (let r = 1; r <= a.s.round; r++) {
+      expect(Object.keys(a.res.hashes)).toEqual(expect.arrayContaining([`r${r}.planning`, `r${r}.clash`, `r${r}:200`, `r${r}.aftermath`]));
     }
-    const log = live.log.filter((c) => c.side === 'player');
-    const resumed = createBattle(content, human);
-    runHeadless(resumed, { until: 2400, commands: log });
-    expect(hashState(resumed)).toBe(hashState(live));
+    // without round 2's plant, round 1 is the same and round 2's clash isn't
+    const other = runHeadless(scriptedBattle(), { until: 'end', commands: playerScript(9), hashEvery: 200 });
+    expect(other.hashes['r1.aftermath']).toBe(a.res.hashes['r1.aftermath']);
+    expect(other.hashes['r2.planning']).toBe(a.res.hashes['r2.planning']);
+    expect(other.hashes['r2.clash']).not.toBe(a.res.hashes['r2.clash']);
   });
 
-  it("rounds data never reaches a v1 battle's state (R2a Call 27)", () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const raw = readRawContent() as Record<string, any>;
-    const building = (id: string) => raw['factions/velvet-bloom/buildings.json'].find((b: { id: string }) => b.id === id);
-    raw['balance.json'].rounds.maxRounds = 12;
-    building('sporelingBurrow').squad.count = 9;
-    building('truffleCellar').economy.goldPerRound = 60;
-    raw['bots.json'].find((b: { id: string }) => b.id === 'balanced').limits.rootbreakerDen.afterRound = 6;
-    const changed = loadContent(raw);
-    const battle = (c: Content) => createBattle(c, makeConfig(c, { seed: 11, player: 'bot:balanced', enemy: 'general:scripted' }));
-    expect(hashState(battle(changed))).toBe(hashState(battle(content)));
-    expect(hashesEvery(battle(changed), 500, 2000)).toEqual(hashesEvery(battle(content), 500, 2000));
+  it('a snapshot at any checkpoint or clash tick, restored and continued, gives the same final hash', () => {
+    const whole = play();
+    const stops: (HeadlessUntil | 'r2.planning')[] = [
+      { round: 1, tick: 0 }, { round: 1, tick: 137 }, { round: 1 }, 'r2.planning', { round: 2, tick: 200 }, { round: 3, tick: 1 }, { round: 4 },
+    ];
+    for (const stop of stops) {
+      const part = scriptedBattle();
+      runHeadless(part, { until: stop === 'r2.planning' ? { round: 1 } : stop, commands: script() });
+      if (stop === 'r2.planning') step(part); // the aftermath's step opens round 2
+      const resumed = restore(snapshot(part));
+      expect(hashState(resumed)).toBe(hashState(part));
+      // the whole script again: the commands already run are skipped
+      const rest = runHeadless(resumed, { until: 'end', commands: script(), hashEvery: 200 });
+      expect(rest.finalHash, JSON.stringify(stop)).toBe(whole.res.finalHash);
+      for (const [key, hash] of Object.entries(rest.hashes)) expect(hash, `${JSON.stringify(stop)} ${key}`).toBe(whole.res.hashes[key]);
+    }
   });
 
-  it('hashState is canonical: key order, -0 and undefined fields do not matter', () => {
-    expect(hashValue({ a: 1, b: [1, 2] })).toBe(hashValue({ b: [1, 2], a: 1 }));
-    expect(hashValue({ x: -0 })).toBe(hashValue({ x: 0 }));
-    expect(hashValue({ x: 1, y: undefined })).toBe(hashValue({ x: 1 }));
-    expect(hashValue({ x: 1.5 })).not.toBe(hashValue({ x: 1.5000000000000002 }));
-    expect(hashValue('ab')).not.toBe(hashValue('ba'));
-    expect(hashState(createBattle(content, config()))).toMatch(/^[0-9a-f]{16}$/);
+  /**
+   * A clash's own state as a hash: its units, hits in flight, clouds and lane locks, with ids counted from the
+   * clash's first, ticks from its start and hit seqs from Begin's, so two clashes that play alike hash alike.
+   */
+  function clashHash(s: BattleState, base: number, start: number, seq: number): string {
+    const id = (n: number) => (n > 0 ? n - base : n); // 0 is no unit
+    const at = (t: number) => (t >= start ? t - start : t); // a unit that hasn't fought keeps its sentinel
+    return hashValue({
+      units: s.units.map((u) => ({
+        ...u, id: id(u.id), targetId: id(u.targetId), lastCombatTick: at(u.lastCombatTick), lastAttackTick: at(u.lastAttackTick),
+        knit: u.knit && { ...u.knit, group: id(u.knit.group), untilTick: at(u.knit.untilTick) },
+      })),
+      hits: s.hits.map((h) => ({ ...h, tick: at(h.tick), fireTick: at(h.fireTick), sourceId: id(h.sourceId), targetId: id(h.targetId), seq: h.seq - seq })),
+      clouds: (s.clouds ?? []).map((c) => ({ ...c, id: id(c.id), fromTick: at(c.fromTick), untilTick: at(c.untilTick) })),
+      lanes: s.clash!.lanes.map((l) => ({ ...l, endTick: at(l.endTick) })),
+    });
+  }
+
+  // rounds 3 and 4 of the battle, where neither colony changes and no power fires: each tick's units, by id counted
+  // from the clash's first, where they stand and their HP, and its `clashHash`; then the round's results
+  function quietRounds() {
+    const s = scriptedBattle();
+    runHeadless(s, { until: { round: 2 }, commands: script() });
+    const playRound = () => {
+      step(s);
+      const base = s.nextId, start = s.tick, seq = s.nextHitSeq;
+      begin(s);
+      const ticks: string[] = [], hashes: string[] = [];
+      while (s.phase === 'clash') {
+        step(s);
+        ticks.push(JSON.stringify(s.units.map((u) => [u.id - base, u.unitId, u.tier, u.x, u.y, u.hp])));
+        hashes.push(clashHash(s, base, start, seq));
+      }
+      const { lanes, damageByBuilding, survivorsByBuilding, fielded } = s.rounds.at(-1)!;
+      // a lane's Heartcap damage follows the round's storm, which the clash doesn't see
+      return { ticks, hashes, lanes: lanes.map(({ damage: _damage, ...lane }) => lane), damageByBuilding, survivorsByBuilding, fielded };
+    };
+    const third = playRound(), fourth = playRound();
+    return { s, third, fourth };
+  }
+  let quiet: ReturnType<typeof quietRounds> | undefined;
+  const quietOnce = () => (quiet ??= quietRounds());
+
+  it('rounds 3 and 4 field the same colonies', () => {
+    const { s, third, fourth } = quietOnce();
+    expect([s.round, third.ticks.length > 200]).toEqual([4, true]);
+    expect(fourth.fielded).toEqual(third.fielded);
+  });
+
+  // T149: the kept systems' staggers and periodic checks count from the clash's start, and phase a unit by its
+  // arrival on its side, so they fall on the same ticks in both rounds
+  it('a round in which neither colony changed and no power fired replays the last clash exactly', () => {
+    const { third, fourth } = quietOnce();
+    expect(fourth).toEqual(third);
+  });
+
+  it("a round with unchanged colonies replays the last clash's hashes tick for tick", () => {
+    const { third, fourth } = quietOnce();
+    const differs = fourth.hashes.findIndex((h, t) => h !== third.hashes[t]);
+    expect([fourth.hashes.length, differs]).toEqual([third.hashes.length, -1]);
   });
 });

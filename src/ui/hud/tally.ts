@@ -7,9 +7,9 @@
 // the round's pip. Each past pip and the tug have a tooltip (`explain.ts`). The tug's bar styles are v1's
 // territory tug's (`src/ui/styles.css`).
 import '../battle.css';
-import { survivingSupply } from '../../sim/rounds/index.ts';
-import type { BattleState, Side } from '../../sim/rounds/index.ts';
-import { roundOutcome } from '../../sim/rounds/systems/victory.ts';
+import { survivingSupply } from '../../sim/index.ts';
+import type { BattleState, Side } from '../../sim/index.ts';
+import { roundOutcome } from '../../sim/systems/victory.ts';
 import { h, setText, toggleClass } from '../h.ts';
 import { pipTip, resultOf, tugTip } from './explain.ts';
 import type { HudContext, HudPart } from './top.ts';

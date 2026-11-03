@@ -4,7 +4,7 @@
 // stays replayable.
 import type { Content } from '../data/registry.ts';
 import type { Atlas } from '../render/atlas.ts';
-import type { BattleState } from '../sim/rounds/index.ts';
+import type { BattleState } from '../sim/index.ts';
 import { cardView } from './cards.ts';
 import { h, setText } from './h.ts';
 import { uiIcon } from './icons.ts';
@@ -56,8 +56,7 @@ export class DraftOverlay {
     this.skipBtn.disabled = pending;
     if (key === this.shown) return;
     this.shown = key;
-    // a bigger draft has picks left
-    this.title.textContent = `Draft ${d.index}: choose ${d.picks ?? 1} of ${d.offer.length}`;
+    this.title.textContent = `Draft ${d.index}: choose 1 of ${d.offer.length}`;
     this.cards.style.setProperty('--cols', String(Math.max(3, d.offer.length)));
     setText(this.lastKey, String(d.offer.length));
     this.cards.replaceChildren(...d.offer.map((c, i) =>

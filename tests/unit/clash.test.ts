@@ -1,22 +1,28 @@
-// R1's clash check (SPEC §16 R1, §12.2): squads, the army cards, and an army from a bot spec and a
-// gold budget (R1-Q2, R1-Q4); the fields, the line and the slots each building takes (R1-Q1, R1-Q9);
-// the arrival; and one clash, from the muster to §6.7's lane ends and scoring (R1-Q3).
+// R1's clash check (SPEC §16 R1, §12.2), on the round sim since R2b (T158): squads, the army cards, and an army
+// from a bot spec and a gold budget (R1-Q2, R1-Q4); the fields, the line and the slots each building takes
+// (R1-Q1, R1-Q9); the clash's record, read from the round's result; the pairings and the full colony. Then
+// Begin, the muster and a lane's end in rounds (SPEC §4.7 steps 12–17, §5.6, §6.7, §14.6): the arrival in
+// plot order, the arrival shield, the muster resolved inside Begin and its 20 still ticks, the fielded
+// record, `clashStart`, each lane's end and its lock, and a frozen lane on Twin Roots (A024, A026, A030,
+// A032, A047). Per-squad stats are here too, since Begin compiles them (T046, A028). Scoring is S7's.
 import { describe, expect, it } from 'vitest';
 import type { Content } from '../../src/data/registry.ts';
-import { addBuilding, addUnit } from '../../src/sim/create.ts';
-import { findTrios, formationBox, musterKnits, slotPositions } from '../../src/sim/formation.ts';
-import type { MusterUnit } from '../../src/sim/formation.ts';
-import { createBattle, makeConfig, nextFloat } from '../../src/sim/index.ts';
-import type { BattleState, Side, UnitState } from '../../src/sim/index.ts';
+import type { EffectBundle, ScenarioDef } from '../../src/data/schema.ts';
 import { createRun, generalKit } from '../../src/run/index.ts';
+import { addBuilding, createBattle, createFromScenario, formationOf, makeRoundConfig, mergePreview, SIDES, step } from '../../src/sim/index.ts';
+import type { BattleState, FieldedSquad, Flags, LaneLock, Side, SimEvent, UnitState } from '../../src/sim/index.ts';
+import { insertHit } from '../../src/sim/hits.ts';
+import { addCloud } from '../../src/sim/systems/clouds.ts';
+import { mergeTriosNow } from '../../src/sim/systems/merging.ts';
+import { tierDef } from '../../src/sim/world.ts';
 import { CORE_SPAWNERS, battleOneGenerals, battleOneKit, battleOnePairings, core6Spec, counterBotSpec, pairingBotSpec, starterCandidates } from '../../tools/lib/balance.ts';
 import {
-  CLASH, MIRROR_SEED, armyFromBot, armyOf, assignSlots, clashArmyIds, clashField, fullColony, lineOf, overflowTable, pairLine, pairScore, placeArmy, playClash,
-  playPair, squadSize,
+  CLASH, MIRROR_SEED, armyFromBot, armyOf, assignSlots, clashArmyIds, clashField, clashRecord, fullColony, lineOf, overflowTable, pairLine, pairScore, playPair,
+  playRoundClash, squadSize,
 } from '../../tools/lib/clash.ts';
-import type { Army, ClashField, ClashJob, ClashOpts, ClashRecord, FieldId, Placement } from '../../tools/lib/clash.ts';
+import type { Army, ClashField, ClashJob, ClashOpts, FieldId, Placement } from '../../tools/lib/clash.ts';
 import { protoContent } from '../../tools/lib/content.ts';
-import { content } from '../helpers.ts';
+import { begin, content, plotAt, stepClash } from '../helpers.ts';
 
 const ids = (a: Army): string[] => a.entries.map((e) => e.buildingId);
 
@@ -26,17 +32,10 @@ const army = (buildings: string[], c: Content = content): Army => armyOf(c, 'tes
 /** Where each placement stands, in build-list order: [lane, rank, file]. */
 const where = (ps: Placement[]): [number, number, number][] => ps.map((p) => [p.lane, p.rank, p.file]);
 
-/** A live battle on a field's map with no AI side, as a clash runs. */
-function fieldState(field: ClashField, c: Content = content): BattleState {
-  const s = createBattle(c, makeConfig(c, { seed: 1, mapId: field.mapId, player: 'human', enemy: 'human' }));
-  s.phase = 'live';
-  return s;
-}
-
 describe("R1's squads and army cards (SPEC §11.2, §16 R1)", () => {
-  it("squadSize at 60 s reproduces §11.2's Squad column", () => {
+  it("squadSize reads each spawner's data squad, §11.2's Squad column", () => {
     const squads: Record<string, number> = {
-      sporelingBurrow: 8, capguardHall: 4, gillNest: 4, amanitaLodge: 2, hammercapForge: 4,
+      sporelingBurrow: 8, capguardHall: 3, gillNest: 4, amanitaLodge: 2, hammercapForge: 4,
       rootbreakerDen: 3, scythecapGrove: 3, veilstalkerHollow: 6, morelWarren: 6, tendersRing: 3,
     };
     for (const [id, n] of Object.entries(squads)) expect(squadSize(content, id), id).toBe(n);
@@ -44,11 +43,8 @@ describe("R1's squads and army cards (SPEC §11.2, §16 R1)", () => {
     expect(squadSize(content, 'rhizomorphTunnel')).toBe(3);
   });
 
-  it('squadSize counts whole batches, halves rounded up, and only spawners have one', () => {
-    expect(squadSize(content, 'amanitaLodge', { squadSeconds: 45 })).toBe(2); // 1 × round(1.5)
-    expect(squadSize(content, 'veilstalkerHollow', { squadSeconds: 45 })).toBe(6); // 2 × round(2.5)
-    expect(squadSize(content, 'sporelingBurrow', { squadSeconds: 75 })).toBe(10); // 2 × round(4.6875)
-    expect(() => squadSize(content, 'puffballMortar')).toThrow(/spawns nothing/);
+  it('only spawners have a squad', () => {
+    expect(() => squadSize(content, 'puffballMortar')).toThrow(/fields no squad/);
   });
 
   it('the army cards are the roster without its economy and utility cards (A016)', () => {
@@ -85,7 +81,7 @@ describe("R1's armies from build lists (SPEC §12.2, §16 R1; R1-Q2)", () => {
     expect([ring.supply, ring.units]).toEqual([3, 3]);
   });
 
-  it("bot:balanced skips its opener's Cellar, ignores afterSeconds, and stops only when nothing fits or the plots are full", () => {
+  it("bot:balanced skips its opener's Cellar, ignores afterRound, and stops only when nothing fits or the plots are full", () => {
     const cards = clashArmyIds(content);
     const cheapest = Math.min(...Object.keys(content.bots.balanced!.weights).filter((id) => cards.includes(id)).map((id) => content.buildings[id]!.cost));
     let den = false;
@@ -209,349 +205,46 @@ describe("R1's fields and formation by role (SPEC §4.6, §7.3, §16 R1; R1-Q1, 
     const mixed = army(['capguardHall', 'gillNest', 'capguardHall', 'gillNest']);
     expect(where(assignSlots(content, mixed, twin, { lanesRule: 'general' })).map(([l]) => l)).toEqual([0, 1, 0, 1]);
   });
-
-  it('placeArmy creates units in slot order (lane, rank, file), then by j, whatever order the placements come in (A024)', () => {
-    const one = clashField(content, 'one');
-    // the Nest takes the back rank's file 2, then the front rank's files 2, 3, 1 go to a Burrow, the Hall and a Burrow
-    const ps = assignSlots(content, army(['gillNest', 'sporelingBurrow', 'capguardHall', 'sporelingBurrow']), one);
-    expect(where(ps)).toEqual([[0, 1, 2], [0, 0, 2], [0, 0, 3], [0, 0, 1]]);
-    const units = (s: BattleState) => s.units.map((u) => [u.id, u.unitId, u.x, u.y]);
-    const a = fieldState(one), b = fieldState(one);
-    const squadOf = placeArmy(a, 'player', ps);
-    placeArmy(b, 'player', [...ps].reverse());
-    expect(units(b)).toEqual(units(a));
-    // in id order: front rank file 1 (the second Burrow), 2 (the first), 3 (the Hall), then back rank file 2 (the Nest)
-    expect([...new Set(a.units.map((u) => squadOf.get(u.id)))]).toEqual([3, 1, 2, 0]);
-    expect(a.units.map((u) => u.id)).toEqual(Array.from({ length: 24 }, (_, i) => i + 1));
-  });
-
-  it("placeArmy stands each unit at its slot's layout, its squad's mergeOn on it; Rhizomorphs burrowed; a Mortar on its slot", () => {
-    const rc = content;
-    const one = clashField(rc, 'one');
-    const s = fieldState(one, rc);
-    const a = army(['sporelingBurrow', 'rhizomorphTunnel', 'puffballMortar', 'capguardHall'], rc);
-    a.entries[0]!.mergeOn = false;
-    a.entries[3] = { ...a.entries[3]!, count: 5 }; // 5 Capguards overflow their slot (§4.6) and touch the lane's top
-    const placed: Record<Side, Placement[]> = { player: assignSlots(rc, a, one), enemy: assignSlots(rc, a, one) };
-    const squadOf = { player: placeArmy(s, 'player', placed.player), enemy: placeArmy(s, 'enemy', placed.enemy) };
-    for (const side of ['player', 'enemy'] as const) {
-      const box = formationBox(one.geom, side, 2);
-      for (const p of placed[side]) {
-        const slot = box.find((b) => b.lane === p.lane && b.rank === p.rank && b.file === p.file)!;
-        if (p.entry.kind === 'emplacement') {
-          const towers = s.buildings.filter((b) => b.side === side);
-          expect(towers.map((b) => [b.buildingId, b.lane, b.col, b.row])).toEqual([['puffballMortar', 0, slot.col, slot.row]]);
-          continue;
-        }
-        const units = s.units.filter((u) => u.side === side && u.unitId === p.entry.unitId);
-        const r = rc.units[p.entry.unitId!]!.radius;
-        const at = slotPositions(p.entry.count, slot, side).map(({ x, y }) => [x, Math.min(Math.max(y, r), 8 - r)]);
-        expect(units.map((u) => [u.x, u.y])).toEqual(at);
-        for (const u of units) {
-          expect(u.mergeOn).toBe(p.entry.mergeOn);
-          expect(u.burrowed).toBe(p.entry.unitId === 'rhizomorph' ? true : undefined);
-          expect(u.sourceBuildingId).toBe(0);
-          expect(squadOf[side].get(u.id)).toBe(placed[side].indexOf(p));
-        }
-      }
-      expect(s.stats[side].spawned).toEqual({ sporeling: 8, rhizomorph: 3, capguard: 5 });
-    }
-    expect(s.units.find((u) => u.unitId === 'capguard')!.y).toBe(0.35); // clamped by addUnit, as the lane's edge allows
-  });
 });
-
-/** An army that fields nothing, for a side a test stages by hand. */
-const none = (): Army => armyOf(content, 'none', 0, [], true);
 
 /** A clash of two armies (the first in the player's seat), seed 1, jitter 0. */
 const job = (field: FieldId, a: Army, b: Army, opts: ClashOpts = {}, extra: Partial<ClashJob> = {}): ClashJob => ({
   field, seed: 1, seat: 'player', armies: [a, b], jitter: 0, opts, ...extra,
 });
 
-/** A unit placed by hand in a stage hook. */
-interface Staged { side: Side; unitId: string; x: number; y: number; lane?: number; hp?: number; mergeOn?: boolean }
+describe("the clash check's record on the round sim (SPEC §6.7, §12.2, §16 R1; R2b/T158)", () => {
+  const a = () => armyFromBot(content, 'bot:mono:sporelingBurrow', 600, 1, 8), b = () => armyFromBot(content, 'bot:balanced', 600, 1, 8);
 
-/** A stage hook that adds these units, in order. A huge `hp` keeps a unit alive to the cap. */
-const stageUnits = (...units: Staged[]) => (s: BattleState): void => {
-  for (const p of units) {
-    const u = addUnit(s, p.side, p.unitId, p.lane ?? 0, p.x, p.y, 0);
-    if (p.hp !== undefined) { u.hp = p.hp; u.maxHp = Math.max(u.maxHp, p.hp); }
-    if (p.mergeOn === false) u.mergeOn = false;
-  }
-};
-
-/** A side's units as muster records, as the clash reads them at the arrival. */
-const records = (s: BattleState, side: Side): MusterUnit[] => s.units.filter((u) => u.side === side).map((u: UnitState) => ({
-  key: u.id, side, lane: u.lane, unitId: u.unitId, tier: u.tier, x: u.x, y: u.y, mergeOn: u.mergeOn, eligible: !u.burrowed, source: u.sourceBuildingId,
-}));
-
-const lane0 = (r: ClashRecord) => r.lanes[0]!;
-
-describe('one clash: the muster, the lane ends and the clock (SPEC §5.6, §6.7, §16 R1; R1-Q3)', () => {
-  const one = 'one' as const;
-
-  it('E1: a lane where only one side fields anything locks at tick 0, won with its whole damage supply after the muster', () => {
-    const r = playClash(content, job(one, army(['sporelingBurrow']), none()));
-    for (const reading of [lane0(r).cap, lane0(r).capAfterMuster]) {
-      // 8 Sporelings knit to 2 Bloomed + 2 base at the muster: 6 supply, 150 raw
-      expect(reading).toEqual({ case: 'E1', winner: 'player', ticks: 0, capped: false, surviving: { player: 6, enemy: 0 }, damageSupply: { player: 6, enemy: 0 }, raw: 150 });
+  it("reads its lanes and Heartcap damage from the round's result, as playRoundClash plays it from either seat", () => {
+    for (const seat of SIDES) {
+      const r = clashRecord(content, job('twin', a(), b(), {}, { seat }));
+      const round = playRoundClash(content, { field: 'twin', seed: 1, seat, armies: [a(), b()] });
+      const ab = (w: Side | 'draw') => (w === 'draw' ? null : w === seat ? 'a' : 'b');
+      expect(r.lanes.map((l) => [ab(l.cap.winner), l.cap.ticks, l.cap.capped])).toEqual(round.lanes.map((l) => [l.winner, l.ticks, l.capped]));
+      expect(r.lanes.map((l) => [l.cap.surviving[seat], l.cap.surviving[seat === 'player' ? 'enemy' : 'player']])).toEqual(round.lanes.map((l) => l.survivors));
+      const other = seat === 'player' ? 'enemy' : 'player';
+      expect([r.cap.heartcap[other].capped, r.cap.heartcap[seat].capped]).toEqual(round.damage);
+      expect([r.cap.heartcap[other].uncapped, r.cap.heartcap[seat].uncapped]).toEqual(round.uncapped);
+      expect(ab(r.cap.winner) ?? 'draw').toBe(round.winner);
+      expect(r.cap.ticks).toBe(round.ticks);
     }
-    expect(r.cap).toMatchObject({ ticks: 0, capped: false, winner: 'player', round: 'player', heartcap: { enemy: { uncapped: 150, capped: 150 } } });
   });
 
-  it('E2: a lane where neither side fields anything is drawn, with no damage', () => {
-    const r = playClash(content, job('twin', army(['capguardHall']), army(['capguardHall'])));
-    expect(r.lanes[1]!.cap).toEqual({ case: 'E2', winner: 'draw', ticks: 0, capped: false, surviving: { player: 0, enemy: 0 }, damageSupply: { player: 0, enemy: 0 }, raw: 0 });
-    expect(r.lanes[1]!.capAfterMuster).toEqual(r.lanes[1]!.cap);
-    expect(r.lanes[0]!.cap.ticks).toBeGreaterThan(CLASH.musterTicks); // the Halls in the top lane fight it out
+  it("records each army's muster, its merges and §7.4's reading of what it fielded", () => {
+    const r = clashRecord(content, job('one', army(['sporelingBurrow', 'sporelingBurrow']), army(['capguardHall'])));
+    expect(r.armies.player.mustered.units).toBeLessThan(16); // two Burrows of 8 knit at the muster
+    expect(r.armies.player.merges.muster['2']).toBeGreaterThan(0);
+    expect(r.armies.player.kinds.top).toBe('swarm');
+    expect(r.armies.enemy.mustered).toMatchObject({ units: 1, bloomed: 1, base: 0 }); // a Hall's 3 Capguards are one trio
+    expect(r.armies.enemy.merges.muster).toEqual({ '2': 1, '3': 0 });
+    expect(r.opts).toEqual({ merging: true, extraPlots: 0, lanesRule: 'line' });
   });
 
-  it('E3: equal surviving supply at the cap is a draw; one clash gives both readings, at tick 900 and 920 (#13)', () => {
-    // Tenders only heal, and never seek an enemy: both live to the cap
-    const r = playClash(content, job(one, none(), none()), { stage: stageUnits({ side: 'player', unitId: 'tender', x: 10, y: 4 }, { side: 'enemy', unitId: 'tender', x: 22, y: 4 }) });
-    expect(lane0(r).cap).toEqual({ case: 'E3', winner: 'draw', ticks: CLASH.capTicks, capped: true, surviving: { player: 1, enemy: 1 }, damageSupply: { player: 1, enemy: 1 }, raw: 0 });
-    expect(lane0(r).capAfterMuster).toMatchObject({ case: 'E3', winner: 'draw', ticks: CLASH.capTicks + CLASH.musterTicks, capped: true });
-    expect([r.cap.ticks, r.capAfterMuster.ticks]).toEqual([900, 920]);
-    expect(r.cap).toMatchObject({ capped: true, winner: 'draw', round: 'draw' });
-  });
-
-  it('E4: two Sporelings at 1 HP in contact, cooldowns equal, die on the same tick, and the lane is drawn', () => {
-    const r = playClash(content, job(one, none(), none()), {
-      stage: stageUnits({ side: 'player', unitId: 'sporeling', x: 15.6, y: 4, hp: 1 }, { side: 'enemy', unitId: 'sporeling', x: 16.4, y: 4, hp: 1 }),
-    });
-    expect(lane0(r).cap).toMatchObject({ case: 'E4', winner: 'draw', capped: false, surviving: { player: 0, enemy: 0 }, raw: 0 });
-    // a lane's length counts the muster's 20 ticks: this one ended on the clash's first steps
-    expect(lane0(r).cap.ticks).toBeGreaterThan(CLASH.musterTicks);
-    expect(lane0(r).cap.ticks).toBeLessThan(CLASH.musterTicks + 10);
-    expect(lane0(r).capAfterMuster).toEqual(lane0(r).cap);
-  });
-
-  it('E5: only Mortars left on both sides at the cap is a draw, and emplacements alone held the lane (#10)', () => {
-    // two Mortars 10 tiles apart, out of each other's 7-tile range (spore clouds, §5.3)
-    const r = playClash(content, job(one, none(), none()), {
-      stage: (s) => { addBuilding(s, 'player', 'puffballMortar', 0, 10, 3, 160); addBuilding(s, 'enemy', 'puffballMortar', 0, 20, 3, 160); },
-    });
-    expect(lane0(r).cap).toEqual({ case: 'E5', winner: 'draw', ticks: 900, capped: true, surviving: { player: 0, enemy: 0 }, damageSupply: { player: 0, enemy: 0 }, raw: 0 });
-    expect(lane0(r).emplacementsHeld).toBe(true);
-  });
-
-  it('E6: a side left with only a Mortar against nothing wins with 0 supply and deals no damage', () => {
-    const r = playClash(content, job(one, none(), none()), {
-      stage: (s) => {
-        addBuilding(s, 'player', 'puffballMortar', 0, 11, 3, 160);
-        stageUnits({ side: 'enemy', unitId: 'sporeling', x: 16, y: 4, hp: 1 })(s);
-      },
-    });
-    expect(lane0(r).cap).toMatchObject({ case: 'E6', winner: 'player', capped: false, surviving: { player: 0, enemy: 0 }, damageSupply: { player: 0, enemy: 0 }, raw: 0 });
-    expect(lane0(r).cap.ticks).toBeLessThan(CLASH.capTicks);
-    expect(lane0(r).emplacementsHeld).toBe(false);
-    expect(r.cap).toMatchObject({ winner: 'player', round: 'draw', heartcap: { enemy: { uncapped: 0, capped: 0 } } });
-  });
-
-  it('a surviving Rootbreaker counts 3 toward surviving supply and 6 toward damage supply (150 raw)', () => {
-    const r = playClash(content, job(one, none(), none()), { stage: stageUnits({ side: 'player', unitId: 'rootbreaker', x: 12, y: 4 }) });
-    expect(lane0(r).cap).toMatchObject({ case: 'E1', winner: 'player', surviving: { player: 3, enemy: 0 }, damageSupply: { player: 6, enemy: 0 }, raw: 150 });
-  });
-
-  it("at the cap the margin is the winner's damage supply less the loser's, never below 0 (#22's first guess)", () => {
-    const BIG = 1e9; // nobody dies before the cap
-    const siege = playClash(content, job(one, none(), none()), {
-      stage: stageUnits(
-        { side: 'player', unitId: 'rootbreaker', x: 12, y: 3, hp: BIG }, { side: 'player', unitId: 'rootbreaker', x: 12, y: 5, hp: BIG },
-        { side: 'enemy', unitId: 'capguard', x: 20, y: 3, hp: BIG }, { side: 'enemy', unitId: 'capguard', x: 20, y: 5, hp: BIG },
-      ),
-    });
-    expect(lane0(siege).cap).toMatchObject({ case: 'cap', winner: 'player', capped: true, surviving: { player: 6, enemy: 4 }, damageSupply: { player: 12, enemy: 4 }, raw: 200 });
-    const floor = playClash(content, job(one, none(), none()), {
-      stage: stageUnits(
-        { side: 'player', unitId: 'capguard', x: 12, y: 3, hp: BIG }, { side: 'player', unitId: 'capguard', x: 12, y: 5, hp: BIG },
-        { side: 'enemy', unitId: 'rootbreaker', x: 20, y: 4, hp: BIG },
-      ),
-    });
-    // the Capguards win the lane on supply, 4 to 3, but the Rootbreaker's damage supply is 6
-    expect(lane0(floor).cap).toMatchObject({ case: 'cap', winner: 'player', surviving: { player: 4, enemy: 3 }, damageSupply: { player: 4, enemy: 6 }, raw: 0 });
-    expect(lane0(floor).emplacementsHeld).toBe(false);
-  });
-
-  it("each Heartcap's damage is capped at 500 over the lanes it lost; the clash goes by lanes, then uncapped damage, the round by capped damage (R1-Q3)", () => {
-    // Twin Roots: 12 Rootbreakers win the top lane alone (1,800 raw), 8 win the bottom (1,200), merging off
-    const rbs = (side: Side, lane: number, n: number): Staged[] =>
-      Array.from({ length: n }, (_, i) => ({ side, lane, unitId: 'rootbreaker', x: side === 'player' ? 8 + (i % 4) : 20 + (i % 4), y: lane * 7 + 1 + Math.floor(i / 4) * 1.5 }));
-    const r = playClash(content, job('twin', none(), none(), { merging: false }), { stage: stageUnits(...rbs('player', 0, 12), ...rbs('enemy', 1, 8)) });
-    expect(r.lanes.map((l) => [l.cap.case, l.cap.winner, l.cap.raw])).toEqual([['E1', 'player', 1800], ['E1', 'enemy', 1200]]);
-    expect(r.cap.heartcap).toEqual({ player: { uncapped: 1200, capped: 500 }, enemy: { uncapped: 1800, capped: 500 } });
-    expect(r.cap).toMatchObject({ lanesWon: { player: 1, enemy: 1 }, winner: 'player', round: 'draw' });
-
-    // three lanes: two small lanes beat one big one, whatever the damage
-    const three = playClash(content, job('three', none(), none(), { merging: false }), {
-      stage: stageUnits(
-        { side: 'player', unitId: 'sporeling', x: 10, y: 2, lane: 0 }, { side: 'player', unitId: 'sporeling', x: 10, y: 8, lane: 1 },
-        ...Array.from({ length: 4 }, (_, i): Staged => ({ side: 'enemy', unitId: 'rootbreaker', x: 20, y: 12.5 + i, lane: 2 })),
-      ),
-    });
-    expect(three.cap).toMatchObject({ lanesWon: { player: 2, enemy: 1 }, winner: 'player', round: 'enemy' });
-    expect(three.cap.heartcap).toEqual({ player: { uncapped: 600, capped: 500 }, enemy: { uncapped: 50, capped: 50 } });
-  });
-
-  it('the muster: two Burrows side by side record { 2: 5, 3: 1 } and field 1 Elder + 2 Bloomed + 1 base, each merged unit with its key as its id', () => {
-    const r = playClash(content, job(one, army(['sporelingBurrow', 'sporelingBurrow']), none()));
-    expect(r.armies.player.merges.muster).toEqual({ '2': 5, '3': 1 });
-    expect(r.armies.player.mustered).toEqual({ units: 4, supply: 9, base: 1, bloomed: 2, elders: 1 });
-    expect(r.armies.enemy.merges.muster).toEqual({ '2': 0, '3': 0 });
-  });
-
-  it("before tick 20 nobody moves or attacks: the clash starts from the muster's own units, and with jitter 0 no field knit is left to start", () => {
-    const a = army(['sporelingBurrow', 'sporelingBurrow', 'capguardHall', 'gillNest']), b = army(['sporelingBurrow', 'capguardHall', 'capguardHall']);
-    const expected: Partial<Record<Side, MusterUnit[]>> = {};
-    let seen = 0;
-    playClash(content, job(one, a, b), {
-      stage: (s) => {
-        let firstKey = s.nextId;
-        for (const side of ['player', 'enemy'] as const) {
-          const res = musterKnits(records(s, side), {
-            firstKey, mergeRadius: s.compiled[side].mergeRadius, width: s.map.width,
-            radiusOf: (id, tier) => s.compiled[side].units[id]!.tiers[tier - 1]!.radius, lanes: s.lanes.map((l) => ({ top: l.rowStart, bottom: l.rowEnd })),
-          });
-          firstKey += res.passes.reduce((n, pass) => n + pass.length, 0);
-          expected[side] = res.units;
-        }
-      },
-      mustered: (s) => {
-        seen++;
-        expect(s.tick).toBe(CLASH.musterTicks);
-        for (const side of ['player', 'enemy'] as const) {
-          expect(records(s, side)).toEqual(expected[side]);
-          expect(findTrios(records(s, side), s.compiled[side].mergeRadius)).toEqual([]);
-        }
-      },
-    });
-    expect(seen).toBe(1);
-    expect(expected.player!.some((u) => u.tier === 3)).toBe(true);
-  });
-
-  it('the jitter moves each unit up to ±j tiles per axis after the muster, clamped to its lane, from its own stream; 0 draws nothing', () => {
-    const a = army(['sporelingBurrow', 'capguardHall', 'gillNest', 'amanitaLodge']), b = army(['capguardHall', 'sporelingBurrow', 'hammercapForge']);
-    const at = (j: number, seat: Side = 'player', seed = 1): Map<number, [number, number]> => {
-      const pos = new Map<number, [number, number]>();
-      playClash(content, job(one, a, b, {}, { jitter: j, seat, seed }), { mustered: (s) => { for (const u of s.units) pos.set(u.id, [u.x, u.y]); } });
-      return pos;
-    };
-    const still = at(0), moved = at(0.2);
-    expect([...moved.keys()]).toEqual([...still.keys()]);
-    let changed = 0;
-    for (const [id, [x, y]] of moved) {
-      const [x0, y0] = still.get(id)!;
-      expect(Math.abs(x - x0)).toBeLessThanOrEqual(0.2);
-      expect(Math.abs(y - y0)).toBeLessThanOrEqual(0.2);
-      if (x !== x0 || y !== y0) changed++;
-    }
-    expect(changed).toBe(moved.size);
-    expect(at(0.2)).toEqual(moved);
-    expect(at(0.2, 'player', 2)).not.toEqual(moved);
-    expect(at(0, 'player', 2)).toEqual(still); // the seed moves nothing without jitter
-  });
-
-  it("fails loudly if a clash at jitter 0 draws a random number, since the cache plays it once for every seed (T055)", () => {
-    const j = job(one, army(['sporelingBurrow']), army(['capguardHall']));
-    const draw = { mustered: (s: BattleState) => { nextFloat(s.rng.combat); } };
-    expect(() => playClash(content, j, draw)).toThrow(/at jitter 0 drew a random number/);
-    expect(() => playClash(content, { ...j, jitter: 0.2 }, draw)).not.toThrow(); // with jitter the seed is in the cache's key
-  });
-
-  it("the clash runs on v1's sim with no AI side, turrets, territory or Heartcap targets, to tick 920, with v2's two switches on unless asked", () => {
-    const rules: Record<string, unknown>[] = [];
-    const look = (opts: ClashOpts) => playClash(content, job(one, army(['capguardHall']), army(['gillNest']), opts), {
-      mustered: (s) => {
-        expect(s.sides.player.ai).toBeUndefined();
-        expect(s.sides.enemy.ai).toBeUndefined();
-        expect(s.rules.timeLimitTicks).toBeGreaterThan(CLASH.capTicks + CLASH.musterTicks);
-        rules.push({ ...s.rules.test });
-      },
-    });
-    const first = look({});
-    expect(look({})).toEqual(first);
-    look({ v1Movement: true });
-    look({ v1Targeting: true });
-    const base = { turrets: false, territory: false, heartcapTargets: false };
-    expect(rules).toEqual([
-      { ...base, noBuildingPreference: true, idleSeek: true }, { ...base, noBuildingPreference: true, idleSeek: true },
-      { ...base, noBuildingPreference: true }, { ...base, idleSeek: true },
-    ]);
-  });
-});
-
-describe("one clash's record: what each army fielded and how it reads (SPEC §5.7, §7.4, §16 R1; R2-Q3)", () => {
-  const one = 'one' as const;
-  const record = (a: Army, opts: ClashOpts = {}, b: Army = none()) => playClash(content, job(one, a, b, opts));
-
-  it("eliteShare after the muster counts each merged unit at its parts' base supply: plain, with the swarm read, and Elders only (A014, A041)", () => {
-    // one Burrow: 2 Bloomed + 2 base Sporelings, 6 of 8 parts merged; a Sporeling's 1 supply falls to the swarm read
-    expect(record(army(['sporelingBurrow'])).armies.player.eliteShare).toEqual({ plain: 0.75, swarmRead: 0, elderOnly: 0 });
-    // one Hall: 1 Bloomed + 1 base Capguard, and a Capguard's supply is 2, so the swarm read keeps it
-    expect(record(army(['capguardHall'])).armies.player.eliteShare).toEqual({ plain: 0.75, swarmRead: 0.75, elderOnly: 0 });
-    // two Burrows side by side: an Elder's 9 parts, 2 Bloomed's 6 and 1 base, of 16
-    expect(record(army(['sporelingBurrow', 'sporelingBurrow'])).armies.player.eliteShare).toEqual({ plain: 15 / 16, swarmRead: 0, elderOnly: 9 / 16 });
-    // merging off: nothing merged
-    expect(record(army(['capguardHall']), { merging: false }).armies.player.eliteShare).toEqual({ plain: 0, swarmRead: 0, elderOnly: 0 });
-    // the swarm read follows the data's swarmMaxSupply where it's set (the swarmread preset sets 1)
-    const sr = protoContent('swarmread');
-    expect(playClash(sr, job(one, army(['sporelingBurrow'], sr), none())).armies.player.eliteShare).toEqual({ plain: 0.75, swarmRead: 0, elderOnly: 0 });
-  });
-
-  it("the armor and ranged shares by the same measure, and §7.4's four kinds' scores with no noise, with the top kind, under each reading", () => {
-    // 8 Sporelings, 4 Capguards, 4 Gill Archers and 2 Amanita Knights: 8 + 8 + 8 + 6 = 30 parts' supply
-    const r = record(army(['sporelingBurrow', 'capguardHall', 'gillNest', 'amanitaLodge'])).armies.player;
-    expect(r.mustered).toMatchObject({ base: 6, bloomed: 4, elders: 0 });
-    expect(r.shares).toEqual({ light: 16 / 30, medium: 8 / 30, heavy: 6 / 30, ranged: 8 / 30 });
-    expect(r.eliteShare).toEqual({ plain: 18 / 30, swarmRead: 12 / 30, elderOnly: 0 });
-    const { swarmEliteDiscount: d, eliteScoreMult: m } = content.balance.ai.counter;
-    const scores = (elite: number) => ({ swarm: (16 / 30) * (1 - d * elite), line: 8 / 30, armor: 6 / 30, elite: m * elite });
-    expect(r.kinds.plain).toEqual({ scores: scores(18 / 30), top: 'elite' });
-    expect(r.kinds.swarmRead).toEqual({ scores: scores(12 / 30), top: 'elite' });
-    expect(r.kinds.elderOnly).toEqual({ scores: scores(0), top: 'swarm' });
-  });
-
-  it("the overflow list: each squad whose units are wider than its grid's spacing (#11)", () => {
-    expect(record(army(['sporelingBurrow', 'capguardHall', 'amanitaLodge'])).armies.player.overflow).toEqual([]);
-    const five = army(['capguardHall', 'sporelingBurrow', 'capguardHall']);
-    for (const i of [0, 2]) five.entries[i] = { ...five.entries[i]!, count: 5 };
-    expect(record(five).armies.player.overflow).toEqual([{ buildingId: 'capguardHall', n: 5, k: 3, spacing: 2 / 3, width: 0.7 }]);
-  });
-
-  it("Puppet Bloom's trios: the most a 3-tile circle finds at any of a side's units right after the muster (A057)", () => {
-    // a Burrow knits all it can at the muster; two Lodges' 4 Knights stand too far apart to knit, but one circle holds them all
-    expect(record(army(['sporelingBurrow'])).armies.player.bloomTrios).toBe(0);
-    expect(record(army(['amanitaLodge', 'amanitaLodge'])).armies.player).toMatchObject({ bloomTrios: 1, merges: { muster: { '2': 0, '3': 0 } } });
-    expect(record(army(['amanitaLodge', 'amanitaLodge', 'amanitaLodge'])).armies.player.bloomTrios).toBe(2);
-  });
-
-  it('units parked within 0.5 tiles of the far edge when their lane ended: none with the idle seek, the unopposed with v1 movement (A021)', () => {
-    // a Sporeling and a Tender 7 rows apart: neither ever comes within the other's reach without seeking
-    const stage = stageUnits({ side: 'player', unitId: 'sporeling', x: 12, y: 0.5 }, { side: 'enemy', unitId: 'tender', x: 20, y: 7.5 });
-    const v1 = playClash(content, job(one, none(), none(), { v1Movement: true }), { stage });
-    expect(lane0(v1).cap).toMatchObject({ case: 'E3', capped: true });
-    expect([v1.armies.player.parked, v1.armies.enemy.parked]).toEqual([1, 1]);
-    const v2 = playClash(content, job(one, none(), none()), { stage });
-    expect(lane0(v2).cap).toMatchObject({ case: 'wipe', winner: 'player' });
-    expect([v2.armies.player.parked, v2.armies.enemy.parked]).toEqual([0, 0]);
-  });
-
-  it('gold spent, buildings, units and supply at the arrival and after the muster; merges at the muster and on the field after it', () => {
-    const a = armyFromBot(content, 'bot:mono:sporelingBurrow', 600, 1, 8);
-    const r = record(a).armies.player;
-    expect(r).toMatchObject({ controller: 'bot:mono:sporelingBurrow', entries: a.entries, spent: 550, buildings: 5, arrival: { units: 40, supply: 40 } });
-    const { base, bloomed, elders } = r.mustered;
-    expect(base + 3 * bloomed + 9 * elders).toBe(40); // every part is still there
-    expect(r.mustered.supply).toBe(base + 2 * bloomed + 4 * elders);
-    expect(r.merges.muster['2']).toBe(bloomed + 3 * elders);
-    expect(r.merges.muster['3']).toBe(elders);
-
-    // a trio that stands together only after the muster knits on the field, by v1's rule
-    const late = playClash(content, job(one, none(), none()), {
-      stage: stageUnits({ side: 'enemy', unitId: 'tender', x: 30, y: 4 }),
-      mustered: stageUnits({ side: 'player', unitId: 'sporeling', x: 10, y: 3.5 }, { side: 'player', unitId: 'sporeling', x: 10, y: 4.5 }, { side: 'player', unitId: 'sporeling', x: 10.5, y: 4 }),
-    });
-    expect(late.armies.player.merges).toEqual({ muster: { '2': 0, '3': 0 }, field: { '2': 1, '3': 0 } });
+  it('draws no random number at jitter 0, so its seed never matters; with jitter it does', () => {
+    const plain = clashRecord(content, job('one', a(), b()));
+    expect(clashRecord(content, job('one', a(), b(), {}, { seed: 9 }))).toEqual({ ...plain, seed: 9 });
+    const moved = (seed: number) => clashRecord(content, job('one', a(), b(), {}, { seed, jitter: 0.2 }));
+    expect(moved(1)).not.toEqual({ ...moved(2), seed: 1 });
   });
 });
 
@@ -577,86 +270,10 @@ describe("a matchup in both seats (`--checks clash --pair`, SPEC §12.2)", () =>
 });
 
 describe("R1's variants (SPEC §16 R1, §12.2; X4, §18.2 #51, R1-Q6)", () => {
-  const one = 'one' as const;
-
-  it("clashshield: a lane army of 2 or more unit types gets shields of 20% of its units' max HP at the arrival, kept in proportion through the muster's knits", () => {
-    const sc = protoContent('clashshield');
-    const arrival: [Side, string, number | undefined][] = [];
-    let mustered: UnitState[] = [];
-    let mortar: unknown;
-    playClash(sc, job(one, army(['sporelingBurrow', 'capguardHall'], sc), army(['capguardHall', 'puffballMortar'], sc)), {
-      stage: (s) => { for (const u of s.units) arrival.push([u.side, u.unitId, u.shield]); },
-      mustered: (s) => { mustered = s.units.map((u) => ({ ...u })); mortar = s.buildings.find((b) => b.buildingId === 'puffballMortar'); },
-    });
-    // the player's Sporelings and Capguards are two types: 72 and 220 HP, so 14 and 44
-    expect(arrival.filter(([side]) => side === 'player').map(([, id, shield]) => [id, shield]))
-      .toEqual([...Array<[string, number]>(8).fill(['sporeling', 14]), ...Array<[string, number]>(4).fill(['capguard', 44])]);
-    // the enemy's Capguards and Mortar are one type: an emplacement neither counts nor takes a shield
-    expect(arrival.filter(([side]) => side === 'enemy').map(([, , shield]) => shield)).toEqual([undefined, undefined, undefined, undefined]);
-    expect(mortar).not.toHaveProperty('shield');
-    const bloomed = mustered.filter((u) => u.side === 'player' && u.unitId === 'sporeling' && u.tier === 2);
-    expect(bloomed).toHaveLength(2);
-    for (const u of bloomed) expect(u.shield).toBe(Math.round((u.maxHp * 3 * 14) / (3 * 72)));
-    // a one-type army gets none, and without the preset nobody does
-    playClash(sc, job(one, army(['sporelingBurrow'], sc), none()), { stage: (s) => { expect(s.units.every((u) => u.shield === undefined)).toBe(true); } });
-    playClash(content, job(one, army(['sporelingBurrow', 'capguardHall']), none()), { stage: (s) => { expect(s.units.every((u) => u.shield === undefined)).toBe(true); } });
-  });
-
-  it("clashpace: every arriving unit has wave 0, an idle lane army marches at its slowest idle unit's pace, and idle ranged units stop 1 tile behind their melee front", () => {
-    const run = (c: Content) => {
-      let waves: (number | undefined)[] = [];
-      const at20 = new Map<number, [number, number]>();
-      let first: { unitId: string; moved: number; speed: number; idle: boolean }[] = [];
-      // merging off, so no knit stands a unit on another and nothing is pushed apart in the first step
-      playClash(c, job(one, army(['sporelingBurrow', 'capguardHall', 'gillNest'], c), army(['capguardHall'], c), { merging: false }), {
-        stage: (s) => {
-          waves = s.units.map((u) => u.wave);
-          // the archers stand half a tile behind the melee front, inside the 1-tile gap, in the empty files 1 and 4
-          const mine = s.units.filter((u) => u.side === 'player');
-          const front = Math.max(...mine.filter((u) => u.unitId !== 'gillArcher').map((u) => u.x));
-          mine.filter((u) => u.unitId === 'gillArcher').forEach((u, i) => {
-            u.x = u.px = front - 0.5;
-            u.y = u.py = u.spawnY = [0.5, 1.2, 6.8, 7.5][i]!;
-          });
-        },
-        mustered: (s) => { for (const u of s.units) at20.set(u.id, [u.x, u.y]); },
-        step: (s) => {
-          if (s.tick !== CLASH.musterTicks + 1) return;
-          first = s.units.filter((u) => u.side === 'player').map((u) => {
-            const [x, y] = at20.get(u.id)!;
-            return { unitId: u.unitId, moved: Math.hypot(u.x - x, u.y - y), speed: s.compiled.player.units[u.unitId]!.tiers[u.tier - 1]!.speedPerTick, idle: u.targetId === 0 };
-          });
-        },
-      });
-      return { waves, first };
-    };
-    const paced = run(protoContent('clashpace')), free = run(content);
-    expect(paced.waves.length).toBeGreaterThan(0);
-    expect(paced.waves.every((w) => w === 0)).toBe(true);
-    expect(free.waves.every((w) => w === undefined)).toBe(true);
-    expect(paced.first.every((u) => u.idle)).toBe(true);
-    const slowest = Math.min(...paced.first.map((u) => u.speed)); // the Capguards'
-    for (const u of paced.first) expect(u.moved, u.unitId).toBeCloseTo(u.unitId === 'gillArcher' ? 0 : slowest, 9);
-    for (const u of free.first) expect(u.moved, u.unitId).toBeCloseTo(u.speed, 9);
-    expect(free.first.some((u) => u.speed > 1.5 * slowest)).toBe(true); // so the pace rule slowed someone
-  });
-
   it('merging off: nothing knits, at the muster or after', () => {
-    const r = playClash(content, job(one, army(['sporelingBurrow', 'sporelingBurrow']), army(['sporelingBurrow']), { merging: false }));
+    const r = clashRecord(content, job('one', army(['sporelingBurrow', 'sporelingBurrow']), army(['sporelingBurrow']), { merging: false }));
     for (const side of ['player', 'enemy'] as const) expect(r.armies[side].merges).toEqual({ muster: { '2': 0, '3': 0 }, field: { '2': 0, '3': 0 } });
     expect(r.armies.player.mustered).toMatchObject({ units: 16, base: 16, bloomed: 0, elders: 0 });
-  });
-
-  it("squads: v1's timers over other seconds, the 60 s squad scaled, and a fixed squad per building (A010)", () => {
-    const sizes = (opts: Parameters<typeof squadSize>[2], ids: string[]) => ids.map((id) => squadSize(content, id, opts));
-    expect(sizes({ squadSeconds: 45 }, ['sporelingBurrow', 'amanitaLodge', 'hammercapForge'])).toEqual([6, 2, 3]);
-    expect(sizes({ squadSeconds: 75 }, ['sporelingBurrow', 'amanitaLodge', 'hammercapForge'])).toEqual([10, 3, 4]);
-    expect(sizes({ squadScale: 45 }, ['sporelingBurrow', 'veilstalkerHollow', 'amanitaLodge', 'hammercapForge'])).toEqual([6, 5, 2, 3]);
-    expect(sizes({ squadScale: 75 }, ['sporelingBurrow', 'veilstalkerHollow', 'amanitaLodge', 'hammercapForge'])).toEqual([10, 8, 3, 5]);
-    expect(sizes({ squad: { sporelingBurrow: 7 } }, ['sporelingBurrow', 'capguardHall'])).toEqual([7, 4]);
-    expect(() => squadSize(content, 'sporelingBurrow', { squadSeconds: 45, squadScale: 45 })).toThrow(/don't combine/);
-    // an army's squads follow them
-    expect(armyFromBot(content, 'bot:mono:sporelingBurrow', 300, 1, 8, { squad: { sporelingBurrow: 7 } }).entries.map((e) => e.count)).toEqual([7, 7]);
   });
 
   it("copies 3: no card fields more than 3 buildings, and a mono's other plots and gold go by bot:balanced's weights (#51)", () => {
@@ -722,44 +339,389 @@ describe('the full colony and the overflow table (SPEC §13.7, §4.6; R1-Q5, #7,
   const fc = fullColony(content);
   const squad = (id: string) => fc.squads.find((x) => x.buildingId === id)!;
 
-  it("at the first-guess sizes the biggest one-lane colony is 12 plots of the Burrow's level-3 squad of 12: 144 units and 144 supply a side", () => {
-    expect(squad('sporelingBurrow')).toMatchObject({ squad: 8, upgraded: 12, supply: 1, swarm: true });
-    expect(squad('morelWarren')).toMatchObject({ squad: 6, upgraded: 9 });
+  it("the biggest colonies on the data's squads: 12 Burrows of 8 on one lane, 96 units, and 12 Dens the most supply, 108", () => {
+    expect(squad('sporelingBurrow')).toMatchObject({ squad: 8, supply: 1, swarm: true });
     const one = fc.fields.find((f) => f.field === 'one')!;
     expect(one).toMatchObject({ plots: 12, fits: true, levers: [] });
-    expect(one.byUnits).toEqual({ buildingId: 'sporelingBurrow', units: 144, supply: 144 });
-    expect(one.bySupply).toEqual({ buildingId: 'sporelingBurrow', units: 144, supply: 144 });
-    // 12 Dens field 36 units and 108 supply; 12 Burrows of 8 field 96
-    const den = squad('rootbreakerDen');
-    expect([12 * den.upgraded, 12 * den.upgraded * den.supply]).toEqual([36, 108]);
-    expect(12 * squad('sporelingBurrow').squad).toBe(96);
+    expect(one.byUnits).toEqual({ buildingId: 'sporelingBurrow', units: 96, supply: 96 });
+    expect(one.bySupply).toEqual({ buildingId: 'rootbreakerDen', units: 36, supply: 108 });
   });
 
-  it("Twin Roots' 16 plots field 192 units a side at 12 a squad, over 150, and the report names the levers", () => {
+  it("Twin Roots' 16 plots field 128 units a side, inside 150", () => {
     const twin = fc.fields.find((f) => f.field === 'twin')!;
-    expect(twin).toMatchObject({ plots: 16, fits: false, byUnits: { buildingId: 'sporelingBurrow', units: 192, supply: 192 } });
-    expect(twin.levers).toEqual(['squads: at most 9 units a squad on 16 plots', "the upgrade's +1 per batch: without it, 16 sporelingBurrow squads of 8 field 128", 'plots: at most 12 plots of 12']);
+    expect(twin).toMatchObject({ plots: 16, fits: true, levers: [], byUnits: { buildingId: 'sporelingBurrow', units: 128, supply: 128 } });
   });
 
   it("A200's sensitivity rows: every squad +1 (the Vault), the squad in front +2 (the Shrine), and Old Mother Mold's swarm squads +10% rounded up", () => {
     const row = (id: string) => fc.sensitivity.find((r) => r.id === id)!.fields.map((f) => `${f.field} ${f.buildingId} ${f.units} ${f.supply}`);
-    expect(row('vault')).toEqual(['one sporelingBurrow 156 156', 'twin sporelingBurrow 208 208']);
+    expect(row('vault')).toEqual(['one sporelingBurrow 108 108', 'twin sporelingBurrow 144 144']);
     // the squads with a plot behind them: 8 of 12 on one lane, 10 of 16 on Twin Roots
-    expect(row('shrine')).toEqual(['one sporelingBurrow 160 160', 'twin sporelingBurrow 212 212']);
-    // a Burrow's 12 become 14
-    expect(row('mold')).toEqual(['one sporelingBurrow 168 168', 'twin sporelingBurrow 224 224']);
+    expect(row('shrine')).toEqual(['one sporelingBurrow 112 112', 'twin sporelingBurrow 148 148']);
+    // a Burrow's 8 become 9
+    expect(row('mold')).toEqual(['one sporelingBurrow 108 108', 'twin sporelingBurrow 144 144']);
     expect(fc.lines[0]).toMatch(/150 live units a side/);
   });
 
-  it('the overflow table: each squad at 45, 60 and 75 s and the 60 s squad +1 and +2, flagging Hall 5, Forge 5 and Den 5 (A020)', () => {
+  it('the overflow table: each squad and its squad +1 and +2, flagging Hall 5, Forge 5 and Den 5 (A020)', () => {
     const t = overflowTable(content);
     const at = (id: string) => t.rows.find((r) => r.buildingId === id)!.sizes.map((x) => `${x.n}${x.overflows ? '*' : ''}`).join(' ');
-    expect(t.rows.map((r) => r.buildingId)).toEqual(clashArmyIds(content).filter((id) => content.buildings[id]!.spawn));
-    expect(t.rows[0]!.sizes.map((x) => x.at)).toEqual(['45 s', '60 s', '75 s', '+1', '+2']);
-    expect(at('capguardHall')).toBe('3 4 5* 5* 6*');
-    expect(at('hammercapForge')).toBe('3 4 4 5* 6*');
-    expect(at('rootbreakerDen')).toBe('2 3 4 4 5*');
-    expect(at('sporelingBurrow')).toBe('6 8 10 9 10');
+    expect(t.rows.map((r) => r.buildingId)).toEqual(clashArmyIds(content).filter((id) => content.buildings[id]!.squad));
+    expect(t.rows[0]!.sizes.map((x) => x.at)).toEqual(['squad', '+1', '+2']);
+    expect(at('capguardHall')).toBe('3 4 5*');
+    expect(at('hammercapForge')).toBe('4 5* 6*');
+    expect(at('rootbreakerDen')).toBe('3 4 5*');
+    expect(at('sporelingBurrow')).toBe('8 9 10');
     expect(t.lines.some((l) => l.includes('capguardHall') && l.includes('5*'))).toBe(true);
+  });
+});
+
+// ---- Begin, the muster and a lane's end in rounds (R2a) ----
+
+type Colony = NonNullable<ScenarioDef['sides']['player']['colony']>;
+
+/** A building on a plot of a colony, with its merge toggle on unless `merge` is false. */
+const at = (building: string, lane: number, rank: number, file: number, merge = true): Colony[number] => ({ building, lane, rank, file, merge });
+
+/** Round 1's planning with these colonies, both sides human: a scenario, so the enemy's needs no command (plan Call 8). */
+function battle(player: Colony, enemy: Colony = [], opts: { map?: string; flags?: Partial<Flags> } = {}): BattleState {
+  return createFromScenario(content, {
+    id: 'clash', description: 'A clash test.', map: opts.map ?? 'bogwater-hollow', ...(opts.flags ? { flags: opts.flags } : {}),
+    sides: { player: { colony: player }, enemy: { colony: enemy } },
+  });
+}
+
+/** Round 1's planning on Bogwater Hollow, both sides human, with the player's battle effects and both colonies standing. */
+function withEffects(effects: EffectBundle, player: Colony, enemy: Colony = []): BattleState {
+  const config = makeRoundConfig(content, { seed: 1, player: 'human', enemy: 'human' });
+  config.modifiers = [{ side: 'player', source: 'test', effects }];
+  const s = createBattle(content, config);
+  for (const [side, colony] of [['player', player], ['enemy', enemy]] as const) {
+    for (const c of colony) addBuilding(s, side, c.building, plotAt(s, side, c), 0).mergeOn = c.merge ?? true;
+  }
+  return s;
+}
+
+/** Nobody can move or attack: every unit type's speed 0, and every unit's cooldown longer than a clash. */
+function hold(s: BattleState): void {
+  for (const side of SIDES) for (const u of Object.values(s.compiled[side].units)) for (const t of u.tiers) t.speedPerTick = 0;
+  for (const u of s.units) u.cooldown = 1e9;
+}
+
+const lock = (s: BattleState, lane: number): LaneLock => s.clash!.lanes[lane]!;
+const mine = (s: BattleState, side: Side): UnitState[] => s.units.filter((u) => u.side === side);
+const supplyOf = (us: UnitState[]): number => us.reduce((n, u) => n + u.supply, 0);
+const byKind = <T extends SimEvent['t']>(events: SimEvent[], t: T) => events.filter((e): e is Extract<SimEvent, { t: T }> => e.t === t);
+const range = (from: number, n: number): number[] => Array.from({ length: n }, (_, i) => from + i);
+
+describe('Begin: the arrival (SPEC §4.7 steps 12–13, §14.6 planning step 3)', () => {
+  it('records each side’s gold as bankedAtBegin, marks every planted building fielded, and enters the clash', () => {
+    const s = battle([at('sporelingBurrow', 0, 0, 1), at('truffleCellar', 0, 1, 1)], [at('capguardHall', 0, 0, 1)]);
+    s.sides.player.gold = 123;
+    begin(s);
+    expect([s.phase, s.sides.player.bankedAtBegin, s.sides.enemy.bankedAtBegin]).toEqual(['clash', 123, 300]);
+    expect(s.buildings.map((b) => b.fielded)).toEqual([true, true, true]);
+    expect(s.clash!.startTick).toBe(s.tick);
+  });
+
+  it('fields both armies on the same tick, taking ids in plot order (lane, rank, file), then j (A024)', () => {
+    // planted out of plot order: building ids follow the colony's list, the arrival its plots
+    const s = battle([at('gillNest', 0, 1, 2), at('sporelingBurrow', 0, 0, 3), at('capguardHall', 0, 0, 1)],
+      [at('sporelingBurrow', 0, 0, 2), at('gillNest', 0, 1, 1)], { flags: { merging: false } });
+    const plans = { player: formationOf(s, 'player'), enemy: formationOf(s, 'enemy') };
+    expect(plans.player.map((p) => p.building)).toEqual([3, 2, 1]);
+    const first = s.nextId, tick = s.tick;
+    const events = begin(s);
+    const expected = SIDES.flatMap((side) => plans[side].flatMap((p) => p.units.map((u) => [side, p.building, u.x, u.y])));
+    expect(s.units.map((u) => [u.side, u.sourceBuildingId, u.x, u.y])).toEqual(expected);
+    expect(s.units.map((u) => u.id)).toEqual(range(first, expected.length));
+    // one `arrived` a squad, the player's squads first, all in Begin's one step: nothing has ticked
+    let next = first;
+    expect(byKind(events, 'arrived')).toEqual(SIDES.flatMap((side) => plans[side].map((p) => ({ t: 'arrived', side, ids: range((next += p.units.length) - p.units.length, p.units.length) }))));
+    expect(s.tick).toBe(tick);
+  });
+
+  it('holds every unit still through the muster’s 20 ticks with no power queued, separation included (A026)', () => {
+    const s = battle([at('capguardHall', 0, 0, 2), at('gillNest', 0, 1, 2), at('sporelingBurrow', 0, 0, 3)],
+      [at('sporelingBurrow', 0, 0, 2), at('gillNest', 0, 1, 2)]);
+    begin(s);
+    // two of the player's units stand on each other, which separation would push apart
+    const a = s.units.find((u) => u.unitId === 'capguard')!, b = s.units.find((u) => u.unitId === 'gillArcher' && u.side === 'player')!;
+    b.x = b.px = a.x; b.y = b.py = a.y;
+    const still = () => s.units.map((u) => [u.id, u.x, u.y, u.hp, u.shield ?? 0, u.targetId, u.cooldown]);
+    const before = still();
+    const events = stepClash(s, 20);
+    expect(s.tick).toBe(s.clash!.startTick + 20);
+    expect(still()).toEqual(before);
+    expect(byKind(events, 'hit')).toEqual([]);
+    // the clash moves on the 21st tick: separation and the march
+    stepClash(s, 1);
+    expect(Math.hypot(a.x - b.x, a.y - b.y)).toBeGreaterThan(0);
+    expect(still()).not.toEqual(before);
+  });
+
+  it('fields an emplacement at its tower’s full HP each round, whatever the last clash left it (T041)', () => {
+    const s = battle([at('puffballMortar', 0, 1, 2), at('capguardHall', 0, 0, 2)]);
+    const full = s.library.buildings.puffballMortar!.hp;
+    const mortar = () => s.units.find((u) => u.unitId === 'puffballMortar')!;
+    begin(s);
+    expect([mortar().hp, mortar().maxHp]).toEqual([full, full]);
+    mortar().hp = 1;
+    // the enemy fields nothing, so the lane ends on the first tick (E1), and the clash with it
+    stepClash(s, 1);
+    expect(s.phase).toBe('aftermath');
+    step(s);
+    expect([s.phase, s.round]).toEqual(['planning', 2]);
+    begin(s);
+    expect([mortar().hp, mortar().maxHp]).toEqual([full, full]);
+  });
+});
+
+describe('the arrival shield (SPEC §5.3, #8, plan Call 30)', () => {
+  it('shields each lane’s army of 2 or more unit types before the muster; emplacements neither count nor take one', () => {
+    // Twin Roots: the player's lane 0 mixes Sporelings and Gill Archers, its lane 1 is Sporelings and a Mortar
+    const s = battle([at('sporelingBurrow', 0, 0, 1), at('gillNest', 0, 1, 2), at('puffballMortar', 0, 1, 1), at('sporelingBurrow', 1, 0, 1), at('puffballMortar', 1, 1, 2)],
+      [at('sporelingBurrow', 0, 0, 1), at('puffballMortar', 0, 1, 2)], { map: 'twin-roots' });
+    begin(s);
+    const frac = s.rules.arrivalShield.shieldFrac;
+    const shielded = mine(s, 'player').filter((u) => u.lane === 0 && u.unitId !== 'puffballMortar');
+    expect(shielded.some((u) => u.tier === 2)).toBe(true);
+    for (const u of shielded) {
+      // a knit keeps its parts' shields in proportion, as its HP
+      const part = s.compiled.player.units[u.unitId]!.tiers[0].hp, partShield = Math.round(part * frac);
+      expect(u.shield, `${u.unitId} ${u.tier}`).toBe(u.tier === 1 ? Math.round(u.maxHp * frac) : Math.round((u.maxHp * 3 * partShield) / (3 * part)));
+    }
+    // a Mortar takes none, and a lane of one unit type and a Mortar has none: so the enemy's lane 0 too
+    for (const u of s.units.filter((x) => !shielded.includes(x))) expect(u.shield, `${u.side} ${u.unitId} lane ${u.lane}`).toBeUndefined();
+  });
+});
+
+describe('the muster inside Begin (SPEC §5.6, plan Call 4)', () => {
+  it('knits what mergePreview promised, and records what each side fields as it then stands, by lane, type, tier and count (§14.4, A047)', () => {
+    const s = battle([at('sporelingBurrow', 0, 0, 1), at('sporelingBurrow', 0, 1, 1), at('capguardHall', 1, 0, 1), at('puffballMortar', 1, 1, 2)],
+      [at('gillNest', 1, 0, 1), at('sporelingBurrow', 0, 0, 3, false)], { map: 'twin-roots' });
+    const preview = { player: mergePreview(s, 'player'), enemy: mergePreview(s, 'enemy') };
+    begin(s);
+    const tierKey = ['base', 'bloomed', 'elders'] as const;
+    for (const side of SIDES) {
+      const counts: Record<number, Record<string, number>> = {};
+      for (const u of mine(s, side)) {
+        const c = (counts[u.sourceBuildingId] ??= { elders: 0, bloomed: 0, base: 0 });
+        c[tierKey[u.tier - 1]!]!++;
+      }
+      expect(counts, side).toEqual(preview[side].byBuilding);
+      const fielded: FieldedSquad[] = [];
+      for (const u of mine(s, side)) {
+        const f = fielded.find((x) => x.lane === u.lane && x.unitId === u.unitId && x.tier === u.tier);
+        if (f) f.count++; else fielded.push({ unitId: u.unitId, tier: u.tier, count: 1, augments: [], lane: u.lane });
+      }
+      const order = (a: FieldedSquad, b: FieldedSquad) => a.lane - b.lane || (a.unitId < b.unitId ? -1 : a.unitId > b.unitId ? 1 : 0) || a.tier - b.tier;
+      expect(s.clash!.fielded[side], side).toEqual(fielded.sort(order));
+    }
+    expect(s.clash!.fielded.player).toContainEqual({ unitId: 'sporeling', tier: 3, count: 1, augments: [], lane: 0 });
+    expect(s.clash!.fielded.enemy).toContainEqual({ unitId: 'sporeling', tier: 1, count: 8, augments: [], lane: 0 });
+  });
+
+  it('pays a muster merge’s side effects once: its id, its merged and musterKnit events, stats.merges and merge triggers (A032)', () => {
+    const s = withEffects({ triggers: [{ on: 'merge', do: [{ gainGold: 1 }] }] },
+      [at('sporelingBurrow', 0, 0, 1), at('sporelingBurrow', 0, 0, 2)], [at('capguardHall', 0, 0, 1, false)]);
+    const { trios } = mergePreview(s, 'player');
+    const gold = s.sides.player.gold, first = s.nextId;
+    const events = begin(s);
+    const arrived = byKind(events, 'arrived').flatMap((e) => e.ids);
+    const merged = byKind(events, 'merged');
+    // each merged unit's id follows the arrival's, in the muster's order, so its key is its id (plan Call 4)
+    expect(merged.map((e) => [e.id, e.tier])).toEqual(trios.map((t, i) => [first + arrived.length + i, t.tier]));
+    expect(byKind(events, 'musterKnit').map(({ parts, tier, x, y }) => ({ parts, tier, x, y }))).toEqual(trios.map(({ parts, tier, x, y }) => ({ parts, tier, x, y })));
+    expect(s.stats.player.merges).toEqual({ '2': trios.filter((t) => t.tier === 2).length, '3': trios.filter((t) => t.tier === 3).length });
+    expect(s.sides.player.gold - gold).toBe(trios.length);
+    expect(s.nextId).toBe(first + arrived.length + trios.length);
+    // the muster's ticks knit nothing more and pay nothing more
+    const later = stepClash(s, 40);
+    expect(later.filter((e) => e.t === 'merged' || e.t === 'knitStart' || e.t === 'effectGold')).toEqual([]);
+    expect(s.sides.player.gold - gold).toBe(trios.length);
+  });
+
+  it('fires clashStart triggers once, after the muster’s knits and before the clash’s first tick (T026)', () => {
+    const s = withEffects({ triggers: [{ on: 'clashStart', do: [{ gainGold: 7 }] }] }, [at('sporelingBurrow', 0, 0, 1)], [at('capguardHall', 0, 0, 1)]);
+    const gold = s.sides.player.gold;
+    const kinds = begin(s).map((e) => e.t);
+    expect(kinds[0]).toBe('clashStarted');
+    expect(kinds.filter((t) => t === 'effectGold')).toHaveLength(1);
+    expect(kinds.lastIndexOf('musterKnit')).toBeLessThan(kinds.indexOf('effectGold'));
+    expect(kinds.lastIndexOf('arrived')).toBeLessThan(kinds.indexOf('merged'));
+    expect([s.tick, s.sides.player.gold - gold]).toEqual([s.clash!.startTick, 7]);
+    stepClash(s, 40);
+    expect(s.sides.player.gold - gold).toBe(7);
+  });
+});
+
+describe('a lane’s end (SPEC §6.7, §14.6 clash step 12, A030)', () => {
+  it('ends a lane only one side fields on the first tick, won with its whole damage supply, or with none for emplacements only (E1, E6)', () => {
+    const s = battle([at('rootbreakerDen', 0, 0, 1), at('puffballMortar', 1, 1, 2)], [], { map: 'twin-roots', flags: { merging: false } });
+    begin(s);
+    const start = s.clash!.startTick;
+    const events = stepClash(s, 1);
+    const supply = supplyOf(mine(s, 'player').filter((u) => u.lane === 0));
+    expect(supply).toBe(9);
+    expect(lock(s, 0)).toEqual({
+      ended: true, endTick: start + 1, winner: 'player', capped: false,
+      survivors: { player: 9, enemy: 0 }, damageSupply: { player: 18, enemy: 0 }, margin: 18,
+    });
+    expect(lock(s, 1)).toEqual({
+      ended: true, endTick: start + 1, winner: 'player', capped: false,
+      survivors: { player: 0, enemy: 0 }, damageSupply: { player: 0, enemy: 0 }, margin: 0,
+    });
+    expect(byKind(events, 'laneWon')).toEqual([
+      { t: 'laneWon', lane: 0, winner: 'player', survivors: { player: 9, enemy: 0 }, capped: false },
+      { t: 'laneWon', lane: 1, winner: 'player', survivors: { player: 0, enemy: 0 }, capped: false },
+    ]);
+    // every lane has ended, so the step hands the clash over to scoring and the aftermath (T051)
+    expect(s.phase).toBe('aftermath');
+    // the winners still stand
+    expect(mine(s, 'player')).toHaveLength(4);
+  });
+
+  it('draws a lane neither side fields, on the first tick (E2), and one both sides lose on the same tick (E4)', () => {
+    const empty = battle([], []);
+    begin(empty);
+    stepClash(empty, 1);
+    const drawn = { ended: true, winner: null, capped: false, survivors: { player: 0, enemy: 0 }, damageSupply: { player: 0, enemy: 0 }, margin: 0 };
+    expect(lock(empty, 0)).toEqual({ ...drawn, endTick: empty.clash!.startTick + 1 });
+    const s = battle([at('capguardHall', 0, 0, 1)], [at('capguardHall', 0, 0, 1)]);
+    begin(s);
+    stepClash(s, 30);
+    expect(lock(s, 0).ended).toBe(false);
+    for (const u of s.units) u.hp = 0;
+    const events = stepClash(s, 1);
+    expect(lock(s, 0)).toEqual({ ...drawn, endTick: s.tick });
+    expect(byKind(events, 'laneWon')).toEqual([{ t: 'laneWon', lane: 0, winner: null, survivors: { player: 0, enemy: 0 }, capped: false }]);
+  });
+
+  it('falls at exactly startTick + 900, the muster’s 20 ticks counted, and a tie in surviving supply is drawn (#13, E3)', () => {
+    const s = battle([at('capguardHall', 0, 0, 1)], [at('capguardHall', 0, 0, 1)], { flags: { merging: false } });
+    // a later round's clash starts at the tick the last one ended (plan Call 7)
+    s.tick = 50;
+    begin(s);
+    hold(s);
+    expect(s.clash!.startTick).toBe(50);
+    stepClash(s, 899);
+    expect([s.tick, lock(s, 0).ended, s.phase]).toEqual([949, false, 'clash']);
+    const events = stepClash(s, 1);
+    expect(lock(s, 0)).toEqual({
+      ended: true, endTick: 950, winner: null, capped: true,
+      survivors: { player: 6, enemy: 6 }, damageSupply: { player: 6, enemy: 6 }, margin: 0,
+    });
+    expect(byKind(events, 'laneWon')).toEqual([{ t: 'laneWon', lane: 0, winner: null, survivors: { player: 6, enemy: 6 }, capped: true }]);
+    expect(s.phase).toBe('aftermath');
+  });
+
+  it('gives a lane at the cap to more surviving supply, siege counted once, with the margin in damage supply, never below 0 (#22)', () => {
+    // lane 0: 6 Capguards (12) against 3 (6); lane 1: 6 Capguards (12) against 3 Rootbreakers (9, siege: 18 damage supply)
+    const s = battle([at('capguardHall', 0, 0, 1), at('capguardHall', 0, 0, 3), at('capguardHall', 1, 0, 1), at('capguardHall', 1, 0, 2)],
+      [at('capguardHall', 0, 0, 1), at('rootbreakerDen', 1, 0, 1)], { map: 'twin-roots', flags: { merging: false } });
+    begin(s);
+    hold(s);
+    stepClash(s, 900);
+    expect(lock(s, 0)).toMatchObject({ winner: 'player', capped: true, survivors: { player: 12, enemy: 6 }, damageSupply: { player: 12, enemy: 6 }, margin: 6 });
+    expect(lock(s, 1)).toMatchObject({ winner: 'player', capped: true, survivors: { player: 12, enemy: 9 }, damageSupply: { player: 12, enemy: 18 }, margin: 0 });
+  });
+
+  it('draws a lane at the cap where both sides have only emplacements left (E5)', () => {
+    const s = battle([at('puffballMortar', 0, 1, 1)], [at('puffballMortar', 0, 1, 1)]);
+    begin(s);
+    hold(s);
+    stepClash(s, 900);
+    expect(lock(s, 0)).toMatchObject({ ended: true, winner: null, capped: true, survivors: { player: 0, enemy: 0 }, margin: 0 });
+    expect(s.units).toHaveLength(2);
+  });
+
+  it('holds an ended lane still on Twin Roots while the other fights: no moves, hits and clouds dropped, no heals or merges (R2-Q11)', () => {
+    // lane 0: only the player fields, so it ends on the first tick (E1); lane 1 fights on
+    const s = battle([at('sporelingBurrow', 0, 0, 1, false), at('tendersRing', 0, 1, 1), at('gillNest', 1, 0, 1)],
+      [at('sporelingBurrow', 1, 0, 1)], { map: 'twin-roots' });
+    begin(s);
+    const lane0 = () => s.units.filter((u) => u.lane === 0);
+    const target = lane0().find((u) => u.unitId === 'sporeling')!;
+    // a hit in flight and a spore cloud over lane 0, both due after the lock
+    insertHit(s, {
+      tick: s.tick + 10, sourceId: 0, seq: s.nextHitSeq++, side: 'enemy', targetId: target.id, x: target.x, y: target.y, fromX: 20, fromY: target.y,
+      fireTick: s.tick, lane: 0, damage: 40, damageType: 'pierce', splashRadius: 0, siegeMult: 1, slayerMult: 1, sourceBuildingId: 0, sourceType: 'gillArcher', ranged: true,
+    });
+    addCloud(s, 'enemy', 0, target.x, target.y, 0, s.rules.cloud!);
+    stepClash(s, 1);
+    expect(s.clash!.lanes.map((l) => [l.ended, l.winner])).toEqual([[true, 'player'], [false, null]]);
+    expect([s.hits.filter((h) => h.lane === 0), (s.clouds ?? []).filter((c) => c.lane === 0)]).toEqual([[], []]);
+    // a hurt Sporeling beside a Tender, and the base Sporelings free to knit
+    target.hp -= 30;
+    for (const u of lane0()) if (u.unitId === 'sporeling') u.mergeOn = true;
+    const held = () => lane0().map((u) => [u.id, u.x, u.y, u.hp, u.tier, u.targetId, u.cooldown, !!u.knit]);
+    const before = held();
+    const lane1 = s.units.filter((u) => u.lane === 1).map((u) => [u.id, u.x, u.y]);
+    const ids = new Set(lane0().map((u) => u.id));
+    const events = stepClash(s, 80);
+    expect(held()).toEqual(before);
+    expect(events.filter((e) => (e.t === 'healed' && ids.has(e.target)) || (e.t === 'knitStart' && e.ids.some((id) => ids.has(id))) || (e.t === 'hit' && ids.has(e.target)))).toEqual([]);
+    // lane 1 fought on
+    expect(s.units.filter((u) => u.lane === 1).map((u) => [u.id, u.x, u.y])).not.toEqual(lane1);
+  });
+});
+
+describe('per-squad stats (SPEC §5.6, §14.2, T046, A028, A131)', () => {
+  it('a front-rank modifier reaches rank-0 squads only, and an onLoam one the squads on loam', () => {
+    const s = withEffects({
+      modifiers: [{ stat: 'unit.hp', op: 'mul', value: 1.5, where: { rank: 0 } }, { stat: 'unit.damage', op: 'mul', value: 2, where: { onLoam: true } }],
+    }, [at('capguardHall', 0, 0, 1, false), at('capguardHall', 0, 1, 1, false), at('capguardHall', 0, 1, 2, false), at('puffballMortar', 0, 0, 2)],
+    [at('capguardHall', 0, 0, 1, false)]);
+    expect(s.sides.player.plots[plotAt(s, 'player', { lane: 0, rank: 1, file: 2 })]!.terrain).toBe('loam');
+    begin(s);
+    const base = s.compiled.player.units.capguard!.tiers[0];
+    const of = (building: number) => s.units.filter((u) => u.sourceBuildingId === building).map((u) => [u.maxHp, u.hp, tierDef(s, u).damage]);
+    const [front, back, loam, mortar, theirs] = [1, 2, 3, 4, 5];
+    expect(of(front)).toEqual(Array(3).fill([Math.round(base.hp * 1.5), Math.round(base.hp * 1.5), base.damage]));
+    expect(of(back)).toEqual(Array(3).fill([base.hp, base.hp, base.damage]));
+    expect(of(loam)).toEqual(Array(3).fill([base.hp, base.hp, base.damage * 2]));
+    expect(of(theirs)).toEqual(Array(3).fill([base.hp, base.hp, base.damage]));
+    // a unit modifier never reaches an emplacement, which has its tower's stats
+    expect(of(mortar).map(([hp]) => hp)).toEqual([s.library.buildings.puffballMortar!.hp]);
+    // each squad's table: its side's unit plus the patches that reach it alone (A131)
+    const patches = (b: number) => s.squads.find((q) => q.building === b)!.stats?.patches;
+    expect([patches(front), patches(back), patches(loam), patches(theirs)]).toEqual([
+      [{ stat: 'unit.hp', op: 'mul', value: 1.5, where: { rank: 0 } }], undefined, [{ stat: 'unit.damage', op: 'mul', value: 2, where: { onLoam: true } }], undefined,
+    ]);
+  });
+
+  it('a knit of front and back parts takes the lowest-id parent’s squad stats, with HP carried by the ratio (R2-Q11)', () => {
+    const effects: EffectBundle = {
+      modifiers: [{ stat: 'unit.hp', op: 'mul', value: 1.5, where: { rank: 0 } }],
+      // a merge trigger reads its merged unit's squad's plot
+      triggers: [{ on: 'merge', if: { rank: 1 }, do: [{ gainGold: 1 }] }],
+    };
+    const s = withEffects(effects, [at('sporelingBurrow', 0, 0, 1), at('sporelingBurrow', 0, 1, 1)]);
+    const { trios } = mergePreview(s, 'player');
+    const gold = s.sides.player.gold;
+    begin(s);
+    const [front, back] = [1, 2];
+    expect(trios.some((t) => t.parts.some((p) => p.building === front) && t.parts.some((p) => p.building === back))).toBe(true);
+    const own = s.squads.find((q) => q.building === front)!.stats!.tiers, sideWide = s.compiled.player.units.sporeling!.tiers;
+    for (const u of mine(s, 'player')) {
+      const t = (u.sourceBuildingId === front ? own : sideWide)[u.tier - 1]!;
+      expect([u.maxHp, u.hp], `${u.id} tier ${u.tier}`).toEqual([t.hp, t.hp]);
+    }
+    expect(mine(s, 'player').find((u) => u.tier === 3)?.sourceBuildingId).toBe(front);
+    // a trio's first part is its lowest-id parent's
+    expect(s.sides.player.gold - gold).toBe(trios.filter((t) => t.parts[0]!.building === back).length);
+
+    // on the field: a hurt front Sporeling and two back ones knit into the front squad's Bloomed
+    const f = withEffects(effects, [at('sporelingBurrow', 0, 0, 1, false), at('sporelingBurrow', 0, 1, 1, false)]);
+    begin(f);
+    const lead = f.units.find((u) => u.sourceBuildingId === front)!;
+    const [b1, b2] = f.units.filter((u) => u.sourceBuildingId === back);
+    lead.hp = 100;
+    b1!.hp = 50;
+    expect([lead.maxHp, b1!.maxHp, b2!.maxHp]).toEqual([own[0]!.hp, sideWide[0]!.hp, sideWide[0]!.hp]);
+    mergeTriosNow(f, [[lead, b1!, b2!]]);
+    const m = f.units[f.units.length - 1]!;
+    expect([m.tier, m.sourceBuildingId, m.maxHp]).toEqual([2, front, own[1]!.hp]);
+    expect(m.hp).toBe(Math.round((own[1]!.hp * (100 + 50 + b2!.hp)) / (own[0]!.hp + 2 * sideWide[0]!.hp)));
   });
 });

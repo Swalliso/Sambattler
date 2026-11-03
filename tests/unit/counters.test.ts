@@ -1,17 +1,16 @@
-// The counter-matrix check (tools/lib/balance.ts, combat rework P0): its answer bots join the content
-// through a proto spec without touching the shipped bots, and a tiny in-process run screens on the
-// first seeds and confirms its top answers on the next ones. Then R1's clash bars (SPEC §12.2, §12.3,
-// §16 R1): the pool's clash jobs, the cache, clash G3, the strict clash counter matrix (G12) and G13.
+// The counter matrix's answers (tools/lib/balance.ts): its answer bots join the content through a proto spec
+// without touching the shipped bots. G12's run on battles in rounds is the slow suite's (tests/slow/counters.test.ts).
+// Then R1's clash bars (SPEC §12.2, §12.3, §16 R1), each clash on the round sim: the pool's clash jobs, the
+// cache, clash G3, the strict clash counter matrix (G12) and G13.
 import { describe, expect, it } from 'vitest';
 import { SIDES, other } from '../../src/sim/index.ts';
 import type { Side } from '../../src/sim/index.ts';
 import {
   CORE6_GRAPH, CORE_SPAWNERS, armyIds, clashCache, clashG13, clashRace, core6Answers, core6Spec, counterAnswers, counterBots, counterBotSpec, evaluateClashCounters,
-  evaluateClashG3, evaluateClashG4Row, evaluateCore6Graph, evaluateCounters, evaluateG3, evaluateMergeMirror, evaluatePairings, g3Row, pairingBotSpec, squadTable,
-  uniqueCells,
+  evaluateClashG3, evaluateClashG4Row, evaluateCore6Graph, evaluateMergeMirror, evaluatePairings, pairingBotSpec, squadTable, uniqueCells,
 } from '../../tools/lib/balance.ts';
 import type { Cell, CellRecord, ClashRunner } from '../../tools/lib/balance.ts';
-import { armyFromBot, playClash } from '../../tools/lib/clash.ts';
+import { armyFromBot, clashRecord } from '../../tools/lib/clash.ts';
 import type { ClashJob, ClashRecord, FieldId } from '../../tools/lib/clash.ts';
 import { protoContent } from '../../tools/lib/content.ts';
 import { dispatch, inProcessClashes } from '../../tools/lib/pool.ts';
@@ -58,33 +57,10 @@ describe('counter matrix answers', () => {
   });
 });
 
-describe('counter matrix run', () => {
-  it('screens on the first seeds, confirms the top answers on the next ones and flags mono answers that fail G3', async () => {
-    const map = 'bogwater-hollow';
-    const g3 = evaluateG3(cc, { maps: [map], ids: ['gillNest', 'sporelingBurrow'], seeds: 1 });
-    const answers = ['bot:balanced', 'bot:mono:sporelingBurrow'];
-    const r = await evaluateCounters(cc, { maps: [map], builds: ['gillNest'], answers, g3, screenSeeds: 1, confirmSeeds: 1, top: 1 });
-    const [b] = r.builds;
-    expect(b!.screen.map((s) => s.answer).sort()).toEqual([...answers].sort());
-    expect(b!.screen[0]!.mean).toBeGreaterThanOrEqual(b!.screen[1]!.mean);
-    expect(b!.top).toHaveLength(1);
-    const t = b!.top[0]!;
-    expect(t.answer).toBe(b!.screen[0]!.answer);
-    // the confirmation plays seed 2 in both seats; the answer wins every game the mono build loses
-    const row = g3Row(cc, map, 'gillNest', 1, t.answer, 2);
-    expect(t.games).toBe(2);
-    expect(t.wins).toBe(row.games - row.wins);
-    expect(b!.pass).toBe(t.mean >= 0.6);
-    const sporeling = g3.bots.find((x) => x.id === 'sporelingBurrow')!;
-    expect(b!.screen.find((s) => s.answer === 'bot:mono:sporelingBurrow')!.failsG3).toBe(!sporeling.pass);
-    expect(b!.screen.find((s) => s.answer === 'bot:balanced')!.failsG3).toBe(false);
-  });
-});
-
 // ---------------------------------------------------------------- R1's clash bars
 
 /** A real clash's record, whose shape the scripted runner reuses. */
-const template: ClashRecord = playClash(cc, {
+const template: ClashRecord = clashRecord(cc, {
   field: 'one', seed: 1, seat: 'player',
   armies: [armyFromBot(cc, 'bot:mono:sporelingBurrow', 300, 1, 8), armyFromBot(cc, 'bot:mono:capguardHall', 300, 1, 8)],
 });
@@ -106,7 +82,7 @@ function scripted(decide: (job: ClashJob) => 'a' | 'b' | 'draw', seen: ClashJob[
         [job.seat]: { ...template.armies.player, controller: job.armies[0].controller },
         [other(job.seat)]: { ...template.armies.enemy, controller: job.armies[1].controller },
       } as ClashRecord['armies'],
-      cap: reading, capAfterMuster: reading,
+      cap: reading,
     };
   }));
 }
@@ -125,14 +101,9 @@ describe("the pool's clash jobs (tools/lib/pool.ts)", () => {
     records.forEach((r, i) => {
       const job = jobs[i]!;
       expect([r.budget, r.seat, r.armies[job.seat].controller]).toEqual([job.armies[0].budget, job.seat, 'bot:mono:sporelingBurrow']);
-      expect(r).toEqual(playClash(cc, job));
-      expect(dispatch(cc, { kind: 'clash', job })).toEqual(r);
+      expect(r).toEqual(clashRecord(cc, job));
+      expect(dispatch(cc, { kind: 'clashRecord', job })).toEqual(r);
     });
-  });
-
-  it('still plays G3 cells for rowPool', () => {
-    const job = { map: 'test-flat', id: 'sporelingBurrow', seeds: 1, defender: 'bot:balanced' };
-    expect(dispatch(cc, { kind: 'g3', job })).toEqual(g3Row(cc, job.map, job.id, job.seeds, job.defender));
   });
 });
 
@@ -150,7 +121,7 @@ describe('the clash cache (A007)', () => {
     expect({ ...records[7]!, budget: 1200, seed: 1 }).toEqual(records[1]);
     // its premise: with no jitter a clash draws nothing, so another seed plays the same clash
     const job: ClashJob = { field: 'one', seed: 1, seat: 'player', armies: [cache.army('bot:balanced', 600, 1, 'one'), cache.army('bot:mono:gillNest', 600, 1, 'one')] };
-    expect(playClash(cc, { ...job, seed: 7 })).toEqual({ ...playClash(cc, job), seed: 7 });
+    expect(clashRecord(cc, { ...job, seed: 7 })).toEqual({ ...clashRecord(cc, job), seed: 7 });
   });
 
   it('shares nothing between seeds with jitter, which draws on the seed', async () => {
@@ -316,20 +287,19 @@ describe('the strict clash counter matrix (G12, SPEC §12.3)', () => {
 
 describe('G13, clash stalls (SPEC §12.3)', () => {
   let seed = 0;
-  /** A cell, on a seed of its own, whose cap reading locked at `ticks` and whose cap after the muster locked at `after`. */
-  const cell = (field: FieldId, budget: number, ticks: number, after = ticks): CellRecord => ({
+  /** A cell, on a seed of its own, whose clash locked at `ticks`. */
+  const cell = (field: FieldId, budget: number, ticks: number): CellRecord => ({
     field, budget, seed: ++seed, seat: 'player' as Side, jitter: 0, armies: { player: { controller: 'bot:a' }, enemy: { controller: 'bot:b' } },
-    cap: { ...template.cap, ticks, capped: ticks >= 900 }, capAfterMuster: { ...template.capAfterMuster, ticks: after, capped: after >= 920 },
+    cap: { ...template.cap, ticks, capped: ticks >= 900 },
   });
 
-  it("reads the share of every clash that reached the cap, with G3's share and the cap after the muster beside it", () => {
-    const g3 = [cell('one', 300, 900, 920), cell('one', 300, 400), cell('twin', 300, 300), cell('twin', 600, 200)];
-    const matrix = [cell('one', 300, 900, 910), cell('one', 600, 500), cell('one', 600, 600), cell('twin', 300, 700), cell('twin', 600, 800), cell('one', 300, 100)];
+  it("reads the share of every clash that reached the cap, with G3's share beside it", () => {
+    const g3 = [cell('one', 300, 900), cell('one', 300, 400), cell('twin', 300, 300), cell('twin', 600, 200)];
+    const matrix = [cell('one', 300, 900), cell('one', 600, 500), cell('one', 600, 600), cell('twin', 300, 700), cell('twin', 600, 800), cell('one', 300, 100)];
     const v = clashG13([...g3, ...matrix], g3);
-    expect(v.all.cap).toEqual({ clashes: 10, capped: 2, share: 0.2, medianSeconds: 550 / 20 });
-    expect(v.all.capAfterMuster).toMatchObject({ clashes: 10, capped: 1, share: 0.1 });
-    expect(v.g3.cap).toMatchObject({ clashes: 4, capped: 1, share: 0.25 });
-    expect(v.cells.find((c) => c.budget === 300 && c.field === 'one')!.cap).toMatchObject({ clashes: 4, capped: 2, share: 0.5 });
+    expect(v.all).toEqual({ clashes: 10, capped: 2, share: 0.2, medianSeconds: 550 / 20 });
+    expect(v.g3).toMatchObject({ clashes: 4, capped: 1, share: 0.25 });
+    expect(v.cells.find((c) => c.budget === 300 && c.field === 'one')!).toMatchObject({ clashes: 4, capped: 2, share: 0.5 });
     expect(v.cells.map((c) => `${c.field} ${c.budget}`)).toEqual(['one 300', 'twin 300', 'one 600', 'twin 600']);
     expect(v.pass).toBe(false); // 20% is over the 15% bar
     expect(clashG13(matrix.slice(1)).pass).toBe(true);
@@ -341,17 +311,16 @@ describe('G13, clash stalls (SPEC §12.3)', () => {
 
   it('counts the bar over the counted fields, with the three-lane screen beside it (T054, R1-Q9)', () => {
     const two = [cell('one', 300, 400), cell('twin', 300, 500)];
-    const three = [cell('three', 300, 900, 920), cell('three', 300, 900, 920)];
+    const three = [cell('three', 300, 900), cell('three', 300, 900)];
     const v = clashG13([...two, ...three], two);
-    expect(v.all.cap).toMatchObject({ clashes: 2, capped: 0, share: 0 });
+    expect(v.all).toMatchObject({ clashes: 2, capped: 0, share: 0 });
     expect(v.pass).toBe(true);
-    expect(v.three!.cap).toMatchObject({ clashes: 2, capped: 2, share: 1 });
-    expect(v.three!.capAfterMuster).toMatchObject({ clashes: 2, capped: 2 });
+    expect(v.three!).toMatchObject({ clashes: 2, capped: 2, share: 1 });
     expect(v.cells.map((c) => c.field)).toEqual(['one', 'twin', 'three']);
     expect(v.details.join('\n')).toMatch(/three-lane screen, a lead outside the bar: 100.0% of 2/);
     // the three-lane screen alone is the bar, as in G3 and G12
     const alone = clashG13(three);
-    expect([alone.pass, alone.all.cap.clashes, alone.three]).toEqual([false, 2, undefined]);
+    expect([alone.pass, alone.all.clashes, alone.three]).toEqual([false, 2, undefined]);
   });
 });
 
@@ -373,13 +342,12 @@ describe("the clash check's variants (SPEC §16 R1; T030, T031)", () => {
   });
 
   it("builds a twin cell's second army as the first one's own, on the same seed, with merging off (T030)", async () => {
-    const cache = clashCache(cc, inProcessClashes(cc), { army: { squad: { sporelingBurrow: 7 } } });
+    const cache = clashCache(cc, inProcessClashes(cc));
     const [r] = await cache.full([{ a: 'bot:balanced', b: 'bot:balanced', field: 'one', budget: 900, seed: 1, seat: 'enemy', twin: true }]);
     expect([r!.armies.enemy.controller, r!.armies.player.controller]).toEqual(['bot:balanced', 'bot:balanced (merging off)']);
     const own = cache.army('bot:balanced', 900, 1, 'one');
     expect(r!.armies.enemy.entries).toEqual(own.entries);
     expect(r!.armies.player.entries).toEqual(own.entries.map((e) => ({ ...e, mergeOn: false })));
-    expect(own.entries.filter((e) => e.buildingId === 'sporelingBurrow').every((e) => e.count === 7)).toBe(true); // the army options hold
   });
 
   it("plays the merge mirror: each G3 build and the reference against its own merge-off twin, both seats (T030, G7's round form)", async () => {
@@ -418,7 +386,6 @@ describe("the clash check's variants (SPEC §16 R1; T030, T031)", () => {
     expect(rows.veilstalkerHollow!.roleFactor).toBe(1.2);
     expect(rows.scythecapGrove!.roleFactor).toBe(1.4);
     expect(rows.tendersRing!.perGold).toBeUndefined(); // the heuristic can't value a healer
-    expect(squadTable(content, { squad: { sporelingBurrow: 7 } }).find((r) => r.buildingId === 'sporelingBurrow')!.perGold).toBeCloseTo(1.6, 2);
   });
 });
 
@@ -445,7 +412,7 @@ describe("the race section: the G4 row, the cap-binding share and drawn rounds (
       ...template.cap, winner: 'player' as Side, round,
       heartcap: { player: { uncapped: 0, capped: 0 }, enemy: { uncapped: taken, capped: Math.min(500, taken) } },
     };
-    return { field, budget, seed: ++seed, seat: 'player', jitter: 0, armies: { player: { controller: 'bot:a' }, enemy: { controller: 'bot:b' } }, cap: reading, capAfterMuster: reading };
+    return { field, budget, seed: ++seed, seat: 'player', jitter: 0, armies: { player: { controller: 'bot:a' }, enemy: { controller: 'bot:b' } }, cap: reading };
   };
 
   it("reads the share of clashes whose loser's uncapped damage passes 500, at storm ×1.0 and at the budget's round storm, and the share of drawn rounds", () => {

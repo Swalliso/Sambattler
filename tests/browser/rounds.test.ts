@@ -6,8 +6,8 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { chromium } from 'playwright';
 import type { Browser, Page } from 'playwright';
 import { nodeContent } from '../../tools/lib/content.ts';
-import { roundStateForParams } from '../../tools/lib/rounds/params.ts';
-import { hashState } from '../../src/sim/rounds/index.ts';
+import { battleStateForParams } from '../../tools/lib/params.ts';
+import { hashState } from '../../src/sim/index.ts';
 import type { GameBridge } from '../../src/app/debugBridge.ts';
 import { closeServers, serve } from './serve.ts';
 
@@ -44,7 +44,7 @@ const game = (p: Page) => p.evaluate(() => {
 });
 
 /** Node's state for the same query, at the same checkpoint (T080). */
-const node = (query: string) => roundStateForParams(content, new URLSearchParams(query));
+const node = (query: string) => battleStateForParams(content, new URLSearchParams(query));
 
 const until = (p: Page, f: (g: GameBridge) => boolean) =>
   p.waitForFunction(`(${f.toString()})(window.__GAME__)`, null, { timeout: 15000 });

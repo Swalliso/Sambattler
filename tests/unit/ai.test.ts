@@ -1,348 +1,685 @@
-// The adaptive general (SPEC §7.4–7.8, §15.7 "AI (M4)"): spawn-mix analysis, counter sets, the
-// cycle's schedule, doctrine weights, drafting a missing counter, selling for space, the intel file,
-// lane choice, and the Rhizome Vault / Spore Exchange caps.
+// The planning turn in rounds (SPEC §7.1–§7.3, §7.9, §14.6's opening steps 5 and 7, §15.7's Planning and
+// AI rows). The general plans first, reading only `planningView` and drawing only on its own AI stream
+// (plan Call 10); it buys from its listed weights (R2-Q4) and places each building by §7.3's scores, with
+// Call 11's back-line term and #30's lanes, and keeps its plan per round in `ai.plans` (plan Call 12). A bot
+// on the player's side plans after it and queues `beginClash`, which makes the planning checkpoint (plan
+// Call 14). An adaptive general runs the counter cycle in its turn's step 1 (§7.4, §7.6, §15.7's AI row): it
+// reads only the `fielded` record, at rounds 4 and 7 (the boss also at 3), and its counter lands in the same
+// planning phase (#31), with X8's two default-off knobs beside it (§7.2).
 import { describe, expect, it } from 'vitest';
-import { choosePlacement, assessPressure } from '../../src/sim/ai/controller.ts';
-import { counterTick } from '../../src/sim/ai/counter.ts';
+import type { BalanceDef, ScenarioDef } from '../../src/data/schema.ts';
+import { parseController } from '../../src/sim/create.ts';
+import { planTurn, runAtOnce, targetWeights } from '../../src/sim/ai/controller.ts';
+import { analyzeFielded, counterSets, topKind } from '../../src/sim/ai/counter.ts';
+import { lineRole, offCentre, plotScore } from '../../src/sim/ai/formationScore.ts';
+import { resolveProfile } from '../../src/sim/ai/profiles.ts';
+import { planningView } from '../../src/sim/ai/view.ts';
 import {
-  analyzeMix, counterSets, createBattle, doctrineMult, hashState, legalPlacements, makeConfig, placementProblem, queueCommand, restore,
-  runHeadless, snapshot, step, topKind, zeroProfile,
+  COUNTER_KINDS, createBattle, createFromScenario, formationOf, hashState, makeRoundConfig, restore, runHeadless, snapshot, step,
 } from '../../src/sim/index.ts';
-import type { BattleConfig, BattleState, CounterState, IntelProfile, SimEvent } from '../../src/sim/index.ts';
-import { averageProfile, battleConfig, battleProfile, createRun, intelDots, simulateRun, updateIntel } from '../../src/run/index.ts';
-import { createBattle as createRoundBattle, makeRoundConfig, topKinds as roundTopKinds } from '../../src/sim/rounds/index.ts';
-import { building, content, liveState, setBorders, steps } from '../helpers.ts';
+import type { BattleState, CounterKind, FieldedSquad, IntelProfile, PlotState, Side } from '../../src/sim/index.ts';
+import { generalNews } from '../../src/app/phases/planning.ts';
+import { intentOf } from '../../src/ui/doctrine.ts';
+import { content, finishRound, planningState } from '../helpers.ts';
 
-const ADAPTIVE = { merging: true, adaptiveGeneral: true };
+type Colony = NonNullable<ScenarioDef['sides']['enemy']['colony']>;
 
-/** A live battle on the flat map: a human player against an adaptive general (opener skipped). */
-function vsGeneral(general: string, edit?: (c: BattleConfig) => void): BattleState {
-  const config = makeConfig(content, { seed: 1, mapId: 'test-flat', player: 'human', enemy: `general:${general}`, flags: ADAPTIVE });
-  edit?.(config);
-  const s = createBattle(content, config);
-  s.phase = 'live';
-  s.sides.enemy.ai!.openerDone = true;
+/** A round scenario on `map`, both sides human unless the creation names a controller. */
+const scenario = (sides: ScenarioDef['sides'], over: Partial<ScenarioDef> = {}): ScenarioDef => ({
+  id: 'ai', description: 'An AI test.', map: 'bogwater-hollow', sides, ...over,
+});
+
+/**
+ * Gives `side` the AI `controller` resolves to, without letting it plan. With `adaptive`, it gets the battle's
+ * flags as `createBattle` gives them, so an adaptive general runs its counter cycle (§7.4).
+ */
+function withAi(s: BattleState, side: Side, controller: string, adaptive = false): BattleState {
+  s.config[side].controller = parseController(controller);
+  s.sides[side].ai = resolveProfile(content, s.config[side].controller, s.config[side], adaptive ? s.config.flags : undefined);
   return s;
 }
 
-/** Player spawners in the home columns (2×2 slots at cols 0/2, rows 0/2/4/6). */
-function playerMix(s: BattleState, ids: string[]) {
-  return ids.map((id, i) => building(s, 'player', id, (i >> 2) * 2, (i % 4) * 2));
+interface Turn {
+  map?: string;
+  round?: number;
+  seed?: number;
+  /** The general's gold for its turn, after the round's income. */
+  gold?: number;
+  plots?: number;
+  colony?: Colony;
+  controller?: string;
+  /** Replace the profile's opener and weights. */
+  opener?: string[];
+  weights?: Record<string, number>;
+  /** Changes to the state before the turn, such as the last round's record. */
+  before?: (s: BattleState) => void;
+  /** With the battle's flags, so an adaptive general runs its counter cycle. */
+  adaptive?: boolean;
+  /** The general's intel file (§7.6). */
+  intel?: IntelProfile;
 }
 
-/** A counter state that saw each spawner make `spawned` units per wave and lose `merged` of them to merges. */
-function track(ids: number[], spawned: number, merged: number): CounterState {
-  const t: CounterState = { schedule: [], history: [], current: -1, track: {}, waveIds: [], samples: [] };
-  for (const id of ids) t.track[String(id)] = { spawned: { 0: spawned, 1: spawned }, merged: { 0: merged, 1: merged } };
-  return t;
+/** One turn of the general, alone, on a round scenario's state (the player human and planning nothing). */
+function generalTurn(t: Turn = {}): BattleState {
+  const enemy = { colony: t.colony ?? [], ...(t.plots !== undefined ? { plots: t.plots } : {}) };
+  const s = createFromScenario(content, scenario({ player: {}, enemy }, { map: t.map ?? 'bogwater-hollow', ...(t.round ? { round: t.round } : {}) }), { seed: t.seed ?? 1 });
+  if (t.intel) s.config.enemy.intel = t.intel;
+  withAi(s, 'enemy', t.controller ?? 'general:scripted', t.adaptive);
+  const ai = s.sides.enemy.ai!;
+  if (t.opener) ai.opener = t.opener;
+  if (t.weights) ai.weights = Object.entries(t.weights).map(([building, weight]) => ({ building, weight }));
+  if (t.gold !== undefined) s.sides.enemy.gold = t.gold;
+  t.before?.(s);
+  planTurn(s, 'enemy');
+  return s;
 }
 
-const events = (s: BattleState, t: SimEvent['t']) => s.events.filter((e) => e.t === t);
+/** The side's buildings, in id order. */
+const names = (s: BattleState, side: Side = 'enemy'): string[] => s.buildings.filter((b) => b.side === side).map((b) => b.buildingId);
+/** The plots of the side's buildings, in id order. */
+const places = (s: BattleState, side: Side = 'enemy'): PlotState[] => s.buildings.filter((b) => b.side === side).map((b) => s.sides[side].plots[b.plot]!);
+/** The side's buildings as building@lane:rank:file, in id order. */
+const colony = (s: BattleState, side: Side): string[] => s.buildings.filter((b) => b.side === side).map((b) => {
+  const p = s.sides[side].plots[b.plot]!;
+  return `${b.buildingId}@${p.lane}:${p.rank}:${p.file}`;
+});
+/** The side's logged commands, a toggle named by its building's plot, so two battles' ids needn't match. */
+const commands = (s: BattleState, side: Side): string[] => s.log.filter((c) => c.side === side).map((c) => {
+  if (c.type === 'plant') return `plant ${c.buildingId}@${c.plot}`;
+  if (c.type === 'toggleMerge') return `toggle @${s.buildings.find((b) => b.id === c.entityId)?.plot} ${c.on}`;
+  return c.type;
+});
+const fielded = (unitId: string, count: number, lane = 0): FieldedSquad => ({ unitId, tier: 1, count, augments: [], lane });
 
-describe('spawn-mix analysis (SPEC §7.4)', () => {
-  it('synthetic mixes pick their kind: Sporelings → Swarm, Amanita → Armor, Capguard or Rootbreaker → Line', () => {
-    const cases: [string[], string][] = [
-      [['sporelingBurrow', 'sporelingBurrow'], 'swarm'],
-      [['amanitaLodge', 'amanitaLodge'], 'armor'],
-      [['capguardHall', 'capguardHall', 'sporelingBurrow'], 'line'],
-      [['rootbreakerDen', 'rootbreakerDen', 'gillNest'], 'line'],
-    ];
-    for (const [ids, kind] of cases) {
-      const s = liveState();
-      playerMix(s, ids);
-      expect(topKind(analyzeMix(s, 'player').scores)).toBe(kind);
-    }
+describe('planningView, the only thing a planner reads (§7.1, §7.2, §7.5)', () => {
+  it("shows each side its own state and the round, the general the player only through the record, and a player-side planner the general's colony and formation", () => {
+    const s = createFromScenario(content, scenario({
+      player: { colony: [{ building: 'capguardHall', lane: 0, rank: 0, file: 2 }] },
+      enemy: { colony: [{ building: 'sporelingBurrow', lane: 0, rank: 0, file: 3 }] },
+    }, { round: 2 }));
+    const enemy = planningView(s, 'enemy'), player = planningView(s, 'player');
+    expect([enemy.side, enemy.round, enemy.gold, player.gold]).toEqual(['enemy', 2, s.sides.enemy.gold, s.sides.player.gold]);
+    expect([enemy.buildings.map((b) => b.buildingId), player.buildings.map((b) => b.buildingId)]).toEqual([['sporelingBurrow'], ['capguardHall']]);
+    expect(enemy.plots).toEqual(s.sides.enemy.plots);
+    expect(enemy.rounds).toEqual(s.rounds);
+    expect(enemy.general).toBeUndefined();
+    expect(player.general!.buildings.map((b) => b.buildingId)).toEqual(['sporelingBurrow']);
+    expect(player.general!.formation).toEqual(formationOf(s, 'enemy'));
   });
 
-  it('rates are count × supply / interval, split by armor', () => {
-    const s = liveState();
-    playerMix(s, ['sporelingBurrow', 'capguardHall']); // 2 × 1 / 16 vs 1 × 2 / 15
-    const a = analyzeMix(s, 'player');
-    const sp = 2 / 16, cg = 2 / 15;
-    expect(a.shares.light).toBeCloseTo(sp / (sp + cg), 9);
-    expect(a.scores.line).toBeCloseTo(cg / (sp + cg), 9);
-    expect(a.scores.armor).toBe(0);
-  });
-
-  it('a merge-heavy swarm with a high merged fraction reads as Elite', () => {
-    const s = liveState();
-    s.tick = 2400;
-    const bs = playerMix(s, ['sporelingBurrow', 'sporelingBurrow']);
-    const a = analyzeMix(s, 'player', track(bs.map((b) => b.id), 8, 7));
-    expect(a.shares.elite).toBeCloseTo(7 / 8, 9);
-    expect(a.scores.elite).toBeCloseTo(1.2 * 7 / 8, 9);
-    expect(a.scores.swarm).toBeCloseTo(1 - 0.5 * 7 / 8, 9);
-    expect(topKind(a.scores)).toBe('elite');
-  });
-
-  it('a merge toggle left on with no actual merges is not Elite', () => {
-    const s = liveState();
-    s.tick = 2400;
-    const bs = playerMix(s, ['sporelingBurrow', 'sporelingBurrow']);
-    for (const b of bs) expect(b.mergeOn).toBe(true);
-    const a = analyzeMix(s, 'player', track(bs.map((b) => b.id), 8, 0));
-    expect(a.scores.elite).toBe(0);
-    expect(topKind(a.scores)).toBe('swarm');
-  });
-
-  it('merged fractions count only spawners with merging on, over the last two waves', () => {
-    const s = liveState();
-    s.tick = 2400;
-    const [a, b] = playerMix(s, ['sporelingBurrow', 'sporelingBurrow']);
-    b!.mergeOn = false;
-    const t = track([a!.id, b!.id], 8, 8);
-    t.track[String(a!.id)]!.merged = { 0: 0, 1: 0, 5: 8 }; // wave 6's merges are outside the window
-    expect(analyzeMix(s, 'player', t).shares.elite).toBe(0);
-  });
-
-  it('ties go Elite, Armor, Line, Swarm', () => {
-    expect(topKind({ swarm: 0.5, line: 0.5, armor: 0.5, elite: 0.5 })).toBe('elite');
-    expect(topKind({ swarm: 0.5, line: 0.5, armor: 0.5, elite: 0 })).toBe('armor');
-    expect(topKind({ swarm: 0.5, line: 0.5, armor: 0, elite: 0 })).toBe('line');
-  });
-
-  it('counter sets hold spawners by their unit; towers, economy, utility and healers are in none', () => {
-    const s = liveState();
-    const sets = counterSets(s.library, content.factions['gray-rot']!.buildings);
-    expect(sets.swarm).toEqual(['sporelingBurrow', 'capguardHall', 'scythecapGrove', 'amanitaLodge', 'bursterPod', 'rhizomorphTunnel']);
-    expect(sets.line).toEqual(['gillNest', 'veilstalkerHollow', 'morelWarren']);
-    expect(sets.armor).toEqual(['rootbreakerDen', 'hammercapForge', 'bursterPod']); // the Burster's burst is crush
-    expect(sets.elite).toEqual(['veilstalkerHollow']);
-    for (const id of ['puffballMortar', 'truffleCellar', 'tendersRing', 'rhizomeVault', 'sporeExchange']) {
-      expect(Object.values(sets).flat()).not.toContain(id);
-    }
+  it("makes a plan a function of its view: the player's current colony changes neither the general's commands nor its stream (§7.1)", () => {
+    const make = (colony: Colony): BattleState => withAi(createFromScenario(content, scenario({ player: { colony }, enemy: {} }, { round: 3 })), 'enemy', 'general:scripted');
+    const a = make([]);
+    const b = make([{ building: 'capguardHall', lane: 0, rank: 0, file: 2 }, { building: 'gillNest', lane: 0, rank: 1, file: 2 }]);
+    expect(planningView(b, 'enemy')).toEqual(planningView(a, 'enemy'));
+    planTurn(a, 'enemy');
+    planTurn(b, 'enemy');
+    expect(commands(a, 'enemy').length).toBeGreaterThan(0);
+    expect(commands(b, 'enemy')).toEqual(commands(a, 'enemy'));
+    expect(colony(b, 'enemy')).toEqual(colony(a, 'enemy'));
+    expect(b.rng.ai.enemy).toEqual(a.rng.ai.enemy);
   });
 });
 
-describe('the counter cycle (SPEC §7.4)', () => {
-  // Heartcaps can't be targeted, so the battle lasts past the cycles under test (with Hold the
-  // general routs the mono bot before 7:00).
-  const ticksOf = (general: string, until: number) => {
-    const s = createBattle(content, makeConfig(content, { seed: 4, player: 'bot:mono:sporelingBurrow', enemy: `general:${general}`, flags: ADAPTIVE, test: { noHeartcapTargets: true } }));
-    const warned: [number, number][] = [], active: number[] = [];
-    runHeadless(s, {
-      until, onTick: (st) => {
-        for (const e of st.events) {
-          if (e.t === 'counterWarned' && e.side === 'enemy') warned.push([st.tick, e.activatesAtTick]);
-          if (e.t === 'counterActive' && e.side === 'enemy') active.push(st.tick);
-        }
-      },
+describe('buying (§7.2, §7.9, R2-Q4, #29)', () => {
+  it("works through round 1's opener first, skipping what it can't afford, then picks by its weights", () => {
+    const opener = generalTurn({ gold: 400, opener: ['capguardHall', 'amanitaLodge', 'sporelingBurrow'], weights: {} });
+    // the Lodge's 260 is more than the 250 left after the Hall
+    expect([names(opener), opener.sides.enemy.gold]).toEqual([['capguardHall', 'sporelingBurrow'], 140]);
+    const picks = generalTurn({ gold: 410, opener: ['sporelingBurrow'], weights: { capguardHall: 1 } });
+    expect([names(picks), picks.sides.enemy.gold]).toEqual([['sporelingBurrow', 'capguardHall', 'capguardHall'], 0]);
+  });
+
+  it('weighs each card by its weight × the round, and only its listed cards', () => {
+    const w = targetWeights(planningView(withAi(planningState({ round: 4 }), 'enemy', 'general:scripted'), 'enemy'));
+    // `general:scripted` (§7.9): Truffle Cellar 2 × 1, the Rootbreaker Den from round 4
+    expect(w).toEqual({
+      bursterPod: 1, capguardHall: 3, gillNest: 2, puffballMortar: 1, rhizomorphTunnel: 1, rootbreakerDen: 1, sporelingBurrow: 3, truffleCellar: 2,
     });
-    return { warned, active, state: s };
+  });
+
+  it.each([[1, 1.5], [2, 1.5], [3, 1], [6, 1], [7, 0.3], [9, 0.3]])('weighs economy in round %i × %s (§7.2)', (round, mult) => {
+    const w = targetWeights(planningView(withAi(planningState({ round }), 'enemy', 'general:scripted'), 'enemy'));
+    expect(w.truffleCellar).toBeCloseTo(2 * mult, 10);
+    expect([w.sporelingBurrow, w.capguardHall]).toEqual([3, 3]);
+  });
+
+  it('weighs the Mortar × 2 only after a round it lost, not a drawn or won one (§7.2)', () => {
+    const mortar = (damage: Record<Side, number>): number | undefined => {
+      const s = withAi(planningState({ round: 2 }), 'enemy', 'general:scripted');
+      s.rounds.at(-1)!.damage = damage;
+      return targetWeights(planningView(s, 'enemy')).puffballMortar;
+    };
+    expect([mortar({ player: 300, enemy: 0 }), mortar({ player: 0, enemy: 0 }), mortar({ player: 120, enemy: 120 }), mortar({ player: 0, enemy: 200 })]).toEqual([2, 1, 1, 1]);
+  });
+
+  it('stops at 3 Truffle Cellars, and buys a Rootbreaker Den only from round 4 (its limits, read by round)', () => {
+    const cellars = [1, 2, 3].map((file) => ({ building: 'truffleCellar', lane: 0, rank: 1, file }));
+    const s = withAi(createFromScenario(content, scenario({ player: {}, enemy: { colony: cellars } }, { round: 3 })), 'enemy', 'general:scripted');
+    expect(targetWeights(planningView(s, 'enemy'))).toMatchObject({ truffleCellar: 0, rootbreakerDen: 0 });
+    const rich = generalTurn({ gold: 5000, colony: cellars, round: 3 });
+    expect(names(rich).filter((id) => id === 'truffleCellar' || id === 'rootbreakerDen')).toEqual(['truffleCellar', 'truffleCellar', 'truffleCellar']);
+  });
+
+  it('carries a target out of reach into the next planning phase once, then drops it and picks afresh (§7.2)', () => {
+    const first = generalTurn({ gold: 200, opener: [], weights: { amanitaLodge: 1 } });
+    expect([names(first), first.sides.enemy.gold, first.sides.enemy.ai!.target]).toEqual([[], 200, { building: 'amanitaLodge', round: 1 }]);
+    // round 2: the carried Lodge comes before any pick
+    const carried = (gold: number): BattleState => generalTurn({
+      round: 2, gold, opener: [], weights: { sporelingBurrow: 1 }, before: (s) => { s.sides.enemy.ai!.target = { building: 'amanitaLodge', round: 1 }; },
+    });
+    const reached = carried(300);
+    expect([names(reached), reached.sides.enemy.ai!.target]).toEqual([['amanitaLodge'], { building: 'sporelingBurrow', round: 2 }]);
+    const dropped = carried(250);
+    expect([names(dropped), dropped.sides.enemy.ai!.target]).toEqual([['sporelingBurrow', 'sporelingBurrow'], { building: 'sporelingBurrow', round: 2 }]);
+  });
+
+  it("buys only its listed weights in a single battle (R2-Q4), and banks only what's left (#29)", () => {
+    const listed = Object.keys(content.generals.scripted!.weights);
+    const rich = generalTurn({ gold: 5000, round: 4 });
+    expect(rich.sides.enemy.kit.length).toBeGreaterThan(listed.length);
+    expect(names(rich)).toHaveLength(8);
+    expect(names(rich).every((id) => listed.includes(id))).toBe(true);
+    // no reserve for interest: a third Burrow leaves 20 banked
+    const s = generalTurn({ gold: 350, opener: [], weights: { sporelingBurrow: 1 } });
+    expect([names(s).length, s.sides.enemy.gold, s.sides.enemy.ai!.plans.at(-1)!.banked]).toEqual([3, 20, 20]);
+  });
+});
+
+describe("placement by §7.3's scores (plan Call 11, A043)", () => {
+  it.each([1, 2, 3, 4, 5])('puts a Nest behind a Hall (+3), and a second Burrow beside the first (+2), on seed %i', (seed) => {
+    const [hall, nest] = places(generalTurn({ seed, opener: ['capguardHall', 'gillNest'], weights: {} }));
+    expect([hall!.rank, nest!.rank, nest!.file]).toEqual([0, 1, hall!.file]);
+    expect([2, 3]).toContain(hall!.file);
+    const [a, b] = places(generalTurn({ seed, opener: ['sporelingBurrow', 'sporelingBurrow'], weights: {} }));
+    expect([a!.rank, b!.rank, Math.abs(a!.file - b!.file)]).toEqual([0, 0, 1]);
+  });
+
+  it.each([1, 2, 3])('puts a Burster Pod in the front rank beside its Hall, since `burst` is a front-line tag (T159), on seed %i', (seed) => {
+    const s = generalTurn({ seed, opener: ['capguardHall', 'bursterPod'], weights: {} });
+    const view = planningView(s, 'enemy');
+    expect(['bursterPod', 'capguardHall', 'gillNest', 'tendersRing', 'puffballMortar'].map((id) => lineRole(view, id)))
+      .toEqual(['front', 'front', 'back', 'back', 'back']);
+    expect(places(s).map((p) => p.rank)).toEqual([0, 0]);
+  });
+
+  it('puts a Truffle Cellar on a back loam plot', () => {
+    const [cellar] = places(generalTurn({ opener: ['truffleCellar'], weights: {} }));
+    expect([cellar!.rank, cellar!.terrain]).toEqual([1, 'loam']);
+  });
+
+  it('measures offCentre across its own lane: 3, 1, 1, 3 on 4 files and 2, 0, 2 on 3', () => {
+    const across = (map: string): number[] => {
+      const plots = planningState({ map }).sides.enemy.plots;
+      return plots.flatMap((p, i) => (p.lane === 0 && p.rank === 0 ? [offCentre(plots, i)] : []));
+    };
+    expect(across('bogwater-hollow')).toEqual([3, 1, 1, 3]);
+    expect(across('twin-roots')).toEqual([2, 0, 2]);
+  });
+
+  it.each([1, 2, 3, 4, 5, 6])('never puts a back-liner in the front rank while a back or third-rank plot is free (Call 11), on seed %i', (seed) => {
+    const back = ['truffleCellar', 'sporeExchange', 'rhizomeVault', 'sporeExchange'].map((building, i) => ({ building, lane: 0, rank: 1, file: i + 1 }));
+    const s = generalTurn({ seed, gold: 1000, plots: 12, colony: back, opener: ['gillNest', 'puffballMortar'], weights: {} });
+    expect(places(s).slice(4).map((p) => p.rank)).toEqual([2, 2]);
+    // the third rank's worst plot outscores the front rank's best, noise and all
+    const view = planningView(s, 'enemy');
+    const ranks = (rank: number) => s.sides.enemy.plots.flatMap((p, i) => (p.rank === rank ? [plotScore(view, 'gillNest', i, true)] : []));
+    expect(Math.min(...ranks(2)) - 0.5).toBeGreaterThan(Math.max(...ranks(0)) + 0.5);
+  });
+
+  it('gives the same plots on the same seed', () => {
+    const a = createBattle(content, makeRoundConfig(content, { seed: 9, enemy: 'general:scripted' }));
+    const b = createBattle(content, makeRoundConfig(content, { seed: 9, enemy: 'general:scripted' }));
+    expect(colony(a, 'enemy').length).toBeGreaterThan(0);
+    expect(colony(b, 'enemy')).toEqual(colony(a, 'enemy'));
+  });
+});
+
+describe("Twin Roots' lanes (§7.3, #30, A047)", () => {
+  /** The general's Capguard Halls on Twin Roots, each 3 units of 2 supply, by lane in the order planted. */
+  const halls = (t: Turn): number[] => places(generalTurn({ map: 'twin-roots', opener: [], weights: { capguardHall: 1 }, ...t })).map((p) => p.lane);
+  /** Last round's lanes, each lost by `by[i]`: the player's survivors there, the general's none. */
+  const lost = (by: number[]) => (s: BattleState) => s.rounds.at(-1)!.lanes.forEach((l, i) => { l.survivors = { player: by[i]!, enemy: 0 }; });
+
+  it("sends a spawner to the lane it lost by most, each lowering that lane's need by its squad's supply", () => {
+    expect(halls({ round: 2, gold: 600, before: lost([20, 4]) })).toEqual([0, 0, 0, 1]);
+    expect(halls({ round: 2, gold: 450, before: lost([10, 4]) })).toEqual([0, 1, 0]);
+  });
+
+  it('takes, in round 1 and on ties, the lane with less supply, then the lower lane', () => {
+    expect(halls({ gold: 450 })).toEqual([0, 1, 0]);
+  });
+
+  it("sends the Blightwright's spawners to the lane you fielded least in", () => {
+    const record = (s: BattleState) => {
+      lost([10, 0])(s);
+      s.rounds.at(-1)!.fielded.player = [fielded('sporeling', 20, 0), fielded('capguard', 3, 1)];
+    };
+    expect(halls({ round: 2, gold: 450, before: record, controller: 'general:blightwright' })).toEqual([1, 1, 1]);
+  });
+
+  it('puts a Cellar in a lane with a free loam plot, else in the lane with more free back-rank plots', () => {
+    const [cellar] = places(generalTurn({ map: 'twin-roots', opener: ['truffleCellar'], weights: {} }));
+    expect([cellar!.lane, cellar!.rank, cellar!.terrain]).toEqual([0, 1, 'loam']);
+    const loamTaken = [1, 3].map((file) => ({ building: 'truffleCellar', lane: 0, rank: 1, file }));
+    expect(places(generalTurn({ map: 'twin-roots', colony: loamTaken, opener: ['truffleCellar'], weights: {} })).at(-1)!.lane).toBe(1);
+  });
+
+  it('falls back to the other lane when its lane is full', () => {
+    // round 1's tie goes to lane 0, which economy and utility fill
+    const full = [0, 1].flatMap((rank) => [1, 2, 3].map((file) => ({ building: rank ? 'sporeExchange' : 'rhizomeVault', lane: 0, rank, file })));
+    expect(halls({ gold: 150, colony: full }).at(-1)).toBe(1);
+  });
+});
+
+describe('merge toggles (§7.2 step 3)', () => {
+  /** The general in round 2 with a Burrow and a Hall, after you fielded `slayers` Veilstalkers (1 supply each) and `capguards` Capguards (2 each). */
+  const after = (slayers: number, capguards: number): BattleState => generalTurn({
+    round: 2, gold: 0,
+    colony: [{ building: 'sporelingBurrow', lane: 0, rank: 0, file: 2 }, { building: 'capguardHall', lane: 0, rank: 0, file: 3 }],
+    before: (s) => { s.rounds.at(-1)!.fielded.player = [fielded('veilstalker', slayers), fielded('capguard', capguards)]; },
+  });
+  const toggles = (s: BattleState) => s.buildings.filter((b) => b.side === 'enemy').map((b) => [b.buildingId, b.mergeOn]);
+
+  it('switches merging off on its swarm buildings when Slayers made up more than 25% of the supply you fielded last round', () => {
+    const s = after(30, 35);
+    expect(toggles(s)).toEqual([['sporelingBurrow', false], ['capguardHall', true]]);
+    expect(commands(s, 'enemy')).toEqual([`toggle @${s.buildings[0]!.plot} false`]);
+    expect(s.events).toContainEqual({ t: 'mergeToggled', id: s.buildings[0]!.id, on: false });
+  });
+
+  it('keeps it on at 20%', () => {
+    const s = after(20, 40);
+    expect(toggles(s)).toEqual([['sporelingBurrow', true], ['capguardHall', true]]);
+    expect(commands(s, 'enemy')).toEqual([]);
+  });
+});
+
+describe("the general's turn in the round's opening (§14.6 step 5, plan Calls 8 and 12)", () => {
+  it('runs its commands at once and logs them with its stamps, then generalPlanned, and keeps the plan in ai.plans', () => {
+    const s = createBattle(content, makeRoundConfig(content, { seed: 3, enemy: 'general:scripted' }));
+    const mine = s.buildings.filter((b) => b.side === 'enemy');
+    // its opener, a Burrow and a Cellar, leaves 40, short of any card
+    expect(mine.map((b) => b.buildingId)).toEqual(['sporelingBurrow', 'truffleCellar']);
+    expect(s.log).toEqual(mine.map((b, seq) => ({ round: 1, tick: 0, side: 'enemy', seq, type: 'plant', buildingId: b.buildingId, plot: b.plot })));
+    expect(s.events.filter((e) => e.t === 'buildingPlanted' || e.t === 'generalPlanned')).toEqual([
+      ...mine.map((b) => ({ t: 'buildingPlanted', id: b.id })),
+      { t: 'generalPlanned', side: 'enemy', planted: mine.map((b) => b.id), sold: [] },
+    ]);
+    expect(s.events.at(-1)!.t).toBe('generalPlanned');
+    expect(s.sides.enemy.ai!.plans).toEqual([{ round: 1, planted: mine.map((b) => ({ building: b.buildingId, plot: b.plot })), sold: [], income: 0, banked: 40 }]);
+    expect([s.sides.enemy.gold, s.queue, s.stats.enemy.rejectedCommands]).toEqual([40, [], 0]);
+    // the next round's plan, with the income it was paid
+    finishRound(s);
+    step(s);
+    const paid = s.events.reduce((n, e) => n + ((e.t === 'income' || e.t === 'interest') && e.side === 'enemy' ? e.amount : 0), 0);
+    expect(s.sides.enemy.ai!.plans.map((p) => [p.round, p.income])).toEqual([[1, 0], [2, paid]]);
+    expect(s.sides.enemy.ai!.plans[1]!.banked).toBe(s.sides.enemy.gold);
+  });
+
+  it('stamps and logs a command it runs at once, and counts a refusal in rejectedCommands', () => {
+    const s = planningState();
+    s.events.length = 0;
+    expect(runAtOnce(s, 'enemy', { type: 'plant', buildingId: 'sporelingBurrow', plot: 99 })).toBe('noSuchPlot');
+    expect(s.log).toEqual([{ round: 1, tick: 0, side: 'enemy', seq: 0, type: 'plant', buildingId: 'sporelingBurrow', plot: 99 }]);
+    expect(s.events).toEqual([{ t: 'commandRejected', side: 'enemy', seq: 0, reason: 'noSuchPlot' }]);
+    expect(s.stats.enemy.rejectedCommands).toBe(1);
+  });
+});
+
+describe('bots plan after the general (§7.1, §14.6 step 7, plan Call 14)', () => {
+  const battle = (player: string, enemy = 'general:scripted'): BattleState => createBattle(content, makeRoundConfig(content, { seed: 4, player, enemy }));
+
+  it('plans after the general, then leaves only its beginClash queued: the planning checkpoint', () => {
+    const s = battle('bot:balanced');
+    const sides = s.log.map((c) => c.side);
+    expect(sides).toContain('enemy');
+    expect(sides.indexOf('player')).toBeGreaterThan(sides.lastIndexOf('enemy'));
+    const seq = sides.filter((side) => side === 'player').length;
+    expect(s.queue).toEqual([{ round: 1, tick: 0, side: 'player', seq, type: 'beginClash' }]);
+    const sideOf = (id: number) => s.buildings.find((b) => b.id === id)!.side;
+    const planned = s.events.findIndex((e) => e.t === 'generalPlanned' && e.side === 'enemy');
+    expect(s.events.findIndex((e) => e.t === 'buildingPlanted' && sideOf(e.id) === 'player')).toBeGreaterThan(planned);
+    expect(s.phase).toBe('planning');
+    step(s);
+    expect(s.phase).toBe('clash');
+  });
+
+  it("plans the same whatever the general plans: a fixed-weight bot doesn't read the general's army", () => {
+    const a = battle('bot:balanced'), b = battle('bot:balanced', 'general:lichen-baron');
+    expect(colony(b, 'enemy')).not.toEqual(colony(a, 'enemy'));
+    expect(commands(a, 'player').length).toBeGreaterThan(0);
+    expect(commands(b, 'player')).toEqual(commands(a, 'player'));
+    expect(b.rng.ai.player).toEqual(a.rng.ai.player);
+  });
+
+  it('fills its plots as bot:mono:<id>, opening with as many as its gold buys', () => {
+    const mono = (gold: number) => createFromScenario(content, scenario({ player: { gold }, enemy: {} }), { player: 'bot:mono:sporelingBurrow' });
+    expect(names(mono(300), 'player')).toEqual(['sporelingBurrow', 'sporelingBurrow']);
+    const rich = mono(2000);
+    expect(names(rich, 'player')).toEqual(Array<string>(8).fill('sporelingBurrow'));
+    expect(rich.sides.player.plots.every((p) => !p.open || p.building !== 0)).toBe(true);
+  });
+
+  it("reads a bot's limits by round: bot:balanced's Rootbreaker Den from round 4 (afterRound, R2-Q6)", () => {
+    const den = (round: number) => targetWeights(planningView(withAi(planningState({ round }), 'player', 'bot:balanced'), 'player')).rootbreakerDen;
+    expect([den(3), den(4)]).toEqual([0, 1]);
+  });
+});
+
+describe('the answer bot (§12.2, X7, §18.2 #34, A198)', () => {
+  /** Round 2's planning with the general's colony standing and `gold` for the player, who plans as `controller` once `before` has run. */
+  const answerTurn = (controller: string, enemy: Colony, o: { gold?: number; kit?: string[]; seed?: number; before?: (s: BattleState) => void } = {}): BattleState => {
+    const player = { gold: o.gold ?? 0, ...(o.kit ? { kit: o.kit } : {}) };
+    const s = createFromScenario(content, scenario({ player, enemy: { colony: enemy } }, { round: 2 }), { seed: o.seed ?? 3 });
+    o.before?.(s);
+    return withAi(s, 'player', controller);
+  };
+  const burrows: Colony = [1, 2, 3].map((file) => ({ building: 'sporelingBurrow', lane: 0, rank: 0, file }));
+  const halls: Colony = [1, 2, 3].map((file) => ({ building: 'capguardHall', lane: 0, rank: 0, file }));
+  const weights = (s: BattleState) => targetWeights(planningView(s, 'player'));
+
+  it("weighs bot:balanced's cards, × 3 on the one whose unit's hits best answer the general's planned squads: Capguard Hall against mono Sporelings", () => {
+    const answer = weights(answerTurn('bot:answer', burrows, { gold: 500 })), balanced = weights(answerTurn('bot:balanced', burrows, { gold: 500 }));
+    expect(answer.capguardHall).toBe(3 * balanced.capguardHall!);
+    expect({ ...answer, capguardHall: 0 }).toEqual({ ...balanced, capguardHall: 0 });
+  });
+
+  it('plants a Capguard Hall against them where bot:balanced, on the same seed, plants none', () => {
+    const plant = (controller: string) => {
+      const s = answerTurn(controller, burrows, { gold: 600, seed: 3 });
+      planTurn(s, 'player');
+      return names(s, 'player');
+    };
+    expect(plant('bot:balanced')).not.toContain('capguardHall');
+    expect(plant('bot:answer')).toContain('capguardHall');
+  });
+
+  it("leans to the next answer when its kit has no Capguard Hall: the Scythecap Grove, which the Sporelings' hits are weaker on than on Sporelings", () => {
+    const kit = ['sporelingBurrow', 'gillNest', 'scythecapGrove', 'truffleCellar'];
+    const answer = weights(answerTurn('bot:answer', burrows, { gold: 500, kit })), balanced = weights(answerTurn('bot:balanced', burrows, { gold: 500, kit }));
+    expect(Object.keys(answer)).toEqual(['gillNest', 'scythecapGrove', 'sporelingBurrow', 'truffleCellar']);
+    expect(answer).toEqual({ ...balanced, scythecapGrove: 3 * balanced.scythecapGrove! });
+  });
+
+  it("follows the general's colony this round, not what it fielded last round", () => {
+    const fieldedLast = (army: FieldedSquad[]) => (s: BattleState) => { s.rounds.at(-1)!.fielded.enemy = army; };
+    const lean = (enemy: Colony, last: FieldedSquad[]) => {
+      const answer = weights(answerTurn('bot:answer', enemy, { gold: 500, before: fieldedLast(last) }));
+      const balanced = weights(answerTurn('bot:balanced', enemy, { gold: 500, before: fieldedLast(last) }));
+      return Object.keys(answer).filter((id) => answer[id] !== balanced[id]);
+    };
+    expect(lean(burrows, capguards)).toEqual(['capguardHall']);
+    expect(lean(halls, sporelings)).toEqual(['gillNest']);
+  });
+});
+
+// ---- the counter cycle (§7.4, §7.6, T098) ----
+
+const sporelings = [fielded('sporeling', 24)], capguards = [fielded('capguard', 9)];
+/** The other side's squads in each round before the turn's, the record the cycle reads (§14.4). Every round was drawn. */
+const fieldedEach = (army: FieldedSquad[] | ((round: number) => FieldedSquad[])) => (s: BattleState): void => {
+  for (const r of s.rounds) r.fielded.player = (typeof army === 'function' ? army(r.round) : army).map((f) => ({ ...f }));
+};
+/** An adaptive general's turn in `round` (4 unless set) with no gold, Mother Mold unless set, after you fielded `army` in every round before. */
+const counterTurn = (army: FieldedSquad[] | ((round: number) => FieldedSquad[]), t: Turn = {}): BattleState => generalTurn({
+  round: 4, gold: 0, controller: 'general:mother-mold', adaptive: true, ...t,
+  before: (s) => { fieldedEach(army)(s); t.before?.(s); },
+});
+const counterOf = (s: BattleState) => s.sides.enemy.ai!.counter!;
+/** The kind that activated in the turn, or null when none did. */
+const activated = (s: BattleState): CounterKind | null => counterOf(s).history.find((c) => c.round === s.round)?.kind ?? null;
+/** The record `army` gives the cycle that reads it, before the noise. */
+const reading = (army: FieldedSquad[]) => analyzeFielded(planningView(counterTurn(army, { round: 2 }), 'enemy'), 1, 1);
+const plotAt = (s: BattleState, lane: number, rank: number, file: number): number =>
+  s.sides.enemy.plots.findIndex((p) => p.lane === lane && p.rank === rank && p.file === file);
+
+describe('the counter cycle by round (§7.4, A051)', () => {
+  it.each([
+    ['general:mother-mold', [4, 7], [{ round: 4, from: 1 }, { round: 7, from: 4 }]],
+    ['general:pale-sovereign', [3, 4, 7], [{ round: 3, from: 1 }, { round: 4, from: 1 }, { round: 7, from: 4 }]],
+  ])('runs %s\'s cycles in rounds %j, stored as {round, from}', (controller, rounds, cycles) => {
+    expect(counterOf(counterTurn(sporelings, { round: 1, controller })).cycles).toEqual(cycles);
+    expect([1, 2, 3, 4, 5, 6, 7, 8, 9].filter((round) => activated(counterTurn(sporelings, { round, controller })))).toEqual(rounds);
+  });
+
+  it('reads only its own rounds: round 7 reads 4–6, the boss reads 1–2 in round 3 and 1–3 in round 4', () => {
+    expect(activated(counterTurn((r) => (r <= 3 ? sporelings : capguards), { round: 7 }))).toBe('line');
+    const boss = (round: number) => activated(counterTurn((r) => (r === 3 ? capguards : []), { round, controller: 'general:pale-sovereign' }));
+    expect([boss(3), boss(4)]).toEqual([null, 'line']);
+  });
+
+  it("runs only for an adaptive general with flags.adaptiveGeneral on: the scripted general and the flag off get none", () => {
+    expect(counterTurn(sporelings, { controller: 'general:scripted' }).sides.enemy.ai!.counter).toBeUndefined();
+    const s = createFromScenario(content, scenario({ player: {}, enemy: {} }, { round: 4 }), { flags: { adaptiveGeneral: false } });
+    expect(withAi(s, 'enemy', 'general:mother-mold', true).sides.enemy.ai!.counter).toBeUndefined();
+  });
+});
+
+describe("the analysis of what you fielded (§7.4, R2-Q3, #14)", () => {
+  it.each([
+    ['amanitaKnight', 'armor'], ['capguard', 'line'], ['sporeling', 'swarm'], ['gillArcher', 'ranged'],
+  ])('reads a record of %s as %s', (unit, kind) => {
+    expect(topKind(reading([fielded(unit, 12)]).scores)).toBe(kind);
+  });
+
+  it('picks those kinds through the noise too, except that Gill Archers tie Swarm and Ranged at 1, which the noise decides', () => {
+    for (const [unit, kind] of [['amanitaKnight', 'armor'], ['capguard', 'line'], ['sporeling', 'swarm']] as const) {
+      for (const seed of [1, 2, 3]) expect(activated(counterTurn([fielded(unit, 12)], { seed }))).toBe(kind);
+    }
+    const archers = reading([fielded('gillArcher', 12)]).scores;
+    expect([archers.swarm, archers.ranged]).toEqual([1, 1]);
+  });
+
+  it("counts eliteShare in Elder units only, every unit at its parts' base supply, with no swarm read", () => {
+    // 9 Sporelings, 3 Bloomed and 1 Elder: 27 parts' supply, 9 of it in the Elder; a Bloomed unit isn't elite
+    const a = reading([fielded('sporeling', 9), { ...fielded('sporeling', 3), tier: 2 }, { ...fielded('sporeling', 1), tier: 3 }]);
+    const part = planningState().compiled.player.units.sporeling!.tiers[0].supply;
+    expect([a.total, a.shares.light]).toEqual([27 * part, 1]);
+    expect(a.shares.elite).toBeCloseTo(1 / 3, 10);
+    expect(a.scores.elite).toBeCloseTo(content.balance.ai.counter.eliteScoreMult / 3, 10);
+    expect(a.scores.swarm).toBeCloseTo(1 - content.balance.ai.counter.swarmEliteDiscount / 3, 10);
+    expect(reading([{ ...fielded('capguard', 3), tier: 2 }]).shares.elite).toBe(0);
+    // the swarm read (`swarmMaxSupply`) isn't v2's rule: a Sporeling Elder still counts
+    const swarmRead = counterTurn([{ ...fielded('sporeling', 1), tier: 3 }], {
+      round: 2, before: (s) => { const b = s.library.balance; s.library.balance = { ...b, ai: { ...b.ai, counter: { ...b.ai.counter, swarmMaxSupply: 1 } } }; },
+    });
+    expect(analyzeFielded(planningView(swarmRead, 'enemy'), 1, 1).shares.elite).toBe(1);
+  });
+
+  it.each([1, 2, 3, 4, 5])("doesn't read bot:balanced's colony as Elite in round 4, its toggles at their defaults, on seed %i (A041)", (seed) => {
+    const s = createBattle(content, makeRoundConfig(content, { seed, player: 'bot:balanced', enemy: 'general:mother-mold', flags: { powers: false } }));
+    runHeadless(s, { until: { round: 4 } });
+    // the round-4 cycle's reading of rounds 1–3, before the noise and as it picked
+    const { total, scores } = analyzeFielded(planningView(s, 'enemy'), 1, 3);
+    expect(total).toBeGreaterThan(0);
+    expect(topKind(scores)).not.toBe('elite');
+    expect(counterOf(s).history[0]).toMatchObject({ round: 4, kind: expect.not.stringMatching(/^elite$/) });
+  });
+
+  it('breaks ties Elite, Armor, Line, Ranged, Swarm (Ranged\'s place is #14\'s first guess)', () => {
+    const all = (zero: CounterKind[]) => Object.fromEntries(COUNTER_KINDS.map((k) => [k, zero.includes(k) ? 0 : 1])) as Record<CounterKind, number>;
+    expect([[], ['elite'], ['elite', 'armor'], ['elite', 'armor', 'line'], ['elite', 'armor', 'line', 'ranged']].map((z) => topKind(all(z as CounterKind[]))))
+      .toEqual(['elite', 'armor', 'line', 'ranged', 'swarm']);
+  });
+
+  it('passes a cycle when nothing was fielded in its rounds', () => {
+    const s = counterTurn([], { gold: 300 });
+    expect([counterOf(s).history, s.sides.enemy.ai!.plans.at(-1)!.counter]).toEqual([[], undefined]);
+  });
+});
+
+describe('activation (§7.4, #15, #31, A055, A056)', () => {
+  it('multiplies the counter set ×3 and the rest ×0.6 in the planning phase of its analysis', () => {
+    const s = counterTurn(sporelings);
+    expect(activated(s)).toBe('swarm');
+    const sets = counterSets(planningView(s, 'enemy'));
+    const w = targetWeights(planningView(s, 'enemy'));
+    for (const [id, base] of Object.entries(content.generals['mother-mold']!.weights)) {
+      expect(w[id]).toBeCloseTo(base * (sets.swarm.includes(id) ? 3 : 0.6), 10);
+    }
+    expect(w.capguardHall).toBeCloseTo(3, 10);
+    expect(w.sporelingBurrow).toBeCloseTo(3, 10);
+  });
+
+  it('keeps swarm units out of the Anti-Swarm and Anti-Line sets, a unit with no damage out of every set, and swarm spawners as the Anti-Ranged set', () => {
+    const view = planningView(planningState(), 'enemy');
+    const sets = counterSets(view);
+    for (const { building } of view.kit) {
+      const card = view.cards[building]!;
+      const u = card.kind === 'spawner' ? view.units[card.squad!.unit]! : undefined;
+      const swarm = !!u?.tags.includes('swarm');
+      const kinds = COUNTER_KINDS.filter((k) => sets[k].includes(building));
+      if (!u || u.tiers[0].damage <= 0) expect(kinds).toEqual([]);
+      if (swarm) expect(kinds).not.toContain('swarm');
+      if (swarm) expect(kinds).not.toContain('line');
+      expect(kinds.includes('ranged')).toBe(swarm);
+    }
+    expect([sets.ranged, sets.swarm.includes('capguardHall'), COUNTER_KINDS.some((k) => sets[k].includes('tendersRing'))])
+      .toEqual([['morelWarren', 'sporelingBurrow'], true, false]);
+  });
+
+  it("lists the cheapest roster counter that beats the dominant armor when it lists no card of the set: Mold's lone Burrow gets Capguard Hall, a non-swarm card, not the cheaper Burster Pod", () => {
+    const s = counterTurn(sporelings, { weights: { sporelingBurrow: 5 } });
+    expect(counterOf(s).history[0]).toMatchObject({ kind: 'swarm', added: 'capguardHall' });
+    expect(s.sides.enemy.ai!.weights).toEqual([{ building: 'capguardHall', weight: 1 }, { building: 'sporelingBurrow', weight: 5 }]);
+    expect(counterOf(counterTurn(capguards, { weights: { sporelingBurrow: 5 } })).history[0]).toMatchObject({ kind: 'line', added: 'gillNest' });
+    // Mold's own weights list the set already, and only its non-swarm cards gain
+    const own = counterTurn(sporelings);
+    expect(counterOf(own).history[0]!.added).toBeUndefined();
+    const w = targetWeights(planningView(own, 'enemy'));
+    expect(Object.keys(w).filter((id) => w[id]! > content.generals['mother-mold']!.weights[id]!).every((id) => !content.units[content.buildings[id]!.squad?.unit ?? '']?.tags.includes('swarm'))).toBe(true);
+  });
+
+  it('records the counter in generalPlanned and the round\'s plan, and its state survives a snapshot round trip', () => {
+    const s = counterTurn(sporelings, { gold: 300 });
+    expect(s.sides.enemy.ai!.plans.at(-1)).toMatchObject({ round: 4, counter: 'swarm' });
+    expect(s.events.find((e) => e.t === 'generalPlanned')).toMatchObject({ counter: 'swarm' });
+    expect(counterOf(s).history).toEqual([expect.objectContaining({ round: 4, from: 1, kind: 'swarm', sold: [] })]);
+    const copy = restore(snapshot(s));
+    expect(copy.sides.enemy.ai!.counter).toEqual(counterOf(s));
+    expect(hashState(copy)).toBe(hashState(s));
+    // both play the next round alike, which runs no cycle and plans under the same counter
+    for (const x of [s, copy]) { finishRound(x); step(x); }
+    expect(hashState(copy)).toBe(hashState(s));
+    expect([s.round, s.sides.enemy.ai!.plans.at(-1)!.counter]).toEqual([5, undefined]);
+  });
+});
+
+describe('selling for room (§7.4)', () => {
+  // Bogwater Hollow's 8 open plots, full: three spawners outside the Anti-Swarm set fare worst against light armor (crush)
+  const full: Colony = [
+    { building: 'capguardHall', lane: 0, rank: 0, file: 1 }, { building: 'capguardHall', lane: 0, rank: 0, file: 2 },
+    { building: 'scythecapGrove', lane: 0, rank: 0, file: 3 }, { building: 'hammercapForge', lane: 0, rank: 0, file: 4 },
+    { building: 'gillNest', lane: 0, rank: 1, file: 1 }, { building: 'hammercapForge', lane: 0, rank: 1, file: 2 },
+    { building: 'rootbreakerDen', lane: 0, rank: 1, file: 3 }, { building: 'truffleCellar', lane: 0, rank: 1, file: 4 },
+  ];
+  const refund = (id: string) => Math.floor(content.buildings[id]!.cost * 0.6);
+  const sold = (s: BattleState) => s.sides.enemy.ai!.plans.at(-1)!.sold;
+
+  it('sells up to 2 spawners outside the set, worst against the dominant armor, rearmost first, then the lower file, at 60%', () => {
+    const s = counterTurn(sporelings, { colony: full });
+    expect(sold(s)).toEqual([{ building: 'hammercapForge', plot: plotAt(s, 0, 1, 2) }, { building: 'rootbreakerDen', plot: plotAt(s, 0, 1, 3) }]);
+    expect(counterOf(s).history[0]!.sold).toEqual(['hammercapForge', 'rootbreakerDen']);
+    expect(s.events.filter((e) => e.t === 'buildingSold').map((e) => e.t === 'buildingSold' && e.refund)).toEqual([refund('hammercapForge'), refund('rootbreakerDen')]);
+    expect(s.stats.enemy.rejectedCommands).toBe(0);
+  });
+
+  it('sells only to leave 2 plots free: one with a plot free, none with 2', () => {
+    const one = counterTurn(sporelings, { colony: full.slice(0, 7) });
+    expect(sold(one)).toEqual([{ building: 'hammercapForge', plot: plotAt(one, 0, 1, 2) }]);
+    expect(sold(counterTurn(sporelings, { colony: full.slice(0, 6) }))).toEqual([]);
+  });
+
+  it('breaks a tie of rank and file by building id, on Twin Roots', () => {
+    const colony: Colony = [
+      ...[1, 2, 3].map((file) => ({ building: 'capguardHall', lane: 0, rank: 0, file })),
+      { building: 'truffleCellar', lane: 0, rank: 1, file: 1 }, { building: 'rootbreakerDen', lane: 0, rank: 1, file: 2 },
+      // lane 1's front middle plot is a stump
+      { building: 'hammercapForge', lane: 1, rank: 0, file: 1 }, { building: 'capguardHall', lane: 1, rank: 0, file: 3 },
+      { building: 'truffleCellar', lane: 1, rank: 1, file: 1 }, { building: 'hammercapForge', lane: 1, rank: 1, file: 2 }, { building: 'sporeExchange', lane: 1, rank: 1, file: 3 },
+    ];
+    const s = counterTurn(sporelings, { map: 'twin-roots', colony });
+    expect(sold(s)).toEqual([{ building: 'hammercapForge', plot: plotAt(s, 1, 1, 2) }]);
+  });
+});
+
+describe('intel (§7.6)', () => {
+  it("opens on the intel's top kind, its set ×2 and the rest ×0.8, until the first activation", () => {
+    const intel = { swarm: 0.6, line: 0.3, armor: 0.1 };
+    const first = counterTurn([], { round: 1, intel });
+    expect(counterOf(first).opening).toEqual({ kinds: ['swarm'], dual: false });
+    const w1 = targetWeights(planningView(first, 'enemy'));
+    // round 1's economy × 1.5 too
+    expect([w1.capguardHall, w1.sporelingBurrow, w1.truffleCellar].map((x) => +x!.toFixed(6))).toEqual([2, 4, 2.4]);
+    // round 4's Line ends it
+    const w4 = targetWeights(planningView(counterTurn(capguards, { intel }), 'enemy'));
+    expect([w4.gillNest, w4.capguardHall, w4.sporelingBurrow].map((x) => +x!.toFixed(6))).toEqual([6, 0.6, 3]);
+  });
+
+  it("gives the boss a dual doctrine on the intel's top two kinds, ×2.5 for the whole battle", () => {
+    const intel = { swarm: 0.5, armor: 0.4, line: 0.1 };
+    const boss = (army: FieldedSquad[], round: number) => targetWeights(planningView(counterTurn(army, { round, intel, controller: 'general:pale-sovereign' }), 'enemy'));
+    const w1 = boss([], 1);
+    expect([w1.capguardHall, w1.hammercapForge, w1.gillNest, w1.morelWarren].map((x) => +x!.toFixed(6))).toEqual([2.5, 2.5, 1, 1]);
+    // round 4's Line on top of it
+    const w4 = boss(capguards, 4);
+    expect([w4.gillNest, w4.capguardHall, w4.hammercapForge, w4.morelWarren].map((x) => +x!.toFixed(6))).toEqual([3, 1.5, 1.5, 0.6]);
+  });
+});
+
+describe("X8's default-off knobs (§7.2, A049, T101)", () => {
+  /** The battle's balance with X8's knobs set: a copy, so content's stays as it is. */
+  const knobs = (over: Partial<BalanceDef['rounds']['ai']>) => (s: BattleState): void => {
+    const b = s.library.balance;
+    s.library.balance = { ...b, rounds: { ...b.rounds, ai: { ...b.rounds.ai, ...over } } };
   };
 
-  it('warnings at 2:00 and 5:00, activations at 4:00 and 7:00', () => {
-    const { warned, active, state } = ticksOf('mother-mold', 8400);
-    expect(warned).toEqual([[2400, 4800], [6000, 8400]]);
-    expect(active).toEqual([4800, 8400]);
-    expect(state.sides.enemy.ai!.counter!.history.map((c) => c.kind)).toEqual(['swarm', 'swarm']);
+  it('ships both off', () => {
+    expect([content.balance.rounds.ai.leanToLastAnswer, content.balance.rounds.ai.replaceWhenFull]).toEqual([0, false]);
   });
 
-  it('the boss adds an early cycle: analysis at 1:00, active at 3:00', () => {
-    const { warned, active } = ticksOf('pale-sovereign', 4800);
-    expect(warned.slice(0, 2)).toEqual([[1200, 3600], [2400, 4800]]);
-    expect(active).toEqual([3600, 4800]);
+  it("leanToLastAnswer leans from round 2 toward the answer to last round's army", () => {
+    const w = (lean: number, round: number) => targetWeights(planningView(counterTurn(capguards, { round, before: knobs({ leanToLastAnswer: lean }) }), 'enemy'));
+    // your Capguards read Line, so Mold's Gill Nest gains and nothing else does
+    expect(w(0.5, 2).gillNest).toBeCloseTo(w(0, 2).gillNest! * 1.5, 10);
+    expect({ ...w(0.5, 2), gillNest: 0 }).toEqual({ ...w(0, 2), gillNest: 0 });
+    expect(w(0.5, 1)).toEqual(w(0, 1));
   });
 
-  it('without the adaptive flag (or for the scripted general) there is no cycle', () => {
-    const off = createBattle(content, makeConfig(content, { seed: 4, player: 'bot:balanced', enemy: 'general:mother-mold', flags: { merging: true, adaptiveGeneral: false } }));
-    expect(off.sides.enemy.ai!.counter).toBeUndefined();
-    const scripted = createBattle(content, makeConfig(content, { seed: 4, player: 'bot:balanced', enemy: 'general:scripted', flags: ADAPTIVE }));
-    expect(scripted.sides.enemy.ai!.counter).toBeUndefined();
-  });
-
-  it('doctrine weights: ×3 on the active counter set, ×0.6 on everything else', () => {
-    const s = vsGeneral('lichen-baron');
-    const ai = s.sides.enemy.ai!;
-    expect(doctrineMult(s, ai, 'hammercapForge')).toBe(1);
-    ai.counter!.history.push({ kind: 'armor', warnedAt: 0, activeAt: 0, active: true, scores: zeroProfile(), sold: [], built: {} });
-    ai.counter!.current = 0;
-    expect(doctrineMult(s, ai, 'hammercapForge')).toBe(3);
-    expect(doctrineMult(s, ai, 'rootbreakerDen')).toBe(3);
-    expect(doctrineMult(s, ai, 'capguardHall')).toBeCloseTo(0.6, 9);
-    expect(doctrineMult(s, ai, 'puffballMortar')).toBeCloseTo(0.6, 9);
-  });
-
-  it('drafts the cheapest counter blueprint from its roster when the warning fires and its kit has none', () => {
-    const s = vsGeneral('lichen-baron', (c) => { c.enemy.kit = ['capguardHall', 'truffleCellar']; });
-    playerMix(s, ['amanitaLodge', 'amanitaLodge']);
-    s.tick = 2400;
-    counterTick(s, 'enemy');
-    expect(events(s, 'counterWarned')).toEqual([{ t: 'counterWarned', side: 'enemy', kind: 'armor', activatesAtTick: 4800 }]);
-    const ai = s.sides.enemy.ai!;
-    expect(ai.counter!.history[0]!.drafted).toBe('bursterPod'); // 130 < Hammercap Forge's 170 < Rootbreaker Den's 200
-    expect(s.sides.enemy.kit).toContain('bursterPod');
-    expect(s.compiled.enemy.buildings.bursterPod).toBeDefined();
-    // it keeps its doctrine weight (the Baron's 1 for the Pod, R2-Q5) and would get 1 if it had none
-    expect(ai.weights.find((w) => w.building === 'bursterPod')!.weight).toBe(content.generals['lichen-baron']!.weights.bursterPod);
-    expect(s.sides.enemy.gold).toBe(s.config.enemy.startingGold); // drafting costs nothing and grants nothing
-  });
-
-  it('sells for space at activation: worst matrix multiplier against the dominant armor, rearmost first', () => {
-    const s = vsGeneral('lichen-baron');
-    playerMix(s, ['amanitaLodge']); // Heavy: slash ×0.5, pierce ×0.75
-    const placed: [string, number, number][] = [
-      ['capguardHall', 28, 0], ['sporelingBurrow', 28, 2], ['gillNest', 28, 4], ['truffleCellar', 28, 6],
-      ['hammercapForge', 30, 0], ['capguardHall', 30, 2], ['gillNest', 30, 4],
+  it('replaceWhenFull sells its lowest-weighted fielded spawner at 60% for a heavier card it can afford, once the colony is full', () => {
+    const colony: Colony = [
+      ...[1, 2, 3, 4].map((file) => ({ building: 'sporelingBurrow', lane: 0, rank: 0, file })),
+      { building: 'gillNest', lane: 0, rank: 1, file: 1 }, { building: 'gillNest', lane: 0, rank: 1, file: 2 },
+      { building: 'bursterPod', lane: 0, rank: 1, file: 3 }, { building: 'rhizomorphTunnel', lane: 0, rank: 1, file: 4 },
     ];
-    const bs = placed.map(([id, col, row]) => building(s, 'enemy', id, col, row));
-    s.tick = 4800;
-    const ai = s.sides.enemy.ai!;
-    ai.counter!.schedule = [];
-    ai.counter!.history.push({ kind: 'armor', warnedAt: 2400, activeAt: 4800, active: false, scores: zeroProfile(), sold: [], built: {} });
-    counterTick(s, 'enemy');
-    expect(events(s, 'counterActive')).toHaveLength(1);
-    // one free slot left (30, 6): sell one, the rearmost slash spawner outside the Anti-Armor set
-    const sells = s.queue.filter((c) => c.type === 'sell');
-    expect(sells).toHaveLength(1);
-    expect(sells[0]).toMatchObject({ side: 'enemy', tick: 4801, entityId: bs[5]!.id });
-    expect(ai.counter!.history[0]!.sold).toEqual(['capguardHall']);
-  });
-
-  it('does not sell with two free slots', () => {
-    const s = vsGeneral('lichen-baron');
-    playerMix(s, ['amanitaLodge']);
-    building(s, 'enemy', 'capguardHall', 30, 2);
-    s.tick = 4800;
-    const ai = s.sides.enemy.ai!;
-    ai.counter!.schedule = [];
-    ai.counter!.history.push({ kind: 'armor', warnedAt: 2400, activeAt: 4800, active: false, scores: zeroProfile(), sold: [], built: {} });
-    counterTick(s, 'enemy');
-    expect(s.queue.filter((c) => c.type === 'sell')).toHaveLength(0);
-  });
-
-  it('is deterministic and survives a snapshot round trip mid-battle', () => {
-    const make = () => createBattle(content, makeConfig(content, { seed: 9, player: 'bot:mono:capguardHall', enemy: 'general:mother-mold', flags: ADAPTIVE }));
-    const a = make(), b = make();
-    runHeadless(a, { until: 5000 });
-    runHeadless(b, { until: 5000 });
-    expect(hashState(a)).toBe(hashState(b));
-    const c = restore(snapshot(a));
-    runHeadless(a, { until: 'end' });
-    runHeadless(c, { until: 'end' });
-    expect(hashState(c)).toBe(hashState(a));
-    expect(a.sides.enemy.ai!.counter!.history.length).toBeGreaterThan(0);
+    const turn = (on: boolean, gold: number) => counterTurn([], { round: 5, gold, colony, before: knobs({ replaceWhenFull: on }) });
+    expect(turn(false, 100).events.some((e) => e.t === 'buildingSold')).toBe(false);
+    // the Pod and the Tunnel weigh 1, the Pod in the lower file; a Burrow (5) is the heaviest card it can afford
+    const s = turn(true, 100);
+    const plan = s.sides.enemy.ai!.plans.at(-1)!;
+    expect([plan.sold, plan.planted]).toEqual([[{ building: 'bursterPod', plot: plotAt(s, 0, 1, 3) }], [{ building: 'sporelingBurrow', plot: plotAt(s, 0, 1, 3) }]]);
+    expect(s.sides.enemy.gold).toBe(100 + Math.floor(content.buildings.bursterPod!.cost * 0.6) - content.buildings.sporelingBurrow!.cost);
+    // with no gold the refund buys nothing heavier, so it sells nothing
+    expect(turn(true, 0).events.some((e) => e.t === 'buildingSold')).toBe(false);
   });
 });
 
-describe('intel (SPEC §7.6)', () => {
-  const p = (swarm: number, line: number, armor: number, elite: number): IntelProfile => ({ swarm, line, armor, elite });
-
-  it('the update rule: the first battle sets it, then ½ intel + ½ profile, over the five kinds in rounds', () => {
-    // the run's intel has v2's five kinds, Anti-Ranged among them (§7.4); a v1 profile's missing kind reads 0
-    const q = (swarm: number, line: number, armor: number, elite: number, ranged = 0) => ({ swarm, line, armor, elite, ranged });
-    const first = updateIntel(undefined, q(1, 0, 0, 0), 0.5);
-    expect(first).toEqual(q(1, 0, 0, 0));
-    expect(updateIntel(first, q(0, 1, 0, 0.4, 0.6), 0.5)).toEqual(q(0.5, 0.5, 0, 0.2, 0.3));
-    expect(updateIntel(p(1, 0, 0, 0), q(0, 0, 0, 0, 1), 0.5)).toEqual(q(0.5, 0, 0, 0, 0.5));
-    const avg = averageProfile([q(1, 0, 0, 0), q(0, 1, 0, 0), q(0, 0, 1, 0.3, 0.6)])!;
-    for (const [k, v] of Object.entries(q(1 / 3, 1 / 3, 1 / 3, 0.1, 0.2))) expect(avg[k as keyof typeof avg]).toBeCloseTo(v, 12);
-    expect(averageProfile([])).toBeNull();
-    expect(intelDots(q(1, 0.5, 0.1, 1.3, 0.25))).toEqual(q(4, 2, 0, 4, 1));
-  });
-
-  it('opening doctrine: intel\'s top kind at ×2 / ×0.8, until the first counter activates', () => {
-    const s = vsGeneral('mother-mold', (c) => { c.enemy.intel = p(0.2, 0.7, 0.1, 0); });
-    const ai = s.sides.enemy.ai!;
-    expect(ai.opening).toEqual({ kinds: ['line'], mult: 2, otherMult: 0.8, dual: false });
-    expect(doctrineMult(s, ai, 'gillNest')).toBe(2);
-    expect(doctrineMult(s, ai, 'sporelingBurrow')).toBeCloseTo(0.8, 9);
-    ai.counter!.history.push({ kind: 'swarm', warnedAt: 0, activeAt: 0, active: true, scores: zeroProfile(), sold: [], built: {} });
-    ai.counter!.current = 0;
-    expect(doctrineMult(s, ai, 'sporelingBurrow')).toBe(3);
-    expect(doctrineMult(s, ai, 'gillNest')).toBeCloseTo(0.6, 9);
-  });
-
-  it('dual doctrine: the boss leans ×2.5 into the top two kinds for the whole battle, on top of its counters', () => {
-    const s = vsGeneral('pale-sovereign', (c) => { c.enemy.intel = p(0.6, 0.1, 0.3, 0); });
-    const ai = s.sides.enemy.ai!;
-    expect(ai.opening).toEqual({ kinds: ['swarm', 'armor'], mult: 2.5, otherMult: 1, dual: true });
-    expect(doctrineMult(s, ai, 'capguardHall')).toBe(2.5); // swarm set
-    expect(doctrineMult(s, ai, 'hammercapForge')).toBe(2.5); // armor set
-    expect(doctrineMult(s, ai, 'amanitaLodge')).toBe(2.5); // in a set once, not squared
-    expect(doctrineMult(s, ai, 'gillNest')).toBe(1);
-    ai.counter!.history.push({ kind: 'line', warnedAt: 0, activeAt: 0, active: true, scores: zeroProfile(), sold: [], built: {} });
-    ai.counter!.current = 0;
-    expect(doctrineMult(s, ai, 'gillNest')).toBe(3);
-    expect(doctrineMult(s, ai, 'capguardHall')).toBeCloseTo(0.6 * 2.5, 9);
-  });
-
-  it('an empty intel file gives no opening doctrine', () => {
-    expect(vsGeneral('mother-mold', (c) => { c.enemy.intel = zeroProfile(); }).sides.enemy.ai!.opening).toBeUndefined();
-  });
-
-  it('across a run in rounds: a mono-Capguard player is read as Line and the next general opens against it', () => {
-    // a mono-Sporeling army merges into Elders, which rounds read as Elite (R2a's reading, §7.4)
-    const r = simulateRun(content, 3, { route: 'battles', draft: 'greedy', player: 'bot:mono:capguardHall' }, { maxBattles: 1 });
-    const b1 = r.battles[0]!;
-    expect(b1.profile).toBeDefined();
-    expect(roundTopKinds(b1.profile!, 1)).toEqual(['line']);
-    expect(r.run.intel).toEqual(b1.profile);
-    expect(r.run.profiles).toEqual([b1.profile]);
-    expect(battleConfig(content, r.run, r.run.route[1]![0]!).enemy.intel).toEqual(b1.profile);
-  });
-
-  it("battleProfile is null for a battle in rounds that fielded nothing, and a new run has no intel", () => {
-    const s = createRoundBattle(content, makeRoundConfig(content, { seed: 1, player: 'bot:balanced', enemy: 'general:scripted' }));
-    expect(s.rounds).toEqual([]);
-    expect(battleProfile(s)).toBeNull();
-    expect(createRun(content, { seed: 1 }).intel).toBeUndefined();
-  });
-});
-
-describe('lane choice (SPEC §7.3)', () => {
-  it('the Blightwright sends spawners to the lane where the player holds least; defensive generals do not filter', () => {
-    for (const [general, expectLane] of [['blightwright', 1], ['lichen-baron', null]] as const) {
-      const config = makeConfig(content, { seed: 1, mapId: 'twin-roots', player: 'human', enemy: `general:${general}`, flags: ADAPTIVE });
-      const s = createBattle(content, config);
-      s.phase = 'live';
-      setBorders(s, 12, 27, 0); // the player holds 13 columns in lane 0
-      setBorders(s, 5, 27, 1); // and 6 in lane 1
-      const choice = choosePlacement(s, 'enemy', 'gillNest', [], assessPressure(s, 'enemy'));
-      if (expectLane !== null) expect(choice!.lane).toBe(expectLane);
-      else expect(choice).not.toBeNull();
-    }
-  });
-
-  it('a full weak lane falls back to the other lanes', () => {
-    const s = createBattle(content, makeConfig(content, { seed: 1, mapId: 'twin-roots', player: 'human', enemy: 'general:blightwright', flags: ADAPTIVE }));
-    s.phase = 'live';
-    setBorders(s, 12, 28, 0);
-    setBorders(s, 5, 28, 1);
-    for (const p of legalPlacements(s, 'enemy', 'gillNest').filter((q) => q.lane === 1)) {
-      if (placementProblem(s, 'enemy', 'truffleCellar', 1, p.col, p.row) === null) building(s, 'enemy', 'truffleCellar', p.col, p.row).lane = 1;
-    }
-    expect(legalPlacements(s, 'enemy', 'gillNest').filter((q) => q.lane === 1)).toHaveLength(0);
-    expect(choosePlacement(s, 'enemy', 'gillNest', [], assessPressure(s, 'enemy'))!.lane).toBe(0);
-  });
-});
-
-describe('Rhizome Vault and Spore Exchange (SPEC §11.2)', () => {
-  it('each Vault adds 6 supply cap while it stands, at most two count', () => {
-    const s = liveState();
-    const cap = s.sides.player.supplyCap;
-    const v = [0, 2, 4].map((row) => building(s, 'player', 'rhizomeVault', 0, row));
-    expect(s.sides.player.supplyCap).toBe(cap + 12);
-    v[0]!.hp = 0;
-    steps(s, 1);
-    expect(s.sides.player.supplyCap).toBe(cap + 12); // the third Vault now counts
-    v[1]!.hp = 0;
-    steps(s, 1);
-    expect(s.sides.player.supplyCap).toBe(cap + 6);
-    queueCommand(s, { tick: s.tick + 1, side: 'player', type: 'sell', entityId: v[2]!.id });
+describe('what you see of a counter (§7.4, §7.5, §10.2, T102)', () => {
+  it('names the counter in the Intent panel from its activation on, with what it planted, and calls it out in the activation round only', () => {
+    const s = counterTurn(sporelings, { gold: 300 });
+    const name = content.generals['mother-mold']!.name;
+    expect(intentOf(content, s).doctrine).toBe('Countering SWARM');
+    expect(intentOf(content, s).planted.length).toBeGreaterThan(0);
+    expect(generalNews(content, s)).toBe(`${name} now counters your SWARM`);
+    finishRound(s);
     step(s);
-    expect(s.sides.player.supplyCap).toBe(cap);
+    expect([s.round, intentOf(content, s).doctrine, generalNews(content, s)]).toEqual([5, 'Countering SWARM', null]);
   });
 
-  it('a Spore Exchange pays 1 gold per income tick and raises the interest cap by 10', () => {
-    const s = liveState();
-    s.rules.test.turrets = false;
-    building(s, 'player', 'sporeExchange', 0, 0);
-    s.sides.player.gold = 1000;
-    steps(s, s.rules.waveTicks);
-    // stipend 8 + 1 per income tick over the wave, then interest capped at 10 + 10
-    const ticks = s.rules.waveTicks / s.rules.incomeTicks;
-    expect(s.stats.player.goldEarned.economy).toBe(ticks);
-    expect(s.stats.player.goldEarned.interest).toBe(20);
+  it("calls out round 1's intel: The Gray Rot remembers your SWARM", () => {
+    const s = counterTurn([], { round: 1, intel: { swarm: 1 } });
+    expect([generalNews(content, s), intentOf(content, s).doctrine]).toEqual(['The Gray Rot remembers your SWARM.', 'Remembers your SWARM']);
+    expect(generalNews(content, counterTurn([], { round: 1 }))).toBeNull();
   });
 });

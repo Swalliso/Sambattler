@@ -1,37 +1,35 @@
-// Public sim API (SPEC §14.6).
+// Public sim API (SPEC §14.6), and the seeded streams, flags, controllers and draft offers the run builds on.
 export { loadContent, ContentError } from '../data/registry.ts';
 export type { Content, RawContent } from '../data/registry.ts';
 export {
-  createBattle, createFromScenario, makeConfig, parseController, controllerLabel, parseFlags, DEFAULT_FLAGS, MILESTONE,
-  draftPool, DEFAULT_COMMANDER, MAX_BANS, generalPassives, commanderPassives, sideModifiers, setCommander,
+  createBattle, createFromScenario, makeRoundConfig, setCommander, setPassives, addBuilding, addUnit, DEFAULT_FLAGS, MILESTONE, parseFlags,
+  parseController, DEFAULT_COMMANDER, MAX_BANS, draftPool,
 } from './create.ts';
-export type { BattleOptions, Flags } from './create.ts';
-export { canMerge } from './systems/merging.ts';
-export { queueCommand, nextCommandTick, sellValue, draftCommandDue } from './commands.ts';
-export { step } from './step.ts';
-export {
-  autoPowerTarget, bloomTrios, burstPreview, heldColumns, powerCooldownTicks, powerFirstReadyTicks, powerOf, powerProblem, surgeLanes,
-} from './powers.ts';
+export type { Flags, RoundBattleOptions, RoundScenarioOverrides } from './create.ts';
+export { emptyStats, foldRounds } from './stats.ts';
+export { summarize, formatClock } from './summary.ts';
+export type { RoundLogEntry, RoundSummary } from './summary.ts';
 export { runHeadless } from './headless.ts';
-export type { HeadlessOptions, HeadlessResult } from './headless.ts';
+export type { HeadlessOptions, HeadlessResult, HeadlessUntil } from './headless.ts';
+export { queueCommand, commandStamp } from './commands.ts';
+export { aimedLane, autoPowerTarget, bestBloom, bloomTrios, burstPreview, powerOf, powerProblem } from './powers.ts';
+export type { QueuedCommand } from './commands.ts';
+export { legalPlots, plantProblem, priceOf, sellValue } from './planning.ts';
+export { inKit, kitCards, kitOf } from './kit.ts';
+export { basePlots, openOrder } from './colony.ts';
+export { analyzeFielded, topKinds } from './ai/counter.ts';
+export { planningView } from './ai/view.ts';
+export { formationOf, mergePreview } from './formation.ts';
+export type { MergePreview, MusterTrio, PlanChange, SquadPlan, TierCounts } from './formation.ts';
+export { matchupClass } from './matchups.ts';
+export { survivingSupply } from './round.ts';
+export { incomePreview } from './systems/economy.ts';
+export type { IncomeBreakdown } from './systems/economy.ts';
+export { step } from './step.ts';
 export { hashState, snapshot, restore } from './snapshot.ts';
 export { hashValue } from './hash.ts';
-export { buildLibrary } from './compile.ts';
-export { generateOffer, applyCard, parseCard, cardId, rarityWeights, rerollCost, RARITIES } from './draft.ts';
-export type { OfferOptions } from './draft.ts';
-export { choosePick, greedyScore } from './ai/draftPolicy.ts';
-export {
-  activeCounter, analyzeMix, counterKindsOf, counterSets, doctrineMult, mergedFraction, openingActive, topKind, topKinds, zeroProfile,
-} from './ai/counter.ts';
-export type { MixAnalysis } from './ai/counter.ts';
 export { seedStream, hash32, nextFloat, nextInt } from './rng.ts';
-export { legalPlacements, priceAt, placementProblem, depthOf, footprintOnLoam } from './placement.ts';
-export type { Placement } from './placement.ts';
-export { summarize, formatClock } from './summary.ts';
-export type { BattleSummary } from './summary.ts';
-export { incomePerMinute } from './systems/economy.ts';
-export { lanePresence, frontierBlocked, frontier } from './systems/territory.ts';
-export { isBesieged, isSuppressed } from './world.ts';
-export { turretPos } from './systems/combat.ts';
-export { holdsLane, rallyX } from './systems/stance.ts';
+export { generateOffer, applyCard, parseCard, cardId, rarityWeights, RARITIES, draftLibrary } from './draft.ts';
+export type { DraftLibrary, OfferOptions } from './draft.ts';
+export { choosePick, greedyScore } from './ai/draftPolicy.ts';
 export * from './state.ts';

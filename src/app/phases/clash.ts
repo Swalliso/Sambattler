@@ -7,8 +7,8 @@
 // the commander power's (§6.6, §10.3, T109): its button's state, its tooltip's and the aim's words, and why
 // Q or a click is refused. The power is once per clash, so nothing here speaks of a cooldown.
 import type { PowerDef } from '../../data/schema.ts';
-import { powerOf } from '../../sim/rounds/index.ts';
-import type { BattleState, SimEvent } from '../../sim/rounds/index.ts';
+import { powerOf } from '../../sim/index.ts';
+import type { BattleState, SimEvent } from '../../sim/index.ts';
 import type { RoundSession } from '../session.ts';
 
 export const STEP_MS = 50;

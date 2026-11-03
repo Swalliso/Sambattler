@@ -1,4 +1,5 @@
-// The pending-hit queue (SPEC §14.4): hits stay sorted by (tick, sourceId, seq).
+// The pending-hit queue in a clash (SPEC §14.4): v1's `src/sim/hits.ts`, typed on rounds' state. Hits
+// stay sorted by (tick, sourceId, seq).
 import type { BattleState, PendingHit } from './state.ts';
 
 export function insertHit(state: BattleState, h: PendingHit): void {

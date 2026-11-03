@@ -54,12 +54,20 @@ Updated 2026-11-03, on `docs/r2b-s2-done` (the hub's docs PR into `develop`). Th
   - **Also fixed:** the inspect panel's merge button shows a toggle as soon as it runs. It kept the old label, an R2a bug that the ported browser case found.
   - **Gone with v1's battle until later sessions:** the first-time tips in battle and battle 1's economy tip (T118), and the relics-and-upgrades popover (S5, S6).
   - **Next:** S3 (T041–T054, T151, T158) once S2 merges.
+- **S3** (`feature/r2b-delete-v1`, T041–T054, T151 and T158): in review. v1's battle is gone from the sim, the tools and the tests:
+  - **The sim** is R2a's, at §13.4's paths (T043–T045): `src/sim/index.ts` exports §14.6's API and the run's helpers, and none of v1's. v1's spawning, territory, stance and placement are deleted; `draft.ts` keeps only the offer code the spoils use (T044), and `resume.ts` only the run's save (T046).
+  - **The tools** are round-only (T050): `--rounds` is gone, `npm run sim` plays battles in rounds, `npm run bench` is the round bench (T052), and the smokes run in round form (T051). v1's guardrails, its goldens, five scenarios and four test maps are deleted (T047, T049, T048, T053).
+  - **R1's clash check plays on the round sim** (T158): `--checks clash` and `--checks pairings` play each clash through `playRoundClash`; the record lost the fields with no round source (the second cap reading, the lane cases, parked units).
+  - **The tests** are R2a's, moved over their v1 namesakes (T151), with v1's kept cases rewritten on the round helpers (T041, T042).
+  - **Goldens:** `r2-run-s7` moved, because the general's upgrade levels now draw from `ai.enemy`, since v1's `ai` stream is gone (T044). The five battle goldens keep their hashes.
+  - **For S4 and the hub:** no battle in rounds reads A2's or B3's key, so T055's list keeps two presets that do nothing. [r2b-plan.md](r2b-plan.md)'s "What S3 left" has T054's list and the rest.
 - **The stand-ins open on `develop`** from S1 (Call 14):
   - run battles open no in-battle drafts until S5 (T067);
   - relics and passives on retired systems do nothing in a round battle until S6 and S7, and Rhizome Tithe is refused until T082;
   - a reload mid-battle restarts it at round 1's planning, with the notice when a battle save was found, until S8 (T095, T096);
   - the route's intel bars show v1's four kinds, without Anti-Ranged, until S9;
   - `scene=draft` opens a run battle with no draft until S5 and T115, and its capture waits for T039.
+  - from S3 until S12 (T129), retired selectors and triggers still in the data compile to no-ops, their schema keys remain, and R2a's `rounds` data blocks sit beside v1's keys.
 - **Next:** S1b (T028–T029) once S1 merges, then S2 to S4.
 
 ## R2a, a battle in rounds

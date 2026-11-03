@@ -1,24 +1,24 @@
-// v1 code: R2 removes Hold, waves, rush, fall-back and dive and keeps the rest (SPEC §13.4).
-// Movement and separation (SPEC §5.2). No pathfinding: units walk straight at their target, or
-// advance along the lane while drifting back to their spawn row; knitting trios walk to their
-// centroid (SPEC §5.6). Overlapping units are pushed apart by half their overlap each, for a fixed
-// number of passes, using the spatial hash. R1's tool-only `idleSeek` sends a unit with no target
-// at the nearest enemy it could target instead, as v2's rule has it.
+// Movement and separation in a clash (SPEC §5.2, §13.4): v1's `systems/movement.ts`, typed on rounds' state,
+// without Hold, waves, rush, fall-back, dive, surfacing at spawners or the turret checks, and so without its
+// imports from `spawning.ts` and `stance.ts`. No pathfinding: units walk straight at their target; with
+// none, at the nearest enemy they could target (R1's `idleSeek`, now the rule); with no such enemy they
+// advance along the lane while drifting back to their slot's y. Each unit moves at its own speed (no pace
+// rule, #12). Knitting trios walk to their centroid (§5.6). A unit steers by where other units stood at the
+// tick's start (`px`, `py`), so one earlier in the list never steers one later (T147). Overlapping units are
+// pushed apart by half their overlap each, for a fixed number of passes, using the spatial hash; an
+// emplacement never moves, so the other unit takes the whole overlap (§6.7, A029).
 import { SIDES, other } from '../state.ts';
 import type { BattleState, CompiledTier, Side, UnitState } from '../state.ts';
 import { buildGrid, nearBuffer, queryNear } from '../spatial.ts';
-import { MAX_RADIUS, edgeDistance, tp } from '../targets.ts';
-import { buildingDef, clampToLane, reachesAir, rectDistance, tierDef, unitDef, unitRadius } from '../world.ts';
-import { turretPos } from './combat.ts';
-import { layWaves } from './spawning.ts';
-import { holdsLane, rallyX } from './stance.ts';
-import { isRangedUnit } from './targeting.ts';
+import { MAX_RADIUS } from '../targets.ts';
+import { clampToLane, findUnit, frozen, isEmplacement, tierDef, unitDef, unitRadius } from '../world.ts';
 
 export function movementSystem(state: BattleState): void {
   const r = state.rules;
-  if (r.waves) prepareWaves(state);
-  if (r.test.idleSeek) prepareSeek(state);
+  prepareSeek(state);
   for (const u of state.units) {
+    const def = unitDef(state, u);
+    if (def.emplacement || frozen(state, u.lane)) continue; // it never moves, nor does an ended lane (§6.7)
     const t = tierDef(state, u);
     const rad = t.radius;
     const speed = t.speedPerTick;
@@ -35,22 +35,12 @@ export function movementSystem(state: BattleState): void {
       continue;
     }
     if (u.targetId !== 0) {
-      const d = edgeDistance(state, u.x, u.y, rad, u.targetId, other(u.side), u.lane);
+      const d = targetSeen(state, u, rad);
       if (d >= 0) {
-        if (d > t.range && r.fallBack && !tp.preferredBuilding && unitDef(state, u).projectileSpeed === 0 && fallingBack(state, u, tp.cx, tp.cy)) {
-          // prototype T2: outnumbered near the target, fall back toward home (hold once home)
-          const home = state.map.homeCols;
-          const atHome = u.side === 'player' ? u.x < home : u.x > state.map.width - home;
-          if (!atHome) u.x += u.side === 'player' ? -speed : speed;
-          clampToLane(state, u, rad);
-          continue;
-        }
         if (d > t.range) {
-          const dx = tp.x - u.x, dy = tp.y - u.y;
+          const dx = seen.x - u.x, dy = seen.y - u.y;
           const dist = Math.sqrt(dx * dx + dy * dy);
-          let move = r.rush && !tp.preferredBuilding ? rushSpeed(state, u, speed) : speed;
-          if (r.dive?.burst && !tp.preferredBuilding) move = diveSpeed(state, u, move);
-          const step = Math.min(move, d - t.range);
+          const step = Math.min(speed, d - t.range);
           if (dist > 1e-9) {
             u.x += (dx / dist) * step;
             u.y += (dy / dist) * step;
@@ -60,27 +50,20 @@ export function movementSystem(state: BattleState): void {
         continue;
       }
     }
-    if (r.stance && !r.waves && holdsLane(state, u.side, u.lane) && state.tick - u.lastCombatTick > r.merge.cooldownTicks) {
-      // a held lane (prototype E1): idle units walk to the rally line and wait there
-      const dx = rallyX(state, u.side, u.lane) - u.x;
-      u.x += dx > speed ? speed : dx < -speed ? -speed : dx;
-    } else {
-      const step = r.waves ? waveStep(state, u, speed) : speed;
-      if (r.test.idleSeek && seekPoint(state, u, rad)) {
-        // R1's tool-only idle seek (SPEC §5.2): step at the enemy instead of along the lane, capped as the advance is
-        const dx = seekAt.x - u.x, dy = seekAt.y - u.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist > 1e-9) {
-          const s = Math.min(step, dist);
-          u.x += (dx / dist) * s;
-          u.y += (dy / dist) * s;
-        }
-        clampToLane(state, u, rad);
-        continue;
+    if (seekPoint(state, u, rad)) {
+      // an idle unit steps at the nearest enemy it could target, capped as the advance is (SPEC §5.2)
+      const dx = seen.x - u.x, dy = seen.y - u.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist > 1e-9) {
+        const s = Math.min(speed, dist);
+        u.x += (dx / dist) * s;
+        u.y += (dy / dist) * s;
       }
-      u.x += u.side === 'player' ? step : -step;
+      clampToLane(state, u, rad);
+      continue;
     }
-    const dy = u.spawnY - u.y;
+    u.x += u.side === 'player' ? speed : -speed;
+    const dy = u.slotY - u.y;
     if (dy > 0) u.y += dy < r.driftPerTick ? dy : r.driftPerTick;
     else if (dy < 0) u.y -= -dy < r.driftPerTick ? -dy : r.driftPerTick;
     clampToLane(state, u, rad);
@@ -88,124 +71,59 @@ export function movementSystem(state: BattleState): void {
   separationSystem(state);
 }
 
-// Combat rework `waves`, rebuilt each tick: the slowest idle unit's speed per (wave, lane, side), and
-// each side's frontmost melee unit's x per lane (NaN: none). With `matchPace`, a unit that left
-// before its wave's beat also marches at the slowest speed its lane's spawners make (`lanePace`),
-// the pace its spawner's early release was timed for.
-const pace = new Map<number, number>();
-let meleeFront = { player: new Float64Array(4), enemy: new Float64Array(4) };
-let lanePace = { player: new Float64Array(4), enemy: new Float64Array(4) };
-const paceKey = (u: UnitState): number => ((u.wave! * 4 + u.lane) * 2) + (u.side === 'player' ? 0 : 1);
-
-function prepareWaves(state: BattleState): void {
-  pace.clear();
-  const n = state.lanes.length;
-  if (meleeFront.player.length < n) {
-    meleeFront = { player: new Float64Array(n), enemy: new Float64Array(n) };
-    lanePace = { player: new Float64Array(n), enemy: new Float64Array(n) };
-  }
-  meleeFront.player.fill(NaN);
-  meleeFront.enemy.fill(NaN);
-  const matchPace = state.rules.waves!.matchPace;
-  if (matchPace) for (const side of SIDES) lanePace[side].set(layWaves(state, side).pace.subarray(0, n));
-  for (const u of state.units) {
-    if (u.hp <= 0 || u.burrowed) continue;
-    const def = unitDef(state, u);
-    if (!def.support && !def.tags.includes('ranged') && !u.flying) { // a flyer shields nothing, so it isn't the front
-      const f = meleeFront[u.side][u.lane]!;
-      if (Number.isNaN(f) || (u.side === 'player' ? u.x > f : u.x < f)) meleeFront[u.side][u.lane] = u.x;
-    }
-    if (u.wave !== undefined && u.targetId === 0 && !u.knit) {
-      const k = paceKey(u);
-      let speed = def.tiers[u.tier - 1]!.speedPerTick;
-      if (matchPace && state.tick < u.wave * state.compiled[u.side].waveBeatTicks!) speed = Math.min(speed, lanePace[u.side][u.lane]!);
-      const cur = pace.get(k);
-      if (cur === undefined || speed < cur) pace.set(k, speed);
-    }
-  }
-}
+// Rebuilt each tick: per side and lane, the indices in `state.units` of the living units that aren't
+// burrowed, emplacements among them, read where they stood at the tick's start.
+const seekUnits: Record<Side, number[][]> = { player: [], enemy: [] };
+// Where the unit moving now steers: its target's or the seek's point at the tick's start.
+const seen = { x: 0, y: 0 };
 
 /**
- * Combat rework `waves`: an idle unit's step along the lane. A unit a beat released marches at the
- * pace of its wave's slowest idle unit in the lane (with `matchPace`), and an idle ranged unit stops
- * `rangedGap` tiles behind its side's frontmost melee unit in the lane (it never walks back). An idle
- * flyer (`flyers`) hovers over that front, never ahead of it.
+ * The edge distance from `u` to its target where the target stood at the tick's start, which it leaves in
+ * `seen`, or -1 if the target is gone. It's `edgeDistance` at the start-of-tick position (T147).
  */
-function waveStep(state: BattleState, u: UnitState, speed: number): number {
-  const w = state.rules.waves!;
-  let step = speed;
-  if (w.matchPace && u.wave !== undefined) step = Math.min(step, pace.get(paceKey(u)) ?? step);
-  const gap = u.flying ? 0 : unitDef(state, u).tags.includes('ranged') ? w.rangedGap : -1;
-  if (gap >= 0) {
-    const f = meleeFront[u.side][u.lane]!;
-    if (!Number.isNaN(f)) step = Math.max(0, Math.min(step, u.side === 'player' ? f - gap - u.x : u.x - f - gap));
-  }
-  return step;
+function targetSeen(state: BattleState, u: UnitState, r: number): number {
+  const v = findUnit(state, u.targetId);
+  if (!v || v.hp <= 0 || v.side === u.side || v.lane !== u.lane) return -1;
+  seen.x = v.px; seen.y = v.py;
+  const dx = v.px - u.x, dy = v.py - u.y;
+  const d = Math.sqrt(dx * dx + dy * dy) - r - unitRadius(state, v);
+  return d > 0 ? d : 0;
 }
-
-// R1's tool-only `idleSeek` (SPEC §5.2), rebuilt each tick: per side and lane, the indices in
-// `state.units` of the living units that aren't burrowed, and in `state.buildings` of the living
-// towers. Positions are read as units move, as a target's are.
-const seekUnits: Record<Side, number[][]> = { player: [], enemy: [] };
-const seekTowers: Record<Side, number[][]> = { player: [], enemy: [] };
-const seekAt = { x: 0, y: 0 };
 
 function prepareSeek(state: BattleState): void {
   for (const side of SIDES) {
-    for (let li = 0; li < state.lanes.length; li++) {
-      (seekUnits[side][li] ??= []).length = 0;
-      (seekTowers[side][li] ??= []).length = 0;
-    }
+    for (let li = 0; li < state.lanes.length; li++) (seekUnits[side][li] ??= []).length = 0;
   }
   for (let i = 0; i < state.units.length; i++) {
     const v = state.units[i]!;
     if (v.hp > 0 && !v.burrowed) seekUnits[v.side][v.lane]!.push(i);
   }
-  for (let i = 0; i < state.buildings.length; i++) {
-    const b = state.buildings[i]!;
-    if (b.hp > 0 && buildingDef(state, b).kind === 'tower') seekTowers[b.side][b.lane]!.push(i);
-  }
 }
 
 /**
- * R1's tool-only `idleSeek` (SPEC §5.2): is there an enemy in `u`'s lane that it could target? If so,
- * `seekAt` is the nearest one's centre, by edge distance, ties to the lower id. The candidates are
- * living units (not burrowed; a flyer only for a unit that can reach one) and living towers. A
- * support unit seeks nothing, and a burst unit (combat rework `burster`) only the units it aims at:
- * no flyer and no tower.
+ * Is there an enemy in `u`'s lane that it could target (SPEC §5.2)? If so, `seen` is the nearest one's
+ * centre at the tick's start, by edge distance, ties to the lower id. The candidates are the living units
+ * that aren't burrowed, emplacements among them, which a burst unit aims at too. A support unit seeks nothing.
  */
 function seekPoint(state: BattleState, u: UnitState, r: number): boolean {
-  const def = unitDef(state, u);
-  if (def.support) return false;
+  if (unitDef(state, u).support) return false;
   const enemy = other(u.side);
-  const burst = !!state.rules.burst && def.tags.includes('burst');
-  const air = !burst && reachesAir(state, u);
   let best = 0, bestD = Infinity;
   for (const i of seekUnits[enemy][u.lane]!) {
     const v = state.units[i]!;
-    if (v.flying && !air) continue;
-    const dx = v.x - u.x, dy = v.y - u.y;
+    const dx = v.px - u.x, dy = v.py - u.y;
     const d = Math.max(0, Math.sqrt(dx * dx + dy * dy) - r - unitRadius(state, v));
-    if (d < bestD || (d === bestD && v.id < best)) { best = v.id; bestD = d; seekAt.x = v.x; seekAt.y = v.y; }
-  }
-  if (!burst) {
-    for (const i of seekTowers[enemy][u.lane]!) {
-      const b = state.buildings[i]!;
-      const bd = buildingDef(state, b);
-      const d = Math.max(0, rectDistance(u.x, u.y, b.col, b.row, bd.w, bd.h) - r);
-      if (d < bestD || (d === bestD && b.id < best)) { best = b.id; bestD = d; seekAt.x = b.col + bd.w / 2; seekAt.y = b.row + bd.h / 2; }
-    }
+    if (d < bestD || (d === bestD && v.id < best)) { best = v.id; bestD = d; seen.x = v.px; seen.y = v.py; }
   }
   return best !== 0;
 }
 
 /**
- * Combat rework (the Rhizomorph's `burrow` tag): a burrowed unit tunnels straight at its surfacing
- * point at its speed, passing under every unit, and surfaces once its attack range reaches it. The
- * point is the nearest enemy ranged unit in the lane; else the nearest enemy spawner in the lane at
- * or behind the enemy's frontmost unit (by edge distance, ties to the lower id). Either is skipped
- * while an enemy tower or Heartcap turret could shoot a unit beside it (`underFire`). Else the point
- * is that frontmost unit, under fire or not; else the enemy's border.
+ * The tunneler (the `burrow` tag, SPEC §5.2): a burrowed unit tunnels straight at its surfacing point at its
+ * speed, passing under every unit, and surfaces once its attack range reaches it. The point is the nearest
+ * enemy ranged unit in the lane (by edge distance, ties to the lower id), skipping any an enemy emplacement
+ * could hit (`underFire`); else the enemy's frontmost unit; else, with no enemy left in the lane, the far edge.
+ * It reads the enemy where it stood at the tick's start.
  */
 function tunnel(state: BattleState, u: UnitState, t: CompiledTier): void {
   const enemy = other(u.side);
@@ -213,35 +131,21 @@ function tunnel(state: BattleState, u: UnitState, t: CompiledTier): void {
   let front: UnitState | undefined;
   for (const v of state.units) {
     if (v.side !== enemy || v.lane !== u.lane || v.hp <= 0 || v.burrowed) continue;
-    if (!front || v.x * dir < front.x * dir) front = v;
+    if (!front || v.px * dir < front.px * dir) front = v;
   }
-  const L = state.lanes[u.lane]!;
-  const frontX = front ? front.x : u.side === 'player' ? L.eBorder : L.pBorder + 1;
   let best = 0, bestD = Infinity, px = 0, py = 0;
   for (const v of state.units) {
     if (v.side !== enemy || v.lane !== u.lane || v.hp <= 0 || v.burrowed || !unitDef(state, v).tags.includes('ranged')) continue;
-    const dx = v.x - u.x, dy = v.y - u.y;
+    const dx = v.px - u.x, dy = v.py - u.y;
     const d = Math.sqrt(dx * dx + dy * dy) - t.radius - unitRadius(state, v);
-    if ((d < bestD || (d === bestD && v.id < best)) && !underFire(state, enemy, u.lane, v.x, v.y, t.radius)) { best = v.id; bestD = d; px = v.x; py = v.y; }
-  }
-  if (!best) {
-    for (const b of state.buildings) {
-      if (b.side !== enemy || b.lane !== u.lane || b.hp <= 0) continue;
-      const bd = buildingDef(state, b);
-      if (!bd.spawn || (b.col + bd.w / 2 - frontX) * dir < 0) continue;
-      const d = rectDistance(u.x, u.y, b.col, b.row, bd.w, bd.h) - t.radius;
-      if (d > bestD || (d === bestD && b.id > best)) continue;
-      const bx = u.x < b.col ? b.col : u.x > b.col + bd.w ? b.col + bd.w : u.x;
-      const by = u.y < b.row ? b.row : u.y > b.row + bd.h ? b.row + bd.h : u.y;
-      if (underFire(state, enemy, u.lane, bx, by, t.radius)) continue;
-      best = b.id; bestD = d; px = bx; py = by;
-    }
+    if ((d < bestD || (d === bestD && v.id < best)) && !underFire(state, enemy, u.lane, v.px, v.py, t.radius)) { best = v.id; bestD = d; px = v.px; py = v.py; }
   }
   if (!best && front) {
-    const dx = front.x - u.x, dy = front.y - u.y;
-    bestD = Math.sqrt(dx * dx + dy * dy) - t.radius - unitRadius(state, front); px = front.x; py = front.y;
+    const dx = front.px - u.x, dy = front.py - u.y;
+    bestD = Math.sqrt(dx * dx + dy * dy) - t.radius - unitRadius(state, front); px = front.px; py = front.py;
   } else if (!best) {
-    bestD = (frontX - u.x) * dir; px = frontX; py = u.y;
+    const edge = u.side === 'player' ? state.map.width : 0;
+    bestD = (edge - u.x) * dir; px = edge; py = u.y;
   }
   if (bestD <= t.range + 1e-6) { u.burrowed = false; return; } // the attack check's tolerance
   const dx = px - u.x, dy = py - u.y;
@@ -252,114 +156,57 @@ function tunnel(state: BattleState, u: UnitState, t: CompiledTier): void {
 }
 
 /**
- * Combat rework (the Rhizomorph): could one of `side`'s towers or Heartcap turrets shoot a unit of
- * radius `r` standing at (x, y) in `lane`? A tower counts within its firing band (a Mortar can't hit
- * a unit hugging it); a turret within its range.
+ * Could one of `side`'s emplacements hit a unit of radius `r` standing at (x, y) in `lane`? Within its
+ * firing band, from its centre (§6.7): a Mortar can't hit a unit hugging it.
  */
 function underFire(state: BattleState, side: Side, lane: number, x: number, y: number, r: number): boolean {
-  for (const b of state.buildings) {
-    if (b.side !== side || b.lane !== lane || b.hp <= 0) continue;
-    const def = buildingDef(state, b);
-    const a = def.attack;
-    if (!a) continue;
-    const dx = x - (b.col + def.w / 2), dy = y - (b.row + def.h / 2);
+  for (const e of state.units) {
+    if (e.side !== side || e.lane !== lane || e.hp <= 0) continue;
+    const em = unitDef(state, e).emplacement;
+    if (!em) continue;
+    const dx = x - e.x, dy = y - e.y;
     const d = Math.max(0, Math.sqrt(dx * dx + dy * dy) - r);
-    if (d >= a.minRange && d <= a.range) return true;
-  }
-  if (!state.rules.test.turrets) return false;
-  const turret = state.compiled[side].turret;
-  for (let i = 0; i < state.sides[side].turretCooldowns.length; i++) {
-    turretPos(state, side, i, turretAt);
-    if (turretAt.lane !== lane) continue;
-    const dx = x - turretAt.x, dy = y - turretAt.y;
-    if (Math.sqrt(dx * dx + dy * dy) - r <= turret.range) return true;
+    if (d >= em.minRange && d <= tierDef(state, e).range) return true;
   }
   return false;
 }
 
-const turretAt = { x: 0, y: 0, lane: 0 };
+// Each unit's summed push in a separation pass, by its index in `state.units`, in fixed point: 2^44 to a
+// tile, so a sum stays an exact integer, far below 2^53 even for a unit in a crowd. Integer sums don't
+// depend on the order they're added in (T147).
+const FIX = 17592186044416; // 2^44
+let pushX = new Float64Array(64), pushY = new Float64Array(64);
 
 /**
- * Prototype B1 (balance `approachRush`): a listed unit closing on an enemy unit sprints for a few
- * ticks, then waits out a cooldown before it can rush again.
+ * Separation (§5.2): overlapping units are pushed apart by half their overlap each, for a fixed number of
+ * passes. Each pass works out every pair's push from the positions at its start, then applies them all
+ * together, so the order units are listed in never decides who moves (T147). An emplacement never moves, so
+ * the other unit takes the whole overlap (§6.7, A029). An exact stack splits by a mirror-image rule: across
+ * sides, each toward its own side; on one side, each toward its slot's y, and two with the same slot are
+ * alike, so neither moves.
  */
-function rushSpeed(state: BattleState, u: UnitState, speed: number): number {
-  const rush = state.rules.rush!;
-  if (!rush.units.includes(u.unitId)) return speed;
-  const tick = state.tick;
-  if (u.rushUntil !== undefined && tick < u.rushUntil) return speed * rush.speedMult;
-  if (u.rushReady !== undefined && tick < u.rushReady) return speed;
-  u.rushUntil = tick + rush.ticks;
-  u.rushReady = tick + rush.ticks + rush.cooldownTicks;
-  return speed * rush.speedMult;
-}
-
-/**
- * Diver prototype (balance `diveRanged.burst`): a listed unit closing on a ranged enemy unit
- * sprints for a few ticks, then waits out a cooldown (sharing B1's rush timers).
- */
-function diveSpeed(state: BattleState, u: UnitState, speed: number): number {
-  const dive = state.rules.dive!;
-  const burst = dive.burst!;
-  if (!dive.units.includes(u.unitId) || !isRangedUnit(state, u.targetId)) return speed;
-  const tick = state.tick;
-  if (u.rushUntil !== undefined && tick < u.rushUntil) return speed * burst.speedMult;
-  if (u.rushReady !== undefined && tick < u.rushReady) return speed;
-  u.rushUntil = tick + burst.ticks;
-  u.rushReady = tick + burst.ticks + burst.cooldownTicks;
-  return speed * burst.speedMult;
-}
-
-/**
- * Prototype T2 (balance `fallBack`): is this melee unit outnumbered near its target (own supply
- * within the radius of it below ratio × enemy supply within the radius of the target)? A unit holds
- * for at most `maxHoldTicks`, and commits once the odds turn or the time runs out.
- */
-function fallingBack(state: BattleState, u: UnitState, tx: number, ty: number): boolean {
-  const fb = state.rules.fallBack!;
-  if (u.holdSince !== undefined && state.tick - u.holdSince >= fb.maxHoldTicks) return false;
-  const enemy = other(u.side);
-  let own = 0, foe = 0;
-  let n = queryNear(u.x, u.y, fb.radius + MAX_RADIUS);
-  let near = nearBuffer();
-  for (let k = 0; k < n; k++) {
-    const v = state.units[near[k]!]!;
-    if (v.side !== u.side || v.lane !== u.lane || v.hp <= 0) continue;
-    const dx = v.x - u.x, dy = v.y - u.y;
-    if (dx * dx + dy * dy <= fb.radius * fb.radius) own += v.supply;
-  }
-  n = queryNear(tx, ty, fb.radius + MAX_RADIUS);
-  near = nearBuffer();
-  for (let k = 0; k < n; k++) {
-    const v = state.units[near[k]!]!;
-    if (v.side !== enemy || v.lane !== u.lane || v.hp <= 0) continue;
-    const dx = v.x - tx, dy = v.y - ty;
-    if (dx * dx + dy * dy <= fb.radius * fb.radius) foe += v.supply;
-  }
-  if (own >= fb.ratio * foe) {
-    if (u.holdSince !== undefined) u.holdSince = state.tick - fb.maxHoldTicks; // the odds turned: commit
-    return false;
-  }
-  u.holdSince ??= state.tick;
-  return true;
-}
-
 function separationSystem(state: BattleState): void {
   const units = state.units;
-  const passes = state.rules.separationPasses;
-  buildGrid(state);
-  for (let pass = 0; pass < passes; pass++) {
-    for (let i = 0; i < units.length; i++) {
+  const n = units.length;
+  if (pushX.length < n) { pushX = new Float64Array(n * 2); pushY = new Float64Array(n * 2); }
+  for (let pass = 0; pass < state.rules.separationPasses; pass++) {
+    buildGrid(state);
+    pushX.fill(0, 0, n);
+    pushY.fill(0, 0, n);
+    for (let i = 0; i < n; i++) {
       const a = units[i]!;
+      if (frozen(state, a.lane) || a.burrowed) continue; // pairs share a lane, and a tunnelling unit passes under everyone
       const ra = unitRadius(state, a);
-      const n = queryNear(a.x, a.y, ra + MAX_RADIUS + 0.5);
+      const fixedA = isEmplacement(state, a);
+      const m = queryNear(a.x, a.y, ra + MAX_RADIUS + 0.5);
       const near = nearBuffer();
-      for (let k = 0; k < n; k++) {
+      for (let k = 0; k < m; k++) {
         const j = near[k]!;
         if (j <= i) continue;
         const b = units[j]!;
-        if (b.lane !== a.lane || a.burrowed || b.burrowed) continue; // a tunnelling unit passes under everyone
-        if (!a.flying !== !b.flying) continue; // combat rework `flyers`: a flyer passes over ground units
+        if (b.lane !== a.lane || b.burrowed) continue;
+        const fixedB = isEmplacement(state, b);
+        if (fixedA && fixedB) continue;
         const minD = ra + unitRadius(state, b);
         const dx = b.x - a.x, dy = b.y - a.y;
         const d2 = dx * dx + dy * dy;
@@ -370,13 +217,21 @@ function separationSystem(state: BattleState): void {
           nx = dx / d; ny = dy / d;
         } else {
           d = 0;
-          nx = 0; ny = 1; // stacked exactly: split vertically, lower id upward
+          if (a.side !== b.side) { nx = a.side === 'player' ? 1 : -1; ny = 0; } else { nx = 0; ny = Math.sign(b.slotY - a.slotY); }
         }
-        const push = (minD - d) / 2;
-        a.x -= nx * push; a.y -= ny * push;
-        b.x += nx * push; b.y += ny * push;
+        // half the overlap each, unless one is an emplacement, which never moves: then the other takes it all
+        const push = fixedA || fixedB ? minD - d : (minD - d) / 2;
+        // truncated toward 0, so a mirror-image pair's pushes stay mirror images
+        const px = Math.trunc(nx * push * FIX), py = Math.trunc(ny * push * FIX);
+        if (!fixedA) { pushX[i] = pushX[i]! - px; pushY[i] = pushY[i]! - py; }
+        if (!fixedB) { pushX[j] = pushX[j]! + px; pushY[j] = pushY[j]! + py; }
       }
     }
+    for (let i = 0; i < n; i++) {
+      const u = units[i]!;
+      u.x += pushX[i]! / FIX;
+      u.y += pushY[i]! / FIX;
+    }
   }
-  for (const u of units) clampToLane(state, u, unitRadius(state, u));
+  for (const u of units) if (!isEmplacement(state, u)) clampToLane(state, u, unitRadius(state, u));
 }

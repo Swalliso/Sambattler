@@ -2,8 +2,8 @@
 // kind scores over what you fielded each round (§7.4's reading), then `intel = ½ intel + ½ profile` (the first
 // battle sets it). Each new general opens against intel's top kind; the boss reads the unweighted average of
 // every battle in the run. Pure functions of the battle's final state.
-import { COUNTER_KINDS, analyzeFielded, planningView } from '../sim/rounds/index.ts';
-import type { BattleState, CounterKind, IntelProfile } from '../sim/rounds/index.ts';
+import { COUNTER_KINDS, analyzeFielded, planningView } from '../sim/index.ts';
+import type { BattleState, CounterKind, IntelProfile } from '../sim/index.ts';
 
 const zeroProfile = (): Record<CounterKind, number> => Object.fromEntries(COUNTER_KINDS.map((k) => [k, 0])) as Record<CounterKind, number>;
 

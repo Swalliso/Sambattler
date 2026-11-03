@@ -8,8 +8,8 @@
 // T095) is the round's result banner, pinned in the callout lane once the bars have drained, worded here.
 import type { Content } from '../../data/registry.ts';
 import { aftermathLength } from '../../render/aftermath.ts';
-import type { BattleState } from '../../sim/rounds/index.ts';
-import { roundOutcome } from '../../sim/rounds/systems/victory.ts';
+import type { BattleState } from '../../sim/index.ts';
+import { roundOutcome } from '../../sim/systems/victory.ts';
 import { resultOf } from '../../ui/hud/explain.ts';
 import type { RoundSession } from '../session.ts';
 

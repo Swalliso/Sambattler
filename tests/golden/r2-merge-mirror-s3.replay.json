@@ -1,7 +1,6 @@
 {
   "name": "r2-merge-mirror-s3",
   "description": "merge-on vs merge-off mirror (bot:balanced vs bot:balanced-nomerge, the G7 setup), knitting at the muster, seed 3 (R2a/T112)",
-  "kind": "rounds",
   "config": {
     "seed": 3,
     "battleIndex": 1,

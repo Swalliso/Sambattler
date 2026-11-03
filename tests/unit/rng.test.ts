@@ -18,17 +18,17 @@ describe('rng (sfc32 via splitmix32)', () => {
   });
 
   it('streams and battle indices are independent', () => {
-    const combat = seedStream(7, 'combat', 1), ai = seedStream(7, 'ai', 1), b2 = seedStream(7, 'combat', 2);
+    const combat = seedStream(7, 'combat', 1), ai = seedStream(7, 'ai.player', 1), b2 = seedStream(7, 'combat', 2);
     const c = nextU32(combat), a = nextU32(ai), d = nextU32(b2);
     expect(new Set([c, a, d]).size).toBe(3);
     // drawing from one stream never shifts another
-    const ai2 = seedStream(7, 'ai', 1);
+    const ai2 = seedStream(7, 'ai.player', 1);
     for (let i = 0; i < 100; i++) nextU32(combat);
     expect(nextU32(ai2)).toBe(a);
   });
 
   it('floats are in [0, 1) and hash32 is stable', () => {
-    const s = seedStream(1, 'ai', 1);
+    const s = seedStream(1, 'ai.player', 1);
     for (let i = 0; i < 1000; i++) {
       const f = nextFloat(s);
       expect(f).toBeGreaterThanOrEqual(0);

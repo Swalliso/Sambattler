@@ -1,11 +1,10 @@
-// How AI-controlled sides answer drafts (`--auto-draft first | random | greedy`, SPEC §15.2). The
-// pick is an ordinary `draftPick` command for the next tick; `random` draws from the `ai` stream.
-// Greedy prefers blueprints the profile actually builds, then upgrades for those buildings, then
-// relics by rarity, with ties going to the earlier card. The run layer reuses the scoring.
-import { queueCommand } from '../commands.ts';
+// How AI-controlled sides answer drafts (`--auto-draft first | random | greedy`, SPEC §15.2): `random`
+// draws from the stream it's given. Greedy prefers blueprints the profile actually builds, then upgrades
+// for those buildings, then relics by rarity, with ties going to the earlier card. The run layer's
+// spoils use it; R2b's T065 opens drafts in planning.
 import { parseCard } from '../draft.ts';
 import { nextInt } from '../rng.ts';
-import type { BattleState, DraftCard, DraftPolicy, Rng4, Side } from '../state.ts';
+import type { DraftCard, DraftPolicy, Rng4 } from '../state.ts';
 
 const RELIC_SCORE = { common: 7, uncommon: 9, rare: 12 } as const;
 
@@ -28,14 +27,4 @@ export function choosePick(offer: readonly DraftCard[], policy: Exclude<DraftPol
     if (s > bestScore) { best = c; bestScore = s; }
   }
   return best;
-}
-
-/** Queues the AI side's pick for its open draft, per its policy. */
-export function aiDraft(state: BattleState, side: Side): void {
-  const ss = state.sides[side];
-  const ai = ss.ai;
-  if (!ai || ai.draftPolicy === 'none' || !ss.draft) return;
-  const weightOf = (b: string) => ai.weights.find((w) => w.building === b)?.weight ?? 0;
-  const pick = choosePick(ss.draft.offer, ai.draftPolicy, weightOf, state.rng.ai);
-  queueCommand(state, { tick: state.tick + 1, side, type: 'draftPick', cardId: pick.id });
 }

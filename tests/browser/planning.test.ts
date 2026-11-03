@@ -8,7 +8,7 @@ import { chromium } from 'playwright';
 import type { Browser, Page } from 'playwright';
 import { nodeContent } from '../../tools/lib/content.ts';
 import { formationBox } from '../../src/sim/formation.ts';
-import type { BattleState, Side } from '../../src/sim/rounds/index.ts';
+import type { BattleState, Side } from '../../src/sim/index.ts';
 import { trayOrder } from '../../src/ui/buildingInfo.ts';
 import { closeServers, serve } from './serve.ts';
 

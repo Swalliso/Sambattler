@@ -1,13 +1,15 @@
-// Merging (SPEC §5.5–5.6): three identical units that are out of combat and within the merge radius
-// knit for a second into one unit of the next tier. Active knits resolve every tick (a hit, a death
-// or a merge toggle switched off cancels them; otherwise they complete on time); new trios are
-// detected every `merge.every` ticks, per side, walking eligible units in id order.
-import { noteMerged } from '../ai/counter.ts';
+// Merging on the field after the muster (SPEC §5.5, §5.6, §13.4): v1's `systems/merging.ts`, typed on rounds'
+// state, without `noteMerged`, wave tracking or the supply bookkeeping. Three identical units that are out of
+// combat and within the merge radius knit for a second into one unit of the next tier. Active knits resolve
+// every tick (a hit, a death or a merge toggle switched off cancels them; otherwise they complete on time);
+// new trios are detected every `merge.every` ticks, per side, walking eligible units in id order. A trio
+// keeps its shields in proportion, as its HP, since #8 adopted the arrival shield. An emplacement never
+// merges (§6.7). The muster's knits are Begin's (T043).
 import { addUnit } from '../create.ts';
 import { fireTriggers } from '../effects.ts';
 import { SIDES } from '../state.ts';
 import type { BattleState, Side, Tier, UnitState } from '../state.ts';
-import { unitDef } from '../world.ts';
+import { clampToLane, clashTick, frozen, placeOf, unitDef, unitRadius } from '../world.ts';
 
 // Reused scratch (no allocation in the hot loop once warm). `eligible` may hold stale entries past
 // the count in use; they are overwritten on the next pass.
@@ -20,13 +22,15 @@ const removed: number[] = [];
 export function mergingSystem(state: BattleState): void {
   if (!state.config.flags.merging) return;
   resolveKnits(state);
-  if (state.tick % state.rules.merge.every === 0) for (const side of SIDES) detectTrios(state, side);
+  // on the clash's clock, so trios are found on the same ticks in every clash (T149)
+  if (clashTick(state) % state.rules.merge.every === 0) for (const side of SIDES) detectTrios(state, side);
 }
 
 /** True if `u` may join a new trio now (SPEC §5.6 eligibility). */
 export function canMerge(state: BattleState, u: UnitState): boolean {
   return u.tier < 3 && u.mergeOn && !u.knit && !u.burrowed && u.hp > 0 && state.tick - u.lastCombatTick >= state.rules.merge.cooldownTicks
-    && !(state.rules.burst && unitDef(state, u).tags.includes('burst')); // combat rework: a Burster is spent whole, never merged
+    && !unitDef(state, u).emplacement // an emplacement never merges (§6.7)
+    && !(state.rules.burst && unitDef(state, u).tags.includes('burst')); // a Burster is spent whole, never merged
 }
 
 function resolveKnits(state: BattleState): void {
@@ -39,6 +43,7 @@ function resolveKnits(state: BattleState): void {
   for (let i = 0; i < knitting.length; i++) {
     const lead = knitting[i]!;
     if (!lead.knit || (i > 0 && isMember(knitting, i, lead.knit.group))) continue;
+    if (frozen(state, lead.lane)) continue; // a trio shares a lane, and an ended lane's knit holds (§6.7)
     const g = lead.knit.group;
     group.length = 0;
     for (let j = i; j < knitting.length; j++) if (knitting[j]!.knit?.group === g) group.push(knitting[j]!);
@@ -77,13 +82,14 @@ export function mergeTriosNow(state: BattleState, trios: UnitState[][]): void {
   if (elders) noteElders(state);
 }
 
-/** Records the most Elders each side has had alive at once. */
+/** Records the most Elders each side has had alive at once, in the battle and in this clash (§5.7). */
 function noteElders(state: BattleState): void {
   for (const side of SIDES) {
     let n = 0;
     for (const u of state.units) if (u.side === side && u.tier === 3) n++;
-    const st = state.stats[side];
+    const st = state.stats[side], clash = state.clash;
     if (n > st.maxEldersAlive) st.maxEldersAlive = n;
+    if (clash && n > clash.maxElders[side]) clash.maxElders[side] = n;
   }
 }
 
@@ -98,38 +104,39 @@ function complete(state: BattleState, trio: UnitState[]): number {
   const lowest = trio[0]!;
   const side = lowest.side;
   const tier = (lowest.tier + 1) as Tier;
-  let x = 0, y = 0, spawnY = 0, hp = 0, maxHp = 0, supply = 0, shield = 0, lastCombat = -Infinity;
+  let x = 0, y = 0, slotY = 0, hp = 0, maxHp = 0, shield = 0, lastCombat = -Infinity;
   for (const u of trio) {
-    x += u.x; y += u.y; spawnY += u.spawnY;
-    hp += u.hp; maxHp += u.maxHp; supply += u.supply;
+    x += u.x; y += u.y; slotY += u.slotY;
+    hp += u.hp; maxHp += u.maxHp;
     if (u.shield) shield += u.shield;
     if (u.lastCombatTick > lastCombat) lastCombat = u.lastCombatTick;
-    if (u.tier === 1) noteMerged(state, side, u.id, u.sourceBuildingId);
     u.knit = undefined;
     removed.push(u.id);
   }
-  state.sides[side].supplyUsed -= supply;
   // the new id is the largest so far, so pushing keeps `units` sorted; parents are compacted out after
   const m = addUnit(state, side, lowest.unitId, lowest.lane, x / 3, y / 3, lowest.sourceBuildingId, tier);
+  clampToLane(state, m, unitRadius(state, m));
+  m.px = m.x; m.py = m.y;
   m.hp = Math.max(1, Math.round((m.maxHp * hp) / maxHp));
-  m.spawnY = spawnY / 3;
+  m.slotY = slotY / 3;
   m.mergeOn = lowest.mergeOn;
   m.lastCombatTick = lastCombat;
-  if (lowest.wave !== undefined) m.wave = lowest.wave; // combat rework `waves`: it marches with its wave
-  if (shield > 0) { // combat rework `mixedWave`: the trio's shields carry over in proportion, as their HP does
+  if (shield > 0) { // the trio's arrival shields carry over in proportion, as their HP does
     const kept = Math.round((m.maxHp * shield) / maxHp);
     if (kept > 0) m.shield = kept;
   }
   state.stats[side].merges[tier === 2 ? '2' : '3']++;
   state.events.push({ t: 'merged', side, id: m.id, unitId: m.unitId, tier: tier as 2 | 3, x: m.x, y: m.y });
   const def = state.compiled[side].units[m.unitId]!;
-  fireTriggers(state, side, 'merge', { x: m.x, y: m.y, lane: m.lane, unitId: m.unitId, tier, tags: def.tags, sourceBuildingId: m.sourceBuildingId });
+  fireTriggers(state, side, 'merge', {
+    x: m.x, y: m.y, lane: m.lane, unitId: m.unitId, tier, tags: def.tags, sourceBuildingId: m.sourceBuildingId, place: placeOf(state, m),
+  });
   return tier;
 }
 
 function detectTrios(state: BattleState, side: Side): void {
   let n = 0;
-  for (const u of state.units) if (u.side === side && canMerge(state, u)) eligible[n++] = u;
+  for (const u of state.units) if (u.side === side && !frozen(state, u.lane) && canMerge(state, u)) eligible[n++] = u;
   if (n < 3) return;
   if (reserved.length < n) reserved = new Uint8Array(n * 2);
   reserved.fill(0, 0, n);
