@@ -1,5 +1,6 @@
 // §7.3's placement scores in rounds (SPEC §4.6, §7.3): a planner's colony is its formation, so where it
-// plants a building is where its squad stands: melee in front, ranged and area behind, economy at the back.
+// plants a building is where its squad stands: melee and Bursters in front, ranged, support and emplacements
+// behind, economy at the back.
 // Call 11's back-line term prefers the third rank to the front (A043). Each candidate takes noise of
 // ±`score.noise` from the side's own AI stream, drawn in plot order, before the ties, which go to the front
 // rank, then the lower file. On a map of several lanes it first picks a lane by #30's rule, which reads only
@@ -14,10 +15,10 @@ import type { PlanningView } from './view.ts';
 /** Where a building stands in the line (§7.3). */
 export type LineRole = 'front' | 'back' | 'economy' | 'utility';
 
-/** Tags that put a spawner in the back line (§7.3). */
-const BACK_TAGS: readonly string[] = ['ranged', 'support', 'burst'];
+/** Tags that put a spawner in the back line (§7.3). A Burster rolls at the enemy's thickest knot, so `burst` is a front-line tag (T159). */
+const BACK_TAGS: readonly string[] = ['ranged', 'support'];
 
-/** A building's place in the line (§7.3): a spawner of ranged, support or burst units and every tower behind, other spawners in front. */
+/** A building's place in the line (§7.3): a spawner of ranged or support units and every tower behind, other spawners in front. */
 export function lineRole(view: PlanningView, buildingId: string): LineRole {
   const card = view.cards[buildingId]!;
   if (card.kind === 'economy' || card.kind === 'utility') return card.kind;

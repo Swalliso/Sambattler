@@ -11,7 +11,7 @@ import type { BalanceDef, RoundScenarioDef } from '../../../src/data/schema.ts';
 import { parseController } from '../../../src/sim/create.ts';
 import { planTurn, runAtOnce, targetWeights } from '../../../src/sim/rounds/ai/controller.ts';
 import { analyzeFielded, counterSets, topKind } from '../../../src/sim/rounds/ai/counter.ts';
-import { offCentre, plotScore } from '../../../src/sim/rounds/ai/formationScore.ts';
+import { lineRole, offCentre, plotScore } from '../../../src/sim/rounds/ai/formationScore.ts';
 import { resolveProfile } from '../../../src/sim/rounds/ai/profiles.ts';
 import { planningView } from '../../../src/sim/rounds/ai/view.ts';
 import {
@@ -193,6 +193,14 @@ describe("placement by §7.3's scores (plan Call 11, A043)", () => {
     expect([2, 3]).toContain(hall!.file);
     const [a, b] = places(generalTurn({ seed, opener: ['sporelingBurrow', 'sporelingBurrow'], weights: {} }));
     expect([a!.rank, b!.rank, Math.abs(a!.file - b!.file)]).toEqual([0, 0, 1]);
+  });
+
+  it.each([1, 2, 3])('puts a Burster Pod in the front rank beside its Hall, since `burst` is a front-line tag (T159), on seed %i', (seed) => {
+    const s = generalTurn({ seed, opener: ['capguardHall', 'bursterPod'], weights: {} });
+    const view = planningView(s, 'enemy');
+    expect(['bursterPod', 'capguardHall', 'gillNest', 'tendersRing', 'puffballMortar'].map((id) => lineRole(view, id)))
+      .toEqual(['front', 'front', 'back', 'back', 'back']);
+    expect(places(s).map((p) => p.rank)).toEqual([0, 0]);
   });
 
   it('puts a Truffle Cellar on a back loam plot', () => {

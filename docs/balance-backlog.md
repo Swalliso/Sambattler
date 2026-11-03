@@ -20,12 +20,40 @@ v1's backlog is archived at [docs/archive/v1/balance-backlog.md](archive/v1/bala
 
 - **The pace after T125** (R2a S18, below): at 100 a supply, agreed on 2026-11-03, battles take a median of 7 rounds, 18.5% of 200 reach round 9 (G4: ≤ 20%), and the damage cap binds in 70% of damaging rounds. S21's playtest reads whether a win's size still counts.
 - **The round guardrails that miss on the final data** (R2a S20, confirming S18's, below): G1, G2, G3, G7, G8's mono drops and G16 (the formation rule loses to its ranks traded). Each waits for the user, G16 best before S21.
-- **G16's levers** (2026-11-03, below): the Burster's back-line rule (§7.3) is the miss, and none of the three levers measured moves G16. A rule change waits for the user, at S21's tuning calls.
+- **G16 after the Burster moved to the front** (R2a S21b, below; the user's OK, 2026-11-03): 40%, from 24%. The Gill Archer and Mortar pairs are what's left (55% and 26%), and only a 2-tile gap fixed them in the levers' entry. They wait for the playtest's calls and R3's combos.
 - **Step 3's round-9 limit** (R2a S20, below): SPEC §16 R2 step 3 still says 15%, where G4's agreed band says 20% over 200 battles. Its 40 battles read 15%, at the limit.
 - **X8's readouts** (R2a S15, below): your colony is full from round 5, and once both colonies are full, half the clashes replay the last one. They go to S18's pace call and S21's playtest, with X8's two knobs still off.
 - **Gill Archers tie Swarm and Ranged** (R2a S15, below): the noise, not #14's tie order, picks between them. A rule change waits for the user.
 - **The Burster's seat effect** (R2a S17, below): a mirror of Bursters goes to whichever side's ids come first. A rule change waits for the user.
 - **The first fighting tick's frame in Chromium** (R2a S17, below): 4.8–11.4 ms once a page, against §13.7's 8 ms.
+
+## R2a S21b · the Burster in the front line (2026-11-03)
+
+**Measured:**
+- **What:** G16 (§12.3) after T159's rule change, which the user approved on 2026-11-03: §7.3's back-line tags lose `burst`, so a Burster Pod stands in the front rank and Burster pairs are same-role. G3, G4, G12 and G13 were read for side effects.
+- **Where:** `feature/r2a-playtest-fixes`, from `develop` at 2563235, at 100 a supply.
+- **How:** `npm run experiment -- --rounds --checks formation`, then `--checks g3,g4,counters`.
+
+**Result:**
+
+| | Before (the levers' entry, below) | After |
+|---|---|---|
+| G16, role-split pairs | 24% of 2,298 clashes | **40%** of 1,664 (by budget: 36, 45, 36, 42, 41%) |
+| Gill Archer behind | 51% | 55% (a Burster in front 82%) |
+| Puffball Mortar behind | 24% | 26% (a Burster in front 34%) |
+| Burster behind | 0%, 36% of the pool | none: Burster pairs are same-role, at 49% |
+| Same-role pairs (reported) | 49–51% | 51% of 3,812 |
+| G4 (200 battles) | 7 rounds, 19% reach round 9, the bot wins 59% | 7 rounds, 16%, 63%: pass |
+| G13 | 9% capped, 18.6 s | 9% capped, 19.0 s: pass |
+| G3 | fails, 8 of 16 monos over, mean of means 32% | fails, 8 of 16 over, 32%; mono Burster 29% (ok) |
+| G12 | passes, 6 builds answered | passes, 6 builds answered on every map |
+
+**Reading:**
+- **The Burster's part of the miss is gone.** The rule's role-split pairs without a Burster read 38%, as the levers' entry predicted, and the 100 new pairs with a Burster in front and a Gill Archer or Mortar behind read 58%.
+- **G16 still misses at 40%.** What's left is the Gill and Mortar pairs, which the hub recommended deciding after the playtest (the levers' entry, item 2). Only a 2-tile gap fixed those.
+- **No side effect:** G4, G12 and G13 pass at their old numbers, and G3's fails are unchanged.
+
+**Recommended:** leave G16's other pairs to the playtest's calls and R3's combos, as the levers' entry says. T133 stays unticked while G16 misses.
 
 ## R2a · G16's formation levers (2026-11-03, measured for the hub)
 
