@@ -8,6 +8,15 @@ replaces. None of it is open work, including headings that say "Open:". From mil
 entries measure or tune v2's round battle (SPEC §11, §12). "The backlog" in the entries below means
 v1's, now [archived](../docs/archive/v1/balance-backlog.md).
 
+## R2a-S10b: `general-plans-first` and the first round golden (2026-11-02)
+
+**Test data only. v1's goldens didn't move**; `tests/golden/r2-balanced-vs-scripted-s1.replay.json` is the first round
+golden (T072). No number or rule changed, and v1 never reads `data/scenarios/rounds/`.
+- **`general-plans-first`** (R2a/T070, SPEC §16 R2 step 4): your Capguard Hall and Gill Archer Nest against the scripted
+  general on Bogwater Hollow. `tests/unit/rounds/scenarios.test.ts` asserts round 1's lane, damage and comeback gold, and
+  that the general's colony and army stand before your first command in rounds 1 and 2, hash-equal under two different
+  plans of yours.
+
 ## R2a-S7: the round scenarios (2026-11-02)
 
 **Test data only, no golden moved.** No number or rule changed, and v1 never reads `data/scenarios/rounds/`.

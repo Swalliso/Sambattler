@@ -1,0 +1,15 @@
+{
+  "id": "general-plans-first",
+  "description": "SPEC §16 R2 step 4 (§4.7, §7.1): the general plans first. Round 1 opens with your Capguard Hall in front of your Gill Archer Nest, and the scripted general takes its turn in the opening, before yours: it plants its opener, a Sporeling Burrow and a Truffle Cellar, so its colony and the army it will field stand before your first command. It never sees what you plant in the same phase, so two different plans of yours leave its plan hash-equal, in round 1 and again in round 2, where it plans on round 1's record. With no plan of yours, your Capguards and archers win round 1 by a margin of 10: 250 to its Heartcap.",
+  "map": "bogwater-hollow",
+  "controllers": { "enemy": "general:scripted" },
+  "sides": {
+    "player": {
+      "colony": [
+        { "building": "capguardHall", "lane": 0, "rank": 0, "file": 3 },
+        { "building": "gillNest", "lane": 0, "rank": 1, "file": 3 }
+      ]
+    },
+    "enemy": {}
+  }
+}
