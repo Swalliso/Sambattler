@@ -51,7 +51,7 @@ G8's mono clause fails under all three, as it did before (no asserted mono drops
 - **Today's cap is symmetric in rounds, not in HP.** Each side needs 4 capped rounds to fell the other: 2,000 / 500 and 3,000 / 750.
 - **A fixed 750** raises only the general's cap, so you can fell it in 3 capped rounds while it needs 4 to fell you. Battles get shorter (a median of 6 rounds, 13% reach round 9), the cap binds less often, and every band holds. The bot's 63% → 65% is within noise.
 - **A fixed 500** lowers only yours, so the general needs 6 capped rounds to fell you. A third of battles then reach round 9, which fails G4.
-- **Either way the race tilts toward you** in rounds, where today's is even. Over a run, R2b's lives and the general's larger Heartcaps at bosses would read the tilt differently.
+- **Either way the race tilts toward you** in rounds, where today's is even.
 
 **For R2b's S0:**
 - If the user wants one number, a fixed 750 passes every band measured.
