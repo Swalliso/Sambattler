@@ -157,7 +157,7 @@ describe('what each setting does', () => {
   });
 
   it('UI scale: the battle refits its field when the step changes', async () => {
-    const p = await open('/?scene=deploy&map=test-flat&enemy=human&seed=1&test=1&paused=1', { width: 1920, height: 1080 });
+    const p = await open('/?scene=battle&map=test-flat&seed=1&test=1&phase=planning', { width: 1920, height: 1080 });
     const before = (await p.locator('#battlefield').boundingBox())!;
     await p.locator('#settings-btn').click();
     await p.locator('[data-setting="uiScale"] [data-value="1.5"]').click();
@@ -182,8 +182,8 @@ describe('what each setting does', () => {
     expect(await isReduced(q)).toBe(true);
   });
 
-  it('color-blind assist: redraws its preview, then marks the field and the tug bar’s pattern', async () => {
-    const q = '/?scene=battle&test=1&seed=4&player=bot:balanced&ticks=3600&paused=1';
+  it('color-blind assist: redraws its preview and hatches its lost pips, then marks the field and the lane tug’s pattern', async () => {
+    const q = '/?scene=battle&test=1&seed=4&player=bot:balanced&phase=clash&ticks=20&paused=1';
     const p = await open(q);
     const tug = () => p.evaluate(() => getComputedStyle(document.querySelector('.tugbar .e')!).backgroundImage);
     const plain = await tug();
@@ -197,6 +197,8 @@ describe('what each setting does', () => {
     expect(await p.locator('#assist-preview').getAttribute('data-assist')).toBe('true');
     expect(await preview()).not.toBe(plainPreview);
     expect(await p.locator('#assist-preview').getAttribute('aria-label')).toContain('light rings');
+    // the round tally's pips in the preview: a lost round's ash pip takes the Rot's hatch
+    expect(await p.evaluate(() => getComputedStyle(document.querySelector('#assist-preview .pip.lost')!).backgroundImage)).toContain('135deg');
     await p.keyboard.press('Escape');
     expect(await p.evaluate(() => document.documentElement.classList.contains('assist'))).toBe(true);
     expect(await tug()).not.toBe(plain);
@@ -205,9 +207,9 @@ describe('what each setting does', () => {
     await expect.poll(() => p.evaluate(() => document.querySelector<HTMLCanvasElement>('#battlefield')!.toDataURL())).not.toBe(field);
   });
 
-  it('default speed: a battle runs at it once it begins', async () => {
-    const p = await open('/?scene=deploy&map=test-flat&enemy=human&seed=1&test=1', { settings: { defaultSpeed: 2 } });
-    await p.locator('#begin-btn').click();
+  it('default speed: a clash runs at it once it begins', async () => {
+    const p = await open('/?scene=battle&map=test-flat&seed=1&test=1&player=bot:balanced', { settings: { defaultSpeed: 2 } });
+    await p.waitForFunction(() => window.__GAME__!.phase === 'clash');
     await expect.poll(() => p.locator('[data-speed="2"]').getAttribute('aria-pressed')).toBe('true');
   });
 });
@@ -254,10 +256,11 @@ describe('motion', () => {
     await expect.poll(() => r.locator('#summary-earned .spores b').textContent(), { timeout: 3000 }).toBe(String(spores));
   });
 
-  it('the report shows the gold the battle earned', async () => {
+  it('the report shows the gold the battle earned, and no run rewards in a single battle', async () => {
     const p = await open('/?scene=report&test=1&seed=4&player=bot:balanced');
+    await p.locator('#report').waitFor();
     const gold = await p.evaluate(() => Object.values(window.__GAME__!.battle()!.stats.player.goldEarned).reduce((a, b) => a + b, 0));
-    expect(await p.locator('#report-rewards [data-reward="gold"] b').textContent()).toBe(gold.toLocaleString('en-US'));
-    expect(await p.locator('#report-rewards [data-reward="spores"]').count()).toBe(0);
+    expect(await p.locator('#report .banner-meta').textContent()).toContain(`${gold} gold earned`);
+    expect(await p.locator('#report').textContent()).not.toContain('Spores');
   });
 });

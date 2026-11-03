@@ -6,13 +6,13 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { chromium } from 'playwright';
 import type { Browser, Page } from 'playwright';
-import { nodeContent } from '../../../tools/lib/content.ts';
-import { roundStateForParams } from '../../../tools/lib/rounds/params.ts';
-import { formationOf, hashState } from '../../../src/sim/rounds/index.ts';
-import type { BattleState, SquadPlan } from '../../../src/sim/rounds/index.ts';
-import type { DrawnSquad, RoundsBridge } from '../../../src/app/rounds/bridge.ts';
-import { parseRoundParams } from '../../../src/app/rounds/urlParams.ts';
-import { closeServers, serve } from '../serve.ts';
+import { nodeContent } from '../../tools/lib/content.ts';
+import { roundStateForParams } from '../../tools/lib/rounds/params.ts';
+import { formationOf, hashState } from '../../src/sim/rounds/index.ts';
+import type { BattleState, SquadPlan } from '../../src/sim/rounds/index.ts';
+import type { DrawnSquad } from '../../src/app/debugBridge.ts';
+import { parseRoundParams } from '../../src/app/urlParams.ts';
+import { closeServers, serve } from './serve.ts';
 
 let browser: Browser | undefined;
 let page: Page | undefined;
@@ -40,14 +40,14 @@ async function open(query: string): Promise<Page> {
   return p;
 }
 
-const preview = (p: Page) => p.evaluate(() => (window.__GAME__ as unknown as RoundsBridge).preview()!);
-const hashOf = (p: Page) => p.evaluate(() => (window.__GAME__ as unknown as RoundsBridge).hash);
+const preview = (p: Page) => p.evaluate(() => window.__GAME__!.preview()!);
+const hashOf = (p: Page) => p.evaluate(() => window.__GAME__!.hash);
 
 /** Node's state for the same query, at the same checkpoint (T080). */
 const node = (query: string): BattleState => roundStateForParams(content, new URLSearchParams(query));
 
 /** A bot plays your side, against the preview's adaptive general (Mother Mold), whose counter cycle sells for room (S15). */
-const bot = (seed: number) => `scene=rounds&seed=${seed}&test=1&player=bot:balanced`;
+const bot = (seed: number) => `scene=battle&seed=${seed}&test=1&player=bot:balanced`;
 
 type Placed = { plot: number; buildingId: string };
 const byPlot = <T extends { plot: number }>(xs: T[]): T[] => [...xs].sort((a, b) => a.plot - b.plot);
@@ -115,7 +115,7 @@ describe('the "last fielded" view, reveal=last (§7.5, R2-Q1, T127)', () => {
     const start = `${q}&phase=clash&ticks=0&paused=1`;
     page = await open(`${start}&reveal=last`);
     expect(await hashOf(page)).toBe(hashState(node(start)));
-    const units = await page.evaluate(() => (window.__GAME__ as unknown as RoundsBridge).battle()!.units
+    const units = await page.evaluate(() => window.__GAME__!.battle()!.units
       .filter((u) => u.side === 'enemy').map((u) => ({ tier: u.tier, x: u.x, y: u.y })));
     expect(units.length).toBeGreaterThan(0);
     for (const u of units) {
@@ -126,13 +126,13 @@ describe('the "last fielded" view, reveal=last (§7.5, R2-Q1, T127)', () => {
   });
 
   it('refuses a reveal= it doesn\'t know, so a mistyped A/B doesn\'t show the full reveal unnoticed', () => {
-    expect(parseRoundParams('scene=rounds&reveal=lst').problems).toEqual(['reveal=lst isn\'t last or full']);
-    expect(parseRoundParams('scene=rounds&reveal=full')).toMatchObject({ reveal: null, problems: [] });
+    expect(parseRoundParams('scene=battle&reveal=lst').problems).toEqual(['reveal=lst isn\'t last or full']);
+    expect(parseRoundParams('scene=battle&reveal=full')).toMatchObject({ reveal: null, problems: [] });
   });
 
   it('moves no hash: general-plans-first hashes equal in both modes, in round 2\'s planning and at its Begin', async () => {
     for (const at of ['round=2&phase=planning', 'round=2&phase=clash&ticks=0&paused=1']) {
-      const q = `scene=rounds&scenario=general-plans-first&seed=1&test=1&${at}`;
+      const q = `scene=battle&scenario=general-plans-first&seed=1&test=1&${at}`;
       page = await open(q);
       const full = await hashOf(page);
       await page.close();
@@ -148,7 +148,7 @@ describe('the "last fielded" view, reveal=last (§7.5, R2-Q1, T127)', () => {
 describe('planning seconds on the report (X6, RB-Q3, T128)', () => {
   it('shows the seconds you planned, logs the readout and saves nothing', async () => {
     // round 9, the battle's last, with nothing of yours: the general's Capguards win the lane on the first tick
-    page = await open('scene=rounds&scenario=decision-round-9&test=1');
+    page = await open('scene=battle&scenario=decision-round-9&test=1');
     const logged: string[] = [];
     page.on('console', (m) => { if (m.type() === 'info') logged.push(m.text()); });
     const keys = await page.evaluate(() => Object.keys(localStorage).sort());

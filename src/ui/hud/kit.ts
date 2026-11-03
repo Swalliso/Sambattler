@@ -1,11 +1,12 @@
 // Your relics and upgrades during a battle (playtest round 3: "I want to see what I've unlocked"). A chip
 // in the top band counts them; a click, Enter or `R` opens a popover under it with the run bar's relic
 // badges (each with its tooltip, on hover or focus) and every upgraded building with its levels. Esc,
-// `R`, the chip again or a press outside closes it. Drafted cards join it live.
+// `R`, the chip again or a press outside closes it. Drafted cards join it live. The battle in rounds doesn't
+// mount it yet: R2b's later sessions bring the run's relics and upgrades into rounds (S5, S6).
 import type { Content } from '../../data/registry.ts';
 import type { Atlas } from '../../render/atlas.ts';
 import { spriteToCanvas } from '../../render/atlas.ts';
-import type { BattleState } from '../../sim/index.ts';
+import type { BattleState } from '../../sim/rounds/index.ts';
 import { trayOrder } from '../buildingInfo.ts';
 import { h, setText } from '../h.ts';
 import { uiIcon } from '../icons.ts';
@@ -77,7 +78,7 @@ export class KitView {
     setText(this.upgradeCount, String(levels));
     this.chip.setAttribute('aria-label', `Your relics and upgrades: ${p.relics.length} relic${p.relics.length === 1 ? '' : 's'}, ${levels} upgrade level${levels === 1 ? '' : 's'}`);
     if (!this.open) return;
-    const key = `${p.relics.join()}|${JSON.stringify(p.upgrades)}|${p.kit.join()}`;
+    const key = `${p.relics.join()}|${JSON.stringify(p.upgrades)}|${p.kit.map((k) => k.building).join()}`;
     if (key === this.key) return;
     this.key = key;
     this.render(state);
@@ -86,8 +87,8 @@ export class KitView {
   private render(state: BattleState): void {
     const { content, atlas } = this;
     const p = state.sides.player;
-    const upgraded = trayOrder(content, p.kit).filter((id) => (p.upgrades[id] ?? 0) > 0 && content.upgrades[id]);
-    const draftNote = state.config.flags.drafts ? `Drafts offer them after waves ${state.rules.draftWaves.join(', ')}.` : '';
+    const upgraded = trayOrder(content, p.kit.map((k) => k.building)).filter((id) => (p.upgrades[id] ?? 0) > 0 && content.upgrades[id]);
+    const draftNote = state.config.flags.drafts ? `Drafts offer them after rounds ${content.balance.rounds.draftRounds.join(', ')}.` : '';
     this.body.replaceChildren(
       h('section', { class: 'kit-sec', 'aria-labelledby': 'kit-relics' },
         h('h3', { id: 'kit-relics' }, uiIcon(atlas, 'i-relic'), 'Relics', h('small', null, 'last the whole run')),

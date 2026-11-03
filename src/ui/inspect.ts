@@ -1,32 +1,45 @@
-// Inspect panel (SPEC §10.4): units show tier, HP, damage type and armor with matrix hints, their
-// merge perk and knit state, live DPS over the last 5 s and kills; buildings show spawn timer,
-// living units, damage dealt, gold produced, the merge toggle and sell value. Selling takes two
-// presses (the first shows the refund).
-import type { Content } from '../data/registry.ts';
-import type { Atlas } from '../render/atlas.ts';
-import { sellValue } from '../sim/index.ts';
-import type { BattleState } from '../sim/index.ts';
-import { findBuilding, findUnit, isBesieged, isSuppressed, tierDef, unitDef } from '../sim/world.ts';
+// Inspect for a battle in rounds (SPEC §10.4, §10.2): empty, it shows a short tip. A building, yours or the
+// general's, shows its squad and its merge preview in words ("fields as 2 Bloomed + 2", `mergePreview`), its
+// plot (rank, file, loam), its squad's damage and survivors in the current or last clash (the rounds'
+// per-building records, A064), the gold it has produced, and for yours the merge toggle and its sell value
+// (`sellValue`), where selling takes two presses. A unit shows its tier, HP, armor and damage type with hints,
+// its damage a second over the last 5 s and its kills, from a log the view feeds each step's events. Its
+// buttons stay mounted, so a re-render never loses a click or focus.
+import { mergePreview, sellValue } from '../sim/rounds/index.ts';
+import type { BattleState, BuildingState, MergePreview, Side, UnitState } from '../sim/rounds/index.ts';
+import { findUnit, tierDef, unitDef } from '../sim/rounds/world.ts';
 import { h, setText, toggleClass } from './h.ts';
 import { tierPips } from './icons.ts';
-import { flyerHitters, strongVs, versusFlyers, vulnerableTo, weakVs } from './matrixHints.ts';
 import { TIER_NAME, perkText } from './mergeHints.ts';
+import { matchupWords } from './hud/tray.ts';
+import type { HudContext, HudPart } from './hud/top.ts';
 
-/** UI-side combat log fed from hit/died events: per-source damage history and kills. */
-export class CombatLog {
+/** What the panel reads from the session and asks of it: the selection, the sell confirm, and the X and M presses. */
+export interface InspectHooks {
+  selected(): number | null;
+  sellArmed(): number | null;
+  /** The merge toggle as it will be once the queued toggles run. */
+  mergeShown(id: number): boolean;
+  sell(): void;
+  toggleMerge(): void;
+}
+
+/** The damage each source dealt over the last few seconds, and its kills, from the clash's `hit` and `died` events. */
+export class RoundCombatLog {
   private hits = new Map<number, { tick: number; amount: number }[]>();
   private lastHitter = new Map<number, number>();
   readonly kills = new Map<number, number>();
 
   onTick(state: BattleState): void {
     for (const e of state.events) {
-      if (e.t === 'hit') {
+      if (e.t === 'clashStarted') { this.hits.clear(); this.lastHitter.clear(); this.kills.clear(); }
+      else if (e.t === 'hit') {
         let arr = this.hits.get(e.src);
         if (!arr) { arr = []; this.hits.set(e.src, arr); }
         arr.push({ tick: state.tick, amount: e.amount });
         if (arr.length > 64) arr.splice(0, arr.length - 64);
         this.lastHitter.set(e.target, e.src);
-      } else if (e.t === 'died' || e.t === 'buildingDestroyed') {
+      } else if (e.t === 'died') {
         const k = this.lastHitter.get(e.id);
         if (k !== undefined) this.kills.set(k, (this.kills.get(k) ?? 0) + 1);
         this.lastHitter.delete(e.id);
@@ -34,79 +47,66 @@ export class CombatLog {
     }
   }
 
+  /** Damage a second over the last 5 s of clash time. */
   dps(state: BattleState, id: number): number {
-    const window = 5 * state.rules.tickRate;
-    const arr = this.hits.get(id) ?? [];
+    const span = 5 * state.rules.tickRate;
     let sum = 0;
-    for (const x of arr) if (state.tick - x.tick < window) sum += x.amount;
+    for (const x of this.hits.get(id) ?? []) if (state.tick - x.tick < span) sum += x.amount;
     return sum / 5;
   }
 }
 
-/** The empty panel: a short tip, not a hotkey list (those live in Help). */
-function emptyTip(): HTMLElement[] {
-  return [
-    h('div', null, 'Click a building or unit to see its stats here.'),
-    h('div', { class: 'muted' }, 'Your buildings can be sold or set to merge from this panel.'),
-  ];
+const RANK = ['front', 'second', 'third'];
+const sideWord = (side: Side) => (side === 'player' ? 'yours' : 'the Gray Rot');
+
+/** A squad's merge preview in words (§10.2): it fields as "2 Bloomed + 2", or as "8 base" with nothing to knit. */
+export function fieldsAs(m: MergePreview['byBuilding'][number] | undefined): string {
+  if (!m) return 'nothing';
+  if (!m.elders && !m.bloomed) return `${m.base} base`;
+  return [m.elders ? `${m.elders} Elder${m.elders > 1 ? 's' : ''}` : '', m.bloomed ? `${m.bloomed} Bloomed` : '', m.base ? String(m.base) : ''].filter(Boolean).join(' + ');
 }
 
-export class InspectPanel {
+/** The empty panel: a short tip, not a hotkey list (those live in Help). */
+const emptyTip = () => [
+  h('div', null, 'Click a building or a unit to see it here.'),
+  h('div', { class: 'muted' }, 'Your buildings can be sold or set to merge from this panel.'),
+];
+
+export class RoundInspect implements HudPart {
   readonly el = h('section', { class: 'inspect', id: 'inspect' });
-  private key = '';
-  private confirmSellFor: number | null = null;
-  private state: BattleState | null = null;
-  private selected: number | null = null;
-  private title = h('h3', null, 'INSPECT');
-  private details = h('div', { style: 'display:flex;flex-direction:column;gap:3px' });
+  private title = h('h3', { id: 'inspect-title' }, 'INSPECT');
+  private details = h('div', { class: 'details' });
   private buttons: HTMLElement;
   private mergeBtn: HTMLButtonElement;
   private sellBtn: HTMLButtonElement;
+  private key = '';
+  /** Each side's merge preview, worked out again only when the colony changes. */
+  private merge: Partial<Record<Side, { key: string; preview: MergePreview }>> = {};
 
-  constructor(
-    private content: Content, private atlas: Atlas, private log: CombatLog, private onSell: (id: number) => void,
-    private onToggleMerge: (id: number) => void, private mergeShown: (state: BattleState, id: number) => boolean,
-  ) {
-    // Keep controls mounted across ticks and building selections. Replacing them between pointer
-    // down and up loses the click, and replacing a focused button also loses keyboard focus.
+  constructor(mount: HTMLElement, private hud: HudContext, private log: RoundCombatLog, private hooks: InspectHooks) {
     this.mergeBtn = h('button', {
-      class: 'btn', id: 'merge-btn',
-      title: 'Merge toggle: three idle units from your buildings knit into a Bloomed unit (three Bloomed make an Elder)',
-      onclick: () => { if (this.selected !== null) this.onToggleMerge(this.selected); },
+      class: 'btn', id: 'merge-btn', title: 'Merge toggle: its squad knits trios at the muster (three base units make a Bloomed, three Bloomed an Elder)',
+      onclick: () => hooks.toggleMerge(),
     });
-    this.sellBtn = h('button', {
-      class: 'btn', id: 'sell-btn',
-      onclick: () => { if (this.state && this.selected !== null) this.requestSell(this.state, this.selected); },
-    });
+    this.sellBtn = h('button', { class: 'btn', id: 'sell-btn', onclick: () => hooks.sell() });
     this.buttons = h('div', { class: 'buttons', hidden: true }, this.mergeBtn, this.sellBtn);
     this.details.append(...emptyTip());
     this.el.append(this.title, this.details, this.buttons);
+    mount.append(this.el);
   }
 
-  /** First press shows the refund, the second confirms (SPEC §10.3). */
-  requestSell(state: BattleState, id: number): void {
-    if (!findBuilding(state, id)) return;
-    if (this.confirmSellFor === id) { this.confirmSellFor = null; this.onSell(id); }
-    else this.confirmSellFor = id;
-    this.key = '';
-  }
-
-  resetConfirm(): void { this.confirmSellFor = null; }
-
-  update(state: BattleState, selected: number | null): void {
-    this.state = state;
-    this.selected = selected;
-    if (this.confirmSellFor !== selected) this.confirmSellFor = null;
-    const u = selected ? findUnit(state, selected) : undefined;
-    const b = selected && !u ? findBuilding(state, selected) : undefined;
-    const key = `${selected}|${state.tick}|${this.confirmSellFor}|${state.queue.length}`;
+  update(state: BattleState): void {
+    const id = this.hooks.selected();
+    const u = id ? findUnit(state, id) : undefined;
+    const b = id && !u ? state.buildings.find((x) => x.id === id) : undefined;
+    // a planning command runs before the frame draws, so the toggle it flipped is in the key too
+    const key = `${id}|${state.round}|${state.phase}|${state.tick}|${state.queue.length}|${state.buildings.length}|${b?.mergeOn}|${this.hooks.sellArmed()}`;
     if (key === this.key) return;
     this.key = key;
-    if (u) this.renderUnit(state, u.id);
-    else if (b) this.renderBuilding(state, b.id);
+    if (u) this.renderUnit(state, u);
+    else if (b) this.renderBuilding(state, b);
     else if (this.el.dataset.mode !== 'none') {
       this.el.dataset.mode = 'none';
-      this.confirmSellFor = null;
       this.buttons.hidden = true;
       setText(this.title, 'INSPECT');
       this.details.replaceChildren(...emptyTip());
@@ -114,78 +114,97 @@ export class InspectPanel {
   }
 
   private rows(pairs: [string, string | Node][]): HTMLElement[] {
-    return pairs.map(([a, b]) => h('div', { class: 'row' }, h('span', { class: 'muted' }, a), h('span', null, b)));
+    return pairs.map(([a, v]) => h('div', { class: 'row' }, h('span', { class: 'muted' }, a), h('span', null, v)));
   }
 
-  private renderUnit(state: BattleState, id: number): void {
-    const u = findUnit(state, id)!;
-    const def = this.content.units[u.unitId]!;
-    const t = tierDef(state, u);
+  private previewOf(state: BattleState, side: Side): MergePreview {
+    const key = `${state.round}|${state.buildings.filter((x) => x.side === side).map((x) => `${x.id}@${x.plot}:${x.mergeOn}`).join(',')}`;
+    const c = this.merge[side];
+    if (c?.key === key) return c.preview;
+    const preview = mergePreview(state, side);
+    this.merge[side] = { key, preview };
+    return preview;
+  }
+
+  private renderBuilding(state: BattleState, b: BuildingState): void {
+    const { content } = this.hud;
+    const cb = state.compiled[b.side].buildings[b.buildingId]!;
+    const plot = state.sides[b.side].plots[b.plot]!;
+    this.el.dataset.mode = 'building';
+    const pairs: [string, string][] = [];
+    if (cb.kind === 'spawner' && cb.squad) {
+      const unit = content.units[cb.squad.unit]?.name ?? cb.squad.unit;
+      pairs.push(['Squad', `${cb.squad.count} ${cb.squad.count === 1 ? unit : `${unit}s`}`]);
+      if (state.config.flags.merging) pairs.push(['Fields as', `${fieldsAs(this.previewOf(state, b.side).byBuilding[b.id])}${b.mergeOn ? '' : ' (merge off)'}`]);
+    } else if (cb.kind === 'tower') pairs.push(['Fields', 'one emplacement']);
+    else if (cb.economy) pairs.push(['Earns', `${cb.economy.goldPerRound} gold a round${plot.terrain === 'loam' ? `, +${state.compiled[b.side].loamBonusPct}% on this loam` : ''}`]);
+    pairs.push(['Plot', `${state.lanes.length > 1 ? `lane ${plot.lane + 1}, ` : ''}${RANK[plot.rank] ?? `rank ${plot.rank + 1}`} rank, file ${plot.file}${plot.terrain === 'loam' ? ', loam' : ''}`]);
+    if (cb.squad) pairs.push(...this.clashRows(state, b));
+    if (cb.economy) pairs.push(['Gold produced', String(state.stats[b.side].goldByBuilding[String(b.id)] ?? 0)]);
+    setText(this.title, `${content.buildings[b.buildingId]?.name ?? b.buildingId} · ${sideWord(b.side)}`);
+    this.details.replaceChildren(...this.rows(pairs));
+    const mine = b.side === 'player';
+    this.buttons.hidden = !mine;
+    if (!mine) return;
+    const planning = state.phase === 'planning';
+    const merging = state.config.flags.merging && cb.kind === 'spawner';
+    this.mergeBtn.hidden = !merging;
+    if (merging) {
+      const on = this.hooks.mergeShown(b.id);
+      toggleClass(this.mergeBtn, 'on', on);
+      this.mergeBtn.disabled = !planning;
+      setText(this.mergeBtn, `Merge ${on ? 'ON' : 'OFF'} [M]`);
+    }
+    const refund = sellValue(state, b.id);
+    const armed = this.hooks.sellArmed() === b.id;
+    toggleClass(this.sellBtn, 'danger', armed);
+    this.sellBtn.disabled = !planning;
+    setText(this.sellBtn, armed ? `Confirm sell (+${refund}) [X]` : `Sell for ${refund} [X]`);
+  }
+
+  /**
+   * Its squad's damage and survivors in the clash now running, or in the last one (§10.4, A064): a running clash
+   * counts its live units and the damage since its Begin; otherwise the last round's record.
+   */
+  private clashRows(state: BattleState, b: BuildingState): [string, string][] {
+    const s = b.side, key = String(b.id);
+    if (state.phase === 'clash') {
+      const squad = state.squads.find((q) => q.building === b.id);
+      if (!squad) return [['This clash', 'planted after Begin: fields next round']];
+      const before = state.rounds.reduce((n, r) => n + (r.damageByBuilding[s][b.id] ?? 0), 0);
+      // a merged unit counts once, so the muster's knits leave fewer units than arrived
+      const standing = state.units.filter((u) => u.sourceBuildingId === b.id).length;
+      return [['This clash', `${(state.stats[s].damageByBuilding[key] ?? 0) - before} damage · ${standing} unit${standing === 1 ? '' : 's'} standing`]];
+    }
+    const last = state.rounds.at(-1);
+    if (!last || b.plantedRound > last.round) return [['Last clash', 'not fielded yet']];
+    const label = state.phase === 'planning' ? 'Last clash' : 'This clash';
+    const left = last.survivorsByBuilding[s][b.id] ?? 0;
+    return [[label, `${last.damageByBuilding[s][b.id] ?? 0} damage · ${left} unit${left === 1 ? '' : 's'} left standing`]];
+  }
+
+  private renderUnit(state: BattleState, u: UnitState): void {
+    const { content, atlas } = this.hud;
+    const def = unitDef(state, u), t = tierDef(state, u), rate = state.rules.tickRate;
+    const words = matchupWords(state, u.side, u.unitId);
     this.el.dataset.mode = 'unit';
     const pairs: [string, string | Node][] = [
-      // the tier's name, and its pips as the field draws them
-      ['Tier', h('span', null, TIER_NAME[u.tier - 1], tierPips(this.atlas, u.tier))],
+      ['Tier', h('span', null, TIER_NAME[u.tier - 1], tierPips(atlas, u.tier))],
       ['HP', `${u.hp} / ${u.maxHp}${u.shield ? ` + ${u.shield} shield` : ''}`],
-      ...(t.healAmount > 0
-        ? [['Heals', `${t.healAmount} HP / ${t.healTicks / state.rules.tickRate}s · ${t.healTargets} target${t.healTargets > 1 ? 's' : ''} · range ${t.range}`] as [string, string]]
-        : state.rules.burst && def.tags.includes('burst')
-        ? [['Burst', `${Math.round(t.damage)} through any armor within ${t.splashRadius} tiles, then a spore cloud`] as [string, string]]
-        : [
-          ['Damage', `${Math.round(t.damage * 10) / 10} ${def.damageType} / ${t.attackTicks / state.rules.tickRate}s`] as [string, string],
-          ['Hits hard', `strong vs ${strongVs(state, def.damageType)} · weak vs ${weakVs(state, def.damageType)}`] as [string, string],
-        ]),
-      ['Armor', `${def.armor} (fears ${vulnerableTo(state, def.armor)})`],
     ];
-    const fly = state.rules.flying;
-    if (u.flying) pairs.push(['Flying', `${flyerHitters(state)}${fly!.holdsGround ? '' : '; holds no ground'}`]);
-    else if (fly && t.healAmount === 0) pairs.push(['Flyers', versusFlyers(state, unitDef(state, u), u.tier)]);
+    if (t.healAmount > 0) pairs.push(['Heals', `${t.healAmount} HP every ${t.healTicks / rate} s · range ${t.range}`]);
+    else {
+      pairs.push(['Damage', `${Math.round(t.damage * 10) / 10} ${def.damageType} every ${t.attackTicks / rate} s`]);
+      pairs.push(['Hits hard', `strong vs ${words.strong} · weak vs ${words.weak}`]);
+    }
+    pairs.push(['Armor', def.armor === 'structure' ? 'structure' : `${def.armor} (fears ${words.fears})`]);
     if (t.slayerMult !== 1) pairs.push(['Slayer', `×${t.slayerMult} vs Bloomed & Elder`]);
-    if (u.tier > 1) pairs.push(['Perk', perkText(this.content, u.unitId, u.tier)]);
-    if (u.burrowed) pairs.push(['Status', 'tunnelling: can\'t be hit, surfaces beside an archer (else a spawner) out of turret range']);
-    else if (u.knit) pairs.push(['Status', `merging · ${TIER_NAME[u.tier === 1 ? 1 : 2]} in ${(Math.max(0, u.knit.untilTick - state.tick) / state.rules.tickRate).toFixed(1)}s`]);
-    else if (state.config.flags.merging && u.tier < 3) pairs.push(['Merge', u.mergeOn ? 'on' : 'off (its building)']);
+    if (u.tier > 1) pairs.push(['Perk', perkText(content, u.unitId, u.tier)]);
     pairs.push(['Damage / s', this.log.dps(state, u.id).toFixed(1)], ['Kills', String(this.log.kills.get(u.id) ?? 0)]);
     this.buttons.hidden = true;
-    setText(this.title, `${def.name} · ${u.side === 'player' ? 'Velvet Bloom' : 'Gray Rot'}`);
+    setText(this.title, `${content.units[u.unitId]?.name ?? content.buildings[u.unitId]?.name ?? u.unitId} · ${sideWord(u.side)}`);
     this.details.replaceChildren(...this.rows(pairs));
   }
 
-  private renderBuilding(state: BattleState, id: number): void {
-    const b = findBuilding(state, id)!;
-    const def = this.content.buildings[b.buildingId]!;
-    const cb = state.compiled[b.side].buildings[b.buildingId]!;
-    this.el.dataset.mode = 'building';
-    const besieged = isBesieged(state, b);
-    const slowed = isSuppressed(state, b);
-    const pairs: [string, string][] = [['HP', `${b.hp} / ${b.maxHp}`]];
-    if (cb.spawn) {
-      const ticks = b.holding ? 0 : Math.ceil(b.timer / (slowed ? state.rules.besiegedHalfTicks : state.rules.normalHalfTicks));
-      pairs.push(['Next spawn', b.holding ? 'waiting for supply ⬢!' : `${(ticks / state.rules.tickRate).toFixed(1)}s${slowed ? ' (½ speed)' : ''}`]);
-      pairs.push(['Living units', String(state.units.filter((x) => x.sourceBuildingId === b.id).length)]);
-      if (state.rules.waves) pairs.push(['Waiting inside', `${b.stored ?? 0} (out with the next wave)`]);
-    }
-    if (cb.attack) pairs.push(['Attack', `${cb.attack.damageType} ${cb.attack.damage} · range ${cb.attack.minRange}–${cb.attack.range}`]);
-    pairs.push(['Damage dealt', String(state.stats[b.side].damageByBuilding[String(b.id)] ?? 0)]);
-    if (cb.economy) pairs.push(['Gold produced', String(state.stats[b.side].goldByBuilding[String(b.id)] ?? 0)]);
-    if (besieged) pairs.push(['Status', slowed ? 'under attack: half speed, can\'t be sold' : 'under attack: can\'t be sold']);
-    const merging = state.config.flags.merging && !!cb.spawn;
-    if (merging && b.side !== 'player') pairs.push(['Merging', b.mergeOn ? 'on' : 'off']);
-    setText(this.title, `${def.name} · ${b.side === 'player' ? 'yours' : 'Gray Rot'}`);
-    this.details.replaceChildren(...this.rows(pairs));
-    this.buttons.hidden = b.side !== 'player';
-    if (b.side === 'player') {
-      const refund = sellValue(state, b.id);
-      this.mergeBtn.hidden = !merging;
-      if (merging) {
-        const on = this.mergeShown(state, b.id);
-        toggleClass(this.mergeBtn, 'on', on);
-        this.mergeBtn.disabled = state.phase === 'ended';
-        setText(this.mergeBtn, `Merge ${on ? 'ON' : 'OFF'} [M]`);
-      }
-      const confirm = this.confirmSellFor === b.id;
-      toggleClass(this.sellBtn, 'danger', confirm);
-      this.sellBtn.disabled = besieged || state.phase === 'ended';
-      setText(this.sellBtn, confirm ? `Confirm sell (+${refund}) [X]` : `Sell for ${refund} [X]`);
-    }
-  }
+  dispose(): void {}
 }

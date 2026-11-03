@@ -2,9 +2,9 @@
 // and a mirrored variant so the enemy's face left. An emplacement is one unit under its tower's id, drawn as
 // R4a's emplacement (R4/T029): a building's sprite, baked unmirrored with no attack frame, so it never mirrors
 // and fires on its own frame 1, as the colony's buildings draw for both sides (S21b/T160).
-import type { Content } from '../../data/registry.ts';
-import type { Side } from '../../sim/rounds/index.ts';
-import { emplacementSprite } from '../unitSprite.ts';
+import type { Content } from '../data/registry.ts';
+import type { Side } from '../sim/rounds/index.ts';
+import { emplacementSprite } from './unitSprite.ts';
 
 /** How a unit stands this frame: still, walking (on step 0 or 1) or attacking. */
 export type UnitPose = 'still' | 'walk' | 'attack';

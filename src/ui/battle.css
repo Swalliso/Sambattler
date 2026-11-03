@@ -1,5 +1,5 @@
-/* The bands and panels of a battle in rounds (SPEC §10.2), beside v1's src/ui/styles.css, whose tokens and
-   classes (.top, .heart, .chips, .chip, .tug, .tugbar, .intent, .hud-tip) they build on. R2b folds them in. */
+/* The bands and panels of a battle in rounds (SPEC §10.2), on src/ui/styles.css's tokens and classes (.top,
+   .heart, .chips, .chip, .tug, .tugbar, .intent, .hud-tip). */
 
 /* The top band: your Heartcap, the chips over the tally (or the tug in a clash), the general's Heartcap and the
    Intent panel. The top mount lays its parts straight into the band's grid, and the spacer rows centre the chips
@@ -40,10 +40,9 @@ html.assist .tally .pip.lost, html.assist .tally .pip .half.lost { background: r
 
 /* The lane tug in a clash (§10.2, §6.7): each lane's surviving supply, yours violet from the left and the
    general's ash from the right, both numbers under its ends; an ended lane locks and names its result, and a
-   drawn one goes neutral. v1's .tugbar stripes and colour-blind hatching carry over; its column ticks don't. */
+   drawn one goes neutral, with styles.css's .tugbar stripes and colour-blind hatching. */
 .rounds-top .tug { gap: var(--space-1); width: 100%; max-width: 420px; margin: 0 auto; }
 .rounds-top .tug .lane { display: flex; flex-direction: column; gap: 1px; }
-.rounds-top .tugbar::after { content: none; }
 .rounds-top .tugbar.neutral .p, .rounds-top .tugbar.neutral .e { background: var(--tug-neutral); }
 .rounds-top .tugbar.locked { border-color: var(--line); }
 .rounds-top .tug .tug-label .state { color: var(--muted); }

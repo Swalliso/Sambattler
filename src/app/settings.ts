@@ -1,8 +1,9 @@
 // Player settings kept in localStorage, edited on the settings screen (src/ui/settingsScreen.ts; the
 // profile save arrives in M6). Reads and writes never throw: a private window or blocked storage falls
 // back to the defaults. Every field lives in the one record, spore-sprawl/settings/v1, and a record
-// saved before a field existed loads with that field's default. Which first-time tips were shown is kept
-// apart, under spore-sprawl/tips/v1, so "Show tips again" clears it without touching a setting.
+// saved before a field existed loads with that field's default, and one saved with a field that went (v1's spawn
+// timers, R2b) loads without it and drops it on the next save. Which first-time tips were shown is kept apart,
+// under spore-sprawl/tips/v1, so "Show tips again" clears it without touching a setting.
 import { UI_SCALE_STEPS } from '../ui/settingsScreen.ts';
 import type { ScreenSettings, SettingsStore } from '../ui/settingsScreen.ts';
 import { storageKey } from './channel.ts';
@@ -25,7 +26,7 @@ export interface Settings extends ScreenSettings {
 export const DEFAULT_SETTINGS: Readonly<Settings> = {
   damageNumbers: 'off', masterVolume: 0.6, sfxVolume: 0.8, ambientVolume: 0.5, muted: false,
   reducedMotion: 'system', uiScale: 'auto', colorAssist: false, defaultSpeed: 1, screenShake: false,
-  tips: true, spawnTimers: true,
+  tips: true,
 };
 
 const volume = (v: unknown, fallback: number): number => (typeof v === 'number' && Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : fallback);
@@ -50,7 +51,6 @@ export function loadSettings(): Settings {
       defaultSpeed: oneOf(s.defaultSpeed, [1, 2, 3] as const, d.defaultSpeed),
       screenShake: flag(s.screenShake, d.screenShake),
       tips: flag(s.tips, d.tips),
-      spawnTimers: flag(s.spawnTimers, d.spawnTimers),
     };
   } catch {
     return { ...d };

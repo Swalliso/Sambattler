@@ -1,34 +1,33 @@
 // First-time tips (playtest round 3: "too much to learn, and the game doesn't explain itself"). In the
-// first two battles of a run, each tip shows once, ever: the frontier and territory a few seconds after
-// Begin, Hold / Advance a little later, the first draft as it opens, the Sporestorm as it starts and
-// interest the first time it pays. They go through the callout lane, one at a time and never over the
-// field, and each names its key. The commander power's tip comes the first time it is ready. Which tips were shown is remembered (spore-sprawl/tips/v1, through
-// storageKey()); the settings screen turns tips off or shows them all again. Battle 1's economy tip
-// (playtest 2026-10-28) goes through the same queue, but it isn't remembered: it fires whenever battle 1
-// reaches 0:30 without an economy building.
-import { powerOf } from '../sim/index.ts';
-import type { BattleState } from '../sim/index.ts';
-import type { Callouts } from '../ui/callouts.ts';
+// first two battles of a run, each tip shows once, ever: the first draft as it opens, the Sporestorm as it
+// first raises a round's damage and interest the first time it pays. They go through the callout lane, one at
+// a time and never over the field, and each names its key. Which tips were shown is remembered
+// (spore-sprawl/tips/v1, through storageKey()); the settings screen turns tips off or shows them all again.
+// v1's time-based tips went with its battle (R2b's T037); R2b's T118
+// writes the round tips and wires the coach into the battle in rounds.
+import type { BattleState } from '../sim/rounds/index.ts';
 import { h } from '../ui/h.ts';
+import { stormText } from '../ui/hud/explain.ts';
 import { loadSettings, markTipShown, onSettings, tipsShown } from './settings.ts';
 
 /** First-time tips stay up longer than a passing callout: they are a sentence to read. */
 const TIP_MS = 8000;
-/** When the time-based tips come, in seconds after Begin; past their window (a resumed battle) they wait for another. */
-const FRONTIER_AT = 6;
-const HOLD_AT = 50;
-const WINDOW = 30;
 /** Tips show in a run's first two battles (and in single battles numbered 1 or 2). */
 const LAST_BATTLE = 2;
 
-export type TipId = 'frontier' | 'hold' | 'draft' | 'storm' | 'interest' | 'economy' | 'power';
+export type TipId = 'draft' | 'storm' | 'interest';
+
+/** The callout lane, as the coach uses it: whether a tip is up, and a tip to show. */
+export interface TipLane {
+  live(kind: 'tip'): boolean;
+  push(kind: 'tip', content: (string | Node)[], tone: '', now: number, life?: number): void;
+}
 
 interface Pending { id: TipId; parts: (string | Node)[]; remember: boolean; onShow?: (now: number) => void }
 
 const kbd = (k: string) => h('kbd', null, k);
 /** The lilac word that heads every tip. */
 export const tipWord = (): HTMLElement => h('b', { class: 'tip-word' }, 'Tip');
-const pct = (x: number) => `${Math.round(Math.abs(x) * 100)}%`;
 
 export class TipCoach {
   private queue: Pending[] = [];
@@ -38,7 +37,7 @@ export class TipCoach {
   private enabled: boolean;
   private unsubscribe: () => void;
 
-  constructor(private callouts: Callouts) {
+  constructor(private callouts: TipLane) {
     this.shown = tipsShown();
     this.enabled = loadSettings().tips;
     this.unsubscribe = onSettings((next) => {
@@ -59,7 +58,7 @@ export class TipCoach {
 
   /**
    * Queues a tip; it shows when the lane has no other tip. A tip about what is happening right now (a
-   * draft, the storm, interest) goes ahead of the ones that only wait for a time.
+   * draft, the storm, interest) goes ahead of the others.
    */
   offer(state: BattleState, id: TipId, parts: (string | Node)[], opts: { remember?: boolean; now?: boolean; onShow?: (now: number) => void } = {}): boolean {
     const remember = opts.remember ?? true;
@@ -71,36 +70,18 @@ export class TipCoach {
     return true;
   }
 
-  /** Per sim step: the tips that time or an event brings. */
+  /** Per sim step: the tips its events bring. */
   onTick(state: BattleState): void {
-    if (!this.enabled || state.phase !== 'live' || state.config.battleIndex > LAST_BATTLE) return;
-    const r = state.rules, secs = state.tick / r.tickRate;
-    // short enough to share the lane with a counter warning at 1280 px
-    if (secs >= FRONTIER_AT && secs < FRONTIER_AT + WINDOW) {
-      this.offer(state, 'frontier', [tipWord(), 'Units claim ground past the glowing frontier line. You build only on your own columns.']);
-    }
-    if (r.stance && secs >= HOLD_AT && secs < HOLD_AT + WINDOW) {
-      // combat rework `waves`: a hold keeps the next wave home rather than pulling units back
-      const hold = r.waves ? ' to keep your next wave home for one beat; the beat after sends both waves.' : ' to hold your units back for a bigger push; press it again to advance.';
-      this.offer(state, 'hold', [tipWord(), 'Press ', kbd('F'), hold]);
-    }
+    if (!this.enabled || state.config.battleIndex > LAST_BATTLE) return;
+    const r = state.rules;
     for (const e of state.events) {
-      if (e.t === 'sporestorm' && e.stacks === 1) {
-        const st = r.storm;
-        // combat rework `stormWaves`: the storm grows both sides' waves too
-        const waves = r.stormWaves ? `waves grow ${pct(r.stormWaves.perStack)}, ` : '';
-        this.offer(state, 'storm', [tipWord(), `The Sporestorm: each stack, ${waves}units hit ${pct(st.unitDamage)} harder and Heartcaps take ${pct(st.heartcapTaken)} more.`], { now: true });
+      if (e.t === 'roundStarted' && e.stormBp > 10000) {
+        this.offer(state, 'storm', [tipWord(), `The Sporestorm: a round now deals ${stormText(e.stormBp)} Heartcap damage, and more each round, up to ${stormText(r.storm.maxBp)}.`], { now: true });
       } else if (e.t === 'interest' && e.side === 'player' && e.amount > 0) {
-        // named by its interval: under the combat rework's `waves` a wave also leaves on every beat
-        this.offer(state, 'interest', [tipWord(), `Interest +${e.amount}: every ${r.waveTicks / r.tickRate} s pays 1 gold per ${r.interestPer} you hold, up to a cap. Hover your gold.`], { now: true });
+        this.offer(state, 'interest', [tipWord(), `Interest +${e.amount}: each round pays 1 gold per ${r.interestPer} you held at Begin, up to a cap. Hover your gold.`], { now: true });
       }
     }
-    const power = powerOf(state, 'player');
-    if (power && state.sides.player.powerCooldown === 0) {
-      const aim = power.target === 'point' ? 'then click where it should land' : 'then click the field';
-      this.offer(state, 'power', [tipWord(), `${power.name} is ready: press `, kbd('Q'), ` or its button, ${aim}. You can aim while paused.`], { now: true });
-    }
-    // last, so it goes first: the draft is on screen now (it opens on the same tick as a wave's interest)
+    // last, so it goes first: the draft is on screen now
     const draft = state.sides.player.draft;
     if (draft) {
       // a key for each card on offer (the bigger-drafts prototype deals 4)

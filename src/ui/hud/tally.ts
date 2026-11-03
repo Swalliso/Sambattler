@@ -4,13 +4,13 @@
 // ends sit the Heartcap damage you've dealt in the battle and the damage you've taken. In a clash the lane tug
 // takes its place: each lane's surviving supply, yours striped violet from the left and the general's ash from
 // the right, locking with the lane's result. The tug stays through the aftermath's drain, then the tally takes
-// the round's pip. Each past pip and the tug have a tooltip (`explain.ts`). It stands beside v1's territory tug
-// in `src/ui/hud/top.ts`, whose bar styles it reuses.
-import '../rounds.css';
-import { survivingSupply } from '../../../sim/rounds/index.ts';
-import type { BattleState, Side } from '../../../sim/rounds/index.ts';
-import { roundOutcome } from '../../../sim/rounds/systems/victory.ts';
-import { h, setText, toggleClass } from '../../h.ts';
+// the round's pip. Each past pip and the tug have a tooltip (`explain.ts`). The tug's bar styles are v1's
+// territory tug's (`src/ui/styles.css`).
+import '../battle.css';
+import { survivingSupply } from '../../sim/rounds/index.ts';
+import type { BattleState, Side } from '../../sim/rounds/index.ts';
+import { roundOutcome } from '../../sim/rounds/systems/victory.ts';
+import { h, setText, toggleClass } from '../h.ts';
 import { pipTip, resultOf, tugTip } from './explain.ts';
 import type { HudContext, HudPart } from './top.ts';
 

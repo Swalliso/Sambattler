@@ -6,9 +6,9 @@
 // in Begin's place, which the view shows, and on Twin Roots a callout as a lane ends first, worded here. So is
 // the commander power's (§6.6, §10.3, T109): its button's state, its tooltip's and the aim's words, and why
 // Q or a click is refused. The power is once per clash, so nothing here speaks of a cooldown.
-import type { PowerDef } from '../../../data/schema.ts';
-import { powerOf } from '../../../sim/rounds/index.ts';
-import type { BattleState, SimEvent } from '../../../sim/rounds/index.ts';
+import type { PowerDef } from '../../data/schema.ts';
+import { powerOf } from '../../sim/rounds/index.ts';
+import type { BattleState, SimEvent } from '../../sim/rounds/index.ts';
 import type { RoundSession } from '../session.ts';
 
 export const STEP_MS = 50;

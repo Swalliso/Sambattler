@@ -1,16 +1,7 @@
-// Building roles, the tray's order, the card's one-line summary and its hover tooltip (playtest
-// 2026-10-28: a player never noticed the economy buildings, and the cards read as jargon). Stats come
-// from the compiled side, so upgrades and relics show.
+// Building roles and the tray's order (playtest 2026-10-28: a player never noticed the economy buildings). The
+// card's one-line summary and its tooltip are the tray's (`src/ui/hud/tray.ts`), read from the round state.
 import type { Content } from '../data/registry.ts';
-import type { Atlas } from '../render/atlas.ts';
-import { formatClock } from '../sim/index.ts';
-import { towerReachesAir } from '../sim/world.ts';
-import type { BattleState, BuildingKind } from '../sim/index.ts';
-import { h } from './h.ts';
-import { priceEl } from './icons.ts';
-import { flyerHitters, strongVs, versusFlyers, vulnerableTo, weakVs } from './matrixHints.ts';
-import { perkText } from './mergeHints.ts';
-import { buildingDescription } from './words.ts';
+import type { BuildingKind } from '../sim/rounds/index.ts';
 
 export const ROLE_LABEL: Record<BuildingKind, string> = { economy: 'Economy', spawner: 'Army', tower: 'Defense', utility: 'Utility' };
 const ROLE_ORDER: Record<BuildingKind, number> = { economy: 0, spawner: 1, tower: 2, utility: 3 };
@@ -18,102 +9,4 @@ const ROLE_ORDER: Record<BuildingKind, number> = { economy: 0, spawner: 1, tower
 /** The tray's order, which the 1–9 hotkeys follow: economy first, then army, defense and utility, each in kit order. */
 export function trayOrder(content: Content, kit: readonly string[]): string[] {
   return [...kit].sort((a, b) => ROLE_ORDER[content.buildings[a]!.kind] - ROLE_ORDER[content.buildings[b]!.kind]);
-}
-
-const secs = (s: number) => `${Math.round(s * 10) / 10} s`;
-const plural = (n: number, name: string) => (n === 1 ? name : `${name}s`);
-const cap = (s: string) => s[0]!.toUpperCase() + s.slice(1);
-
-/**
- * What the building does, in a few words for the card face: one line on a compact card (about 105 px),
- * at most two on a full one (76 px at its narrowest). Non-breaking spaces keep a number with its unit.
- */
-export function cardLine(content: Content, state: BattleState, id: string): string {
-  const cb = state.compiled.player.buildings[id]!;
-  const tr = state.rules.tickRate;
-  const nb = (s: string) => s.replaceAll(' ', '\u00a0');
-  // the building's name already names its unit; the tooltip spells it out
-  if (cb.spawn) return `${cb.spawn.count} every ${nb(secs(cb.spawn.intervalHalfTicks / 2 / tr))}`;
-  if (cb.attack) return `${cb.attack.splashRadius ? 'splash, ' : ''}${nb(`range ${cb.attack.range}`)}`;
-  if (cb.economy) {
-    // an interest building's point is the cap; its trickle of gold is in the tooltip
-    if (cb.economy.interestCapAdd) return `${nb('interest cap')} +${cb.economy.interestCapAdd}`;
-    return `${nb(`+${cb.economy.goldPerTick} gold`)} / ${nb(secs(content.balance.incomeTickSeconds))}`;
-  }
-  if (cb.utility) return `+${cb.utility.supplyCapAdd} ${nb('supply cap')}`;
-  return ROLE_LABEL[cb.kind];
-}
-
-/**
- * The tooltip body for a tray card: role, description, what it makes or does, and the unit's matchups.
- * `price` is the card's: above the building's own once no home plot is free (the tray's cheapest price).
- * The payback time counts from it.
- */
-export function buildingTip(content: Content, atlas: Atlas, state: BattleState, id: string, hotkey: string, price = content.buildings[id]!.cost): HTMLElement[] {
-  const b = content.buildings[id]!;
-  const cb = state.compiled.player.buildings[id]!;
-  const cs = state.compiled.player;
-  const tr = state.rules.tickRate;
-  const rows: [string, string][] = [];
-  if (cb.spawn) {
-    const unit = content.units[cb.spawn.unit]!;
-    const cu = cs.units[cb.spawn.unit]!;
-    const t = cu.tiers[0];
-    rows.push(['Makes', `${cb.spawn.count} ${plural(cb.spawn.count, unit.name)} every ${secs(cb.spawn.intervalHalfTicks / 2 / tr)}${cb.spawn.positional ? ' (varies with where it stands)' : ''}`]);
-    rows.push(['Each unit', `${t.hp} HP · ${t.supply} supply`]);
-    const burst = state.rules.burst && cu.tags.includes('burst') ? state.rules.burst : undefined;
-    if (t.healAmount > 0) {
-      rows.push(['Heals', `${t.healAmount} HP every ${secs(t.healTicks / tr)} · range ${t.range}`]);
-    } else if (burst) {
-      // the combat rework's Burster (a prototype): no attack, a burst
-      rows.push(['Bursts', `rolls at the thickest knot of enemy units within ${cu.aggroRange} tiles and bursts on reaching it, or when it dies: ${Math.round(t.damage)} damage through any armor to every enemy unit within ${t.splashRadius} tiles`]);
-      rows.push(['Spore cloud', `left where it bursts (${burst.cloud.radius} tiles, ${secs(burst.cloud.ticks / tr)}): ${Math.round((burst.cloud.damage * tr) / burst.cloud.pulseTicks)} damage a second to enemy units in it`]);
-    } else {
-      rows.push(['Attack', `${Math.round(t.damage * 10) / 10} ${cu.damageType} every ${secs(t.attackTicks / tr)} · ${cu.projectileSpeed > 0 ? `range ${t.range}` : 'melee'}`]);
-      rows.push(['Strong vs', strongVs(state, cu.damageType)], ['Weak vs', weakVs(state, cu.damageType)]);
-    }
-    rows.push(['Armor', `${cap(cu.armor)} · hurt most by ${vulnerableTo(state, cu.armor)}`]);
-    if (cu.siege) rows.push(['Siege', `×${t.siegeMult} vs buildings and Heartcaps`]);
-    // the combat rework's settings (prototypes; each line shows only while its setting is on)
-    if (cu.tags.includes('burrow')) rows.push(['Burrows', 'tunnels under the front where nothing can hit it, and surfaces beside the nearest archer (else a spawner behind the front) that no tower or turret covers; then it goes for ranged units first']);
-    if (state.rules.pin && cu.tags.includes('ranged')) rows.push(['Pinned', `attacks at ×${state.rules.pin.permille / 1000} its rate with an enemy within ${state.rules.pin.radius} tile`]);
-    if (state.rules.waves) rows.push(['Waves', 'its units wait inside and leave with your next wave (early, if it stands behind your front spawner, so they join the wave as it passes)']);
-    const mixed = state.rules.mixed;
-    if (mixed) rows.push(['Mixed wave', `a lane's wave of ${mixed.minTypes} or more unit types sets out shielded: ${Math.round(mixed.shieldFrac * 100)}% of each unit's HP`]);
-    const fly = state.rules.flying;
-    if (fly && cu.tags.includes('flying')) {
-      rows.push(['Flying', `floats over ground units${fly.holdsGround ? '' : ' and holds no ground'}; ${flyerHitters(state)}`]);
-    } else if (fly && t.healAmount === 0) rows.push(['Flyers', versusFlyers(state, cu)]);
-    if (cu.slayer) rows.push(['Slayer', `×${t.slayerMult} vs Bloomed and Elder units`]);
-    if (state.rules.cleave?.units.includes(cb.spawn.unit)) rows.push(['Cleave', `its swing hits every enemy unit within ${t.splashRadius} tiles of its target at full damage`]);
-    if (state.config.flags.merging) rows.push(...(burst ? [['Merge', 'never: a Burster is spent whole'] as [string, string]] : [['Bloomed', perkText(content, unit.id, 2)], ['Elder', perkText(content, unit.id, 3)]] as [string, string][]));
-  }
-  if (cb.attack) {
-    const a = cb.attack;
-    rows.push(['Attack', `${a.damage} ${a.damageType} every ${secs(a.intervalTicks / tr)}${a.splashRadius ? ` · splash ${a.splashRadius}` : ''}`]);
-    rows.push(['Range', a.minRange ? `${a.minRange}–${a.range} (can't hit units hugging it)` : String(a.range)]);
-    rows.push(['Strong vs', strongVs(state, a.damageType)]);
-    if (state.rules.flying && !towerReachesAir(cb)) rows.push(['Flyers', "its lobbed shells can't hit them"]);
-    const cloud = state.rules.cloud;
-    if (cloud?.buildings.includes(id)) {
-      rows.push(['Spore cloud', `each shell leaves a cloud (${cloud.radius} tiles, ${secs(cloud.ticks / tr)}): ${Math.round((cloud.damage * tr) / cloud.pulseTicks)} damage a second to enemy units in it, whatever their armor`]);
-    }
-  }
-  if (cb.economy) {
-    const e = cb.economy;
-    const every = content.balance.incomeTickSeconds;
-    rows.push(['Income', e.positional ? 'varies with where it stands' : `+${e.goldPerTick} gold every ${secs(every)} (${Math.round((e.goldPerTick * 60) / every)}/min)`]);
-    rows.push(['Rich Loam', `+${cs.loamBonusPct}% when built on it`]);
-    if (e.interestCapAdd) rows.push(['Interest cap', `+${e.interestCapAdd}`]);
-    else if (!e.positional && e.goldPerTick > 0) rows.push(['Pays for itself', `in about ${formatClock(Math.ceil((price / e.goldPerTick) * every * tr), tr)}`]);
-  }
-  if (cb.utility) rows.push(['Supply cap', `+${cb.utility.supplyCapAdd} (at most ${cb.utility.maxCount} count)`]);
-  rows.push(['Building HP', String(cb.hp)]);
-  return [
-    h('div', { class: 'tip-head' }, h('b', null, b.name), h('span', { class: `role ${cb.kind}` }, ROLE_LABEL[cb.kind]), priceEl(atlas, price)),
-    h('div', { class: 'tip-desc' }, buildingDescription(content, id)),
-    ...rows.map(([k, v]) => h('div', { class: 'row' }, h('span', { class: 'muted' }, k), h('span', null, v))),
-    h('div', { class: 'tip-foot' }, `${hotkey ? `Press ${hotkey} or click` : 'Click'}, then click the field. ${price > b.cost
-      ? `Your home columns are full, so it costs from ${price} (${b.cost} at home).` : 'Building farther from home costs more.'}`),
-  ];
 }

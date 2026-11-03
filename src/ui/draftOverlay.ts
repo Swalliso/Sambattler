@@ -1,10 +1,10 @@
-// The in-battle draft (SPEC §8.3): opens at the end of waves 2, 4, 6 and 8 while the sim holds.
-// Three cards; reroll for battle gold (20, then +10 each) or skip for +40 gold. Picks, rerolls
-// and skips are ordinary commands, so the battle stays replayable.
+// The in-battle draft (SPEC §8.3): opens on the side's open draft in a planning phase of the battle in rounds,
+// which R2b's S5 opens after rounds 2, 4 and 6 and wires to this overlay (T153). Three cards; reroll for battle
+// gold (20, then +10 each) or skip for +40 gold. Picks, rerolls and skips are ordinary commands, so the battle
+// stays replayable.
 import type { Content } from '../data/registry.ts';
 import type { Atlas } from '../render/atlas.ts';
-import { rerollCost } from '../sim/index.ts';
-import type { BattleState } from '../sim/index.ts';
+import type { BattleState } from '../sim/rounds/index.ts';
 import { cardView } from './cards.ts';
 import { h, setText } from './h.ts';
 import { uiIcon } from './icons.ts';
@@ -30,7 +30,7 @@ export class DraftOverlay {
     this.rerollBtn = h('button', { class: 'btn has-ico', id: 'draft-reroll', onclick: () => this.actions.reroll() }, 'Reroll', uiIcon(atlas, 'i-gold'), this.rerollCost);
     this.skipBtn = h('button', { class: 'btn', id: 'draft-skip', onclick: () => this.actions.skip() }, 'Skip');
     const card = h('div', { class: 'draftcard', id: 'draft', role: 'dialog', 'aria-label': 'Draft' },
-      h('div', { class: 'draft-top' }, this.title, h('div', { class: 'hint' }, 'The battle is held while you choose. Press ', h('kbd', null, '1'), '–', this.lastKey, ' to pick a card.')),
+      h('div', { class: 'draft-top' }, this.title, h('div', { class: 'hint' }, 'Choose before you Begin. Press ', h('kbd', null, '1'), '–', this.lastKey, ' to pick a card.')),
       this.cards,
       h('div', { class: 'actions' }, this.rerollBtn, this.skipBtn),
     );
@@ -43,21 +43,21 @@ export class DraftOverlay {
   update(state: BattleState, pending: boolean): void {
     const d = state.sides.player.draft;
     const human = state.config.player.controller.kind === 'human' || state.config.player.autoDraft === 'none';
-    if (!d || !state.held || !human) { this.el.hidden = true; this.shown = ''; return; }
+    if (!d || !human) { this.el.hidden = true; this.shown = ''; return; }
     // opening over the held battle: spores burst up behind the cards
     if (this.el.hidden) sporeBurst(this.el);
     this.el.hidden = false;
     const key = `${d.index}:${d.offer.map((c) => c.id).join(',')}`;
-    const cost = rerollCost(state, 'player');
+    const b = this.content.balance;
+    const cost = b.reroll.base + b.reroll.step * d.rerolls;
     setText(this.rerollCost, String(cost));
     this.rerollBtn.disabled = pending || state.sides.player.gold < cost;
-    this.skipBtn.textContent = `Skip (+${state.compiled.player.skipGold} gold)`;
+    this.skipBtn.textContent = `Skip (+${b.skipGold} gold)`;
     this.skipBtn.disabled = pending;
     if (key === this.shown) return;
     this.shown = key;
-    // a deploy draft (hot-start prototype) opens before the clock starts; a bigger draft has picks left
-    const name = state.phase === 'deploy' ? 'Deploy draft' : `Draft ${d.index}`;
-    this.title.textContent = `${name}: choose ${d.picks ?? 1} of ${d.offer.length}`;
+    // a bigger draft has picks left
+    this.title.textContent = `Draft ${d.index}: choose ${d.picks ?? 1} of ${d.offer.length}`;
     this.cards.style.setProperty('--cols', String(Math.max(3, d.offer.length)));
     setText(this.lastKey, String(d.offer.length));
     this.cards.replaceChildren(...d.offer.map((c, i) =>

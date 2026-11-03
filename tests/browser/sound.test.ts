@@ -48,13 +48,14 @@ afterEach(async () => {
   await page?.close();
 });
 
-const DEPLOY = '/?scene=deploy&map=test-flat&enemy=human&seed=1&test=1&paused=1';
+/** Round 1's planning on the flat map, held there. */
+const PLANNING = '/?scene=battle&map=test-flat&seed=1&test=1&phase=planning';
 
 describe('sound', () => {
   it('?test=1 makes no AudioContext, whatever the player clicks or presses', async () => {
     page = await browser!.newPage({ viewport: { width: 1280, height: 720 } });
     await countContexts(page);
-    await page.goto(`${base}${DEPLOY}`);
+    await page.goto(`${base}${PLANNING}`);
     await page.waitForFunction(() => window.__GAME__?.ready === true);
     await page.locator('[data-building="sporelingBurrow"]').click();
     const box = (await page.locator('#battlefield').boundingBox())!;
@@ -69,7 +70,7 @@ describe('sound', () => {
 
   it('mute persists across a reload, under spore-sprawl/settings/v1', async () => {
     page = await browser!.newPage({ viewport: { width: 1280, height: 720 } });
-    await page.goto(`${base}${DEPLOY}`);
+    await page.goto(`${base}${PLANNING}`);
     await page.waitForFunction(() => window.__GAME__?.ready === true);
     // a save from before sound keeps its setting and gains the sound defaults
     await page.evaluate(() => localStorage.setItem('spore-sprawl/settings/v1', JSON.stringify({ damageNumbers: 'big' })));
@@ -99,7 +100,7 @@ describe('sound', () => {
 
   it('the volume popover opens on hover and its sliders save', async () => {
     page = await browser!.newPage({ viewport: { width: 1280, height: 720 } });
-    await page.goto(`${base}${DEPLOY}`);
+    await page.goto(`${base}${PLANNING}`);
     await page.waitForFunction(() => window.__GAME__?.ready === true);
     await page.locator('.sound-mute').hover();
     const slider = page.locator('.sound-pop input[data-level="ambient"]');

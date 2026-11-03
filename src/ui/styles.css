@@ -176,13 +176,6 @@ button { font: inherit; color: inherit; }
 .chip.gold b { color: var(--gold); }
 .chip.storm.on { border-color: var(--lilac); box-shadow: 0 0 8px var(--glow-lilac); }
 .chip.storm.on b { color: var(--lilac); }
-/* combat rework `waves` (a prototype): the next beat, the units waiting for it, and a bar filling toward it */
-.chip.beat { position: relative; flex: none; }
-.chip.beat .beatbar { position: absolute; left: 12px; right: 12px; bottom: 2px; height: 2px; background: var(--line); }
-.chip.beat .beatbar i { display: block; height: 100%; width: 0; background: var(--lilac); }
-.chip.beat.soon { border-color: var(--lilac); }
-.chip.beat.soon b { color: var(--lilac); }
-.chip.beat small:empty { display: none; }
 /* chips that don't fit between the Heartcaps (TopBand.fit): first they sit closer, then they drop the words their icons and
    tips also carry, and R's keycap. A dropped word stays for screen readers */
 .chips.snug { gap: var(--space-2); }
@@ -191,18 +184,15 @@ button { font: inherit; color: inherit; }
 .chips.terse .kit-chip kbd { display: none; }
 .chip.bump { animation: bump .45s ease-out; }
 @keyframes bump { 30% { transform: scale(1.1); } }
-/* the territory tug: one bar per lane, a tick per column, stripes for each side and a glowing frontier */
+/* the lane tug in a clash (src/ui/hud/tally.ts): one bar per lane, stripes for each side */
 .tug { display: flex; flex-direction: column; gap: 3px; }
 .tugbar { position: relative; height: 14px; display: flex; background: var(--well); border: 1px solid var(--line-strong); border-radius: var(--radius-xs); overflow: hidden; }
 .tug:not(.lanes-1) .tugbar { height: 9px; }
 .tugbar .p { background: repeating-linear-gradient(90deg, var(--violet) 0 6px, var(--violet-stripe) 6px 8px); }
-.tugbar .n { background: var(--tug-neutral); }
 .tugbar .e { background: repeating-linear-gradient(90deg, var(--rot) 0 6px, var(--rot-stripe) 6px 8px); }
-.tugbar::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(90deg, transparent 0 calc(100% / var(--cols) - 1px), rgba(13, 10, 16, 0.6) calc(100% / var(--cols) - 1px) calc(100% / var(--cols))); }
 /* color-blind assist: the Gray Rot's stripes lean, so the two sides differ in pattern as well as hue */
 html.assist .tugbar .e { background: repeating-linear-gradient(135deg, var(--rot) 0 3px, var(--rot-deep) 3px 5px); }
 html.assist .tugbar .p { background: repeating-linear-gradient(90deg, var(--lilac) 0 2px, var(--violet) 2px 8px); }
-.tugbar .front { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; z-index: 1; background: var(--lilac); box-shadow: 0 0 6px var(--lilac); }
 .tug-label { display: flex; justify-content: space-between; font: 12px/14px var(--font-text); font-variant-numeric: tabular-nums; }
 .tug-label .p { color: var(--lilac); }
 .tug-label .e { color: var(--rot-light); }
@@ -237,7 +227,7 @@ body:has(.draft-overlay:not([hidden])) .callouts { position: relative; z-index: 
 .callout.settled { animation: none; }
 .callout.tip { border-color: var(--stalk-shade); color: var(--stalk); }
 .callout.tip b.tip-word { color: var(--lilac); letter-spacing: .06em; text-transform: uppercase; font-size: 12px; }
-.callout.deploy { border-color: var(--lilac); box-shadow: 0 0 10px var(--glow-lilac); }
+.callout.planning { border-color: var(--lilac); box-shadow: 0 0 10px var(--glow-lilac); }
 .callout.paused { letter-spacing: .06em; }
 .callout kbd { margin-left: -2px; }
 .field { flex: 1; display: flex; align-items: center; justify-content: center; position: relative; min-height: 0; }
@@ -284,13 +274,6 @@ body:has(.draft-overlay:not([hidden])) .callouts { position: relative; z-index: 
 .seg .btn:disabled, .bottom .seg .btn:disabled { background: transparent; border-color: transparent; }
 .speed .btn { height: 28px; }
 #pause-btn { flex: 0 0 34px; }
-.stance { display: flex; flex-direction: column; gap: var(--space-2); }
-.stance-row { display: flex; align-items: center; gap: var(--space-3); }
-.stance-row .seg { flex: none; }
-.stance-row .seg .btn { flex: none; padding: 3px 6px; }
-.stance-row .lane { font: 700 12px/16px var(--font-text); color: var(--muted); }
-.stance-row .status { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.stance-row:has([data-stance="hold"].on) .status { color: var(--lilac); }
 /* ---- sound control: a speaker that mutes, and a volume popover on hover or focus (src/ui/soundControls.ts) ---- */
 .sound-ctl { position: relative; display: inline-flex; }
 .sound-ctl .when-off, .sound-ctl.muted .when-on { display: none; }
@@ -825,7 +808,7 @@ html.still .result-card, html.reduce-motion .result-card { animation: none; }
 /* the assist's preview: a strip of field at 3×, a territory bar under it, and a word for each side */
 .set-preview { align-self: flex-start; display: flex; flex-direction: column; gap: var(--space-2); margin: 0; padding: var(--space-3); background: var(--well); border: 1px solid var(--line); border-radius: var(--radius-md); }
 .set-preview .preview-art { display: block; image-rendering: pixelated; image-rendering: crisp-edges; border-radius: var(--radius-xs); }
-.set-preview .tugbar { height: 8px; }
+.set-preview .pip { height: 8px; cursor: default; }
 .set-preview figcaption { display: flex; justify-content: space-between; font: 700 12px/16px var(--font-text); letter-spacing: .06em; text-transform: uppercase; }
 .set-preview figcaption .p { color: var(--lilac); }
 .set-preview figcaption .e { color: var(--rot-light); }

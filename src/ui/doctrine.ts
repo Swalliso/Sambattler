@@ -1,77 +1,83 @@
-// How the general's intent reads in the UI (SPEC §7.4–7.5): kind names and icons, the pending
-// warning's countdown in waves, and callout and report text. The telegraph is vague on purpose: it
-// names a counter kind, never units or buildings, until the report after the battle.
+// How the General's Intent panel reads in a battle in rounds (SPEC §7.5, §10.2): the general's portrait, name and
+// doctrine, and what it did this round, read from its plan for the round (`ai.plans`, plan Call 12, A070), so the
+// panel survives later commands and a fast-forward to a round. There's no countdown: the general's army is on
+// the field before you plan, so v1's vague telegraph is retired (Appendix A). Its passive, for the panel's
+// tooltip, comes from content's words, flagged when rounds don't run it yet (plan Call 19). The doctrine is the
+// counter in force from its activation on (§7.4), or what the general remembers about you from the intel file
+// while its opening doctrine holds (§7.6). The run's intel bars read their kinds' names and icons here too.
 import type { Content } from '../data/registry.ts';
-import { activeCounter, formatClock, openingActive } from '../sim/index.ts';
-import type { BattleState, CounterKind, CounterRecord } from '../sim/index.ts';
+import type { AiPlan, BattleState, CounterKind } from '../sim/rounds/index.ts';
 
-export const KIND_LABEL: Record<CounterKind, string> = { swarm: 'SWARM', line: 'LINE', armor: 'ARMOR', elite: 'ELITE' };
-export const KIND_NAME: Record<CounterKind, string> = { swarm: 'Swarm', line: 'Line', armor: 'Armor', elite: 'Elite' };
-export const KIND_ICON: Record<CounterKind, string> = { swarm: 'i-swarm', line: 'i-line', armor: 'i-armor', elite: 'i-elite-doctrine' };
-/** What each kind answers, in the player's terms (help and tooltips). */
-export const KIND_HINT: Record<CounterKind, string> = {
+export const KIND_LABEL: Record<CounterKind, string> = { swarm: 'SWARM', line: 'LINE', armor: 'ARMOR', elite: 'ELITE', ranged: 'RANGED' };
+/** The four kinds the run's intel bars show (§7.6), with their names, icons and what each answers (help and tooltips). */
+type IntelKind = Exclude<CounterKind, 'ranged'>;
+export const KIND_NAME: Record<IntelKind, string> = { swarm: 'Swarm', line: 'Line', armor: 'Armor', elite: 'Elite' };
+export const KIND_ICON: Record<IntelKind, string> = { swarm: 'i-swarm', line: 'i-line', armor: 'i-armor', elite: 'i-elite-doctrine' };
+export const KIND_HINT: Record<IntelKind, string> = {
   swarm: 'Anti-Swarm: Slash and splash against Light units',
   line: 'Anti-Line: Pierce against Medium units',
   armor: 'Anti-Armor: Crush and siege against Heavy units',
   elite: 'Anti-Elite: Slayers against Bloomed and Elder units',
 };
 
-/** The enemy general's display name ("The Gray Rot" for bots and idle sides). */
-export function generalName(content: Content, state: BattleState): string {
-  const ctl = state.config.enemy.controller;
-  return ctl.kind === 'general' ? content.generals[ctl.id]?.name ?? 'The Gray Rot' : 'The Gray Rot';
-}
-
 export interface Intent {
-  /** The active counter doctrine, if one has activated. */
-  active: CounterKind | null;
-  /** The opening doctrine from intel while it is in force (two kinds for the boss). */
-  opening: CounterKind[];
-  dual: boolean;
-  /** The soonest pending warning and the waves until it activates (rounded up). */
-  pending: { kind: CounterKind; waves: number; activeAt: number } | null;
-  adaptive: boolean;
+  /** The portrait's sprite, the name, and a general's title line ("Swarm and early aggression"). */
+  sprite: string;
+  name: string;
+  title: string | null;
+  /** The counter it's running (§7.4), or what it does instead. */
+  doctrine: string;
+  /** Its plan for the round on screen, or null for a side with no AI. */
+  plan: AiPlan | null;
+  /** What it planted and sold this round, by name and grouped: "Capguard Hall ×2". */
+  planted: string[];
+  sold: string[];
 }
 
-export function intentOf(state: BattleState): Intent {
+/** Names grouped by building, in the order first planted. */
+function grouped(content: Content, list: { building: string }[]): string[] {
+  const n = new Map<string, number>();
+  for (const x of list) n.set(x.building, (n.get(x.building) ?? 0) + 1);
+  return [...n].map(([id, k]) => `${content.buildings[id]?.name ?? id}${k > 1 ? ` ×${k}` : ''}`);
+}
+
+export function intentOf(content: Content, state: BattleState): Intent {
+  const ctl = state.config.enemy.controller;
+  const general = ctl.kind === 'general' ? content.generals[ctl.id] : undefined;
   const ai = state.sides.enemy.ai;
-  const c = ai?.counter;
-  if (!ai || !c) return { active: null, opening: [], dual: false, pending: null, adaptive: false };
-  const waiting = c.history.filter((r) => !r.active).sort((a, b) => a.activeAt - b.activeAt)[0];
+  const plan = ai?.plans.find((p) => p.round === state.round) ?? null;
+  const inForce = ai?.counter?.history.at(-1);
+  const opening = ai?.counter?.opening && (ai.counter.opening.dual || !inForce) ? ai.counter.opening : undefined;
+  const doctrine = inForce ? `Countering ${KIND_LABEL[inForce.kind]}`
+    : opening ? `Remembers your ${opening.kinds.map((k) => KIND_LABEL[k]).join(' and ')}`
+    : !general ? (ctl.kind === 'bot' ? 'No doctrine' : 'Idle')
+      : !general.adaptive ? 'Scripted: never adapts'
+        : state.config.flags.adaptiveGeneral ? 'Watching your army' : 'Adaptation off';
   return {
-    active: activeCounter(ai)?.kind ?? null,
-    opening: openingActive(ai) ? [...ai.opening!.kinds] : [],
-    dual: !!ai.opening?.dual,
-    pending: waiting ? { kind: waiting.kind, activeAt: waiting.activeAt, waves: Math.max(1, Math.ceil((waiting.activeAt - state.tick) / state.rules.waveTicks)) } : null,
-    adaptive: true,
+    sprite: general?.sprite ?? 'g-scripted',
+    name: general ? general.name : ctl.kind === 'bot' ? `Bot: ${ctl.id}` : 'Gray Rot (idle)',
+    title: general?.title ?? null,
+    doctrine,
+    plan,
+    planted: plan ? grouped(content, plan.planted) : [],
+    sold: plan ? grouped(content, plan.sold) : [],
   };
 }
 
-export const wavesText = (n: number): string => `${n} wave${n === 1 ? '' : 's'}`;
-
-export function warningText(name: string, kind: CounterKind, waves: number): string {
-  return `${name} is preparing to counter your ${KIND_LABEL[kind]}: ${wavesText(waves)}`;
-}
-
-export function activeText(name: string, kind: CounterKind): string {
-  return `${name} now counters your ${KIND_LABEL[kind]}`;
-}
-
-export function rememberText(kinds: CounterKind[]): string {
-  return `The Gray Rot remembers your ${kinds.map((k) => KIND_LABEL[k]).join(' and ')}`;
+/** Up to `max` names, then "+N" for the rest, so a long list fits the panel; its tooltip has them all. */
+export function cutShort(names: string[], max: number): string {
+  return names.length > max ? `${names.slice(0, max).join(', ')} +${names.length - max}` : names.join(', ');
 }
 
 /**
- * One report line per counter (SPEC §7.5): "Swarm (4:00) with Capguard Hall ×2, Scythecap Grove",
- * plus what it drafted and sold. The units are named after the fact so the player learns.
+ * A general's passive in words (§7.7): its description's "Passive:" sentence, and whether a battle in rounds runs
+ * it yet, since a passive on a retired stat compiles to nothing until R2b gives it a v2 effect (plan Call 19).
  */
-export function counterLine(content: Content, c: Pick<CounterRecord, 'kind' | 'activeAt' | 'warnedAt' | 'active' | 'drafted' | 'sold' | 'built'>, tickRate = 20): string {
-  const name = (id: string) => content.buildings[id]?.name ?? id;
-  const built = Object.entries(c.built).sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1)).map(([id, n]) => `${name(id)}${n > 1 ? ` ×${n}` : ''}`);
-  let s = `${KIND_NAME[c.kind]} (${formatClock(c.active ? c.activeAt : c.warnedAt, tickRate)})`;
-  if (!c.active) s += `: warned, the battle ended before it activated`;
-  else s += built.length ? ` with ${built.join(', ')}` : ': no new buildings';
-  if (c.drafted) s += `; drafted ${name(c.drafted)}`;
-  if (c.sold.length) s += `; sold ${c.sold.map(name).join(', ')} for space`;
-  return s;
+export function passiveOf(content: Content, state: BattleState): { text: string; inRounds: boolean } | null {
+  const ctl = state.config.enemy.controller;
+  const general = ctl.kind === 'general' ? content.generals[ctl.id] : undefined;
+  if (!general?.passive) return null;
+  const said = /Passive: (.+?\.)(?:\s|$)/.exec(general.description ?? '')?.[1];
+  const text = said ? said[0]!.toUpperCase() + said.slice(1) : 'A passive of its own.';
+  return { text, inRounds: !state.compiled.enemy.ignored.some((e) => e.source === `general:${general.id}`) };
 }

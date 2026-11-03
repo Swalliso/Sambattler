@@ -51,7 +51,7 @@ Repo: github.com/Swalliso/Sambattler.
 
 `npm run build:dev` (`--mode develop`, see `src/app/channel.ts`) titles the page "Spore & Sprawl (dev)" with `noindex`, shows a `DEV BUILD · <sha>` tag and saves under `dev/`-prefixed keys. The `dev-site` launch config serves it locally on port 5174.
 
-`/?scene=rounds` opens R2a's preview, a single battle in rounds, and the dev site's title has its button, "A battle in rounds (preview)". The entry loads on every build, but only the dev site shows the button (X2). R2b deletes both.
+Every battle is the battle in rounds since R2b's S2: `/?scene=battle` opens a single battle with SPEC §15.6's parameters (`round=`, `phase=`, `ticks=` within a clash), and a run's battles open the same scene. `/?scene=rounds` and `/?scene=deploy` say they aren't part of the game.
 
 Both sites share the swalliso.github.io origin, so every localStorage key goes through `storageKey()`, and the game's keys must never change (`.claude/rules/storage.md` lists them).
 

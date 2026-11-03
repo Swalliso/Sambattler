@@ -4,10 +4,10 @@
 // reads the readout; and nothing enters the state or the hash, nor storage. records-2 adds its run-total
 // cases here (run-it-back.md T015), at `tests/unit/playTime.test.ts` after R2b's move.
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { PlayClock, readoutOf } from '../../../src/app/rounds/playTime.ts';
-import { parseRoundParams, previewState } from '../../../src/app/rounds/urlParams.ts';
+import { PlayClock, readoutOf } from '../../../src/app/playTime.ts';
+import { battleForParams, parseRoundParams } from '../../../src/app/urlParams.ts';
 import { hashState, step } from '../../../src/sim/rounds/index.ts';
-import { playTimeText } from '../../../src/ui/rounds/report.ts';
+import { playTimeText } from '../../../src/ui/report.ts';
 import { content } from '../../roundHelpers.ts';
 
 /** A wall clock the test moves by hand, in ms. */
@@ -164,7 +164,7 @@ describe('the readout on the report (X6, T128)', () => {
     pass(w, c, 5_000);
     const out = readoutOf(c);
     expect(out).toEqual({ planning: [], medianPlanningSeconds: null, minutes: 0 });
-    expect(playTimeText(out)).toBe('Planning time: none timed, since the preview opened past planning');
+    expect(playTimeText(out)).toBe('Planning time: none timed, since the battle opened past planning');
   });
 });
 
@@ -174,8 +174,8 @@ describe('what the clock touches (§13.3, A185)', () => {
   it('leaves the state and its hash alone, and never saves', () => {
     const storage = { getItem: vi.fn(() => null), setItem: vi.fn(), removeItem: vi.fn(), clear: vi.fn(), key: vi.fn(), length: 0 };
     vi.stubGlobal('localStorage', storage);
-    const q = 'scene=rounds&player=bot:balanced&enemy=general:scripted';
-    const fed = previewState(content, parseRoundParams(q), 3);
+    const q = 'scene=battle&player=bot:balanced&enemy=general:scripted';
+    const fed = battleForParams(content, parseRoundParams(q), 3);
     const w = wall();
     const c = new PlayClock(w.now);
     // the page's feed: the phase each frame, with input now and then
@@ -187,7 +187,7 @@ describe('what the clock touches (§13.3, A185)', () => {
     }
     c.phase(fed.round, fed.phase);
     expect(readoutOf(c).planning.length).toBeGreaterThan(0);
-    const alone = previewState(content, parseRoundParams(`${q}&phase=ended`), 3);
+    const alone = battleForParams(content, parseRoundParams(`${q}&phase=ended`), 3);
     expect(hashState(fed)).toBe(hashState(alone));
     expect(JSON.stringify(fed)).toBe(JSON.stringify(alone));
     for (const f of [storage.setItem, storage.removeItem, storage.clear]) expect(f).not.toHaveBeenCalled();

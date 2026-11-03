@@ -67,7 +67,7 @@ describe('saved run recovery', () => {
     expect(await page.evaluate(() => window.__GAME__!.run())).toMatchObject({
       screen: 'battle', row: v1.path.length, kit: v1.kit, lives: { left: 3, max: 3 },
     });
-    expect(await page.evaluate(() => window.__GAME__!.roundBattle()!.sides.player.kit.map((c) => c.building))).toEqual(v1.kit);
+    expect(await page.evaluate(() => window.__GAME__!.battle()!.sides.player.kit.map((c) => c.building))).toEqual(v1.kit);
     expect(await page.evaluate(() => window.__GAME__!.errors)).toEqual([]);
   });
 

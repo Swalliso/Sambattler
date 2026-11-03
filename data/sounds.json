@@ -56,6 +56,14 @@
       ]
     },
     {
+      "id": "arrive", "name": "Arrival", "note": "The armies arrive at a clash's first tick: a soft spore puff, throttled so two armies make one swell.",
+      "bus": "sfx", "gain": 0.28, "priority": 1, "cooldownMs": 220, "frequent": true, "jitter": { "pitch": 0.12, "gain": 0.3, "pan": 0.4 },
+      "layers": [
+        { "wave": "pink", "filter": { "type": "bandpass", "freq": 900, "q": 1.2, "sweep": { "to": 2200, "time": 0.1 } }, "env": { "attack": 0.01, "decay": 0.12, "sustain": 0, "hold": 0, "release": 0.06 }, "gain": 0.6 },
+        { "wave": "sine", "freq": 300, "sweep": { "to": 420, "time": 0.05 }, "env": { "attack": 0.005, "decay": 0.06, "sustain": 0, "hold": 0, "release": 0.03 }, "gain": 0.12 }
+      ]
+    },
+    {
       "id": "column-gained", "name": "Column claimed", "note": "A column flips to you: a rising chime.",
       "bus": "sfx", "gain": 0.36, "priority": 5, "cooldownMs": 350,
       "layers": [
@@ -65,7 +73,25 @@
       ]
     },
     {
+      "id": "lane-won", "name": "Lane won", "note": "You win a lane's clash: a rising chime.",
+      "bus": "sfx", "gain": 0.36, "priority": 5, "cooldownMs": 350,
+      "layers": [
+        { "wave": "sine", "freq": 659, "env": { "attack": 0.003, "decay": 0.25, "sustain": 0, "hold": 0, "release": 0.2 }, "gain": 0.45 },
+        { "wave": "sine", "freq": 988, "env": { "attack": 0.003, "decay": 0.35, "sustain": 0, "hold": 0, "release": 0.25 }, "gain": 0.45, "delay": 0.09 },
+        { "wave": "triangle", "freq": 1976, "filter": { "type": "lowpass", "freq": 3000 }, "env": { "attack": 0.002, "decay": 0.12, "sustain": 0, "hold": 0, "release": 0.08 }, "gain": 0.1, "delay": 0.09 }
+      ]
+    },
+    {
       "id": "column-lost", "name": "Column lost", "note": "A column flips to the Gray Rot: a falling two-note.",
+      "bus": "sfx", "gain": 0.38, "priority": 6, "cooldownMs": 350,
+      "layers": [
+        { "wave": "triangle", "freq": 523, "filter": { "type": "lowpass", "freq": 1800 }, "env": { "attack": 0.004, "decay": 0.22, "sustain": 0, "hold": 0, "release": 0.15 }, "gain": 0.5 },
+        { "wave": "triangle", "freq": 392, "filter": { "type": "lowpass", "freq": 1400 }, "env": { "attack": 0.004, "decay": 0.35, "sustain": 0, "hold": 0, "release": 0.25 }, "gain": 0.5, "delay": 0.14 },
+        { "wave": "sine", "freq": 196, "env": { "attack": 0.01, "decay": 0.4, "sustain": 0, "hold": 0, "release": 0.25 }, "gain": 0.25, "delay": 0.14 }
+      ]
+    },
+    {
+      "id": "lane-lost", "name": "Lane lost", "note": "The Gray Rot wins a lane's clash: a falling two-note.",
       "bus": "sfx", "gain": 0.38, "priority": 6, "cooldownMs": 350,
       "layers": [
         { "wave": "triangle", "freq": 523, "filter": { "type": "lowpass", "freq": 1800 }, "env": { "attack": 0.004, "decay": 0.22, "sustain": 0, "hold": 0, "release": 0.15 }, "gain": 0.5 },
@@ -84,6 +110,16 @@
     },
     {
       "id": "building-razed", "name": "Building razed", "note": "One of theirs falls: a satisfying crunch.",
+      "bus": "sfx", "gain": 0.6, "priority": 7, "cooldownMs": 150, "jitter": { "pitch": 0.05 },
+      "layers": [
+        { "wave": "white", "filter": { "type": "bandpass", "freq": 2400, "q": 1, "sweep": { "to": 800, "time": 0.12 } }, "env": { "attack": 0.001, "decay": 0.12, "sustain": 0, "hold": 0, "release": 0.05 }, "gain": 0.5 },
+        { "wave": "brown", "filter": { "type": "lowpass", "freq": 1200, "sweep": { "to": 300, "time": 0.2 } }, "env": { "attack": 0.002, "decay": 0.22, "sustain": 0, "hold": 0, "release": 0.1 }, "gain": 0.6 },
+        { "wave": "sine", "freq": 130, "sweep": { "to": 60, "time": 0.2 }, "env": { "attack": 0.004, "decay": 0.2, "sustain": 0, "hold": 0, "release": 0.1 }, "gain": 0.5 },
+        { "wave": "triangle", "freq": 784, "sweep": { "to": 1175, "time": 0.06 }, "filter": { "type": "lowpass", "freq": 2500 }, "env": { "attack": 0.003, "decay": 0.2, "sustain": 0, "hold": 0, "release": 0.15 }, "gain": 0.15, "delay": 0.1 }
+      ]
+    },
+    {
+      "id": "power", "name": "Commander power", "note": "Spore Burst goes off: a crash.",
       "bus": "sfx", "gain": 0.6, "priority": 7, "cooldownMs": 150, "jitter": { "pitch": 0.05 },
       "layers": [
         { "wave": "white", "filter": { "type": "bandpass", "freq": 2400, "q": 1, "sweep": { "to": 800, "time": 0.12 } }, "env": { "attack": 0.001, "decay": 0.12, "sustain": 0, "hold": 0, "release": 0.05 }, "gain": 0.5 },
@@ -140,7 +176,25 @@
       ]
     },
     {
+      "id": "plan", "name": "General planned", "note": "The general's plan lands as a planning phase opens: a low swell.",
+      "bus": "sfx", "gain": 0.55, "priority": 9, "cooldownMs": 3000,
+      "layers": [
+        { "wave": "saw", "freq": 55, "vibrato": { "rate": 0.5, "depth": 8 }, "filter": { "type": "lowpass", "freq": 120, "q": 4, "sweep": { "to": 500, "time": 1.2 } }, "env": { "attack": 0.9, "decay": 0.3, "sustain": 0.6, "hold": 0.2, "release": 0.9 }, "gain": 0.5 },
+        { "wave": "sine", "freq": 58, "env": { "attack": 0.9, "decay": 0.3, "sustain": 0.6, "hold": 0.2, "release": 0.9 }, "gain": 0.35 },
+        { "wave": "brown", "filter": { "type": "lowpass", "freq": 300 }, "env": { "attack": 1, "decay": 0.1, "sustain": 0.8, "hold": 0.3, "release": 0.8 }, "gain": 0.2 }
+      ]
+    },
+    {
       "id": "counter-active", "name": "Counter active", "note": "The counter lands: a deep, dark boom.",
+      "bus": "sfx", "gain": 0.52, "priority": 9, "cooldownMs": 3000,
+      "layers": [
+        { "wave": "sine", "freq": 73, "sweep": { "to": 41, "time": 0.8 }, "env": { "attack": 0.01, "decay": 0.9, "sustain": 0, "hold": 0, "release": 0.5 }, "gain": 0.8 },
+        { "wave": "saw", "freq": 110, "filter": { "type": "lowpass", "freq": 400, "q": 3, "sweep": { "to": 150, "time": 0.8 } }, "env": { "attack": 0.01, "decay": 0.6, "sustain": 0.2, "hold": 0.2, "release": 0.6 }, "gain": 0.3 },
+        { "wave": "brown", "filter": { "type": "lowpass", "freq": 700, "sweep": { "to": 200, "time": 0.5 } }, "env": { "attack": 0.005, "decay": 0.5, "sustain": 0, "hold": 0, "release": 0.3 }, "gain": 0.4 }
+      ]
+    },
+    {
+      "id": "counter", "name": "Counter", "note": "The general's plan brings a counter: a deep, dark boom.",
       "bus": "sfx", "gain": 0.52, "priority": 9, "cooldownMs": 3000,
       "layers": [
         { "wave": "sine", "freq": 73, "sweep": { "to": 41, "time": 0.8 }, "env": { "attack": 0.01, "decay": 0.9, "sustain": 0, "hold": 0, "release": 0.5 }, "gain": 0.8 },

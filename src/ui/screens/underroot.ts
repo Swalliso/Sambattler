@@ -63,7 +63,7 @@ export function underrootScreen(content: Content, atlas: Atlas, opts: UnderrootO
         h('span', { class: 'eyebrow' }, 'Power · ', h('kbd', null, 'Q'), ' in battle'),
         h('span', { class: 'uc-power-name' }, uiIcon(atlas, 'i-power'), h('b', null, p.name)),
         h('span', { class: 'uc-text' }, p.text),
-        h('span', { class: 'uc-meta' }, `${powerAim(p)} · ${powerTiming(p)}`)),
+        h('span', { class: 'uc-meta' }, `${powerAim(p)} · ${powerTiming()}`)),
       h('div', { class: 'uc-sec uc-starter' }, h('span', { class: 'eyebrow' }, 'Starter kit'),
         h('div', { class: 'uc-kit' }, ...c.starter.map((b) => piece(b)))),
       h('div', { class: 'uc-sec uc-core' }, h('span', { class: 'eyebrow' }, 'Core pool · drafted twice as often'),
