@@ -8,6 +8,22 @@ replaces. None of it is open work, including headings that say "Open:". From mil
 entries measure or tune v2's round battle (SPEC §11, §12). "The backlog" in the entries below means
 v1's, now [archived](../docs/archive/v1/balance-backlog.md).
 
+## R2b-S4c T170–T174: the flyers preset deleted, and no new presets (2026-11-03)
+
+**No balance value changed, and no golden moved.** The user, 2026-11-03: "I'm not personally a fan of having a bunch
+of these that we have to keep track of", then, on the hub's plan, "Cleanup first".
+- **`src/data/proto.ts`** keeps one preset, `bosslives`, which R2b's playtest (S14) adopts as data or deletes (#16).
+  `flyers` is gone: the round sim never had flyer rules, and flyers are out of the first release (X9).
+  `?proto=flyers` now reads as an unknown preset (A117).
+- **Gone with it:** the `flying` balance block and the `flying` tag (`src/data/schema.ts`), and the Driftling's and
+  the Drift Stalk's sprites (`data/sprites/units.json`, `buildings.json`), which nothing else read. Flyers' design
+  stays in SPEC §1.3 #11, §5.3, §11.2 and §11.3, and the sprites are in git history.
+- **X8's knobs** (`rounds.ai.leanToLastAnswer`, `rounds.ai.replaceWhenFull`) stay off in `data/balance.json` until
+  S12 (T129), which deletes them unless S11 shows the general needs one.
+- **The rule from now on:** no new named presets. A candidate rule is a data change, measured with the
+  `--proto path:value` override, or code on a short-lived branch, measured there and merged as the default with the
+  user's OK, or deleted. Any temporary switch names the session that removes it.
+
 ## R2b-S4 T055–T061: the presets of retired systems deleted (2026-11-03)
 
 **No data value changed, and no golden moved.** The deletions are §16 R2's list and R1's knob outcomes (A109), which

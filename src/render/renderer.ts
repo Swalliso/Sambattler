@@ -334,7 +334,7 @@ export class RoundRenderer {
     }
 
     const calm = this.calm();
-    if (planning) this.preview.drawSquads(g, state, this.toScreen, this.glowOf, this.assist, calm, t);
+    if (planning) this.preview.drawSquads(g, state, this.toScreen, this.glowOf, this.assist, t);
     if (state.clouds?.length) this.drawClouds(state, t);
     const over = state.phase === 'aftermath' || state.phase === 'ended';
     if (over) this.aftermath.begin(state, view.aftermathMs, this.still || state.phase === 'ended' ? 'final' : calm ? 'calm' : 'full', t);
@@ -343,7 +343,7 @@ export class RoundRenderer {
     for (const u of state.units) us.push(u);
     us.sort((a, b) => a.y - b.y || a.id - b.id);
     if (state.phase === 'clash') this.drawKnitGlow(state, us, alpha, t);
-    for (const u of us) this.drawUnit(state, view, u, alpha, t, calm, over);
+    for (const u of us) this.drawUnit(state, view, u, alpha, t, over);
 
     for (const h of state.hits) {
       if (!h.ranged) continue;
@@ -509,7 +509,7 @@ export class RoundRenderer {
   }
 
   /** One unit, through R4a's drawer (`src/render/unitSprite.ts`), at its interpolated foot point, posed by the aftermath once the clash is over. */
-  private drawUnit(state: BattleState, view: RoundView, u: UnitState, alpha: number, t: number, calm: boolean, over: boolean): void {
+  private drawUnit(state: BattleState, view: RoundView, u: UnitState, alpha: number, t: number, over: boolean): void {
     let x = u.px + (u.x - u.px) * alpha;
     let y = (u.py + (u.y - u.py) * alpha) * TILE;
     const emplacement = !!state.compiled[u.side].units[u.unitId]?.emplacement;
@@ -537,13 +537,11 @@ export class RoundRenderer {
     o.id = u.id;
     o.hpFrac = u.hp / u.maxHp;
     o.shieldFrac = u.shield ? u.shield / Math.max(1, u.maxHp * state.rules.arrivalShield.shieldFrac) : undefined;
-    o.flying = u.flying;
     o.burrowed = u.burrowed;
     o.glow = this.mat(u.side).glow;
     o.assist = this.assist;
     o.selected = u.id === view.selected;
     o.time = t;
-    o.calm = calm;
     drawUnitSprite(this.ctx, this.atlas, o);
   }
 

@@ -1,51 +1,21 @@
 // Prototype knobs (`?proto=`, `--proto`): named presets and `path:value` overrides applied to the raw content
 // before validation, so a knob can be measured by the tools (`--proto`) or playtested in the browser (`?proto=`)
 // without editing data. Every knob here is absent from balance.json by default, so without a spec the rules are
-// unchanged. Since R2b's S4 the presets are the agreed list (SPEC §16 R2, A109): the flyers, for the later flyer
-// (§1.3 #11), and lives at the boss, for R2b's playtest (#16). R1's chosen set and the arrival shield are default
-// data since R2a, the presets of retired systems are gone (Appendix A), and the user dropped A2 and B3, which no
-// battle in rounds read (2026-11-03). A spec that names a gone preset reports it as unknown (A117). Log new knobs
-// in docs/balance-backlog.md.
+// unchanged. Since R2b's S4c one preset is left (SPEC §16 R2, A109): lives at the boss, for R2b's playtest (#16),
+// which S14 adopts as data or deletes. R1's chosen set and the arrival shield are default data since R2a, the
+// presets of retired systems are gone (Appendix A), and the user dropped A2, B3 and the flyers (2026-11-03). A spec
+// that names a gone preset reports it as unknown (A117). Add no preset: measure a data change with a `path:value`
+// override, which needs no code here (SPEC §16 R2, .claude/rules/balance.md).
 import type { RawContent } from './registry.ts';
 
 type Json = Record<string, unknown>;
 
-/**
- * Flyers (docs/archive/v1/ideas/flyers.md; working names): the Driftling floats over ground units. Every unit
- * can hit it, melee at ×0.5, but the Mortar's lobbed shell and the Burster's burst never can: the design's
- * rule C (§5.3), which the user took for the playtest on 2026-10-31 after mono Drift Stalk took over G3 under
- * the design's first pick, reach (only ranged units, other flyers, clouds, commander powers and melee types of
- * 2 or more supply): `flying.reachSupply:2,flying.meleeMult:1` brings reach back. The round sim has no flyer
- * rules yet, so in a battle Driftlings fight as ground units. The Drift Stalk is in squad form (§11.2): it costs
- * 160 and fields a squad of 6 Driftlings a round. Every data bot and every general buys it at weight 1, as the
- * Tunnel and the Pod (R2-Q5); mono bots and the counter check's test bots don't.
- */
-const FLYERS: Json = {
-  flying: { reachSupply: 1, meleeMult: 0.5, mergedReach: false, cloudsReach: true },
-  'unit.driftling': {
-    name: 'Driftling', sprite: 'u-driftling', milestone: 5,
-    hp: 70, armor: 'light', damage: 8, damageType: 'slash', attackInterval: 1.0,
-    range: 1.0, projectileSpeed: 0, speed: 1.4, supply: 1, aggroRange: 5, radius: 0.25,
-    tags: ['flying'], mergePerks: { 2: { speedMult: 1.1 }, 3: { damageMult: 1.1 } },
-  },
-  'building.driftStalk': {
-    name: 'Drift Stalk', sprite: 'b-driftStalk', milestone: 5, rarity: 'uncommon',
-    description: "Driftlings float over the front. Melee hits them for half damage, and lobbed shells and bursts can't hit them.",
-    kind: 'spawner', footprint: { w: 2, h: 2 }, cost: 160, squad: { unit: 'driftling', count: 6 },
-  },
-  'faction.velvet-bloom.buildings+': 'driftStalk',
-  'faction.gray-rot.buildings+': 'driftStalk',
-  ...Object.fromEntries([
-    ...['balanced', 'balanced-nomerge', 'answer', 'slayer', 'slayer-nomerge', 'slayer-rounds', 'slayer-rounds-nomerge', 'rush', 'turtle', 'greedy'].map((id) => `bot.${id}.weights.driftStalk`),
-    ...['scripted', 'mother-mold', 'lichen-baron', 'blightwright', 'pale-sovereign'].map((id) => `general.${id}.weights.driftStalk`),
-  ].map((path) => [path, 1])),
-};
-
-/** Presets: the settings each knob is measured with (see the backlog's results tables). */
+/** Presets: the settings a knob is measured with. No new ones (the user, 2026-11-03). */
 export const PROTO_PRESETS: Record<string, Json> = {
-  /** Flyers (above), for the later flyer (§1.3 #11). */
-  flyers: FLYERS,
-  /** Lives left count at the boss (§8.5, #16): +250 to your boss battle's Heartcap for each life left. For R2b's playtest. */
+  /**
+   * Lives left count at the boss (§8.5, #16): +250 to your boss battle's Heartcap for each life left. For R2b's
+   * playtest, after which S14 adopts it as data or deletes it (T149).
+   */
   bosslives: { livesAtBoss: { heartcapPerLife: 250 } },
 };
 

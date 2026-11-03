@@ -258,8 +258,8 @@ The Burster Pod has Fuse and Sporebloom, and the Rhizomorph Tunnel gets Upheaval
   - every augment's `building` exists and fields units;
   - every combo's `a` and `b` resolve to at least one building;
   - every pack's relics exist;
-  - every pack's building exists, unless the pack carries a `requires` the default content doesn't meet (the Air pack's `requires: 'flyers'`: the Drift Stalk exists only in `src/data/proto.ts`'s `flyers` preset, and R2b keeps it there), or the building is missing from the roster, which #46 allows (Deep Roots, if R1 dropped the Rhizomorph). Then the registry records the pack as undealable instead of failing;
-  - with the `flyers` preset applied (`applyProto` runs before `loadContent`), the Air pack is dealable;
+  - every pack's building exists, unless the pack carries a `requires` the default content doesn't meet (the Air pack's `requires: 'flyers'`: no Drift Stalk exists until flyers' milestone, since R2b's S4c deleted the `flyers` preset on 2026-11-03), or the building is missing from the roster, which #46 allows (Deep Roots, if R1 dropped the Rhizomorph). Then the registry records the pack as undealable instead of failing;
+  - with a Driftling and a Drift Stalk added by `path:value` overrides (`unit.driftling:{…}`, `building.driftStalk:{…}` and the faction's `buildings+`, from SPEC §11.2 and §11.3; `applyProto` runs before `loadContent`), the Air pack is dealable;
   - a relic in two packs fails;
   - `alwaysIn.buildings` must equal the buildings marked `core` plus `truffleCellar`;
   - every augment and combo icon resolves to a `ui` sprite;

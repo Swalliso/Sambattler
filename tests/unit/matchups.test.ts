@@ -83,8 +83,8 @@ describe('what never changes a class (§5.3, §10.4)', () => {
   });
 
   it('refuses a unit its side doesn\'t have', () => {
-    expect(() => vs(state, 'driftling', 'sporeling')).toThrow(/driftling/);
-    expect(() => vs(state, 'sporeling', 'driftling')).toThrow(/driftling/);
+    expect(() => vs(state, 'nosuchunit', 'sporeling')).toThrow(/nosuchunit/);
+    expect(() => vs(state, 'sporeling', 'nosuchunit')).toThrow(/nosuchunit/);
   });
 });
 

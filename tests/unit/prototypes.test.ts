@@ -1,8 +1,9 @@
-// Prototype knobs (src/data/proto.ts, SPEC §15.7 Prototypes): since R2b's S4 only the agreed default-off knobs
-// remain (§16 R2, A109), each absent from data/balance.json, so the shipped rules are unchanged. The `proto`
-// spec (tools `--proto`, browser `?proto=`) applies presets and overrides to the content, and a preset that
-// doesn't exist, such as a retired one, is reported (A117). The user dropped A2 and B3, which no battle in rounds
-// read (2026-11-03). The flyers have their own file (flyers.test.ts).
+// Prototype knobs (src/data/proto.ts, SPEC §15.7 Prototypes): since R2b's S4c one default-off preset remains,
+// `bosslives`, absent from data/balance.json, so the shipped rules are unchanged; R2b's playtest (S14) adopts it
+// as data or deletes it (§16 R2, A109). The `proto` spec (tools `--proto`, browser `?proto=`) applies presets and
+// `path:value` overrides to the content, and a preset that doesn't exist, such as a retired one, is reported
+// (A117). The user dropped A2 and B3, which no battle in rounds read, and then the flyers, whose rules the round
+// sim never had (2026-11-03: "Cleanup first"), so the content takes no `flying` block or tag.
 import { describe, expect, it } from 'vitest';
 import { applyProto, applyProtoToBalance, PROTO_PRESETS, unknownPresets } from '../../src/data/proto.ts';
 import { protoContent, readRawContent } from '../../tools/lib/content.ts';
@@ -19,8 +20,13 @@ function at(obj: unknown, path: string): unknown {
 const CONTENT_PATH = /^(building|unit|bot|general|faction)\./;
 
 describe('the presets are the agreed list (§16 R2, A109)', () => {
-  it("are the flyers and lives at the boss: R1's review kept no knob, the user dropped A2 and B3, and the retired systems' presets are gone", () => {
-    expect(Object.keys(PROTO_PRESETS).sort()).toEqual(['bosslives', 'flyers']);
+  it("are lives at the boss alone: R1's review kept no knob, the user dropped A2, B3 and the flyers, and the retired systems' presets are gone", () => {
+    expect(Object.keys(PROTO_PRESETS)).toEqual(['bosslives']);
+  });
+
+  it('leave no flyer rules: the content refuses a `flying` block or tag (2026-11-03)', () => {
+    expect(() => protoContent('flying.meleeMult:0.5')).toThrow(/balance\.json: Unrecognized key: "flying"/);
+    expect(() => protoContent('unit.sporeling.tags:["flying"]')).toThrow(/units\.json: 0\.tags\.0: Invalid option/);
   });
 
   it('set nothing data/balance.json sets, so without a spec the rules are unchanged', () => {
@@ -58,8 +64,9 @@ describe('the proto spec', () => {
     ]);
     expect(balance.livesAtBoss).toEqual(PROTO_PRESETS.bosslives!.livesAtBoss);
     expect(unknownPresets('rework,bosslives,B3,a2,hold,constructor,livesAtBoss.heartcapPerLife:300')).toEqual(['rework', 'b3', 'a2', 'hold', 'constructor']);
-    expect(unknownPresets('Flyers,bosslives,flying.meleeMult:1')).toEqual([]);
+    expect(unknownPresets('Flyers,bosslives,livesAtBoss.heartcapPerLife:300')).toEqual(['flyers']);
     expect(() => protoContent('rework')).toThrow(/unknown preset "rework"/);
+    expect(() => protoContent('flyers')).toThrow(/unknown preset "flyers" \(known: bosslives\)/);
   });
 });
 
