@@ -3,7 +3,8 @@
 // battle and deploy play one battle, report plays it out headlessly and opens on its report.
 // With no scene (and no battle parameters) the page opens on the title, the front door to the run;
 // New run goes through the Underroot (`scene=underroot`), where the commander and bans are chosen.
-// `scene=sounds` is the sound board, a tool for auditioning data/sounds.json.
+// `scene=sounds` is the sound board, a tool for auditioning data/sounds.json. `scene=rounds` is R2a's preview
+// of a battle in rounds (src/app/rounds/main.ts), loaded as its own chunk, with its button on the dev site's title.
 import '../ui/styles.css';
 import { loadRecords, runItBackSetup, setLastSetup, updateRecords } from '../meta/index.ts';
 import { bakeAtlas } from '../render/atlas.ts';
@@ -42,6 +43,8 @@ const UNDERROOT = 'underroot';
 /** Tools that aren't part of the game: `sounds` is the sound board for auditioning the sound set. */
 const TOOL_SCENES = new Set(['sounds']);
 const TITLE = 'title';
+/** R2a's preview of a battle in rounds, on every build (plan Call 2). R2b deletes it. */
+const ROUNDS = 'rounds';
 /** The Underroot's first-time tip, remembered with the battle tips (spore-sprawl/tips/v1). */
 const UNDERROOT_TIP = 'underroot';
 const errors: string[] = [];
@@ -91,9 +94,9 @@ function installDisplaySettings(): void {
 function boot(): void {
   installDisplaySettings();
   const params = parseParams(location.search);
-  const known = params.scene === TITLE || params.scene === UNDERROOT || BATTLE_SCENES.has(params.scene) || RUN_SCENES.has(params.scene) || TOOL_SCENES.has(params.scene);
+  const known = params.scene === TITLE || params.scene === UNDERROOT || params.scene === ROUNDS || BATTLE_SCENES.has(params.scene) || RUN_SCENES.has(params.scene) || TOOL_SCENES.has(params.scene);
   if (!known) {
-    fatal(`scene=${params.scene} is not part of Milestone ${MILESTONE} (only ${[TITLE, UNDERROOT, ...BATTLE_SCENES, ...RUN_SCENES, ...TOOL_SCENES].join(', ')} exist yet).`);
+    fatal(`scene=${params.scene} is not part of Milestone ${MILESTONE} (only ${[TITLE, UNDERROOT, ROUNDS, ...BATTLE_SCENES, ...RUN_SCENES, ...TOOL_SCENES].join(', ')} exist yet).`);
     return;
   }
   for (const problem of params.flagProblems) console.warn(`${problem}; ignored`);
@@ -117,7 +120,9 @@ function boot(): void {
   }
   const atlas = bakeAtlas(content);
   const engine = installSound(content, soundEnabled({ test: params.test, force: params.sound }));
-  if (params.scene === 'sounds') soundBoard(content, atlas, engine);
+  // the preview reads its own parameters; a dynamic import keeps the round battle out of the main bundle (§13.7)
+  if (params.scene === ROUNDS) void import('./rounds/main.ts').then((m) => m.startRounds(content, atlas, errors));
+  else if (params.scene === 'sounds') soundBoard(content, atlas, engine);
   else if (params.scene === TITLE || params.scene === UNDERROOT) openTitle(content, atlas, params);
   else if (RUN_SCENES.has(params.scene)) startRun(content, atlas, params);
   else start(content, atlas, params, params.seed ?? randomSeed());
@@ -226,6 +231,7 @@ function openTitle(content: Content, atlas: ReturnType<typeof bakeAtlas>, params
       },
       help: openHelp,
       settings: settingsButton(atlas, openSettingsScreen, 'Settings'),
+      ...(DEV_SITE ? { rounds: () => { location.href = `?scene=${ROUNDS}`; } } : {}),
     }, params.test, `Milestone ${MILESTONE}${DEV_SITE ? ` · dev build${BUILD_SHA ? ` ${BUILD_SHA}` : ''}` : ''}`);
     document.getElementById('app')!.replaceChildren(screen);
     screen.querySelector<HTMLElement>('.title-menu .primary')?.focus({ preventScroll: true });

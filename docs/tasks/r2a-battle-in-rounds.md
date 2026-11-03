@@ -570,23 +570,23 @@ S1 to S4: the data, the colony, the round state machine and the planning command
   - with `player=bot:balanced&phase=planning` the bot's plan has run and its `beginClash` stays queued;
   - `player=bot:balanced&round=4&phase=clash&ticks=200&paused=1` gives the bridge round 4, phase `clash` and tick `clash.startTick + 200`;
   - with `player=bot:balanced`, a round past the battle's end fails with a message; with the default human player, `round=2` without `scenario` is refused with a message.
-- [ ] T075 [US3] Add a `scene=rounds` branch to `src/app/main.ts`, taken on every build, and an "A battle in rounds (preview)" button to `src/ui/screens/title.ts`, shown only on the dev site (`DEV_SITE` in `src/app/channel.ts`). This is X2's temporary entry (Call 2); storage keys don't change (§13.8, `.claude/rules/storage.md`)
+- [x] T075 [US3] Add a `scene=rounds` branch to `src/app/main.ts`, taken on every build, and an "A battle in rounds (preview)" button to `src/ui/screens/title.ts`, shown only on the dev site (`DEV_SITE` in `src/app/channel.ts`). This is X2's temporary entry (Call 2); storage keys don't change (§13.8, `.claude/rules/storage.md`)
   - The branch loads `src/app/rounds/main.ts` with a dynamic `import()`, so `src/app/rounds/**` is its own chunk and the main bundle stays inside §13.7's 300 KB.
-- [ ] T076 [US3] Build `startRounds` in `src/app/rounds/main.ts` (new) and the preview's parameters in `src/app/rounds/urlParams.ts` (new) (§15.6) (A059, A075)
+- [x] T076 [US3] Build `startRounds` in `src/app/rounds/main.ts` (new) and the preview's parameters in `src/app/rounds/urlParams.ts` (new) (§15.6) (A059, A075)
   - The parameters: `map`, `seed`, `battleIndex`, `player`, `enemy`, `commander`, `scenario`, `round`, `phase` (`planning`, `clash`, `aftermath` or `ended`, which opens the report), `ticks` (within the clash), `paused`, `flags`, `test`, `debug`, `targeting` (`1` opens power targeting in a clash, T109), `measure` (`frames` records frame times into the bridge, T115) and `reveal` (T127).
   - The defaults (Call 28): `map=bogwater-hollow`, `battleIndex=1`, `player=human`, `enemy=general:mother-mold`, `flags=merging,adaptive,powers`, `commander=vesper`. The player's kit is the faction roster (T033). The seed is random and written into the URL. The title's button opens these defaults.
   - With `player=human`, a `round` above 1, or a `phase` other than `planning`, is refused with a message unless `scenario` is set, since a human planning phase can't be played headlessly (T059).
   - It plays earlier rounds headlessly with the controllers, stops at Call 14's checkpoint or the asked clash tick, and holds.
-- [ ] T077 [US3] Build the loop by phase in `src/app/rounds/loop.ts` (new), with one controller per phase in `src/app/rounds/phases/planning.ts` (new), `src/app/rounds/phases/clash.ts` (new) and `src/app/rounds/phases/aftermath.ts` (new), so the UI sessions after this one don't collide (§13.5)
+- [x] T077 [US3] Build the loop by phase in `src/app/rounds/loop.ts` (new), with one controller per phase in `src/app/rounds/phases/planning.ts` (new), `src/app/rounds/phases/clash.ts` (new) and `src/app/rounds/phases/aftermath.ts` (new), so the UI sessions after this one don't collide (§13.5)
   - Planning: one `step()` when the queue isn't empty, unless held; render at alpha 1.
   - Clash: the accumulator × speed, at most 12 steps a frame; pause and speed apply only here, and a pause never carries over.
   - Aftermath: no steps until the view reports done or skipped, then one `step()`.
   - The preview is recomputed only after a colony or toggle command.
   - Create `src/app/rounds/battleView.ts` (new): the canvas T081 draws into, and empty mounts for the top band, the tally, the Intent panel, the tray, inspect and the callouts. Each later UI task fills its own mount with one line, so S12, S13 and S14 each end green and S12 and S13 don't collide.
-- [ ] T078 [US3] Build the session on plots in `src/app/rounds/session.ts` (new) and the keys by phase in `src/app/rounds/input.ts` (new) (§10.2, §10.3) (A065)
+- [x] T078 [US3] Build the session on plots in `src/app/rounds/session.ts` (new) and the keys by phase in `src/app/rounds/input.ts` (new) (§10.2, §10.3) (A065)
   - Session: choose a card; the ghost snaps to a plot, or to its formation slot; plant `{buildingId, plot}`, with Shift to keep planting; X twice sells, showing the refund; M toggles; Begin, with the empty-lane two-press warning.
   - Keys follow §10.3 by phase. Begin by key needs a fresh keydown after planning opened, ignores auto-repeat and waits about 400 ms; the button is instant. Space and Enter skip the aftermath. Planning keys in a clash are refused with a callout; Esc clears the warning and cancels.
-- [ ] T079 [US3] Build the bridge in `src/app/rounds/bridge.ts` (new): `window.__GAME__` with `ready`, `scene`, `round`, `phase`, `tick`, `hash` (rounds' `hashState`), `summary()`, `battle()`, `preview()` and `errors` (§15.6) (A076)
+- [x] T079 [US3] Build the bridge in `src/app/rounds/bridge.ts` (new): `window.__GAME__` with `ready`, `scene`, `round`, `phase`, `tick`, `hash` (rounds' `hashState`), `summary()`, `battle()`, `preview()` and `errors` (§15.6) (A076)
   - `preview()` returns `{player, enemy}`: per side, the squads and unit positions the preview drew. It's `null` until T083 draws the preview.
   - With `measure=frames`, `frames` holds the last frame times (T115). v1 has no such field yet (A187 marks it M8's), so it lives in this bridge only.
 - [ ] T080 [US3] Build `roundStateForParams` in `tools/lib/rounds/params.ts` (new), matching `src/app/rounds/main.ts`'s checkpoints exactly, and teach `tools/screenshot.ts` to compare a `scene=rounds` capture's hash with it at the same round, phase and tick. The tool's `vite preview` build has the entry (Call 2), so it needs no `--dev` mode (§15.6) (A059)
@@ -596,7 +596,7 @@ S1 to S4: the data, the colony, the round state machine and the planning command
   - (3) At least 12 distinct colors in the sampled grid, and both team tints sampled inside their own colony columns.
   - (5) It writes `artifacts/screenshots/<name>.png` and `<name>.json` with the round, phase, tick and hash.
   - Assertion 4 needs the HUD and the preview, so it lands in T143.
-- [ ] T081 [US3] Build the first cut of `src/render/rounds/renderer.ts` (new) from v1's renderer, without territory, capture, rally lines, turrets or spawn timers (§13.6) (A072)
+- [x] T081 [US3] Build the first cut of `src/render/rounds/renderer.ts` (new) from v1's renderer, without territory, capture, rally lines, turrets or spawn timers (§13.6) (A072)
   - It draws the terrain, both colonies' plots as a faint 2×2 grid, loam and stumps, Call 21's closed plots and buildings.
   - It draws units through R4a's `drawUnitSprite(g, atlas, opts)` in `src/render/unitSprite.ts` (R4/T011). If R4a hasn't landed, create `src/render/unitSprite.ts` (new) with R4a's signature by moving the body of `Renderer.drawUnit` (`src/render/renderer.ts:511`), with no pixel change, and make v1's `drawUnit` call it.
 
