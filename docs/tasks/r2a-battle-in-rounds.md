@@ -921,6 +921,16 @@ S1 to S4: the data, the colony, the round state machine and the planning command
 
 **Checkpoint:** S20: T129–T135's commands pass, with T141's and T143's assertions green on every capture. S21: T137's answers are in `docs/playtest-feedback.md` and the user has agreed R2b's start.
 
+**S21b: the playtest's fixes** (the user's playtest, 2026-11-03; beside S21, which owns `docs/playtest-feedback.md`, `docs/r2a-plan.md`, `docs/tasks/clarify.md`, `docs/ideas/`, and SPEC §16 and §18.2)
+
+- [ ] T159 Bursters to the front line, a rule change the user approved ("Yes, start both", 2026-11-03), on the hub's reading of G16's levers and their note "bursters in the front rank also felt pretty good": §7.3's back-line tags lose `burst`, in SPEC §7.3, §12.3's G16 row and the balance tools' "Formation: by role" line, in the general's and the bots' placement (`src/sim/rounds/ai/formationScore.ts`) and in `BACK_TAGS` (`tools/lib/clash.ts`). Burster pairs become same-role and leave G16's pool. Re-measure G16, with G3, G4, G12 and G13 for side effects, into `docs/balance-backlog.md`; log the rule in `data/CHANGELOG-balance.md`; refresh the round replays with `npm run golden -- update`, and v1's eight don't move (§7.3, §12.3)
+- [ ] T160 The Puffball Mortar's emplacement in the clash: reproduce the missing emplacement with a capture (`npm run screenshot`) of a battle where a Mortar fields, draw it in `src/render/rounds/` with `emplacementSprite` (R4/T029), and add a check that would catch it (§4.6)
+- [ ] T161 One highlight when placing: with a card selected over a plot, the planning screen keeps the plot's highlight and the ghost squad in the field, and drops the box at the squad's formation slot. A browser test first (the user: "stick to just having the user place the buildings")
+- [ ] T162 Diagnose the Morel Runners against Capguard Halls and Rootbreaker Dens, headless and with a capture: how many runners attack at once, where they path, and whether they run past the front line (speed 1.8, aggro 4) to the back, perhaps to an emplacement. Report whether it's intended or a bug in `docs/balance-backlog.md`; fix only a clear bug in movement or targeting, and a stat change waits for the user
+- [ ] T163 Measure a fixed round cap, 750 HP and 500 HP for both sides, against today's 25% of the loser's max HP (X5): G4 over 200 battles (the median rounds, the share reaching round 9, the bot's win rate, how often the cap binds), G6 and G8. Any knob is default-off and its effect on the round replays' hashes is stated. The results go in `docs/balance-backlog.md` for R2b's S0; no rule changes (§6.7, §12.3)
+
+**Checkpoint:** S21b: `npm run verify` and `npx vitest run tests/browser/rounds` pass, and T159's, T162's and T163's readings are in `docs/balance-backlog.md`.
+
 ## Dependencies and parallel work
 
 - **Phase order:** Setup → Foundational → US1 → US2 → US3 → S14b's rough playtest (R2-Q25) → US4 and US5 in parallel → US6 → US7 → Polish. US1 needs the whole Foundational phase, and US2 needs US1. US3 needs US2 (a whole battle to play). US4's and US5's sim tasks need only US2, but their UI tasks (T102, T109) need US3's S13 and S14, so their sessions start after S14. US6 needs US4 and US5 (the power replays, G8 on the adaptive general). US7 needs US3: T127 draws on its preview layer and T128 on its report. Polish needs US6 and US7 (S20 after S18 and S19), and the playtest (S21) needs S20 on the dev site.
@@ -985,6 +995,7 @@ Each session is about a day, ends in one PR into `develop` (opened when the user
 | S19 | T126–T128 | `feature/r2a-measures` | S15 and S16 merged (beside S17, the user's go-ahead, 2026-11-03) | The "last fielded" view and planning seconds per round on the report (US7 done) |
 | S20 | T129–T136, T138 | `feature/r2a-verify` | S18 and S19 merged | Steps 1–4 and 7–9 passing; T136's inventory; the docs and As built before the playtest |
 | S21 | T137, T144, T139 | `feature/r2a-gate` | S20 merged and deployed to the dev site; R4/T039 passed (2026-11-02) | The playtest answered and written down; the user's tuning calls; R2b may start |
+| S21b | T159–T163 | `feature/r2a-playtest-fixes` | S20 merged; the user's playtest, 2026-11-03 (beside S21) | The Burster in the front line, re-measured; the Mortar's emplacement drawn in the clash; one highlight when placing; the Morel Runners diagnosed; a fixed round cap measured for R2b's S0 |
 
 ## Coverage
 
