@@ -241,7 +241,7 @@ describe('round scenarios (§15.2, plan Call 18, A106)', () => {
 });
 
 describe("a round's order (§4.7, §14.6's opening steps 1–7, §15.7 Rounds)", () => {
-  /** Battle 1 against Mother Mold, whose plan hook runs, with a player's passive that pays 7 gold at battleStart and 5 at roundStart. */
+  /** Battle 1 against Mother Mold, who plans each round, with a player's passive that pays 7 gold at battleStart and 5 at roundStart. */
   function ordered(): BattleState {
     const config = makeRoundConfig(content, { seed: 7, enemy: 'general:mother-mold' });
     config.modifiers = [...(config.modifiers ?? []), {
@@ -257,7 +257,8 @@ describe("a round's order (§4.7, §14.6's opening steps 1–7, §15.7 Rounds)",
 
   it("opens round 1 with its storm, then battleStart and roundStart, then the general's plan, then the player's planning", () => {
     const s = ordered();
-    expect(kinds(s)).toEqual(['roundStarted', 'effectGold:7', 'effectGold:5', 'generalPlanned']);
+    // the general's opener, two Sporeling Burrows, runs at once before generalPlanned (T068)
+    expect(kinds(s)).toEqual(['roundStarted', 'effectGold:7', 'effectGold:5', 'buildingPlanted', 'buildingPlanted', 'generalPlanned']);
     expect([s.events[0], s.sporestorm, s.phase]).toEqual([{ t: 'roundStarted', round: 1, stormBp: 10000 }, 0, 'planning']);
   });
 
@@ -265,10 +266,10 @@ describe("a round's order (§4.7, §14.6's opening steps 1–7, §15.7 Rounds)",
     const s = ordered();
     finishRound(s);
     step(s);
-    expect(kinds(s)).toEqual(['income', 'income', 'interest', 'interest', 'roundStarted', 'effectGold:5', 'generalPlanned']);
+    expect(kinds(s)).toEqual(['income', 'income', 'interest', 'interest', 'roundStarted', 'effectGold:5', 'buildingPlanted', 'generalPlanned']);
     expect([s.round, s.phase]).toEqual([2, 'planning']);
-    // nobody fielded an army, so round 1 was drawn: the general's 100 and 30 on the 300 it banked
-    expect(s.sides.enemy.ai!.plans[1]).toMatchObject({ round: 2, income: 130 });
+    // its Burrows won round 1 against nobody: the general's 100 and 8 on the 80 it banked, then the Burster Pod it carried
+    expect(s.sides.enemy.ai!.plans[1]).toMatchObject({ round: 2, income: 108, planted: [{ building: 'bursterPod' }] });
   });
 
   it.each([[4, 10000, 0], [5, 12000, 1], [9, 20000, 5]])("sets round %i's storm before roundStarted: %i bp, step %i (§6.4)", (round, stormBp, storm) => {

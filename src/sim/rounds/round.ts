@@ -1,14 +1,14 @@
 // A round's opening (SPEC §4.7 steps 5–11, §14.6's opening steps 1–7): `createBattle` opens round 1, and
 // the aftermath's step every later one. It clears the last clash, pays the income from round 2, sets the
 // round's Sporestorm with `roundStarted`, fires the `battleStart` and `roundStart` triggers, lets the
-// general plan first and a bot or general on the player's side after it, and enters planning. The two
-// turns are hooks until T068 and T069, and the draft step is empty in R2a (plan Call 26). Begin's clash
-// half fields both armies and resolves the muster (§4.7 steps 12–14), and the clash's end scores the round
-// and checks the battle's end (§4.7 step 17, §6.5). It stands beside v1's code until R2b moves it to
-// `src/sim/round.ts`.
+// general plan first and a bot or general on the player's side after it (`planTurn`), and enters planning.
+// The draft step is empty in R2a (plan Call 26). Begin's clash half fields both armies and resolves the
+// muster (§4.7 steps 12–14), and the clash's end scores the round and checks the battle's end (§4.7 step
+// 17, §6.5). It stands beside v1's code until R2b moves it to `src/sim/round.ts`.
 import type { ModifierDef } from '../../data/schema.ts';
 import { musterKnits } from '../formation.ts';
 import type { MusterUnit } from '../formation.ts';
+import { planTurn } from './ai/controller.ts';
 import { squadStats } from './compile.ts';
 import { addUnit } from './create.ts';
 import { collectRoundEffects, fireTriggers } from './effects.ts';
@@ -296,29 +296,11 @@ export function openRound(state: BattleState): void {
   // 4. `battleStart` in round 1, then `roundStart`, the player's first
   if (state.round === 1) for (const s of SIDES) fireTriggers(state, s, 'battleStart', OPENING);
   for (const s of SIDES) fireTriggers(state, s, 'roundStart', OPENING);
-  // 5. the general plans first (§7.2)
-  if (state.sides.enemy.ai) generalTurn(state, income?.enemy.total ?? 0);
+  // 5. the general plans first (§7.2): its commands run at once, then `generalPlanned`, and its plan goes in `ai.plans`
+  if (state.sides.enemy.ai) planTurn(state, 'enemy', income?.enemy.total ?? 0);
   // 6. the draft (R2b: none in R2a, plan Call 26)
-  // 7. a bot or general on the player's side plans after it
-  if (state.sides.player.ai) playerTurn(state);
+  // 7. a bot or general on the player's side plans after it and queues `beginClash`: the planning checkpoint (plan Call 14)
+  if (state.sides.player.ai) planTurn(state, 'player', income?.player.total ?? 0);
   state.phase = 'planning';
 }
 
-/**
- * The general's turn (opening step 5, §7.2): T068 fills it with its doctrine or counter change, its buys
- * and its merge toggles, each run at once as a command. Until then it plants nothing. Either way the
- * round's plan goes in `ai.plans` with the income it was paid this round (plan Call 12), and
- * `generalPlanned` follows.
- */
-function generalTurn(state: BattleState, income: number): void {
-  const ss = state.sides.enemy;
-  ss.ai!.plans.push({ round: state.round, planted: [], sold: [], income, banked: ss.gold });
-  state.events.push({ t: 'generalPlanned', side: 'enemy', planted: [], sold: [] });
-}
-
-/**
- * A bot or general on the player's side (opening step 7): T069 fills it with its plant, sell and toggle
- * commands, run at once, and its `beginClash`, left queued, which makes the planning checkpoint (plan
- * Call 14). Until then it plans nothing.
- */
-function playerTurn(_state: BattleState): void {}

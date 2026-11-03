@@ -195,11 +195,11 @@ describe("placement by §7.3's scores (plan Call 11, A043)", () => {
 
   it.each([1, 2, 3, 4, 5, 6])('never puts a back-liner in the front rank while a back or third-rank plot is free (Call 11), on seed %i', (seed) => {
     const back = ['truffleCellar', 'sporeExchange', 'rhizomeVault', 'sporeExchange'].map((building, i) => ({ building, lane: 0, rank: 1, file: i + 1 }));
-    const s = generalTurn({ seed, plots: 12, colony: back, opener: ['gillNest', 'puffballMortar'], weights: {} });
+    const s = generalTurn({ seed, gold: 1000, plots: 12, colony: back, opener: ['gillNest', 'puffballMortar'], weights: {} });
     expect(places(s).slice(4).map((p) => p.rank)).toEqual([2, 2]);
     // the third rank's worst plot outscores the front rank's best, noise and all
     const view = planningView(s, 'enemy');
-    const ranks = (rank: number) => s.sides.enemy.plots.flatMap((p, i) => (p.rank === rank ? [plotScore(view, 'gillNest', i)] : []));
+    const ranks = (rank: number) => s.sides.enemy.plots.flatMap((p, i) => (p.rank === rank ? [plotScore(view, 'gillNest', i, true)] : []));
     expect(Math.min(...ranks(2)) - 0.5).toBeGreaterThan(Math.max(...ranks(0)) + 0.5);
   });
 
@@ -295,6 +295,7 @@ describe("the general's turn in the round's opening (§14.6 step 5, plan Calls 8
 
   it('stamps and logs a command it runs at once, and counts a refusal in rejectedCommands', () => {
     const s = planningState();
+    s.events.length = 0;
     expect(runAtOnce(s, 'enemy', { type: 'plant', buildingId: 'sporelingBurrow', plot: 99 })).toBe('noSuchPlot');
     expect(s.log).toEqual([{ round: 1, tick: 0, side: 'enemy', seq: 0, type: 'plant', buildingId: 'sporelingBurrow', plot: 99 }]);
     expect(s.events).toEqual([{ t: 'commandRejected', side: 'enemy', seq: 0, reason: 'noSuchPlot' }]);

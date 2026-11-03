@@ -7,14 +7,14 @@ import type { BalanceDef, BuildingDef, ModifierDef, PowerDef, TriggerDef, UnitDe
 import type { Slot } from '../formation.ts';
 import type {
   Armor, BattleModifier, BuildingKind, CloudSpec, CloudState, CompiledTier, Controller, CounterKind, DamageType,
-  DraftPolicy, DraftPool, Effectiveness, IntelProfile, KnitState, OpenDraft, PendingHit, PowerPolicy, Rng4, Side, Tier,
+  DraftPolicy, DraftPool, Effectiveness, IntelProfile, KnitState, MergePolicy, OpenDraft, PendingHit, PowerPolicy, Rng4, Side, Tier,
 } from '../state.ts';
 import type { ColonyPlot } from './colony.ts';
 
 export { COUNTER_KINDS, POWER_SOURCE_ID, SIDES, other } from '../state.ts';
 export type {
   Armor, BattleModifier, BuildingKind, CloudSpec, CloudState, CompiledTier, Controller, CounterKind, DamageType,
-  DraftPolicy, DraftPool, Effectiveness, IntelProfile, KnitState, OpenDraft, PendingHit, PowerPolicy, Rng4, Side, Tier,
+  DraftPolicy, DraftPool, Effectiveness, IntelProfile, KnitState, MergePolicy, OpenDraft, PendingHit, PowerPolicy, Rng4, Side, Tier,
 };
 
 /** A kit card (§8.10): a building the side owns. R3 adds how many of it may stand at once. */
@@ -374,9 +374,32 @@ export interface AiPlan {
   counter?: CounterKind;
 }
 
-/** An AI side's planning state. The general's plan (T068) adds its doctrine and counter schedule. */
+/** A card an AI profile buys (§7.2): its doctrine weight, and its data limits as rounds read them (R2-Q6). */
+export interface AiWeight {
+  building: string;
+  weight: number;
+  /** At most this many of it standing at once. */
+  maxOwned?: number;
+  /** Bought only from this round on, v1's `afterSeconds` read one round a minute (§7.2, §14.2). */
+  afterRound?: number;
+}
+
+/**
+ * An AI side's planning state (§7.1, §7.2): its profile, copied from `data/generals.json` or `data/bots.json`
+ * so planning needs no content, the target it carries, and its plan per round. The counter cycle (T099) adds
+ * its doctrine and schedule.
+ */
 export interface AiState {
   profileId: string;
+  /** Round 1's buys, in order, before any weighted pick. */
+  opener: string[];
+  /** Only the cards its weights list (R2-Q4), by building id. */
+  weights: AiWeight[];
+  mergePolicy: MergePolicy;
+  /** The Blightwright's: spawners go to the lane you fielded least in (§7.3). */
+  laneStyle?: 'aggressive';
+  /** A target out of reach, with the round it was picked: carried into the next planning phase once (§7.2). */
+  target?: { building: string; round: number };
   /** One entry a round, so the Intent panel survives later commands and a fast-forward to a round. */
   plans: AiPlan[];
 }
