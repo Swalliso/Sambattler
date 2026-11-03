@@ -1,13 +1,13 @@
 // The play clock (SPEC §8.2, RB-Q3; X6, X10; T126, T128), with an injected clock: planning seconds are kept per
 // round, and the planning, clash and aftermath seconds add up; the clock stops while the tab is hidden and after
 // 60 s without input; Help and settings count; a paused clash counts until the idle cutoff; the report's line
-// reads the readout; and nothing enters the state or the hash, nor storage. records-2 adds its run-total
-// cases here (run-it-back.md T015), at `tests/unit/playTime.test.ts` after R2b's move.
+// reads the readout, as the run summary's does (R2b/T109); and nothing enters the state or the hash, nor storage.
+// records-2 adds its run-total cases here (run-it-back.md T015).
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { PlayClock, readoutOf } from '../../src/app/playTime.ts';
 import { battleForParams, parseRoundParams } from '../../src/app/urlParams.ts';
 import { hashState, step } from '../../src/sim/index.ts';
-import { playTimeText } from '../../src/ui/report.ts';
+import { playTimeText, runPlayTimeText } from '../../src/ui/report.ts';
 import { content } from '../helpers.ts';
 
 /** A wall clock the test moves by hand, in ms. */
@@ -165,6 +165,28 @@ describe('the readout on the report (X6, T128)', () => {
     const out = readoutOf(c);
     expect(out).toEqual({ planning: [], medianPlanningSeconds: null, minutes: 0 });
     expect(playTimeText(out)).toBe('Planning time: none timed, since the battle opened past planning');
+  });
+});
+
+describe("the run summary's line (§8.2, X6, R2b/T109)", () => {
+  it("gives one clock's minutes over a run's battles and the median planning seconds a round", () => {
+    const w = wall();
+    const c = new PlayClock(w.now);
+    // two battles on the run's one clock: the second starts again from round 1
+    for (const [r, s] of [[1, 20], [2, 40], [1, 30]] as const) {
+      c.phase(r, 'planning');
+      pass(w, c, s * 1000);
+      c.input();
+      c.phase(r, 'clash');
+      pass(w, c, 30_000);
+      c.input();
+      c.phase(r, 'ended');
+    }
+    expect(runPlayTimeText(readoutOf(c))).toBe('Play time: 3.0 min of active play since this page opened · median planning 30 s a round');
+  });
+
+  it('says so when it timed nothing, as when autoplay played the run', () => {
+    expect(runPlayTimeText({ planning: [], medianPlanningSeconds: null, minutes: 0 })).toBe('Play time: none timed since this page opened');
   });
 });
 

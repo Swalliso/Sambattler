@@ -1,10 +1,12 @@
 // The title screen (SPEC §10.5, docs/archive/v1/ui-ux-plan.md A4): the wordmark over the Heartcap's silhouette, lit
-// from below, with spores drifting through the dark. Continue (only with a saved run), New run, How to
-// play (Help) and Settings (the settings screen, src/ui/settingsScreen.ts).
+// from below, with spores drifting through the dark, and a blurb on rounds (A074). Continue (only with a saved
+// run, naming its row and Regrowths), New run, How to play (Help) and Settings (the settings screen,
+// src/ui/settingsScreen.ts).
 import type { Atlas } from '../../render/atlas.ts';
 import { spriteToCanvas } from '../../render/atlas.ts';
 import { sporeLayer } from '../../render/spores.ts';
 import { h } from '../h.ts';
+import { LIVES_TIP } from '../words.ts';
 
 const CAP_W = 112;
 const CAP_H = 84;
@@ -34,7 +36,7 @@ export function titleScreen(atlas: Atlas, actions: TitleActions, still: boolean,
     cap.style.height = `${CAP_H * s}px`;
   }).observe(art);
   const primary = actions.continueRun
-    ? h('button', { class: 'btn primary', id: 'title-continue', onclick: actions.continueRun },
+    ? h('button', { class: 'btn primary', id: 'title-continue', onclick: actions.continueRun, title: actions.saved ? LIVES_TIP : null },
       h('span', null, 'Continue'), actions.saved ? h('small', null, actions.saved) : null)
     : h('button', { class: 'btn primary', id: 'title-new', onclick: actions.newRun }, 'New run');
   const menu = h('nav', { class: 'title-menu', 'aria-label': 'Main menu' },
@@ -50,7 +52,7 @@ export function titleScreen(atlas: Atlas, actions: TitleActions, still: boolean,
       h('div', { class: 'title-text' },
         h('div', { class: 'eyebrow' }, 'The Velvet Bloom against the Gray Rot'),
         h('h1', { class: 'wordmark' }, 'Spore ', h('span', { class: 'amp' }, '&'), ' Sprawl'),
-        h('p', { class: 'title-blurb' }, 'Grow a fungal colony under the roots, push the front line across the lanes, and outlast the Gray Rot’s generals over a run of battles.'),
+        h('p', { class: 'title-blurb' }, 'Grow a fungal colony under the roots. Each round, plan with the general’s army in view, then watch both armies clash. Outlast the Gray Rot’s generals over a run of battles.'),
         menu,
         actions.notice ? h('p', { class: 'hint title-notice', id: 'run-notice', role: 'status' }, actions.notice) : null,
       ),

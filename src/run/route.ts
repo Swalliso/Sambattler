@@ -8,6 +8,7 @@
 // boss row gets the boss general.
 import { MILESTONE, nextInt } from '../sim/index.ts';
 import type { Content, Rng4 } from '../sim/index.ts';
+import type { RunState } from './runState.ts';
 
 export type NodeKind = 'battle' | 'elite' | 'event' | 'grove' | 'boss';
 
@@ -26,6 +27,14 @@ export const STAND_IN_GENERAL = 'scripted';
 
 /** Each route row's nominal battle index for general eligibility (row 3 can be battle 2 or 3, and so on). */
 const ROW_INDEX = [1, 2, 3, 3, 4, 5];
+
+/**
+ * The battle index a route node's general's kit is shown at (§8.2): its row's nominal index, the one that picks
+ * its generals, or in the row you choose from, the index it will be fought at.
+ */
+export function nodeBattleIndex(run: RunState, row: number): number {
+  return row === run.path.length ? run.battles.length + 1 : ROW_INDEX[row]!;
+}
 
 /** Maps a run may use: shipped by this milestone and not test-only, sorted by id. */
 export function mapPool(content: Content): string[] {

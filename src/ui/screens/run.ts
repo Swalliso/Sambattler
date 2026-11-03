@@ -1,23 +1,26 @@
 // Run screens (SPEC §8, §10.5): the route map, spoils, events, the Grove, prompts and the run
 // summary. Plain DOM built from the run state; every button calls back into the run controller.
+// Lives are Regrowths on every screen, with "lives" in each tooltip (§8.5, #56); the route's battle
+// nodes show their general's kit (§8.2), and the summary each battle's rounds (§8.8; R2b's S9).
 import type { Content } from '../../data/registry.ts';
 import type { Atlas } from '../../render/atlas.ts';
 import { spriteToCanvas } from '../../render/atlas.ts';
-import { formatClock } from '../../sim/index.ts';
+import { COUNTER_KINDS, formatClock } from '../../sim/index.ts';
 import {
-  battleRewards, battlesWon, cardLabel, clashTicks, currentRow, groveProblem, intelDots, outcomeAvailable, rewardRules,
+  battleRewards, battlesWon, cardLabel, clashTicks, currentRow, generalKit, groveProblem, intelDots, isBattle, nodeBattleIndex, outcomeAvailable, rewardRules,
 } from '../../run/index.ts';
 import { KIND_HINT, KIND_ICON, KIND_NAME } from '../doctrine.ts';
-import type { CounterRecordBrief, GroveChoice, RouteNode, RunState } from '../../run/index.ts';
+import type { BattleRecord, CounterRecordBrief, GroveChoice, RouteNode, RunState } from '../../run/index.ts';
 import type { RunEffect } from '../../data/schema.ts';
 import { cardView } from '../cards.ts';
-import { mvpCallout, mvpOf, outcomeArt } from '../report.ts';
+import { mvpCallout, mvpOf, outcomeArt, runPlayTimeText } from '../report.ts';
+import type { PlayTimeReadout } from '../report.ts';
 import { h } from '../h.ts';
 import { uiIcon } from '../icons.ts';
 import { rollUp } from '../motion.ts';
 import { uiScale } from '../scale.ts';
 import { settingsOpen } from '../settingsScreen.ts';
-import { buildingDescription, relicDiagram, relicText, upgradeText } from '../words.ts';
+import { battleOutcome, buildingDescription, LIVES_TIP, regrowths, relicDiagram, relicText, upgradeText } from '../words.ts';
 
 const NODE_ICON: Record<RouteNode['kind'], string> = { battle: 'i-battle', elite: 'i-elite', event: 'i-event', grove: 'i-grove', boss: 'i-boss' };
 const NODE_NAME: Record<RouteNode['kind'], string> = { battle: 'Battle', elite: 'Elite battle', event: 'Event', grove: 'Grove', boss: 'Boss' };
@@ -43,9 +46,6 @@ export function relicBadge(content: Content, atlas: Atlas, id: string): HTMLElem
       relicDiagram(id)));
 }
 
-/** Lives' name on the game's screens, with "lives" in the tooltip (§2, #56). */
-const regrowths = (n: number): string => `${n} Regrowth${n === 1 ? '' : 's'}`;
-
 /** The strip at the top of every run screen: Regrowths, Spores, Amber, battles won, the kit and the relics. */
 export function runBar(content: Content, atlas: Atlas, run: RunState): HTMLElement {
   const { left, max } = run.lives;
@@ -64,8 +64,7 @@ export function runBar(content: Content, atlas: Atlas, run: RunState): HTMLEleme
     commander,
     // a cap per life, lit for each one left (§8.5)
     h('div', {
-      class: `rb-lives${left <= 1 ? ' low' : ''}`, id: 'run-lives', tabindex: 0,
-      title: 'Regrowths are your lives: a lost battle costs one, and the run ends at 0. Each battle\'s Heartcap starts full.',
+      class: `rb-lives${left <= 1 ? ' low' : ''}`, id: 'run-lives', tabindex: 0, title: LIVES_TIP,
       'aria-label': `${regrowths(left)} of ${max} (lives) left`,
     },
       h('span', { class: 'rb-caps', 'aria-hidden': 'true' }, ...Array.from({ length: max }, (_, i) => h('i', { class: `cap${i < left ? ' lit' : ''}` }, uiIcon(atlas, 'i-heart')))),
@@ -112,7 +111,25 @@ function eliteReward(content: Content, atlas: Atlas): HTMLElement {
       elite.amberChance ? h('span', null, uiIcon(atlas, 'i-amber'), `${Math.round(elite.amberChance * 100)}% Amber`) : null));
 }
 
-function nodeView(content: Content, atlas: Atlas, node: RouteNode, state: NodeState, r: number, i: number, onPick: () => void): HTMLElement {
+/**
+ * A battle node's general's kit (§8.2, §7.8): each building as a 1× sprite with its upgrade level (v1's random
+ * levels stand in for augments until R3), at the node's battle index (`nodeBattleIndex`). The names show on hover
+ * or focus, and the boss's note says its first extra cards answer your intel, so they can still change.
+ */
+function generalKitView(content: Content, atlas: Atlas, run: RunState, node: RouteNode, r: number): HTMLElement[] {
+  const { kit, upgrades } = generalKit(content, run, node, nodeBattleIndex(run, r));
+  const name = (id: string) => `${content.buildings[id]?.name ?? id}${upgrades[id] ? ` (upgrade ${upgrades[id]}/3)` : ''}`;
+  const out = [
+    h('span', { class: 'node-kit', 'aria-label': `The general's kit: ${kit.map(name).join(', ')}` },
+      ...kit.map((id) => h('span', { class: 'nk-piece', 'data-building': id, 'data-level': upgrades[id] ?? 0, 'aria-hidden': 'true' },
+        spriteToCanvas(atlas, content.buildings[id]!.sprite, 'gray-rot'), upgrades[id] ? h('i', null, String(upgrades[id])) : null))),
+    h('span', { class: 'node-tip', role: 'tooltip' }, h('b', null, "The general's kit"), ...kit.map((id) => h('span', null, name(id)))),
+  ];
+  if (node.kind === 'boss') out.push(h('span', { class: 'node-note' }, 'Its first extra cards answer the Gray Rot\'s intel on you'));
+  return out;
+}
+
+function nodeView(content: Content, atlas: Atlas, run: RunState, node: RouteNode, state: NodeState, r: number, i: number, onPick: () => void): HTMLElement {
   const details: (HTMLElement | null)[] = [];
   if (node.map) {
     const map = content.maps[node.map]!;
@@ -122,14 +139,20 @@ function nodeView(content: Content, atlas: Atlas, node: RouteNode, state: NodeSt
     details.push(h('span', { class: 'node-map' }, `${map.name} · ${map.lanes.length} lane${map.lanes.length === 1 ? '' : 's'}`));
     details.push(h('span', { class: 'node-general' }, portrait, general?.name ?? 'The Gray Rot'));
   }
+  if (isBattle(node)) details.push(...generalKitView(content, atlas, run, node, r));
   if (node.elite) {
     const e = content.elites[node.elite]!;
     details.push(h('span', { class: 'node-elite' }, h('b', null, e.name), ` ${e.text}`));
     details.push(eliteReward(content, atlas));
   }
   if (node.kind === 'event') details.push(h('span', { class: 'node-sub' }, 'A choice with tradeoffs'));
-  if (node.kind === 'grove') details.push(h('span', { class: 'node-sub' }, 'Repair 30% or graft an upgrade'));
-  if (node.kind === 'boss') details.push(h('span', { class: 'node-sub' }, 'Win to end the run victorious'));
+  if (node.kind === 'grove') details.push(h('span', { class: 'node-sub' }, 'Regain a Regrowth or graft an upgrade'));
+  if (node.kind === 'boss') {
+    details.push(h('span', { class: 'node-sub' }, 'Win to end the run victorious'));
+    // the `bosslives` knob (#16): each Regrowth left adds to your Heartcap here
+    const perLife = content.balance.livesAtBoss?.heartcapPerLife ?? 0;
+    if (perLife) details.push(h('span', { class: 'node-bosslives', title: LIVES_TIP }, uiIcon(atlas, 'i-heart'), `+${perLife * run.lives.left} Heartcap: ${perLife} a Regrowth left`));
+  }
   const pod = spriteToCanvas(atlas, node.kind === 'boss' ? 'p-pod-boss' : 'p-pod', 'velvet-bloom', POD_FRAME[state]);
   pod.className = 'pod-art';
   const open = state === 'open';
@@ -140,12 +163,10 @@ function nodeView(content: Content, atlas: Atlas, node: RouteNode, state: NodeSt
   h('span', { class: 'node-title' }, NODE_NAME[node.kind]), ...details);
 }
 
-/** The intel bars' kinds: v1's four, until S9 gives Anti-Ranged its bar. */
-const INTEL_KINDS = ['swarm', 'line', 'armor', 'elite'] as const;
-
 /**
  * The player's own intel bars (SPEC §7.6): what the Gray Rot has learned about them, shown fairly so
- * they can plan a pivot before the boss. Four dots per kind; the boss reads the whole run's average.
+ * they can plan a pivot before the boss. A bar for each of §7.4's five kinds, Anti-Ranged's included, with
+ * four dots each; the boss reads the whole run's average.
  */
 export function intelBars(atlas: Atlas, run: RunState): HTMLElement {
   if (!run.flags.adaptiveGeneral) return h('div', { class: 'intel off', id: 'route-intel' }, h('span', { class: 'muted' }, 'Adaptive generals are off: no intel is kept.'));
@@ -153,7 +174,7 @@ export function intelBars(atlas: Atlas, run: RunState): HTMLElement {
   const dots = intel ? intelDots(intel) : null;
   return h('div', { class: 'intel', id: 'route-intel', title: 'Each new general opens against your top kind; the boss reads your whole run' },
     h('span', { class: 'intel-title' }, 'Gray Rot intel on you'),
-    ...(dots ? INTEL_KINDS.map((k) => {
+    ...(dots ? COUNTER_KINDS.map((k) => {
       const c = spriteToCanvas(atlas, KIND_ICON[k], 'velvet-bloom');
       c.className = 'kind-icon';
       return h('span', { class: 'intel-kind', 'data-kind': k, 'data-dots': dots[k], title: `${KIND_HINT[k]} · ${((intel![k] ?? 0) * 100).toFixed(0)}%` },
@@ -241,7 +262,7 @@ export function routeScreen(content: Content, atlas: Atlas, run: RunState, actio
   const rows = run.route.map((nodes, r) => {
     const status = r < row ? 'done' : r === row ? 'current' : 'future';
     return h('section', { class: `route-row ${status}`, 'data-row': r, 'aria-label': `Row ${r + 1}` },
-      ...nodes.map((n, i) => nodeView(content, atlas, n,
+      ...nodes.map((n, i) => nodeView(content, atlas, run, n,
         r < row ? (run.path[r] === i ? 'chosen' : 'past') : r === row ? 'open' : 'future', r, i, () => actions.choose(i))),
     );
   });
@@ -290,8 +311,8 @@ export function spoilsScreen(content: Content, atlas: Atlas, run: RunState, acti
   return el;
 }
 
-/** One outcome chip: a word or a number with an icon, in its signal's color (a gain, a cost, gold or a note). */
-type Chip = { kind: 'gain' | 'cost' | 'gold' | 'note'; text: string; icon?: string };
+/** One outcome chip: a word or a number with an icon, in its signal's color (a gain, a cost, gold or a note), and its tooltip. */
+type Chip = { kind: 'gain' | 'cost' | 'gold' | 'note'; text: string; icon?: string; tip?: string };
 
 const pct = (v: number) => `${Math.round(Math.abs(v) * 100)}%`;
 const signed = (v: number) => (v < 0 ? `−${Math.abs(v)}` : `+${v}`);
@@ -300,7 +321,7 @@ const signed = (v: number) => (v < 0 ? `−${Math.abs(v)}` : `+${v}`);
 export function outcomeChips(content: Content, run: RunState, outcome: readonly RunEffect[]): Chip[] {
   const chips: Chip[] = [];
   for (const e of outcome) {
-    if ('gainLife' in e) chips.push({ kind: 'gain', icon: 'i-heart', text: `+${regrowths(Math.min(e.gainLife, run.lives.max - run.lives.left) || e.gainLife)}` });
+    if ('gainLife' in e) chips.push({ kind: 'gain', icon: 'i-heart', text: `+${regrowths(Math.min(e.gainLife, run.lives.max - run.lives.left) || e.gainLife)}`, tip: LIVES_TIP });
     else if ('maxHpPct' in e) chips.push({ kind: e.maxHpPct < 0 ? 'cost' : 'gain', icon: 'i-heart', text: `${e.maxHpPct < 0 ? '−' : '+'}${pct(e.maxHpPct)} max Heartcap, every battle` });
     else if ('gainRelic' in e) {
       const n = e.gainRelic.count ?? 1;
@@ -329,7 +350,7 @@ function stormShift(content: Content, rounds: number): string {
 }
 
 function chipEl(atlas: Atlas, c: Chip): HTMLElement {
-  return h('span', { class: `outcome ${c.kind}` }, c.icon ? uiIcon(atlas, c.icon) : null, c.text);
+  return h('span', { class: `outcome ${c.kind}`, title: c.tip ?? null }, c.icon ? uiIcon(atlas, c.icon) : null, c.text);
 }
 
 /** A choice card: its name, the full effect and its outcome chips; a choice you can't take is unlit, with why. */
@@ -414,7 +435,7 @@ export function runChanges(content: Content, before: RunSnapshot, after: RunSnap
   const maxHp = hpMax(after) - hpMax(before);
   if (maxHp) out.push({ kind: 'chip', chip: { kind: maxHp < 0 ? 'cost' : 'gain', icon: 'i-heart', text: `${signed(maxHp)} max Heartcap every battle (now ${hpMax(after)})` } });
   const lives = after.lives.left - before.lives.left;
-  if (lives > 0) out.push({ kind: 'chip', chip: { kind: 'gain', icon: 'i-heart', text: `+${regrowths(lives)} (now ${after.lives.left}/${after.lives.max})` } });
+  if (lives > 0) out.push({ kind: 'chip', chip: { kind: 'gain', icon: 'i-heart', text: `+${regrowths(lives)} (now ${after.lives.left}/${after.lives.max})`, tip: LIVES_TIP } });
   const rest = after.next.heartcapMaxHpPct - before.next.heartcapMaxHpPct;
   if (rest) out.push({ kind: 'chip', chip: { kind: rest < 0 ? 'cost' : 'gain', icon: 'i-heart', text: `${rest < 0 ? '−' : '+'}${pct(rest)} max Heartcap next battle` } });
   if (after.amber !== before.amber) out.push({ kind: 'chip', chip: { kind: 'gain', icon: 'i-amber', text: `${signed(after.amber - before.amber)} Amber` } });
@@ -502,7 +523,7 @@ export function groveScreen(content: Content, atlas: Atlas, run: RunState, actio
   const why = (c: GroveChoice) => groveProblem(content, run, c);
   return vignette(content, atlas, run, 'grove', 'v-grove', 'Grove', 'The Grove', 'A quiet grove where the colony can regrow or graft. Choose one, or move on.', [
     choiceCard(atlas, 'Regain a Regrowth', why('life') ? `Your Regrowths are full (${left}/${max}).` : `A life back: ${left + 1}/${max} Regrowths.`,
-      [{ kind: 'gain', icon: 'i-heart', text: '+1 Regrowth' }], () => actions.choose('life'), why('life'), 1),
+      [{ kind: 'gain', icon: 'i-heart', text: `+1 Regrowth (${Math.min(max, left + 1)}/${max})`, tip: LIVES_TIP }], () => actions.choose('life'), why('life'), 1),
     choiceCard(atlas, 'Graft', why('graft') ? 'Every track is maxed.' : '+1 level on an upgrade track you own (you choose).',
       [{ kind: 'gain', icon: 'i-upgrade', text: '+1 upgrade level' }], () => actions.choose('graft'), why('graft') ? 'Every upgrade track you own is at its last level' : null, 2),
     choiceCard(atlas, 'Leave', 'Move on along the route.', [], () => actions.choose('leave'), null, 3),
@@ -548,11 +569,59 @@ function counterBrief(content: Content, c: CounterRecordBrief): string {
 }
 
 /**
- * The run's end (SPEC §8.8): the outcome, each battle, damage by building, the cards drafted and what the run
- * earned. Run it back (Enter or R, SPEC §16 M6) starts the next run with the same commander and bans; New run
- * goes to the Underroot to choose again.
+ * A battle's round sparkline (§8.8): each round's Heartcap damage dealt rising in violet and taken hanging in ash
+ * from a midline, on one scale for the whole run (`top`, its largest round), so the battles compare. Null for a
+ * battle with no rounds recorded, as one migrated from v1.
  */
-export function summaryScreen(content: Content, atlas: Atlas, run: RunState, actions: { newRun(): void; runItBack(): void; toTitle?: () => void }): HTMLElement {
+function sparkline(b: BattleRecord, top: number): SVGSVGElement | null {
+  if (!b.rounds.length) return null;
+  const BAR = 4, GAP = 2, HALF = 11;
+  const w = b.rounds.length * (BAR + GAP) - GAP;
+  const svg = document.createElementNS(SVG, 'svg');
+  svg.setAttribute('class', 'sparkline');
+  svg.setAttribute('viewBox', `0 0 ${w} ${2 * HALF + 1}`);
+  svg.setAttribute('width', String(w));
+  svg.setAttribute('height', String(2 * HALF + 1));
+  svg.setAttribute('role', 'img');
+  svg.setAttribute('aria-label', `Heartcap damage by round, dealt: ${b.rounds.map((r) => r.damage.player).join(', ')}; taken: ${b.rounds.map((r) => r.damage.enemy).join(', ')}`);
+  const rect = (cls: string, x: number, y: number, hgt: number) => {
+    const el = document.createElementNS(SVG, 'rect');
+    el.setAttribute('class', cls);
+    for (const [k, v] of [['x', x], ['y', y], ['width', BAR], ['height', hgt]] as const) el.setAttribute(k, String(v));
+    return el;
+  };
+  const mid = document.createElementNS(SVG, 'rect');
+  mid.setAttribute('class', 'mid');
+  for (const [k, v] of [['x', 0], ['y', HALF], ['width', w], ['height', 1]] as const) mid.setAttribute(k, String(v));
+  svg.append(mid);
+  b.rounds.forEach((r, i) => {
+    const x = i * (BAR + GAP);
+    const up = Math.round((HALF * r.damage.player) / top), down = Math.round((HALF * r.damage.enemy) / top);
+    svg.append(rect('dealt', x, HALF - up, up), rect('taken', x, HALF + 1, down));
+  });
+  return svg;
+}
+
+/** The kit at the run's end (§8.8): each building with its upgrade level (augments' stand-in until R3), then the relics. */
+function kitAtEnd(content: Content, atlas: Atlas, run: RunState): HTMLElement {
+  return h('div', { class: 'summary-kit', id: 'summary-kit' },
+    ...run.kit.map((id) => {
+      const b = content.buildings[id]!;
+      const lvl = run.upgrades[id] ?? 0;
+      return h('span', { class: 'kitpiece', 'data-building': id, title: `${b.name}${lvl ? ` (upgrade ${lvl}/3)` : ''}` },
+        spriteToCanvas(atlas, b.sprite, 'velvet-bloom'), lvl ? h('i', null, String(lvl)) : null);
+    }),
+    ...run.relics.map((id) => relicBadge(content, atlas, id)));
+}
+
+/**
+ * The run's end (SPEC §8.8): the outcome, each battle with how it was decided and its round sparkline, damage by
+ * building, the cards drafted, the kit at the end, what the run earned and its play time (§8.2, T109). Run it back
+ * (Enter or R, SPEC §16 M6) starts the next run with the same commander and bans; New run goes to the Underroot to
+ * choose again.
+ * @param playTime the run's play clock's readout, which the app passes in (T109)
+ */
+export function summaryScreen(content: Content, atlas: Atlas, run: RunState, actions: { newRun(): void; runItBack(): void; toTitle?: () => void }, playTime?: PlayTimeReadout): HTMLElement {
   const won = run.outcome === 'victory';
   const damage = new Map<string, number>();
   for (const b of run.battles) for (const [id, v] of Object.entries(b.damageByBuilding)) damage.set(id, (damage.get(id) ?? 0) + v);
@@ -561,6 +630,7 @@ export function summaryScreen(content: Content, atlas: Atlas, run: RunState, act
   const totalTicks = run.battles.reduce((n, b) => n + b.rounds.reduce((t, r) => t + clashTicks(r), 0), 0);
   const lost = run.battles.filter((b) => b.lifeLost).length;
   const lastBoss = run.battles.find((b) => b.kind === 'boss');
+  const top = Math.max(1, ...run.battles.flatMap((b) => b.rounds.flatMap((r) => [r.damage.player, r.damage.enemy])));
   const again = h('button', { class: 'btn primary', id: 'run-it-back', onclick: () => done() }, 'Run it back', h('kbd', null, 'Enter'), h('kbd', null, 'R'));
   const el = h('div', { class: 'runscreen', id: 'summary' },
     runBar(content, atlas, run),
@@ -571,7 +641,8 @@ export function summaryScreen(content: Content, atlas: Atlas, run: RunState, act
           h('h1', { class: won ? 'win' : 'loss', id: 'summary-title' }, won ? 'Victory: the boss falls' : 'Defeat'),
           h('div', { class: 'how' }, won ? `${content.generals[lastBoss?.general ?? '']?.name ?? 'The boss'} is beaten. The colony holds the roots.`
             : `The run ends after ${run.battles.length} battle${run.battles.length === 1 ? '' : 's'}.`),
-          h('div', { class: 'hint' }, `${run.battles.length} battles · ${formatClock(totalTicks)} of clashes · ${regrowths(run.lives.left)} of ${run.lives.max} left, ${lost} lost`)),
+          h('div', { class: 'hint', title: LIVES_TIP }, `${run.battles.length} battles · ${formatClock(totalTicks)} of clashes · ${regrowths(run.lives.left)} of ${run.lives.max} left, ${lost} lost`),
+          playTime ? h('div', { class: 'hint', id: 'summary-playtime' }, runPlayTimeText(playTime)) : null),
         mvpCallout(content, atlas, mvpOf(Object.fromEntries(damage)), 'this run'),
       ),
       h('div', { class: 'reveal', style: '--d:1' },
@@ -584,9 +655,9 @@ export function summaryScreen(content: Content, atlas: Atlas, run: RunState, act
             h('td', null, b.kind === 'elite' ? `Elite (${content.elites[b.elite!]?.name ?? b.elite})` : b.kind === 'boss' ? 'Boss' : 'Battle'),
             h('td', null, `${b.mapName}${b.lanes > 1 ? ` (${b.lanes} lanes)` : ''}`),
             h('td', null, content.generals[b.general]?.name ?? b.general),
-            h('td', { class: 'result' }, `${b.winner === 'player' ? 'Won' : 'Lost'} by ${b.by === 'rout' ? 'Rout' : 'Decision'}`),
-            h('td', null, b.rounds.length ? String(b.rounds.length) : '-'),
-            h('td', { class: 'lives' }, b.lifeLost ? '−1' : '-'),
+            h('td', { class: 'result' }, battleOutcome(b)),
+            h('td', { class: 'rounds' }, h('span', null, b.rounds.length ? String(b.rounds.length) : '-'), sparkline(b, top)),
+            h('td', { class: 'lives', title: LIVES_TIP }, b.lifeLost ? '−1' : '-'),
             h('td', { class: 'countered' }, (b.counters ?? []).map((c) => counterBrief(content, c)).join('; ') || '-'),
           )),
         )),
@@ -603,6 +674,8 @@ export function summaryScreen(content: Content, atlas: Atlas, run: RunState, act
           h('h3', null, 'Cards drafted'),
           h('ul', { class: 'cardlist', id: 'summary-cards' }, ...(run.cards.length ? run.cards.map((c) => h('li', null, cardLabel(content, c.card), h('span', { class: 'muted' }, ` · ${c.source}`)))
             : [h('li', { class: 'muted' }, 'None')])),
+          h('h3', null, 'Kit at the end'),
+          kitAtEnd(content, atlas, run),
         ),
         h('section', null,
           h('h3', null, 'Earned'),

@@ -3,7 +3,7 @@
 // ended battle doesn't step. Each phase's part is its own module (`phases/`). `openRoundBattle` puts a battle on
 // the page with its view, loop, input and play clock, for a single battle (`src/app/main.ts`) and for a run's
 // battles (`src/app/run.ts`). A battle feeds the play clock (`playTime.ts`), whose planning seconds by round the
-// report shows and the console logs (X6, T128).
+// report shows and the console logs (X6, T128), and a run's battle feeds the run's clock beside it (T109).
 import type { Content } from '../data/registry.ts';
 import type { Atlas } from '../render/atlas.ts';
 import type { Reveal } from '../render/preview.ts';
@@ -89,18 +89,21 @@ export class RoundLoop {
  * tab's visibility. At the battle's end it logs the readout to the console. It returns the frame's feed and
  * the listeners' removal.
  */
-function feedPlayClock(clock: PlayClock, state: BattleState): { frame: () => void; stop: () => void } {
-  const input = () => clock.input();
+function feedPlayClock(clock: PlayClock, state: BattleState, runClock?: PlayClock): { frame: () => void; stop: () => void } {
+  const clocks = runClock ? [clock, runClock] : [clock];
+  const input = () => { for (const c of clocks) c.input(); };
   const types = ['keydown', 'pointerdown', 'pointermove', 'wheel'];
   for (const type of types) addEventListener(type, input, { capture: true, passive: true });
-  const shown = () => clock.setVisible(document.visibilityState === 'visible');
+  const shown = () => { for (const c of clocks) c.setVisible(document.visibilityState === 'visible'); };
   document.addEventListener('visibilitychange', shown);
   shown();
+  // the run's clock may last have counted another battle, or a run screen without input: this one starts now
+  runClock?.input();
   let at = '';
   const frame = () => {
     if (`${state.round}:${state.phase}` === at) return;
     at = `${state.round}:${state.phase}`;
-    clock.phase(state.round, state.phase);
+    for (const c of clocks) c.phase(state.round, state.phase);
     if (state.phase === 'ended') {
       const readout = readoutOf(clock);
       console.info(`[play time] ${playTimeText(readout)}`, readout);
@@ -109,6 +112,8 @@ function feedPlayClock(clock: PlayClock, state: BattleState): { frame: () => voi
   const stop = () => {
     for (const type of types) removeEventListener(type, input, { capture: true });
     document.removeEventListener('visibilitychange', shown);
+    // a battle taken down before its end stops counting on the run's clock
+    runClock?.phase(state.round, 'ended');
   };
   return { frame, stop };
 }
@@ -125,6 +130,10 @@ export interface RoundBattleOptions {
   measure?: boolean;
   /** Each frame, after the battle has drawn. */
   onFrame?: () => void;
+  /** A run's battle: the run's lives, under your Heartcap (§8.5, T106); a single battle has none. */
+  lives?: { left: number; max: number };
+  /** A run's battle: the run's play clock (T109), fed the battle's phases and input beside the battle's own. */
+  runClock?: PlayClock;
 }
 
 /** A battle on screen, and how to take it down. */
@@ -143,11 +152,11 @@ export interface RoundBattle {
 export function openRoundBattle(content: Content, atlas: Atlas, state: BattleState, o: RoundBattleOptions): RoundBattle {
   const session = new RoundSession(state, content);
   const clock = new PlayClock(() => performance.now());
-  const view = new RoundsView(session, content, atlas, { ...o.actions, begin: () => { session.begin(); }, playTime: () => readoutOf(clock) }, o.still, o.reveal ?? 'full');
+  const view = new RoundsView(session, content, atlas, { ...o.actions, begin: () => { session.begin(); }, playTime: () => readoutOf(clock) }, o.still, o.reveal ?? 'full', o.lives ?? null);
   document.getElementById('app')!.replaceChildren(view.root);
   view.fit();
   const loop = new RoundLoop(session, view, { holdAftermath: o.holdAftermath ?? false, measure: o.measure ?? false });
-  const played = feedPlayClock(clock, state);
+  const played = feedPlayClock(clock, state, o.runClock);
   const unbind = bindRoundInput(session, view, {
     begin: () => { session.begin(); },
     skip: () => loop.aftermath.skip(),

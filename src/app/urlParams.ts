@@ -1,9 +1,10 @@
 // URL parameters (SPEC §15.6): the page's (`parseParams`) and a battle's (`parseRoundParams`), and the battle state
 // they open (`battleForParams`): earlier rounds played headlessly with the controllers, stopping at the planning
 // checkpoint (R2a plan Call 14), the clash at a tick counted from its start (Call 16), the aftermath or the
-// battle's end. A battle's defaults are Call 28's, kept here only. The page and `tools/lib/rounds/params.ts`
-// both open a battle through `battleForParams`, so a capture's hash matches Node's at the same round, phase and
-// tick. It imports no DOM, so Node runs it. Unknown scenes are refused with a visible message by the page.
+// battle's end. `scene=run` takes the same `round=` and `phase=` for the run's current battle (`runCheckpoint`,
+// `forwardBattle`; R2b/T157). A battle's defaults are Call 28's, kept here only. The page and `tools/lib/params.ts`
+// both open a battle through these, so a capture's hash matches Node's at the same round, phase and tick. It
+// imports no DOM, so Node runs it. Unknown scenes are refused with a visible message by the page.
 import { parseFlags } from '../sim/create.ts';
 import {
   commandStamp, createBattle, createFromScenario, makeRoundConfig, queueCommand, step,
@@ -157,16 +158,12 @@ function setUp(content: Content, p: RoundParams, seed: number): BattleState {
 }
 
 /**
- * The state a battle opens at (§15.6): the battle the parameters set up, played headlessly with its controllers
- * to round n's planning checkpoint, its clash at a tick from the clash's start, its aftermath, or the battle's
- * end. A human's planning can't be played headlessly, so a human player can open round 1's planning only,
- * unless a scenario sets their colony: the human then begins each round with it as it stands. Throws a
- * `BattleRefusal` with the reason when the parameters can't be opened.
+ * The state a battle opens at (§15.6): the battle the parameters set up, at the checkpoint they name
+ * (`forwardBattle`). Throws a `BattleRefusal` with the reason when the parameters can't be opened.
  */
 export function battleForParams(content: Content, p: RoundParams, seed: number): BattleState {
   if (p.problems.length) refuse(p.problems.join('; '));
   if (p.ticks !== null && p.phase !== null && p.phase !== 'clash') refuse(`ticks=${p.ticks} counts within a clash, so it needs phase=clash`);
-  const phase: RoundPhase = p.phase ?? (p.ticks !== null ? 'clash' : 'planning');
   let state: BattleState;
   try {
     state = setUp(content, p, seed);
@@ -174,6 +171,23 @@ export function battleForParams(content: Content, p: RoundParams, seed: number):
     if (e instanceof BattleRefusal) throw e;
     return refuse((e as Error).message);
   }
+  return forwardBattle(state, p);
+}
+
+/** The checkpoint a battle opens at: its round, phase and clash tick, and the scenario that may set a human's colony. */
+export type Checkpoint = Pick<RoundParams, 'round' | 'phase' | 'ticks' | 'scenario' | 'problems'>;
+
+/**
+ * Plays a battle headlessly with its controllers to the checkpoint (§15.6): round n's planning checkpoint, its
+ * clash at a tick from the clash's start, its aftermath, or the battle's end; with none named, it stays where it
+ * is. A single battle and a run's battle (`scene=run`, T157) both reach theirs here. A human's planning can't be
+ * played headlessly, so a human player can open round 1's planning only, unless a scenario sets their colony: the
+ * human then begins each round with it as it stands. Throws a `BattleRefusal` with the reason when it can't.
+ */
+export function forwardBattle(state: BattleState, p: Checkpoint): BattleState {
+  if (p.problems.length) refuse(p.problems.join('; '));
+  if (p.ticks !== null && p.phase !== null && p.phase !== 'clash') refuse(`ticks=${p.ticks} counts within a clash, so it needs phase=clash`);
+  const phase: RoundPhase = p.phase ?? (p.ticks !== null ? 'clash' : 'planning');
   const round = p.round ?? state.round;
   const human = state.config.player.controller.kind === 'human';
   if (human && !p.scenario && (round > 1 || phase !== 'planning')) {
@@ -182,6 +196,15 @@ export function battleForParams(content: Content, p: RoundParams, seed: number):
   if (round < state.round) refuse(`scenario ${p.scenario} starts in round ${state.round}, after round ${round}`);
   playTo(state, phase, round, p.ticks ?? 0);
   return state;
+}
+
+/**
+ * `scene=run`'s checkpoint (T157): with `round=` or `phase=`, the run enters its current row's first battle
+ * (`runForScene`'s `enterBattle`), which opens there, held as a single battle is. Null opens the run as it stands.
+ */
+export function runCheckpoint(search: string | URLSearchParams): RoundParams | null {
+  const q = typeof search === 'string' ? new URLSearchParams(search) : search;
+  return sceneOf(q) === 'run' && (q.has('round') || q.has('phase')) ? parseRoundParams(q) : null;
 }
 
 /** Where a phase falls in its round. */

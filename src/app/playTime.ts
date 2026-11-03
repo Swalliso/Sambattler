@@ -1,10 +1,10 @@
 // The play clock (SPEC §8.2, RB-Q3; X6, X10; T128): active play time in a battle in rounds, by phase. Active time
 // is wall time with the tab visible, paused while it's hidden and after 60 s without input; Help and the settings
 // screen count, and so does a paused clash, until the idle cutoff. `main.ts` feeds it the battle's phases, the
-// page's input and its visibility, and passes its readout to the report, which can't import `src/app`. It's the
-// one play-time module: records-2 adds the run's total, `restore` and `still` (run-it-back.md T016), and R2b
-// moves it to `src/app/playTime.ts` and shows it on the run's summary (R2b/T109). It never saves, and nothing in
-// it enters the battle state or its hash (§13.3, A185).
+// page's input and its visibility, and passes its readout to the report, which can't import `src/app`. A run
+// holds one more clock, which each of its battles feeds beside its own, and the run's summary shows it (R2b/T109).
+// It's the one play-time module: records-2 adds the run's total, `restore` and `still` (run-it-back.md T016). It
+// never saves, and nothing in it enters the battle state or its hash (§13.3, A185).
 import type { PlayTimeReadout } from '../ui/report.ts';
 
 /** A battle's phase as the clock counts it: the report, after the battle's end, counts toward none. */

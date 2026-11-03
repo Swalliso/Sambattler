@@ -9,15 +9,15 @@ import type { Content } from '../data/registry.ts';
 import type { AiPlan, BattleState, CounterKind } from '../sim/index.ts';
 
 export const KIND_LABEL: Record<CounterKind, string> = { swarm: 'SWARM', line: 'LINE', armor: 'ARMOR', elite: 'ELITE', ranged: 'RANGED' };
-/** The four kinds the run's intel bars show (§7.6), with their names, icons and what each answers (help and tooltips). */
-type IntelKind = Exclude<CounterKind, 'ranged'>;
-export const KIND_NAME: Record<IntelKind, string> = { swarm: 'Swarm', line: 'Line', armor: 'Armor', elite: 'Elite' };
-export const KIND_ICON: Record<IntelKind, string> = { swarm: 'i-swarm', line: 'i-line', armor: 'i-armor', elite: 'i-elite-doctrine' };
-export const KIND_HINT: Record<IntelKind, string> = {
+/** The five kinds the run's intel bars show (§7.4, §7.6), with their names, icons and what each answers (help and tooltips). */
+export const KIND_NAME: Record<CounterKind, string> = { swarm: 'Swarm', line: 'Line', armor: 'Armor', elite: 'Elite', ranged: 'Ranged' };
+export const KIND_ICON: Record<CounterKind, string> = { swarm: 'i-swarm', line: 'i-line', armor: 'i-armor', elite: 'i-elite-doctrine', ranged: 'i-ranged' };
+export const KIND_HINT: Record<CounterKind, string> = {
   swarm: 'Anti-Swarm: Slash and splash against Light units',
   line: 'Anti-Line: Pierce against Medium units',
   armor: 'Anti-Armor: Crush and siege against Heavy units',
   elite: 'Anti-Elite: Slayers against Bloomed and Elder units',
+  ranged: 'Anti-Ranged: swarms against Ranged units',
 };
 
 export interface Intent {
