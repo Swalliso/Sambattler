@@ -49,9 +49,6 @@
           "building": "morelWarren"
         },
         {
-          "building": "rhizomeVault"
-        },
-        {
           "building": "sporeExchange"
         },
         {
@@ -110,9 +107,6 @@
           "building": "morelWarren"
         },
         {
-          "building": "rhizomeVault"
-        },
-        {
           "building": "sporeExchange"
         },
         {
@@ -136,24 +130,24 @@
   },
   "commands": [],
   "expected": {
-    "r1.planning": "83cb36c444b1be71",
-    "r1.clash": "277002f625f995b2",
-    "r1:200": "c83337dd2744e792",
-    "r1.aftermath": "cb68b9495491d1b9",
-    "r2.planning": "fecdc0a21d80f19d",
-    "r2.clash": "5a7c1041ce6e6560",
-    "r2:200": "1817ecf472ad1a97",
-    "r2.aftermath": "9d26a5ff19849733",
-    "r3.planning": "7f35c37edd412931",
-    "r3.clash": "2702d11e7269b4e8",
-    "r3:200": "58a6ad28f0d2a8de",
-    "r3:400": "919e2fe6739a658e",
-    "r3.aftermath": "0c48cefaa9865e6e",
-    "r4.planning": "16d4d6b27c1d0712",
-    "r4.clash": "8fb44c70ca5af967",
-    "r4:200": "3cd50cec279d3787",
-    "r4:400": "e67f5d06b71223b5",
-    "r4.aftermath": "e16c2836f60dd2c6",
-    "final": "a060a76b3472a721"
+    "r1.planning": "5510aed72527e748",
+    "r1.clash": "c9e81c19e84a5c93",
+    "r1:200": "c1e073a5856acb81",
+    "r1.aftermath": "baf8f81ec6c8576c",
+    "r2.planning": "a572c015e7f93bb6",
+    "r2.clash": "09bfd2e3b6c3c16b",
+    "r2:200": "fc1a30fd4e1cdf8c",
+    "r2.aftermath": "6f66539f330f0d96",
+    "r3.planning": "669eb3d5ce910818",
+    "r3.clash": "6299e481144c5c85",
+    "r3:200": "c452b9ecb811dfc5",
+    "r3:400": "3b35fdb2e0800c45",
+    "r3.aftermath": "17c4b956104026c3",
+    "r4.planning": "c0a0cbffec352f3b",
+    "r4.clash": "59ebc988270bc1da",
+    "r4:200": "e77d208d36c001d6",
+    "r4:400": "a18839d7c36c7798",
+    "r4.aftermath": "3bd4b6783dfff2a9",
+    "final": "4c30498936565752"
   }
 }

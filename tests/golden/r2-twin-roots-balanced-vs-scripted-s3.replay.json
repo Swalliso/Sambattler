@@ -49,9 +49,6 @@
           "building": "morelWarren"
         },
         {
-          "building": "rhizomeVault"
-        },
-        {
           "building": "sporeExchange"
         },
         {
@@ -111,9 +108,6 @@
           "building": "morelWarren"
         },
         {
-          "building": "rhizomeVault"
-        },
-        {
           "building": "sporeExchange"
         },
         {
@@ -137,29 +131,29 @@
   },
   "commands": [],
   "expected": {
-    "r1.planning": "0a6294a769809471",
-    "r1.clash": "468b8777d0983b64",
-    "r1:200": "706534874139c3e5",
-    "r1.aftermath": "74df6d3af47b21e0",
-    "r2.planning": "f6d51bc674037295",
-    "r2.clash": "df1bf3726a6aacf1",
-    "r2.aftermath": "ffe3d61ebeda730f",
-    "r3.planning": "323234f3238f091c",
-    "r3.clash": "62ce3bbf6144d824",
-    "r3:200": "9fe5e28721c461a6",
-    "r3:400": "876f72cd3c912775",
-    "r3.aftermath": "7f24d34a6620831d",
-    "r4.planning": "f9fea7cc192fedb1",
-    "r4.clash": "fb0310a32d456b1d",
-    "r4:200": "caf0680e75c31e06",
-    "r4.aftermath": "5c5d8a0d82d26eba",
-    "r5.planning": "7914ca54b3d03905",
-    "r5.clash": "801047a7a1e7be53",
-    "r5:200": "4b2b05779b1665dd",
-    "r5:400": "c81f4717f0864692",
-    "r5:600": "6d335906629a2ddd",
-    "r5:800": "f066e81f04d8388b",
-    "r5.aftermath": "a64b3f2d9d878ac8",
-    "final": "2ee124aea5513103"
+    "r1.planning": "69346ee6a282b0a6",
+    "r1.clash": "a9007d7bf0c1242b",
+    "r1:200": "00567e1586a753be",
+    "r1.aftermath": "6e5cbafbfe165db9",
+    "r2.planning": "b93cdcebdc2e3686",
+    "r2.clash": "5c97fc872bd36208",
+    "r2.aftermath": "a5f4b8dac59af250",
+    "r3.planning": "1b24c490e7eaa46d",
+    "r3.clash": "bd212ff3a0ac9937",
+    "r3:200": "f57c3d9c7aad3ecb",
+    "r3:400": "b1edaf089235f870",
+    "r3.aftermath": "d2226dde62389644",
+    "r4.planning": "1b3a57bd6e927446",
+    "r4.clash": "6a70a4cbd6276a1c",
+    "r4:200": "ff9ad340fd3c04ad",
+    "r4.aftermath": "040d9612b7258dc7",
+    "r5.planning": "c45fa7f74fa14acc",
+    "r5.clash": "39f80aaca6654f02",
+    "r5:200": "c7c8fcbc02519584",
+    "r5:400": "bb59eaba4a9c2391",
+    "r5:600": "7823d734ab52f27a",
+    "r5:800": "b13a43ba5cbcce04",
+    "r5.aftermath": "ad38c476d9ca1cf5",
+    "final": "545a2fcaac3fbd02"
   }
 }

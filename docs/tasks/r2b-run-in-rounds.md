@@ -494,7 +494,8 @@ S6 (the effects DSL and relics):
 - [x] T076 [US5] Keep the Rhizome Vault out until R3: `requires: 'combos'` on `rhizomeVault` in `data/factions/velvet-bloom/buildings.json`, so it leaves drafts, spoils, events, general kits and Armilla's core offers, which then offer five core cards; log it in `data/CHANGELOG-balance.md` (§4.4, §11.2, §11.10) ⛔ §18.2 #26
 - [x] T077 [US5] Delete the rewordings in `src/ui/words.ts` that name a rewritten relic, so no v1 sentence shows over a v2 effect, and update `tests/unit/words.test.ts`. If R2-Q8 kept text in the hashed state, the new texts move goldens: T078 covers it (§10.4, §15.7, A152) ⛔ R2-Q8
   - As built (S6): every relic's text is v2's in the data, so `src/ui/words.ts` rewords none, and v1's adjacency diagram for Mycorrhizal Link went with them.
-- [ ] T078 [US5] Run `npm run golden -- update` for the moved goldens in `tests/golden/` and say so in the commit (§15.5)
+- [x] T078 [US5] Run `npm run golden -- update` for the moved goldens in `tests/golden/` and say so in the commit (§15.5)
+  - As built (S6): all six moved at round 1's first checkpoint, by the state's new shape. The five battle replays play out as on `develop` (the same winners, rounds, damage and gold); `r2-run-s7` moved further, with the run's pool and relics.
 
 S7 (commanders, powers, generals, the boss's extra cards):
 
