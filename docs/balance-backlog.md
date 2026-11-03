@@ -19,6 +19,41 @@ v1's backlog is archived at [docs/archive/v1/balance-backlog.md](archive/v1/bala
 ## Open
 
 - **R1's review gate** (S8, T049): the user reads R1's entry below and settles §18.2 #7–#15, X4, X5, #36's reading and each knob's outcome (A109). R2a starts after that.
+- **The pace of a battle in rounds** (R2a S10b, below): step 3 misses its median rounds and its round-9 share. It waits for S18's G4 run and the user's call on #35's bands.
+
+## R2a S10b · step 3 in rounds (2026-11-02)
+
+T073's reading of §16 R2 step 3 in round form, on `feature/r2a-general-check`: the code after T149, with the general planning first. Nothing was tuned.
+
+```bash
+npm run sim -- --rounds --seeds 1..40 --player bot:balanced --enemy general:scripted --summary
+```
+
+That's Bogwater Hollow, battle 1, with the default flags.
+
+| Step 3 expects | Measured | |
+|---|---|---|
+| every battle ends, `rejectedCommands` = 0 | 40 of 40 end, 20 by Rout and 20 by Decision; 0 rejected | pass |
+| a median of 6–8 rounds | 9 (min 7, max 9) | **miss** |
+| at most 15% of battles reach round 9 | 29 of 40, 73% | **miss** |
+| at most 15% of clashes at the 45 s cap | 29 of 346, 8% (median clash 0:18) | pass |
+| the bot wins 30–70% | 24 of 40, 60% | pass |
+| mean wall time within §13.7's 3 s for a battle | 50 ms (max 76 ms) | pass |
+
+- **The wall time was taken under load.** Two other sessions' tests and builds were running on this machine (load average about 4.5). Even so, the slowest battle is about 40 times inside the budget, so it needs no re-run alone.
+- **Why battles run long.** These figures come from the same 40 battles' `roundLog`, written with `--out`.
+  - Of 346 rounds, the bot won 147 and the general 137, and 62 were drawn (18%).
+  - A won round dealt a median of 250 to the general's 2000 HP (mean 288), and 300 to your 3000 (mean 329).
+  - A win reached the per-round cap, 25% of max HP, in 31 of the bot's 147 won rounds and 12 of the general's 137.
+  - At those margins a Heartcap falls only after 7 to 9 won rounds. The two sides split the rounds almost evenly, so most battles reach round 9, and half end in a Decision.
+- **Guardrail:** G4, rounds per battle (§12.3), which S18 asserts in round form (T119–T125). v1's G4 Decision share was high too (43%, R2a S1 below).
+- **Recommended: no retune from one matchup.** S18's G4 run plays more bots against the general and sets #35's bands, and the pace goes to the user then. The data's levers are:
+  - `rounds.heartcapDamagePerSupply` (25);
+  - the Heartcaps' HP: yours 3000, battle 1's general 2000;
+  - `rounds.roundDamageCap` (25% of max HP);
+  - `rounds.sporestorm` (+20% a round from round 5).
+
+  Each is a rule change or a retune, so it waits for the user's OK (`.claude/rules/balance.md`).
 
 ## R2a S1 · R1's chosen set as default data (2026-11-02)
 
