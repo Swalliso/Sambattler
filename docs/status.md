@@ -43,6 +43,14 @@ Updated 2026-11-03, on `docs/r2b-s0-done` (the hub's docs PR into `develop`). Th
   - **The fixed cap** (#68): 750 a round for both Heartcaps. The five round goldens moved; v1's battle goldens didn't. `r2-run-s7` replaces v1's run golden.
   - **A run's relics and upgrade levels** compile in a round battle as passives do: those on stats rounds keep apply, the rest are listed and do nothing (R2a's Call 19).
   - **For S1b and the hub:** 20 bot runs (`npm run sim -- --run --seeds 1..20 --summary`) all complete, and no life is lost in a won battle. 19 fight 4–5 battles; seed 4 lost its first three and ended after 3, which the lives rule allows but §16 R2 step 5's "4–5 battles" doesn't. `bot:balanced` loses battle 1 in 9 of 20 runs, which S1b's table measures (R2-Q13, G14).
+- **S2** (`feature/r2b-screen`, T030–T040, T150 and T167): in review. Every battle is the round battle, at §13.4's paths:
+  - **One battle screen:** `scene=battle`, `scene=report` and battle parameters open R2a's scene, moved over v1's battle UI with `git mv` (T150). `scene=deploy` and `scene=rounds` say they aren't part of the game, and the dev title's preview button is gone (T032). One URL parser (`src/app/urlParams.ts`) and one debug bridge serve every battle.
+  - **Placing:** a card goes on its plot only. Its squad's spot in the field no longer lights or takes it (T167).
+  - **Sound by phase** (T038): planning, clash and aftermath sounds per §13.9, the Heartcap hits timed to the aftermath's drain. Six new ids copy the retired sounds they replace (`arrive`, `plan`, `counter`, `power`, `lane-won`, `lane-lost`); T129 drops the retired ones. The speaker button is back in the battle's bottom band.
+  - **Help** reads the battle in rounds, without v1's forward price, holds, waves or timed refunds (T037); T117 writes its round tabs. The spawn-timers setting is gone, and a saved one loads and is dropped (T036).
+  - **Also fixed:** the inspect panel's merge button shows a toggle as soon as it runs. It kept the old label, an R2a bug that the ported browser case found.
+  - **Gone with v1's battle until later sessions:** the first-time tips in battle and battle 1's economy tip (T118), and the relics-and-upgrades popover (S5, S6).
+  - **Next:** S3 (T041–T054, T151, T158) once S2 merges.
 - **The stand-ins open on `develop`** from S1 (Call 14):
   - run battles open no in-battle drafts until S5 (T067);
   - relics and passives on retired systems do nothing in a round battle until S6 and S7, and Rhizome Tithe is refused until T082;
