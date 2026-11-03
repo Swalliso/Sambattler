@@ -919,6 +919,13 @@ The R2a plan settles these itself, with no call from you: A027, A032, A034, A036
 - **Alternatives:** keep "nothing new", and let R2b's draft rerolls and R3's augments take the gold.
 - **Blocks:** R2b's S0 (the drafts) and R3's S0 (the augments).
 - **Decision:** 2026-11-03 (R2b S0; the user chose "Gold upgrades in R2b"): upgrades bought with gold, the user's idea, each a real jump. The first form to measure is a planted building whose squad fields one merge tier up for the rest of the battle. R2b builds it in its own session after S5's drafts (S5b), which first measures what the drafts leave of the banked gold, then sets the price; the general and the bots buy upgrades too. In SPEC §6.1 and §18.2 #67.
+- **S5b's details:** 2026-11-03 (the user: "Take them all", on T159's table in `docs/balance-backlog.md`):
+  - every unit of an upgraded squad arrives Bloomed (tier 2), so it can knit on to Elders at the muster;
+  - a side may upgrade only once its colony is full: the player, the general and the bots alike;
+  - spawners only, the Burster included;
+  - the price is a share of the building's cost: the lowest of 150%, 200% and 300% that keeps G4, G8 and G13 in band over T163's 200 battles, set without a second stop.
+
+  In SPEC §6.1, §4.4 and §14.5.
 
 ### #68 · The Heartcap cap and D28
 

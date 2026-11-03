@@ -449,13 +449,13 @@ S5b, after S5's drafts (#67, the user, 2026-11-03).
 
 - [x] T159 [US10] Measure the late game with S5's drafts on, before building: over `npm run sim -- --seeds 1..40 --player bot:balanced --enemy general:scripted --flags drafts --summary`, the round each colony fills and the gold banked each round after it, for both sides, in `docs/balance-backlog.md` (§6.1, #67)
 - [ ] T160 [US10] Write `tests/unit/upgrades.test.ts` (new) first (§6.1, §4.4, §5.6, §7.1, #67)
-  - An `upgrade` command on a planted building costs its price, and is refused on an empty plot, on an upgraded building, without the gold, and while the side's draft is open (#28).
-  - From the next Begin, the building's squad fields one merge tier up for the rest of the battle, and the formation preview equals what fields.
+  - An `upgrade` command on a planted spawner costs its price, and is refused on an empty plot, on an upgraded building, on a building that fields no squad, before the side's colony is full, without the gold, and while the side's draft is open (#28; the user, 2026-11-03: "Take them all").
+  - From the next Begin, every unit of the building's squad arrives Bloomed (tier 2) for the rest of the battle, so it can knit on to Elders at the muster, and the formation preview equals what fields.
   - Selling refunds the upgrade with the building, by the phase rule.
   - The general and the bots buy upgrades only once their plots are full, and the general never reads what the player buys in the same phase.
 - [ ] T161 [US10] Build it in `src/sim/planning.ts` and `src/sim/state.ts` (the command, the plot's flag and its event), `src/sim/formation.ts` (the squad's tier at the muster), and `src/sim/ai/controller.ts` with the bots (spending once the plots are full), with the price in `data/balance.json` and its schema in `src/data/schema.ts`. Log it in `data/CHANGELOG-balance.md` (§6.1, §7.2, §14.5, #67)
 - [ ] T162 [US10] Show it: the Upgrade button and its price on a planted building's inspect panel (`src/ui/inspect.ts`), the upgraded squad's tier in the formation preview and on its plot (`src/render/renderer.ts`), the general's upgrades in its plan, and a line in Help's planning tab for T117 (§10.2, §10.4, #67)
-- [ ] T163 [US10] Set the price from a measurement: G4, G8 and G13 over 200 battles with upgrades on (`npm run experiment -- --checks g4,g8`), the price that keeps them in band in `data/balance.json` (with the user's OK), the results in `docs/balance-backlog.md`, and `npm run golden -- update` (§12.3, #67)
+- [ ] T163 [US10] Set the price from a measurement: G4, G8 and G13 over 200 battles with upgrades on (`npm run experiment -- --checks g4,g8`), the lowest share of the building's cost, of 150%, 200% and 300%, that keeps them in band, in `data/balance.json` (the user's OK, 2026-11-03: "Take them all"), the results in `docs/balance-backlog.md`, and `npm run golden -- update` (§12.3, #67)
 
 **Checkpoint:** `npx vitest run tests/unit/upgrades.test.ts` passes, and `npm run verify` is green with the goldens updated.
 
