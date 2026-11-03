@@ -603,7 +603,7 @@ S1 to S4: the data, the colony, the round state machine and the planning command
 
 **S12: the field** (may run beside S13)
 
-- [ ] T082 [US3] Write `tests/browser/rounds/planning.test.ts` (new) (§4.6, §5.6, §10.2, §10.4):
+- [x] T082 [US3] Write `tests/browser/rounds/planning.test.ts` (new) (§4.6, §5.6, §10.2, §10.4):
   - every unit's position on the clash's first tick equals one the preview drew (`battle().units` against `preview()`);
   - M on a Burrow beside another Burrow changes the slot's pips from Elder to none;
   - hovering plot F2 lights slot F2, and the other way round;
@@ -614,7 +614,7 @@ S1 to S4: the data, the colony, the round state machine and the planning command
   - Cached by colony and toggles. Hovering a plot lights its slot and the other way round; the ghost's squad shows in its slot through `formationOf(…, change)`.
   - On Twin Roots, one preview per lane. Color-blind team marks sit under preview units.
   - It records what it drew, per side, for the bridge's `preview()` (T079).
-- [ ] T142 [US3] Write `tests/unit/rounds/matchups.test.ts` (new) first (§5.3, §10.4, §11.1 `effectiveness`) (A060, A069)
+- [x] T142 [US3] Write `tests/unit/rounds/matchups.test.ts` (new) first (§5.3, §10.4, §11.1 `effectiveness`) (A060, A069)
   - From `data/balance.json`'s matrix: a Sporeling's slash on a Gill Archer is strong (×1.5), on a Capguard normal (×1.0) and on an Amanita Knight weak (×0.5); a Hammercap's crush on an Amanita Knight is strong (×1.5).
   - A slayer's hit (the Veilstalker's) on a Bloomed unit is strong (×3.0 tag multiplier); on a base-tier unit it follows the matrix.
   - Merge-perk resistances never change a class (§5.3).
