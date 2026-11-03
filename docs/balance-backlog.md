@@ -20,12 +20,41 @@ v1's backlog is archived at [docs/archive/v1/balance-backlog.md](archive/v1/bala
 
 - **The pace after T125** (R2a S18, below): at 100 a supply, agreed on 2026-11-03, battles take a median of 7 rounds, 18.5% of 200 reach round 9 (G4: ≤ 20%), and the damage cap binds in 70% of damaging rounds. S21's playtest reads whether a win's size still counts.
 - **The round guardrails that miss on the final data** (R2a S20, confirming S18's, below): G1, G2, G3, G7, G8's mono drops and G16 (the formation rule loses to its ranks traded). Each waits for the user, G16 best before S21.
+- **The Morel Runners** (R2a S21b, below): intended under §5.2, not a bug. A pair charges in a column, so it reads as one runner, and the runners that "pushed in to the enemy base" were striking the invisible Mortar that T160 fixed. A fan-out rule would be the user's call.
 - **G16 after the Burster moved to the front** (R2a S21b, below; the user's OK, 2026-11-03): 40%, from 24%. The Gill Archer and Mortar pairs are what's left (55% and 26%), and only a 2-tile gap fixed them in the levers' entry. They wait for the playtest's calls and R3's combos.
 - **Step 3's round-9 limit** (R2a S20, below): SPEC §16 R2 step 3 still says 15%, where G4's agreed band says 20% over 200 battles. Its 40 battles read 15%, at the limit.
 - **X8's readouts** (R2a S15, below): your colony is full from round 5, and once both colonies are full, half the clashes replay the last one. They go to S18's pace call and S21's playtest, with X8's two knobs still off.
 - **Gill Archers tie Swarm and Ranged** (R2a S15, below): the noise, not #14's tie order, picks between them. A rule change waits for the user.
 - **The Burster's seat effect** (R2a S17, below): a mirror of Bursters goes to whichever side's ids come first. A rule change waits for the user.
 - **The first fighting tick's frame in Chromium** (R2a S17, below): 4.8–11.4 ms once a page, against §13.7's 8 ms.
+
+## R2a S21b · the Morel Runners, diagnosed (2026-11-03)
+
+**The user's note** (playtest, 2026-11-03): "the Morel Warren runners have a hard time pathfinding properly and even though there are two units, they only seem to attack one at a time when matching up against Capguards and Rootbreakers. This typically ends with the units pushing all the way in to the enemy base."
+
+**Measured** (T162; no code or data changed):
+- **A traced clash:** two Morel Warrens against a Capguard Hall and a Rootbreaker Den, each in front, on Bogwater Hollow, tick by tick: positions, targets and attack ticks. Again with merging off, and with a Puffball Mortar behind the general's front.
+- **Whole battles:** `bot:mono:morelWarren` against the scripted general, seeds 1–20 (138 clashes), with `bot:mono:sporelingBurrow` as the baseline: what each runner targets each tick, how often it attacks, and how often it stands past the enemy's living front line.
+- **A capture** of the traced clash at tick 100 (`npm run screenshot`, from a scenario kept out of the commit).
+
+**What happens:**
+- **Both runners of a pair attack.** Each Warren's 6 runners knit into 2 Bloomed runners, and the 4 pair off 2-on-1 against the Bloomed Capguard and Rootbreaker. The front runner of a pair attacks every 18 ticks from tick 68, and the rear one from tick 92, every 18 ticks too.
+- **Why it reads as one at a time:**
+  - The two Bloomed runners knit one behind the other in their slot, at nearly the same height, so they charge their target in a column.
+  - The front one stops in contact. The rear one stops at the end of its reach, 0.40 tiles from the target, which is its range, directly behind its partner. Their sprites overlap in the capture, so the pair looks like one runner.
+  - The Capguard and the Rootbreaker stick to the front runner until it dies (§5.2's stickiness), so the pair dies one at a time. The rear runner sits at full HP until then.
+- **Pathing:** the runners walk straight at their targets, as §5.2 has every unit do (there's no pathfinding). They don't fan out around a target, and nothing jitters: the rear runner holds still once in reach.
+- **Past the front line, and to the base:**
+  - In whole battles, a runner stands more than half a tile past the enemy's living front line in 0.8% of its ticks (the Sporeling: 1.9%).
+  - It aims at an emplacement in 4.9% of its ticks (the Sporeling: 9.9%), in 24 of the 50 clashes where the general fielded one. A runner that wins its fight seeks the nearest enemy, and that is often the general's back rank or its Mortar, at the general's end of the field.
+  - Until T160, the Gray Rot's Mortar was invisible in the clash. So runners that won their fight ran to the general's end and struck empty ground, which fits "pushing all the way in to the enemy base".
+  - With merging off, 12 runners crowding a lone Capguard shove it about 2 tiles back toward the general's colony over 5 s, by separation alone. With merging on (the default), nothing was shoved.
+
+**Verdict:** intended under §5.2's rules, not a bug in movement or targeting, so nothing was fixed. The part that looked broken, runners striking empty ground near the general's colony, was T160's invisible Mortar.
+
+**For the user** (a rule or stat change each, not made):
+- **Readability:** a pair that charges in a column reads as one runner. A rule could have melee units fan out to a free side of their target, or put knit units side by side in the slot. Either changes how every melee squad moves, so it's a rule change.
+- **The runners' role:** at speed 1.8 they reach the enemy's front well ahead of the rest of your army and fight it alone. That's the fast skirmisher's job as §11 has it, but it's why they die first against Capguards and Rootbreakers.
 
 ## R2a S21b · the Burster in the front line (2026-11-03)
 
