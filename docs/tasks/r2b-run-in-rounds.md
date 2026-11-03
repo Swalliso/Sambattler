@@ -448,7 +448,7 @@ S4c (the last prototype switches, added 2026-11-03). The user: "I'm not personal
 S5b, after S5's drafts (#67, the user, 2026-11-03).
 
 - [x] T159 [US10] Measure the late game with S5's drafts on, before building: over `npm run sim -- --seeds 1..40 --player bot:balanced --enemy general:scripted --flags drafts --summary`, the round each colony fills and the gold banked each round after it, for both sides, in `docs/balance-backlog.md` (§6.1, #67)
-- [ ] T160 [US10] Write `tests/unit/upgrades.test.ts` (new) first (§6.1, §4.4, §5.6, §7.1, #67)
+- [x] T160 [US10] Write `tests/unit/upgrades.test.ts` (new) first (§6.1, §4.4, §5.6, §7.1, #67)
   - An `upgrade` command on a planted spawner costs its price, and is refused on an empty plot, on an upgraded building, on a building that fields no squad, before the side's colony is full, without the gold, and while the side's draft is open (#28; the user, 2026-11-03: "Take them all").
   - From the next Begin, every unit of the building's squad arrives Bloomed (tier 2) for the rest of the battle, so it can knit on to Elders at the muster, and the formation preview equals what fields.
   - Selling refunds the upgrade with the building, by the phase rule.
