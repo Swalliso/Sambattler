@@ -45,8 +45,8 @@ npm run experiment -- --rounds --checks g4
 | The general's planning turn | ≤ 20 ms | mean 0.09, max 0.43 (Mold, seed 1, round 4) | pass |
 | The sim part of a planning command | 2 ms (S17's Node budget) | at most 0.41 (mean 0.10), on Twin Roots' 15th plot | pass |
 | One battle, bots on both sides | ≤ 3 s | 39 ms, 9 rounds | pass |
-| A plant and the preview it updates (Chromium) | ≤ 4 ms | 0.2–1.0 ms a frame | pass |
-| A render frame at 300 units (Chromium) | ≤ 8 ms | at most 3.4 (median 0.8) after the first fighting tick; that tick's frame 4.8–11.4 | **miss**, one frame a page |
+| A plant and the preview it updates (Chromium) | ≤ 4 ms | a median of 0.6–0.7 ms over five plants' worst frames | pass |
+| A render frame at 300 units (Chromium) | p95 ≤ 8 ms | p95 2.6–3.4 (median 0.7) after the first fighting tick; that tick's frame 4.8–11.4 | **miss**, one frame a page |
 
 - **bench-300 in rounds** plays 150 units a side in blocks on test-3lane, merging off. Every lane draws at the 900-tick cap, and live units thin from 300 to about 180 by tick 300. So the bench times 2,000 fighting ticks over 3 fresh clashes and weights each by its live units: 177 on average.
 - **The full colonies' clashes** tick at a mean of 0.27 ms and a p99 of 0.77 on one lane, and 0.32 and 0.79 on Twin Roots, inside G11's.
@@ -54,7 +54,7 @@ npm run experiment -- --rounds --checks g4
 - **The general's turn** is timed from round 2 on, in 68 turns against the scripted general, Mold and the Baron. Round 1's runs inside `createBattle`.
 - **The cold frame:**
   - The first tick after the muster runs the clash's targeting, movement and attacks in the page for the first time. Its frame took 4.8–11.4 ms over seven runs, over 8 ms in five. Node's warm bench times that tick under 2 ms, so the cost is cold code, once a page.
-  - T115 holds the budget on the frames after it.
+  - T115 holds the p95 of the 45 frames after it, as §16 M8 words the render budget, and the median of five plants' worst frames. One slow frame can't decide either. On #102's first CI run, a shared runner's single frames reached 12.4 ms (median 1.4) and a plant 4.5 ms.
   - The lever: warm the clash's systems when the preview opens, say by stepping a throwaway clash. That's a change to `src/app/rounds/main.ts`, S19's file, so it waits for the user's call.
 - **New budgets:** the planning command's 2 ms Node budget is S17's call, half of Chromium's 4 ms. It, the arrival's 5 ms and the turn's 20 ms sit in `ROUND_BUDGETS` (`tools/lib/rounds/bench.ts`) until T119 writes G11's round form.
 - **Guardrail:** G11 (§12.3). `npm run verify` runs the round bench quick (T118).
