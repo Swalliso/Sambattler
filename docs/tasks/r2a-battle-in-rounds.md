@@ -601,7 +601,7 @@ S1 to S4: the data, the colony, the round state machine and the planning command
   - It draws the terrain, both colonies' plots as a faint 2×2 grid, loam and stumps, Call 21's closed plots and buildings.
   - It draws units through R4a's `drawUnitSprite(g, atlas, opts)` in `src/render/unitSprite.ts` (R4/T011). If R4a hasn't landed, create `src/render/unitSprite.ts` (new) with R4a's signature by moving the body of `Renderer.drawUnit` (`src/render/renderer.ts:511`), with no pixel change, and make v1's `drawUnit` call it.
 
-**S12: the field** (may run beside S13)
+**S12: the field** (may run beside S13 and S10b)
 
 - [ ] T082 [US3] Write `tests/browser/rounds/planning.test.ts` (new) (§4.6, §5.6, §10.2, §10.4):
   - every unit's position on the clash's first tick equals one the preview drew (`battle().units` against `preview()`);
@@ -630,7 +630,7 @@ S1 to S4: the data, the colony, the round state machine and the planning command
 - [ ] T086 [US3] Add the field's details to `src/render/rounds/renderer.ts`: a "New" sprout on buildings planted this round (in planning), the merge-off knot, arrival puffs on `arrived`, coin pops on `income`, the storm haze from `state.sporestorm`, and F3 debug showing plots, the formation box, slots, aggro radii and ids (§10.2, §10.3, §13.6)
   - In a clash, emplacements draw through R4a's `emplacementSprite(content, buildingId)` (R4/T029): `e-<id>` if the sprite exists, else the building's sprite. If R4a hasn't landed, draw the building's sprite at the emplacement's slot.
 
-**S13: the top band and the Intent panel** (may run beside S12)
+**S13: the top band and the Intent panel** (may run beside S12 and S10b)
 
 - [ ] T087 [US3] Write `tests/browser/rounds/hud.test.ts` (new) and `tests/unit/rounds/teachingText.test.ts` (new) (§10.2, §6.2, §6.4) (A063, A064):
   - both Heartcaps frame the band, and the chips stay clear of their labels at 1280×720, 1366×768 and 1440×900;
@@ -875,8 +875,8 @@ S1 to S4: the data, the colony, the round state machine and the planning command
 - **Sessions in parallel:**
   - S1 and S2 (both edit `src/data/schema.ts`, in different schemas; the later merge rebases).
   - S9 and S10a, after S8 (the user, 2026-11-02). S9 owns `src/sim/rounds/headless.ts` and the tools; S10a owns `src/sim/rounds/ai/**` and `openRound`'s turn hooks. Their PRs were checked together before either merged.
-  - S9b beside S11, and S10b beside S11 once S9b has merged (the user, 2026-11-02). S9b and S10b work in `src/sim/rounds/systems/`, the tests and the goldens; S11 owns `src/app/rounds/**`, `src/render/rounds/**`, `tools/screenshot.ts` and `tools/lib/rounds/params.ts`.
-  - S12 and S13. S12 owns `src/render/rounds/**`, `src/sim/rounds/matchups.ts` with its export line in `src/sim/rounds/index.ts`, and `src/app/rounds/phases/aftermath.ts`'s hook for the aftermath view; it doesn't edit `src/app/rounds/battleView.ts`. S13 owns `src/ui/rounds/hud/top.ts`, `tally.ts`, `explain.ts`, `src/ui/rounds/doctrine.ts` and its mount lines in `src/app/rounds/battleView.ts` (T077's mounts).
+  - S9b beside S11 (the user, 2026-11-02). S9b worked in `src/sim/rounds/systems/` and the tests; S11 owned `src/app/rounds/**`, `src/render/rounds/**`, `tools/screenshot.ts` and `tools/lib/rounds/params.ts`. #89's CI ran before #88 landed, so the hub checked the two together before #89 merged.
+  - S12, S13 and S10b, once S11 has merged (the user, 2026-11-02). S10b owns `data/scenarios/rounds/general-plans-first.json`, `tests/unit/rounds/scenarios.test.ts`, `tools/verify.ts`, `tools/golden.ts`, the first round golden and `docs/balance-backlog.md`. S12 and S13 change nothing the sim hashes, so S10b's golden holds, and T073's wall time, read beside the other two, is re-run alone if it misses. S12 owns `src/render/rounds/**`, `src/sim/rounds/matchups.ts` with its export line in `src/sim/rounds/index.ts`, and `src/app/rounds/phases/aftermath.ts`'s hook for the aftermath view; it doesn't edit `src/app/rounds/battleView.ts`. S13 owns `src/ui/rounds/hud/top.ts`, `tally.ts`, `explain.ts`, `src/ui/rounds/doctrine.ts` and its mount lines in `src/app/rounds/battleView.ts` (T077's mounts).
   - S15 and S16, after S14 and its rough playtest (S14b): S15 owns `src/sim/rounds/ai/**`, `src/ui/rounds/doctrine.ts` and `src/app/rounds/phases/planning.ts`; S16 owns `src/sim/rounds/powers.ts`, `step.ts`'s power calls and `src/app/rounds/phases/clash.ts`. Both add a line to `tools/verify.ts`, so the later merge rebases.
   - Everything else is in order.
 - **From R1:**
@@ -916,10 +916,10 @@ Each session is about a day, ends in one PR into `develop` (opened when the user
 | S9 | T058–T064 | `feature/r2a-headless` | S8 merged | `runHeadless` by phase, `npm run sim -- --rounds`, round asserts, `ROUND_REPLAYS` in the golden tool, determinism tests |
 | S9b | T149 | `feature/r2a-replay-fix` | S9 merged; may run beside S11 | A clash with no change replays the last one: the kept systems' periodic checks count from the clash's start |
 | S10a | T065–T069 | `feature/r2a-general` | S8 merged; may run beside S9 (the user, 2026-11-02) | The general plans first through `planningView`; its scores, turn and profiles; bots plan after it |
-| S10b | T070–T073 | `feature/r2a-general-check` | S9b and S10a merged, so T072's first round golden comes after T149; may run beside S11 | `general-plans-first`, the round smoke, the first round golden, step 3's reading (US2 done) |
+| S10b | T070–T073 | `feature/r2a-general-check` | S9b and S10a merged, so T072's first round golden comes after T149; may run beside S11, S12 and S13 (the user, 2026-11-02) | `general-plans-first`, the round smoke, the first round golden, step 3's reading (US2 done) |
 | S11 | T074–T080, T141, T081 | `feature/r2a-ui-loop` | S9 and S10a merged; may run beside S9b and S10b (the user, 2026-11-02) | The preview entry with its defaults, the loop by phase with `battleView.ts`'s mounts, input, the bridge, params and assertions 1–3; plots on the field |
-| S12 | T082, T083, T142, T084–T086 | `feature/r2a-ui-field` | S11 merged | The formation and merge previews, `matchupClass` and its marks, the aftermath, the field's details |
-| S13 | T087–T091 | `feature/r2a-ui-bands` | S11 merged | Both Heartcaps, chips, tally, lane tug, tooltips, the Intent panel, each in its mount |
+| S12 | T082, T083, T142, T084–T086 | `feature/r2a-ui-field` | S11 merged; may run beside S13 and S10b (the user, 2026-11-02) | The formation and merge previews, `matchupClass` and its marks, the aftermath, the field's details |
+| S13 | T087–T091 | `feature/r2a-ui-bands` | S11 merged; may run beside S12 and S10b (the user, 2026-11-02) | Both Heartcaps, chips, tally, lane tug, tooltips, the Intent panel, each in its mount |
 | S14 | T092–T097, T143 | `feature/r2a-ui-panels` | S12 and S13 merged | Tray, inspect, the planning and clash chrome, the report by round, assertion 4 (US3 done) |
 | S14b | T145, T146 | `feature/r2a-rough-playtest` | S14 merged and deployed to the dev site | The user's rough-playtest notes in `docs/playtest-feedback.md`, and any change to S15–S20 written into this list (docs only); S15 and S16 may start |
 | S15 | T098–T103 | `feature/r2a-counters` | S14b done | The counter cycle in rounds; X8's readouts and knobs; the adaptive smoke (US4 done) |
