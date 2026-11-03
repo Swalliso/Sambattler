@@ -2,8 +2,9 @@
 // player unit takes a lower id than every enemy unit, and the systems run units in id order, so each case
 // here plays a clash twice: as it arrives, and with the enemy's ids first. Both must end the same, unit for
 // unit. The staggered checks are phased by each unit's arrival on its side, not its id (T149), so the lineup's
-// Tenders heal on the same ticks either way. The mirror monos must also end level, since each side is the
-// other's mirror image.
+// Tenders heal on the same ticks either way. A Burster's burst strikes at once inside the attack step, so it may
+// fell a unit later in the list before that unit attacks (T148): its mirrors run both ways too. The mirror monos
+// must also end level, since each side is the other's mirror image.
 import { describe, expect, it } from 'vitest';
 import type { RoundScenarioDef } from '../../../src/data/schema.ts';
 import { createFromScenario } from '../../../src/sim/rounds/index.ts';
@@ -31,15 +32,26 @@ function ending(make: () => BattleState, enemyFirst: boolean) {
   return { lanes: s.clash!.lanes, standing };
 }
 
-/** Two of a building on each side, on the same plots, so each side's army is the other's mirror image. */
-const mono = (building: string): RoundScenarioDef => {
-  const colony = [{ building, lane: 0, rank: 0, file: 2 }, { building, lane: 0, rank: 0, file: 3 }];
-  return { id: `mono-${building}`, description: 'A mirror mono.', map: 'bogwater-hollow', sides: { player: { colony }, enemy: { colony } } };
-};
+type Colony = NonNullable<RoundScenarioDef['sides']['player']['colony']>;
+
+/** The same colony on each side, on the same plots, so each side's army is the other's mirror image. */
+const mirror = (id: string, colony: Colony): RoundScenarioDef =>
+  ({ id, description: 'A mirror.', map: 'bogwater-hollow', sides: { player: { colony }, enemy: { colony } } });
+
+/** Two of a building on each side. */
+const mono = (building: string): RoundScenarioDef =>
+  mirror(`mono-${building}`, [{ building, lane: 0, rank: 0, file: 2 }, { building, lane: 0, rank: 0, file: 3 }]);
+
+/** Bursters behind a Sporeling front, so their bursts land among units that attack in the same step (T148). */
+const bursters = (): RoundScenarioDef => mirror('bursters-behind-sporelings', [
+  { building: 'sporelingBurrow', lane: 0, rank: 0, file: 2 }, { building: 'sporelingBurrow', lane: 0, rank: 0, file: 3 },
+  { building: 'bursterPod', lane: 0, rank: 1, file: 2 }, { building: 'bursterPod', lane: 0, rank: 1, file: 3 },
+]);
 
 describe('the id order decides nothing in a clash (§5.2, T147)', () => {
   const cases: [string, () => BattleState][] = [
     ['a mirror Hammercap mono', () => createFromScenario(content, mono('hammercapForge'))],
+    ['a mirror of Bursters behind Sporelings', () => createFromScenario(content, bursters())],
     ['comeback-r4', () => fromScenario('comeback-r4')],
     ['unit-lineup', () => fromScenario('unit-lineup')],
   ];
@@ -48,6 +60,14 @@ describe('the id order decides nothing in a clash (§5.2, T147)', () => {
       expect(ending(make, true)).toEqual(ending(make, false));
     });
   }
+
+  // T148's finding, which waits for the user's call (no rule changed): the side whose ids come first bursts first,
+  // at clash tick 56, and its bursts fell the other's Bursters before they burst on it in the same attack step. That
+  // side wins the lane 4–0 at tick 60, 100 Heartcap damage. Once a fix lands, this fails: make it an `it` above.
+  it.fails("a mirror Burster mono ends the same with the player's ids first or the enemy's (T148: it doesn't yet)", () => {
+    const make = () => createFromScenario(content, mono('bursterPod'));
+    expect(ending(make, true)).toEqual(ending(make, false));
+  });
 
   it('a mirror mono ends level: the same lock and the same army standing on each side', () => {
     for (const building of ['sporelingBurrow', 'capguardHall', 'gillNest', 'hammercapForge']) {

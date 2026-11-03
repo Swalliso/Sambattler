@@ -762,7 +762,8 @@ S1 to S4: the data, the colony, the round state machine and the planning command
 
 **S17: goldens, the bench and the balance tools**
 
-- [ ] T148 [US6] Add a Burster mirror to `tests/unit/rounds/seats.test.ts`, played with each side's ids first. A Burster's strike lands at once inside the attack step, so it may fell a unit later in the list before that unit attacks. If the mirror differs by seat, report it before changing any rule (§5.3, T147; #82's review, 2026-11-02)
+- [x] T148 [US6] Add a Burster mirror to `tests/unit/rounds/seats.test.ts`, played with each side's ids first. A Burster's strike lands at once inside the attack step, so it may fell a unit later in the list before that unit attacks. If the mirror differs by seat, report it before changing any rule (§5.3, T147; #82's review, 2026-11-02)
+  - As built (S17): the mirror Burster mono differs by seat. Whichever side's ids come first bursts first (clash tick 56), fells the other's Bursters before they burst, and wins the lane 4–0 at tick 60, 100 Heartcap damage. Bursters behind a Sporeling front end the same either way. No rule changed: the case is an `it.fails` until the user's call.
 - [ ] T112 [US6] Record `tests/golden/r2-twin-roots-<what>-s<seed>.replay.json` (new; Twin Roots, each lane its own clash) and `tests/golden/r2-merge-mirror-s3.replay.json` (new; the merge mirror, knitting at the muster), each pinning its flags (§15.5) (A115)
   - Add both entries to `ROUND_REPLAYS` in `tools/golden.ts`, run `npm run golden -- update`, then check that `git diff --stat tests/golden/m*` shows no change.
 - [ ] T113 [US6] Write `tests/slow/rounds/perf.test.ts` (new). It asserts G11's round budgets: arrival ≤ 5 ms, the general's planning turn ≤ 20 ms, one battle of rounds with bots on both sides ≤ 3 s, and a tick mean ≤ 1.0 ms and p99 ≤ 2.5 ms at 300 live units. It also asserts the sim part of a planning command under its Node budget, and peak units ≥ 300 (§13.7, §15.4) (A113)
