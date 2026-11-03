@@ -1,6 +1,6 @@
 // A battle in rounds' creation (SPEC §4.7 steps 1–4, §6.1, §14.4, §14.6), its queue and step by phase
-// (§13.3 rules 1 and 7, §14.5, §14.6), and round scenarios (§15.2, plan Call 18). T054 adds the round
-// order's cases.
+// (§13.3 rules 1 and 7, §14.5, §14.6), round scenarios (§15.2, plan Call 18), and a round's order (§4.7,
+// §15.7's Rounds row).
 import { describe, expect, it } from 'vitest';
 import { loadContent } from '../../../src/data/registry.ts';
 import type { Content } from '../../../src/data/registry.ts';
@@ -13,7 +13,7 @@ import {
 import type { BattleState, Side } from '../../../src/sim/rounds/index.ts';
 import { readRawContent } from '../../../tools/lib/content.ts';
 import { newClash } from '../../../src/sim/rounds/round.ts';
-import { content, planningState } from '../../roundHelpers.ts';
+import { begin, content, finishRound, planningState } from '../../roundHelpers.ts';
 
 /** Battle `battleIndex` on Bogwater Hollow against `enemy`, with a human player. */
 const battle = (enemy = 'human', battleIndex = 1, from: Content = content): BattleState =>
@@ -237,5 +237,72 @@ describe('round scenarios (§15.2, plan Call 18, A106)', () => {
     s.units.find((u) => u.unitId === 'gillArcher')!.hp = 0;
     expect(tug()).toEqual([[8, 0], [0, 2]]);
     expect(survivingSupply(planningState(), 'player', 0)).toBe(0);
+  });
+});
+
+describe("a round's order (§4.7, §14.6's opening steps 1–7, §15.7 Rounds)", () => {
+  /** Battle 1 against Mother Mold, whose plan hook runs, with a player's passive that pays 7 gold at battleStart and 5 at roundStart. */
+  function ordered(): BattleState {
+    const config = makeRoundConfig(content, { seed: 7, enemy: 'general:mother-mold' });
+    config.modifiers = [...(config.modifiers ?? []), {
+      side: 'player', source: 'test:order',
+      effects: { triggers: [{ on: 'battleStart', do: [{ gainGold: 7 }] }, { on: 'roundStart', do: [{ gainGold: 5 }] }] },
+    }];
+    return createBattle(content, config);
+  }
+  const kinds = (s: BattleState) => s.events.map((e) => (e.t === 'effectGold' ? `${e.t}:${e.amount}` : e.t));
+  const scenario = (round: number, sides: RoundScenarioDef['sides'] = { player: {}, enemy: {} }): RoundScenarioDef => ({
+    id: 'order', description: 'A round-order test.', map: 'bogwater-hollow', round, sides,
+  });
+
+  it("opens round 1 with its storm, then battleStart and roundStart, then the general's plan, then the player's planning", () => {
+    const s = ordered();
+    expect(kinds(s)).toEqual(['roundStarted', 'effectGold:7', 'effectGold:5', 'generalPlanned']);
+    expect([s.events[0], s.sporestorm, s.phase]).toEqual([{ t: 'roundStarted', round: 1, stormBp: 10000 }, 0, 'planning']);
+  });
+
+  it("opens a later round with income, interest, its storm, roundStart and the general's plan, which records its income (plan Call 12)", () => {
+    const s = ordered();
+    finishRound(s);
+    step(s);
+    expect(kinds(s)).toEqual(['income', 'income', 'interest', 'interest', 'roundStarted', 'effectGold:5', 'generalPlanned']);
+    expect([s.round, s.phase]).toEqual([2, 'planning']);
+    // nobody fielded an army, so round 1 was drawn: the general's 100 and 30 on the 300 it banked
+    expect(s.sides.enemy.ai!.plans[1]).toMatchObject({ round: 2, income: 130 });
+  });
+
+  it.each([[4, 10000, 0], [5, 12000, 1], [9, 20000, 5]])("sets round %i's storm before roundStarted: %i bp, step %i (§6.4)", (round, stormBp, storm) => {
+    const s = createFromScenario(content, scenario(round));
+    expect([s.events.find((e) => e.t === 'roundStarted'), s.sporestorm]).toEqual([{ t: 'roundStarted', round, stormBp }, storm]);
+  });
+
+  it('carries only the colony and gold into the next round, and fields every squad fresh (§4.7 step 19, §14.4)', () => {
+    const s = createFromScenario(content, scenario(1, {
+      player: { colony: [{ building: 'capguardHall', lane: 0, rank: 0, file: 2, merge: false }] },
+      enemy: { colony: [{ building: 'sporelingBurrow', lane: 0, rank: 0, file: 2, merge: false }] },
+    }));
+    begin(s);
+    const colony = structuredClone(s.buildings);
+    const arrival = s.units.map((u) => [u.side, u.unitId, u.x, u.y, u.hp, u.maxHp]);
+    const firstId = s.nextId;
+    finishRound(s);
+    expect(s.units.some((u) => u.hp < u.maxHp)).toBe(true);
+    const gold = SIDES.map((side) => s.sides[side].gold);
+    step(s);
+    expect([s.round, s.units, s.squads, s.hits, s.clouds, s.clash]).toEqual([2, [], [], [], [], undefined]);
+    expect(s.buildings).toEqual(colony);
+    const paid = (side: Side) => s.events.reduce((n, e) => n + ((e.t === 'income' || e.t === 'interest') && e.side === side ? e.amount : 0), 0);
+    expect(SIDES.map((side) => s.sides[side].gold)).toEqual(SIDES.map((side, i) => gold[i]! + paid(side)));
+    begin(s);
+    expect(s.units.map((u) => [u.side, u.unitId, u.x, u.y, u.hp, u.maxHp])).toEqual(arrival);
+    expect(s.units.every((u) => u.id >= firstId)).toBe(true);
+  });
+
+  it('gives the last round its aftermath like any other, then ends the battle (§4.7 step 19, §6.5)', () => {
+    const s = createFromScenario(content, scenario(9));
+    finishRound(s);
+    expect([s.phase, s.outcome?.by]).toEqual(['aftermath', 'decision']);
+    step(s);
+    expect([s.phase, s.round, kinds(s)]).toEqual(['ended', 9, ['battleEnded']]);
   });
 });

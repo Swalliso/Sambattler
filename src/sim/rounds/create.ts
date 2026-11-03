@@ -10,9 +10,10 @@ import { buildRoundLibrary, compileRoundRules, compileRoundSides } from './compi
 import { collectRoundEffects, resolveStat } from './effects.ts';
 import { kitCards, kitOf } from './kit.ts';
 import { newClash, openRound } from './round.ts';
+import { emptyRoundStats, emptyStats } from './stats.ts';
 import { SIDES, other } from './state.ts';
 import type {
-  BattleConfig, BattleModifier, BattleState, BuildingState, Controller, RoundResult, Side, SideConfig, SideState, SideStats, Tier, UnitState,
+  BattleConfig, BattleModifier, BattleState, BuildingState, Controller, RoundResult, Side, SideConfig, SideState, Tier, UnitState,
 } from './state.ts';
 import { squadOf } from './world.ts';
 
@@ -95,26 +96,6 @@ function setPassives(content: Content, config: BattleConfig): void {
   }
   if (out.length) config.modifiers = out;
   else delete config.modifiers;
-}
-
-export function emptyStats(): SideStats {
-  return {
-    merges: { '2': 0, '3': 0 },
-    damageDealt: 0,
-    damageByBuilding: {},
-    buildingTypes: {},
-    damageBySource: {},
-    heartcapDamageTaken: 0,
-    goldEarned: { stipend: 0, economy: 0, comeback: 0, interest: 0, effects: 0 },
-    goldByBuilding: {},
-    healingDone: 0,
-    buildingsPlanted: 0,
-    buildingsSold: 0,
-    unitsLost: 0,
-    maxEldersAlive: 0,
-    maxGoldBanked: 0,
-    rejectedCommands: 0,
-  };
 }
 
 /** A single battle in round 1's planning, the general's plan made (§4.7 steps 1–4, §14.6). */
@@ -287,7 +268,7 @@ type PastRound = NonNullable<RoundScenarioDef['rounds']>[number];
  * and the `last` round's result. The last made round takes `last`'s lanes and damage (all of `dealt`
  * without it), the first the rest of `dealt`, and any between none. Each records the Heartcaps as that
  * damage left them, and the last as they stand. A made round fielded nothing and records no storm, cap,
- * survivors or lane damage.
+ * survivors, lane damage or stats.
  */
 function roundsBefore(sc: RoundScenarioDef, state: BattleState, fail: (problem: string) => never): RoundResult[] {
   const n = state.round - 1;
@@ -325,6 +306,7 @@ function roundsBefore(sc: RoundScenarioDef, state: BattleState, fail: (problem: 
       fielded: perSide((s) => (r.fielded?.[s] ?? []).map((f) => ({ unitId: f.unit, tier: f.tier ?? 1, count: f.count, augments: [], lane: f.lane ?? 0 }))),
       damageByBuilding: { player: {}, enemy: {} },
       survivorsByBuilding: { player: {}, enemy: {} },
+      stats: perSide(() => emptyRoundStats()),
     };
   });
 }

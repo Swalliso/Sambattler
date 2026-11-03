@@ -1,10 +1,11 @@
 // A round's opening (SPEC §4.7 steps 5–11, §14.6's opening steps 1–7): `createBattle` opens round 1, and
-// the aftermath's step every later one. Until T055 `openRound` is a stub: it clears the last clash, lets
-// the general plan first and a bot or general on the player's side after it, and enters planning. T055
-// adds the income, the round's Sporestorm with `roundStarted`, the `battleStart` and `roundStart`
-// triggers, and R2a's empty draft step (plan Call 26). Begin's clash half fields both armies and resolves
-// the muster (§4.7 steps 12–14), and the clash's end scores the round and checks the battle's end (§4.7
-// step 17, §6.5). It stands beside v1's code until R2b moves it to `src/sim/round.ts`.
+// the aftermath's step every later one. It clears the last clash, pays the income from round 2, sets the
+// round's Sporestorm with `roundStarted`, fires the `battleStart` and `roundStart` triggers, lets the
+// general plan first and a bot or general on the player's side after it, and enters planning. The two
+// turns are hooks until T068 and T069, and the draft step is empty in R2a (plan Call 26). Begin's clash
+// half fields both armies and resolves the muster (§4.7 steps 12–14), and the clash's end scores the round
+// and checks the battle's end (§4.7 step 17, §6.5). It stands beside v1's code until R2b moves it to
+// `src/sim/round.ts`.
 import type { ModifierDef } from '../../data/schema.ts';
 import { musterKnits } from '../formation.ts';
 import type { MusterUnit } from '../formation.ts';
@@ -13,10 +14,12 @@ import { addUnit } from './create.ts';
 import { collectRoundEffects, fireTriggers } from './effects.ts';
 import { formationOf } from './formation.ts';
 import type { MusterTrio, SquadPlan } from './formation.ts';
+import { closeRound, emptyRoundStats } from './stats.ts';
 import { SIDES, other } from './state.ts';
 import type { BattleState, ClashState, FieldedSquad, LaneResult, RoundResult, Side, SquadState } from './state.ts';
+import { payIncome } from './systems/economy.ts';
 import { mergeTriosNow } from './systems/merging.ts';
-import { capFor, decisionWinner, laneDamage, roundOutcome, stormBpFor, stormed, takenMods } from './systems/victory.ts';
+import { capFor, decisionWinner, laneDamage, roundOutcome, stormBpFor, stormStep, stormed, takenMods } from './systems/victory.ts';
 import { findUnit, isEmplacement } from './world.ts';
 
 /**
@@ -38,6 +41,7 @@ export function newClash(state: BattleState): ClashState {
       ended: false, endTick: 0, winner: null, capped: false, survivors: { player: 0, enemy: 0 }, damageSupply: { player: 0, enemy: 0 }, margin: 0,
     })),
     fielded: { player: [], enemy: [] },
+    maxElders: { player: 0, enemy: 0 },
   };
 }
 
@@ -158,13 +162,14 @@ function fieldedOf(state: BattleState, side: Side): FieldedSquad[] {
 
 /**
  * The clash's end (§4.7 step 17, §14.6 clash step 13), on the tick its last lane ends: the round is scored
- * from the lanes' locks, the round's winner fires its `roundWon` triggers (none after a drawn round), and
- * the battle's end is checked, which sets `outcome`. Either way the battle enters the aftermath, whose step
- * ends the battle or opens the next round.
+ * from the lanes' locks, the round's winner fires its `roundWon` triggers (none after a drawn round), the
+ * round's stats close (§5.7), and the battle's end is checked, which sets `outcome`. Either way the battle
+ * enters the aftermath, whose step ends the battle or opens the next round.
  */
 export function endClash(state: BattleState): void {
   const { winner } = roundOutcome(scoreRound(state).damage);
   if (winner) fireTriggers(state, winner, 'roundWon', { x: 0, y: 0, lane: -1, sourceBuildingId: 0 });
+  closeRound(state);
   const outcome = battleOutcome(state);
   if (outcome) state.outcome = outcome;
   state.phase = 'aftermath';
@@ -176,7 +181,8 @@ export function endClash(state: BattleState): void {
  * damage-taken modifiers; each Heartcap's sum over the lanes it lost is then capped and applied, down to 0,
  * with `heartcapDamaged`. The round's `RoundResult` records each side's damage capped, before the HP floor
  * (R2-Q11), and each lane's before the cap (A068). The clash's fielded record moves into it, with this
- * round's damage and survivors by building (plan Call 13, A064).
+ * round's damage and survivors by building (plan Call 13, A064). Its stats close in `endClash`, once its
+ * `roundWon` triggers have fired (`closeRound`).
  */
 export function scoreRound(state: BattleState): RoundResult {
   const clash = state.clash!, rules = state.rules;
@@ -203,6 +209,7 @@ export function scoreRound(state: BattleState): RoundResult {
     if (amount === 0) continue;
     ss.heartcapHp = Math.max(0, ss.heartcapHp - amount);
     state.stats[s].heartcapDamageTaken += amount;
+    state.stats[other(s)].heartcapDamageDealt += amount;
     state.events.push({ t: 'heartcapDamaged', side: s, amount, stormBp, capped: cut });
   }
   const result: RoundResult = {
@@ -211,6 +218,7 @@ export function scoreRound(state: BattleState): RoundResult {
     fielded: clash.fielded,
     damageByBuilding: { player: roundDamageByBuilding(state, 'player'), enemy: roundDamageByBuilding(state, 'enemy') },
     survivorsByBuilding: { player: survivorsByBuilding(state, 'player'), enemy: survivorsByBuilding(state, 'enemy') },
+    stats: { player: emptyRoundStats(), enemy: emptyRoundStats() },
   };
   clash.fielded = { player: [], enemy: [] };
   state.rounds.push(result);
@@ -260,6 +268,14 @@ export function battleOutcome(state: BattleState): BattleState['outcome'] {
   return { winner: decisionWinner(state.rules.decisionBy, { player: side('player'), enemy: side('enemy') }), by: 'decision', round };
 }
 
+/** What a trigger fired at a round's opening sees: no place, lane or building. */
+const OPENING = { x: 0, y: 0, lane: -1, sourceBuildingId: 0 };
+
+/**
+ * Opens the round (§14.6's opening steps 1–7), from `createBattle` for round 1, a round scenario for its
+ * round, or the aftermath's step for each later round. Only the colony and gold carry into it: the last
+ * clash's units, squads, hits and clouds go, and every squad is fielded fresh at Begin (§14.4).
+ */
 export function openRound(state: BattleState): void {
   // 1. clear events, and the last clash's units, squads, hits and clouds; advance the round, unless this opens the battle
   state.events.length = 0;
@@ -271,9 +287,17 @@ export function openRound(state: BattleState): void {
     state.hits.length = 0;
     if (state.clouds) state.clouds.length = 0;
   }
-  // 2–4. income from round 2, the Sporestorm and `roundStarted`, the `roundStart` triggers (T055)
+  // 2. income for both sides from round 2, with any pending gold (§6.2); round 1 has its starting gold
+  const income = state.round > 1 ? payIncome(state) : undefined;
+  // 3. the round's Sporestorm (§6.4), then `roundStarted`
+  const stormBp = stormBpFor(state.rules.storm, state.round);
+  state.sporestorm = stormStep(state.rules.storm, state.round);
+  state.events.push({ t: 'roundStarted', round: state.round, stormBp });
+  // 4. `battleStart` in round 1, then `roundStart`, the player's first
+  if (state.round === 1) for (const s of SIDES) fireTriggers(state, s, 'battleStart', OPENING);
+  for (const s of SIDES) fireTriggers(state, s, 'roundStart', OPENING);
   // 5. the general plans first (§7.2)
-  if (state.sides.enemy.ai) generalTurn(state);
+  if (state.sides.enemy.ai) generalTurn(state, income?.enemy.total ?? 0);
   // 6. the draft (R2b: none in R2a, plan Call 26)
   // 7. a bot or general on the player's side plans after it
   if (state.sides.player.ai) playerTurn(state);
@@ -283,11 +307,12 @@ export function openRound(state: BattleState): void {
 /**
  * The general's turn (opening step 5, §7.2): T068 fills it with its doctrine or counter change, its buys
  * and its merge toggles, each run at once as a command. Until then it plants nothing. Either way the
- * round's plan goes in `ai.plans` (plan Call 12), and `generalPlanned` follows.
+ * round's plan goes in `ai.plans` with the income it was paid this round (plan Call 12), and
+ * `generalPlanned` follows.
  */
-function generalTurn(state: BattleState): void {
+function generalTurn(state: BattleState, income: number): void {
   const ss = state.sides.enemy;
-  ss.ai!.plans.push({ round: state.round, planted: [], sold: [], income: 0, banked: ss.gold });
+  ss.ai!.plans.push({ round: state.round, planted: [], sold: [], income, banked: ss.gold });
   state.events.push({ t: 'generalPlanned', side: 'enemy', planted: [], sold: [] });
 }
 

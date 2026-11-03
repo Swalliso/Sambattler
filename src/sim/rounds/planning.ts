@@ -36,6 +36,7 @@ export function plant(state: BattleState, side: Side, buildingId: string, plot: 
   state.sides[side].gold -= price;
   const b = addBuilding(state, side, buildingId, plot, price);
   state.stats[side].buildingsPlanted++;
+  if (state.compiled[side].buildings[buildingId]!.kind === 'economy') state.stats[side].economyPlanted++;
   state.events.push({ t: 'buildingPlanted', id: b.id });
   return null;
 }
@@ -51,6 +52,7 @@ export function sell(state: BattleState, side: Side, entityId: number): string |
   state.sides[side].plots[b.plot]!.building = 0;
   state.buildings.splice(i, 1);
   state.stats[side].buildingsSold++;
+  if (b.fielded) state.stats[side].soldAfterFielding++;
   state.events.push({ t: 'buildingSold', id: b.id, side, refund });
   return null;
 }

@@ -60,5 +60,6 @@ function clashTick(state: BattleState): void {
   laneEndSystem(state);
   // 13. once every lane has ended, the round is scored, the battle's end checked, and the battle enters the aftermath
   if (clashOver(state)) endClash(state);
-  // 14. stats sampling (T057)
+  // 14. stats sampling: none is needed, since the most Elders alive is noted at each merge and the
+  // round's stats close as it's scored (`stats.ts`)
 }
