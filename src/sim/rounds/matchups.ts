@@ -7,7 +7,13 @@
 // reads the compiled sides and writes nothing, and the battle never calls it while it runs. R4b extends this
 // module; it stands beside v1's combat until R2b moves it to `src/sim/matchups.ts`.
 import { tagMult } from './systems/combat.ts';
-import type { BattleState, Effectiveness, Side } from './state.ts';
+import type { BattleState, CompiledUnit, Effectiveness, Rules, Side } from './state.ts';
+
+/** What a class reads: each side's compiled units and the matrix's thresholds. A battle's state is one; a planning view makes another (the answer bot, T121). */
+export interface ClassSource {
+  compiled: Record<Side, { units: Record<string, CompiledUnit> }>;
+  rules: Pick<Rules, 'matrix' | 'strongAt' | 'weakAt'>;
+}
 
 /**
  * The class of `side`'s `unitId` hits at `tier` on `targetSide`'s `targetUnitId` at `targetTier` (§5.3, §14.6):
@@ -15,7 +21,7 @@ import type { BattleState, Effectiveness, Side } from './state.ts';
  * Either unit may be a tower's emplacement, under its tower's id.
  */
 export function matchupClass(
-  state: BattleState, side: Side, unitId: string, tier: 1 | 2 | 3,
+  state: BattleState | ClassSource, side: Side, unitId: string, tier: 1 | 2 | 3,
   targetSide: Side, targetUnitId: string, targetTier: 1 | 2 | 3,
 ): Effectiveness {
   const unit = state.compiled[side].units[unitId];

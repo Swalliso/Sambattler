@@ -30,9 +30,18 @@ export function dispatch(content: Content, job: PoolJob): G3Row | ClashRecord | 
   return g3Row(content, map, id, seeds, defender, firstSeed);
 }
 
+/**
+ * A worker's flags: under `tsx` it inherits the parent's loader; elsewhere, as in the slow suite's vitest workers
+ * (R2a/T122), it registers `tsx` itself, since Node's own type stripping refuses the parameter properties some
+ * modules in the content's import graph use.
+ */
+function workerArgv(): { execArgv?: string[] } {
+  return process.execArgv.some((a) => a.includes('tsx')) ? {} : { execArgv: [...process.execArgv, '--import', 'tsx'] };
+}
+
 /** `size` workers, each with `protoContent(spec)`, for jobs of any kind. `run` takes one batch at a time; `close` ends them. */
 function jobPool(spec: string, size: number): { run: (jobs: PoolJob[]) => Promise<unknown[]>; close: () => Promise<void> } {
-  const workers = Array.from({ length: size }, () => new Worker(new URL(import.meta.url), { workerData: { jobPool: true, spec } }));
+  const workers = Array.from({ length: size }, () => new Worker(new URL(import.meta.url), { workerData: { jobPool: true, spec }, ...workerArgv() }));
   const run = (jobs: PoolJob[]) => new Promise<unknown[]>((resolve, reject) => {
     const out: unknown[] = [];
     let next = 0, done = 0, failed = false;

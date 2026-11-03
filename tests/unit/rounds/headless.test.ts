@@ -52,8 +52,12 @@ describe('runHeadless by phase (SPEC §14.6, §15.2)', () => {
   });
 
   it('counts every event the battle raised, round 1\'s opening included', () => {
-    const res = runHeadless(scriptedBattle(), { until: 'end', commands: playerScript(9) });
-    expect(res.eventCounts).toMatchObject({ roundStarted: 9, clashStarted: 9, laneWon: 9, battleEnded: 1 });
+    const s = scriptedBattle();
+    const res = runHeadless(s, { until: 'end', commands: playerScript(9) });
+    // one of each a round, however many the battle ran (a Rout in round 8 at 100 a supply)
+    const n = s.rounds.length;
+    expect(n).toBeGreaterThan(1);
+    expect(res.eventCounts).toMatchObject({ roundStarted: n, clashStarted: n, laneWon: n, battleEnded: 1 });
   });
 
   it("throws a clear error when a human's planning phase has no Begin, rather than looping", () => {

@@ -6,15 +6,17 @@
 // `tools/lib/balance.ts` until R2b moves it there.
 import type { Content } from '../../../src/data/registry.ts';
 import type { RoundScenarioDef } from '../../../src/data/schema.ts';
+import { mapPool } from '../../../src/run/index.ts';
 import { hash32, nextFloat, seedStream } from '../../../src/sim/rng.ts';
 import { basePlots, buildable, colonyPlots } from '../../../src/sim/rounds/colony.ts';
 import { addUnit } from '../../../src/sim/rounds/create.ts';
-import { commandStamp, createFromScenario, queueCommand, runHeadless } from '../../../src/sim/rounds/index.ts';
+import { commandStamp, createFromScenario, makeRoundConfig, queueCommand, runHeadless } from '../../../src/sim/rounds/index.ts';
 import type { BattleState, Flags, Side } from '../../../src/sim/rounds/index.ts';
-import { duelUnit, spawnerIds } from '../balance.ts';
-import type { DuelOutcome } from '../balance.ts';
-import { armyOf, assignSlots, clashField } from '../clash.ts';
+import { answerKind, armyIds, counterAnswers, duelUnit, spawnerIds } from '../balance.ts';
+import type { AnswerKind, DuelOutcome, Verdict } from '../balance.ts';
+import { armyFromBot, armyOf, assignSlots, clashField, lineOf } from '../clash.ts';
 import type { Army, ClashField, FieldId, LanesRule } from '../clash.ts';
+import { rosterIds } from '../roster.ts';
 import { median } from '../run.ts';
 import { runRoundBattle } from './run.ts';
 
@@ -33,6 +35,8 @@ export interface RoundClashJob {
     /** Plots a side opens past the base ones, in a third rank (R1-Q4; default 0). */
     extraPlots?: number;
     lanesRule?: LanesRule;
+    /** Per army, whether its front and back ranks trade places, a third rank left where it stands (G16, R2-Q10). */
+    swap?: [boolean, boolean];
   };
 }
 
@@ -59,14 +63,19 @@ export interface RoundClashRecord {
  * Each side's slots on R1's field: `assignSlots` over the field's plots that are buildable on that side, since a
  * stump plot holds no building in rounds (§4.6) and R1's field, on v1's sim, has none (Twin Roots' front rank).
  */
-function colonyFor(content: Content, army: Army, base: ClashField, side: Side, plots: number, lanesRule?: LanesRule): NonNullable<RoundScenarioDef['sides']['player']['colony']> {
+function colonyFor(content: Content, army: Army, base: ClashField, side: Side, plots: number, lanesRule?: LanesRule, swap = false): NonNullable<RoundScenarioDef['sides']['player']['colony']> {
   const own = colonyPlots(content.maps[base.mapId]!, side, plots);
   const open = base.open.filter((r) => {
     const p = own.find((q) => q.lane === r.lane && q.rank === r.rank && q.file === r.file);
     return p !== undefined && buildable(p);
   });
+  const traded = (rank: number) => (swap && rank < 2 ? 1 - rank : rank);
   return assignSlots(content, army, { ...base, open, plots: open.length }, lanesRule ? { lanesRule } : {})
-    .map((p) => ({ building: p.entry.buildingId, lane: p.lane, rank: p.rank, file: p.file, merge: p.entry.mergeOn }));
+    .map((p) => {
+      const rank = traded(p.rank);
+      if (!open.some((r) => r.lane === p.lane && r.rank === rank && r.file === p.file)) throw new Error(`colonyFor: ${base.id} has no plot at lane ${p.lane}, rank ${rank}, file ${p.file} to trade ranks into`);
+      return { building: p.entry.buildingId, lane: p.lane, rank, file: p.file, merge: p.entry.mergeOn };
+    });
 }
 
 /** The gold value a side has left on the field: each unit's HP share of what its building cost a unit of its squad. */
@@ -92,7 +101,8 @@ export function playRoundClash(content: Content, job: RoundClashJob): RoundClash
   const base = clashField(content, job.field, { extraPlots: opts.extraPlots ?? 0 });
   const plots = basePlots(content.maps[base.mapId]!) + (opts.extraPlots ?? 0);
   const armyOn = (s: Side): Army => job.armies[s === job.seat ? 0 : 1];
-  const side = (s: Side) => ({ plots, colony: colonyFor(content, armyOn(s), base, s, plots, opts.lanesRule) });
+  const swapOn = (s: Side): boolean => opts.swap?.[s === job.seat ? 0 : 1] ?? false;
+  const side = (s: Side) => ({ plots, colony: colonyFor(content, armyOn(s), base, s, plots, opts.lanesRule, swapOn(s)) });
   const def: RoundScenarioDef = {
     id: 'round-clash', description: 'One clash of two armies (R2a/T116).', map: base.mapId,
     flags: { merging: opts.merging ?? true, adaptiveGeneral: false, powers: false },
@@ -190,6 +200,10 @@ export interface RoundBattleJob {
   player: string;
   enemy: string;
   flags?: Partial<Flags>;
+  /** A round scenario to start from, by id or whole (G6, which plays one in both seats). */
+  scenario?: string | RoundScenarioDef;
+  /** Starting gold added to a side (G5). */
+  bonusGold?: Partial<Record<Side, number>>;
 }
 
 /** A battle of rounds as the tools read it. */
@@ -202,11 +216,35 @@ export interface RoundBattleRecord extends RoundBattleJob {
   /** Who led the Heartcap race after each round, by the share of max HP left that a Decision reads (§6.5); null when level. */
   leads: (Side | null)[];
   rejected: number;
+  /** The Heartcap damage each side took over the battle (G6's second clause). */
+  damageTaken: Record<Side, number>;
+  /** The supply each side fielded over the battle at its units' tiers, and its Slayers' part, from the `fielded` record (G7). */
+  supply: Record<Side, { all: number; slayers: number }>;
+  /** Rounds that dealt Heartcap damage, and how many of them the round's damage cap bound (§6.7 step 4, G4). */
+  damageRounds: number;
+  cappedRounds: number;
 }
 
 export function playRoundBattle(content: Content, job: RoundBattleJob): RoundBattleRecord {
-  const { state, result } = runRoundBattle(content, { seed: job.seed, map: job.map, player: job.player, enemy: job.enemy, ...(job.flags ? { flags: job.flags } : {}) });
+  const spec = { seed: job.seed, map: job.map, player: job.player, enemy: job.enemy, ...(job.flags ? { flags: job.flags } : {}) };
+  let config;
+  if (job.bonusGold) {
+    config = makeRoundConfig(content, { seed: job.seed, mapId: job.map, player: job.player, enemy: job.enemy, ...(job.flags ? { flags: job.flags } : {}) });
+    for (const s of ['player', 'enemy'] as const) config[s].startingGold += job.bonusGold[s] ?? 0;
+  }
+  const { state, result } = runRoundBattle(content, { ...spec, ...(job.scenario ? { scenario: job.scenario } : {}), ...(config ? { config } : {}) });
   const max = { player: state.sides.player.heartcapMaxHp, enemy: state.sides.enemy.heartcapMaxHp };
+  const supplyOf = (s: Side) => {
+    let all = 0, slayers = 0;
+    for (const r of state.rounds) for (const f of r.fielded[s]) {
+      const u = state.compiled[s].units[f.unitId];
+      if (!u) continue;
+      const n = f.count * u.tiers[f.tier - 1]!.supply;
+      all += n;
+      if (u.slayer) slayers += n;
+    }
+    return { all, slayers };
+  };
   const leads = state.rounds.map((r) => {
     const p = r.heartcaps.player * max.enemy, e = r.heartcaps.enemy * max.player;
     return p === e ? null : p > e ? 'player' : 'enemy';
@@ -215,6 +253,10 @@ export function playRoundBattle(content: Content, job: RoundBattleJob): RoundBat
     ...job, winner: result.winner, by: result.by, rounds: result.rounds,
     clashes: state.rounds.flatMap((r) => r.lanes.map((l) => ({ round: r.round, ticks: l.ticks, capped: l.capped }))),
     leads, rejected: result.rejectedCommands,
+    damageTaken: { player: max.player - state.sides.player.heartcapHp, enemy: max.enemy - state.sides.enemy.heartcapHp },
+    supply: { player: supplyOf('player'), enemy: supplyOf('enemy') },
+    damageRounds: state.rounds.filter((r) => r.damage.player + r.damage.enemy > 0).length,
+    cappedRounds: state.rounds.filter((r) => r.capped).length,
   };
 }
 
@@ -238,7 +280,7 @@ export function playRoundJob(content: Content, job: RoundJob): RoundJobResult {
 export async function duels(content: Content, run: RoundRunner, opts: { squadSeeds?: number; supplySeeds?: number; supply?: number } = {}): Promise<{
   squad: DuelOutcome[]; supply: (DuelOutcome & { seconds: number })[]; edges: Record<string, number>;
 }> {
-  const g1 = content.targets.G1, g2 = content.targets.G2;
+  const g1 = content.targets.rounds.G1, g2 = content.targets.G2;
   const ids = spawnerIds(content);
   const pairs = <T>(xs: string[], f: (a: string, b: string) => T[]) => xs.flatMap((a) => xs.filter((b) => b !== a).flatMap((b) => f(a, b)));
   const seeds = (n: number) => Array.from({ length: n }, (_, i) => i + 1);
@@ -254,9 +296,12 @@ export async function duels(content: Content, run: RoundRunner, opts: { squadSee
   return { squad, supply, edges };
 }
 
+/** G1's and G2's duels as played. */
+export type Duels = Awaited<ReturnType<typeof duels>>;
+
 /** The duels in a few lines (§12.2): each building's pairings won and lost clearly, each unit's edges, and the intended edges. */
-export function duelLines(content: Content, d: Awaited<ReturnType<typeof duels>>): string[] {
-  const g1 = content.targets.G1, g2 = content.targets.G2;
+export function duelLines(content: Content, d: Duels): string[] {
+  const g1 = content.targets.rounds.G1, g2 = content.targets.G2;
   const lines: string[] = [];
   const ids = [...new Set(d.squad.map((o) => o.a))];
   for (const a of ids) {
@@ -347,20 +392,370 @@ export function rowLine(r: TournamentRow, maxRounds: number): string {
     + `${r.rejected ? ` · ${r.rejected} commands rejected` : ''}`;
 }
 
-/** §12.3's first guesses for G4's band and G13's, read beside a row until T119 writes them into the `rounds` targets. */
-export const G4_FIRST_GUESS = { medianRounds: [6, 8], maxLastRoundShare: 0.15, botWin: [0.3, 0.7], maxCappedShare: 0.15, clashSeconds: [20, 40] } as const;
-
-/** G4's reading of a `bot:balanced` row against §12.3's band, and G13's beside it, each within or outside (no verdict until T123). */
-export function g4Lines(r: TournamentRow, maxRounds: number): string[] {
-  const g = G4_FIRST_GUESS;
+/** G4's reading of a `bot:balanced` row against the `rounds` targets' band, and G13's beside it, each within or outside. */
+export function g4Lines(content: Content, r: TournamentRow): string[] {
+  const g4 = content.targets.rounds.G4, g13 = content.targets.rounds.G13, maxRounds = content.balance.rounds.maxRounds;
   const within = (ok: boolean) => (ok ? 'within' : 'OUTSIDE');
   const m = r.medianRounds ?? 0, win = r.wins / r.games, last = r.lastRound / r.games, cap = r.capped / Math.max(1, r.clashes), len = (r.medianClashTicks ?? 0) / 20;
   return [
     rowLine(r, maxRounds),
-    `  G4: median ${m} rounds ${within(m >= g.medianRounds[0] && m <= g.medianRounds[1])} ${g.medianRounds.join('–')}`
-      + ` · round ${maxRounds} ${pct(r.lastRound, r.games)} ${within(last <= g.maxLastRoundShare)} ≤ ${g.maxLastRoundShare * 100}%`
-      + ` · the bot wins ${pct(r.wins, r.games)} ${within(win >= g.botWin[0] && win <= g.botWin[1])} ${g.botWin.map((x) => x * 100).join('–')}%`,
-    `  G13: capped ${pct(r.capped, r.clashes)} ${within(cap <= g.maxCappedShare)} ≤ ${g.maxCappedShare * 100}%`
-      + ` · median clash ${len.toFixed(1)} s ${within(len >= g.clashSeconds[0] && len <= g.clashSeconds[1])} ${g.clashSeconds.join('–')} s`,
+    `  G4: median ${m} rounds ${within(m >= g4.medianMinRounds && m <= g4.medianMaxRounds)} ${g4.medianMinRounds}–${g4.medianMaxRounds}`
+      + ` · round ${maxRounds} ${pct(r.lastRound, r.games)} ${within(last <= g4.maxRound9Share)} ≤ ${g4.maxRound9Share * 100}%`
+      + ` · the bot wins ${pct(r.wins, r.games)} ${within(win >= g4.botWinMin && win <= g4.botWinMax)} ${g4.botWinMin * 100}–${g4.botWinMax * 100}%`,
+    `  G13: capped ${pct(r.capped, r.clashes)} ${within(cap <= g13.maxCappedShare)} ≤ ${g13.maxCappedShare * 100}%`
+      + ` · median clash ${len.toFixed(1)} s ${within(len >= g13.clashSecondsMin && len <= g13.clashSecondsMax)} ${g13.clashSecondsMin}–${g13.clashSecondsMax} s`,
   ];
+}
+
+// ---- the guardrails in round form (§12.3, T123) ----
+
+// Each evaluator reads the `rounds` block of `data/balance-targets.json` (T119), plays its battles, clashes and
+// duels as round jobs through a `RoundRunner` (in process, or on the pool for G3, G12 and the battles, R2-Q9), and
+// returns v1's `Verdict`. The battle-level bands are §12.3's first guesses until the user sets them (#35, T125).
+
+const ok = (pass: boolean) => (pass ? 'ok  ' : 'FAIL');
+const rate = (x: number) => (Number.isFinite(x) ? `${Math.round(x * 100)}%` : '–');
+const seedList = (n: number, first = 1) => Array.from({ length: n }, (_, i) => first + i);
+
+/** G1: the squad duels (§12.3). No building wins more than `maxPairingWinShare` of its pairings, and each wins one and loses one clearly. */
+export function evaluateG1(content: Content, d: Duels): Verdict {
+  const t = content.targets.rounds.G1;
+  const ids = [...new Set(d.squad.map((o) => o.a))];
+  const details: string[] = [];
+  let pass = true;
+  for (const a of ids) {
+    let won = 0, clear = false;
+    for (const b of ids.filter((x) => x !== a)) {
+      const games = d.squad.filter((o) => (o.a === a && o.b === b) || (o.a === b && o.b === a));
+      const mine = (o: DuelOutcome) => (o.a === a ? [o.valueA, o.valueB] : [o.valueB, o.valueA]) as [number, number];
+      const wins = games.filter((o) => mine(o)[0] > mine(o)[1]).length;
+      if (wins * 2 > games.length) won++;
+      if (wins * 2 < games.length && games.reduce((n, o) => n + (mine(o)[1] + 1) / (mine(o)[0] + 1), 0) / games.length >= t.clearLossRatio) clear = true;
+    }
+    const good = won / (ids.length - 1) <= t.maxPairingWinShare && won > 0 && clear;
+    if (!good) pass = false;
+    details.push(`${ok(good)} ${a}: wins ${won}/${ids.length - 1} pairings${won ? '' : ' (wins none)'}${clear ? '' : ' (never loses clearly)'}`);
+  }
+  return { id: 'G1', pass, summary: `squad duels in a round clash at ${t.goldBudget} gold: ≤${rate(t.maxPairingWinShare)} of pairings won, ≥1 win and ≥1 clear loss each`, details };
+}
+
+/** G2: the supply duels form a healthy counter graph, and the asserted intended edges hold (§12.3; G2's block is v1's, kept). */
+export function evaluateG2(content: Content, d: Duels): Verdict {
+  const t = content.targets.G2;
+  const units = [...new Set(d.supply.map((o) => o.a))].filter((u) => !u.includes('@'));
+  const seeds = d.supply.filter((o) => o.a === units[0] && o.b === units[1]).length;
+  const details: string[] = [];
+  let pass = true;
+  for (const a of units) {
+    const beats = units.filter((b) => b !== a && (d.edges[`${a}>${b}`] ?? 0) >= t.minSeedsForEdge);
+    const losesTo = units.filter((b) => b !== a && (d.edges[`${b}>${a}`] ?? 0) >= t.minSeedsForEdge);
+    const good = beats.length > 0 && losesTo.length > 0;
+    if (!good) pass = false;
+    details.push(`${ok(good)} ${a}: beats [${beats.join(', ')}] · loses to [${losesTo.join(', ')}]`);
+  }
+  for (const [a, b] of t.intendedEdges) {
+    const w = d.edges[`${a}>${b}`] ?? 0;
+    const asserted = (t.assertedEdges ?? []).some(([x, y]) => x === a && y === b);
+    if (asserted && w < t.minSeedsForEdge) pass = false;
+    details.push(`${w >= t.minSeedsForEdge ? 'held' : 'MISS'} intended edge ${a} > ${b}: ${w}/${seeds} seeds${asserted ? ' (asserted)' : ' (report only)'}`);
+  }
+  return { id: 'G2', pass, summary: `supply duels in a round clash form a healthy counter graph (≥${t.minSeedsForEdge}/${seeds} seeds an edge) and the asserted edges hold`, details };
+}
+
+/** One pairing on one map: `a` against `b`, with the battle's flags unless set. */
+export interface SeatCell {
+  a: string;
+  b: string;
+  map: string;
+  flags?: Partial<Flags>;
+}
+
+/** A pairing's battles: A's wins over both seats (or the seats played), as the player and as the enemy, and the median rounds. */
+export interface SeatRow extends SeatCell {
+  winsA: number;
+  games: number;
+  player: number;
+  enemy: number;
+  medianRounds: number | null;
+}
+
+/** Plays each cell over `seeds` from `firstSeed`, in each of `seats` (A as the player, then as the enemy), as one batch of battles. */
+export async function playSeats(run: RoundRunner, cells: readonly SeatCell[], seeds: number, firstSeed = 1, seats: readonly Side[] = ['player', 'enemy']): Promise<SeatRow[]> {
+  const jobs = cells.flatMap((c) => seats.flatMap((seat) => seedList(seeds, firstSeed).map((seed): RoundJob => ({
+    kind: 'battle', job: { seed, map: c.map, player: seat === 'player' ? c.a : c.b, enemy: seat === 'player' ? c.b : c.a, ...(c.flags ? { flags: c.flags } : {}) },
+  }))));
+  const records = (await run(jobs)) as RoundBattleRecord[];
+  const per = seats.length * seeds;
+  return cells.map((c, i) => {
+    const mine = records.slice(i * per, (i + 1) * per);
+    const won = (seat: Side) => mine.filter((r, k) => seats[Math.floor(k / seeds)] === seat && r.winner === seat).length;
+    const player = won('player'), enemy = won('enemy');
+    return { ...c, winsA: player + enemy, games: mine.length, player, enemy, medianRounds: median(mine.map((r) => r.rounds)) };
+  });
+}
+
+/** A mono bot's G3 reading over the run's maps. */
+export interface RoundG3Bot { id: string; mean: number; worst: number; worstMap: string; pass: boolean }
+export type RoundG3Verdict = Verdict & { rows: SeatRow[]; bots: RoundG3Bot[]; maps: string[]; seeds: number };
+
+/** G3 in rounds (§12.3): every mono bot against `bot:balanced` on every run-pool map, `seeds` a seat; mean ≤ 55%, worst map ≤ 60%. */
+export async function evaluateG3(content: Content, run: RoundRunner, opts: { maps?: string[]; ids?: string[]; seeds?: number } = {}): Promise<RoundG3Verdict> {
+  const t = content.targets.rounds.G3;
+  const maps = opts.maps ?? mapPool(content), ids = opts.ids ?? rosterIds(content), seeds = opts.seeds ?? t.seeds;
+  const rows = await playSeats(run, maps.flatMap((map) => ids.map((id) => ({ a: `bot:mono:${id}`, b: 'bot:balanced', map }))), seeds);
+  const bots = ids.map((id): RoundG3Bot => {
+    const mine = maps.map((m) => rows.find((r) => r.map === m && r.a === `bot:mono:${id}`)!);
+    const rates = mine.map((r) => r.winsA / r.games);
+    const worst = Math.max(...rates);
+    const mean = mine.reduce((n, r) => n + r.winsA, 0) / mine.reduce((n, r) => n + r.games, 0);
+    return { id, mean, worst, worstMap: maps[rates.indexOf(worst)]!, pass: mean <= t.maxMeanWinRate && worst <= t.maxMapWinRate };
+  });
+  const w = Math.max(...ids.map((id) => id.length));
+  const details = [
+    `mono win % against bot:balanced in battles of rounds, ${2 * seeds} a map (both seats). Limits: mean ≤${rate(t.maxMeanWinRate)}, worst map ≤${rate(t.maxMapWinRate)}`,
+    `     ${''.padEnd(w)}  ${maps.join('  ')}  mean  worst`,
+    ...bots.map((b) => `${ok(b.pass)} ${b.id.padEnd(w)}  ${maps.map((m) => rate(rows.find((r) => r.map === m && r.a === `bot:mono:${b.id}`)!.winsA / (2 * seeds)).padStart(m.length)).join('  ')}  ${rate(b.mean).padStart(4)}  ${rate(b.worst).padStart(5)}`),
+  ];
+  return { id: 'G3', pass: bots.every((b) => b.pass), rows, bots, maps, seeds, summary: `every mono bot vs bot:balanced in rounds on the run's maps: mean ≤${rate(t.maxMeanWinRate)}, worst map ≤${rate(t.maxMapWinRate)}`, details };
+}
+
+/** An answer's results against one mono build, the answer's win rate on each map, its worst and its mean. */
+export interface RoundCounterResult { answer: string; kind: AnswerKind; maps: Record<string, number>; worst: number; mean: number; failsG3: boolean }
+export interface RoundCounterBuild { build: string; g3Mean: number; screen: RoundCounterResult[]; top: RoundCounterResult[]; pass: boolean }
+
+/**
+ * G12, the strict counter bar in rounds (§12.3): each mono build whose G3 mean is above `minBuildMean` against every
+ * answer of the counter matrix on every run-pool map, both seats; the best `top` of a screen at `screenSeeds` a seat
+ * that don't fail G3 themselves (§12.3) are confirmed on the next `confirmSeeds`. A build passes if one wins
+ * `minAnswerRate` on every map. Content must hold `counterBotSpec`'s bots.
+ */
+export async function evaluateG12(content: Content, run: RoundRunner, opts: { g3: RoundG3Verdict; screenSeeds?: number; confirmSeeds?: number }): Promise<Verdict & { builds: RoundCounterBuild[] }> {
+  const t = content.targets.rounds.G12;
+  const { g3 } = opts, maps = g3.maps;
+  const screenSeeds = opts.screenSeeds ?? t.screenSeeds, confirmSeeds = opts.confirmSeeds ?? t.confirmSeeds;
+  const builds = g3.bots.filter((b) => b.mean > t.minBuildMean).map((b) => b.id);
+  const failsG3 = (a: string) => g3.bots.some((b) => `bot:mono:${b.id}` === a && !b.pass);
+  const play = async (pairs: [string, string][], seeds: number, first: number): Promise<RoundCounterResult[]> => {
+    const rows = await playSeats(run, pairs.flatMap(([build, answer]) => maps.map((map) => ({ a: answer, b: `bot:mono:${build}`, map }))), seeds, first);
+    return pairs.map(([, answer], i) => {
+      const mine = rows.slice(i * maps.length, (i + 1) * maps.length);
+      const rates = Object.fromEntries(mine.map((r) => [r.map, r.winsA / r.games]));
+      return { answer, kind: answerKind(answer), maps: rates, worst: Math.min(...Object.values(rates)), mean: mine.reduce((n, r) => n + r.winsA, 0) / mine.reduce((n, r) => n + r.games, 0), failsG3: failsG3(answer) };
+    });
+  };
+  const best = (rs: RoundCounterResult[]) => [...rs].sort((x, y) => y.worst - x.worst || y.mean - x.mean);
+  const screenPairs = builds.flatMap((b) => counterAnswers(content, b).map((a): [string, string] => [b, a]));
+  const screened = await play(screenPairs, screenSeeds, 1);
+  const screens = builds.map((b) => best(screened.filter((_, i) => screenPairs[i]![0] === b)));
+  // an answer that fails G3 itself doesn't count (§12.3), so the confirmations go to the best that pass it
+  const confirmPairs = builds.flatMap((b, i) => screens[i]!.filter((r) => !r.failsG3).slice(0, t.top).map((r): [string, string] => [b, r.answer]));
+  const confirmed = await play(confirmPairs, confirmSeeds, screenSeeds + 1);
+  const results = builds.map((build, i): RoundCounterBuild => {
+    const top = best(confirmed.filter((_, k) => confirmPairs[k]![0] === build));
+    return { build, g3Mean: g3.bots.find((b) => b.id === build)!.mean, screen: screens[i]!, top, pass: (top[0]?.worst ?? 0) >= t.minAnswerRate };
+  });
+  const details = [
+    `answer win % against each mono build with a G3 mean above ${rate(t.minBuildMean)}, both seats. Screen ${2 * screenSeeds} a map; the top ${t.top} that pass G3 confirmed on ${2 * confirmSeeds} a map. Pass: one wins ≥${rate(t.minAnswerRate)} on every map`,
+    ...(results.length ? [] : ['no mono build has a G3 mean above the bar']),
+    ...results.flatMap((r) => [
+      `${ok(r.pass)} mono:${r.build} (G3 mean ${rate(r.g3Mean)}, ${r.screen.length} answers; best on the screen ${r.screen[0] ? `${r.screen[0].answer}, worst map ${rate(r.screen[0].worst)}${r.screen[0].failsG3 ? ', fails G3 itself' : ''}` : 'none'})`,
+      ...r.top.map((a) => `       ${a.answer}: ${maps.map((m) => `${m} ${rate(a.maps[m]!)}`).join(', ')} · worst ${rate(a.worst)}`),
+    ]),
+  ];
+  return { id: 'G12', pass: results.every((r) => r.pass), builds: results, summary: `the strict counter bar in rounds: every mono build above ${rate(t.minBuildMean)} in G3 has an answer winning ≥${rate(t.minAnswerRate)} on every run-pool map`, details };
+}
+
+/** G4's battles, which G6's second clause and G13 read too: `bot:balanced` against the scripted general on Bogwater Hollow. */
+export async function g4Battles(content: Content, run: RoundRunner, opts: { map?: string; seeds?: number } = {}): Promise<RoundBattleRecord[]> {
+  const seeds = opts.seeds ?? content.targets.rounds.G4.seeds;
+  return (await run(seedList(seeds).map((seed): RoundJob => ({ kind: 'battle', job: { seed, map: opts.map ?? 'bogwater-hollow', player: 'bot:balanced', enemy: 'general:scripted' } })))) as RoundBattleRecord[];
+}
+
+/** G4 in rounds (§12.3): the median rounds within the band, at most `maxRound9Share` reaching the last round, the bot's wins within its band. */
+export function evaluateG4(content: Content, records: readonly RoundBattleRecord[]): Verdict & { row: TournamentRow } {
+  const t = content.targets.rounds.G4, maxRounds = content.balance.rounds.maxRounds;
+  const row = tournamentRow(records, maxRounds);
+  const m = row.medianRounds ?? 0, last = row.lastRound / row.games, win = row.wins / row.games;
+  const checks: [boolean, string][] = [
+    [m >= t.medianMinRounds && m <= t.medianMaxRounds, `median ${m} rounds (band ${t.medianMinRounds}–${t.medianMaxRounds})`],
+    [last <= t.maxRound9Share, `${rate(last)} reached round ${maxRounds} (≤${rate(t.maxRound9Share)})`],
+    [win >= t.botWinMin && win <= t.botWinMax, `bot:balanced wins ${rate(win)} (band ${rate(t.botWinMin)}–${rate(t.botWinMax)})`],
+    [row.rejected === 0, `${row.rejected} commands rejected`],
+  ];
+  const damaging = records.reduce((n, r) => n + r.damageRounds, 0), capped = records.reduce((n, r) => n + r.cappedRounds, 0);
+  return {
+    id: 'G4', pass: checks.every(([p]) => p), row, summary: `rounds per battle: bot:balanced vs the scripted general on ${records[0]?.map}, ${records.length} battles`,
+    details: [...checks.map(([p, d]) => `${ok(p)} ${d}`), `info the round's damage cap bound in ${capped} of ${damaging} rounds with Heartcap damage, ${rate(capped / Math.max(1, damaging))}`],
+  };
+}
+
+/** G13 in rounds (§12.3), over G4's battles: at most `maxCappedShare` of clashes reach the 45 s cap, and the median clash within its band. */
+export function evaluateG13(content: Content, records: readonly RoundBattleRecord[]): Verdict {
+  const t = content.targets.rounds.G13;
+  const row = tournamentRow(records, content.balance.rounds.maxRounds);
+  const cap = row.capped / Math.max(1, row.clashes), len = (row.medianClashTicks ?? 0) / 20;
+  const checks: [boolean, string][] = [
+    [cap <= t.maxCappedShare, `${row.capped} of ${row.clashes} clashes reached the cap, ${rate(cap)} (≤${rate(t.maxCappedShare)})`],
+    [len >= t.clashSecondsMin && len <= t.clashSecondsMax, `median clash ${len.toFixed(1)} s, the muster counted (band ${t.clashSecondsMin}–${t.clashSecondsMax} s)`],
+  ];
+  return { id: 'G13', pass: checks.every(([p]) => p), summary: `clash stalls over G4's ${records.length} battles`, details: checks.map(([p, d]) => `${ok(p)} ${d}`) };
+}
+
+/** Battles of `a` against `b` on Bogwater Hollow in both seats over `seeds`, each job made by `job`, with A's seat beside each record. */
+async function bothSeats(run: RoundRunner, seeds: number, job: (seat: Side, seed: number) => RoundBattleJob): Promise<{ seat: Side; r: RoundBattleRecord }[]> {
+  const seats: Side[] = ['player', 'enemy'];
+  const jobs = seats.flatMap((seat) => seedList(seeds).map((seed): RoundJob => ({ kind: 'battle', job: job(seat, seed) })));
+  const records = (await run(jobs)) as RoundBattleRecord[];
+  return records.map((r, i) => ({ seat: seats[Math.floor(i / seeds)]!, r }));
+}
+
+const pairJob = (a: string, b: string) => (seat: Side, seed: number): RoundBattleJob => ({ seed, map: 'bogwater-hollow', player: seat === 'player' ? a : b, enemy: seat === 'player' ? b : a });
+
+/** G5 in rounds (§12.3): `bot:balanced` given `bonusGold` more starting gold beats itself in 55–75% of battles, both seats. */
+export async function evaluateG5(content: Content, run: RoundRunner): Promise<Verdict> {
+  const t = content.targets.rounds.G5;
+  const games = await bothSeats(run, t.seeds, (seat, seed) => ({ ...pairJob('bot:balanced', 'bot:balanced')(seat, seed), bonusGold: { [seat]: t.bonusGold } }));
+  const r = games.filter((g) => g.r.winner === g.seat).length / games.length;
+  const pass = r >= t.minWinRate && r <= t.maxWinRate;
+  return { id: 'G5', pass, summary: `snowball in rounds: +${t.bonusGold} starting gold wins ${rate(t.minWinRate)}–${rate(t.maxWinRate)}`, details: [`${ok(pass)} the +${t.bonusGold} side wins ${rate(r)} of ${games.length} battles (both seats)`] };
+}
+
+/** A round scenario with its sides traded, so the side it puts behind plays as the enemy: colonies, Heartcaps and the record (G6). */
+export function mirrorScenario(content: Content, def: RoundScenarioDef): RoundScenarioDef {
+  const bal = content.balance, swap = (s: Side | null) => (s === null ? null : s === 'player' ? 'enemy' : 'player');
+  const maxHp = { player: def.sides.player.heartcapMaxHp ?? bal.heartcapPlayerHp, enemy: def.sides.enemy.heartcapMaxHp ?? bal.heartcapEnemyHp.base + bal.heartcapEnemyHp.perBattle * ((def.battleIndex ?? 1) - 1) };
+  const traded = <T extends { lanes?: (Side | null)[]; damage?: Record<Side, number> }>(r: T): T => ({
+    ...r, ...(r.lanes ? { lanes: r.lanes.map(swap) } : {}), ...(r.damage ? { damage: { player: r.damage.enemy, enemy: r.damage.player } } : {}),
+  });
+  return {
+    ...def, id: `${def.id}-mirror`,
+    sides: { player: { ...def.sides.enemy, heartcapMaxHp: maxHp.enemy }, enemy: { ...def.sides.player, heartcapMaxHp: maxHp.player } },
+    ...(def.last ? { last: traded(def.last) } : {}),
+    ...(def.rounds ? { rounds: def.rounds.map((r) => ({ ...traded(r), ...(r.fielded ? { fielded: { player: r.fielded.enemy, enemy: r.fielded.player } } : {}) })) } : {}),
+  };
+}
+
+/**
+ * G6 in rounds (§12.3): from `scenario` (round 4, the behind side 700 below full, equal max HP), played by `bot` on both
+ * sides in both seats, the behind side wins within its band; and in G4's battles, the winner's Heartcap was hit in at
+ * least `winnerHitShare` of them.
+ */
+export async function evaluateG6(content: Content, run: RoundRunner, g4: readonly RoundBattleRecord[]): Promise<Verdict> {
+  const t = content.targets.rounds.G6, def = content.roundScenarios[t.scenario];
+  if (!def) throw new Error(`G6: no round scenario ${t.scenario}`);
+  const behind: Side = (def.sides.player.heartcapHp ?? Infinity) < (def.sides.enemy.heartcapHp ?? Infinity) ? 'player' : 'enemy';
+  const bot = `bot:${t.bot}`, mirror = mirrorScenario(content, def);
+  const games = await bothSeats(run, t.seeds, (seat, seed) => {
+    const d = seat === behind ? def : mirror;
+    return { seed, map: d.map, player: bot, enemy: bot, scenario: d };
+  });
+  const r = games.filter((g) => g.r.winner === g.seat).length / games.length;
+  const won = g4.filter((x) => x.winner !== null), hit = won.filter((x) => x.damageTaken[x.winner!] > 0).length / Math.max(1, won.length);
+  const comeback = r >= t.minBehindWinRate && r <= t.maxBehindWinRate, race = hit >= t.winnerHitShare;
+  return {
+    id: 'G6', pass: comeback && race, summary: `comeback in rounds: behind at round 4, the behind side wins ${rate(t.minBehindWinRate)}–${rate(t.maxBehindWinRate)}; the winner is hit in ≥${rate(t.winnerHitShare)} of G4's battles`,
+    details: [
+      `${ok(comeback)} the behind side wins ${rate(r)} of ${games.length} battles from ${t.scenario}, ${bot} on both sides, both seats`,
+      `${ok(race)} the winner's Heartcap took damage in ${rate(hit)} of G4's ${won.length} battles`,
+    ],
+  };
+}
+
+/** G7 in rounds (§12.3): merge-on against its merge-off twin wins 55–70% of the mirror, and ≤ 50% with about 25% of fielded supply in Slayers. */
+export async function evaluateG7(content: Content, run: RoundRunner): Promise<Verdict> {
+  const t = content.targets.rounds.G7;
+  const twin = async (c: { mergeBot: string; noMergeBot: string }) => bothSeats(run, t.seeds, pairJob(`bot:${c.mergeBot}`, `bot:${c.noMergeBot}`));
+  const mirror = await twin(t.mirror), slayers = await twin(t.slayers);
+  const won = (gs: { seat: Side; r: RoundBattleRecord }[]) => gs.filter((g) => g.r.winner === g.seat).length / gs.length;
+  const fielded = slayers.flatMap((g) => [g.r.supply.player, g.r.supply.enemy]);
+  const share = fielded.reduce((n, s) => n + s.slayers, 0) / Math.max(1, fielded.reduce((n, s) => n + s.all, 0));
+  const m = won(mirror), s = won(slayers);
+  const mirrorOk = m >= t.mirror.minWinRate && m <= t.mirror.maxWinRate, slayerOk = s <= t.slayers.maxWinRate;
+  return {
+    id: 'G7', pass: mirrorOk && slayerOk,
+    summary: `merging in rounds: merge-on wins ${rate(t.mirror.minWinRate)}–${rate(t.mirror.maxWinRate)} of the mirror, ≤${rate(t.slayers.maxWinRate)} with ~${rate(t.slayers.share)} Slayers`,
+    details: [
+      `${ok(mirrorOk)} bot:${t.mirror.mergeBot} vs bot:${t.mirror.noMergeBot}: ${rate(m)} of ${mirror.length} battles (both seats)`,
+      `${ok(slayerOk)} bot:${t.slayers.mergeBot} vs bot:${t.slayers.noMergeBot}: ${rate(s)} of ${slayers.length} battles; Slayers ${rate(share)} of the supply both fielded (target ~${rate(t.slayers.share)})`,
+    ],
+  };
+}
+
+/** A mono bot's G8 reading: its win rate against the general with the counter cycle off and on. */
+export interface RoundG8Row { bot: string; off: number; on: number; drop: number; asserted: boolean; ok: boolean }
+
+/**
+ * G8 in rounds (§12.3): each mono bot's win rate against `general` drops by `minDrop` with the counter cycle on (one
+ * below `minBaseline` without it is reported only), and each planning policy's bot wins within its band against the
+ * adaptive general at battle index 1: `bot:balanced` 40–65%, `bot:answer` at most 80% (X7, #35, T125).
+ */
+export async function evaluateG8(content: Content, run: RoundRunner): Promise<Verdict & { rows: RoundG8Row[]; policies: Record<string, number> }> {
+  const t = content.targets.rounds.G8, general = `general:${t.general}`, map = 'bogwater-hollow';
+  const off = { merging: true, adaptiveGeneral: false }, on = { merging: true, adaptiveGeneral: true };
+  const ids = rosterIds(content);
+  const cells: SeatCell[] = [
+    ...ids.flatMap((id) => [{ a: `bot:mono:${id}`, b: general, map, flags: off }, { a: `bot:mono:${id}`, b: general, map, flags: on }]),
+    ...t.policies.map((p) => ({ a: `bot:${p.bot}`, b: general, map, flags: on })),
+  ];
+  const rows = await playSeats(run, cells, t.seeds, 1, ['player']);
+  const winRate = (i: number) => rows[i]!.winsA / rows[i]!.games;
+  const monos = ids.map((id, i): RoundG8Row => {
+    const rOff = winRate(2 * i), rOn = winRate(2 * i + 1), asserted = rOff >= t.minBaseline;
+    // a drop of exactly `minDrop` passes: 11/30 − 5/30 is a hair under 0.2 in floats
+    return { bot: id, off: rOff, on: rOn, drop: rOff - rOn, asserted, ok: !asserted || rOff - rOn >= t.minDrop - 1e-9 };
+  });
+  const bands = t.policies.map((p, k) => {
+    const r = winRate(2 * ids.length + k), good = (p.min === undefined || r >= p.min) && (p.max === undefined || r <= p.max);
+    const band = p.min === undefined ? `at most ${rate(p.max!)}` : p.max === undefined ? `at least ${rate(p.min)}` : `${rate(p.min)}–${rate(p.max)}`;
+    return { bot: p.bot, r, good, band };
+  });
+  const details = [
+    ...monos.map((r) => `${!r.asserted ? 'n/a ' : ok(r.ok)} mono:${r.bot} vs ${t.general}: ${rate(r.off)} → ${rate(r.on)} with the counter cycle (drop ${Math.round(r.drop * 100)} points${r.asserted ? '' : `; under the ${rate(t.minBaseline)} baseline, report only`})`),
+    ...bands.map((b) => `${ok(b.good)} bot:${b.bot} vs adaptive ${t.general} at battle index 1: ${rate(b.r)} (band ${b.band})`),
+  ];
+  return {
+    id: 'G8', pass: monos.every((r) => r.ok) && bands.every((b) => b.good), rows: monos, policies: Object.fromEntries(bands.map((b) => [b.bot, b.r])),
+    summary: `adaptation in rounds: every mono bot drops ≥${Math.round(t.minDrop * 100)} points against the adaptive ${t.general}; ${bands.map((b) => `bot:${b.bot} ${b.band}`).join(', ')}`,
+    details,
+  };
+}
+
+/** One G16 cell: a pair's army at a budget, by the formation rule against its own ranks traded, each seat. */
+export interface G16Cell { a: string; b: string; budget: number; seed: number; roleSplit: boolean; score: number }
+
+/**
+ * G16 in rounds (§12.3, R2-Q10): each pair of army buildings' army (its even pair bot's, so the content must hold
+ * `counterBotSpec`'s bots) at each budget where both fit, on the one-lane field, planted by the formation rule
+ * against the same army with its front and back ranks traded, in both seats: R1-Q3's winner, a draw worth half.
+ * Pooled over role-split pairs it wins at least `minWinRate`, with a column per budget; same-role pairs are reported.
+ */
+export async function evaluateG16(content: Content, run: RoundRunner, opts: { seeds?: number; budgets?: number[] } = {}): Promise<Verdict & { cells: G16Cell[] }> {
+  const t = content.targets.rounds.G16, seeds = opts.seeds ?? t.seeds, budgets = opts.budgets ?? t.budgets;
+  const ids = armyIds(content), plots = clashField(content, 'one').plots;
+  const specs: Omit<G16Cell, 'score'>[] = [];
+  const jobs: RoundJob[] = [];
+  ids.forEach((a, i) => ids.slice(i + 1).forEach((b) => {
+    const roleSplit = lineOf(content, a) !== lineOf(content, b);
+    for (const budget of budgets) for (const seed of seedList(seeds)) {
+      const army = armyFromBot(content, `bot:pair-${a}-${b}`, budget, seed, plots);
+      if (!army.entries.some((e) => e.buildingId === a) || !army.entries.some((e) => e.buildingId === b)) continue;
+      specs.push({ a, b, budget, seed, roleSplit });
+      for (const seat of ['player', 'enemy'] as const) jobs.push({ kind: 'clash', job: { field: 'one', seed, seat, armies: [army, army], opts: { swap: [false, true] } } });
+    }
+  }));
+  const records = (await run(jobs)) as RoundClashRecord[];
+  const point = (r: RoundClashRecord) => (r.winner === 'a' ? 1 : r.winner === 'draw' ? 0.5 : 0);
+  const cells = specs.map((c, i): G16Cell => ({ ...c, score: (point(records[2 * i]!) + point(records[2 * i + 1]!)) / 2 }));
+  const pooled = (cs: G16Cell[]) => cs.reduce((n, c) => n + c.score, 0) / Math.max(1, cs.length);
+  const split = cells.filter((c) => c.roleSplit), same = cells.filter((c) => !c.roleSplit);
+  const r = pooled(split), pass = r >= t.minWinRate;
+  const column = (cs: G16Cell[]) => budgets.map((g) => { const at = cs.filter((c) => c.budget === g); return `${g}: ${at.length ? rate(pooled(at)) : '–'}`; }).join(' · ');
+  return {
+    id: 'G16', pass, cells,
+    summary: `formation in rounds: the formation rule beats its ranks traded in ≥${rate(t.minWinRate)} of clashes, pooled over role-split pairs`,
+    details: [
+      `${ok(pass)} role-split pairs: ${rate(r)} of ${2 * split.length} clashes, ${seeds} seeds a budget, both seats · by budget ${column(split)}`,
+      `info same-role pairs (reported): ${rate(pooled(same))} of ${2 * same.length} clashes · by budget ${column(same)}`,
+    ],
+  };
 }

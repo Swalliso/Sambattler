@@ -8,6 +8,46 @@ replaces. None of it is open work, including headings that say "Open:". From mil
 entries measure or tune v2's round battle (SPEC §11, §12). "The backlog" in the entries below means
 v1's, now [archived](../docs/archive/v1/balance-backlog.md).
 
+## R2a-S18 T125: the pace, 100 a supply, and #35's bands for R2a (2026-11-03)
+
+**A rule number, approved by the user** ("Take them all" in S18 on S18's proposal of 75, then through the hub "Yes,
+with the rerun" and, after the 200-battle rerun, "Go to 100", 2026-11-03). **The five round replays moved, v1's eight
+didn't**: rounds' state hashes its rules, and v1's library leaves `balance.rounds` out (Call 27).
+`git diff --stat tests/golden/m*` shows nothing.
+- **`rounds.heartcapDamagePerSupply` 25 → 100** (SPEC §6.7, §18.3; R2a/T124, T125). Over 200 battles of `bot:balanced`
+  against the scripted general: at 25, a median of 9 rounds, 67.5% reaching round 9 (G4: ≤ 15% at first); at 75,
+  7 rounds and 23.5%; at 100, 7 rounds and 18.5%. The bot wins 58.5% at each. The round's damage cap binds in 15% of
+  damaging rounds at 25, 60% at 75 and 70% at 100. Of the levers measured, only damage per supply moved the pace far;
+  the cap, the Heartcaps' HP and the Sporestorm moved it less (`docs/balance-backlog.md`'s S18 entry). S14b's playtest
+  had found the late rounds empty once the colony was full.
+- **`comeback-r4`'s deficit 700 → 1550** (G6, #35): what a 3000-HP side loses in rounds 1–3 of G4's 200 battles at 100 a
+  supply, by each round's median (200, 600, 750). The same method gives 425 at 25 a supply.
+- **Three rule scenarios keep their rule at the new number:** `decision-round-9`'s Heartcap starts at 1800 (was 1500), so
+  the share still gives you the Decision that damage dealt would give the general; in `both-heartcaps-zero` the
+  general has 3600 max HP, so your capped 900 still wins the round its capped 750 loses (E8); in `split-lanes` it
+  has 3000, so your capped 750 still beats its 600 (E7). The other scenarios' expected damage follows the number;
+  `scoring.test.ts` keeps §6.7's steps worked at 25 a supply, set on the state.
+- **`balance-targets.json`'s `rounds` bands** (#35, R2a's part): G4 over 200 battles (was 40), 6–8 rounds, ≤ 20% at round 9
+  (was 15%), the bot 30–70%; G6 20–45% and ≥ 50%; G8 40–65% for `bot:balanced` and at most 80% for `bot:answer`, one
+  band per policy; G13 ≤ 15% capped and a median clash of 15–40 s (was 20–40); G16 ≥ 60%. G14 and G15 are R2b's.
+
+## R2a-S18: the round guardrails' targets and bots (2026-11-03)
+
+**New bots and targets. No golden moved**: neither v1's nor rounds' state reads `balance-targets.json`, and a bot
+reaches a battle's state only when it plays. Nothing was retuned; T124's readings and the pace proposal are in
+`docs/balance-backlog.md`, for the user's call at T125.
+- **`bot:answer`** (R2a/T121, X7, SPEC §12.2, agreed at S0 on 2026-11-02): `bot:balanced`'s opener, weights and limits, with
+  `policy: "answer"`. In rounds it scores each card it may buy by its unit's hits on the general's planned squads,
+  weighted by their supply, and leans × 3 toward the best; a tie goes to the card the squads' hits are weakest on.
+  G8 reads it beside `bot:balanced` (T123); G3 and G12 stay on fixed weights. v1 ignores the field.
+- **`bot:slayer-rounds` and `bot:slayer-rounds-nomerge`** (R2a/T123, SPEC §12.3 G7): G7's Slayer check in rounds, beside v1's
+  `slayer` so v1's G7 reading doesn't move. They keep `slayer`'s weights (Veilstalker Hollow 8), which field 24–25%
+  of both sides' supply as Slayers, read from the `fielded` record at each unit's tier (target about 25%).
+- **`balance-targets.json` gets a `rounds` block** (R2a/T119, SPEC §12.3): G1, G3–G8, G11, G12, G13 and G16 in round form,
+  beside v1's blocks until R2b. The battle-level bands (G4, G6's two clauses, G8, G13, G16) are §12.3's first guesses
+  until the user sets them from T124's measurement (§18.2 #35, T125). G11's round form takes the arrival, turn,
+  planning-command and full-colony budgets S17 held in `tools/lib/rounds/bench.ts`.
+
 ## R2a-S15: X8's two knobs, both off (2026-11-03)
 
 **Data with no effect by default. v1's goldens didn't move**; the round golden `r2-balanced-vs-scripted-s1` was refreshed,

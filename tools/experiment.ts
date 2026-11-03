@@ -95,12 +95,14 @@
 // `--workers n`. Passives are off: a clash plays both sides as human. It prints each pairing's best
 // candidate and its win %, and the share of pairings with no answer at 60% or more.
 //
-// `--rounds` (R2a, temporary; §15.3, T117) plays the checks on single battles in rounds, on the round sim, its
-// battles, clashes and duels on `--workers n` threads (1 plays them in process, with the same results). It wires
-// `duels` (G1's squad duels as one round clash each, G2's supply duels with placed units: readings, no verdict yet)
-// and `g4` (bot:balanced against the scripted general by rounds on `--maps`, `--g4seeds n` battles, read against
-// §12.3's G4 and G13 bands), its defaults. R2a's S18 wires the rest (T123); `engagement`, `runs`, `lanes` and
-// `spread` stay v1's until R2b, which removes the option.
+// `--rounds` (R2a, temporary; §15.3, T117, T123) plays the checks on single battles in rounds, on the round sim, its
+// battles, clashes and duels on `--workers n` threads (1 plays them in process, with the same results), each read
+// against the `rounds` targets. Its defaults are `duels` (G1's squad duels as one round clash each and G2's supply
+// duels with placed units) and `g4` (bot:balanced against the scripted general by rounds on `--maps`, `--g4seeds n`
+// battles, with G13 over the same battles). It also takes `g3` (`--maps`, `--g3seeds`), `g5`–`g8` (G6 with G4's
+// battles for its second clause, G8 under both planning policies), `g11` (the round bench), `counters` (G12, the
+// strict bar, after G3) and `formation` (G16). `engagement`, `runs`, `lanes` and `spread` stay v1's until R2b,
+// which removes the option.
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { protoContent, ROOT } from './lib/content.ts';
@@ -114,7 +116,13 @@ import { runBench } from './lib/bench.ts';
 import { clashArmyIds, clashOpts, fullColony, overflowTable, pairLine, pairScore, playPair } from './lib/clash.ts';
 import type { ArmyOpts, ClashOpts, FieldId, LanesRule } from './lib/clash.ts';
 import { clashPool, defaultWorkers, inProcessClashes, inProcessRounds, roundPool, rowPool } from './lib/pool.ts';
-import { duelLines, duels, g4Lines, tournament } from './lib/rounds/balance.ts';
+import {
+  duelLines, duels, evaluateG1 as roundG1, evaluateG2 as roundG2, evaluateG3 as roundG3, evaluateG4 as roundG4, evaluateG5 as roundG5,
+  evaluateG6 as roundG6, evaluateG7 as roundG7, evaluateG8 as roundG8, evaluateG12 as roundG12, evaluateG13 as roundG13, evaluateG16 as roundG16,
+  g4Battles, g4Lines, tournamentRow,
+} from './lib/rounds/balance.ts';
+import type { RoundBattleRecord, RoundG3Verdict } from './lib/rounds/balance.ts';
+import { roundBenchChecks, runRoundBench } from './lib/rounds/bench.ts';
 import { engagement, engagementLines, runEndingLines, runEndings } from './lib/engagement.ts';
 import { laneLines, laneSummary } from './lib/lanes.ts';
 import { spreadCase, spreadLines, spreadSummary } from './lib/spread.ts';
@@ -128,16 +136,17 @@ const args = process.argv.slice(2);
 const opt = (k: string): string | undefined => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : undefined; };
 const proto = opt('--proto') ?? '';
 const ALL = ['duels', 'g3', 'g4', 'g5', 'g6', 'g7', 'g8', 'g11', 'boss'];
-/** The checks `--rounds` plays so far (T117); T123 wires g3, g5–g8, g11, counters and formation. */
-const ROUND_CHECKS = ['duels', 'g4'];
+/** The checks `--rounds` plays (T117, T123), and the ones it plays unless `--checks` names others. */
+const ROUND_CHECKS = ['duels', 'g3', 'g4', 'g5', 'g6', 'g7', 'g8', 'g11', 'counters', 'formation'];
+const ROUND_DEFAULT = ['duels', 'g4'];
 const rounds = args.includes('--rounds');
-const checks = new Set((opt('--checks') ?? (rounds ? ROUND_CHECKS : ALL).join(',')).split(','));
+const checks = new Set((opt('--checks') ?? (rounds ? ROUND_DEFAULT : ALL).join(',')).split(','));
 /** With `--rounds`, its checks, taken out of v1's so no v1 check runs. */
 const roundChecks = new Set(rounds ? checks : []);
 if (rounds) {
   const other = [...roundChecks].filter((c) => !ROUND_CHECKS.includes(c));
   if (other.length) {
-    throw new Error(`--rounds plays ${ROUND_CHECKS.join(' and ')} so far, not ${other.join(', ')}: R2a's S18 wires g3, g5–g8, g11, counters and formation (T123), and engagement, runs, lanes and spread stay v1's until R2b`);
+    throw new Error(`--rounds plays ${ROUND_CHECKS.join(', ')}, not ${other.join(', ')}: engagement, runs, lanes and spread stay v1's until R2b`);
   }
   checks.clear();
 }
@@ -556,27 +565,65 @@ if (checks.has('pairings')) {
 }
 
 if (roundChecks.size) {
-  // single battles in rounds (§15.3, T117): every battle, clash and duel is a round job, played on the pool
-  const pool = workers > 1 ? roundPool(proto, workers) : undefined;
-  const run = pool?.run ?? inProcessRounds(content);
-  const maxRounds = content.balance.rounds.maxRounds;
+  // single battles in rounds (§15.3, T117, T123): every battle, clash and duel is a round job, played on the pool.
+  // G12's answers and G16's armies come from the counter matrix's bots, which the content and the workers then hold.
+  const needsBots = roundChecks.has('counters') || roundChecks.has('formation');
+  const spec = needsBots ? [proto, counterBotSpec(content)].filter(Boolean).join(',') : proto;
+  const rc = needsBots ? protoContent(spec) : content;
+  const pool = workers > 1 ? roundPool(spec, workers) : undefined;
+  const run = pool?.run ?? inProcessRounds(rc);
+  const maxRounds = rc.balance.rounds.maxRounds;
+  // G4's battles in rounds: the `rounds` target's 200 unless `--g4seeds` says otherwise
+  const roundG4Seeds = Number(opt('--g4seeds') ?? 0) || rc.targets.rounds.G4.seeds;
+  const verdict = (v: Verdict): Verdict => {
+    lines.push(`${v.pass ? 'PASS' : 'FAIL'}  ${v.id}: ${v.summary}`, ...v.details.map((d) => `        ${d}`));
+    return v;
+  };
+  const timed = async <T>(name: string, f: () => Promise<T>): Promise<T> => {
+    const t0 = Date.now();
+    const x = await f();
+    lines.push(`${name} in rounds: ${((Date.now() - t0) / 1000).toFixed(1)} s on ${workers} worker${workers > 1 ? 's' : ''}`);
+    return x;
+  };
+  let g4: RoundBattleRecord[] | undefined, g3: RoundG3Verdict | undefined;
   try {
     if (roundChecks.has('duels')) {
-      const t0 = Date.now();
-      const d = await duels(content, run);
-      lines.push(...duelLines(content, d), `duels in rounds: ${d.squad.length} squad duels and ${d.supply.length} supply duels in ${((Date.now() - t0) / 1000).toFixed(1)} s`);
+      const d = await timed('duels', () => duels(rc, run));
+      lines.push(...duelLines(rc, d));
       out.duels = d;
+      out.G1 = verdict(roundG1(rc, d));
+      out.G2 = verdict(roundG2(rc, d));
     }
     if (roundChecks.has('g4')) {
-      const t0 = Date.now();
       const rows = [];
       for (const map of maps) {
-        const [row] = await tournament(content, run, { bots: ['bot:balanced'], map, seeds: g4Seeds });
-        lines.push(...g4Lines(row!, maxRounds));
+        const records = await timed(`g4 on ${map}`, () => g4Battles(rc, run, { map, seeds: roundG4Seeds }));
+        g4 ??= records;
+        const row = tournamentRow(records, maxRounds);
+        lines.push(...g4Lines(rc, row));
+        verdict(roundG4(rc, records));
+        verdict(roundG13(rc, records));
         rows.push(row);
       }
-      lines.push(`g4 in rounds: ${rows.length * g4Seeds} battles in ${((Date.now() - t0) / 1000).toFixed(1)} s on ${workers} worker${workers > 1 ? 's' : ''}`);
       out.G4 = rows.length === 1 ? rows[0] : rows;
+    }
+    if (roundChecks.has('g3') || roundChecks.has('counters')) {
+      g3 = await timed('g3', () => roundG3(rc, run, { ...(mapsOpt ? { maps: mapsOpt } : {}), ...(g3SeedsOpt ? { seeds: g3SeedsOpt } : {}) }));
+      out.G3 = verdict(g3);
+    }
+    if (roundChecks.has('g5')) out.G5 = verdict(await timed('g5', () => roundG5(rc, run)));
+    if (roundChecks.has('g6')) {
+      g4 ??= await g4Battles(rc, run, { seeds: roundG4Seeds });
+      out.G6 = verdict(await timed('g6', () => roundG6(rc, run, g4!)));
+    }
+    if (roundChecks.has('g7')) out.G7 = verdict(await timed('g7', () => roundG7(rc, run)));
+    if (roundChecks.has('g8')) out.G8 = verdict(await timed('g8', () => roundG8(rc, run)));
+    if (roundChecks.has('counters')) out.G12 = verdict(await timed('counters', () => roundG12(rc, run, { g3: g3! })));
+    if (roundChecks.has('formation')) out.G16 = verdict(await timed('formation', () => roundG16(rc, run)));
+    if (roundChecks.has('g11')) {
+      const checks = roundBenchChecks(rc, runRoundBench(rc, { quick: false }));
+      lines.push(...checks.map(([name, pass, detail]) => `${pass ? 'PASS' : 'FAIL'}  G11 ${name}: ${detail}`));
+      out.G11 = checks;
     }
   } finally {
     await pool?.close();

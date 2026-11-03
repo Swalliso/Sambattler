@@ -26,39 +26,39 @@ const sides = (player: number, enemy: number): Record<Side, number> => ({ player
 const FULL = sides(3000, 2000);
 
 const EXPECTED: Record<string, RoundExpected> = {
-  'general-plans-first': { lanes: [{ winner: 'player', margin: 10, damage: 250 }], damage: sides(250, 0), heartcaps: sides(3000, 1750), comeback: 'enemy' },
-  'formation-from-plots': { lanes: [{ winner: 'enemy', margin: 14, damage: 350, capped: false, ticks: 1 }], damage: sides(0, 350), heartcaps: sides(2650, 2000), comeback: 'player' },
-  'clash-cap': { lanes: [{ winner: 'player', margin: 3, damage: 75, capped: true, ticks: 900 }], damage: sides(75, 0), heartcaps: sides(3000, 1925), comeback: 'enemy' },
-  'round-damage-cap': { lanes: [{ winner: 'player', margin: 40, damage: 1000, capped: false }], damage: sides(500, 0), heartcaps: sides(3000, 1500), comeback: 'enemy' },
+  'general-plans-first': { lanes: [{ winner: 'player', margin: 10, damage: 1000 }], damage: sides(500, 0), heartcaps: sides(3000, 1500), comeback: 'enemy' },
+  'formation-from-plots': { lanes: [{ winner: 'enemy', margin: 14, damage: 1400, capped: false, ticks: 1 }], damage: sides(0, 750), heartcaps: sides(2250, 2000), comeback: 'player' },
+  'clash-cap': { lanes: [{ winner: 'player', margin: 3, damage: 300, capped: true, ticks: 900 }], damage: sides(300, 0), heartcaps: sides(3000, 1700), comeback: 'enemy' },
+  'round-damage-cap': { lanes: [{ winner: 'player', margin: 40, damage: 4000, capped: false }], damage: sides(500, 0), heartcaps: sides(3000, 1500), comeback: 'enemy' },
   'decision-round-9': {
-    lanes: [{ winner: 'enemy', margin: 6, damage: 300, capped: false, ticks: 1 }], damage: sides(0, 300), heartcaps: sides(1200, 600), comeback: 'player',
+    lanes: [{ winner: 'enemy', margin: 6, damage: 1200, capped: false, ticks: 1 }], damage: sides(0, 750), heartcaps: sides(1050, 600), comeback: 'player',
     stormBp: 20000, outcome: { winner: 'player', by: 'decision', round: 9 },
   },
-  'lane-empty-one-side': { lanes: [{ winner: 'player', margin: 18, damage: 450, capped: false, ticks: 1 }], damage: sides(450, 0), heartcaps: sides(3000, 1550), comeback: 'enemy' },
+  'lane-empty-one-side': { lanes: [{ winner: 'player', margin: 18, damage: 1800, capped: false, ticks: 1 }], damage: sides(500, 0), heartcaps: sides(3000, 1500), comeback: 'enemy' },
   'lane-empty-both': {
-    lanes: [{ winner: 'player', margin: 6, damage: 150, capped: false }, { winner: null, margin: 0, damage: 0, capped: false, ticks: 1 }],
-    damage: sides(150, 0), heartcaps: sides(3000, 1850), comeback: 'enemy',
+    lanes: [{ winner: 'player', margin: 6, damage: 600, capped: false }, { winner: null, margin: 0, damage: 0, capped: false, ticks: 1 }],
+    damage: sides(500, 0), heartcaps: sides(3000, 1500), comeback: 'enemy',
   },
   'cap-tie': { lanes: [{ winner: null, margin: 0, damage: 0, capped: true, ticks: 900 }], damage: sides(0, 0), heartcaps: FULL, comeback: null },
   'double-wipe': { lanes: [{ winner: null, margin: 0, damage: 0, capped: false }], damage: sides(0, 0), heartcaps: FULL, comeback: null },
   'emplacements-only-draw': { lanes: [{ winner: null, margin: 0, damage: 0, capped: true, ticks: 900 }], damage: sides(0, 0), heartcaps: FULL, comeback: null },
   'emplacement-only-win': { lanes: [{ winner: 'player', margin: 0, damage: 0, capped: false, ticks: 1 }], damage: sides(0, 0), heartcaps: FULL, comeback: null },
   'split-lanes': {
-    lanes: [{ winner: 'player', margin: 26, damage: 650, capped: false, ticks: 1 }, { winner: 'enemy', margin: 6, damage: 150, capped: false, ticks: 1 }],
-    damage: sides(500, 150), heartcaps: sides(2850, 1500), comeback: 'enemy',
+    lanes: [{ winner: 'player', margin: 26, damage: 2600, capped: false, ticks: 1 }, { winner: 'enemy', margin: 6, damage: 600, capped: false, ticks: 1 }],
+    damage: sides(750, 600), heartcaps: sides(2400, 2250), comeback: 'enemy',
   },
   'both-heartcaps-zero': {
-    lanes: [{ winner: 'player', margin: 18, damage: 630, ticks: 1 }, { winner: 'enemy', margin: 6, damage: 210, ticks: 1 }],
-    damage: sides(500, 210), heartcaps: sides(0, 0), comeback: 'enemy', stormBp: 14000, outcome: { winner: 'enemy', by: 'rout', round: 6 },
+    lanes: [{ winner: 'player', margin: 18, damage: 2520, ticks: 1 }, { winner: 'enemy', margin: 6, damage: 840, ticks: 1 }],
+    damage: sides(900, 750), heartcaps: sides(0, 0), comeback: 'enemy', stormBp: 14000, outcome: { winner: 'enemy', by: 'rout', round: 6 },
   },
-  'comeback-r4': { lanes: [{ winner: null, margin: 0, damage: 0 }], damage: sides(0, 0), heartcaps: sides(2300, 3000), comeback: null },
-  'merge-trio': { lanes: [{ winner: 'player', margin: 4, damage: 100 }], damage: sides(100, 0), heartcaps: sides(3000, 1900), comeback: 'enemy' },
-  'knit-cancel': { lanes: [{ winner: 'player', margin: 6, damage: 150 }], damage: sides(150, 0), heartcaps: sides(3000, 1850), comeback: 'enemy' },
-  'elder-ladder': { lanes: [{ winner: 'player', margin: 8, damage: 200 }], damage: sides(200, 0), heartcaps: sides(3000, 1800), comeback: 'enemy' },
-  'merge-under-fire': { lanes: [{ winner: 'enemy', margin: 5, damage: 125 }], damage: sides(0, 125), heartcaps: sides(2875, 2000), comeback: 'player' },
-  'unit-lineup': { lanes: [{ winner: 'player', margin: 3, damage: 75, capped: true, ticks: 900 }], damage: sides(75, 0), heartcaps: sides(3000, 1925), comeback: 'enemy' },
+  'comeback-r4': { lanes: [{ winner: null, margin: 0, damage: 0 }], damage: sides(0, 0), heartcaps: sides(1450, 3000), comeback: null },
+  'merge-trio': { lanes: [{ winner: 'player', margin: 4, damage: 400 }], damage: sides(400, 0), heartcaps: sides(3000, 1600), comeback: 'enemy' },
+  'knit-cancel': { lanes: [{ winner: 'player', margin: 6, damage: 600 }], damage: sides(500, 0), heartcaps: sides(3000, 1500), comeback: 'enemy' },
+  'elder-ladder': { lanes: [{ winner: 'player', margin: 8, damage: 800 }], damage: sides(500, 0), heartcaps: sides(3000, 1500), comeback: 'enemy' },
+  'merge-under-fire': { lanes: [{ winner: 'enemy', margin: 5, damage: 500 }], damage: sides(0, 500), heartcaps: sides(2500, 2000), comeback: 'player' },
+  'unit-lineup': { lanes: [{ winner: 'player', margin: 3, damage: 300, capped: true, ticks: 900 }], damage: sides(300, 0), heartcaps: sides(3000, 1700), comeback: 'enemy' },
   'unit-lineup-twin': {
-    lanes: [{ winner: null, margin: 0, damage: 0, capped: true, ticks: 900 }, { winner: 'player', margin: 8, damage: 200 }], damage: sides(200, 0), heartcaps: sides(3000, 1800), comeback: 'enemy',
+    lanes: [{ winner: null, margin: 0, damage: 0, capped: true, ticks: 900 }, { winner: 'player', margin: 8, damage: 800 }], damage: sides(500, 0), heartcaps: sides(3000, 1500), comeback: 'enemy',
   },
   // the bench's clash (T114), a mirror: every lane holds level to the cap
   'bench-300': { lanes: [0, 1, 2].map(() => ({ winner: null, margin: 0, damage: 0, capped: true, ticks: 900 })), damage: sides(0, 0), heartcaps: FULL, comeback: null },
@@ -160,12 +160,12 @@ describe('each scenario’s own rule', () => {
     expect(Math.max(...fromMiddle('capguard'))).toBeLessThan(Math.min(...fromMiddle('gillArcher')));
   });
 
-  it('clash-cap: at 45 s more surviving supply wins the lane, and the damage is the difference × 25', () => {
+  it('clash-cap: at 45 s more surviving supply wins the lane, and the damage is the difference × the damage per supply, 100', () => {
     const s = fromScenario('clash-cap');
     finishRound(s);
     const lock = s.clash!.lanes[0]!;
     expect(lock).toMatchObject({ capped: true, endTick: s.clash!.startTick + 900, survivors: { player: 6, enemy: 3 } });
-    expect(s.rounds[0]!.damage.player).toBe((lock.survivors.player - lock.survivors.enemy) * 25);
+    expect([s.rules.heartcapDamagePerSupply, s.rounds[0]!.damage.player]).toEqual([100, (lock.survivors.player - lock.survivors.enemy) * 100]);
   });
 
   it('round-damage-cap: an overwhelming win deals exactly the cap, 25% of the general’s max HP', () => {
@@ -192,7 +192,7 @@ describe('each scenario’s own rule', () => {
     expect([roundOutcome(s.rounds.at(-1)!.damage).winner, s.outcome?.winner]).toEqual(['player', 'enemy']);
   });
 
-  it('comeback-r4: round 4 opens with equal colonies, banked gold and max HP, your Heartcap 700 below full, after three lost rounds (G6)', () => {
+  it('comeback-r4: round 4 opens with equal colonies, banked gold and max HP, your Heartcap 1550 below full, after three lost rounds (G6)', () => {
     const s = fromScenario('comeback-r4');
     const colony = (side: Side) => s.buildings.filter((b) => b.side === side).map((b) => {
       const p = s.sides[side].plots[b.plot]!;
@@ -202,7 +202,7 @@ describe('each scenario’s own rule', () => {
     expect([s.round, s.sides.player.bankedAtBegin, s.sides.player.heartcapMaxHp]).toEqual([4, s.sides.enemy.bankedAtBegin, s.sides.enemy.heartcapMaxHp]);
     // round 4's opening pays you the comeback gold for round 3 (§6.2)
     expect([s.sides.player.gold - s.sides.enemy.gold, s.stats.player.goldEarned.comeback]).toEqual([40, 40]);
-    expect(s.sides.enemy.heartcapHp - s.sides.player.heartcapHp).toBe(700);
+    expect(s.sides.enemy.heartcapHp - s.sides.player.heartcapHp).toBe(1550);
     expect(s.rounds.map((r) => roundOutcome(r.damage).loser)).toEqual(['player', 'player', 'player']);
     // the record of rounds 1–3 is what this colony musters now
     begin(s);

@@ -27,8 +27,10 @@ export interface PlanningView {
   mergeOffSlayerShare: number;
   /** The counter cycle's multipliers, noise and sells (§7.4, §7.6), which keep their v1 meaning (plan Call 1). */
   counterKnobs: BalanceDef['ai']['counter'];
-  /** The damage matrix (§5.3), which the counter cycle reads for what beats the dominant armor. */
+  /** The damage matrix (§5.3), which the counter cycle reads for what beats the dominant armor, and its classes' thresholds, which the answer bot reads. */
   matrix: BattleState['rules']['matrix'];
+  strongAt: number;
+  weakAt: number;
   gold: number;
   kit: KitCard[];
   /** Its colony, in plot order, each plot with its building's id or 0. */
@@ -60,6 +62,8 @@ export function planningView(state: BattleState, side: Side): PlanningView {
     mergeOffSlayerShare: bal.ai.mergeOffSlayerShare,
     counterKnobs: bal.ai.counter,
     matrix: state.rules.matrix,
+    strongAt: state.rules.strongAt,
+    weakAt: state.rules.weakAt,
     gold: ss.gold,
     kit: ss.kit.map((c) => ({ ...c })),
     ...colonyOf(state, side),

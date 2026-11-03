@@ -478,6 +478,51 @@ export const BalanceTargetsSchema = z.object({
     slayers: z.object({ mergeBot: Id, noMergeBot: Id, share: z.number(), maxWinRate: z.number() }).strict(),
   }).strict(),
   G11: z.object({ tickMeanMs: Pos, tickP99Ms: Pos, battleWallMs: Pos, benchTicks: z.number().int().positive(), quickTicks: z.number().int().positive() }).strict(),
+  /**
+   * The round forms (SPEC §12.3, R2a/T119), asserted in `tests/slow/rounds/` beside v1's blocks until R2b retires
+   * those. G2 stays the block above. The battle-level bands (G4, G6, G8, G13, G16) are the user's, set from R2a's
+   * measurement (§18.2 #35, T125, 2026-11-03); R2b sets G14's and G15's and re-reads G8's beside G14.
+   */
+  rounds: z.object({
+    G1: z.object({ seeds: z.number().int().positive(), goldBudget: z.number().int().positive(), maxPairingWinShare: z.number(), clearLossRatio: z.number() }).strict(),
+    G3: z.object({ seeds: z.number().int().positive(), maxMeanWinRate: z.number(), maxMapWinRate: z.number() }).strict(),
+    /** `bot:balanced` against the scripted general on Bogwater Hollow: the median rounds, the share reaching the last round, the bot's wins. */
+    G4: z.object({
+      seeds: z.number().int().positive(), medianMinRounds: z.number().int().positive(), medianMaxRounds: z.number().int().positive(),
+      maxRound9Share: z.number(), botWinMin: z.number(), botWinMax: z.number(),
+    }).strict(),
+    G5: z.object({ seeds: z.number().int().positive(), bonusGold: z.number().int(), minWinRate: z.number(), maxWinRate: z.number() }).strict(),
+    /** `scenario` played by `bot` in both seats, with equal max HP; and in G4's games, the winner's Heartcap hit in at least `winnerHitShare`. */
+    G6: z.object({
+      seeds: z.number().int().positive(), scenario: Id, bot: Id, minBehindWinRate: z.number(), maxBehindWinRate: z.number(), winnerHitShare: z.number(),
+    }).strict(),
+    /** As v1's G7, the Slayer share read from what each side fielded (§14.4's `fielded`). */
+    G7: z.object({
+      seeds: z.number().int().positive(),
+      mirror: z.object({ mergeBot: Id, noMergeBot: Id, minWinRate: z.number(), maxWinRate: z.number() }).strict(),
+      slayers: z.object({ mergeBot: Id, noMergeBot: Id, share: z.number(), maxWinRate: z.number() }).strict(),
+    }).strict(),
+    /** As v1's G8, with a band for each planning policy's bot against the adaptive general (X7): `bot:balanced`'s, and `bot:answer`'s ceiling. */
+    G8: z.object({
+      seeds: z.number().int().positive(), general: Id, minDrop: z.number(), minBaseline: z.number(),
+      policies: z.array(z.object({ bot: Id, min: z.number().optional(), max: z.number().optional() }).strict()).min(1),
+    }).strict(),
+    /** v1's G11, plus the budgets new in v2 (§13.7): the arrival, the general's turn, a planning command's sim part, and a full colony's units a side. */
+    G11: z.object({
+      tickMeanMs: Pos, tickP99Ms: Pos, battleWallMs: Pos, benchTicks: z.number().int().positive(), quickTicks: z.number().int().positive(),
+      arrivalMs: Pos, generalTurnMs: Pos, planCommandMs: Pos, colonyUnits: z.number().int().positive(),
+    }).strict(),
+    /** The strict counter bar: an answer winning `minAnswerRate` on every run-pool map for each build whose G3 mean is above `minBuildMean`. */
+    G12: z.object({
+      screenSeeds: z.number().int().positive(), confirmSeeds: z.number().int().positive(), top: z.number().int().positive(),
+      minBuildMean: z.number(), minAnswerRate: z.number(),
+    }).strict(),
+    G13: z.object({ maxCappedShare: z.number(), clashSecondsMin: Pos, clashSecondsMax: Pos }).strict(),
+    /** The formation rule against its front and back ranks swapped, pooled over role-split pairs (R2-Q10), a column per budget. */
+    G16: z.object({
+      seeds: z.number().int().positive(), budgets: z.array(z.number().int().positive()).min(1), minWinRate: z.number(), pairs: z.literal('roleSplit'),
+    }).strict(),
+  }).strict(),
 }).strict();
 
 const StatPatch = z.object({
@@ -754,6 +799,8 @@ export const BotSchema = z.object({
   placement: z.object({ spawnerDepthWeight: z.number().optional() }).strict().optional(),
   /** Buys only what `weights` lists (the counter check's test bots). */
   fixedWeights: z.boolean().optional(),
+  /** In rounds, `answer` leans toward the answer to the general's planned army (SPEC §12.2, X7); fixed weights unless set. */
+  policy: z.literal('answer').optional(),
 }).strict();
 
 const ScenarioUnits = z.object({

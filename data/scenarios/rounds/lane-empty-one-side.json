@@ -1,6 +1,6 @@
 {
   "id": "lane-empty-one-side",
-  "description": "SPEC §6.7 E1: only you field anything in the lane. Your Rootbreakers still appear, and win the lane on the first tick with all their damage supply as the margin: 3 × 3, counted twice for siege, is 18, so 25 × 18 = 450 to the general's Heartcap. Merging is off.",
+  "description": "SPEC §6.7 E1: only you field anything in the lane. Your Rootbreakers still appear, and win the lane on the first tick with all their damage supply as the margin: 3 × 3, counted twice for siege, is 18, so 100 × 18 = 1800, capped at the general's 500 (25% of its 2000). Merging is off.",
   "map": "bogwater-hollow",
   "sides": {
     "player": {

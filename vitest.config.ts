@@ -6,5 +6,8 @@ export default defineConfig({
     include: ['tests/**/*.test.ts'],
     testTimeout: 600_000,
     hookTimeout: 600_000,
+    // the slow suite's files run one at a time: G3, G12 and the round battles play on worker pools of their own, and
+    // G11's timings need the machine to themselves (R2a/T122)
+    fileParallelism: !process.argv.some((a) => a.includes('tests/slow')),
   },
 });

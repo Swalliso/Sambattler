@@ -117,7 +117,7 @@ const FLYERS: Json = {
   'faction.velvet-bloom.buildings+': 'driftStalk',
   'faction.gray-rot.buildings+': 'driftStalk',
   ...Object.fromEntries([
-    ...['balanced', 'balanced-nomerge', 'slayer', 'slayer-nomerge', 'rush', 'turtle', 'greedy'].map((id) => `bot.${id}.weights.driftStalk`),
+    ...['balanced', 'balanced-nomerge', 'answer', 'slayer', 'slayer-nomerge', 'slayer-rounds', 'slayer-rounds-nomerge', 'rush', 'turtle', 'greedy'].map((id) => `bot.${id}.weights.driftStalk`),
     ...['scripted', 'mother-mold', 'lichen-baron', 'blightwright', 'pale-sovereign'].map((id) => `general.${id}.weights.driftStalk`),
   ].map((path) => [path, 1])),
 };

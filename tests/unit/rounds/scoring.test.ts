@@ -28,6 +28,16 @@ function clashIn(opts: { map?: string; round?: number; sides?: Partial<Sides> } 
     sides: { player: opts.sides?.player ?? {}, enemy: opts.sides?.enemy ?? {} }, clash: { units: [] },
   });
   s.events.length = 0;
+  return at25(s);
+}
+
+/**
+ * §6.7's rule at its first value, 25 a supply, which these tests' numbers are worked at: they check the rule's steps
+ * (the storm, siege counted twice, each cap shape, E8), so a retune of the number (100 since T125) moves the rule
+ * scenarios and the goldens, not them.
+ */
+function at25(s: BattleState): BattleState {
+  s.rules.heartcapDamagePerSupply = 25;
   return s;
 }
 
@@ -53,7 +63,7 @@ function heldToCap(groups: [Side, string, number][]): BattleState {
   });
   for (const side of ['player', 'enemy'] as const) for (const u of Object.values(s.compiled[side].units)) for (const t of u.tiers) t.speedPerTick = 0;
   for (const u of s.units) u.cooldown = 1e9;
-  finishRound(s);
+  finishRound(at25(s));
   return s;
 }
 
@@ -235,7 +245,7 @@ describe('the battle’s end (§4.7 steps 18–19, §6.5, §14.6)', () => {
       id: 'next-round', description: 'Capguards against Tenders.', map: 'bogwater-hollow', round: 8,
       sides: { player: { colony: [on('capguardHall', 0, 0, 2)] }, enemy: { colony: [on('tendersRing', 0, 0, 2)] } },
     });
-    finishRound(s);
+    finishRound(at25(s));
     expect([s.phase, s.outcome, s.units.length]).toEqual(['aftermath', undefined, 3]);
     step(s);
     expect([s.phase, s.round, s.clash, s.units, s.squads, s.hits, s.clouds]).toEqual(['planning', 9, undefined, [], [], [], []]);
