@@ -49,14 +49,14 @@ const EXPECTED: Record<string, RoundExpected> = {
     lanes: [{ winner: 'player', margin: 18, damage: 630, ticks: 1 }, { winner: 'enemy', margin: 6, damage: 210, ticks: 1 }],
     damage: sides(500, 210), heartcaps: sides(0, 0), comeback: 'enemy', stormBp: 14000, outcome: { winner: 'enemy', by: 'rout', round: 6 },
   },
-  'comeback-r4': { lanes: [{ winner: 'enemy', margin: 6, damage: 150 }], damage: sides(0, 150), heartcaps: sides(2150, 3000), comeback: 'player' },
+  'comeback-r4': { lanes: [{ winner: null, margin: 0, damage: 0 }], damage: sides(0, 0), heartcaps: sides(2300, 3000), comeback: null },
   'merge-trio': { lanes: [{ winner: 'player', margin: 4, damage: 100 }], damage: sides(100, 0), heartcaps: sides(3000, 1900), comeback: 'enemy' },
   'knit-cancel': { lanes: [{ winner: 'player', margin: 6, damage: 150 }], damage: sides(150, 0), heartcaps: sides(3000, 1850), comeback: 'enemy' },
   'elder-ladder': { lanes: [{ winner: 'player', margin: 8, damage: 200 }], damage: sides(200, 0), heartcaps: sides(3000, 1800), comeback: 'enemy' },
   'merge-under-fire': { lanes: [{ winner: 'enemy', margin: 5, damage: 125 }], damage: sides(0, 125), heartcaps: sides(2875, 2000), comeback: 'player' },
-  'unit-lineup': { lanes: [{ winner: 'player', margin: 54, damage: 1350, capped: true, ticks: 900 }], damage: sides(500, 0), heartcaps: sides(3000, 1500), comeback: 'enemy' },
+  'unit-lineup': { lanes: [{ winner: 'player', margin: 3, damage: 75, capped: true, ticks: 900 }], damage: sides(75, 0), heartcaps: sides(3000, 1925), comeback: 'enemy' },
   'unit-lineup-twin': {
-    lanes: [{ winner: 'player', margin: 41, damage: 1025 }, { winner: 'player', margin: 24, damage: 600 }], damage: sides(500, 0), heartcaps: sides(3000, 1500), comeback: 'enemy',
+    lanes: [{ winner: null, margin: 0, damage: 0, capped: true, ticks: 900 }, { winner: 'player', margin: 8, damage: 200 }], damage: sides(200, 0), heartcaps: sides(3000, 1800), comeback: 'enemy',
   },
 };
 

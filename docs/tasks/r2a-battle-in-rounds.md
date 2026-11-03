@@ -457,6 +457,15 @@ S1 to S4: the data, the colony, the round state machine and the planning command
   - After `maxRounds`, a Decision by `decision.by`: with `damage`, the sum of `RoundResult.damage` (gross); with `shareOfMaxHp`, the smaller share of max HP lost, by cross-multiplication. Then the higher HP fraction by cross-multiplication, then the general.
   - `outcome {winner, by, round}` is set. The aftermath's step emits `battleEnded` and enters `ended`, or opens the next round, clearing units, squads, hits and clouds.
 
+**S7b: no seat decides a clash** (the user's call, 2026-11-02)
+
+- [x] T147 [US1] Make the order units are listed in decide nothing in a clash, in rounds' copies only (§5.2, §13.3 rule 4). S7's check found that at Begin every player unit takes a lower id than every enemy unit, the systems run units in id order, and flipping the ids flipped the winner of every mirror that wasn't level.
+  - Tests first: in `tests/unit/rounds/combat.test.ts`, a mirror-image crowd gets mirror-image pushes whatever its ids, and an exact stack splits by a mirror-image rule. In `tests/unit/rounds/seats.test.ts` (new), a mirror Hammercap mono and `comeback-r4` end the same unit for unit with either side's ids first, `unit-lineup` ends with the same locks, and the mirror monos end level.
+  - `separationSystem` in `src/sim/rounds/systems/movement.ts` works out every pair's push from the positions at the start of the pass and applies them together. Pushes are summed in fixed point (2^44 to a tile), so no addition order changes a sum. An exact stack splits across sides toward each unit's own side, and on one side toward each one's slot.
+  - Movement steers by where other units stood at the start of the tick (`px`, `py`): a target, the idle seek's nearest enemy and the tunneler's surfacing point. This was the rest of the bias.
+  - The combat-decided numbers moved for `comeback-r4`, `unit-lineup` and `unit-lineup-twin` in `scenarios.test.ts`.
+  - Left for the user's call: three timers phased by a unit's id (healing's, the retarget stagger and pinning's skip), and a Burster that bursts inside the attack step. Exact mirroring is out of reach while positions are absolute floats.
+
 **Checkpoint:** `npx vitest run tests/unit/rounds` passes, every scenario included; `npm run verify` is green with no v1 golden moved.
 
 ## Phase 4: US2 — A whole battle in rounds, headless (P1)
@@ -892,6 +901,7 @@ Each session is about a day, ends in one PR into `develop` (opened when the user
 | S5 | T035–T041 | `feature/r2a-combat` | S4 merged | The kept combat rules copied and stripped; emplacements |
 | S6 | T042, T046, T043–T045 | `feature/r2a-clash` | S5 merged | Per-squad stats; Begin, the arrival with its shield, and the muster; lane ends and freeze |
 | S7 | T047–T052 | `feature/r2a-scoring` | S6 merged | Scoring, the Heartcap race, the Decision; every rule scenario passing (US1 done) |
+| S7b | T147 | `feature/r2a-seat-fix` | S7 merged | No seat decides a clash: separation and movement read positions independently of unit order |
 | S8 | T053–T057 | `feature/r2a-economy` | S7 merged | Opening a round, income, stats per round, the summary |
 | S9 | T058–T064 | `feature/r2a-headless` | S8 merged | `runHeadless` by phase, `npm run sim -- --rounds`, round asserts, `ROUND_REPLAYS` in the golden tool, determinism tests |
 | S10a | T065–T069 | `feature/r2a-general` | S9 merged | The general plans first through `planningView`; its scores, turn and profiles; bots plan after it |
