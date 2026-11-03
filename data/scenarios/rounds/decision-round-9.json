@@ -1,6 +1,6 @@
 {
   "id": "decision-round-9",
-  "description": "SPEC §16 R2 step 4, §6.5 (X5): round 9 ends with both Heartcaps standing, so the battle goes by Decision. You have dealt 1400 of the general's 2000 max HP (70%) and it 1200 of your 3000. In round 9 its Capguards win the lane on the first tick (E1): 100 × 6 = 600, × 2.0 for the storm = 1200, capped at 750 (25% of your 3000). It has then dealt more, 1950, but only 65% of your max HP, so the share gives you the Decision; by damage it would go to the general. Merging is off.",
+  "description": "SPEC §16 R2 step 4, §6.5 (X5): round 9 ends with both Heartcaps standing, so the battle goes by Decision. You have dealt 1400 of the general's 2000 max HP (70%) and it 1200 of your 3000. In round 9 its Capguards win the lane on the first tick (E1): 100 × 6 = 600, × 2.0 for the storm = 1200, capped at the fixed 750 (#68). It has then dealt more, 1950, but only 65% of your max HP, so the share gives you the Decision; by damage it would go to the general. Merging is off.",
   "map": "bogwater-hollow",
   "round": 9,
   "sides": {

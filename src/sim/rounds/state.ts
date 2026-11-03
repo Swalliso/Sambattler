@@ -3,7 +3,7 @@
 // come from v1's file and are re-exported, so rounds' modules import from here; the rest are §14.4's and
 // §14.5's. The library and the compiled sides hold ids and numbers only, so rewording a card never moves a
 // round golden (R2-Q8, A152).
-import type { BalanceDef, BuildingDef, ModifierDef, PowerDef, TriggerDef, UnitDef } from '../../data/schema.ts';
+import type { BalanceDef, BuildingDef, EffectBundle, ModifierDef, PowerDef, TriggerDef, UnitDef } from '../../data/schema.ts';
 import type { Slot } from '../formation.ts';
 import type {
   Armor, BattleModifier, BuildingKind, CloudSpec, CloudState, CompiledTier, Controller, DamageType,
@@ -38,7 +38,7 @@ export interface SideConfig {
   kit: KitCard[];
   /** R3: building id → its augments (§11.13). */
   augments?: Record<string, string[]>;
-  /** Until R3. A single battle in R2a has no upgrade levels and no relics (plan Call 19). */
+  /** Until R3. A single battle has no upgrade levels and no relics; a run's battle has the run's (R2b). */
   upgrades?: Record<string, number>;
   relics: string[];
   /** M6's traits and strains. */
@@ -88,6 +88,10 @@ export interface Library {
   units: Record<string, LibraryUnit>;
   /** The commander powers in this battle (present only with `flags.powers` and a side that has one). */
   powers?: Record<string, LibraryPower>;
+  /** A run's relics in this battle, their effects only (R2b; present only when a side holds one). */
+  relics?: Record<string, { effects: EffectBundle }>;
+  /** A run's upgrade tracks in this battle, by building id: each level's effects only (until R3; present only when a side has a level). */
+  upgrades?: Record<string, { effects: EffectBundle }[]>;
 }
 
 /** A unit at its three merge tiers (§5.5, §5.6), or a tower's emplacement. */

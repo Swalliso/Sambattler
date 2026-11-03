@@ -253,12 +253,13 @@ export function roundTip(content: Content, atlas: Atlas, state: BattleState): Ti
       const r = state.rules, cap = seconds(state, r.clashCapTicks);
       const out: Node[] = [head(atlas, 'i-wave', 'Round', `${state.round} of ${r.maxRounds}`)];
       if (state.phase === 'clash' && state.clash) out.push(row('Clash clock', `${seconds(state, state.tick - state.clash.startTick)} s of ${cap} s`));
-      const capBp = r.roundDamageCap.maxHpBp;
+      const capDef = r.roundDamageCap;
+      const capped = capDef.maxHpBp !== undefined ? `${capDef.maxHpBp / 100}% of its max HP` : capDef.flat !== undefined ? `${capDef.flat} HP` : null;
       out.push(
         para('Each round has three phases: you plan with the clock stopped, both armies clash, and the aftermath scores it.'),
         para(`A lane's clash ends when one side has no units left. At ${cap} s the side with more surviving supply wins it.`),
         para(`The lane's winner deals ${r.heartcapDamagePerSupply} × its margin to the loser's Heartcap, siege units counting twice, times the Sporestorm`
-          + `${capBp !== undefined ? `, and a Heartcap takes at most ${capBp / 100}% of its max HP a round` : ''}.`),
+          + `${capped ? `, and a Heartcap takes at most ${capped} a round` : ''}.`),
       );
       if (state.config.flags.drafts) out.push(para('A draft opens in the planning phases of rounds 3, 5 and 7.'));
       const dealt = (s: Side) => state.rounds.reduce((n, x) => n + x.damage[s], 0);
@@ -297,6 +298,9 @@ export function stormTip(content: Content, atlas: Atlas, state: BattleState): Ti
       if (capDef.maxHpBp !== undefined) {
         const capOf = (s: Side) => capFor(capDef, state.sides[s].heartcapMaxHp, 10000);
         out.push(h('p', { class: 'muted' }, `A round's damage to a Heartcap is capped at ${capDef.maxHpBp / 100}% of its max HP: ${capOf('player')} of yours, ${capOf('enemy')} of the general's`
+          + `${capDef.stormScales ? ', and the storm raises the cap too' : ''}.`));
+      } else if (capDef.flat !== undefined) {
+        out.push(h('p', { class: 'muted' }, `A round's damage to a Heartcap is capped at ${capDef.flat} HP, yours and the general's alike`
           + `${capDef.stormScales ? ', and the storm raises the cap too' : ''}.`));
       }
       return out;

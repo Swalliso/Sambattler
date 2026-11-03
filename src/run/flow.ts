@@ -1,21 +1,20 @@
-// The run's state machine (SPEC §8): choosing route nodes, building each battle's config, applying a
-// finished battle (Heartcap carryover, rewards, spoils), the Grove, events and the prompts they
-// raise. Every transition is a pure function of (run, content, decision); randomness comes only from
-// the run's streams. Battles themselves run in the sim; the run only sees their final state.
+// The run's state machine (SPEC §8): choosing route nodes, building each battle's config in rounds, applying
+// a finished battle (lives, sprawl, rewards, spoils), the Grove, events and the prompts they raise. Every
+// transition is a pure function of (run, content, decision); randomness comes only from the run's streams.
+// Battles themselves run in the sim; the run only sees their final state.
 import type { RunEffect } from '../data/schema.ts';
 import {
-  POWER_SOURCE_ID, RARITIES, applyCard, buildLibrary, counterSets, draftPool, generateOffer, hashState, nextFloat, nextInt, parseCard,
-  parseController, seedStream, setCommander, sideModifiers, topKinds,
+  RARITIES, applyCard, buildLibrary, counterSets, draftPool, generateOffer, nextFloat, nextInt, parseCard, parseController, seedStream,
 } from '../sim/index.ts';
-import type {
-  BattleConfig, BattleModifier, BattleState, Content, DraftPool, IntelProfile, Library, Loadout, Rarity, SideConfig,
-} from '../sim/index.ts';
+import type { Content, CounterKind as V1Kind, DraftPool, Library, Loadout, Rarity } from '../sim/index.ts';
+import { POWER_SOURCE_ID, basePlots, hashState, kitCards, openOrder, setCommander, setPassives, topKinds } from '../sim/rounds/index.ts';
+import type { BattleConfig, BattleState, Controller, IntelProfile, SideConfig } from '../sim/rounds/index.ts';
 import { averageProfile, battleProfile, scaleProfile, updateIntel } from './intel.ts';
 import { battleRewards } from './rewards.ts';
 import { isBattle } from './route.ts';
 import type { RouteNode } from './route.ts';
-import { currentRow } from './runState.ts';
-import type { BattleRecord, Prompt, RunState, SpoilsPick } from './runState.ts';
+import { currentRow, freshNext } from './runState.ts';
+import type { BattleRecord, CounterRecordBrief, Prompt, RunState, SpoilsPick } from './runState.ts';
 
 // ---- pools and loadouts ----
 
@@ -64,22 +63,40 @@ export function chooseNode(content: Content, run: RunState, index: number): void
   else run.screen = { kind: 'grove' };
 }
 
-/** The battle a node starts (SPEC §6.1, §7.7–7.8, §8.5): fixed when the node is entered. */
+/**
+ * Your Heartcap's max in a battle (§4.5, §8.5, §8.7): the run-long change (Fallen Oak) and the one-battle change
+ * (Quiet Clearing's Rest) multiply, and with the `bosslives` knob each life left adds to it at the boss (#16).
+ */
+export function playerHeartcapMax(content: Content, run: RunState, node: RouteNode): number {
+  const bal = content.balance;
+  const hp = Math.round(bal.heartcapPlayerHp * (1 + run.heartcapMaxPct) * (1 + run.next.heartcapMaxHpPct));
+  const perLife = node.kind === 'boss' ? bal.livesAtBoss?.heartcapPerLife ?? 0 : 0;
+  return Math.max(1, hp + perLife * run.lives.left);
+}
+
+/**
+ * The battle in rounds a node starts (SPEC §4.5, §4.6, §6.1, §7.7–7.8, §8.5): fixed when the node is entered.
+ * Each battle has its own Heartcaps, which start full, and both colonies start empty (#20) on the map's plots
+ * plus your sprawl (#21), past which a map has no plots. Run battles open no drafts until R2b's T067.
+ */
 export function battleConfig(content: Content, run: RunState, node: RouteNode): BattleConfig {
   const bal = content.balance;
   const index = run.battles.length + 1;
   const gold = bal.startingGold + bal.startingGoldPerBattle * (index - 1);
-  const enemyFaction = 'gray-rot';
+  const map = content.maps[node.map!];
+  if (!map) throw new Error(`unknown map ${node.map}`);
+  const plots = Math.min(basePlots(map) + run.plotsGained, openOrder(map).length);
   const { kit: enemyKit, upgrades: enemyUpgrades } = generalKit(content, run, node, index);
   const enemyHp = node.kind === 'boss' ? bal.heartcapEnemyHp.boss : bal.heartcapEnemyHp.base + bal.heartcapEnemyHp.perBattle * (index - 1);
+  const playerCtl = parseController(run.player) as Controller;
   const player: SideConfig = {
     faction: run.faction,
-    controller: parseController(run.player),
-    kit: [...run.kit],
+    controller: playerCtl,
+    kit: kitCards(content, playerCtl, run.kit),
     upgrades: { ...run.upgrades },
     relics: [...run.relics],
-    heartcapHp: run.heartcap.hp,
-    heartcapMaxHp: run.heartcap.max,
+    plots,
+    heartcapMaxHp: playerHeartcapMax(content, run, node),
     startingGold: Math.max(0, gold + run.next.startingGold),
     draft: runPool(content, run),
   };
@@ -90,35 +107,30 @@ export function battleConfig(content: Content, run: RunState, node: RouteNode): 
     const extra = botCoreWeights(content, run);
     if (Object.keys(extra).length) player.aiWeights = extra;
   }
+  const enemyCtl: Controller = { kind: 'general', id: node.general ?? 'scripted' };
   const enemy: SideConfig = {
-    faction: enemyFaction,
-    controller: { kind: 'general', id: node.general ?? 'scripted' },
-    kit: enemyKit,
-    heartcapHp: enemyHp,
-    heartcapMaxHp: enemyHp,
-    startingGold: gold,
+    faction: 'gray-rot', controller: enemyCtl, kit: kitCards(content, enemyCtl, enemyKit), relics: [], plots, heartcapMaxHp: enemyHp, startingGold: gold,
   };
   const intel = generalIntel(content, run, node);
   if (intel) enemy.intel = intel;
   // Run progression may introduce buildings the historical single-battle profile never bought.
-  // Give only those kit entries a purchase path, leaving the base profile and its replays intact.
+  // Give only those kit entries a purchase path, leaving the base profile and its replays intact (R2-Q4).
   const generalWeights = content.generals[node.general ?? 'scripted']!.weights;
   const extraWeights = Object.fromEntries(enemyKit.filter((id) => !(generalWeights[id]! > 0)).map((id) => [id, 1]));
   if (Object.keys(extraWeights).length) enemy.aiWeights = extraWeights;
   if (Object.keys(enemyUpgrades).length) enemy.upgrades = enemyUpgrades;
-  const modifiers: BattleModifier[] = sideModifiers(content, { player, enemy });
+  const config: BattleConfig = {
+    // drafts open in planning from T067 (R2b S5)
+    seed: run.seed, battleIndex: index, mapId: map.id, player, enemy, flags: { ...run.flags, drafts: false },
+  };
+  setPassives(content, config);
+  const modifiers = [...(config.modifiers ?? [])];
   const elite = node.elite ? content.elites[node.elite] : undefined;
   if (elite?.effects) modifiers.push({ side: 'enemy', source: `elite:${elite.id}`, effects: elite.effects });
-  // hot-start prototype (absent by default): effects for the run's first battles, such as a gentler battle 1
-  const hot = bal.hotStart?.battles?.[index - 1];
-  if (hot?.player) modifiers.push({ side: 'player', source: 'proto:hotStart', effects: hot.player });
-  if (hot?.enemy) modifiers.push({ side: 'enemy', source: 'proto:hotStart', effects: hot.enemy });
-  if (run.next.sporestormShiftSeconds) {
-    modifiers.push({ side: 'both', source: 'event:next-battle', effects: { modifiers: [{ stat: 'battle.sporestormStart', op: 'add', value: run.next.sporestormShiftSeconds }] } });
+  // Mold Bloom: `battle.sporestormStart` is a round in rounds (§6.4)
+  if (run.next.sporestormShiftRounds) {
+    modifiers.push({ side: 'both', source: 'event:next-battle', effects: { modifiers: [{ stat: 'battle.sporestormStart', op: 'add', value: run.next.sporestormShiftRounds }] } });
   }
-  const config: BattleConfig = {
-    seed: run.seed, battleIndex: index, mapId: node.map!, player, enemy, flags: { ...run.flags },
-  };
   if (modifiers.length) config.modifiers = modifiers;
   return config;
 }
@@ -190,10 +202,13 @@ function bossCounters(content: Content, run: RunState, node: RouteNode, roster: 
   const intel = node.kind === 'boss' ? generalIntel(content, run, node) : null;
   if (!intel) return [];
   const lib = buildLibrary(content, roster, []);
-  const sets = counterSets(lib, roster);
+  const sets: Partial<Record<string, readonly string[]>> = counterSets(lib, roster);
   const out: string[] = [];
+  // v1's counter sets, which have no Anti-Ranged set until R2b's T154 reads the round ones
   for (const k of topKinds(intel, 2)) {
-    const cheapest = [...sets[k]].sort((a, b) => content.buildings[a]!.cost - content.buildings[b]!.cost)[0];
+    const set = sets[k as V1Kind];
+    if (!set) continue;
+    const cheapest = [...set].sort((a, b) => content.buildings[a]!.cost - content.buildings[b]!.cost)[0];
     if (cheapest && !out.includes(cheapest)) out.push(cheapest);
   }
   return out;
@@ -201,23 +216,29 @@ function bossCounters(content: Content, run: RunState, node: RouteNode, roster: 
 
 // ---- after a battle ----
 
-const rewardRules = (content: Content) => ({
-  routRepair: content.balance.routRepair,
-  decisionLossDamage: content.balance.decisionLossDamage,
+export const rewardRules = (content: Content) => ({
   rarityBiasStep: content.balance.draft.rarityBiasStep,
   eliteRareBonus: content.balance.draft.eliteRareBonus,
 });
 
-/** Per lane, the front-line midpoint every 10 s (the summary sparkline). */
-function frontSamples(state: BattleState): number[][] {
-  return state.frontLine.map((series) => series
-    .filter(([t], i) => i === series.length - 1 || t % (state.rules.tickRate * 10) === 0)
-    .map(([, p, e]) => (p + e) / 2));
+/** The counters the general activated (§7.4), each with what it planted while that counter was in force. */
+function countersOf(state: BattleState): CounterRecordBrief[] | undefined {
+  const ai = state.sides.enemy.ai;
+  if (!ai?.counter) return undefined;
+  const history = ai.counter.history;
+  return history.map((c, i) => {
+    const until = history[i + 1]?.round ?? Infinity;
+    const built: Record<string, number> = {};
+    for (const p of ai.plans) if (p.round >= c.round && p.round < until) for (const b of p.planted) built[b.building] = (built[b.building] ?? 0) + 1;
+    return { kind: c.kind, round: c.round, ...(c.added ? { drafted: c.added } : {}), sold: [...c.sold], built };
+  });
 }
 
 /**
- * Applies a finished battle: the loadout it ended with (in-battle drafts), Heartcap carryover and
- * the §6.5 adjustment, Spores, Amber and XP, then spoils, the next route row or the summary.
+ * Applies a finished battle in rounds (§8.5, §8.6, §4.6): a loss costs a life and pays nothing, and the run
+ * ends at 0 lives or on a boss loss (#16); a win pays Spores, Amber and spoils and grows the colony by a plot,
+ * up to `plotGrowth.max` (#18). The next battle's one-shot effects reset, and intel reads every battle. Until
+ * R2b's drafts (T067) a battle changes no card, so the run keeps its loadout.
  */
 export function finishBattle(content: Content, run: RunState, state: BattleState): BattleRecord {
   if (run.screen.kind !== 'battle') throw new Error('no battle in progress');
@@ -225,44 +246,35 @@ export function finishBattle(content: Content, run: RunState, state: BattleState
   const row = currentRow(run) - 1;
   const node = nodeAt(run, row, run.path[row]!)!;
   const { winner, by } = state.outcome;
-  const ps = state.sides.player;
-  run.kit = [...ps.kit];
-  run.upgrades = { ...ps.upgrades };
-  run.relics = [...ps.relics];
-  for (const card of state.stats.player.drafted) run.cards.push({ card, source: `battle ${run.battles.length + 1}` });
-  const before = run.heartcap.hp;
   const r = battleRewards(node.kind, winner, by, rewardRules(content));
-  let hp = Math.max(0, Math.min(run.heartcap.max, ps.heartcapHp));
-  if (r.heartcapZero) hp = 0;
-  else if (r.heartcapPct) hp = Math.max(0, Math.min(run.heartcap.max, hp + Math.round(run.heartcap.max * r.heartcapPct)));
-  run.heartcap.hp = hp;
   let amber = r.amber;
   if (r.amberChance > 0 && nextFloat(run.rng.meta) < r.amberChance) amber++;
   run.spores += r.spores;
   run.amber += amber;
   run.xp += r.spores + (winner === 'player' ? 25 : 0);
-  run.next = { startingGold: 0, sporestormShiftSeconds: 0 };
+  run.next = freshNext();
+  const lifeLost = winner !== 'player';
+  const growth = content.balance.rounds.plotGrowth;
+  if (lifeLost) run.lives.left = Math.max(0, run.lives.left - 1);
+  else run.plotsGained = Math.min(growth.max, run.plotsGained + growth.perWin);
+  const st = state.stats.player;
   const damage: Record<string, number> = {};
-  for (const [id, dmg] of Object.entries(state.stats.player.damageByBuilding)) {
-    const type = id === '0' ? 'turret' : id === String(POWER_SOURCE_ID) ? 'power' : state.stats.player.buildingTypes[id] ?? 'unknown';
+  for (const [id, dmg] of Object.entries(st.damageByBuilding)) {
+    const type = id === String(POWER_SOURCE_ID) ? 'power' : st.buildingTypes[id] ?? 'unknown';
     damage[type] = (damage[type] ?? 0) + dmg;
   }
   const map = content.maps[state.config.mapId]!;
+  const heartcap = (s: 'player' | 'enemy') => ({ max: state.sides[s].heartcapMaxHp, end: state.sides[s].heartcapHp });
   const record: BattleRecord = {
     index: run.battles.length + 1, row, kind: node.kind, map: map.id, mapName: map.name, lanes: map.lanes.length,
-    general: node.general ?? 'scripted', winner, by, durationTicks: state.tick, finalHash: hashState(state),
-    heartcapBefore: before, heartcapAfter: hp, front: frontSamples(state), mapWidth: map.width,
-    damageByBuilding: damage, drafted: [...state.stats.player.drafted], spores: r.spores,
+    general: node.general ?? 'scripted', winner, by, finalHash: hashState(state), rounds: structuredClone(state.rounds),
+    heartcaps: { player: heartcap('player'), enemy: heartcap('enemy') }, lifeLost, damageByBuilding: damage, drafted: [], spores: r.spores,
   };
   if (node.elite) record.elite = node.elite;
-  const ai = state.sides.enemy.ai;
-  if (ai?.opening) record.opening = { kinds: [...ai.opening.kinds], dual: ai.opening.dual };
-  if (ai?.counter) {
-    record.counters = ai.counter.history.map((c) => ({
-      kind: c.kind, warnedAt: c.warnedAt, activeAt: c.activeAt, active: c.active, ...(c.drafted ? { drafted: c.drafted } : {}),
-      sold: [...c.sold], built: { ...c.built },
-    }));
-  }
+  const opening = state.sides.enemy.ai?.counter?.opening;
+  if (opening) record.opening = { kinds: [...opening.kinds], dual: opening.dual };
+  const counters = countersOf(state);
+  if (counters) record.counters = counters;
   const profile = battleProfile(state);
   if (profile) {
     record.profile = profile;
@@ -270,7 +282,7 @@ export function finishBattle(content: Content, run: RunState, state: BattleState
     run.profiles = [...(run.profiles ?? []), profile];
   }
   run.battles.push(record);
-  if (winner !== 'player' && (hp <= 0 || node.kind === 'boss')) {
+  if (lifeLost && (run.lives.left <= 0 || node.kind === 'boss')) {
     endRun(run, 'defeat');
   } else if (node.kind === 'boss') {
     endRun(run, 'victory');
@@ -337,21 +349,26 @@ export function spoilsReroll(content: Content, run: RunState): void {
 
 // ---- Grove and events ----
 
-/** The Grove (SPEC §8.7): repair 30% of max HP, or graft +1 level onto a track you own. */
-export function groveChoose(content: Content, run: RunState, choice: 'repair' | 'graft'): void {
+export type GroveChoice = 'life' | 'graft' | 'leave';
+
+/** Why a Grove choice isn't open, or null (§8.7, R2-Q21): Leave always is. */
+export function groveProblem(content: Content, run: RunState, choice: GroveChoice): string | null {
+  if (choice === 'life' && run.lives.left >= run.lives.max) return 'Your Regrowths are full.';
+  if (choice === 'graft' && !upgradeable(content, run).length) return 'Every upgrade track is full.';
+  return null;
+}
+
+/** The Grove (SPEC §8.7): regain a life up to the max, graft +1 level onto a track through a prompt, or leave. */
+export function groveChoose(content: Content, run: RunState, choice: GroveChoice): void {
   if (run.screen.kind !== 'grove') throw new Error('not at a Grove');
-  if (choice === 'repair') {
-    repair(run, content.balance.groveRepair);
+  const problem = groveProblem(content, run, choice);
+  if (problem) throw new Error(problem);
+  if (choice === 'leave') {
     run.screen = { kind: 'route' };
     return;
   }
-  if (!upgradeable(content, run).length) throw new Error('nothing to graft');
-  run.pending = [{ upgrade: { count: 1, pick: 'choose' } }];
+  run.pending = [choice === 'life' ? { gainLife: 1 } : { upgrade: { count: 1, pick: 'choose' } }];
   resolvePending(content, run, 'Grove');
-}
-
-function repair(run: RunState, pct: number): void {
-  run.heartcap.hp = Math.min(run.heartcap.max, run.heartcap.hp + Math.round(run.heartcap.max * pct));
 }
 
 const withoutBlueprint = (run: RunState, id: string): RunState => ({ ...run, kit: run.kit.filter((b) => b !== id) });
@@ -509,16 +526,17 @@ function resolvePending(content: Content, run: RunState, title: string): void {
   while (run.pending.length) {
     const e = run.pending[0]!;
     let prompt: Prompt | null = null;
-    if ('repairPct' in e) repair(run, e.repairPct);
+    if ('gainLife' in e) run.lives.left = Math.min(run.lives.max, run.lives.left + e.gainLife);
     else if ('maxHpPct' in e) {
-      run.heartcap.max = Math.max(1, Math.round(run.heartcap.max * (1 + e.maxHpPct)));
-      run.heartcap.hp = Math.min(run.heartcap.hp, run.heartcap.max);
+      // two run-long changes multiply, as v1's max did
+      run.heartcapMaxPct = Math.round(((1 + run.heartcapMaxPct) * (1 + e.maxHpPct) - 1) * 10000) / 10000;
     } else if ('gainRelic' in e) {
       for (let i = 0; i < (e.gainRelic.count ?? 1); i++) gainRelic(content, run, e.gainRelic.rarity, title);
     } else if ('gainAmber' in e) run.amber += e.gainAmber;
     else if ('nextBattle' in e) {
       run.next.startingGold += e.nextBattle.startingGold ?? 0;
-      run.next.sporestormShiftSeconds += e.nextBattle.sporestormShiftSeconds ?? 0;
+      run.next.sporestormShiftRounds += e.nextBattle.sporestormShiftRounds ?? 0;
+      run.next.heartcapMaxHpPct += e.nextBattle.heartcapMaxHpPct ?? 0;
     } else if ('halveIntel' in e) {
       run.intelHalvings++;
       if (run.intel) run.intel = scaleProfile(run.intel, 0.5);

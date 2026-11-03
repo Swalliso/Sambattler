@@ -8,7 +8,7 @@ import type { ModifierDef, SelectorDef } from '../../data/schema.ts';
 import type { Terrain } from './colony.ts';
 import { ROUND_TRIGGERS, SIDES, other } from './state.ts';
 import type {
-  BattleModifier, IgnoredEffect, Library, LibraryUnit, RoundAction, RoundTrigger, RoundTriggerOn, Side, SimEvent,
+  BattleConfig, BattleModifier, IgnoredEffect, Library, LibraryUnit, RoundAction, RoundTrigger, RoundTriggerOn, Side, SimEvent,
 } from './state.ts';
 
 export { battleModifiers, resolveStat } from '../effects.ts';
@@ -27,13 +27,29 @@ export const ROUND_STATS: readonly string[] = [
 
 export interface RoundEffects { mods: ModifierDef[]; triggers: RoundTrigger[]; ignored: IgnoredEffect[] }
 
+/**
+ * The battle's modifiers, then each side's run loadout (R2b): its relics' effects and each upgrade level it
+ * holds, as `relic:<id>` and `upgrade:<building>` modifiers. Until R2b's content work gives them v2 effects,
+ * those on stats rounds retire compile to nothing and are listed like any other (plan Call 19).
+ */
+export function roundModifiers(lib: Library, config: BattleConfig): BattleModifier[] {
+  const out = [...(config.modifiers ?? [])];
+  for (const s of SIDES) {
+    for (const id of config[s].relics) out.push({ side: s, source: `relic:${id}`, effects: lib.relics![id]!.effects });
+    for (const [id, level] of Object.entries(config[s].upgrades ?? {}).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))) {
+      for (const l of lib.upgrades![id]!.slice(0, level)) out.push({ side: s, source: `upgrade:${id}`, effects: l.effects });
+    }
+  }
+  return out;
+}
+
 const isRoundTrigger = (on: string): on is RoundTriggerOn => (ROUND_TRIGGERS as readonly string[]).includes(on);
 
 /**
  * Every modifier and trigger in force for each side, from the battle's modifiers in order. A modifier
  * marked `side: opponent` lands on the other side; `battle.*` stats are left to `battleModifiers`. A
  * trigger keeps only the actions rounds run. Each thing set aside is listed once, on the side it would
- * have reached. R2a's single battles have no relics or upgrade levels, so nothing else contributes.
+ * have reached. A run's relics and upgrade levels arrive among them (`roundModifiers`).
  */
 export function collectRoundEffects(battle: readonly BattleModifier[] = []): Record<Side, RoundEffects> {
   const out: Record<Side, RoundEffects> = { player: { mods: [], triggers: [], ignored: [] }, enemy: { mods: [], triggers: [], ignored: [] } };

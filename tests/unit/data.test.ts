@@ -120,7 +120,7 @@ describe('data', () => {
       expect(c.balance.rounds).toEqual({
         maxRounds: 9, clashCapSeconds: 45, musterSeconds: 1, formationGapTiles: 6, heartcapDamagePerSupply: 100, siegeHeartcapMult: 2,
         arrivalShield: { minTypes: 2, shieldFrac: 0.2 },
-        roundDamageCap: { maxHpBp: 2500 }, decision: { by: 'shareOfMaxHp' }, interestPer: 10, interestCap: 30,
+        roundDamageCap: { flat: 750 }, decision: { by: 'shareOfMaxHp' }, interestPer: 10, interestCap: 30,
         sporestorm: { startRound: 5, stepBp: 2000, maxBp: 20000 },
         stipendPerRound: 100, comebackGold: 40, enemyIncomeMult: 1, sellRefundPlanted: 1,
         draftRounds: [2, 4, 6], lives: 3, plotGrowth: { perWin: 1, max: 4 },

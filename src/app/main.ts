@@ -120,7 +120,7 @@ function boot(): void {
   }
   const atlas = bakeAtlas(content);
   const engine = installSound(content, soundEnabled({ test: params.test, force: params.sound }));
-  // the preview reads its own parameters; a dynamic import keeps the round battle out of the main bundle (§13.7)
+  // the preview reads its own parameters; its battle is in the main bundle since runs play rounds (R2b's S1), and T032 deletes the entry
   if (params.scene === ROUNDS) void import('./rounds/main.ts').then((m) => m.startRounds(content, atlas, errors));
   else if (params.scene === 'sounds') soundBoard(content, atlas, engine);
   else if (params.scene === TITLE || params.scene === UNDERROOT) openTitle(content, atlas, params);
@@ -156,18 +156,17 @@ function openTitle(content: Content, atlas: ReturnType<typeof bakeAtlas>, params
   let ctl: RunController | null = null;
   let where = params.scene === UNDERROOT ? UNDERROOT : TITLE;
   const bridge = params.debug || params.test
-    ? installBridge({ get scene() { return ctl ? 'run' : where; }, battle: () => ctl?.battleState ?? null, run: () => ctl?.run ?? null }, errors)
+    ? installBridge({ get scene() { return ctl ? 'run' : where; }, battle: () => null, roundBattle: () => ctl?.battleState ?? null, run: () => ctl?.run ?? null }, errors)
     : null;
   const ready = () => { if (bridge) bridge.ready = true; };
-  /** Opens a run: the saved one, or (`fresh`) a new one from the Underroot, saved at once. */
-  const play = (run: RunState, fresh = false) => {
+  /** Opens a run: the saved one, with a migrated save's notice, or (`fresh`) a new one from the Underroot, saved at once. */
+  const play = (run: RunState, fresh = false, notice?: string) => {
     closeHelp();
     ctl?.stop();
     ctl = new RunController({
       content, atlas, storage, persist, records, debug: params.debug, still: params.test, newSeed: randomSeed, toTitle: show, setup: () => openSetup(),
-    }, run);
+    }, run, notice);
     ctl.onFrame = ready;
-    ctl.pendingTicks = params.ticks;
     if (fresh) ctl.start(run);
     else ctl.show();
   };
@@ -219,14 +218,19 @@ function openTitle(content: Content, atlas: ReturnType<typeof bakeAtlas>, params
     where = TITLE;
     closeSettings();
     document.querySelectorAll('.overlay').forEach((o) => o.remove());
-    const saved = persist ? loadRun(storage) : null;
+    // a save from before R2 loads migrated with its notice; one that can't be read says so, and is kept until replaced (§8.9)
+    const loaded = persist ? loadRun(storage, content) : { kind: 'none' as const };
+    const saved = loaded.kind === 'run' && !loaded.run.outcome ? loaded.run : null;
+    const notice = loaded.kind === 'none' ? undefined : loaded.notice;
     const screen = titleScreen(atlas, {
-      ...(saved && !saved.outcome ? {
-        continueRun: () => play(saved),
-        saved: `Row ${Math.min(currentRow(saved) + 1, saved.route.length)} of ${saved.route.length} · Heartcap ${saved.heartcap.hp}/${saved.heartcap.max}`,
+      ...(saved ? {
+        continueRun: () => play(saved, false, notice),
+        saved: `Row ${Math.min(currentRow(saved) + 1, saved.route.length)} of ${saved.route.length} · ${regrowths(saved.lives.left)}`,
       } : {}),
+      ...(notice && (saved || loaded.kind === 'unreadable') ? { notice } : {}),
       newRun: () => {
-        if (saved && !saved.outcome && !window.confirm('Start a new run? Your saved run will be lost.')) return;
+        if (saved && !window.confirm('Start a new run? Your saved run will be lost.')) return;
+        if (loaded.kind === 'unreadable' && !window.confirm('Start a new run? Your saved run can\'t be read, and starting one replaces it.')) return;
         openSetup();
       },
       help: openHelp,
@@ -252,16 +256,22 @@ function openTitle(content: Content, atlas: ReturnType<typeof bakeAtlas>, params
  */
 function startRun(content: Content, atlas: ReturnType<typeof bakeAtlas>, params: Params): void {
   const { persist, storage, records } = runStorage(params);
+  const loaded = persist ? loadRun(storage, content) : { kind: 'none' as const };
+  // a save that can't be read goes to the title, which says so and asks before replacing it (§8.9, A084)
+  if (loaded.kind === 'unreadable') { openTitle(content, atlas, { ...params, scene: TITLE }); return; }
   const seed = params.seed ?? randomSeed();
-  const run = (persist ? loadRun(storage) : null) ?? runForScene(content, { scene: params.scene, seed, player: params.player, autoplay: params.autoplay });
-  const ctl = new RunController({ content, atlas, storage, persist, records, debug: params.debug, still: params.test, newSeed: randomSeed }, run);
+  const run = loaded.kind === 'run' ? loaded.run : runForScene(content, { scene: params.scene, seed, player: params.player, autoplay: params.autoplay });
+  const notice = loaded.kind === 'run' ? loaded.notice : undefined;
+  const ctl = new RunController({ content, atlas, storage, persist, records, debug: params.debug, still: params.test, newSeed: randomSeed }, run, notice);
   if (params.debug || params.test) {
-    const bridge = installBridge({ scene: params.scene, battle: () => ctl.battleState, run: () => ctl.run }, errors);
+    const bridge = installBridge({ scene: params.scene, battle: () => null, roundBattle: () => ctl.battleState, run: () => ctl.run }, errors);
     ctl.onFrame = () => { bridge.ready = true; };
   }
-  ctl.pendingTicks = params.ticks;
   ctl.show();
 }
+
+/** Lives' name on the game's screens (§2, #56). */
+const regrowths = (n: number): string => `${n} Regrowth${n === 1 ? '' : 's'}`;
 
 function start(content: Content, atlas: ReturnType<typeof bakeAtlas>, params: Params, seed: number): void {
   const state = buildState(content, params, seed);

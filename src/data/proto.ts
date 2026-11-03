@@ -153,6 +153,8 @@ export const PROTO_PRESETS: Record<string, Json> = {
   diver: { diveRanged: { units: ['veilstalker'], aggroAdd: 2 } },
   /** Diver with a burst: Veilstalkers also sprint at ×2.5 for 1.5 s onto a ranged target, every 8 s at most. */
   diverleap: { diveRanged: { units: ['veilstalker'], aggroAdd: 2, burst: { speedMult: 2.5, seconds: 1.5, cooldownSeconds: 8 } } },
+  /** Lives left count at the boss (§8.5, #16): +250 to your boss battle's Heartcap for each life left. For R2b's playtest. */
+  bosslives: { livesAtBoss: { heartcapPerLife: 250 } },
   /** Hot start (step B): a free draft at deploy, and a general on ¾ income in battle 1 of a run. */
   hotstart: {
     hotStart: {

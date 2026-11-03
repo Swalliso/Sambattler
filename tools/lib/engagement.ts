@@ -147,7 +147,8 @@ export interface RunEnding {
   victories: number;
   /** Defeats by the battle they ended in (1-based). */
   endedInBattle: Record<number, number>;
-  fullHeartcapVictories: number;
+  /** Runs won without losing a life (§8.5). */
+  fullLivesVictories: number;
   /** Battles played and lost, by map. */
   playedOnMap: Record<string, number>;
   lostOnMap: Record<string, number>;
@@ -184,7 +185,7 @@ export function runEndings(content: Content, runs: number, opts: RunEndingOption
     const mins = r.totalBattleTicks / content.balance.tickRate / 60;
     minutes += mins;
     if (r.reachedBoss) { boss++; atBoss.push(mins); }
-    if (r.outcome === 'victory') { wins++; if (r.heartcap.hp === r.heartcap.max) full++; } else ended[r.battleCount] = (ended[r.battleCount] ?? 0) + 1;
+    if (r.outcome === 'victory') { wins++; if (r.lives.left === r.lives.max) full++; } else ended[r.battleCount] = (ended[r.battleCount] ?? 0) + 1;
     for (const b of r.battles) {
       playedOnMap[b.map] = (playedOnMap[b.map] ?? 0) + 1;
       playedAt[b.index] = (playedAt[b.index] ?? 0) + 1;
@@ -197,7 +198,7 @@ export function runEndings(content: Content, runs: number, opts: RunEndingOption
     }
   }
   return {
-    runs, commander, power, reachedBoss: boss, victories: wins, endedInBattle: ended, fullHeartcapVictories: full, playedOnMap, lostOnMap,
+    runs, commander, power, reachedBoss: boss, victories: wins, endedInBattle: ended, fullLivesVictories: full, playedOnMap, lostOnMap,
     playedAt, lostAt, cardsPerBattle: cards / Math.max(1, battles),
     meanBattleMinutes: minutes / runs, medianBattleMinutesAtBoss: median(atBoss),
   };
@@ -208,7 +209,7 @@ export function runEndingLines(r: RunEnding): string[] {
   const ended = Object.entries(r.endedInBattle).map(([b, n]) => `${n} in battle ${b}`).join(', ');
   const lost = Object.entries(r.playedOnMap).sort((a, b) => a[0].localeCompare(b[0])).map(([m, n]) => `${m} ${r.lostOnMap[m] ?? 0}/${n}`).join(', ');
   return [
-    `runs (${r.commander}, power ${r.power}): ${r.reachedBoss}/${r.runs} reach the boss (${pct(r.reachedBoss)}), ${r.victories} win (${pct(r.victories)}; ${r.fullHeartcapVictories} at full Heartcap); boss fights won ${r.victories} of ${r.reachedBoss}`,
+    `runs (${r.commander}, power ${r.power}): ${r.reachedBoss}/${r.runs} reach the boss (${pct(r.reachedBoss)}), ${r.victories} win (${pct(r.victories)}; ${r.fullLivesVictories} with every Regrowth); boss fights won ${r.victories} of ${r.reachedBoss}`,
     `    defeats ended ${ended || 'nowhere'}; ended in battle 1: ${r.endedInBattle[1] ?? 0} (${pct(r.endedInBattle[1] ?? 0)})`,
     `    battles lost by place in the run: ${Object.keys(r.playedAt).map((i) => `${i}: ${r.lostAt[Number(i)] ?? 0}/${r.playedAt[Number(i)]}`).join(', ')}; cards drafted per battle ${r.cardsPerBattle.toFixed(2)}`,
     `    battle minutes: mean ${r.meanBattleMinutes.toFixed(1)} per run, median ${Number.isFinite(r.medianBattleMinutesAtBoss) ? r.medianBattleMinutesAtBoss.toFixed(1) : '—'} when the boss is reached; battles lost by map: ${lost}`,

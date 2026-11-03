@@ -1,11 +1,15 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { chromium } from 'playwright';
 import type { Browser, Page } from 'playwright';
 import { createServer } from 'vite';
 import type { ViteDevServer } from 'vite';
-import { BATTLE_KEY, RUN_KEY, battleSave, chooseNode, createRun, runPool } from '../../src/run/index.ts';
-import { createBattle, queueCommand, runHeadless, step, summarize } from '../../src/sim/index.ts';
+import { BATTLE_KEY, RUN_KEY, createRun, runPool } from '../../src/run/index.ts';
 import { nodeContent } from '../../tools/lib/content.ts';
+
+/** A save from before R2 (R2b/T006): its records as the browser wrote them. */
+const v1Save = (file: string): string => readFileSync(join(import.meta.dirname, '..', 'fixtures', 'saves', 'v1', file), 'utf8');
 
 let server: ViteDevServer | undefined;
 let browser: Browser | undefined;
@@ -35,19 +39,6 @@ afterEach(async () => {
   await page?.close();
 });
 
-function checkpointWithPendingReroll() {
-  const content = nodeContent();
-  const run = createRun(content, { seed: 9 });
-  chooseNode(content, run, 0);
-  if (run.screen.kind !== 'battle') throw new Error('expected the first route node to be a battle');
-  const state = createBattle(content, run.screen.config);
-  queueCommand(state, { tick: 0, side: 'player', type: 'begin' });
-  runHeadless(state, { until: 2400 });
-  expect(state.held).toBe(true);
-  queueCommand(state, { tick: state.tick + 1, side: 'player', type: 'draftReroll' });
-  return { run, state, checkpoint: battleSave(state) };
-}
-
 async function openSavedRun(run: string, battle: string): Promise<void> {
   await page.addInitScript(({ runKey, battleKey, runText, battleText }) => {
     localStorage.setItem(runKey, runText);
@@ -60,43 +51,31 @@ async function openSavedRun(run: string, battle: string): Promise<void> {
 }
 
 describe('saved run recovery', () => {
-  it('resumes a pending draft reroll and executes it once on the first browser frame', async () => {
-    const { run, state, checkpoint } = checkpointWithPendingReroll();
-    const savedRun = JSON.stringify(run);
-    const savedBattle = JSON.stringify(checkpoint);
-    step(state);
-    expect(state.tick).toBe(2400);
-    expect(state.held).toBe(true);
-    expect(state.sides.player.draft?.rerolls).toBe(1);
-    const expected = summarize(state);
+  // a run saved before R2, mid-battle (§16 R2 verification 6, §8.9, #32): the run migrates, and its v1 battle can't be
+  // restored, so the battle restarts at round 1's planning with the notice
+  it('opens a v1 battle save at round 1\'s planning, with the restart notice, the run migrated and the battle key cleared', async () => {
+    const savedRun = v1Save('run-battle.json');
+    const v1 = JSON.parse(savedRun) as { path: number[]; kit: string[] };
+    await openSavedRun(savedRun, v1Save('battle-v2.json'));
 
-    await openSavedRun(savedRun, savedBattle);
-    expect(await page.evaluate(() => window.__GAME__!.summary())).toEqual(expected);
-    expect(await page.locator('#draft').isVisible()).toBe(true);
-    expect(await page.locator('#draft-cards .draft-card').evaluateAll((cards) => cards.map((card) => (card as HTMLElement).dataset.card)))
-      .toEqual(state.sides.player.draft!.offer.map((card) => card.id));
-    expect(await page.locator('#save-recovery').count()).toBe(0);
-    expect(await page.evaluate((key) => localStorage.getItem(key), RUN_KEY)).toBe(savedRun);
-    expect(await page.evaluate((key) => localStorage.getItem(key), BATTLE_KEY)).toBe(savedBattle);
+    expect(await page.evaluate(() => [window.__GAME__!.phase, window.__GAME__!.round])).toEqual(['planning', 1]);
+    expect(await page.locator('#save-recovery').isVisible()).toBe(true);
+    expect(await page.locator('#save-recovery').getAttribute('role')).toBe('status');
+    expect(await page.locator('#save-recovery').textContent()).toContain("restarted from round 1's planning; your run progress is preserved");
+    expect(await page.locator('#run-notice').textContent()).toContain('saved before battles in rounds');
+    expect(await page.evaluate((key) => localStorage.getItem(key), BATTLE_KEY)).toBeNull();
+    expect(await page.evaluate(() => window.__GAME__!.run())).toMatchObject({
+      screen: 'battle', row: v1.path.length, kit: v1.kit, lives: { left: 3, max: 3 },
+    });
+    expect(await page.evaluate(() => window.__GAME__!.roundBattle()!.sides.player.kit.map((c) => c.building))).toEqual(v1.kit);
     expect(await page.evaluate(() => window.__GAME__!.errors)).toEqual([]);
   });
 
-  it('clears an invalid checkpoint, explains the restart and preserves the saved run', async () => {
-    const { run, checkpoint } = checkpointWithPendingReroll();
-    const savedRun = JSON.stringify(run);
-    await openSavedRun(savedRun, JSON.stringify({ ...checkpoint, hash: 'invalid-checkpoint-hash' }));
-
-    const summary = await page.evaluate(() => window.__GAME__!.summary());
-    expect(summary?.phase).toBe('deploy');
-    expect(summary?.tick).toBe(0);
+  it('opens a legacy battle save (no version) the same way', async () => {
+    await openSavedRun(v1Save('run-battle.json'), v1Save('battle-legacy.json'));
+    expect(await page.evaluate(() => [window.__GAME__!.phase, window.__GAME__!.round])).toEqual(['planning', 1]);
     expect(await page.locator('#save-recovery').isVisible()).toBe(true);
-    expect(await page.locator('#save-recovery').getAttribute('role')).toBe('status');
-    expect(await page.locator('#save-recovery').textContent()).toContain('your run progress is preserved');
     expect(await page.evaluate((key) => localStorage.getItem(key), BATTLE_KEY)).toBeNull();
-    expect(await page.evaluate((key) => localStorage.getItem(key), RUN_KEY)).toBe(savedRun);
-    expect(await page.evaluate(() => window.__GAME__!.run())).toMatchObject({
-      screen: 'battle', row: run.path.length, heartcap: run.heartcap,
-    });
     expect(await page.evaluate(() => window.__GAME__!.errors)).toEqual([]);
   });
 

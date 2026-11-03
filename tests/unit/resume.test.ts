@@ -1,15 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { battleSave, chooseNode, createRun, resumeBattle } from '../../src/run/index.ts';
+import { battleSave, resumeBattle } from '../../src/run/index.ts';
 import type { BattleSave } from '../../src/run/index.ts';
-import { createBattle, hashState, legalPlacements, queueCommand, runHeadless, step } from '../../src/sim/index.ts';
+import { createBattle, hashState, legalPlacements, makeConfig, queueCommand, runHeadless, step } from '../../src/sim/index.ts';
 import type { BattleState, CommandBody } from '../../src/sim/index.ts';
 import { content } from '../helpers.ts';
 
+/** A v1 battle with drafts, as v1's run battles were: a run's battles are in rounds since R2b's S1, and S3 deletes these cases (T041). */
 function deploy(): BattleState {
-  const run = createRun(content, { seed: 9 });
-  chooseNode(content, run, 0);
-  if (run.screen.kind !== 'battle') throw new Error('expected battle');
-  return createBattle(content, run.screen.config);
+  return createBattle(content, makeConfig(content, { seed: 9, commander: 'vesper', flags: { drafts: true } }));
 }
 
 function held(): BattleState {

@@ -1,6 +1,6 @@
 {
   "id": "round-damage-cap",
-  "description": "SPEC §16 R2 step 4, §6.7 step 4: an overwhelming win deals exactly the round's cap. Your army (40 damage supply, the Rootbreakers' counted twice) wipes the general's Tenders, which never attack, so all of it survives: 100 × 40 = 4000 before the cap, and the general's Heartcap takes exactly 25% of its 2000 max HP, 500. Merging is off.",
+  "description": "SPEC §16 R2 step 4, §6.7 step 4: an overwhelming win deals exactly the round's cap. Your army (40 damage supply, the Rootbreakers' counted twice) wipes the general's Tenders, which never attack, so all of it survives: 100 × 40 = 4000 before the cap, and the general's Heartcap takes exactly the round's cap, a fixed 750 (#68). Merging is off.",
   "map": "bogwater-hollow",
   "sides": {
     "player": {

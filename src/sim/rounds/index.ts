@@ -3,7 +3,7 @@
 export { loadContent, ContentError } from '../../data/registry.ts';
 export type { Content, RawContent } from '../../data/registry.ts';
 export {
-  createBattle, createFromScenario, makeRoundConfig, setCommander, addBuilding, addUnit, DEFAULT_FLAGS,
+  createBattle, createFromScenario, makeRoundConfig, setCommander, setPassives, addBuilding, addUnit, DEFAULT_FLAGS,
 } from './create.ts';
 export type { Flags, RoundBattleOptions, RoundScenarioOverrides } from './create.ts';
 export { emptyStats, foldRounds } from './stats.ts';
@@ -16,6 +16,9 @@ export { aimedLane, autoPowerTarget, bestBloom, bloomTrios, burstPreview, powerO
 export type { QueuedCommand } from './commands.ts';
 export { legalPlots, plantProblem, priceOf, sellValue } from './planning.ts';
 export { inKit, kitCards, kitOf } from './kit.ts';
+export { basePlots, openOrder } from './colony.ts';
+export { analyzeFielded, topKinds } from './ai/counter.ts';
+export { planningView } from './ai/view.ts';
 export { formationOf, mergePreview } from './formation.ts';
 export type { MergePreview, MusterTrio, PlanChange, SquadPlan, TierCounts } from './formation.ts';
 export { matchupClass } from './matchups.ts';

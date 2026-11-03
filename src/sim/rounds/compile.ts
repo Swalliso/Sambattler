@@ -7,7 +7,7 @@
 import type { Content } from '../../data/registry.ts';
 import type { ModifierDef, UnitDef } from '../../data/schema.ts';
 import { perkAt, secToTicks } from '../compile.ts';
-import { battleModifiers, buildingMatcher, collectRoundEffects, onPlot, placeMatches, resolveStat, unitMatcher } from './effects.ts';
+import { battleModifiers, buildingMatcher, collectRoundEffects, onPlot, placeMatches, resolveStat, roundModifiers, unitMatcher } from './effects.ts';
 import type { Place, RoundEffects } from './effects.ts';
 import { SIDES } from './state.ts';
 import { MAX_RADIUS } from './targets.ts';
@@ -18,16 +18,21 @@ import type {
 /**
  * The library a battle in rounds needs: both kits' buildings, the units their squads field, the powers in
  * play and the balance constants, without any name, description or text (R2-Q8), so the UI reads those
- * from content by id. R2a's single battles have no relics or upgrade levels (plan Call 19).
+ * from content by id. A run's battle also carries the relics and upgrade tracks its sides hold (R2b), whose
+ * effects compile with the battle's modifiers (`roundModifiers`).
  */
 export function buildRoundLibrary(content: Content, config: BattleConfig): Library {
-  for (const s of SIDES) {
-    const sc = config[s];
-    if (sc.relics.length || Object.keys(sc.upgrades ?? {}).length) {
-      throw new Error(`${s}: a battle in rounds takes no relics or upgrade levels until R2b (plan Call 19)`);
-    }
-  }
   const lib: Library = { balance: content.balance, buildings: {}, units: {} };
+  for (const id of [...new Set(SIDES.flatMap((s) => config[s].relics))].sort()) {
+    const r = content.relics[id];
+    if (!r) throw new Error(`unknown relic ${id}`);
+    (lib.relics ??= {})[id] = { effects: r.effects };
+  }
+  for (const id of [...new Set(SIDES.flatMap((s) => Object.keys(config[s].upgrades ?? {})))].sort()) {
+    const t = content.upgrades[id];
+    if (!t) throw new Error(`unknown upgrade track ${id}`);
+    (lib.upgrades ??= {})[id] = t.levels.map((l) => ({ effects: l.effects }));
+  }
   for (const id of [...new Set(SIDES.flatMap((s) => config[s].kit.map((c) => c.building)))].sort()) {
     const b = content.buildings[id];
     if (!b) throw new Error(`unknown building ${id}`);
@@ -52,7 +57,7 @@ export function buildRoundLibrary(content: Content, config: BattleConfig): Libra
 export function compileRoundRules(lib: Library, config: BattleConfig): Rules {
   const b = lib.balance, r = b.rounds, tr = b.tickRate;
   // `battle.sporestormStart` is a round number in rounds (§6.4)
-  const startRound = Math.max(1, Math.round(resolveStat(r.sporestorm.startRound, battleModifiers(config.modifiers), 'battle.sporestormStart')));
+  const startRound = Math.max(1, Math.round(resolveStat(r.sporestorm.startRound, battleModifiers(roundModifiers(lib, config)), 'battle.sporestormStart')));
   return {
     tickRate: tr,
     maxRounds: r.maxRounds,
@@ -100,7 +105,7 @@ export function compileRoundRules(lib: Library, config: BattleConfig): Rules {
 
 /** Both sides' compiled kits, together, since a modifier may reach the opponent. */
 export function compileRoundSides(lib: Library, config: BattleConfig): Record<Side, CompiledSide> {
-  const fx = collectRoundEffects(config.modifiers);
+  const fx = collectRoundEffects(roundModifiers(lib, config));
   const out = {} as Record<Side, CompiledSide>;
   for (const s of SIDES) out[s] = compileRoundSide(lib, s, config[s].kit, fx[s]);
   return out;

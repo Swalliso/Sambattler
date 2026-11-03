@@ -1,16 +1,16 @@
 // Headless run autoplay (SPEC §15.2 `--run --auto-route --auto-draft`, and `?autoplay=` in the
-// browser). Bots play the battles; policies answer the route, spoils, Grove, events and prompts.
+// browser). Bots play the battles in rounds; policies answer the route, spoils, Grove, events and prompts.
 // Policy randomness has its own stream, kept outside the run state, so the run state stays a
 // record of decisions and game randomness only.
 import type { RunEffect } from '../data/schema.ts';
+import { choosePick, seedStream, nextInt } from '../sim/index.ts';
+import type { Content, PowerPolicy, Rng4 } from '../sim/index.ts';
+import { createBattle, hashState, runHeadless } from '../sim/rounds/index.ts';
+import type { BattleState } from '../sim/rounds/index.ts';
 import {
-  choosePick, createBattle, hashState, queueCommand, runHeadless, seedStream, nextInt,
-} from '../sim/index.ts';
-import type { BattleState, Content, PowerPolicy, Rng4 } from '../sim/index.ts';
-import {
-  chooseNode, eventChoose, finishBattle, groveChoose, outcomeAvailable, promptAnswer, spoilsPick, upgradeable,
+  chooseNode, eventChoose, finishBattle, groveChoose, groveProblem, outcomeAvailable, promptAnswer, spoilsPick,
 } from './flow.ts';
-import { createRun, currentRow } from './runState.ts';
+import { battleTicks, createRun, currentRow } from './runState.ts';
 import type { BattleRecord, RunOptions, RunState } from './runState.ts';
 
 export type RoutePolicy = 'first' | 'random' | 'battles';
@@ -43,17 +43,17 @@ export function autoContext(content: Content, seed: number, policies: AutoPolici
 
 /** Rough value of an event outcome for the greedy policy (higher is better). */
 function outcomeValue(run: RunState, outcome: readonly RunEffect[]): number {
-  const missing = 1 - run.heartcap.hp / run.heartcap.max;
+  const missing = run.lives.max - run.lives.left;
   let v = 0;
   for (const e of outcome) {
-    if ('repairPct' in e) v += 100 * Math.min(e.repairPct, missing);
-    else if ('maxHpPct' in e) v += 100 * e.maxHpPct * (missing > 0.5 ? 2 : 1);
+    if ('gainLife' in e) v += 40 * Math.min(e.gainLife, missing);
+    else if ('maxHpPct' in e) v += 100 * e.maxHpPct;
     else if ('gainRelic' in e) v += 12 * (e.gainRelic.count ?? 1);
     else if ('upgrade' in e) v += 8 * e.upgrade.count;
     else if ('removeBlueprint' in e) v -= 6;
     else if ('sacrificeRelic' in e) v += 4 * e.sacrificeRelic.gain - 8;
     else if ('gainAmber' in e) v += 3;
-    else if ('nextBattle' in e) v += (e.nextBattle.startingGold ?? 0) / 25;
+    else if ('nextBattle' in e) v += (e.nextBattle.startingGold ?? 0) / 25 + 40 * (e.nextBattle.heartcapMaxHpPct ?? 0);
   }
   return v;
 }
@@ -76,8 +76,9 @@ export function autoDecide(ctx: AutoContext, run: RunState): void {
     const pick = choosePick(offer, policies.draft, ctx.weightOf, rng);
     spoilsPick(content, run, pick.id);
   } else if (s.kind === 'grove') {
-    const hurt = run.heartcap.hp < run.heartcap.max * 0.7;
-    groveChoose(content, run, hurt || !upgradeable(content, run).length ? 'repair' : 'graft');
+    // a life if hurt, else graft, else leave (R2-Q21)
+    const choice = (['life', 'graft', 'leave'] as const).find((c) => !groveProblem(content, run, c))!;
+    groveChoose(content, run, choice);
   } else if (s.kind === 'event') {
     const ev = content.events[s.event]!;
     const avail = ev.choices.map((c, i) => ({ c, i })).filter(({ c }) => outcomeAvailable(content, run, c.outcome));
@@ -109,11 +110,13 @@ export function autoDecide(ctx: AutoContext, run: RunState): void {
 
 export interface RunBattleResult { state: BattleState; record: BattleRecord; hashes: Record<string, string> }
 
-/** Plays the current battle node to the end with bots and applies it to the run. */
+/**
+ * Plays the current battle node to the end with bots and applies it to the run. A player-side bot plans and
+ * begins each round's clash itself (§14.6), so nothing is queued for it.
+ */
 export function autoBattle(content: Content, run: RunState, hashEvery?: number): RunBattleResult {
   if (run.screen.kind !== 'battle') throw new Error('no battle to play');
   const state = createBattle(content, run.screen.config);
-  queueCommand(state, { tick: 0, side: 'player', type: 'begin' });
   const res = runHeadless(state, { until: 'end', ...(hashEvery ? { hashEvery } : {}) });
   const record = finishBattle(content, run, state);
   return { state, record, hashes: { ...res.hashes, final: hashState(state) } };
@@ -125,9 +128,10 @@ export interface RunResult {
   outcome: 'victory' | 'defeat' | 'incomplete';
   battles: BattleRecord[];
   battleCount: number;
+  /** Clash ticks over every battle's rounds. */
   totalBattleTicks: number;
   reachedBoss: boolean;
-  heartcap: { hp: number; max: number };
+  lives: { left: number; max: number };
   spores: number;
   amber: number;
   xp: number;
@@ -135,7 +139,7 @@ export interface RunResult {
   kit: string[];
   relics: string[];
   upgrades: Record<string, number>;
-  /** Per battle: checkpoint hashes (every `hashEvery` ticks) and the final hash. */
+  /** Per battle: checkpoint hashes (each phase's, and every `hashEvery` ticks of each clash) and the final hash. */
   hashes: Record<string, string>[];
   run: RunState;
 }
@@ -168,10 +172,9 @@ export function simulateRun(content: Content, seed: number, policies: AutoPolici
       autoDecide(ctx, run);
     }
   }
-  const ticks = run.battles.reduce((n, b) => n + b.durationTicks, 0);
   return {
-    seed, outcome: run.outcome ?? 'incomplete', battles: run.battles, battleCount: run.battles.length, totalBattleTicks: ticks,
-    reachedBoss: run.battles.some((b) => b.kind === 'boss'), heartcap: { ...run.heartcap },
+    seed, outcome: run.outcome ?? 'incomplete', battles: run.battles, battleCount: run.battles.length, totalBattleTicks: battleTicks(run),
+    reachedBoss: run.battles.some((b) => b.kind === 'boss'), lives: { ...run.lives },
     spores: run.spores, amber: run.amber, xp: run.xp, cards: run.cards, kit: run.kit, relics: run.relics, upgrades: run.upgrades,
     hashes, run,
   };

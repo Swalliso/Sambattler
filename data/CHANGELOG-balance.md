@@ -8,6 +8,36 @@ replaces. None of it is open work, including headings that say "Open:". From mil
 entries measure or tune v2's round battle (SPEC §11, §12). "The backlog" in the entries below means
 v1's, now [archived](../docs/archive/v1/balance-backlog.md).
 
+## R2b-S1 T164: one fixed round cap, 750 for both Heartcaps (2026-11-03)
+
+**A rule number, approved by the user** at R2b's S0 ("Fixed 750 for both", 2026-11-03, §18.2 #68).
+- **`balance.rounds.roundDamageCap`** is `{ "flat": 750 }`, from `{ "maxHpBp": 2500 }` (X5's 25% of the loser's max HP:
+  500 for battle 1's general, 750 for your 3000, 900 for the boss). The Decision still compares shares of max HP.
+- **Why:** at R2a's gate the user found the share cap asymmetric, and with the cap binding in 70% of damaging rounds a
+  bigger Heartcap raised its own cap, so D28's bigger Heartcaps barely cost rounds. S21b measured a fixed 750 passing
+  G4, G6, G8's bands and G13: a median of 6 rounds, 13% reaching round 9, the bot winning 65%
+  (`docs/balance-backlog.md`).
+- **Tests and text that named the cap as a share follow it:** the cap's scenarios (`round-damage-cap`,
+  `lane-empty-one-side`, `lane-empty-both`, `decision-round-9`) say 750, and `both-heartcaps-zero` plays in round 5
+  (×1.2), so the general's lane deals 720, under the cap, and you still win the round E8 needs. The round tip and
+  the storm tip say "at most 750 HP".
+- **Goldens:** the five round replays moved; v1's seven battle replays didn't.
+
+## R2b-S1 T019: the events in rounds (2026-11-03)
+
+**Rules the user approved** at R2b's S0 (§8.7's first guesses, "Take them all", 2026-11-03, `docs/r2b-plan.md`). A
+run has lives and each battle its own Heartcap since R2b's S1, so there's no run-long Heartcap to repair or shrink:
+- **Fallen Oak**'s `maxHpPct` −0.15 now lowers every later battle's Heartcap max (the run's `heartcapMaxPct`), not the
+  run's Heartcap. Its text says so.
+- **Quiet Clearing**'s Rest is `nextBattle.heartcapMaxHpPct` 0.15, +15% max HP in the next battle, in place of v1's
+  `repairPct` 0.15. Forage keeps v1's random upgrade level until R3.
+- **Mold Bloom** is `nextBattle.sporestormShiftRounds` −1 with +150 gold: the storm starts at round 4, not 1:00 early.
+- **The schema:** `gainLife` (the Grove's regained life, §8.7) replaces `repairPct`, and `nextBattle` takes
+  `sporestormShiftRounds` and `heartcapMaxHpPct` in place of `sporestormShiftSeconds`. A v1 save's pending Rest and
+  storm shift migrate to them (`src/run/migrate.ts`, #32).
+- `routRepair`, `decisionLossDamage` and `groveRepair` stay in `data/balance.json`, read by nothing, until R2b's T129.
+- **Goldens:** none moved; the run golden is re-recorded on rounds in T027.
+
 ## R2a-S21b T159: the Burster in the front line (2026-11-03)
 
 **A rule change, approved by the user** ("Yes, start both", 2026-11-03, on the hub's recommendation after G16's

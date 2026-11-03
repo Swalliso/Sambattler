@@ -6,5 +6,6 @@ export * from './rewards.ts';
 export * from './flow.ts';
 export * from './auto.ts';
 export * from './resume.ts';
+export * from './migrate.ts';
 export * from './storage.ts';
 export * from './scenes.ts';

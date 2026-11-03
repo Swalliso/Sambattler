@@ -1,11 +1,15 @@
+// The run in rounds (SPEC §8): the route, each battle's config in rounds, lives, sprawl and rewards, the Grove,
+// events, saves and whole runs played headless. Runs saved before R2 are in migrate.test.ts.
 import { describe, expect, it } from 'vitest';
 import {
-  MemoryStorage, battleConfig, battleRewards, battleSave, chooseNode, createRun, eventChoose, finishBattle, generalKit, groveChoose, hashRun, loadRun,
-  mapPool, outcomeAvailable, promptAnswer, recoverPendingChoice, resumeBattle, runPool, saveRun, simulateRun, spoilsPick, spoilsReroll,
+  MemoryStorage, battleConfig, battleProfile, battleRewards, chooseNode, createRun, eventChoose, finishBattle, generalKit, groveChoose,
+  groveProblem, hashRun, loadRun, mapPool, outcomeAvailable, promptAnswer, recoverPendingChoice, runPool, saveRun, simulateRun, spoilsPick,
+  spoilsReroll,
 } from '../../src/run/index.ts';
 import type { RunState } from '../../src/run/index.ts';
-import { createBattle, hashState, legalPlacements, makeConfig, queueCommand, runHeadless, step } from '../../src/sim/index.ts';
-import type { BattleConfig, BattleState, Side } from '../../src/sim/index.ts';
+import { analyzeFielded, basePlots, createBattle, makeRoundConfig, planningView, runHeadless } from '../../src/sim/rounds/index.ts';
+import type { BattleConfig, BattleState, Side } from '../../src/sim/rounds/index.ts';
+import { protoContent } from '../../tools/lib/content.ts';
 import { content } from '../helpers.ts';
 
 const bal = content.balance;
@@ -22,15 +26,19 @@ function enter(run: RunState, row: number, index: number): void {
   chooseNode(content, run, index);
 }
 
-/** A battle state from the run's current battle config, ended with the given result. */
-function ended(run: RunState, winner: Side, by: 'rout' | 'decision', playerHp: number): BattleState {
-  if (run.screen.kind !== 'battle') throw new Error('not in battle');
-  const s = createBattle(content, run.screen.config);
+/** A battle in rounds from the run's current battle config, ended with the given result in round 5. */
+function ended(run: RunState, winner: Side, by: 'rout' | 'decision'): BattleState {
+  const s = createBattle(content, configOf(run));
   s.phase = 'ended';
-  s.tick = 7000;
-  s.outcome = { winner, by, tick: s.tick };
-  s.sides.player.heartcapHp = playerHp;
+  s.outcome = { winner, by, round: 5 };
   return s;
+}
+
+/** The saved run, which must load. */
+function load(storage: MemoryStorage): RunState {
+  const r = loadRun(storage, content);
+  if (r.kind !== 'run') throw new Error(`no run: ${r.kind}`);
+  return r.run;
 }
 
 describe('route (SPEC §8.2)', () => {
@@ -90,28 +98,31 @@ describe('route (SPEC §8.2)', () => {
   });
 });
 
-describe('battle setup and rewards (SPEC §6.1, §6.5, §8.5–8.6)', () => {
-  it('battle configs scale with the battle index; the boss has 3600 HP; elites carry their modifier', () => {
+describe('battle setup and rewards (SPEC §4.5, §4.6, §6.1, §6.5, §8.5–8.6)', () => {
+  it('battle configs are in rounds and scale with the battle index; the boss has 3600 HP; elites carry their modifier', () => {
     const run = createRun(content, { seed: 3 });
     chooseNode(content, run, 0);
     const c1 = configOf(run);
     expect(c1.battleIndex).toBe(1);
     expect(c1.player.startingGold).toBe(bal.startingGold);
-    expect(c1.enemy.heartcapHp).toBe(bal.heartcapEnemyHp.base);
-    expect(c1.player.kit).toEqual(['sporelingBurrow', 'capguardHall', 'truffleCellar']);
-    expect(c1.flags.drafts).toBe(true);
+    expect(c1.enemy.heartcapMaxHp).toBe(bal.heartcapEnemyHp.base);
+    expect(c1.player.heartcapMaxHp).toBe(bal.heartcapPlayerHp);
+    for (const s of ['player', 'enemy'] as const) expect(c1[s]).not.toHaveProperty('heartcapHp');
+    expect(c1.player.kit).toEqual([{ building: 'sporelingBurrow' }, { building: 'capguardHall' }, { building: 'truffleCellar' }]);
+    expect(c1.flags.drafts).toBe(false); // drafts open in planning from T067
+    expect(() => createBattle(content, c1)).not.toThrow();
     run.battles.push({ ...({} as RunState['battles'][number]), index: 1 }, { ...({} as RunState['battles'][number]), index: 2 });
     enter(run, 4, 1); // row 5 elite, battle 3
     const c3 = configOf(run);
     expect(c3.battleIndex).toBe(3);
     expect(c3.player.startingGold).toBe(bal.startingGold + 2 * bal.startingGoldPerBattle);
-    expect(c3.enemy.heartcapHp).toBe(bal.heartcapEnemyHp.base + 2 * bal.heartcapEnemyHp.perBattle);
+    expect(c3.enemy.heartcapMaxHp).toBe(bal.heartcapEnemyHp.base + 2 * bal.heartcapEnemyHp.perBattle);
     const elite = run.route[4]![1]!.elite!;
     if (elite !== 'veteran') expect(c3.modifiers!.map((m) => m.source)).toContain(`elite:${elite}`);
     expect(c3.modifiers!.map((m) => m.source)).toContain(`general:${run.route[4]![1]!.general}`); // the passive
-    expect(c3.enemy.kit).toEqual(generalKit(content, run, run.route[4]![1]!, 3).kit);
+    expect(c3.enemy.kit.map((c) => c.building)).toEqual(generalKit(content, run, run.route[4]![1]!, 3).kit);
     enter(run, 5, 0);
-    expect(configOf(run).enemy.heartcapHp).toBe(bal.heartcapEnemyHp.boss);
+    expect(configOf(run).enemy.heartcapMaxHp).toBe(bal.heartcapEnemyHp.boss);
   });
 
   it('the general\'s kit grows with the battle index (SPEC §7.8)', () => {
@@ -146,61 +157,60 @@ describe('battle setup and rewards (SPEC §6.1, §6.5, §8.5–8.6)', () => {
     }
   });
 
-  it('the boss can purchase every kit building and every allocated upgrade, without changing single-battle profiles', () => {
+  it('the boss can buy every kit card and upgraded track, without changing single-battle profiles (R2-Q4)', () => {
     for (let seed = 1; seed <= 20; seed++) {
       const run = createRun(content, { seed });
       run.battles = Array.from({ length: 3 }, (_, i) => ({ index: i + 1 }) as RunState['battles'][number]);
       const config = battleConfig(content, run, { kind: 'boss', map: 'stumpfield', general: 'scripted' });
       const state = createBattle(content, config);
       const buyable = state.sides.enemy.ai!.weights.filter((w) => w.weight > 0).map((w) => w.building);
-      expect(config.enemy.kit).toContain('scythecapGrove');
-      for (const id of config.enemy.kit) expect(buyable).toContain(id);
+      expect(config.enemy.kit.map((c) => c.building)).toContain('scythecapGrove');
+      for (const { building } of config.enemy.kit) expect(buyable).toContain(building);
       for (const id of Object.keys(config.enemy.upgrades!)) expect(buyable).toContain(id);
     }
-    const single = createBattle(content, makeConfig(content, { seed: 1, player: 'bot:balanced', enemy: 'general:scripted' }));
+    const single = createBattle(content, makeRoundConfig(content, { seed: 1, player: 'bot:balanced', enemy: 'general:scripted' }));
     expect(single.config.enemy.aiWeights).toBeUndefined();
     expect(single.sides.enemy.ai!.weights.map((w) => w.building)).not.toContain('scythecapGrove');
     expect(content.generals.scripted!.weights.scythecapGrove).toBeUndefined();
   });
 
-  it('the boss actually places its added Scythecap Grove during ordinary AI play', () => {
-    // it's one choice among many (about 1 battle in 8 by 3:00 since M5's commander passive), so look across seeds
-    const placed = Array.from({ length: 30 }, (_, i) => {
+  it('the boss plants its added Scythecap Grove in ordinary play', () => {
+    const planted = Array.from({ length: 20 }, (_, i) => {
       const run = createRun(content, { seed: i + 1, player: 'bot:balanced' });
       run.battles = Array.from({ length: 3 }, (_, j) => ({ index: j + 1 }) as RunState['battles'][number]);
       const state = createBattle(content, battleConfig(content, run, { kind: 'boss', map: 'stumpfield', general: 'scripted' }));
-      queueCommand(state, { tick: 0, side: 'player', type: 'begin' });
-      runHeadless(state, { until: 3600 });
+      runHeadless(state, { until: { round: 5 } });
       expect(state.stats.enemy.rejectedCommands).toBe(0);
-      return Object.values(state.stats.enemy.buildingTypes).includes('scythecapGrove');
+      return state.sides.enemy.ai!.plans.some((p) => p.planted.some((b) => b.building === 'scythecapGrove'));
     });
-    expect(placed).toContain(true);
+    expect(planted).toContain(true);
   });
 
-  it('the reward table', () => {
-    const r = { routRepair: 0.1, decisionLossDamage: 0.25, rarityBiasStep: 10, eliteRareBonus: 10 };
-    expect(battleRewards('battle', 'player', 'rout', r)).toMatchObject({ spores: 20, heartcapPct: 0.1, spoils: [{ cards: 3, freeRerolls: 1, rareBonus: 10 }] });
-    expect(battleRewards('battle', 'player', 'decision', r)).toMatchObject({ spores: 10, heartcapPct: 0, spoils: [{ cards: 2, freeRerolls: 0 }] });
+  it('the reward table: a loss pays nothing, the boss pays in full by Decision (R2-Q14), a Decision win picks 1 of 2 (#17)', () => {
+    const r = { rarityBiasStep: 10, eliteRareBonus: 10 };
+    expect(battleRewards('battle', 'player', 'rout', r)).toEqual({ spores: 20, amber: 0, amberChance: 0, spoils: [{ label: 'Spoils', cards: 3, freeRerolls: 1, rareBonus: 10, relicsOnly: false }] });
+    expect(battleRewards('battle', 'player', 'decision', r)).toMatchObject({ spores: 10, spoils: [{ cards: 2, freeRerolls: 0, rareBonus: 0 }] });
     const e = battleRewards('elite', 'player', 'rout', r);
     expect(e.spores).toBe(35);
     expect(e.amberChance).toBe(0.25);
     expect(e.spoils.map((s) => [s.relicsOnly, s.rareBonus])).toEqual([[false, 20], [true, 10]]);
-    expect(battleRewards('boss', 'player', 'decision', r)).toMatchObject({ spores: 60, amber: 2, spoils: [] });
-    expect(battleRewards('battle', 'enemy', 'decision', r)).toMatchObject({ spores: 0, heartcapPct: -0.25 });
-    expect(battleRewards('battle', 'enemy', 'rout', r)).toMatchObject({ heartcapZero: true });
+    for (const by of ['rout', 'decision'] as const) {
+      expect(battleRewards('boss', 'player', by, r)).toEqual({ spores: 60, amber: 2, amberChance: 0, spoils: [] });
+      expect(battleRewards('battle', 'enemy', by, r)).toEqual({ spores: 0, amber: 0, amberChance: 0, spoils: [] });
+    }
   });
 
-  it('Heartcap carryover: Rout win +10%, Decision loss −25% (run continues), Rout loss ends the run', () => {
-    let run = createRun(content, { seed: 5 });
+  it('a won battle costs no life, pays Spores and spoils, and adds a plot, up to 4 (#18)', () => {
+    const run = createRun(content, { seed: 5 });
     chooseNode(content, run, 0);
-    finishBattle(content, run, ended(run, 'player', 'rout', 2000));
-    expect(run.heartcap.hp).toBe(2000 + 300);
-    expect(run.spores).toBe(20);
-    expect(run.xp).toBe(20 + 25);
+    const record = finishBattle(content, run, ended(run, 'player', 'rout'));
+    expect([run.lives, run.spores, run.xp, run.plotsGained]).toEqual([{ left: 3, max: 3 }, 20, 20 + 25, 1]);
+    expect(record).toMatchObject({ winner: 'player', by: 'rout', lifeLost: false, rounds: [], drafted: [] });
+    expect(record.heartcaps).toEqual({ player: { max: 3000, end: 3000 }, enemy: { max: 2000, end: 2000 } });
+    for (const gone of ['durationTicks', 'front', 'mapWidth', 'heartcapBefore', 'heartcapAfter']) expect(record).not.toHaveProperty(gone);
     expect(run.screen.kind).toBe('spoils');
     if (run.screen.kind === 'spoils') {
-      const before = run.screen.picks[0]!.offer;
-      expect(before).toHaveLength(3);
+      expect(run.screen.picks[0]!.offer).toHaveLength(3);
       spoilsReroll(content, run);
       expect(() => spoilsReroll(content, run)).toThrow(/no rerolls/);
       const card = (run.screen as { picks: { offer: { id: string }[] }[] }).picks[0]!.offer[0]!.id;
@@ -208,36 +218,111 @@ describe('battle setup and rewards (SPEC §6.1, §6.5, §8.5–8.6)', () => {
       expect(run.cards.at(-1)).toEqual({ card, source: 'spoils 1' });
     }
     expect(run.screen.kind).toBe('route');
-
-    run = createRun(content, { seed: 5 });
-    chooseNode(content, run, 0);
-    finishBattle(content, run, ended(run, 'enemy', 'decision', 2000));
-    expect(run.heartcap.hp).toBe(2000 - 750);
-    expect(run.screen.kind).toBe('route');
-    expect(run.outcome).toBeUndefined();
-
-    run = createRun(content, { seed: 5 });
-    chooseNode(content, run, 0);
-    finishBattle(content, run, ended(run, 'enemy', 'decision', 500));
-    expect(run.heartcap.hp).toBe(0);
-    expect(run.outcome).toBe('defeat');
-
-    run = createRun(content, { seed: 5 });
-    chooseNode(content, run, 0);
-    finishBattle(content, run, ended(run, 'enemy', 'rout', 0));
-    expect(run.outcome).toBe('defeat');
-    expect(run.screen.kind).toBe('summary');
+    // sprawl stops at 4 more plots
+    run.plotsGained = 4;
+    enter(run, 1, 0);
+    finishBattle(content, run, ended(run, 'player', 'decision'));
+    expect(run.plotsGained).toBe(4);
+    expect(run.screen.kind === 'spoils' && run.screen.picks[0]!.cards).toBe(2); // a pick of 1 from 2 (#17)
   });
 
-  it('a boss win ends the run in victory; a boss loss of any kind in defeat', () => {
-    let run = createRun(content, { seed: 6 });
+  it('a lost battle costs a life and pays nothing; the run goes on with earlier Spores kept, ends at 0 lives, and a boss loss ends it (#16)', () => {
+    const run = createRun(content, { seed: 5 });
+    run.spores = 30;
+    for (const [i, by] of (['decision', 'rout'] as const).entries()) {
+      enter(run, i, 0);
+      const record = finishBattle(content, run, ended(run, 'enemy', by));
+      expect(record.lifeLost).toBe(true);
+      expect(record.spores).toBe(0);
+      expect(run.screen.kind).toBe('route');
+      expect(run.outcome).toBeUndefined();
+    }
+    expect([run.lives.left, run.spores, run.plotsGained, run.amber]).toEqual([1, 30, 0, 0]);
+    enter(run, 2, 0);
+    finishBattle(content, run, ended(run, 'enemy', 'decision'));
+    expect([run.lives.left, run.outcome, run.screen.kind]).toEqual([0, 'defeat', 'summary']);
+
+    const boss = createRun(content, { seed: 6 });
+    enter(boss, 5, 0);
+    finishBattle(content, boss, ended(boss, 'enemy', 'decision'));
+    expect([boss.lives.left, boss.outcome]).toEqual([2, 'defeat']);
+  });
+
+  it('a boss win, by Rout or by Decision, ends the run in victory with 60 Spores and +2 Amber (R2-Q14)', () => {
+    for (const by of ['rout', 'decision'] as const) {
+      const run = createRun(content, { seed: 6 });
+      enter(run, 5, 0);
+      finishBattle(content, run, ended(run, 'player', by));
+      expect([run.outcome, run.spores, run.amber]).toEqual(['victory', 60, 2]);
+    }
+  });
+
+  it("each battle's Heartcap starts at its max: 3000, 2550 after Fallen Oak, +15% for one battle after the Rest", () => {
+    const run = createRun(content, { seed: 7 });
+    chooseNode(content, run, 0);
+    expect(configOf(run).player.heartcapMaxHp).toBe(3000);
+    expect(createBattle(content, configOf(run)).sides.player.heartcapHp).toBe(3000);
+    run.heartcapMaxPct = -0.15;
+    run.next.heartcapMaxHpPct = 0.15;
+    enter(run, 1, 0);
+    expect(configOf(run).player.heartcapMaxHp).toBe(Math.round(3000 * 0.85 * 1.15));
+    finishBattle(content, run, ended(run, 'player', 'rout'));
+    expect(run.next).toEqual({ startingGold: 0, sporestormShiftRounds: 0, heartcapMaxHpPct: 0 });
+    enter(run, 2, 0);
+    expect(configOf(run).player.heartcapMaxHp).toBe(2550);
+  });
+
+  it('both colonies open the map\'s plots plus your sprawl (#18, #21), and start empty (#20)', () => {
+    const run = createRun(content, { seed: 9 });
+    run.plotsGained = 2;
+    chooseNode(content, run, 0);
+    const c = configOf(run);
+    const map = content.maps[c.mapId]!;
+    expect([c.player.plots, c.enemy.plots]).toEqual([basePlots(map) + 2, basePlots(map) + 2]);
+    const s = createBattle(content, c);
+    expect(s.buildings.filter((b) => b.side === 'player')).toEqual([]);
+    expect(s.sides.player.plots.filter((p) => p.open)).toHaveLength(basePlots(map) + 2);
+  });
+
+  it('with `bosslives`, each life left adds 250 to your boss Heartcap; off by default (#16)', () => {
+    const run = createRun(content, { seed: 6 });
+    run.lives.left = 2;
     enter(run, 5, 0);
-    finishBattle(content, run, ended(run, 'player', 'decision', 1000));
-    expect([run.outcome, run.spores, run.amber]).toEqual(['victory', 60, 2]);
-    run = createRun(content, { seed: 6 });
-    enter(run, 5, 0);
-    finishBattle(content, run, ended(run, 'enemy', 'decision', 3000));
-    expect(run.outcome).toBe('defeat');
+    expect(configOf(run).player.heartcapMaxHp).toBe(3000);
+    const knob = protoContent('bosslives');
+    expect(battleConfig(knob, run, run.route[5]![0]!).player.heartcapMaxHp).toBe(3000 + 2 * 250);
+    expect(battleConfig(knob, run, run.route[0]![0]!).player.heartcapMaxHp).toBe(3000);
+    expect(bal.livesAtBoss).toBeUndefined();
+  });
+
+  it("intel reads every battle, a lost one too: the mean of each round's kind scores over what you fielded, then ½ / ½ (§7.6)", () => {
+    const run = createRun(content, { seed: 3, player: 'bot:balanced' });
+    chooseNode(content, run, 0);
+    const state = createBattle(content, configOf(run));
+    runHeadless(state, { until: 'end' });
+    const view = planningView(state, 'enemy');
+    const per = state.rounds.map((r) => analyzeFielded(view, r.round, r.round)).filter((a) => a.total > 0);
+    expect(per.length).toBeGreaterThan(0);
+    const profile = battleProfile(state)!;
+    for (const k of ['swarm', 'line', 'armor', 'elite', 'ranged'] as const) {
+      expect(profile[k]).toBeCloseTo(per.reduce((n, a) => n + a.scores[k], 0) / per.length, 9);
+    }
+    state.outcome = { ...state.outcome!, winner: 'enemy' };
+    const record = finishBattle(content, run, state);
+    expect(record.lifeLost).toBe(true);
+    expect(record.rounds).toEqual(state.rounds);
+    expect(record.profile).toEqual(profile);
+    expect(run.intel).toEqual(profile);
+    // the second battle's profile moves intel halfway (`intelKeep`)
+    const before = run.intel!;
+    run.screen = { kind: 'route' };
+    chooseNode(content, run, 0);
+    const second = createBattle(content, configOf(run));
+    runHeadless(second, { until: 'end' });
+    const p2 = battleProfile(second)!;
+    finishBattle(content, run, second);
+    expect(run.intel!.swarm).toBeCloseTo(0.5 * before.swarm! + 0.5 * p2.swarm!, 9);
+    expect(run.profiles).toHaveLength(2);
   });
 });
 
@@ -249,11 +334,13 @@ describe('Grove and events (SPEC §8.7)', () => {
     return run;
   };
 
-  it('Grove: repair 30% (capped) or graft +1 level through a prompt', () => {
+  it('the Grove: a life up to the max, refused at full lives; graft through a prompt; Leave always (R2-Q21)', () => {
     let run = at('grove');
-    run.heartcap.hp = 1000;
-    groveChoose(content, run, 'repair');
-    expect(run.heartcap.hp).toBe(1900);
+    expect(groveProblem(content, run, 'life')).toMatch(/full/);
+    expect(() => groveChoose(content, run, 'life')).toThrow(/full/);
+    run.lives.left = 2;
+    groveChoose(content, run, 'life');
+    expect(run.lives).toEqual({ left: 3, max: 3 });
     expect(run.screen.kind).toBe('route');
     run = at('grove');
     groveChoose(content, run, 'graft');
@@ -261,14 +348,20 @@ describe('Grove and events (SPEC §8.7)', () => {
     promptAnswer(content, run, 'capguardHall');
     expect(run.upgrades).toEqual({ capguardHall: 1 });
     expect(run.screen.kind).toBe('route');
+    run = at('grove');
+    run.lives.left = 1;
+    expect(groveProblem(content, run, 'leave')).toBeNull();
+    groveChoose(content, run, 'leave');
+    expect([run.screen.kind, run.lives.left, run.upgrades]).toEqual(['route', 1, {}]);
   });
 
-  it('Fallen Oak: a rare relic for 15% of max HP', () => {
+  it("Fallen Oak: a rare relic, and every later battle's Heartcap 15% lower", () => {
     const run = at('event', 'fallen-oak');
     eventChoose(content, run, 0);
     expect(run.relics).toHaveLength(1);
     expect(content.relics[run.relics[0]!]!.rarity).toBe('rare');
-    expect(run.heartcap.max).toBe(Math.round(3000 * 0.85));
+    expect(run.heartcapMaxPct).toBe(-0.15);
+    expect(run.lives).toEqual({ left: 3, max: 3 });
     expect(run.screen.kind).toBe('route');
   });
 
@@ -352,20 +445,20 @@ describe('Grove and events (SPEC §8.7)', () => {
       legacy.spores = 60;
       const storage = new MemoryStorage();
       saveRun(storage, legacy);
-      const run = loadRun(storage)!;
+      const run = load(storage);
       const rngBefore = structuredClone(run.rng);
       const notice = recoverPendingChoice(content, run);
       expect(notice).toContain(sporeLevel === 2 ? 'only 1 of its 2 remaining levels' : 'could not restore its 2 remaining levels');
       expect(notice).toContain('without paying again');
       expect(run.kit).toEqual(legacy.kit);
       expect(run.path).toEqual(legacy.path);
-      expect(run.heartcap).toEqual(legacy.heartcap);
+      expect(run.lives).toEqual(legacy.lives);
       expect(run.spores).toBe(60);
       expect(run.rng).toEqual(rngBefore);
       expect(recoverPendingChoice(content, run)).toBeNull();
       // The migrated state itself round-trips and no longer needs recovery after another reload.
       saveRun(storage, run);
-      const recovered = loadRun(storage)!;
+      const recovered = load(storage);
       expect(recoverPendingChoice(content, recovered)).toBeNull();
       if (sporeLevel === 2) {
         expect(recovered.screen.kind === 'prompt' && recovered.screen.prompt.remaining).toBe(1);
@@ -396,7 +489,7 @@ describe('Grove and events (SPEC §8.7)', () => {
         } };
         const storage = new MemoryStorage();
         saveRun(storage, legacy);
-        const run = loadRun(storage)!;
+        const run = load(storage);
         expect(recoverPendingChoice(content, run)).toContain('No items were spent');
         expect(run.screen).toEqual({ kind: 'event', event });
         expect(run.pending).toEqual([]);
@@ -424,7 +517,7 @@ describe('Grove and events (SPEC §8.7)', () => {
     } };
     const storage = new MemoryStorage();
     saveRun(storage, legacy);
-    const run = loadRun(storage)!;
+    const run = load(storage);
     expect(recoverPendingChoice(content, run)).toContain('Choose an available option');
     expect(run.screen.kind === 'prompt' && run.screen.prompt.options).toEqual(['puffballMortar']);
     expect(run.kit).toEqual(legacy.kit);
@@ -471,7 +564,7 @@ describe('Grove and events (SPEC §8.7)', () => {
     expect(run.screen.kind).toBe('route');
   });
 
-  it('Hungry Roots: a relic for two one rarity lower; Mold Bloom shapes the next battle', () => {
+  it('Hungry Roots: a relic for two one rarity lower; Mold Bloom: the next storm at round 4 with +150 gold, then it resets', () => {
     let run = at('event', 'hungry-roots');
     run.relics = ['sporeCloud'];
     eventChoose(content, run, 0);
@@ -480,13 +573,26 @@ describe('Grove and events (SPEC §8.7)', () => {
     for (const r of run.relics) expect(content.relics[r]!.rarity).toBe('uncommon');
     run = at('event', 'mold-bloom');
     eventChoose(content, run, 0);
-    expect(run.next).toEqual({ startingGold: 150, sporestormShiftSeconds: -60 });
+    expect(run.next).toEqual({ startingGold: 150, sporestormShiftRounds: -1, heartcapMaxHpPct: 0 });
     run.path = [0];
     chooseNode(content, run, 0);
     const c = configOf(run);
     expect(c.player.startingGold).toBe(bal.startingGold + 150);
-    const s = createBattle(content, c);
-    expect(s.rules.storm.startTick).toBe((bal.sporestorm.startSeconds - 60) * 20);
+    expect(createBattle(content, c).rules.storm.startRound).toBe(bal.rounds.sporestorm.startRound - 1);
+    finishBattle(content, run, ended(run, 'player', 'decision'));
+    expect(run.next).toEqual({ startingGold: 0, sporestormShiftRounds: 0, heartcapMaxHpPct: 0 });
+  });
+
+  it("Quiet Clearing: Rest is the next battle's +15% max HP; Forage keeps v1's random level", () => {
+    let run = at('event', 'quiet-clearing');
+    eventChoose(content, run, 0);
+    expect(run.next.heartcapMaxHpPct).toBe(0.15);
+    run.path = [0];
+    chooseNode(content, run, 0);
+    expect(configOf(run).player.heartcapMaxHp).toBe(3450);
+    run = at('event', 'quiet-clearing');
+    eventChoose(content, run, 1);
+    expect(Object.values(run.upgrades)).toEqual([1]);
   });
 });
 
@@ -495,52 +601,9 @@ describe('save and resume (SPEC §8.9)', () => {
     const r = simulateRun(content, 11, { route: 'random', draft: 'greedy', player: 'bot:balanced' }, { maxBattles: 2 });
     const storage = new MemoryStorage();
     saveRun(storage, r.run);
-    const back = loadRun(storage)!;
+    const back = load(storage);
     expect(back).toEqual(r.run);
     expect(hashRun(back)).toBe(hashRun(r.run));
-    storage.set('spore-sprawl.run.v1', JSON.stringify({ ...r.run, v: 99 }));
-    expect(loadRun(storage)).toBeNull();
-  });
-
-  it('a mid-battle save resumes to the same state hash (re-simulated from the command log)', () => {
-    const run = createRun(content, { seed: 8 });
-    chooseNode(content, run, 0);
-    const config = configOf(run);
-    const live = createBattle(content, config);
-    // the human places an opener, begins, builds more later and answers the first draft
-    const spot = legalPlacements(live, 'player', 'sporelingBurrow')[0]!;
-    queueCommand(live, { tick: 0, side: 'player', type: 'place', buildingId: 'sporelingBurrow', lane: spot.lane, col: spot.col, row: spot.row });
-    step(live);
-    queueCommand(live, { tick: 0, side: 'player', type: 'begin' });
-    step(live);
-    runHeadless(live, { until: 1500 });
-    const s2 = legalPlacements(live, 'player', 'capguardHall')[0]!;
-    queueCommand(live, { tick: live.tick + 1, side: 'player', type: 'place', buildingId: 'capguardHall', lane: s2.lane, col: s2.col, row: s2.row });
-    runHeadless(live, { until: 2400 });
-    expect(live.held).toBe(true);
-    queueCommand(live, { tick: live.tick + 1, side: 'player', type: 'draftPick', cardId: live.sides.player.draft!.offer[1]!.id });
-    step(live);
-    runHeadless(live, { until: 3000 });
-    const save = JSON.parse(JSON.stringify(battleSave(live)));
-    const resumed = resumeBattle(content, save);
-    expect(hashState(resumed)).toBe(hashState(live));
-    // and both continue identically
-    runHeadless(live, { until: 3600 });
-    runHeadless(resumed, { until: 3600 });
-    expect(hashState(resumed)).toBe(hashState(live));
-  });
-
-  it('a save taken while a draft is open (and one answered on that tick) resumes exactly', () => {
-    const run = createRun(content, { seed: 9 });
-    chooseNode(content, run, 0);
-    const config = configOf(run);
-    const live = createBattle(content, config);
-    queueCommand(live, { tick: 0, side: 'player', type: 'begin' });
-    runHeadless(live, { until: 2400 });
-    expect(resumeBattle(content, JSON.parse(JSON.stringify(battleSave(live)))).held).toBe(true);
-    queueCommand(live, { tick: live.tick + 1, side: 'player', type: 'draftSkip' });
-    step(live);
-    expect(hashState(resumeBattle(content, JSON.parse(JSON.stringify(battleSave(live)))))).toBe(hashState(live));
   });
 });
 
@@ -551,5 +614,21 @@ describe('whole runs (autoplay)', () => {
     const b = simulateRun(content, 7, p, { maxBattles: 2 });
     expect(a.hashes).toEqual(b.hashes);
     expect(hashRun(a.run)).toBe(hashRun(b.run));
+  });
+
+  it('play to the summary in rounds: a life lost only in a lost battle, and 4–5 battles in a finished run', () => {
+    for (const seed of [1, 2]) {
+      const r = simulateRun(content, seed, { route: 'random', draft: 'greedy', player: 'bot:balanced' });
+      expect(r.outcome).not.toBe('incomplete');
+      expect(r.run.screen.kind).toBe('summary');
+      for (const b of r.battles) expect(b.lifeLost, `seed ${seed} battle ${b.index}`).toBe(b.winner === 'enemy');
+      // the Grove may give a life back; a defeat is at 0 lives or at the boss
+      if (r.outcome === 'defeat') expect(r.lives.left === 0 || r.battles.at(-1)!.kind === 'boss').toBe(true);
+      else expect(r.lives.left).toBeGreaterThan(0);
+      if (r.reachedBoss) expect(r.battleCount).toBeGreaterThanOrEqual(4);
+      expect(r.battleCount).toBeLessThanOrEqual(5);
+      for (const b of r.battles) expect(b.rounds.length).toBeGreaterThan(0);
+      expect(r.totalBattleTicks).toBeGreaterThan(0);
+    }
   });
 });

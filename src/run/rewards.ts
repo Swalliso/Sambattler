@@ -10,33 +10,23 @@ export interface BattleRewards {
   amber: number;
   /** Chance of +1 Amber (an elite win), rolled on the `meta` stream. */
   amberChance: number;
-  /** Heartcap change as a fraction of max HP: +10% for a Rout win, −25% for a Decision loss. */
-  heartcapPct: number;
-  /** A Rout loss sets the Heartcap to 0. */
-  heartcapZero: boolean;
   spoils: SpoilsSpec[];
 }
 
-export interface RewardRules { routRepair: number; decisionLossDamage: number; rarityBiasStep: number; eliteRareBonus: number }
+export interface RewardRules { rarityBiasStep: number; eliteRareBonus: number }
 
 /**
- * | Result          | Spoils                                   | Spores | Heartcap |
- * |-----------------|------------------------------------------|--------|----------|
- * | Win by Rout     | 1 of 3, +1 rarity bias, 1 free reroll    | 20     | +10%     |
- * | Win by Decision | 1 of 2                                   | 10     |          |
- * | Elite win, also | +10 rare on spoils; a relic-only pick, 1 of 3 | +15 | 25%: +1 Amber |
- * | Boss win        | — (the run is won)                       | 60     | +2 Amber |
- * | Loss by Decision| —                                        | 0      | −25%     |
- * | Loss by Rout    | —                                        | 0      | → 0      |
+ * | Result                        | Spoils                                        | Spores | Amber   |
+ * |-------------------------------|-----------------------------------------------|--------|---------|
+ * | Win by Rout                   | 1 of 3, +1 rarity bias, 1 free reroll         | 20     |         |
+ * | Win by Decision               | a pick of 1 from 2 (#17)                      | 10     |         |
+ * | Elite win, also               | +10 rare on spoils; a relic-only pick, 1 of 3 | +15    | 25%: +1 |
+ * | Boss win, by Rout or Decision | — (the run is won; R2-Q14)                    | 60     | +2      |
+ * | A loss                        | — (it costs a life, §8.5)                     | 0      |         |
  */
 export function battleRewards(kind: NodeKind, winner: Side, by: 'rout' | 'decision', r: RewardRules): BattleRewards {
-  const out: BattleRewards = { spores: 0, amber: 0, amberChance: 0, heartcapPct: 0, heartcapZero: false, spoils: [] };
-  if (winner !== 'player') {
-    if (by === 'rout') out.heartcapZero = true;
-    else out.heartcapPct = -r.decisionLossDamage;
-    return out;
-  }
-  if (by === 'rout') out.heartcapPct = r.routRepair;
+  const out: BattleRewards = { spores: 0, amber: 0, amberChance: 0, spoils: [] };
+  if (winner !== 'player') return out;
   if (kind === 'boss') {
     out.spores = 60;
     out.amber = 2;

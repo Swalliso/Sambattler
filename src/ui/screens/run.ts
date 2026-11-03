@@ -4,10 +4,12 @@ import type { Content } from '../../data/registry.ts';
 import type { Atlas } from '../../render/atlas.ts';
 import { spriteToCanvas } from '../../render/atlas.ts';
 import { formatClock } from '../../sim/index.ts';
-import { battleRewards, battlesWon, cardLabel, currentRow, intelDots, outcomeAvailable, upgradeable } from '../../run/index.ts';
+import {
+  battleRewards, battlesWon, cardLabel, clashTicks, currentRow, groveProblem, intelDots, outcomeAvailable, rewardRules,
+} from '../../run/index.ts';
 import { COUNTER_KINDS } from '../../sim/index.ts';
-import { KIND_HINT, KIND_ICON, KIND_NAME, counterLine } from '../doctrine.ts';
-import type { BattleRecord, RouteNode, RunState } from '../../run/index.ts';
+import { KIND_HINT, KIND_ICON, KIND_NAME } from '../doctrine.ts';
+import type { CounterRecordBrief, GroveChoice, RouteNode, RunState } from '../../run/index.ts';
 import type { RunEffect } from '../../data/schema.ts';
 import { cardView } from '../cards.ts';
 import { mvpCallout, mvpOf, outcomeArt } from '../report.ts';
@@ -42,9 +44,12 @@ export function relicBadge(content: Content, atlas: Atlas, id: string): HTMLElem
       relicDiagram(id)));
 }
 
-/** The strip at the top of every run screen: Heartcap, Spores, Amber, battles won, the kit and the relics. */
+/** Lives' name on the game's screens, with "lives" in the tooltip (§2, #56). */
+const regrowths = (n: number): string => `${n} Regrowth${n === 1 ? '' : 's'}`;
+
+/** The strip at the top of every run screen: Regrowths, Spores, Amber, battles won, the kit and the relics. */
 export function runBar(content: Content, atlas: Atlas, run: RunState): HTMLElement {
-  const pct = run.heartcap.hp / run.heartcap.max;
+  const { left, max } = run.lives;
   const cmd = content.commanders[run.commander];
   const portrait = cmd ? spriteToCanvas(atlas, cmd.sprite, 'velvet-bloom') : null;
   if (portrait) portrait.className = 'portrait';
@@ -58,11 +63,14 @@ export function runBar(content: Content, atlas: Atlas, run: RunState): HTMLEleme
       h('span', { class: 'muted' }, run.bans.length ? `Banned: ${run.bans.map((b) => content.buildings[b]?.name ?? b).join(', ')}` : 'No bans'))) : null;
   return h('header', { class: 'runbar', id: 'runbar' },
     commander,
-    h('div', { class: `rb-heart${pct < 1 / 3 ? ' low' : ''}`, title: 'Your Heartcap: it carries its damage from battle to battle' },
-      uiIcon(atlas, 'i-heart'),
-      h('div', { class: 'rb-hp' },
-        h('span', { class: 'rb-num' }, h('b', { id: 'run-heartcap' }, `${run.heartcap.hp}/${run.heartcap.max}`), h('small', null, `${Math.round(pct * 100)}%`)),
-        h('span', { class: 'rb-bar', role: 'img', 'aria-label': `Heartcap ${Math.round(pct * 100)}%` }, h('i', { style: `width:${(pct * 100).toFixed(1)}%` })))),
+    // a cap per life, lit for each one left (§8.5)
+    h('div', {
+      class: `rb-lives${left <= 1 ? ' low' : ''}`, id: 'run-lives', tabindex: 0,
+      title: 'Regrowths are your lives: a lost battle costs one, and the run ends at 0. Each battle\'s Heartcap starts full.',
+      'aria-label': `${regrowths(left)} of ${max} (lives) left`,
+    },
+      h('span', { class: 'rb-caps', 'aria-hidden': 'true' }, ...Array.from({ length: max }, (_, i) => h('i', { class: `cap${i < left ? ' lit' : ''}` }, uiIcon(atlas, 'i-heart')))),
+      h('span', { class: 'rb-num' }, h('b', { id: 'run-regrowths' }, `${left}/${max}`), h('small', null, 'Regrowths'))),
     h('div', { class: 'rb-stat', title: 'Spores: spent in the Underroot (Milestone 6)' }, uiIcon(atlas, 'i-spores'), h('b', { id: 'run-spores' }, String(run.spores)), h('small', null, 'Spores')),
     h('div', { class: 'rb-stat', title: 'Amber: rare currency, spent in the Underroot (Milestone 6)' }, uiIcon(atlas, 'i-amber'), h('b', null, String(run.amber)), h('small', null, 'Amber')),
     h('div', { class: 'rb-stat' }, h('b', null, `${battlesWon(run)}/${run.battles.length}`), h('small', null, 'battles won')),
@@ -94,8 +102,7 @@ const POD_FRAME: Record<NodeState, number> = { future: 0, past: 0, open: 1, chos
  * read from the rewards table: a relic-only pick, more Spores and a chance of Amber.
  */
 function eliteReward(content: Content, atlas: Atlas): HTMLElement {
-  const b = content.balance;
-  const rules = { routRepair: b.routRepair, decisionLossDamage: b.decisionLossDamage, rarityBiasStep: b.draft.rarityBiasStep, eliteRareBonus: b.draft.eliteRareBonus };
+  const rules = rewardRules(content);
   const elite = battleRewards('elite', 'player', 'rout', rules), plain = battleRewards('battle', 'player', 'rout', rules);
   const picks = elite.spoils.filter((s) => s.relicsOnly).length;
   return h('span', { class: 'node-reward', 'aria-label': 'Extra reward for winning' },
@@ -147,7 +154,7 @@ export function intelBars(atlas: Atlas, run: RunState): HTMLElement {
     ...(dots ? COUNTER_KINDS.map((k) => {
       const c = spriteToCanvas(atlas, KIND_ICON[k], 'velvet-bloom');
       c.className = 'kind-icon';
-      return h('span', { class: 'intel-kind', 'data-kind': k, 'data-dots': dots[k], title: `${KIND_HINT[k]} · ${(intel![k] * 100).toFixed(0)}%` },
+      return h('span', { class: 'intel-kind', 'data-kind': k, 'data-dots': dots[k], title: `${KIND_HINT[k]} · ${((intel![k] ?? 0) * 100).toFixed(0)}%` },
         c, h('span', null, KIND_NAME[k]),
         h('span', { class: 'dots', role: 'img', 'aria-label': `${dots[k]} of 4` }, ...[0, 1, 2, 3].map((d) => h('i', { class: d < dots[k] ? 'on' : '' }))));
     }) : [h('span', { class: 'muted' }, 'None yet: the first general knows nothing about you.')]),
@@ -291,8 +298,8 @@ const signed = (v: number) => (v < 0 ? `−${Math.abs(v)}` : `+${v}`);
 export function outcomeChips(content: Content, run: RunState, outcome: readonly RunEffect[]): Chip[] {
   const chips: Chip[] = [];
   for (const e of outcome) {
-    if ('repairPct' in e) chips.push({ kind: 'gain', icon: 'i-heart', text: `+${Math.round(run.heartcap.max * e.repairPct)} Heartcap` });
-    else if ('maxHpPct' in e) chips.push({ kind: e.maxHpPct < 0 ? 'cost' : 'gain', icon: 'i-heart', text: `${e.maxHpPct < 0 ? '−' : '+'}${pct(e.maxHpPct)} max Heartcap` });
+    if ('gainLife' in e) chips.push({ kind: 'gain', icon: 'i-heart', text: `+${regrowths(Math.min(e.gainLife, run.lives.max - run.lives.left) || e.gainLife)}` });
+    else if ('maxHpPct' in e) chips.push({ kind: e.maxHpPct < 0 ? 'cost' : 'gain', icon: 'i-heart', text: `${e.maxHpPct < 0 ? '−' : '+'}${pct(e.maxHpPct)} max Heartcap, every battle` });
     else if ('gainRelic' in e) {
       const n = e.gainRelic.count ?? 1;
       const r = e.gainRelic.rarity;
@@ -301,10 +308,8 @@ export function outcomeChips(content: Content, run: RunState, outcome: readonly 
     else if ('nextBattle' in e) {
       const nb = e.nextBattle;
       if (nb.startingGold) chips.push({ kind: nb.startingGold < 0 ? 'cost' : 'gold', icon: 'i-gold', text: `${signed(nb.startingGold)} gold next battle` });
-      if (nb.sporestormShiftSeconds) {
-        const s = Math.abs(nb.sporestormShiftSeconds);
-        chips.push({ kind: 'note', icon: 'i-storm', text: `Sporestorm ${formatClock(s * content.balance.tickRate)} ${nb.sporestormShiftSeconds < 0 ? 'earlier' : 'later'}` });
-      }
+      if (nb.heartcapMaxHpPct) chips.push({ kind: nb.heartcapMaxHpPct < 0 ? 'cost' : 'gain', icon: 'i-heart', text: `${nb.heartcapMaxHpPct < 0 ? '−' : '+'}${pct(nb.heartcapMaxHpPct)} max Heartcap next battle` });
+      if (nb.sporestormShiftRounds) chips.push({ kind: 'note', icon: 'i-storm', text: stormShift(content, nb.sporestormShiftRounds) });
     } else if ('halveIntel' in e) chips.push({ kind: 'gain', text: 'Gray Rot intel halved' });
     else if ('upgrade' in e) chips.push({ kind: 'gain', icon: 'i-upgrade', text: `+${e.upgrade.count} upgrade level${e.upgrade.count > 1 ? 's' : ''}` });
     else if ('removeBlueprint' in e) chips.push({ kind: 'cost', icon: 'i-blueprint', text: '−1 blueprint' });
@@ -314,6 +319,11 @@ export function outcomeChips(content: Content, run: RunState, outcome: readonly 
     }
   }
   return chips;
+}
+
+/** A shift in the next battle's storm, as the round it starts in (§6.4). */
+function stormShift(content: Content, rounds: number): string {
+  return `Sporestorm at round ${content.balance.rounds.sporestorm.startRound + rounds} next battle`;
 }
 
 function chipEl(atlas: Atlas, c: Chip): HTMLElement {
@@ -369,16 +379,19 @@ export interface RunSnapshot {
   kit: string[];
   upgrades: Record<string, number>;
   relics: string[];
-  heartcap: { hp: number; max: number };
+  lives: RunState['lives'];
+  heartcapMaxPct: number;
   amber: number;
-  next: { startingGold: number; sporestormShiftSeconds: number };
+  next: RunState['next'];
 }
 
 export function runSnapshot(run: RunState): RunSnapshot {
-  return { kit: [...run.kit], upgrades: { ...run.upgrades }, relics: [...run.relics], heartcap: { ...run.heartcap }, amber: run.amber, next: { ...run.next } };
+  return {
+    kit: [...run.kit], upgrades: { ...run.upgrades }, relics: [...run.relics], lives: { ...run.lives }, heartcapMaxPct: run.heartcapMaxPct, amber: run.amber, next: { ...run.next },
+  };
 }
 
-/** One thing an event changed: a relic or blueprint gained or lost, an upgrade level, or a chip (Heartcap, Amber, next battle). */
+/** One thing an event changed: a relic or blueprint gained or lost, an upgrade level, or a chip (Regrowths, Heartcap, Amber, next battle). */
 export type RunChange =
   | { kind: 'relic'; id: string; lost: boolean }
   | { kind: 'blueprint'; id: string; lost: boolean }
@@ -395,15 +408,18 @@ export function runChanges(content: Content, before: RunSnapshot, after: RunSnap
   for (const [id, lvl] of Object.entries(after.upgrades)) {
     for (let l = (before.upgrades[id] ?? 0) + 1; l <= lvl; l++) out.push({ kind: 'upgrade', id, level: l });
   }
-  const maxHp = after.heartcap.max - before.heartcap.max;
-  if (maxHp) out.push({ kind: 'chip', chip: { kind: maxHp < 0 ? 'cost' : 'gain', icon: 'i-heart', text: `${signed(maxHp)} max Heartcap (now ${after.heartcap.max})` } });
-  const hp = after.heartcap.hp - before.heartcap.hp;
-  if (hp > 0) out.push({ kind: 'chip', chip: { kind: 'gain', icon: 'i-heart', text: `+${hp} Heartcap (now ${after.heartcap.hp}/${after.heartcap.max})` } });
+  const hpMax = (snap: RunSnapshot) => Math.round(content.balance.heartcapPlayerHp * (1 + snap.heartcapMaxPct));
+  const maxHp = hpMax(after) - hpMax(before);
+  if (maxHp) out.push({ kind: 'chip', chip: { kind: maxHp < 0 ? 'cost' : 'gain', icon: 'i-heart', text: `${signed(maxHp)} max Heartcap every battle (now ${hpMax(after)})` } });
+  const lives = after.lives.left - before.lives.left;
+  if (lives > 0) out.push({ kind: 'chip', chip: { kind: 'gain', icon: 'i-heart', text: `+${regrowths(lives)} (now ${after.lives.left}/${after.lives.max})` } });
+  const rest = after.next.heartcapMaxHpPct - before.next.heartcapMaxHpPct;
+  if (rest) out.push({ kind: 'chip', chip: { kind: rest < 0 ? 'cost' : 'gain', icon: 'i-heart', text: `${rest < 0 ? '−' : '+'}${pct(rest)} max Heartcap next battle` } });
   if (after.amber !== before.amber) out.push({ kind: 'chip', chip: { kind: 'gain', icon: 'i-amber', text: `${signed(after.amber - before.amber)} Amber` } });
   const gold = after.next.startingGold - before.next.startingGold;
   if (gold) out.push({ kind: 'chip', chip: { kind: gold < 0 ? 'cost' : 'gold', icon: 'i-gold', text: `${signed(gold)} gold next battle` } });
-  const storm = after.next.sporestormShiftSeconds - before.next.sporestormShiftSeconds;
-  if (storm) out.push({ kind: 'chip', chip: { kind: 'note', icon: 'i-storm', text: `Sporestorm ${formatClock(Math.abs(storm) * content.balance.tickRate)} ${storm < 0 ? 'earlier' : 'later'} next battle` } });
+  const storm = after.next.sporestormShiftRounds - before.next.sporestormShiftRounds;
+  if (storm) out.push({ kind: 'chip', chip: { kind: 'note', icon: 'i-storm', text: stormShift(content, after.next.sporestormShiftRounds) } });
   return out;
 }
 
@@ -478,16 +494,17 @@ export function eventResultScreen(content: Content, atlas: Atlas, run: RunState,
   return el;
 }
 
-export function groveScreen(content: Content, atlas: Atlas, run: RunState, actions: { choose(c: 'repair' | 'graft'): void }): HTMLElement {
-  const repair = Math.round(run.heartcap.max * content.balance.groveRepair);
-  const after = Math.min(run.heartcap.max, run.heartcap.hp + repair);
-  const canGraft = upgradeable(content, run).length > 0;
-  return vignette(content, atlas, run, 'grove', 'v-grove', 'Grove', 'The Grove', 'A quiet grove where the colony can mend or grow. Choose one.', [
-    choiceCard(atlas, 'Repair', `Heartcap +${after - run.heartcap.hp} (to ${after}/${run.heartcap.max}).`,
-      [{ kind: 'gain', icon: 'i-heart', text: `+${after - run.heartcap.hp} Heartcap` }], () => actions.choose('repair'), null, 1),
-    choiceCard(atlas, 'Graft', canGraft ? '+1 level on an upgrade track you own (you choose).' : 'Every track is maxed.',
-      [{ kind: 'gain', icon: 'i-upgrade', text: '+1 upgrade level' }], () => actions.choose('graft'), canGraft ? null : 'Every upgrade track you own is at its last level', 2),
-  ], 'The Grove repairs 30% of your Heartcap, or grafts one upgrade level.');
+/** The Grove (§8.7, R2-Q21): regain a Regrowth (unlit at full lives, with its reason), graft a level, or leave. */
+export function groveScreen(content: Content, atlas: Atlas, run: RunState, actions: { choose(c: GroveChoice): void }): HTMLElement {
+  const { left, max } = run.lives;
+  const why = (c: GroveChoice) => groveProblem(content, run, c);
+  return vignette(content, atlas, run, 'grove', 'v-grove', 'Grove', 'The Grove', 'A quiet grove where the colony can regrow or graft. Choose one, or move on.', [
+    choiceCard(atlas, 'Regain a Regrowth', why('life') ? `Your Regrowths are full (${left}/${max}).` : `A life back: ${left + 1}/${max} Regrowths.`,
+      [{ kind: 'gain', icon: 'i-heart', text: '+1 Regrowth' }], () => actions.choose('life'), why('life'), 1),
+    choiceCard(atlas, 'Graft', why('graft') ? 'Every track is maxed.' : '+1 level on an upgrade track you own (you choose).',
+      [{ kind: 'gain', icon: 'i-upgrade', text: '+1 upgrade level' }], () => actions.choose('graft'), why('graft') ? 'Every upgrade track you own is at its last level' : null, 2),
+    choiceCard(atlas, 'Leave', 'Move on along the route.', [], () => actions.choose('leave'), null, 3),
+  ], 'The Grove regains a Regrowth, grafts one upgrade level, or lets you leave.');
 }
 
 export function promptScreen(content: Content, atlas: Atlas, run: RunState, actions: { answer(option: string): void }): HTMLElement {
@@ -517,29 +534,15 @@ export function promptScreen(content: Content, atlas: Atlas, run: RunState, acti
 
 // ---- summary ----
 
-/** A small front-line sparkline: one line per lane, the front's position across the map over time. */
-function sparkline(b: BattleRecord): SVGElement {
-  const W = 160, H = 34;
-  const root = document.createElementNS(SVG, 'svg');
-  root.setAttribute('viewBox', `0 0 ${W} ${H}`);
-  root.setAttribute('width', String(W));
-  root.setAttribute('height', String(H));
-  root.setAttribute('class', 'sparkline');
-  const mid = document.createElementNS(SVG, 'line');
-  Object.entries({ x1: 0, x2: W, y1: H / 2, y2: H / 2, style: 'stroke: var(--line)' }).forEach(([k, v]) => mid.setAttribute(k, String(v)));
-  root.append(mid);
-  const colors = ['var(--lilac)', 'var(--sprout)', 'var(--rarity-uncommon)'];
-  b.front.forEach((series, li) => {
-    if (series.length < 2) return;
-    const pts = series.map((f, i) => `${((i / (series.length - 1)) * W).toFixed(1)},${(H - (f / b.mapWidth) * H).toFixed(1)}`).join(' ');
-    const line = document.createElementNS(SVG, 'polyline');
-    line.setAttribute('points', pts);
-    line.setAttribute('fill', 'none');
-    line.setAttribute('style', `stroke: ${colors[li % colors.length]!}`);
-    line.setAttribute('stroke-width', '1.5');
-    root.append(line);
-  });
-  return root;
+/** A counter the general activated, by round (§7.4): what it built, drafted and sold. */
+function counterBrief(content: Content, c: CounterRecordBrief): string {
+  const name = (id: string) => content.buildings[id]?.name ?? id;
+  const built = Object.entries(c.built).sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1)).map(([id, n]) => `${name(id)}${n > 1 ? ` ×${n}` : ''}`);
+  let out = `${(KIND_NAME as Record<string, string>)[c.kind] ?? 'Anti-Ranged'} (round ${c.round})`;
+  out += built.length ? ` with ${built.join(', ')}` : ': no new buildings';
+  if (c.drafted) out += `; added ${name(c.drafted)}`;
+  if (c.sold.length) out += `; sold ${c.sold.map(name).join(', ')} for space`;
+  return out;
 }
 
 /**
@@ -553,7 +556,8 @@ export function summaryScreen(content: Content, atlas: Atlas, run: RunState, act
   for (const b of run.battles) for (const [id, v] of Object.entries(b.damageByBuilding)) damage.set(id, (damage.get(id) ?? 0) + v);
   const dmgRows = [...damage.entries()].sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1));
   const maxDmg = Math.max(1, ...dmgRows.map(([, v]) => v));
-  const totalTicks = run.battles.reduce((n, b) => n + b.durationTicks, 0);
+  const totalTicks = run.battles.reduce((n, b) => n + b.rounds.reduce((t, r) => t + clashTicks(r), 0), 0);
+  const lost = run.battles.filter((b) => b.lifeLost).length;
   const lastBoss = run.battles.find((b) => b.kind === 'boss');
   const again = h('button', { class: 'btn primary', id: 'run-it-back', onclick: () => done() }, 'Run it back', h('kbd', null, 'Enter'), h('kbd', null, 'R'));
   const el = h('div', { class: 'runscreen', id: 'summary' },
@@ -565,31 +569,30 @@ export function summaryScreen(content: Content, atlas: Atlas, run: RunState, act
           h('h1', { class: won ? 'win' : 'loss', id: 'summary-title' }, won ? 'Victory: the boss falls' : 'Defeat'),
           h('div', { class: 'how' }, won ? `${content.generals[lastBoss?.general ?? '']?.name ?? 'The boss'} is beaten. The colony holds the roots.`
             : `The run ends after ${run.battles.length} battle${run.battles.length === 1 ? '' : 's'}.`),
-          h('div', { class: 'hint' }, `${run.battles.length} battles · ${formatClock(totalTicks)} of battle · Heartcap ${run.heartcap.hp}/${run.heartcap.max}`)),
+          h('div', { class: 'hint' }, `${run.battles.length} battles · ${formatClock(totalTicks)} of clashes · ${regrowths(run.lives.left)} of ${run.lives.max} left, ${lost} lost`)),
         mvpCallout(content, atlas, mvpOf(Object.fromEntries(damage)), 'this run'),
       ),
       h('div', { class: 'reveal', style: '--d:1' },
         intelBars(atlas, run),
         h('h3', null, 'Battles'),
         h('table', { class: 'summary-table', id: 'summary-battles' },
-          h('tr', null, ...['#', 'Node', 'Map', 'General', 'Result', 'Length', 'Heartcap', 'Front line', 'Countered'].map((t) => h('th', null, t))),
+          h('tr', null, ...['#', 'Node', 'Map', 'General', 'Result', 'Rounds', 'Regrowths', 'Countered'].map((t) => h('th', null, t))),
           ...run.battles.map((b) => h('tr', { class: `summary-battle ${b.winner === 'player' ? 'won' : 'lost'}` },
             h('td', null, String(b.index)),
             h('td', null, b.kind === 'elite' ? `Elite (${content.elites[b.elite!]?.name ?? b.elite})` : b.kind === 'boss' ? 'Boss' : 'Battle'),
             h('td', null, `${b.mapName}${b.lanes > 1 ? ` (${b.lanes} lanes)` : ''}`),
             h('td', null, content.generals[b.general]?.name ?? b.general),
             h('td', { class: 'result' }, `${b.winner === 'player' ? 'Won' : 'Lost'} by ${b.by === 'rout' ? 'Rout' : 'Decision'}`),
-            h('td', null, formatClock(b.durationTicks)),
-            h('td', null, `${b.heartcapBefore} → ${b.heartcapAfter}`),
-            h('td', null, sparkline(b)),
-            h('td', { class: 'countered' }, (b.counters ?? []).filter((c) => c.active).map((c) => counterLine(content, c)).join('; ') || '-'),
+            h('td', null, b.rounds.length ? String(b.rounds.length) : '-'),
+            h('td', { class: 'lives' }, b.lifeLost ? '−1' : '-'),
+            h('td', { class: 'countered' }, (b.counters ?? []).map((c) => counterBrief(content, c)).join('; ') || '-'),
           )),
         )),
       h('div', { class: 'summarygrid reveal', style: '--d:2' },
         h('section', null,
           h('h3', null, 'Damage by building (whole run)'),
           h('div', { class: 'bars', id: 'summary-damage' }, ...dmgRows.slice(0, 8).map(([id, v]) => h('div', { class: 'bar player' },
-            h('span', { class: 'label' }, id === 'turret' ? 'Heartcap turrets' : content.buildings[id]?.name ?? id),
+            h('span', { class: 'label' }, id === 'turret' ? 'Heartcap turrets' : id === 'power' ? 'Commander power' : content.buildings[id]?.name ?? id),
             h('span', { class: 'track' }, h('span', { class: 'fill', style: `width:${((100 * v) / maxDmg).toFixed(1)}%` })),
             h('span', { class: 'value' }, v.toLocaleString('en-US')),
           ))),

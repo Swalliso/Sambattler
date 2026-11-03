@@ -186,11 +186,16 @@ function counterSection(content: Content, state: BattleState): HTMLElement {
   return h('section', { id: 'report-counters' }, h('h3', null, 'The general countered…'), h('ul', { class: 'counterlist' }, ...lines));
 }
 
+/** A single battle's report has Again and Rematch; a run's battle has Continue in their place, with what it meant for the run. */
 export interface RoundsReportActions {
   /** The same seed and parameters. */
-  again(): void;
+  again?(): void;
   /** A new seed, the same parameters. */
-  rematch(): void;
+  rematch?(): void;
+  /** In a run: on to the run's next screen. */
+  continueRun?(): void;
+  /** In a run: one line on what the battle means for it, such as its Spores or a lost Regrowth (§8.5, §8.6). */
+  runNote?: string;
 }
 
 /** The play clock's readout (§8.2, X6, RB-Q3; T128), which the app passes in, since `src/ui` can't import `src/app`. */
@@ -261,9 +266,14 @@ export function roundsReport(content: Content, state: BattleState, actions: Roun
         playTime ? h('div', { class: 'hint', id: 'report-planning' }, playTimeText(playTime)) : null,
       ),
     ),
+    actions.runNote ? h('div', { class: 'hint reveal', id: 'report-run', style: '--d:3' }, actions.runNote) : null,
     h('div', { class: 'actions' },
-      h('button', { class: 'btn', onclick: actions.again, id: 'report-again', title: 'The same battle again, on the same seed' }, 'Again (same seed)'),
-      h('button', { class: 'btn primary', onclick: actions.rematch, id: 'report-rematch', title: 'The same parameters on a new seed' }, 'Rematch'),
+      ...(actions.continueRun
+        ? [h('button', { class: 'btn primary', onclick: actions.continueRun, id: 'report-continue', title: 'On to the run' }, 'Continue')]
+        : [
+          h('button', { class: 'btn', onclick: actions.again, id: 'report-again', title: 'The same battle again, on the same seed' }, 'Again (same seed)'),
+          h('button', { class: 'btn primary', onclick: actions.rematch, id: 'report-rematch', title: 'The same parameters on a new seed' }, 'Rematch'),
+        ]),
     ),
   );
   return h('div', { class: 'overlay' }, card);

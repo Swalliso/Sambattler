@@ -1,10 +1,13 @@
-// Save and resume (SPEC §8.9). The run state autosaves at every node boundary. A battle in progress
-// is saved as its config plus the player's commands (executed and still queued) with the tick and
-// state hash; resuming re-simulates from tick 0 (AI and bot commands regenerate deterministically),
-// checks the hash and continues. A battle is at most 12,000 ticks, so this takes about a second.
+// Save and resume (SPEC §8.9). The run state autosaves at every node boundary, and `loadRun` reads it
+// through `migrateRun`. Since R2b's S1 a run's battle is in rounds and isn't saved: a reload restarts it at
+// round 1's planning until S8 saves it between rounds (T095, T096). v1's battle save below stays for v1's
+// single battles until S3: a v1 battle in progress is saved as its config plus the player's commands
+// (executed and still queued) with the tick and state hash; resuming re-simulates from tick 0 (AI and bot
+// commands regenerate deterministically), checks the hash and continues.
 import { createBattle, draftCommandDue, hashState, queueCommand, runHeadless, step } from '../sim/index.ts';
 import type { BattleConfig, BattleState, Command, Content, SimEvent } from '../sim/index.ts';
-import { RUN_VERSION } from './runState.ts';
+import { migrateRun } from './migrate.ts';
+import type { LoadedRun } from './migrate.ts';
 import type { RunState } from './runState.ts';
 import type { Storage } from './storage.ts';
 
@@ -15,18 +18,14 @@ export function saveRun(storage: Storage, run: RunState): void {
   storage.set(RUN_KEY, JSON.stringify(run));
 }
 
-/** The saved run, or null if there is none (or it is from an incompatible version). */
-export function loadRun(storage: Storage): RunState | null {
+/**
+ * The saved run, migrated to today's version with a notice when it was saved before (§8.9), or no save, or an
+ * unreadable one: the title tells the two apart, and never overwrites an unreadable save unasked (A084).
+ */
+export function loadRun(storage: Storage, content: Content): { kind: 'none' } | LoadedRun {
   const text = storage.get(RUN_KEY);
-  if (!text) return null;
-  try {
-    const run = JSON.parse(text) as RunState;
-    if (run.v !== RUN_VERSION) return null;
-    run.bans ??= []; // saved before M5's bans
-    return run;
-  } catch {
-    return null;
-  }
+  if (!text) return { kind: 'none' };
+  return migrateRun(content, text);
 }
 
 export function clearRun(storage: Storage): void {

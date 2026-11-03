@@ -3,7 +3,7 @@
 // shipped rules are unchanged; with a knob set, the prototype behaves as described.
 import { describe, expect, it } from 'vitest';
 import { TriggerSchema } from '../../src/data/schema.ts';
-import { battleConfig, battleSave, chooseNode, createRun, resumeBattle } from '../../src/run/index.ts';
+import { battleSave, resumeBattle } from '../../src/run/index.ts';
 import {
   HEARTCAP_ID, createBattle, generateOffer, hashState, makeConfig, queueCommand, runHeadless, step,
 } from '../../src/sim/index.ts';
@@ -157,18 +157,6 @@ describe('hot start (balance hotStart)', () => {
     runHeadless(s, { until: 1, onTick: () => { if (first < 0) first = s.stats.player.drafted.length; } });
     expect(first).toBe(1);
     expect(s.tick).toBe(1);
-  });
-
-  it('gives run battle 1 its effects as battle modifiers, and later battles none', () => {
-    const run = createRun(c, { seed: 3, player: 'bot:balanced' });
-    chooseNode(c, run, 0);
-    const config = run.screen.kind === 'battle' ? run.screen.config : undefined;
-    expect(config?.modifiers).toContainEqual({ side: 'enemy', source: 'proto:hotStart', effects: c.balance.hotStart!.battles![0]!.enemy });
-    const later = battleConfig(c, { ...run, battles: [{} as never] }, run.route[2]![0]!);
-    expect(later.modifiers ?? []).not.toContainEqual(expect.objectContaining({ source: 'proto:hotStart' }));
-    const s = createBattle(c, config!);
-    expect(s.compiled.enemy.stipend).toBe(Math.round(content.balance.stipendPerTick * 0.75));
-    expect(s.compiled.player.stipend).toBe(content.balance.stipendPerTick);
   });
 });
 

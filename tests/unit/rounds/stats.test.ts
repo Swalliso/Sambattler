@@ -175,10 +175,10 @@ describe('stats per round (§5.7, A064)', () => {
     storm.rules.heartcapDamagePerSupply = 25;
     finishRound(storm);
     expect([storm.rounds.at(-1)!.stats.player.heartcapDamageDealt, storm.rounds.at(-1)!.stats.enemy.heartcapDamageTaken]).toEqual([240, 240]);
-    // a lane dealing 1000 against a cap of 500 (§6.7, X5)
+    // a lane dealing 4000 against the round's cap of 750 (§6.7, #68)
     const capped = fromScenario('round-damage-cap');
     finishRound(capped);
-    expect([capped.rounds.at(-1)!.stats.player.heartcapDamageDealt, capped.stats.player.heartcapDamageDealt, capped.stats.enemy.heartcapDamageTaken]).toEqual([500, 500, 500]);
+    expect([capped.rounds.at(-1)!.stats.player.heartcapDamageDealt, capped.stats.player.heartcapDamageDealt, capped.stats.enemy.heartcapDamageTaken]).toEqual([750, 750, 750]);
   });
 
   it('records gold by source, which sums to what each opening paid', () => {

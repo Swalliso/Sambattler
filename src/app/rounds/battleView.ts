@@ -52,9 +52,12 @@ export interface RoundMounts {
 
 export interface RoundViewActions {
   begin(): void;
-  /** The report's buttons: the same seed, or a new one, on the same parameters (§10.4). */
-  again(): void;
-  rematch(): void;
+  /** A single battle's report buttons: the same seed, or a new one, on the same parameters (§10.4). */
+  again?(): void;
+  rematch?(): void;
+  /** A run's battle: the report's Continue, and its line on what the battle meant for the run (R2b). */
+  continueRun?(): void;
+  runNote?(state: BattleState): string;
   /** The play clock's readout, which the report shows (X6, T128). */
   playTime?(): PlayTimeReadout;
 }
@@ -217,6 +220,11 @@ export class RoundsView {
     if (this.settingsShown) closeSettings();
     this.help?.remove();
     this.report?.remove();
+  }
+
+  /** A notice pinned in the callout lane, such as a battle that restarted because its save couldn't be restored (§8.9). */
+  notice(id: string, text: string): void {
+    this.callouts.pin(id, h('div', { class: 'callout bad notice', id, role: 'status' }, text));
   }
 
   /** `I`: keyboard focus on the gold chip, whose tip opens; Tab then moves along the band (§10.2). */
@@ -437,7 +445,11 @@ export class RoundsView {
     if (this.help) this.toggleHelp();
     if (this.settingsShown) closeSettings();
     this.session.placing = null;
-    const report = roundsReport(this.content, state, { again: this.actions.again, rematch: this.actions.rematch }, this.atlas, this.actions.playTime?.());
+    const a = this.actions;
+    const buttons = a.continueRun
+      ? { continueRun: a.continueRun, ...(a.runNote ? { runNote: a.runNote(state) } : {}) }
+      : { ...(a.again ? { again: a.again } : {}), ...(a.rematch ? { rematch: a.rematch } : {}) };
+    const report = roundsReport(this.content, state, buttons, this.atlas, a.playTime?.());
     this.report = report;
     sporeWipe(() => { if (this.report === report) document.body.append(report); });
   }

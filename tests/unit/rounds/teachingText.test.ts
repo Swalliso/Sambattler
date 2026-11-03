@@ -105,7 +105,7 @@ describe('the storm tip (§10.2, §6.4)', () => {
     const text = tipText(stormTip(content, atlas, planningState()).build());
     expect(text).toMatch(/Rounds 1–4\s*×1\.0/);
     ['×1.2', '×1.4', '×1.6', '×1.8', '×2.0'].forEach((x, i) => expect(text).toMatch(new RegExp(`Round ${5 + i}[^\\n]*${x.replace('.', '\\.')}`)));
-    expect(text).toContain('25% of its max HP');
+    expect(text).toContain('capped at 750 HP');
   });
 
   it('gives the multiplier now and each round to come, from round 6', () => {

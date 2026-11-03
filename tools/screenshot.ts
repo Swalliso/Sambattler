@@ -141,21 +141,27 @@ async function main(): Promise<number> {
     const content = nodeContent();
     let node: BattleState | null;
     let nodeHash: string;
+    let nodeTick = 0;
+    let runBattle: RoundState | null = null;
     let runBrief: unknown = null;
     if (scene === 'title' || scene === 'underroot') {
       // the title and the Underroot hold no run or battle yet: the bridge's hash is empty
       node = null;
       nodeHash = '';
     } else if (RUN_SCENES.includes(scene)) {
+      // a run's battle is in rounds since R2b's S1; T039 captures it at the final scenes
       const r = runForParams(content, q);
-      node = r.battle;
-      nodeHash = node ? hashState(node) : hashRun(r.run);
+      node = null;
+      runBattle = r.battle;
+      nodeHash = runBattle ? hashRoundState(runBattle) : hashRun(r.run);
+      nodeTick = runBattle?.tick ?? 0;
       runBrief = await page.evaluate(() => window.__GAME__!.run());
     } else {
       node = stateForParams(content, q);
       nodeHash = hashState(node);
+      nodeTick = node.tick;
     }
-    if ((node?.tick ?? 0) !== browserTick) failures.push(`tick mismatch: browser ${browserTick}, node ${node?.tick ?? 0}`);
+    if (nodeTick !== browserTick) failures.push(`tick mismatch: browser ${browserTick}, node ${nodeTick}`);
     if (nodeHash !== browserHash) failures.push(`hash mismatch at tick ${browserTick}: browser ${browserHash}, node ${nodeHash}`);
 
     let canvasCheck: { distinct: number; playerTint: boolean; enemyTint: boolean } | null = null;
@@ -245,7 +251,7 @@ async function main(): Promise<number> {
         name: c.querySelector('.draft-name')?.textContent ?? '', text: c.querySelector('.draft-text')?.textContent ?? '',
       }))).then((cards) => ({ cards }));
       const cards = (dom as { cards: { type: string; rarity: string; name: string; text: string }[] }).cards;
-      const offer = node?.sides.player.draft?.offer.length ?? 0;
+      const offer = runBattle?.sides.player.draft?.offer.length ?? 0;
       if (!offer) failures.push('no draft is open in the Node state');
       if (cards.length !== offer) failures.push(`draft shows ${cards.length} cards, the state offers ${offer}`);
       for (const c of cards) if (!c.type || !c.rarity || !c.name || !c.text) failures.push(`draft card missing type, rarity, name or text: ${JSON.stringify(c)}`);

@@ -1,15 +1,18 @@
-// Run state (SPEC §8): plain, JSON-serializable data, autosaved at every node boundary. A run is a
+// Run state (SPEC §8, §14.4): plain, JSON-serializable data, autosaved at every node boundary. A run is a
 // small state machine over `screen`: route → (battle → spoils | event → prompts | grove) → route …
 // → summary. Every random choice draws from the run's own streams (`route`, `events`, `draft`,
 // `meta`, seeded with battle index 0); battles seed their streams from the same run seed with their
-// battle index, so a run is reproducible from its seed and its decisions.
+// battle index, so a run is reproducible from its seed and its decisions. Since R2 each battle is a battle
+// in rounds with its own Heartcaps, and the run carries lives (§8.5); `migrateRun` reads v1's saves.
 import type { RunEffect } from '../data/schema.ts';
 import { DEFAULT_COMMANDER, MAX_BANS, hashValue, seedStream } from '../sim/index.ts';
-import type { BattleConfig, Content, CounterKind, DraftCard, DraftPolicy, Flags, IntelProfile, PowerPolicy, Rng4, Side } from '../sim/index.ts';
+import type { Content, DraftCard, DraftPolicy, PowerPolicy, Rng4 } from '../sim/index.ts';
+import type { BattleConfig, CounterKind, Flags, IntelProfile, RoundResult, Side } from '../sim/rounds/index.ts';
 import { generateRoute } from './route.ts';
 import type { RouteNode } from './route.ts';
 
-export const RUN_VERSION = 1;
+/** 2 since R2 (§14.4): the key stays `spore-sprawl.run.v1` (§13.8), and `migrateRun` reads a v1 record. */
+export const RUN_VERSION = 2;
 
 export interface BattleRecord {
   /** 1-based battle index within the run. */
@@ -23,13 +26,13 @@ export interface BattleRecord {
   elite?: string;
   winner: Side;
   by: 'rout' | 'decision';
-  durationTicks: number;
   finalHash: string;
-  heartcapBefore: number;
-  heartcapAfter: number;
-  /** Per lane: the front line (midpoint of the two borders) every 10 s, for the summary sparkline. */
-  front: number[][];
-  mapWidth: number;
+  /** The battle's rounds, with what each side fielded (§10.4, §7.6); empty on a battle migrated from v1. */
+  rounds: RoundResult[];
+  /** Each Heartcap's max and its HP at the end (§4.5); missing on a battle migrated from v1, whose Heartcap was the run's. */
+  heartcaps?: Record<Side, { max: number; end: number }>;
+  /** A lost battle costs a life (§8.5). */
+  lifeLost: boolean;
   /** Damage dealt by the player's buildings and their units, by building type. */
   damageByBuilding: Record<string, number>;
   /** Cards picked in this battle's drafts. */
@@ -37,7 +40,7 @@ export interface BattleRecord {
   spores: number;
   /** The general's opening doctrine from intel (the boss's is dual). */
   opening?: { kinds: CounterKind[]; dual: boolean };
-  /** The counter cycles the general ran (SPEC §7.4–7.5). */
+  /** The counters the general activated, by round (SPEC §7.4). */
   counters?: CounterRecordBrief[];
   /** The player's profile for this battle (SPEC §7.6); missing if the general did not adapt. */
   profile?: IntelProfile;
@@ -45,11 +48,12 @@ export interface BattleRecord {
 
 export interface CounterRecordBrief {
   kind: CounterKind;
-  warnedAt: number;
-  activeAt: number;
-  active: boolean;
+  /** The round it activated in. */
+  round: number;
+  /** The answer it added to its plan. */
   drafted?: string;
   sold: string[];
+  /** What the general planted while it was in force, by building id. */
   built: Record<string, number>;
 }
 
@@ -79,6 +83,7 @@ export interface Prompt {
 
 export type RunScreen =
   | { kind: 'route' }
+  /** A battle in rounds' config (§14.4), fixed when the node is entered. */
   | { kind: 'battle'; config: BattleConfig }
   | { kind: 'spoils'; picks: SpoilsPick[] }
   | { kind: 'event'; event: string }
@@ -106,7 +111,12 @@ export interface RunState {
   kit: string[];
   upgrades: Record<string, number>;
   relics: string[];
-  heartcap: { hp: number; max: number };
+  /** The plots sprawl has gained, 0–4 (§4.6, #18): relic, trait and commander plots aren't stored. */
+  plotsGained: number;
+  /** 3 at the start (§8.5); a lost battle costs one, and the run ends at 0. */
+  lives: { left: number; max: number };
+  /** A run-long change to your battle Heartcap's max (Fallen Oak's −0.15, §8.7). */
+  heartcapMaxPct: number;
   battles: BattleRecord[];
   cards: CardRecord[];
   spores: number;
@@ -118,14 +128,18 @@ export interface RunState {
   intel?: IntelProfile;
   /** Every battle's profile so far, for the boss's unweighted average. */
   profiles?: IntelProfile[];
-  /** One-shot modifiers for the next battle (events). */
-  next: { startingGold: number; sporestormShiftSeconds: number };
+  /** One-shot modifiers for the next battle (events, §8.7): reset when it ends. */
+  next: NextBattle;
   /** Event outcomes still to resolve (some wait on a prompt). */
   pending: RunEffect[];
   rng: Record<'route' | 'events' | 'draft' | 'meta', Rng4>;
   screen: RunScreen;
   outcome?: 'victory' | 'defeat';
 }
+
+export interface NextBattle { startingGold: number; sporestormShiftRounds: number; heartcapMaxHpPct: number }
+
+export const freshNext = (): NextBattle => ({ startingGold: 0, sporestormShiftRounds: 0, heartcapMaxHpPct: 0 });
 
 export interface RunOptions {
   seed: number;
@@ -173,7 +187,7 @@ export function createRun(content: Content, opts: RunOptions): RunState {
     draft: seedStream(seed, 'draft', 0),
     meta: seedStream(seed, 'meta', 0),
   };
-  const hp = content.balance.heartcapPlayerHp;
+  const lives = content.balance.rounds.lives;
   return {
     v: RUN_VERSION,
     seed,
@@ -189,14 +203,16 @@ export function createRun(content: Content, opts: RunOptions): RunState {
     kit: [...cmd.starter],
     upgrades: {},
     relics: [],
-    heartcap: { hp, max: hp },
+    plotsGained: 0,
+    lives: { left: lives, max: lives },
+    heartcapMaxPct: 0,
     battles: [],
     cards: [],
     spores: 0,
     amber: 0,
     xp: 0,
     intelHalvings: 0,
-    next: { startingGold: 0, sporestormShiftSeconds: 0 },
+    next: freshNext(),
     pending: [],
     rng,
     screen: { kind: 'route' },
@@ -216,5 +232,8 @@ export const battlesWon = (run: RunState): number => run.battles.filter((b) => b
 /** Did the run reach the boss battle? */
 export const reachedBoss = (run: RunState): boolean => run.battles.some((b) => b.kind === 'boss');
 
-/** Total simulated battle time so far, in ticks. */
-export const battleTicks = (run: RunState): number => run.battles.reduce((n, b) => n + b.durationTicks, 0);
+/** Clash ticks so far, summed over every battle's rounds (§15.2): planning takes no ticks. */
+export const battleTicks = (run: RunState): number => run.battles.reduce((n, b) => n + b.rounds.reduce((t, r) => t + clashTicks(r), 0), 0);
+
+/** A round's clash ticks: its longest lane's (§4.7). */
+export const clashTicks = (r: RoundResult): number => r.lanes.reduce((t, l) => Math.max(t, l.ticks), 0);
