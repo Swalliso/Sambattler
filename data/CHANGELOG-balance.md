@@ -8,6 +8,20 @@ replaces. None of it is open work, including headings that say "Open:". From mil
 entries measure or tune v2's round battle (SPEC §11, §12). "The backlog" in the entries below means
 v1's, now [archived](../docs/archive/v1/balance-backlog.md).
 
+## R2a-S21b T159: the Burster in the front line (2026-11-03)
+
+**A rule change, approved by the user** ("Yes, start both", 2026-11-03, on the hub's recommendation after G16's
+levers were measured, and their playtest note "bursters in the front rank also felt pretty good"). No data changed.
+- **SPEC §7.3's back-line tags lose `burst`:** a spawner whose unit has the `ranged` or `support` tag, and every tower,
+  is a back-liner; every other spawner, the Burster Pod's among them, is a front-liner. It changes the general's and
+  the bots' placement (`src/sim/rounds/ai/formationScore.ts`) and the tools' formation by role (`BACK_TAGS` in
+  `tools/lib/clash.ts`), so G16's Burster pairs are same-role.
+- **Why:** G16's formation rule put a Capguard front with Bursters behind, and the same colony with its Bursters in
+  front won every one of those clashes (0%, 36% of G16's pool). G16 reads 40%, from 24% (`docs/balance-backlog.md`'s
+  S21b entry); G3, G4, G12 and G13 hold where they were.
+- **Goldens:** one round replay moved, `r2-twin-roots-balanced-vs-scripted-s3` (a Burster Pod the general plants in
+  round 4). The other four round replays and v1's eight didn't.
+
 ## R2a-S18 T125: the pace, 100 a supply, and #35's bands for R2a (2026-11-03)
 
 **A rule number, approved by the user** ("Take them all" in S18 on S18's proposal of 75, then through the hub "Yes,

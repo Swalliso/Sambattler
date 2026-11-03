@@ -286,12 +286,12 @@ function centreOut(lane: { rowStart: number; rowEnd: number }): number[] {
 /** Where a building's squad stands (§7.3). */
 export type Line = 'front' | 'back';
 
-/** A spawner whose unit has one of these tags stands at the back (§7.3). */
-const BACK_TAGS = ['ranged', 'support', 'burst'];
+/** A spawner whose unit has one of these tags stands at the back (§7.3; `burst` moved to the front, T159). */
+const BACK_TAGS = ['ranged', 'support'];
 
 /**
- * A building's line, by §7.3's tags (R1-Q1, A006): a spawner whose unit is `ranged`, `support` or
- * `burst`, and every tower, stands at the back; every other spawner in front.
+ * A building's line, by §7.3's tags (R1-Q1, A006): a spawner whose unit is `ranged` or `support`, and
+ * every tower, stands at the back; every other spawner in front, the Burster's among them (T159).
  */
 export function lineOf(content: Content, buildingId: string): Line {
   const b = content.buildings[buildingId];

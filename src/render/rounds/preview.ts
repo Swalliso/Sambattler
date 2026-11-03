@@ -3,7 +3,7 @@
 // units dimmed inside a faint outline of its slot, with its merge preview from `mergePreview`, pips for the
 // Bloomed and Elder units it fields after the muster, then the count of base units left. A plot and its slot
 // light together while either is hovered, and the ghost's squad stands in its slot through `formationOf(…,
-// change)`. While a card is chosen or one of your squads is hovered, the general's squads carry the marks of
+// change)`, unboxed: while a card is chosen only the plot lights, since you place on plots (S21b/T161). While a card is chosen or one of your squads is hovered, the general's squads carry the marks of
 // your hits on them from `matchupClass`: on their base-tier units, plus a pips mark when their merged units take
 // a different class (Call 22). The reverse direction and the cards' marks are R4b's. Under `reveal=last` the
 // general's colony and squads stand as it fielded them last round, from round 2 (§7.5, R2-Q1, T127): a view
@@ -18,8 +18,10 @@ import type { BattleState, BuildingState, Effectiveness, MergePreview, PlanChang
 import type { Atlas } from '../atlas.ts';
 import { pixelText, textWidth } from '../pixelText.ts';
 import { TILE, factionOf } from '../renderer.ts';
-import { INK_DEEP, PIP_SIZE, drawPips, drawUnitSprite, emplacementSprite } from '../unitSprite.ts';
+import { INK_DEEP, PIP_SIZE, drawPips, drawUnitSprite } from '../unitSprite.ts';
 import type { UnitSpriteOpts } from '../unitSprite.ts';
+import { unitLook } from './unitLook.ts';
+import type { UnitLook } from './unitLook.ts';
 
 /** A matchup mark's class: a normal matchup has no mark (§10.4). */
 export type MarkClass = Exclude<Effectiveness, 'normal'>;
@@ -147,7 +149,6 @@ const DIM = 0.55;
 const GHOST_DIM = 0.45;
 const SLOT_ALPHA = 0.28;
 const HOVER = '#fbf6ff';
-const GHOST_OK = '#9fe0a0';
 
 export class FormationPreview {
   /** What it drew last, per side, or null before its first draw. */
@@ -162,8 +163,11 @@ export class FormationPreview {
   private stale = true;
   private cache: Record<Side, SideCache> | null = null;
   private hovered: Record<Side, number | null> = { player: null, enemy: null };
+  /** A card is chosen, so your hovered plot lights without its slot (T161). */
+  private placing = false;
   /** Whose hits the marks show: the chosen card's unit, or your hovered squad's; null hides them. */
   private attacker: string | null = null;
+  private look: UnitLook = { sprite: '', frame: 0, flip: false };
   private opts: UnitSpriteOpts = {
     sprite: '', faction: 'velvet-bloom', frame: 0, flip: false, x: 0, y: 0, tier: 1, side: 'player', id: 0, hpFrac: 1, glow: '', time: 0,
   };
@@ -188,6 +192,7 @@ export class FormationPreview {
       const i = this.plotUnder(state, side, v.hover);
       if (i !== this.hovered[side]) { this.hovered[side] = i; this.stale = true; }
     }
+    this.placing = v.placing !== null;
     const attacker = this.attackerOf(state, v.placing);
     if (attacker !== this.attacker) { this.attacker = attacker; this.stale = true; }
     if (this.stale) {
@@ -287,16 +292,15 @@ export class FormationPreview {
     for (const side of SIDES) {
       const c = this.cache[side];
       g.lineWidth = 1;
+      g.globalAlpha = SLOT_ALPHA;
+      g.strokeStyle = glowOf(side);
       for (const q of c.squads) {
-        const ghost = q.building === c.ghost;
-        g.globalAlpha = ghost ? 0.8 : SLOT_ALPHA;
-        g.strokeStyle = ghost ? GHOST_OK : glowOf(side);
+        if (q.building === c.ghost) continue; // the plot carries the placing highlight (T161)
         g.strokeRect(sx(q.slot.col) + 0.5, q.slot.row * TILE + 0.5, 2 * TILE - 1, 2 * TILE - 1);
       }
       g.globalAlpha = 1;
       const o = this.opts;
       o.faction = factionOf(side);
-      o.flip = side === 'enemy';
       o.side = side;
       o.glow = glowOf(side);
       o.assist = assist;
@@ -304,7 +308,10 @@ export class FormationPreview {
       o.time = t;
       for (const [i, j] of c.order) {
         const q = c.squads[i]!, at = q.units[j]!;
-        o.sprite = this.content.units[q.unitId]?.sprite ?? emplacementSprite(this.content, q.unitId);
+        const look = unitLook(this.content, q.unitId, !!state.compiled[side].units[q.unitId]?.emplacement, side, 'still', 0, this.look);
+        o.sprite = look.sprite;
+        o.frame = look.frame;
+        o.flip = look.flip;
         o.x = sx(at.x);
         o.y = at.y * TILE;
         o.id = q.building * 16 + j;
@@ -343,7 +350,7 @@ export class FormationPreview {
     if (left) pixelText(g, left, x + 1, y0, '#ece4f4');
   }
 
-  /** Layer 7: the hovered plots and slots, lit together, and the marks over the general's squads. */
+  /** Layer 7: the hovered plots and slots, lit together (your plot alone while placing), and the marks over the general's squads. */
   drawOverlays(g: CanvasRenderingContext2D, state: BattleState, sx: (x: number) => number): void {
     if (!this.cache || !this.drawn) return;
     g.lineWidth = 1;
@@ -354,7 +361,7 @@ export class FormationPreview {
       g.globalAlpha = 0.9;
       g.strokeStyle = HOVER;
       g.strokeRect(sx(p.col) + 0.5, p.row * TILE + 0.5, 2 * TILE - 1, 2 * TILE - 1);
-      g.strokeRect(sx(s.col) + 0.5, s.row * TILE + 0.5, 2 * TILE - 1, 2 * TILE - 1);
+      if (side === 'enemy' || !this.placing) g.strokeRect(sx(s.col) + 0.5, s.row * TILE + 0.5, 2 * TILE - 1, 2 * TILE - 1);
       g.globalAlpha = 1;
     }
     const squads = this.cache.enemy.squads;

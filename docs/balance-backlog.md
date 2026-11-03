@@ -20,12 +20,99 @@ v1's backlog is archived at [docs/archive/v1/balance-backlog.md](archive/v1/bala
 
 - **The pace after T125** (R2a S18, below): at 100 a supply, agreed on 2026-11-03, battles take a median of 7 rounds, 18.5% of 200 reach round 9 (G4: ≤ 20%), and the damage cap binds in 70% of damaging rounds. S21's playtest reads whether a win's size still counts.
 - **The round guardrails that miss on the final data** (R2a S20, confirming S18's, below): G1, G2, G3, G7, G8's mono drops and G16 (the formation rule loses to its ranks traded). Each waits for the user, G16 best before S21.
-- **G16's levers** (2026-11-03, below): the Burster's back-line rule (§7.3) is the miss, and none of the three levers measured moves G16. A rule change waits for the user, at S21's tuning calls.
+- **A fixed round cap** (R2a S21b, below; measurement only): a fixed 750 for both sides passes G4, G6, G8's bands and G13 (6 rounds, 13% reach round 9); a fixed 500 fails G4 (34%). Today's 25% is even in capped rounds (4 each). For R2b's S0.
+- **The Morel Runners** (R2a S21b, below): intended under §5.2, not a bug. A pair charges in a column, so it reads as one runner, and the runners that "pushed in to the enemy base" were striking the invisible Mortar that T160 fixed. A fan-out rule would be the user's call.
+- **G16 after the Burster moved to the front** (R2a S21b, below; the user's OK, 2026-11-03): 40%, from 24%. The Gill Archer and Mortar pairs are what's left (55% and 26%), and only a 2-tile gap fixed them in the levers' entry. They wait for the playtest's calls and R3's combos.
 - **Step 3's round-9 limit** (R2a S20, below): SPEC §16 R2 step 3 still says 15%, where G4's agreed band says 20% over 200 battles. Its 40 battles read 15%, at the limit.
 - **X8's readouts** (R2a S15, below): your colony is full from round 5, and once both colonies are full, half the clashes replay the last one. They go to S18's pace call and S21's playtest, with X8's two knobs still off.
 - **Gill Archers tie Swarm and Ranged** (R2a S15, below): the noise, not #14's tie order, picks between them. A rule change waits for the user.
 - **The Burster's seat effect** (R2a S17, below): a mirror of Bursters goes to whichever side's ids come first. A rule change waits for the user.
 - **The first fighting tick's frame in Chromium** (R2a S17, below): 4.8–11.4 ms once a page, against §13.7's 8 ms.
+
+## R2a S21b · a fixed round cap, for R2b's S0 (2026-11-03)
+
+**Measured** (T163; no rule changed):
+- **What:** today's cap is 25% of the loser's max HP (X5): you deal at most 500 to the general's 2,000 and take at most 750 on your 3,000, which the user finds asymmetric. A fixed cap of 750 HP and one of 500 HP, for both sides, against it.
+- **The guardrails:** G4 over 200 battles (`bot:balanced` against the scripted general on Bogwater Hollow), G13 over the same battles, G6 and G8.
+- **Where:** `feature/r2a-playtest-fixes`, with T159's Burster in front, at 100 a supply.
+- **How:** `npm run experiment -- --rounds --checks g4,g6,g8`, with `--proto 'rounds.roundDamageCap:{"flat":750}'` or `{"flat":500}`. S18's `roundDamageCap.flat` already takes a fixed cap, so no knob was added and no replay hash moves.
+
+**Result:**
+
+| Round cap | G4: median rounds · reach round 9 · the bot wins | The cap binds, of rounds with damage | G13: capped · median clash | G6: behind side wins · winner hit | G8: `bot:balanced` · `bot:answer` |
+|---|---|---|---|---|---|
+| Today: 25% of the loser's max HP (500 / 750) | 7 · 16% · 63% | 70% (781 of 1,115) | 9% · 19.0 s | 36% · 72% | 50% · 67% |
+| **Fixed 750 for both** | 6 · 13% · 65% | 61% (612 of 999) | 9% · 18.4 s | 36% · 71% | 53% · 70% |
+| Fixed 500 for both | 7 · **34%** (fails ≤ 20%) · 65% | 76% (913 of 1,204) | 8% · 19.1 s | 33% · 72% | 50% · 67% |
+
+G8's mono clause fails under all three, as it did before (no asserted mono drops 20 points). Noise on 200 battles is about ±3 points.
+
+**Reading:**
+- **Today's cap is symmetric in rounds, not in HP.** Each side needs 4 capped rounds to fell the other: 2,000 / 500 and 3,000 / 750.
+- **A fixed 750** raises only the general's cap, so you can fell it in 3 capped rounds while it needs 4 to fell you. Battles get shorter (a median of 6 rounds, 13% reach round 9), the cap binds less often, and every band holds. The bot's 63% → 65% is within noise.
+- **A fixed 500** lowers only yours, so the general needs 6 capped rounds to fell you. A third of battles then reach round 9, which fails G4.
+- **Either way the race tilts toward you** in rounds, where today's is even.
+
+**For R2b's S0:**
+- If the user wants one number, a fixed 750 passes every band measured.
+- Keeping 25% keeps the race even in capped rounds. The HUD could show the cap as a share, "25% of max HP", rather than as two HP numbers.
+- G14 and G15, lives and bosses, weren't measured here. They're R2b's.
+
+## R2a S21b · the Morel Runners, diagnosed (2026-11-03)
+
+**The user's note** (playtest, 2026-11-03): "the Morel Warren runners have a hard time pathfinding properly and even though there are two units, they only seem to attack one at a time when matching up against Capguards and Rootbreakers. This typically ends with the units pushing all the way in to the enemy base."
+
+**Measured** (T162; no code or data changed):
+- **A traced clash:** two Morel Warrens against a Capguard Hall and a Rootbreaker Den, each in front, on Bogwater Hollow, tick by tick: positions, targets and attack ticks. Again with merging off, and with a Puffball Mortar behind the general's front.
+- **Whole battles:** `bot:mono:morelWarren` against the scripted general, seeds 1–20 (138 clashes), with `bot:mono:sporelingBurrow` as the baseline: what each runner targets each tick, how often it attacks, and how often it stands past the enemy's living front line.
+- **A capture** of the traced clash at tick 100 (`npm run screenshot`, from a scenario kept out of the commit).
+
+**What happens:**
+- **Both runners of a pair attack.** Each Warren's 6 runners knit into 2 Bloomed runners, and the 4 pair off 2-on-1 against the Bloomed Capguard and Rootbreaker. The front runner of a pair attacks every 18 ticks from tick 68, and the rear one from tick 92, every 18 ticks too.
+- **Why it reads as one at a time:**
+  - The two Bloomed runners knit one behind the other in their slot, at nearly the same height, so they charge their target in a column.
+  - The front one stops in contact. The rear one stops at the end of its reach, 0.40 tiles from the target, which is its range, directly behind its partner. Their sprites overlap in the capture, so the pair looks like one runner.
+  - The Capguard and the Rootbreaker stick to the front runner until it dies (§5.2's stickiness), so the pair dies one at a time. The rear runner sits at full HP until then.
+- **Pathing:** the runners walk straight at their targets, as §5.2 has every unit do (there's no pathfinding). They don't fan out around a target, and nothing jitters: the rear runner holds still once in reach.
+- **Past the front line, and to the base:**
+  - In whole battles, a runner stands more than half a tile past the enemy's living front line in 0.8% of its ticks (the Sporeling: 1.9%).
+  - It aims at an emplacement in 4.9% of its ticks (the Sporeling: 9.9%), in 24 of the 50 clashes where the general fielded one. A runner that wins its fight seeks the nearest enemy, and that is often the general's back rank or its Mortar, at the general's end of the field.
+  - Until T160, the Gray Rot's Mortar was invisible in the clash. So runners that won their fight ran to the general's end and struck empty ground, which fits "pushing all the way in to the enemy base".
+  - With merging off, 12 runners crowding a lone Capguard shove it about 2 tiles back toward the general's colony over 5 s, by separation alone. With merging on (the default), nothing was shoved.
+
+**Verdict:** intended under §5.2's rules, not a bug in movement or targeting, so nothing was fixed. The part that looked broken, runners striking empty ground near the general's colony, was T160's invisible Mortar.
+
+**For the user** (a rule or stat change each, not made):
+- **Readability:** a pair that charges in a column reads as one runner. A rule could have melee units fan out to a free side of their target, or put knit units side by side in the slot. Either changes how every melee squad moves, so it's a rule change.
+- **The runners' role:** at speed 1.8 they reach the enemy's front well ahead of the rest of your army and fight it alone. That fits §11.2's "Fast swarm", but it's why they die first against Capguards and Rootbreakers.
+
+## R2a S21b · the Burster in the front line (2026-11-03)
+
+**Measured:**
+- **What:** G16 (§12.3) after T159's rule change, which the user approved on 2026-11-03: §7.3's back-line tags lose `burst`, so a Burster Pod stands in the front rank and Burster pairs are same-role. G3, G4, G12 and G13 were read for side effects.
+- **Where:** `feature/r2a-playtest-fixes`, from `develop` at 2563235, at 100 a supply.
+- **How:** `npm run experiment -- --rounds --checks formation`, then `--checks g3,g4,counters`.
+
+**Result:**
+
+| | Before (the levers' entry, below) | After |
+|---|---|---|
+| G16, role-split pairs | 24% of 2,298 clashes | **40%** of 1,664 (by budget: 36, 45, 36, 42, 41%) |
+| Gill Archer behind | 51% | 55% (a Burster in front 82%) |
+| Puffball Mortar behind | 24% | 26% (a Burster in front 34%) |
+| Burster behind | 0%, 36% of the pool | none: Burster pairs are same-role, at 49% |
+| Same-role pairs (reported) | 49–51% | 51% of 3,812 |
+| G4 (200 battles) | 7 rounds, 19% reach round 9, the bot wins 59% | 7 rounds, 16%, 63%: pass |
+| G13 | 9% capped, 18.6 s | 9% capped, 19.0 s: pass |
+| G3 | fails, 8 of 16 monos over, mean of means 32% | fails, 8 of 16 over, 32%; mono Burster 29% (ok) |
+| G12 | passes, 6 builds answered | passes, 6 builds answered on every map |
+
+**Reading:**
+- **The Burster's part of the miss is gone.** The rule's role-split pairs without a Burster read 38%, as the levers' entry predicted, and the 100 new pairs with a Burster in front and a Gill Archer or Mortar behind read 58%.
+- **G16 still misses at 40%.** What's left is the Gill and Mortar pairs, which the hub recommended deciding after the playtest (the levers' entry, item 2). Only a 2-tile gap fixed those.
+- **No side effect:** G4, G12 and G13 pass at their old numbers, and G3's fails are unchanged.
+
+**Recommended:** leave G16's other pairs to the playtest's calls and R3's combos, as the levers' entry says. T133 stays unticked while G16 misses.
 
 ## R2a · G16's formation levers (2026-11-03, measured for the hub)
 

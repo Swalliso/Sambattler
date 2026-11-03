@@ -155,10 +155,10 @@ describe("R1's fields and formation by role (SPEC §4.6, §7.3, §16 R1; R1-Q1, 
     expect(() => clashField(content, 'one', { extraPlots: 5 })).toThrow(/extra plots/);
   });
 
-  it("the line follows §7.3's tags: ranged, support and burst spawners, and every tower, stand at the back (A006)", () => {
+  it("the line follows §7.3's tags: ranged and support spawners, and every tower, stand at the back (A006, T159)", () => {
     for (const id of ['tendersRing', 'gillNest', 'puffballMortar']) expect(lineOf(content, id), id).toBe('back');
-    expect(lineOf(content, 'bursterPod')).toBe('back');
-    for (const id of ['capguardHall', 'sporelingBurrow', 'amanitaLodge', 'rootbreakerDen', 'veilstalkerHollow', 'morelWarren']) {
+    // a Burster rolls at the enemy's thickest knot, so it stands in front (T159, the user, 2026-11-03)
+    for (const id of ['capguardHall', 'sporelingBurrow', 'amanitaLodge', 'rootbreakerDen', 'veilstalkerHollow', 'morelWarren', 'bursterPod']) {
       expect(lineOf(content, id), id).toBe('front');
     }
     expect(lineOf(content, 'rhizomorphTunnel')).toBe('front');

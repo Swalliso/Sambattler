@@ -17,11 +17,13 @@ import type { Atlas, Faction } from '../atlas.ts';
 import { Effects } from '../effects.ts';
 import { BIG_HIT, TILE, factionOf, matTile } from '../renderer.ts';
 import type { DamageNumbers } from '../renderer.ts';
-import { INK_DEEP, drawUnitSprite, emplacementSprite } from '../unitSprite.ts';
+import { INK_DEEP, drawUnitSprite } from '../unitSprite.ts';
 import type { UnitSpriteOpts } from '../unitSprite.ts';
 import { AftermathView } from './aftermath.ts';
 import type { AftermathPose } from './aftermath.ts';
 import { FormationPreview } from './preview.ts';
+import { unitLook } from './unitLook.ts';
+import type { UnitLook } from './unitLook.ts';
 
 export { TILE } from '../renderer.ts';
 
@@ -80,6 +82,7 @@ export class RoundRenderer {
   readonly preview: FormationPreview;
   private aftermath: AftermathView;
   private pose: AftermathPose = { dx: 0, sink: 0, alpha: 1 };
+  private look: UnitLook = { sprite: '', frame: 0, flip: false };
   damageNumbers: DamageNumbers = 'off';
   /** Ambient motion holds still (`?test=1`, set by the view). */
   still = false;
@@ -471,11 +474,12 @@ export class RoundRenderer {
     }
     const moving = u.x !== u.px || u.y !== u.py;
     const attacking = state.tick - u.lastAttackTick < 6 && u.lastAttackTick >= 0;
-    // an emplacement is one unit under its tower's id, drawn as R4a's emplacement (R4/T029)
-    o.sprite = this.content.units[u.unitId]?.sprite ?? emplacementSprite(this.content, u.unitId);
+    // an emplacement is one unit under its tower's id, drawn as R4a's emplacement, unmirrored (R4/T029, T160)
+    const look = unitLook(this.content, u.unitId, emplacement, u.side, attacking ? 'attack' : moving ? 'walk' : 'still', Math.floor(t / 250 + u.id), this.look);
+    o.sprite = look.sprite;
     o.faction = factionOf(u.side);
-    o.frame = attacking ? 2 : moving ? Math.floor(t / 250 + u.id) % 2 : 0;
-    o.flip = u.side === 'enemy';
+    o.frame = look.frame;
+    o.flip = look.flip;
     o.x = this.sx(x);
     o.y = y;
     o.tier = u.tier;
