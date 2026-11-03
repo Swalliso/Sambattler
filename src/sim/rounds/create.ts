@@ -336,6 +336,7 @@ export function addUnit(
   const t = (squadOf(state, sourceBuildingId)?.stats ?? def).tiers[tier - 1]!;
   const u: UnitState = {
     id: state.nextId++,
+    arrival: state.clash ? state.clash.arrived[side]++ : 0,
     side, lane, unitId, tier,
     x, y, px: x, py: y, slotY: y,
     hp: t.hp, maxHp: t.hp, supply: t.supply,

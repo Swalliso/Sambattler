@@ -7,18 +7,20 @@
 import { nearBuffer, queryNear } from '../spatial.ts';
 import { MAX_RADIUS } from '../targets.ts';
 import type { BattleState, CompiledTier, UnitState } from '../state.ts';
-import { frozen, isEmplacement, tierDef, unitRadius } from '../world.ts';
+import { clashTick, frozen, isEmplacement, tierDef, unitRadius } from '../world.ts';
 
 const picked: UnitState[] = [];
 
 export function healingSystem(state: BattleState): void {
   const tick = state.tick;
+  // heals and regeneration run on the clash's clock, a healer phased by its arrival (T149)
+  const ct = clashTick(state);
   const r = state.rules;
   for (const u of state.units) {
     if (u.hp <= 0 || frozen(state, u.lane)) continue; // nothing heals in an ended lane (§6.7)
     const t = tierDef(state, u);
-    if (t.healAmount > 0 && !u.knit && (tick + u.id) % t.healTicks === 0) heal(state, u, t);
-    if (t.regenPct > 0 && tick % r.tickRate === 0 && u.hp < u.maxHp && tick - u.lastCombatTick >= r.merge.cooldownTicks) {
+    if (t.healAmount > 0 && !u.knit && (ct + u.arrival) % t.healTicks === 0) heal(state, u, t);
+    if (t.regenPct > 0 && ct % r.tickRate === 0 && u.hp < u.maxHp && tick - u.lastCombatTick >= r.merge.cooldownTicks) {
       u.hp = Math.min(u.maxHp, u.hp + Math.max(1, Math.floor(u.maxHp * t.regenPct)));
     }
   }

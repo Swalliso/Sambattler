@@ -519,9 +519,10 @@ S1 to S4: the data, the colony, the round state machine and the planning command
 
 **S9b: a clash with no change replays the last one** (found by S9's T064, 2026-11-02; the hub places it)
 
-- [ ] T149 [US2] Make the kept systems' staggers and periodic checks count from the clash's start, in rounds' copies only, so a round in which neither colony changed and no power fired replays the last clash exactly (§7.2 X8, §13.3, A206). T064 found that rounds 3 and 4 of a battle with unchanged colonies differ: a hit lands a tick apart, at about tick 480 of the clash.
+- [x] T149 [US2] Make the kept systems' staggers and periodic checks count from the clash's start, in rounds' copies only, so a round in which neither colony changed and no power fired replays the last clash exactly (§7.2 X8, §13.3, A206). T064 found that rounds 3 and 4 of a battle with unchanged colonies differ: a hit lands a tick apart, at about tick 480 of the clash.
   - The checks read `state.tick` and `u.id`, and each clash starts from a later tick and a higher id: the retarget stagger (`systems/targeting.ts:37`, `:45`), the pin gate (`systems/combat.ts:52`), heals and regen (`systems/healing.ts:20`, `:21`), trio checks (`systems/merging.ts:25`) and cloud pulses (`systems/clouds.ts:32`). Count from `clash.startTick` and from the clash's first unit id instead.
   - Round 1's timings may move, so the combat-decided numbers in `scenarios.test.ts` may move, as T147's did. No golden moves if it lands before T072. Then switch T064's last case from `it.fails` to `it`. X8's readout, whether the clash replayed the last one exactly (T100), depends on it.
+  - As built: the clock is `clashTick` (`world.ts`), and a unit's phase is its `arrival`, its place in the order its side's units took the field this clash (`ClashState.arrived` numbers it in `addUnit`). A per-side index, rather than one counted from the clash's first id, keeps a mirror's two sides on the same timers, so `unit-lineup` in `seats.test.ts` now ends the same unit for unit, not only with the same locks. No other place in `src/sim/rounds/` phased a check by tick or id. No asserted number in `scenarios.test.ts` or `combat.test.ts` moved; three helpers in `combat.test.ts` that found a unit's retarget or heal tick read the new phase. SPEC §5.2, §5.3 and §13.3 rule 1 say it.
 
 **S10a: the general plans first, and the bots**
 

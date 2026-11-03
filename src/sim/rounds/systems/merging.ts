@@ -9,7 +9,7 @@ import { addUnit } from '../create.ts';
 import { fireTriggers } from '../effects.ts';
 import { SIDES } from '../state.ts';
 import type { BattleState, Side, Tier, UnitState } from '../state.ts';
-import { clampToLane, frozen, placeOf, unitDef, unitRadius } from '../world.ts';
+import { clampToLane, clashTick, frozen, placeOf, unitDef, unitRadius } from '../world.ts';
 
 // Reused scratch (no allocation in the hot loop once warm). `eligible` may hold stale entries past
 // the count in use; they are overwritten on the next pass.
@@ -22,7 +22,8 @@ const removed: number[] = [];
 export function mergingSystem(state: BattleState): void {
   if (!state.config.flags.merging) return;
   resolveKnits(state);
-  if (state.tick % state.rules.merge.every === 0) for (const side of SIDES) detectTrios(state, side);
+  // on the clash's clock, so trios are found on the same ticks in every clash (T149)
+  if (clashTick(state) % state.rules.merge.every === 0) for (const side of SIDES) detectTrios(state, side);
 }
 
 /** True if `u` may join a new trio now (SPEC §5.6 eligibility). */

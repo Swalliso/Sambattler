@@ -64,6 +64,14 @@ export function frozen(state: BattleState, lane: number): boolean {
   return state.clash?.lanes[lane]?.ended === true;
 }
 
+/**
+ * The clash's own clock: ticks since Begin, 1 on its first. Staggered and periodic checks count on it, and
+ * phase a unit by its `arrival`, so a clash of unchanged colonies replays the last one exactly (§5.2, §13.3, T149).
+ */
+export function clashTick(state: BattleState): number {
+  return state.tick - (state.clash?.startTick ?? 0);
+}
+
 /** A tower fielding itself (SPEC §6.7): it never moves, merges or pins, and is never healed. */
 export function isEmplacement(state: BattleState, u: UnitState): boolean {
   return !!unitDef(state, u).emplacement;

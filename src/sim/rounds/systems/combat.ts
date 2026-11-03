@@ -10,7 +10,7 @@ import { POWER_SOURCE_ID, other } from '../state.ts';
 import type { Armor, BattleState, DamageType, Effectiveness, PendingHit, Rules, Side, UnitState } from '../state.ts';
 import { nearBuffer, queryNear } from '../spatial.ts';
 import { MAX_RADIUS, edgeDistance, tp } from '../targets.ts';
-import { findUnit, frozen, isEmplacement, placeOf, soakShield, tierDef, unitDef, unitRadius } from '../world.ts';
+import { clashTick, findUnit, frozen, isEmplacement, placeOf, soakShield, tierDef, unitDef, unitRadius } from '../world.ts';
 
 const EPS = 1e-6;
 
@@ -45,11 +45,11 @@ export function isPinned(state: BattleState, u: UnitState, radius: number): bool
 
 /**
  * Pinning (`rules.pin`): a pinned ranged unit's attack cooldown runs on only `permille` ticks in 1000,
- * spread evenly (phased by unit id), so it attacks at that share of its rate. True on the ticks its
- * cooldown skips.
+ * spread evenly (on the clash's clock, phased by the unit's arrival, T149), so it attacks at that share of
+ * its rate. True on the ticks its cooldown skips.
  */
 function pinSkips(state: BattleState, u: UnitState, pin: NonNullable<Rules['pin']>): boolean {
-  if (((state.tick + u.id) * pin.permille) % 1000 < pin.permille) return false;
+  if (((clashTick(state) + u.arrival) * pin.permille) % 1000 < pin.permille) return false;
   return unitDef(state, u).tags.includes('ranged') && isPinned(state, u, pin.radius);
 }
 

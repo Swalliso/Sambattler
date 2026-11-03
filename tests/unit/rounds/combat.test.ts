@@ -12,6 +12,7 @@ import { healingSystem } from '../../../src/sim/rounds/systems/healing.ts';
 import { mergingSystem } from '../../../src/sim/rounds/systems/merging.ts';
 import { movementSystem } from '../../../src/sim/rounds/systems/movement.ts';
 import { targetingSystem } from '../../../src/sim/rounds/systems/targeting.ts';
+import { clashTick } from '../../../src/sim/rounds/world.ts';
 import { content } from '../../roundHelpers.ts';
 
 /** A clash on the flat test map with no units in it yet, both sides human, so only the test's units act. */
@@ -43,9 +44,9 @@ function steps(s: BattleState, n: number): void {
   for (let i = 0; i < n; i++) tick(s);
 }
 
-/** Retargets on one of `u`'s retarget ticks. */
+/** Retargets on one of `u`'s retarget ticks, which the clash's clock and its arrival phase (T149). */
 function retarget(s: BattleState, u: UnitState): void {
-  s.tick = 5 - (u.id % 5);
+  s.tick = s.clash!.startTick + 5 - (u.arrival % 5);
   targetingSystem(s);
 }
 
@@ -482,7 +483,7 @@ describe('damage in rounds (SPEC §5.3)', () => {
     const far = unit(s, 'player', 'capguard', 14, 3); // beyond range 2.5
     a.hp -= 20; b.hp -= 20; far.hp -= 50;
     const every = s.compiled.player.units.tender!.tiers[0].healTicks;
-    const untilHeal = () => { do tick(s); while ((s.tick + t.id) % every !== 0); };
+    const untilHeal = () => { do tick(s); while ((clashTick(s) + t.arrival) % every !== 0); };
     untilHeal();
     expect([dealt(a), dealt(b), dealt(far)]).toEqual([12, 20, 50]); // 8 a heal, to the lower id
     b.hp -= 10;
@@ -638,7 +639,7 @@ describe('emplacements (SPEC §4.4, §6.7, §18.2 #10, A029)', () => {
     const cg = unit(h, 'player', 'capguard', 11, 3);
     m.hp -= 100; cg.hp -= 20;
     const every = h.compiled.player.units.tender!.tiers[0].healTicks;
-    do tick(h); while ((h.tick + t.id) % every !== 0);
+    do tick(h); while ((clashTick(h) + t.arrival) % every !== 0);
     expect([dealt(m), dealt(cg)]).toEqual([100, 12]);
   });
 

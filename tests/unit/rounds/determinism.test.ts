@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { hashValue } from '../../../src/sim/hash.ts';
 import { hashState, legalPlots, restore, runHeadless, snapshot, step } from '../../../src/sim/rounds/index.ts';
-import type { Command, HeadlessUntil } from '../../../src/sim/rounds/index.ts';
+import type { BattleState, Command, HeadlessUntil } from '../../../src/sim/rounds/index.ts';
 import { begin, playerScript, scriptedBattle } from '../../roundHelpers.ts';
 
 // round 2 plants a Sporeling Burrow, so its clash differs from round 1's, and from round 3 the colonies stand still
@@ -45,39 +46,65 @@ describe('determinism in rounds (SPEC §13.3, §15.5)', () => {
     }
   });
 
+  /**
+   * A clash's own state as a hash: its units, hits in flight, clouds and lane locks, with ids counted from the
+   * clash's first, ticks from its start and hit seqs from Begin's, so two clashes that play alike hash alike.
+   */
+  function clashHash(s: BattleState, base: number, start: number, seq: number): string {
+    const id = (n: number) => (n > 0 ? n - base : n); // 0 is no unit
+    const at = (t: number) => (t >= start ? t - start : t); // a unit that hasn't fought keeps its sentinel
+    return hashValue({
+      units: s.units.map((u) => ({
+        ...u, id: id(u.id), targetId: id(u.targetId), lastCombatTick: at(u.lastCombatTick), lastAttackTick: at(u.lastAttackTick),
+        knit: u.knit && { ...u.knit, group: id(u.knit.group), untilTick: at(u.knit.untilTick) },
+      })),
+      hits: s.hits.map((h) => ({ ...h, tick: at(h.tick), fireTick: at(h.fireTick), sourceId: id(h.sourceId), targetId: id(h.targetId), seq: h.seq - seq })),
+      clouds: (s.clouds ?? []).map((c) => ({ ...c, id: id(c.id), fromTick: at(c.fromTick), untilTick: at(c.untilTick) })),
+      lanes: s.clash!.lanes.map((l) => ({ ...l, endTick: at(l.endTick) })),
+    });
+  }
+
   // rounds 3 and 4 of the battle, where neither colony changes and no power fires: each tick's units, by id counted
-  // from the clash's first, where they stand and their HP, then the round's results
+  // from the clash's first, where they stand and their HP, and its `clashHash`; then the round's results
   function quietRounds() {
     const s = scriptedBattle();
     runHeadless(s, { until: { round: 2 }, commands: script() });
     const playRound = () => {
       step(s);
-      const base = s.nextId;
+      const base = s.nextId, start = s.tick, seq = s.nextHitSeq;
       begin(s);
-      const ticks: string[] = [];
+      const ticks: string[] = [], hashes: string[] = [];
       while (s.phase === 'clash') {
         step(s);
         ticks.push(JSON.stringify(s.units.map((u) => [u.id - base, u.unitId, u.tier, u.x, u.y, u.hp])));
+        hashes.push(clashHash(s, base, start, seq));
       }
       const { lanes, damageByBuilding, survivorsByBuilding, fielded } = s.rounds.at(-1)!;
       // a lane's Heartcap damage follows the round's storm, which the clash doesn't see
-      return { ticks, lanes: lanes.map(({ damage: _damage, ...lane }) => lane), damageByBuilding, survivorsByBuilding, fielded };
+      return { ticks, hashes, lanes: lanes.map(({ damage: _damage, ...lane }) => lane), damageByBuilding, survivorsByBuilding, fielded };
     };
     const third = playRound(), fourth = playRound();
     return { s, third, fourth };
   }
+  let quiet: ReturnType<typeof quietRounds> | undefined;
+  const quietOnce = () => (quiet ??= quietRounds());
 
   it('rounds 3 and 4 field the same colonies', () => {
-    const { s, third, fourth } = quietRounds();
+    const { s, third, fourth } = quietOnce();
     expect([s.round, third.ticks.length > 200]).toEqual([4, true]);
     expect(fourth.fielded).toEqual(third.fielded);
   });
 
-  // T149: the kept systems time their staggers and periodic checks from the battle's tick and unit ids, which
-  // start from a different place each round, so a hit lands a tick apart. This flips once they count from the
-  // clash's start.
-  it.fails('a round in which neither colony changed and no power fired replays the last clash exactly', () => {
-    const { third, fourth } = quietRounds();
+  // T149: the kept systems' staggers and periodic checks count from the clash's start, and phase a unit by its
+  // arrival on its side, so they fall on the same ticks in both rounds
+  it('a round in which neither colony changed and no power fired replays the last clash exactly', () => {
+    const { third, fourth } = quietOnce();
     expect(fourth).toEqual(third);
+  });
+
+  it("a round with unchanged colonies replays the last clash's hashes tick for tick", () => {
+    const { third, fourth } = quietOnce();
+    const differs = fourth.hashes.findIndex((h, t) => h !== third.hashes[t]);
+    expect([fourth.hashes.length, differs]).toEqual([third.hashes.length, -1]);
   });
 });

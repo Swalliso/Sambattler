@@ -8,7 +8,7 @@ import { other } from '../state.ts';
 import type { BattleState, UnitState } from '../state.ts';
 import { buildGrid, nearBuffer, queryNear } from '../spatial.ts';
 import { MAX_RADIUS, edgeDistance, tp } from '../targets.ts';
-import { findUnit, frozen, tierDef, unitDef, unitRadius } from '../world.ts';
+import { clashTick, findUnit, frozen, tierDef, unitDef, unitRadius } from '../world.ts';
 
 let bestId = 0, bestD = 0, bestPref = false;
 
@@ -23,7 +23,8 @@ function consider(id: number, d: number, pref: boolean): void {
 export function targetingSystem(state: BattleState): void {
   buildGrid(state);
   const every = state.rules.retargetEvery;
-  const tick = state.tick;
+  // the stagger runs on the clash's clock, phased by each unit's arrival (§5.2, T149)
+  const ct = clashTick(state);
   const cloud = state.rules.cloud;
   for (const u of state.units) {
     if (frozen(state, u.lane)) continue; // an ended lane holds still (§6.7)
@@ -34,7 +35,7 @@ export function targetingSystem(state: BattleState): void {
       // a cloud Mortar aims each shell as it fires (attack runs after this)
       if (cloud && em.clouds && u.cooldown <= 1 && aimCloud(state, u, cloud.radius)) continue;
       const valid = u.targetId !== 0 && emplacementTargetValid(state, u);
-      if (valid && (tick + u.id) % every !== 0) continue;
+      if (valid && (ct + u.arrival) % every !== 0) continue;
       if (!valid) u.targetId = 0;
       retargetEmplacement(state, u, valid);
       continue;
@@ -42,7 +43,7 @@ export function targetingSystem(state: BattleState): void {
     const enemy = other(u.side);
     const r = unitRadius(state, u);
     const curD = u.targetId !== 0 ? edgeDistance(state, u.x, u.y, r, u.targetId, enemy, u.lane) : -1;
-    if (curD >= 0 && (tick + u.id) % every !== 0) continue;
+    if (curD >= 0 && (ct + u.arrival) % every !== 0) continue;
     if (curD < 0) u.targetId = 0;
     retargetUnit(state, u, r, curD);
   }
