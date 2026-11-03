@@ -85,7 +85,7 @@ This is the clarify step for SPEC v2. SPEC.md is the spec, `docs/<milestone>-pla
 | M6-Q1 | Record the feat stats in R2 | R2a S0 | Yes (decided 2026-11-02) |
 | M7-Q1 | Gray Rot records and its trait | R2a S0 (trait), M7 S0 | Mirror records; drop the trait (the trait dropped 2026-11-02; the records at M7 S0) |
 | RB-Q3 | Active play time | R2a S0 (R2a S19 at the latest), records-2's S3 (RB/T024) | Visible wall time, 60 s idle cutoff (decided 2026-11-02) |
-| R2-Q13 | A guaranteed answer in battle 1 | R2b S1b (R2b/T029) | Measure; a free blueprint if a pairing loses |
+| R2-Q13 | A guaranteed answer in battle 1 | R2b S1b (R2b/T029) | Soften Mold's battle-1 opener, with no free blueprint (decided 2026-11-03) |
 | R2-Q14 | A boss win by Decision | R2b S0 | The full reward |
 | R2-Q15 | Home Brood and "+1 unit" effects | R2b S0 | +10% HP and damage instead |
 | R2-Q16 | Rhizome Tithe in rounds | R2b S0 | Killed supply in state; a fixed auto rule |
@@ -685,10 +685,18 @@ The R2a plan settles these itself, with no call from you: A027, A032, A034, A036
 
 - **Question:** Must every commander's starting kit be able to answer every battle-1 general's army?
 - **SPEC's first guess:** none. Starters are §8.1's and battle-1 kits §7.8's (Mold: a Sporeling Burrow; the Baron: a Capguard Hall and a Truffle Cellar).
-- **Recommendation:** Measure a table of each starter against each battle-1 general first, in R1's check or R2b's first sims. If a pairing loses clearly, deal one free blueprint from the always-in set in battle 1's round-1 planning, after the general plans (A201). **Why:** each starter favours only one of the two battle-1 generals, though a mirror isn't a loss (A201). Step B's `hotstart` cut battle-1 losses from 53% to 26% (Appendix A).
-- **Alternatives:** limit battle-1 generals to armies every starter answers.
+- **Measured** (R2b S1b, 2026-11-03, T028; [balance-backlog.md](../balance-backlog.md)): `bot:balanced` wins 52%, 29% and 45% of battle 1s for Vesper, Armilla and Cordis, against G14's 70–90%. Old Mother Mold wins 73–94% of her pairings, while every starter beats the Baron more often than not (79%, 54% and 85%).
+- **Recommendation:** Yes, but through Mold's battle-1 opener, not a free blueprint. Give her opener a Sporeling Burrow and a Truffle Cellar, the shape of the Baron's (`data/generals.json`, §7.8), in S5 in T068's place. Vesper's battle 1 then reaches 82% and Cordis's 76%, inside the band, and Mold stays in battle 1. There's no opening pick, so T068 builds nothing. **Why:** the free blueprint's best case, the Burster Pod held from round 1, lifts Mold's pairings by 17–21 points and still leaves her winning 56–75%. Armilla stays at 52–55% under every option. That's her own problem, which waits for T082's Tithe and S11's re-read.
+- **Alternatives:**
+  - the opening pick as first recommended: one free blueprint from the always-in set in battle 1's round-1 planning, after the general plans (A201), with the Burster Pod first in its list. Battle 1 reaches 61%, 52% and 54%.
+  - keep Mold out of battle 1 (her `appearsIn` [2, 3]): 78%, 55% and 83%, but every battle 1 is the Baron's, and she's already hard in battle 2.
+  - no guarantee until S11 measures with the drafts in.
 - **Blocks:** R2b's run flow; G14.
-- **Decision:** _open_
+- **Decision:** 2026-11-03 (R2b S1b, on T028's table; the user: "Soften Mold's opener"): the recommendation.
+  - The opening pick isn't adopted, so T068 builds no free blueprint.
+  - Old Mother Mold's battle-1 opener becomes a Sporeling Burrow and a Truffle Cellar (`data/generals.json`, §7.8). S5 builds it in T068's place, with its changelog entry and goldens.
+  - S11 measures G14 again once the drafts, Mold's v2 passive and the Tithe are in.
+  - In SPEC §7.8.
 
 ### R2-Q14 · What a boss win by Decision pays
 

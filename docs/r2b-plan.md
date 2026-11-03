@@ -113,7 +113,7 @@ The full reveal stays the default, Hold stays out, the pace is 100 a supply, and
 | R2-Q24 | The in-battle draft is a bottom sheet, with the general's army in view | S10 |
 | §8.7's events | Fallen Oak: −15% max HP for the run. Quiet Clearing's Rest: +15% max HP next battle. Mold Bloom: the storm one round earlier, at round 4, and +150 gold. Spore Merchant, Quiet Clearing's forage and Twin Spores keep v1's upgrade effects until R3 | S1 |
 
-R2-Q13, a guaranteed answer in battle 1, is settled at T029 on S1b's pairing table. X6 was decided at R2a's S0: R2b's playtest reads the run's minutes.
+R2-Q13, a guaranteed answer in battle 1, was settled at T029 on S1b's pairing table (2026-11-03, "Soften Mold's opener"). Old Mother Mold's battle-1 opener becomes a Sporeling Burrow and a Truffle Cellar, which S5 lands in T068's place, and no opening pick is built. X6 was decided at R2a's S0: R2b's playtest reads the run's minutes.
 
 **Settled by this plan, with no call from the user:** A063, A073, A074, A079, A088, A089, A093 and A117, as the task list's tasks say.
 
@@ -158,7 +158,7 @@ Where sessions may run side by side is in the task list's "Dependencies and para
 **At S0: answered 2026-11-03.** The user took every recommendation (above), kept R1's call on #27's unit levels, dropped the cutover branch (Call 14), and agreed this plan.
 
 **Later:**
-- **S1b (T029):** R2-Q13, on battle 1's pairing table.
+- **S1b (T029):** R2-Q13, on battle 1's pairing table. Answered 2026-11-03: soften Mold's opener.
 - **S5b (T163):** the upgrades' price, from its measurement (#67).
 - **S12 (T131):** G14's and G15's bands, from S11's measurement (#35).
 - **S14 (T148, T149, T169):** the playtest gate, the tuning (G1, G2 and G7 among it), #17's clean-win half, #33, and X6's target.
