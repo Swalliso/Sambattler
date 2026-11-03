@@ -911,7 +911,7 @@ html.reduce-motion .settingscard { animation: fadein 120ms ease-out; }
 .power-label { display: flex; flex-direction: column; min-width: 0; line-height: 15px; }
 .power-label b { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .power-state { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
-.power-btn[data-state="charging"] .ico { filter: grayscale(1) brightness(.7); }
+.power-btn[data-state="charging"] .ico, .power-btn[data-state="idle"] .ico, .power-btn[data-state="used"] .ico { filter: grayscale(1) brightness(.7); }
 .power-btn[data-state="ready"] { border-color: var(--lilac); box-shadow: var(--shadow-bevel), var(--shadow-glow); }
 .power-btn[data-state="ready"] .power-state { color: var(--lilac); }
 .power-btn[data-state="aiming"] .power-state, .power-btn[data-state="pending"] .power-state { color: var(--lilac); }

@@ -4,22 +4,25 @@
 // (`src/ui/rounds/`). One layout serves the three views, which switch their chrome on and off by phase (T097):
 // planning shows Begin, the one primary button, and pins the planning hint; a clash puts the speed control and
 // pause in Begin's place, locks the tray and calls out a Twin Roots lane's end; the aftermath keeps the speed
-// control without pause and pins the round's result banner once the bars have drained (A071). Help and the
-// settings screen hold a clash and the aftermath while they're open (A078). At the battle's end the report by
-// round arrives behind the spore wipe. It stands beside v1's `src/app/battleView.ts`.
+// control without pause and pins the round's result banner once the bars have drained (A071). The commander
+// power's button leads the controls, lit only in a clash (§6.6, §10.2, T109): Ready, Aiming, Next tick and Used
+// this clash, with its reticle and aim callout while aiming. Help and the settings screen hold a clash and the
+// aftermath while they're open (A078). At the battle's end the report by round arrives behind the spore wipe.
+// It stands beside v1's `src/app/battleView.ts`.
 import type { Content } from '../../data/registry.ts';
 import type { Atlas } from '../../render/atlas.ts';
 import { FieldFrame } from '../../render/frame.ts';
 import { RoundRenderer, STRIP, TILE } from '../../render/rounds/renderer.ts';
 import { createBattle as createV1Battle, makeConfig, parseController } from '../../sim/index.ts';
 import type { BattleState as V1State } from '../../sim/index.ts';
-import type { BattleState } from '../../sim/rounds/index.ts';
+import type { BattleState, SimEvent } from '../../sim/rounds/index.ts';
 import { h, setText, toggleClass } from '../../ui/h.ts';
 import { helpOverlay } from '../../ui/help.ts';
 import { uiIcon } from '../../ui/icons.ts';
 import { sporeWipe } from '../../ui/motion.ts';
 import { uiScale } from '../../ui/scale.ts';
 import { closeSettings, openSettings, settingsButton, settingsOpen } from '../../ui/settingsScreen.ts';
+import { AnchoredTip } from '../../ui/tooltip.ts';
 import { RoundCallouts } from '../../ui/rounds/callouts.ts';
 import type { RoundCalloutKind } from '../../ui/rounds/callouts.ts';
 import { intentOf, KIND_LABEL } from '../../ui/rounds/doctrine.ts';
@@ -32,7 +35,7 @@ import { roundsReport } from '../../ui/rounds/report.ts';
 import { loadSettings, onSettings, settingsStore } from '../settings.ts';
 import { soundPrefs } from '../sound.ts';
 import { resultBanner } from './phases/aftermath.ts';
-import { laneCallout } from './phases/clash.ts';
+import { aimText, laneCallout, powerButton, powerNews, powerRefusal, powerText, powerUse } from './phases/clash.ts';
 import { planningHint } from './phases/planning.ts';
 import type { RoundSession } from './session.ts';
 
@@ -91,6 +94,12 @@ export class RoundsView {
   private speedBtns: HTMLButtonElement[] = [];
   private pauseBtn: HTMLButtonElement;
   private settingsBtn: HTMLButtonElement;
+  /** The commander power's button, absent in a battle without one (§6.6). */
+  private powerBtn: HTMLButtonElement | null = null;
+  private powerState = h('small', { class: 'power-state', id: 'power-state' });
+  private powerTip = new AnchoredTip('power-tip', 'above');
+  /** What a click does while aiming, pinned in the callout lane (§10.2). */
+  private aimCallout = h('div', { class: 'callout aim', id: 'aim-callout', role: 'status' });
   private pausedCallout: HTMLElement;
   /** The planning hint, pinned through planning (§10.2). */
   private hintText = h('span');
@@ -152,13 +161,32 @@ export class RoundsView {
     this.speedSeg = h('div', { class: 'seg speed', id: 'speed-seg', role: 'group', 'aria-label': 'Speed and pause' }, ...this.speedBtns, this.pauseBtn);
     this.pausedCallout = h('div', { class: 'callout paused', id: 'paused-callout' }, uiIcon(atlas, 'i-pause'), 'Paused', h('kbd', null, 'Space'));
     this.settingsBtn = settingsButton(atlas, () => this.toggleSettings());
+    const power = session.power();
+    if (power) {
+      this.powerBtn = h('button', {
+        class: 'btn power-btn', id: 'power-btn', 'aria-pressed': 'false', 'aria-label': `${power.name} (Q)`, onclick: () => this.togglePower(),
+      },
+      h('span', { class: 'power-ring', 'aria-hidden': 'true' }, uiIcon(atlas, 'i-power')),
+      h('span', { class: 'power-label' }, h('b', null, power.name), this.powerState),
+      h('kbd', null, 'Q'));
+      this.powerTip.attach(this.powerBtn, {
+        key: () => this.powerState.textContent ?? '',
+        build: () => [
+          h('div', { class: 'tip-head' }, h('b', null, power.name), h('span', { class: 'tip-num lit' }, this.powerState.textContent ?? '')),
+          h('span', null, powerText(power)),
+          h('span', { class: 'muted' }, powerUse(power)),
+        ],
+      });
+    }
     const controls = h('div', { class: 'controls' },
+      this.powerBtn,
       h('div', { class: 'begin', id: 'begin-box' }, this.beginBtn),
       this.speedSeg,
       h('div', { class: 'row' },
         this.settingsBtn,
         h('button', { class: 'btn', id: 'help-btn', title: 'Help: the matrix, merging, the general and every hotkey', onclick: () => this.toggleHelp() }, 'Help', h('kbd', null, 'H')),
       ),
+      this.powerTip.el,
     );
     this.root = h('div', { id: 'battle', class: 'rounds', style: 'display:contents' },
       this.top,
@@ -175,6 +203,7 @@ export class RoundsView {
     window.removeEventListener('resize', this.onResize);
     this.unsubscribe();
     for (const b of this.bands) b.dispose();
+    this.powerTip.dispose();
     if (this.settingsShown) closeSettings();
     this.help?.remove();
     this.report?.remove();
@@ -194,6 +223,21 @@ export class RoundsView {
     const name = this.content.buildings[s.state.buildings.find((b) => b.id === s.selected)?.buildingId ?? '']?.name;
     const r = s.sell();
     if (r && !r.sold) this.say('info', `Sell ${name ?? 'it'} for ${r.refund} gold? Press X again`);
+  }
+
+  /** `Q` or the power button: starts or stops aiming, or a callout says why it can't (§6.6, §10.3). */
+  togglePower(): void {
+    const s = this.session, def = s.power();
+    if (!def) { this.say('refused', 'No commander power in this battle'); return; }
+    if (s.state.phase === 'ended' || s.toggleTargeting()) return;
+    this.say('refused', powerRefusal(def.name, s.aimProblem() ?? 'wrongPhase'));
+  }
+
+  /** A click while aiming: the power fires on the next tick, or a callout says why it can't fire there. */
+  firePower(): void {
+    const def = this.session.power();
+    const why = this.session.firePower();
+    if (def && why) this.say('refused', powerRefusal(def.name, why));
   }
 
   get helpOpen(): boolean { return this.help !== null; }
@@ -273,14 +317,31 @@ export class RoundsView {
       } else if (e.t === 'merged' && e.tier === 3) {
         const unit = this.content.units[e.unitId]?.name ?? e.unitId;
         this.say('elder', e.side === 'player' ? `Your ${unit}s knit an Elder` : `The Gray Rot's ${unit}s knit an Elder`, e.side === 'player' ? 'good' : '');
+      } else if ((e.t === 'power' || e.t === 'commandRejected' || e.t === 'commandDropped') && e.side === 'player') {
+        this.powerNews(state, e);
       }
     }
+  }
+
+  /** Your power going off, or refused when it ran, or dropped as its clash ended (§6.6, §14.5). */
+  private powerNews(state: BattleState, e: Extract<SimEvent, { t: 'power' | 'commandRejected' | 'commandDropped' }>): void {
+    const def = this.session.power();
+    if (!def) return;
+    if (e.t === 'power') { this.say('info', powerNews(def.name, e, def.kind), 'good'); return; }
+    if (e.t === 'commandDropped') { this.say('refused', `${def.name}: the clash ended first`); return; }
+    // a rejection names its command by seq, and only the power's are news here
+    if (state.log.find((c) => c.side === 'player' && c.seq === e.seq)?.type === 'power') this.say('refused', powerRefusal(def.name, e.reason));
   }
 
   /** Draws a frame, and switches each phase's chrome on and off (T097). */
   frame(state: BattleState, alpha: number, now: number, debug: boolean): void {
     const s = this.session;
     const ghost = s.ghost();
+    // aiming stops once it can't fire: the clash ended, or the use is queued
+    if (s.targeting && s.aimProblem()) s.targeting = false;
+    const preview = s.powerPreview();
+    const def = s.power();
+    const reticle = preview && def?.target === 'point' && s.aim ? { x: s.aim.x, y: s.aim.y, radius: def.radius, valid: preview.valid } : null;
     this.renderer.draw(state, alpha, {
       ghost: ghost ? { buildingId: ghost.buildingId, plot: ghost.plot, legal: ghost.legal } : null,
       lit: s.lit(),
@@ -291,7 +352,16 @@ export class RoundsView {
       placing: s.placing,
       colony: this.colonyVersion,
       aftermathMs: s.aftermathMs,
+      power: def ? {
+        reticle,
+        marks: preview?.reach.map((u) => ({ x: u.x, y: u.y, r: state.compiled[u.side].units[u.unitId]!.tiers[u.tier - 1]!.radius })) ?? [],
+        pending: def.target === 'point' ? state.queue.flatMap((c) => (c.side === 'player' && c.type === 'power' && c.x !== undefined && c.y !== undefined ? [{ x: c.x, y: c.y, radius: def.radius }] : [])) : [],
+      } : null,
     });
+    toggleClass(this.canvas, 'aiming', s.targeting);
+    if (reticle) this.canvas.dataset.reticle = `${reticle.x.toFixed(2)},${reticle.y.toFixed(2)},${reticle.radius}`;
+    else delete this.canvas.dataset.reticle;
+    this.updatePower(state, preview);
     this.ghostTip(state, ghost);
     const phase = state.phase;
     const clash = phase === 'clash', planning = phase === 'planning', aftermath = phase === 'aftermath';
@@ -330,6 +400,24 @@ export class RoundsView {
     this.callouts.update(now);
     for (const b of this.bands) b.update(state, now);
     if (phase === 'ended' && !this.report) this.openReport(state);
+  }
+
+  /** The power button's state and label, lit only in a clash, and while aiming the callout that says what a click does (§10.2). */
+  private updatePower(state: BattleState, preview: ReturnType<RoundSession['powerPreview']>): void {
+    const def = this.session.power(), btn = this.powerBtn;
+    if (!def || !btn) return;
+    const b = powerButton(state, this.session);
+    setText(this.powerState, b.label);
+    btn.dataset.state = b.state;
+    btn.style.setProperty('--charge', b.state === 'idle' || b.state === 'used' ? '0' : '1');
+    toggleClass(btn, 'on', b.state === 'aiming');
+    btn.setAttribute('aria-pressed', String(b.state === 'aiming'));
+    this.powerTip.refresh();
+    if (this.session.targeting) {
+      this.aimCallout.replaceChildren(uiIcon(this.atlas, 'i-power'), h('b', null, def.name), aimText(def, preview), h('kbd', null, 'Esc'));
+      toggleClass(this.aimCallout, 'bad', !!preview && !preview.valid);
+      this.callouts.pin('aim', this.aimCallout);
+    } else this.callouts.unpin('aim');
   }
 
   /** The report by round, behind the spore wipe (§10.5); Help and the settings screen close first. */

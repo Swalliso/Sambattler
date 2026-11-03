@@ -1,13 +1,15 @@
 // One battle in rounds being played in the browser (SPEC §10.2, §10.3, §13.5): the sim state plus the UI's own
 // state, which never reaches the sim: speed, pause, the planning hold (plan Call 14), the chosen card and its
-// ghost on plots, the selection, the sell confirm and the empty-lane warning. Input becomes ordinary stamped
-// commands (plan Call 7), run at the next planning step. It stands beside v1's `src/app/session.ts`.
+// ghost on plots, the selection, the sell confirm, the empty-lane warning, and aiming the commander power with
+// its reticle (§6.6). Input becomes ordinary stamped commands (plan Call 7), run at the next planning step, or
+// a power's on the clash's next tick. It stands beside v1's `src/app/session.ts`.
 import type { Content } from '../../data/registry.ts';
+import type { PowerDef } from '../../data/schema.ts';
 import { formationBox } from '../../sim/formation.ts';
 import {
-  commandStamp, formationOf, plantProblem, priceOf, queueCommand, sellValue,
+  bloomTrios, burstPreview, commandStamp, formationOf, plantProblem, powerOf, powerProblem, priceOf, queueCommand, sellValue,
 } from '../../sim/rounds/index.ts';
-import type { BattleState, Command, CommandBody } from '../../sim/rounds/index.ts';
+import type { BattleState, Command, CommandBody, UnitState } from '../../sim/rounds/index.ts';
 import { trayOrder } from '../../ui/buildingInfo.ts';
 import { loadSettings } from '../settings.ts';
 
@@ -53,6 +55,10 @@ export class RoundSession {
   selected: number | null = null;
   /** X's first press on this building showed its refund; a second press sells it (§10.3). */
   sellArmed: number | null = null;
+  /** Aiming the commander power: `Q` or its button, then a click (§6.6, §10.3). */
+  targeting = false;
+  /** The cursor in world tiles, which the power's reticle follows; null off the field. */
+  aim: { x: number; y: number } | null = null;
   /** The empty-lane warning is pinned: the next Begin begins (§10.2). */
   warned = false;
   /** The lanes it names, as Begin found them. */
@@ -77,6 +83,65 @@ export class RoundSession {
     this.aftermathMs = 0;
     if (phase === 'planning') this.planningSince = now;
     if (phase === 'clash') { this.paused = false; this.placing = null; }
+    this.targeting = false;
+  }
+
+  /** The player's commander power in this battle, with its name and text from content (R2-Q8), or undefined. */
+  power(): PowerDef | undefined {
+    const def = powerOf(this.state, 'player');
+    return def && Object.values(this.content.commanders).find((c) => c.power.id === def.id)?.power;
+  }
+
+  /** A power use queued but not run yet: while paused, or until the next tick. */
+  powerPending(): boolean {
+    return this.state.queue.some((c) => c.side === 'player' && c.type === 'power');
+  }
+
+  /** Why the power can't be aimed now (`powerProblem`'s reasons, or `pending`), or null. */
+  aimProblem(): string | null {
+    const problem = powerProblem(this.state, 'player', {});
+    if (problem && problem !== 'needsTarget') return problem;
+    return this.powerPending() ? 'pending' : null;
+  }
+
+  /** `Q` or the power button: starts or stops aiming, and returns false if it can't aim now. Choosing a card stops. */
+  toggleTargeting(): boolean {
+    if (this.targeting) { this.targeting = false; return true; }
+    if (!this.power() || this.aimProblem()) return false;
+    this.targeting = true;
+    this.placing = null;
+    return true;
+  }
+
+  /**
+   * While aiming, what the power would do at the cursor now (§10.3): Spore Burst's targets and their damage, or
+   * Puppet Bloom's trios, with the units it would reach, and why a click there would be refused.
+   */
+  powerPreview(): { valid: boolean; count: number; value: number; reach: UnitState[]; reason: string | null } | null {
+    const def = powerOf(this.state, 'player');
+    if (!def || !this.targeting || !this.aim) return null;
+    const { x, y } = this.aim;
+    const reason = powerProblem(this.state, 'player', { x, y });
+    const reach: UnitState[] = [];
+    let count = 0, value = 0;
+    if (def.kind === 'burst') ({ targets: count, value } = burstPreview(this.state, 'player', def, x, y, reach));
+    else if (def.kind === 'bloom') {
+      const { trios } = bloomTrios(this.state, 'player', x, y, def.radius);
+      count = trios.length;
+      for (const t of trios) reach.push(...t);
+    }
+    return { valid: !reason, count, value, reach, reason };
+  }
+
+  /** A click while aiming: queues the power at the cursor for the next tick, or returns why it's refused. */
+  firePower(): string | null {
+    if (!this.targeting) return null;
+    const at = this.aim ?? {};
+    const reason = powerProblem(this.state, 'player', at);
+    if (reason) return reason;
+    this.issue({ type: 'power', ...at });
+    this.targeting = false;
+    return null;
   }
 
   pick(id: string): void {
@@ -86,9 +151,10 @@ export class RoundSession {
     this.sellArmed = null;
   }
 
-  /** Esc or a right click: clears the warning first, then the card, then the selection. */
+  /** Esc or a right click: stops aiming first, then clears the warning, then the card, then the selection. */
   cancel(): void {
-    if (this.warned) this.warned = false;
+    if (this.targeting) this.targeting = false;
+    else if (this.warned) this.warned = false;
     else if (this.placing) this.placing = null;
     else this.selected = null;
     this.sellArmed = null;

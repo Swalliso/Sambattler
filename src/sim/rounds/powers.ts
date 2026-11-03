@@ -74,9 +74,11 @@ export function bloomTrios(state: BattleState, side: Side, x: number, y: number,
 /**
  * What Spore Burst would do at a point: the enemy units it reaches, emplacements included and frozen lanes
  * not, and the damage it would deal, each capped at what the target has left, its arrival shield included
- * (the auto policy's score; the reticle's count).
+ * (the auto policy's score; the reticle's count). The units it would strike go in `struck`, if given.
  */
-export function burstPreview(state: BattleState, side: Side, def: Extract<LibraryPower, { kind: 'burst' }>, x: number, y: number): { targets: number; value: number } {
+export function burstPreview(
+  state: BattleState, side: Side, def: Extract<LibraryPower, { kind: 'burst' }>, x: number, y: number, struck?: UnitState[],
+): { targets: number; value: number } {
   const enemy = other(side);
   let targets = 0, value = 0;
   for (const u of state.units) {
@@ -84,6 +86,7 @@ export function burstPreview(state: BattleState, side: Side, def: Extract<Librar
     const dmg = damageFor(state.rules, def.damage, def.damageType, 1, 1, unitDef(state, u).armor, u.tier, tierDef(state, u).resist[def.damageType]);
     targets++;
     value += Math.min(dmg, u.hp + (u.shield ?? 0));
+    struck?.push(u);
   }
   return { targets, value };
 }

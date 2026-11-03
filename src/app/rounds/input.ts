@@ -3,8 +3,10 @@
 // changes only the view. Begin by key needs a fresh
 // keydown, ignores auto-repeat and waits about 400 ms after planning opens, while the button stays instant, so
 // one held or double-tapped key can't skip the aftermath and start the next clash with no planning (R2-Q12,
-// A065). Planning keys in a clash or the aftermath are refused with a callout. Help is modal while it's open,
-// and the settings screen keeps keys to itself. It stands beside v1's input.
+// A065). Planning keys in a clash or the aftermath are refused with a callout. In a clash, Q aims the commander
+// power, paused or not, and a click fires it on the next tick; Q is refused outside a clash or once the power is
+// spent (§6.6, §10.3). Help is modal while it's open, and the settings screen keeps keys to itself. It stands
+// beside v1's input.
 import type { RoundsView } from './battleView.ts';
 import type { RoundSession } from './session.ts';
 
@@ -25,9 +27,10 @@ export function bindRoundInput(session: RoundSession, view: RoundsView, hooks: R
   canvas.addEventListener('mousemove', (ev) => {
     const t = view.tileAt(ev);
     session.hover = { col: t.col, row: t.row };
+    session.aim = { x: t.x, y: t.y };
     session.shift = ev.shiftKey;
   });
-  canvas.addEventListener('mouseleave', () => { session.hover = null; });
+  canvas.addEventListener('mouseleave', () => { session.hover = null; session.aim = null; });
   canvas.addEventListener('contextmenu', (ev) => {
     ev.preventDefault();
     session.cancel();
@@ -38,8 +41,13 @@ export function bindRoundInput(session: RoundSession, view: RoundsView, hooks: R
     session.hover = { col: t.col, row: t.row };
     const phase = session.state.phase;
     if (phase === 'aftermath') { hooks.skip(); return; }
-    // in a clash a click inspects a unit, or a building on its plot (§10.3)
-    if (phase === 'clash') { session.selectIn(t.x, t.y, t.col, t.row); return; }
+    // in a clash a click fires the power being aimed, or inspects a unit, or a building on its plot (§10.3)
+    if (phase === 'clash') {
+      session.aim = { x: t.x, y: t.y };
+      if (session.targeting) view.firePower();
+      else session.selectIn(t.x, t.y, t.col, t.row);
+      return;
+    }
     if (phase !== 'planning') return;
     if (session.placing) {
       const g = session.ghost();
@@ -95,9 +103,7 @@ export function bindRoundInput(session: RoundSession, view: RoundsView, hooks: R
         if (!planning) planningOnly();
         else session.toggleMerge();
         break;
-      case 'q': case 'Q':
-        if (phase !== 'clash') view.say('refused', 'The commander power works only in a clash');
-        break;
+      case 'q': case 'Q': view.togglePower(); break;
       case 'i': case 'I': view.focusChips(); break;
       case 'h': case 'H': view.toggleHelp(); break;
       case 'F3': ev.preventDefault(); hooks.toggleDebug(); break;
