@@ -8,17 +8,19 @@ SPEC v2, broken into task lists that later sessions work through one row of a Se
 
 | Now | Session | Waits on |
 |---|---|---|
-| 1 | **R2a S8** in [r2a-battle-in-rounds.md](r2a-battle-in-rounds.md): opening a round, the economy, stats per round and the summary (T053–T057). Started 2026-11-02 | R2a S7b ([#82](https://github.com/Swalliso/Sambattler/pull/82)), merged |
-| 2 | **R2a S9**: `runHeadless` by phase, `npm run sim -- --rounds`, round asserts, `ROUND_REPLAYS` and the determinism tests (T058–T064) | S8 merged |
+| 1 | **R2a S9b** in [r2a-battle-in-rounds.md](r2a-battle-in-rounds.md): a clash with no change replays the last one (T149). Started 2026-11-02 | R2a S9 ([#85](https://github.com/Swalliso/Sambattler/pull/85)), merged |
+| 1 | **R2a S11**, beside S9b: the entry, the loop by phase, input, the bridge and the parameters (T074–T080, T141, T081). Started 2026-11-02 | R2a S9 and S10a ([#85](https://github.com/Swalliso/Sambattler/pull/85), [#86](https://github.com/Swalliso/Sambattler/pull/86)), merged |
+| 2 | **R2a S10b**: `general-plans-first`, the round smoke, the first round golden and step 3's reading (T070–T073); it may overlap S11 | S9b merged |
+| 2 | **R2a S12** and **S13**, side by side: the field and its previews; the bands and the Intent panel | S11 merged |
 
-R1, R4a, records-1 and R2a S0–S7b are done, so US1 is too. The sessions after S9 are in R2a's Sessions table.
+R1, R4a, records-1 and R2a S0–S10a are done, so US1 is too. The sessions after these are in R2a's Sessions table.
 
 ## Milestones
 
 | Milestone | Task list | Sessions | Starts | Lands |
 |---|---|---|---|---|
 | R1, the clash check | [r1-clash-check.md](r1-clash-check.md), plan [r1-plan.md](../r1-plan.md) | S0–S8 | Done 2026-11-02 | One PR per session into `develop`. No rule changes, so no golden moves |
-| R2a, a battle in rounds | [r2a-battle-in-rounds.md](r2a-battle-in-rounds.md), plan [r2a-plan.md](../r2a-plan.md) | S0–S21 (S3 and S10 in two parts, with S14b) | Now: S8 (S0–S7b done 2026-11-02) | Beside v1 on `develop`, behind a preview entry (X2). Ends with a playtest gate on the dev site |
+| R2a, a battle in rounds | [r2a-battle-in-rounds.md](r2a-battle-in-rounds.md), plan [r2a-plan.md](../r2a-plan.md) | S0–S21 (S3 and S10 in two parts, with S14b) | Now: S9b and S11, side by side (S0–S10a done 2026-11-02) | Beside v1 on `develop`, behind a preview entry (X2). Ends with a playtest gate on the dev site |
 | R2b, the run in rounds | [r2b-run-in-rounds.md](r2b-run-in-rounds.md) | S0–S14 (with S1b and S4b) | After R2a's playtest gate | S1–S4 and S1b as sub-PRs into `feature/r2b-cutover`, merged into `develop` at S4b once a whole run plays and v1 is gone; S5–S14 one PR each into `develop`. R2b S0 may drop the cutover branch, since X2 lets `develop` switch wholly to v2 |
 | R3, the kit | [r3-kit.md](r3-kit.md) | S0–S15 | After R2b | One PR per session into `develop` |
 | R4a, shapes on the field | [r4-readable-armies.md](r4-readable-armies.md), part 1 | R4a-S0–S5 (with S2b) | Now, beside R1 (X3). Lands before R2a's playtest | One PR per session into `develop` |
@@ -96,7 +98,11 @@ Sessions are sized at about a day of focused work. Two small adjacent rows can s
 ## Working rhythm
 
 - **One session per row.** Each row starts in a new session with its own worktree and ends in a PR. A long conversation gets summarized and loses detail, while a fresh session starts from these files. A hub conversation can start sessions and read their reports, but it doesn't do the implementation.
-- **Parallel only where the lists allow it.** Now that's R1, R4a and records-1. Later, it's the rows whose Gate says "may run beside".
+- **Parallel wherever it's safe** (the user, 2026-11-02). Rows run side by side not only where a Gate says "may run beside", but whenever neither needs the other's code, they don't touch the same files, and quality doesn't suffer.
+  - Before pairing two rows, the hub checks their tasks against each other, and updates both Gates in its next docs PR.
+  - Each brief names the other row and the files to stay out of. Parallel rows leave `docs/status.md` to the hub, so they can't conflict there.
+  - Before turning on two parallel PRs' auto-merge, the hub checks the two branches together: merged, typechecked and with the round tests run, since each PR's CI ran without the other.
+  - Two sessions' local `bench --quick` can miss its p99 under each other's load. CI runs each PR alone, so a local miss that passes on a re-run isn't a regression.
 - **Batch the decisions.** Plan sessions and gates go faster with `/clarify` and "take the recommendations except …".
 - **Merging.** A session merges its own PR into `develop` only if the user said so when starting it, for example "merge when green". Small neighbouring rows can share a PR. Nothing touches `main` until the user asks for a release.
 - **When a hub runs the sessions** (since 2026-11-01): each session pushes its branch, opens its PR and turns on auto-merge itself (CLAUDE.md's "Pushing and merging", since 2026-11-02). The hub reviews each PR that changes `src/sim/`, `src/data/` or `tools/lib/` against its tasks, then turns on that PR's auto-merge. Each session edits only its own lines in `docs/status.md`. The hub keeps the "Recent work" table and "Where to start", since parallel PRs collide there.

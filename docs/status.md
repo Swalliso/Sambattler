@@ -1,6 +1,6 @@
 # Where things stand
 
-Updated 2026-11-02, on `docs/r2a-s6-s7` (the hub's docs PR into `develop`). This is the hand-over page. It covers what we're working on, what's waiting on the user's decision, and where each piece lives. Update it when work lands or the user decides something. Keep the detail in the docs it links to.
+Updated 2026-11-02, on `docs/r2a-s8-s10a` (the hub's docs PR into `develop`). This is the hand-over page. It covers what we're working on, what's waiting on the user's decision, and where each piece lives. Update it when work lands or the user decides something. Keep the detail in the docs it links to.
 
 ## In short
 
@@ -18,7 +18,7 @@ Updated 2026-11-02, on `docs/r2a-s6-s7` (the hub's docs PR into `develop`). This
   See [SPEC §0.1](../SPEC.md#01-what-changed-in-v2), [§1.3](../SPEC.md#13-v2-decisions-2026-10-31) and the [P3 notes](playtest-feedback.md#2026-10-31-p3-the-combat-rework-the-user).
 - **SPEC v2 is on `develop`** ([#39](https://github.com/Swalliso/Sambattler/pull/39)). **Nothing in v2 is built yet.** Until milestone R2 lands, the code follows v1: the M5 battle, with the rework's pieces behind `?proto=rework` on the dev site.
 - **The spec is broken into task lists** in [docs/tasks/](tasks/README.md) ([#40](https://github.com/Swalliso/Sambattler/pull/40), on `develop`), spec-kit style: one list per milestone, one session per row of its Sessions table. The decisions each milestone needs from the user are in [clarify.md](tasks/clarify.md), and the problems the breakdown found in SPEC v2 are in [spec-analysis.md](tasks/spec-analysis.md). Lists after R1's are drafts, refreshed when each milestone's plan is agreed.
-- **Milestone R1, the clash check, is done** ([SPEC §16](../SPEC.md#16-milestone-plan)). A headless tool fought whole armies at equal gold, with no rule change, to set squad sizes and check that every strong army has an answer before the round loop is built. At its review gate on 2026-11-02 you took every recommendation (below). **R2a's plan is agreed** (S0, 2026-11-02), **R2a S1 to S7 have merged**, with S7b's fix, so US1 (a round's clash, scored) is done, and **S8 is next**.
+- **Milestone R1, the clash check, is done** ([SPEC §16](../SPEC.md#16-milestone-plan)). A headless tool fought whole armies at equal gold, with no rule change, to set squad sizes and check that every strong army has an answer before the round loop is built. At its review gate on 2026-11-02 you took every recommendation (below). **R2a's plan is agreed** (S0, 2026-11-02), **R2a S1 to S10a have merged**, with S7b's fix: US1 (a round's clash, scored) is done, and a battle in rounds plays headless with the general planning first. **S9b and S11 now run side by side.**
 - **Then:**
   - R2: rounds, the general plans first, lives, and the planning screen. R2a's plan, [r2a-plan.md](r2a-plan.md), was agreed on 2026-11-02. The task lists split it in two (X1): R2a, a single battle in rounds, then R2b, the run in rounds. R2a gets a rough playtest after S14, as soon as a battle in rounds is properly playable and before its counter cycle and powers (R2-Q25, agreed 2026-11-01), and S21's playtest stays the gate;
   - R3: the kit, the six archetypes, augments, combos and run packs;
@@ -27,29 +27,12 @@ Updated 2026-11-02, on `docs/r2a-s6-s7` (the hub's docs PR into `develop`). This
 
   [docs/tasks/README.md](tasks/README.md) has the full order and every milestone's sessions.
 
-## Next session: R2a S8
+## Next sessions: R2a S9b and S11, side by side
 
-- **Work from** [docs/tasks/r2a-battle-in-rounds.md](tasks/r2a-battle-in-rounds.md).
-  - **S8** (`feature/r2a-economy`, T053–T057, [#84](https://github.com/Swalliso/Sambattler/pull/84)): built, and waiting for the hub's review. It starts US2, a whole battle headless.
-    - **Opening a round** (`openRound` in `round.ts`) follows §14.6's steps 1–7:
-      - it clears the field, pays the income from round 2, sets the storm and emits `roundStarted`;
-      - it fires `battleStart` in round 1, then `roundStart`;
-      - the general's turn and a player-side bot's turn stay hooks for T068 and T069, and the draft step is empty.
-    - **The economy** (`systems/economy.ts`):
-      - the stipend, and economy buildings at × 1.5 on loam;
-      - interest at 1 per 10 banked, up to 30, plus 10 for each Spore Exchange;
-      - +40 to the last round's loser, and nothing after a draw;
-      - `pendingGold`, paid once and then zeroed.
-
-      `incomePreview` is exported. A round scenario from round 2 on now has its income paid at its opening, so two older gold checks changed.
-    - **Stats per round** (`stats.ts`):
-      - each round's record closes into `RoundResult.stats`;
-      - `foldRounds` rebuilds the battle's figures from them;
-      - M6-Q1's feat stats are in.
-
-      `summarize` (`summary.ts`) gives §15.2's `roundLog`, `dealt` and the rest. The PR lists its readings for review.
-    - Verify and the browser tests are green, and no golden moved.
-- Then S9, once S8 has merged.
+- **Work from** [docs/tasks/r2a-battle-in-rounds.md](tasks/r2a-battle-in-rounds.md). Both started on 2026-11-02, once S9 and S10a had merged. The hub records their outcome, so neither edits this page.
+  - **S9b** (`feature/r2a-replay-fix`, T149): the kept systems' periodic checks (retargeting, pinning, healing, the trio checks, cloud pulses) count from the clash's start, so a round in which neither colony changed replays the last clash exactly (X8, A206). It changes SPEC §5.2's retarget formula, on your OK.
+  - **S11** (`feature/r2a-ui-loop`, T074–T080, T141, T081): the `scene=rounds` entry with its dev-site title button, the loop by phase, input, the bridge, the parameters and the screenshot tool's round captures, and the first cut of the round renderer. It starts US3.
+- **Then:** S10b once S9b has merged, so the first round golden isn't refreshed right after it's recorded; it may overlap S11. S12 and S13 side by side once S11 has merged.
 
 ## R2a, a battle in rounds
 
@@ -110,6 +93,14 @@ Updated 2026-11-02, on `docs/r2a-s6-s7` (the hub's docs PR into `develop`). This
   - **Why:** S7 found that mirror-image clashes didn't come out even. Its check showed that whichever side's units take the lower ids decided them. Every player unit took a lower id than every enemy unit, and separation pushed overlapping pairs apart one at a time, in id order.
   - **The fix:** each separation pass now works out every push from where units stood at its start, sums them in fixed point, and applies them together. An exact stack splits by a mirror-image rule, and units steer by where others stood at the tick's start. SPEC §5.2 says so.
   - **Now:** the Hammercap mono and `comeback-r4` draw whichever side's ids come first, and the other mirrors match unit for unit. `tests/unit/rounds/seats.test.ts` holds it. Rounds' clash cost is unchanged.
+- **S8** (`feature/r2a-economy`, T053–T057, [#84](https://github.com/Swalliso/Sambattler/pull/84)): merged. No golden moved.
+  - **Opening a round** (`openRound` in `round.ts`) follows §14.6's steps 1–7: it clears the field, pays the income from round 2, sets the storm and emits `roundStarted`, fires `battleStart` in round 1 and then `roundStart`, and runs the general's turn and a player-side bot's turn.
+  - **The economy** (`systems/economy.ts`): the stipend, economy buildings at × 1.5 on loam, interest at 1 per 10 banked up to 30 plus 10 for each Spore Exchange, +40 to the last round's loser (nothing after a draw), and `pendingGold` paid once. `incomePreview` is exported.
+  - **Stats per round** (`stats.ts`): each round's record closes into `RoundResult.stats`, and `foldRounds` rebuilds the battle's figures. M6-Q1's feat stats are in, and `summarize` gives §15.2's `roundLog`. For S20's As built: `ClashState.maxElders` and `RoundResult.stats` aren't in §14.4's listing.
+- **S9** (`feature/r2a-headless`, T058–T064, [#85](https://github.com/Swalliso/Sambattler/pull/85)) and **S10a** (`feature/r2a-general`, T065–T069, [#86](https://github.com/Swalliso/Sambattler/pull/86)): merged, side by side on your OK (2026-11-02). The hub checked the two branches together before either merged. No golden moved.
+  - **S9:** `runHeadless` steps by phase with Call 17's checkpoints and stops a planning phase that never Begins. `npm run sim -- --rounds` gives §15.2's result and summary, `@r<n>` asserts sit beside v1's `@<tick>`, `tools/golden.ts` takes `kind: "rounds"` replays (`ROUND_REPLAYS`, empty until T072), and `determinism.test.ts` holds the round determinism cases.
+  - **S9's finding:** a round in which neither colony changed doesn't replay the last clash exactly, since the kept systems phase their periodic checks by the battle's tick and the unit's id. It added T149 (S9b), and its case is `it.fails` until then.
+  - **S10a:** the general plans first through `planningView`, with §7.3's scores (Call 11's back-line term), its listed weights only (R2-Q4), `maxOwned` and `afterRound`, and no bank reserve (#29). Bots plan after it and queue `beginClash`, which makes the planning checkpoint (Call 14).
 - **What R2a starts from:** R1's chosen set as default data (all of `kept`, the arrival shield, Capguard Hall's squad at 3, the Elder's splash on); X5's cap and Decision by share; no copies before R3 (D45); the Anti-Ranged kind and the three fixes to the counter sets (§7.4); and eliteShare by Elder parts.
 - **For R2a to watch** (R1, and the readings of S1 and S7b):
   - Capguard Hall at 3 still won 92% at 300 gold and 2% at 1,500;
@@ -221,6 +212,8 @@ Updated 2026-11-02, on `docs/r2a-s6-s7` (the hub's docs PR into `develop`). This
 
 | Work | Where | State |
 |---|---|---|
+| R2a S9 and S10a, side by side (2026-11-02) | [#85](https://github.com/Swalliso/Sambattler/pull/85) (`runHeadless`, `sim --rounds`, round replays), [#86](https://github.com/Swalliso/Sambattler/pull/86) (`src/sim/rounds/ai/`) | Merged after the hub's review and a check of both together. No golden moved. S9 found T149, so S9b runs next beside S11 |
+| R2a S8: opening a round, the economy and stats per round (2026-11-02) | [#84](https://github.com/Swalliso/Sambattler/pull/84), `src/sim/rounds/round.ts`, `systems/economy.ts`, `stats.ts`, `summary.ts` | Merged after the hub's review. No golden moved |
 | R2a S7b: no seat decides a clash (2026-11-02) | [#82](https://github.com/Swalliso/Sambattler/pull/82), `src/sim/rounds/systems/movement.ts`, `tests/unit/rounds/seats.test.ts`, SPEC §5.2 | Merged on your OK. Mirror-image clashes no longer depend on which side's ids come first. S8 is next |
 | R2a S7: scoring, the end of a battle and the rule scenarios (2026-11-02) | [#81](https://github.com/Swalliso/Sambattler/pull/81), `src/sim/rounds/systems/victory.ts`, `round.ts`, `data/scenarios/rounds/` | Merged after the hub's review. US1 is done, and no golden moved |
 | R2a S6: Begin, the muster and a lane's end (2026-11-02) | [#80](https://github.com/Swalliso/Sambattler/pull/80), `src/sim/rounds/round.ts`, `systems/clash.ts`, `step.ts`, `src/sim/compile.ts` | Merged after the hub's review. No golden moved |
