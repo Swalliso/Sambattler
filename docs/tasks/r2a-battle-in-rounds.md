@@ -855,7 +855,7 @@ S1 to S4: the data, the colony, the round state machine and the planning command
   - `data/CHANGELOG-balance.md`: check that every R2a data change has its entry (T014, T101, T121 and T123 each add their own), with the user's approval where it needed one;
   - `docs/r2a-plan.md`'s As built, recording every name R2b/T001 replaces its placeholders with: the staging folders (`src/sim/rounds/`, `src/app/rounds/`, `src/render/rounds/`, `src/ui/rounds/`, `tools/lib/rounds/`, `tests/unit/rounds/`, `tests/browser/rounds/`, `tests/slow/rounds/`, `tests/roundHelpers.ts`, `data/scenarios/rounds/`); the entry (`scene=rounds`, the title's dev-site button); the switch (`--rounds`); the `r2-…` goldens and `ROUND_REPLAYS`; the play-time module (`src/app/rounds/playTime.ts`) and its test (`tests/unit/rounds/playTime.test.ts`), which records-2 extends; where T136's test inventory is; and any name a session changed from the Technical context table;
   - `CLAUDE.md`'s "Dev-site builds": `scene=rounds` opens R2a's preview on dev builds;
-  - `.claude/rules/v1-code.md`: one line saying `rounds/` folders are v2's staging and never import v1's `BattleState`;
+  - `.claude/rules/v1-code.md`: one line saying `rounds/` folders are v2's staging and never import v1's `BattleState`, with one exception until R2b rewrites Help. S14's `src/app/rounds/battleView.ts` builds the preview's Help from a v1 rules-only battle, as the title's Help does;
   - this file's ticks.
 
 **S21: the playtest gate** (docs, plus any data tuning T139 agrees; once S20's PR is merged and deployed to the dev site)
