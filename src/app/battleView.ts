@@ -7,15 +7,18 @@
 // control without pause and pins the round's result banner once the bars have drained (A071). The commander
 // power's button leads the controls, lit only in a clash (§6.6, §10.2, T109): Ready, Aiming, Next tick and Used
 // this clash, with its reticle and aim callout while aiming. Help and the settings screen hold a clash and the
-// aftermath while they're open (A078). At the battle's end the report by round arrives behind the spore wipe.
+// aftermath while they're open (A078). A draft in planning opens today's centred dialog over the field until
+// S10 docks it (T153, T116): its cards, reroll and skip send draft commands, and Begin stays unlit while it's
+// open (§8.3). At the battle's end the report by round arrives behind the spore wipe.
 // Its sounds come from each step's events (`battleSound.ts`), and the speaker button sits beside the cog.
 import type { Content } from '../data/registry.ts';
 import type { Atlas } from '../render/atlas.ts';
 import { FieldFrame } from '../render/frame.ts';
 import type { Reveal } from '../render/preview.ts';
 import { RoundRenderer, STRIP, TILE } from '../render/renderer.ts';
-import type { BattleState, SimEvent } from '../sim/index.ts';
+import type { BattleState, CommandBody, SimEvent } from '../sim/index.ts';
 import { h, setText, toggleClass } from '../ui/h.ts';
+import { DraftOverlay } from '../ui/draftOverlay.ts';
 import { helpOverlay } from '../ui/help.ts';
 import { uiIcon } from '../ui/icons.ts';
 import { sporeWipe } from '../ui/motion.ts';
@@ -111,6 +114,8 @@ export class RoundsView {
   private sound: BattleSound;
   private settingsShown = false;
   private report: HTMLElement | null = null;
+  /** The player's draft in planning, today's centred dialog (§8.3, T153). */
+  private draft: DraftOverlay;
   private onResize = () => this.fit();
   private unsubscribe: () => void;
   scale = 1;
@@ -164,6 +169,9 @@ export class RoundsView {
     this.speedSeg = h('div', { class: 'seg speed', id: 'speed-seg', role: 'group', 'aria-label': 'Speed and pause' }, ...this.speedBtns, this.pauseBtn);
     this.pausedCallout = h('div', { class: 'callout paused', id: 'paused-callout' }, uiIcon(atlas, 'i-pause'), 'Paused', h('kbd', null, 'Space'));
     this.settingsBtn = settingsButton(atlas, () => this.toggleSettings());
+    this.draft = new DraftOverlay(content, atlas, {
+      pick: (cardId) => this.draftCommand({ type: 'draftPick', cardId }), reroll: () => this.draftCommand({ type: 'draftReroll' }), skip: () => this.draftCommand({ type: 'draftSkip' }),
+    });
     const power = session.power();
     if (power) {
       this.powerBtn = h('button', {
@@ -197,6 +205,7 @@ export class RoundsView {
       this.mounts.callouts,
       this.field,
       h('footer', { class: 'bottom' }, controls, this.mounts.tray, this.mounts.inspect),
+      this.draft.el,
     );
     window.addEventListener('resize', this.onResize);
     // the self-hosted fonts change the bands' heights when they swap in
@@ -229,6 +238,27 @@ export class RoundsView {
   /** A callout in the lane: a refused key, a sell's refund, news. */
   say(kind: RoundCalloutKind, text: string, tone: 'good' | 'bad' | '' = ''): void {
     this.callouts.push(kind, text, tone, performance.now());
+  }
+
+  /** True while the player's draft is open: it takes the number keys, and Begin waits on it (§8.3). */
+  get drafting(): boolean { return this.draft.open; }
+
+  /** A number key while the draft is open picks that card (§8.3). */
+  draftKey(key: string): void {
+    const id = this.draft.cardForKey(this.session.state, key);
+    if (id) this.draftCommand({ type: 'draftPick', cardId: id });
+  }
+
+  /** A pick, reroll or skip, queued like any planning command, once nothing else of the draft's is waiting to run. */
+  private draftCommand(body: Extract<CommandBody, { type: 'draftPick' | 'draftReroll' | 'draftSkip' }>): void {
+    const s = this.session;
+    if (s.state.phase !== 'planning' || !s.state.sides.player.draft || this.draftPending(s.state)) return;
+    s.hold = false;
+    s.issue(body);
+  }
+
+  private draftPending(state: BattleState): boolean {
+    return state.queue.some((c) => c.side === 'player' && (c.type === 'draftPick' || c.type === 'draftReroll' || c.type === 'draftSkip'));
   }
 
   /** X, Delete or the inspector's sell button: the first press shows the refund, the second sells (§10.3). */
@@ -387,9 +417,10 @@ export class RoundsView {
     this.sound.frame(state, s.aftermathMs);
     soundSpeed(clash || aftermath ? s.speed : 1);
     soundDim(clash && s.paused);
-    // planning: Begin, the hint, and the empty-lane warning while it stands
+    // planning: the draft first, then Begin, the hint, and the empty-lane warning while it stands
+    this.draft.update(state, this.draftPending(state));
     this.beginBtn.hidden = !planning;
-    this.beginBtn.disabled = state.queue.some((c) => c.type === 'beginClash');
+    this.beginBtn.disabled = state.queue.some((c) => c.type === 'beginClash') || !!state.sides.player.draft;
     setText(this.beginLabel, s.warned ? 'Begin anyway' : 'Begin');
     if (planning) {
       setText(this.hintText, planningHint(state));

@@ -28,16 +28,12 @@ const UPGRADES: Record<string, string> = {
   'capguardHall:2': 'Capguards take 20% less Pierce damage (×0.8)',
   'gillNest:1': 'Gill Archer range +0.75 tiles',
   'gillNest:3': 'Gill Archers wait 15% less between attacks',
-  'rootbreakerDen:3': 'Rootbreakers deal +25% to buildings and Heartcaps',
-  'puffballMortar:1': 'Mortar blast reaches +0.3 tiles farther',
-  'puffballMortar:3': 'Mortar range +1 tile',
-  'truffleCellar:1': 'Truffle Cellar +1 gold every 5 s',
-  'truffleCellar:3': 'Truffle Cellar +1 gold every 5 s',
+  'puffballMortar:1': "Mortar emplacement's blast reaches +0.3 tiles farther",
+  'puffballMortar:3': 'Mortar emplacement range +1 tile',
   'scythecapGrove:3': 'Scythecap cleave reaches +0.3 tiles farther',
   'tendersRing:3': 'Tender heal range +0.75 tiles',
   'hammercapForge:3': 'Hammercaps wait 12% less between attacks',
-  'sporeExchange:1': '+1 gold every 5 s',
-  'sporeExchange:3': 'Interest cap +10: each new wave can pay up to 10 more gold',
+  'sporeExchange:3': "Interest cap +10: each round's interest can pay up to 10 more gold",
 };
 
 const BUILDINGS: Record<string, string> = {

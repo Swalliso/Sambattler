@@ -12,6 +12,7 @@ import { MAX_RADIUS } from './targets.ts';
 import type {
   BattleConfig, CompiledBuilding, CompiledSide, CompiledTier, CompiledUnit, DamageType, KitCard, Library, LibraryUnit, Rules, Side, SquadStats, Tier,
 } from './state.ts';
+import type { RoundLoadout } from './effects.ts';
 
 export const secToTicks = (s: number, tickRate = 20): number => Math.round(s * tickRate);
 
@@ -28,25 +29,37 @@ export function perkAt(u: UnitDef, tier: Tier): Perk {
   return out;
 }
 
+/** True if the side drafts in this battle (§8.3): drafts are on and it has a pool. The general never drafts. */
+export function drafting(config: BattleConfig, side: Side): boolean {
+  return config.flags.drafts && !!config[side].draft && config[side].controller.kind !== 'general';
+}
+
 /**
  * The library a battle in rounds needs: both kits' buildings, the units their squads field, the powers in
  * play and the balance constants, without any name, description or text (R2-Q8), so the UI reads those
  * from content by id. A run's battle also carries the relics and upgrade tracks its sides hold (R2b), whose
- * effects compile with the battle's modifiers (`roundModifiers`).
+ * effects compile with the battle's modifiers (`roundModifiers`). A side that drafts (§8.3) adds its pool:
+ * every building and relic it may be offered, and the tracks of its kit and its pool's buildings.
  */
 export function buildRoundLibrary(content: Content, config: BattleConfig): Library {
   const lib: Library = { balance: content.balance, buildings: {}, units: {} };
-  for (const id of [...new Set(SIDES.flatMap((s) => config[s].relics))].sort()) {
+  const pools = SIDES.filter((s) => drafting(config, s)).map((s) => config[s].draft!);
+  const kits = SIDES.flatMap((s) => config[s].kit.map((c) => c.building));
+  const buildings = [...kits, ...pools.flatMap((p) => [...p.core, ...p.shared])];
+  for (const id of [...new Set([...SIDES.flatMap((s) => config[s].relics), ...pools.flatMap((p) => p.relics)])].sort()) {
     const r = content.relics[id];
     if (!r) throw new Error(`unknown relic ${id}`);
-    (lib.relics ??= {})[id] = { effects: r.effects };
+    (lib.relics ??= {})[id] = { effects: r.effects, rarity: r.rarity };
   }
-  for (const id of [...new Set(SIDES.flatMap((s) => Object.keys(config[s].upgrades ?? {})))].sort()) {
+  const drafted = pools.length ? buildings.filter((id) => content.upgrades[id]) : [];
+  for (const id of [...new Set([...SIDES.flatMap((s) => Object.keys(config[s].upgrades ?? {})), ...drafted])].sort()) {
     const t = content.upgrades[id];
     if (!t) throw new Error(`unknown upgrade track ${id}`);
-    (lib.upgrades ??= {})[id] = t.levels.map((l) => ({ effects: l.effects }));
+    (lib.upgrades ??= {})[id] = {
+      rarity: [...t.rarity], levels: t.levels.map((l) => ({ effects: l.effects, ...(l.offered === false ? { offered: false as const } : {}) })),
+    };
   }
-  for (const id of [...new Set(SIDES.flatMap((s) => config[s].kit.map((c) => c.building)))].sort()) {
+  for (const id of [...new Set(buildings)].sort()) {
     const b = content.buildings[id];
     if (!b) throw new Error(`unknown building ${id}`);
     const { name: _name, description: _description, ...building } = b;
@@ -116,21 +129,24 @@ export function compileRoundRules(lib: Library, config: BattleConfig): Rules {
   };
 }
 
-/** Both sides' compiled kits, together, since a modifier may reach the opponent. */
-export function compileRoundSides(lib: Library, config: BattleConfig): Record<Side, CompiledSide> {
-  const fx = collectRoundEffects(roundModifiers(lib, config));
+/**
+ * Both sides' compiled kits, together, since a modifier may reach the opponent: from the config's loadouts, or
+ * from `sides`' once a draft pick has changed one (§8.3).
+ */
+export function compileRoundSides(lib: Library, config: BattleConfig, sides: Record<Side, RoundLoadout> = config): Record<Side, CompiledSide> {
+  const fx = collectRoundEffects(roundModifiers(lib, config, sides));
   const out = {} as Record<Side, CompiledSide>;
-  for (const s of SIDES) out[s] = compileRoundSide(lib, s, config[s].kit, fx[s]);
+  for (const s of SIDES) out[s] = compileRoundSide(lib, s, sides[s].kit, fx[s], drafting(config, s));
   return out;
 }
 
-function compileRoundSide(lib: Library, side: Side, kit: readonly KitCard[], fx: RoundEffects): CompiledSide {
+function compileRoundSide(lib: Library, side: Side, kit: readonly KitCard[], fx: RoundEffects, drafts: boolean): CompiledSide {
   const bal = lib.balance, r = bal.rounds;
   const m = (stat: string, base: number) => resolveStat(base, fx.mods, stat);
   const buildings: Record<string, CompiledBuilding> = {};
   const units: Record<string, CompiledUnit> = {};
   for (const { building: id } of kit) {
-    const cb = compileRoundBuilding(lib, id);
+    const cb = compileRoundBuilding(lib, id, fx.mods);
     buildings[id] = cb;
     if (cb.kind === 'tower') units[id] = compileEmplacement(lib, id, fx.mods);
     else if (cb.squad && !(cb.squad.unit in units)) units[cb.squad.unit] = compileRoundUnit(lib, cb.squad.unit, fx.mods);
@@ -149,11 +165,17 @@ function compileRoundSide(lib: Library, side: Side, kit: readonly KitCard[], fx:
     knitTicks: secToTicks(m('side.knitTicks', bal.mergeKnitSeconds), bal.tickRate),
     triggers: fx.triggers,
     ignored: fx.ignored,
+    ...(drafts ? {
+      draft: {
+        cards: Math.max(1, Math.round(m('side.draftCards', bal.draft.cards))), rerollBase: Math.max(0, Math.round(m('side.rerollCost', bal.reroll.base))),
+        rerollStep: bal.reroll.step, skipGold: bal.skipGold,
+      },
+    } : {}),
   };
 }
 
-/** A building as a battle in rounds fields it (§4.4): a spawner's squad, a tower's one emplacement, or its gold a round. */
-function compileRoundBuilding(lib: Library, id: string): CompiledBuilding {
+/** A building as a battle in rounds fields it (§4.4): a spawner's squad, a tower's one emplacement, or its gold a round, which an upgrade level may raise (§11.6). */
+function compileRoundBuilding(lib: Library, id: string, mods: readonly ModifierDef[]): CompiledBuilding {
   const b = lib.buildings[id];
   if (!b) throw new Error(`unknown building ${id}`);
   const out: CompiledBuilding = { id, kind: b.kind, cost: b.cost };
@@ -163,7 +185,8 @@ function compileRoundBuilding(lib: Library, id: string): CompiledBuilding {
   } else if (b.kind === 'tower') out.squad = { unit: id, count: 1 };
   if (b.economy) {
     if (b.economy.goldPerRound === undefined) throw new Error(`economy building ${id} has no goldPerRound`);
-    out.economy = { goldPerRound: b.economy.goldPerRound, ...(b.economy.interestCapAdd ? { interestCapAdd: b.economy.interestCapAdd } : {}) };
+    const goldPerRound = Math.round(resolveStat(b.economy.goldPerRound, mods, 'building.goldPerRound', buildingMatcher(lib, id)));
+    out.economy = { goldPerRound, ...(b.economy.interestCapAdd ? { interestCapAdd: b.economy.interestCapAdd } : {}) };
   }
   return out;
 }

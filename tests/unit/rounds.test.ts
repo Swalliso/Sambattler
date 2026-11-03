@@ -268,8 +268,9 @@ describe("a round's order (§4.7, §14.6's opening steps 1–7, §15.7 Rounds)",
     step(s);
     expect(kinds(s)).toEqual(['income', 'income', 'interest', 'interest', 'roundStarted', 'effectGold:5', 'buildingPlanted', 'generalPlanned']);
     expect([s.round, s.phase]).toEqual([2, 'planning']);
-    // its Burrows won round 1 against nobody: the general's 100 and 8 on the 80 it banked, then the Burster Pod it carried
-    expect(s.sides.enemy.ai!.plans[1]).toMatchObject({ round: 2, income: 108, planted: [{ building: 'bursterPod' }] });
+    // Mold's opener, a Burrow and a Truffle Cellar (T068), won round 1 against nobody: the general's 100, the Cellar's 75 on
+    // loam and 4 on the 40 it banked, then the Burster Pod it carried
+    expect(s.sides.enemy.ai!.plans[1]).toMatchObject({ round: 2, income: 179, planted: [{ building: 'bursterPod' }] });
   });
 
   it.each([[4, 10000, 0], [5, 12000, 1], [9, 20000, 5]])("sets round %i's storm before roundStarted: %i bp, step %i (§6.4)", (round, stormBp, storm) => {

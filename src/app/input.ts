@@ -68,8 +68,10 @@ export function bindRoundInput(session: RoundSession, view: RoundsView, hooks: R
     session.shift = ev.shiftKey;
     const phase = session.state.phase;
     const planning = phase === 'planning';
-    // choosing a card is the view's alone, so it keeps the hold: a bot player's queued Begin waits on (T135's marks capture)
+    // choosing a card is the view's alone, so it keeps the hold: a bot player's queued Begin waits on (T135's marks capture).
+    // While the draft is open the keys pick its cards, and Begin waits on it (§8.3)
     if (/^[1-9]$/.test(ev.key)) {
+      if (view.drafting) { view.draftKey(ev.key); return; }
       if (!planning) { planningOnly(); return; }
       const id = session.cards()[Number(ev.key) - 1];
       if (id) session.pick(id);
@@ -82,7 +84,8 @@ export function bindRoundInput(session: RoundSession, view: RoundsView, hooks: R
       case 'Enter':
         // Begin must not also press a focused button, and Space must not scroll
         ev.preventDefault();
-        if (planning) {
+        if (planning && view.drafting) view.say('refused', 'Pick or skip the draft first');
+        else if (planning) {
           if (!ev.repeat && performance.now() - session.planningSince >= BEGIN_KEY_MS) hooks.begin();
         } else if (phase === 'clash') {
           if (ev.key === ' ') session.paused = !session.paused;

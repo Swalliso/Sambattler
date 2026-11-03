@@ -7,7 +7,7 @@ import type { ModifierDef, SelectorDef } from '../data/schema.ts';
 import type { Terrain } from './colony.ts';
 import { ROUND_TRIGGERS, SIDES, other } from './state.ts';
 import type {
-  BattleConfig, BattleModifier, IgnoredEffect, Library, LibraryUnit, RoundAction, RoundTrigger, RoundTriggerOn, Side, SimEvent,
+  BattleConfig, BattleModifier, IgnoredEffect, KitCard, Library, LibraryUnit, RoundAction, RoundTrigger, RoundTriggerOn, Side, SimEvent,
 } from './state.ts';
 
 /** `battle.*` modifiers from the battle's modifier list (each counted once, whichever side it names). */
@@ -35,12 +35,13 @@ export function resolveStat(base: number, mods: readonly ModifierDef[], stat: st
 }
 
 /**
- * The stats a battle in rounds reads (§14.2): v1's unit and tower stats, and the side and battle stats v2
- * keeps. A modifier on any other compiles to nothing and is listed: v1's building HP, spawn timers, spawn
- * counts and gold a tick, the supply cap, capture, supply lines, turrets, power cooldowns and waves.
+ * The stats a battle in rounds reads (§14.2): v1's unit and tower stats, an economy building's gold a round,
+ * and the side and battle stats v2 keeps. A modifier on any other compiles to nothing and is listed: v1's
+ * building HP, spawn timers, spawn counts and gold a tick, the supply cap, capture, supply lines, turrets,
+ * power cooldowns and waves.
  */
 export const ROUND_STATS: readonly string[] = [
-  ...UNIT_STATS, 'tower.damage', 'tower.range', 'tower.splashRadius',
+  ...UNIT_STATS, 'tower.damage', 'tower.range', 'tower.splashRadius', 'building.goldPerRound',
   'side.interestCap', 'side.stipend', 'side.startingGold', 'side.sellRefund', 'side.knitTicks', 'side.mergeRadius',
   'side.rerollCost', 'side.draftCards', 'side.heartcapMaxHp', 'side.comebackEnabled', 'side.loamBonus',
   'battle.sporestormStart',
@@ -53,16 +54,19 @@ export interface RoundEffects { mods: ModifierDef[]; triggers: RoundTrigger[]; i
  * holds, as `relic:<id>` and `upgrade:<building>` modifiers. Until R2b's content work gives them v2 effects,
  * those on stats rounds retire compile to nothing and are listed like any other (plan Call 19).
  */
-export function roundModifiers(lib: Library, config: BattleConfig): BattleModifier[] {
+export function roundModifiers(lib: Library, config: BattleConfig, sides: Record<Side, RoundLoadout> = config): BattleModifier[] {
   const out = [...(config.modifiers ?? [])];
   for (const s of SIDES) {
-    for (const id of config[s].relics) out.push({ side: s, source: `relic:${id}`, effects: lib.relics![id]!.effects });
-    for (const [id, level] of Object.entries(config[s].upgrades ?? {}).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))) {
-      for (const l of lib.upgrades![id]!.slice(0, level)) out.push({ side: s, source: `upgrade:${id}`, effects: l.effects });
+    for (const id of sides[s].relics) out.push({ side: s, source: `relic:${id}`, effects: lib.relics![id]!.effects });
+    for (const [id, level] of Object.entries(sides[s].upgrades ?? {}).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))) {
+      for (const l of lib.upgrades![id]!.levels.slice(0, level)) out.push({ side: s, source: `upgrade:${id}`, effects: l.effects });
     }
   }
   return out;
 }
+
+/** A side's kit, upgrade levels and relics, as its config gives them or its state holds them once it has drafted (§8.3). */
+export interface RoundLoadout { kit: readonly KitCard[]; upgrades?: Record<string, number>; relics: readonly string[] }
 
 const isRoundTrigger = (on: string): on is RoundTriggerOn => (ROUND_TRIGGERS as readonly string[]).includes(on);
 

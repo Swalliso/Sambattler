@@ -8,6 +8,32 @@ replaces. None of it is open work, including headings that say "Open:". From mil
 entries measure or tune v2's round battle (SPEC §11, §12). "The backlog" in the entries below means
 v1's, now [archived](../docs/archive/v1/balance-backlog.md).
 
+## R2b-S5 T064–T069: drafts in planning, #27's upgrade levels, and Old Mother Mold's opener (2026-11-03)
+
+**Goldens:** `r2-run-s7` moved, since run battles draft now and Mold's opener changed; it was refreshed with
+`npm run golden -- update` (T068, T069). The five single-battle goldens hold unchanged: a battle without drafts holds
+no pool and compiles as before.
+- **Drafts in planning (T065, T067):** a battle with drafts on opens a draft in the planning after each round in
+  `balance.rounds.draftRounds` [2, 4, 6], so in rounds 3, 5 and 7, once the general has planned (§4.7, §8.3). v1's
+  cards, weights (35/45/20), rerolls (20, then +10) and skip (+40) are unchanged, and `draftWaves` stays until T129.
+  Run battles draft from S5 on, and a won battle pays each draft it ended before as an extra spoils pick: 3 cards,
+  no reroll, with an elite's +10 rare (#17's Rout half, the user, 2026-11-03).
+- **#27's upgrade levels (T064), the user at S0 (2026-11-03: "Take them all", then "Keep R1's call"):**
+  - `offered: false` with empty effects on the levels that do nothing in rounds: the Truffle Cellar's and the Spore
+    Exchange's level 2 (HP +200), the Amanita Lodge's level 3 (spawn speed), the Rhizome Vault's whole track, and the
+    unit levels, the Sporeling Burrow's and the Morel Warren's level 3 (+1 unit per spawn, which R1's review gate
+    retired: §18.2 #7). Drafts, spoils, events and the general's levels skip past them, so the levels after them stay
+    reachable (A105): the Cellar goes from level 1 to 3, and the Exchange's interest +10 is its second card.
+  - `building.goldPerTick` +1 becomes `building.goldPerRound` +12, a new stat the round compile applies: the Truffle
+    Cellar's levels 1 and 3 and the Spore Exchange's level 1.
+  - Texts: the Rootbreaker's level 3 is "+25% to emplacements", and the Mortar's levels name its emplacement.
+- **Old Mother Mold's battle-1 opener (T068, R2-Q13, the user, 2026-11-03: "Soften Mold's opener"):** `opener`
+  `["sporelingBurrow", "sporelingBurrow"]` becomes `["sporelingBurrow", "truffleCellar"]` (`data/generals.json`,
+  §7.8), so her battle-1 kit holds both and the Gill Archer Nest joins in battle 2. No opening pick is built. S1b's
+  measurement (`docs/balance-backlog.md`): battle 1 is won 82%, 52% and 76% for Vesper, Armilla and Cordis with
+  this opener, against 52%, 29% and 45% before; Armilla stays short of G14 until T082's Tithe, and S11 re-reads G14
+  with the drafts in.
+
 ## R2b-S9: the Anti-Ranged intel icon (2026-11-03)
 
 **No balance value changed, and no golden moved.** `data/sprites/ui.json` gains `i-ranged`, a 16×16 arrow, so the

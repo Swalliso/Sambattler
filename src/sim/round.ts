@@ -1,16 +1,18 @@
 // A round's opening (SPEC §4.7 steps 5–11, §14.6's opening steps 1–7): `createBattle` opens round 1, and
 // the aftermath's step every later one. It clears the last clash, pays the income from round 2, sets the
 // round's Sporestorm with `roundStarted`, fires the `battleStart` and `roundStart` triggers, lets the
-// general plan first and a bot or general on the player's side after it (`planTurn`), and enters planning.
-// The draft step is empty in R2a (plan Call 26). Begin's clash half fields both armies and resolves the
-// muster (§4.7 steps 12–14), and the clash's end scores the round and checks the battle's end (§4.7 step
-// 17, §6.5).
+// general plan first, opens a drafting side's draft in the planning after each round in `draftRounds`
+// (§8.3), lets a bot or general on the player's side plan after it (`planTurn`), and enters planning.
+// Begin's clash half fields both armies and resolves the muster (§4.7 steps 12–14), and the clash's end
+// scores the round and checks the battle's end (§4.7 step 17, §6.5).
 import type { ModifierDef } from '../data/schema.ts';
 import { musterKnits } from './formation.ts';
 import type { MusterUnit } from './formation.ts';
 import { planTurn } from './ai/controller.ts';
+import { aiDraft } from './ai/draftPolicy.ts';
 import { squadStats } from './compile.ts';
 import { addUnit } from './create.ts';
+import { openDraft } from './draft.ts';
 import { collectRoundEffects, fireTriggers, roundModifiers } from './effects.ts';
 import { formationOf } from './formation.ts';
 import type { MusterTrio, SquadPlan } from './formation.ts';
@@ -64,7 +66,7 @@ export function startClash(state: BattleState): void {
   state.phase = 'clash';
   const clash = (state.clash = newClash(state));
   const plans = { player: formationOf(state, 'player'), enemy: formationOf(state, 'enemy') };
-  const fx = collectRoundEffects(roundModifiers(state.library, state.config));
+  const fx = collectRoundEffects(roundModifiers(state.library, state.config, state.sides));
   for (const s of SIDES) for (const p of plans[s]) state.squads.push(squadFor(state, s, p, fx[s].mods));
   state.squads.sort((a, b) => a.building - b.building);
   // each arrived unit as its squad's j, which the muster's trios name (plan Call 5)
@@ -300,9 +302,13 @@ export function openRound(state: BattleState): void {
   for (const s of SIDES) fireTriggers(state, s, 'roundStart', OPENING);
   // 5. the general plans first (§7.2): its commands run at once, then `generalPlanned`, and its plan goes in `ai.plans`
   if (state.sides.enemy.ai) planTurn(state, 'enemy', income?.enemy.total ?? 0);
-  // 6. the draft (R2b: none in R2a, plan Call 26)
-  // 7. a bot or general on the player's side plans after it and queues `beginClash`: the planning checkpoint (plan Call 14)
-  if (state.sides.player.ai) planTurn(state, 'player', income?.player.total ?? 0);
+  // 6. the draft in the planning after each round in `draftRounds` (§8.3), once the general has planned: an AI side answers at once
+  for (const s of SIDES) if (openDraft(state, s)) aiDraft(state, s);
+  // 7. a bot or general on the player's side plans after it and queues `beginClash`: the planning checkpoint (plan Call 14). One
+  // that leaves its draft to the player plans once the draft resolves (`executeDraft`)
+  const ai = state.sides.player.ai;
+  if (ai && state.sides.player.draft) ai.waiting = income?.player.total ?? 0;
+  else if (ai) planTurn(state, 'player', income?.player.total ?? 0);
   state.phase = 'planning';
 }
 

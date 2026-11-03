@@ -31,7 +31,7 @@ export const UNIT_STATS = [
   'unit.resist.slash', 'unit.resist.pierce', 'unit.resist.crush', 'unit.siegeMult', 'unit.regenPctPerSec', 'unit.healAmount',
 ] as const;
 export const BUILDING_STATS = [
-  'building.hp', 'building.spawnInterval', 'building.spawnCount', 'building.goldPerTick', 'building.firstSpawnFraction',
+  'building.hp', 'building.spawnInterval', 'building.spawnCount', 'building.goldPerTick', 'building.goldPerRound', 'building.firstSpawnFraction',
   'tower.damage', 'tower.range', 'tower.splashRadius',
 ] as const;
 export const SIDE_STATS = [
@@ -728,7 +728,12 @@ export const ScenarioSchema = z.object({
 
 // ---- run content (SPEC §8, §11.6–11.7) ----
 
-const TrackLevel = z.object({ text: z.string().min(1), effects: EffectBundleSchema }).strict();
+/**
+ * One upgrade level (§11.6). A level that does nothing in rounds has `offered: false` and empty effects: drafts,
+ * spoils, events and the general's levels skip past it, so the levels after it stay reachable (#27, A105).
+ */
+const TrackLevel = z.object({ text: z.string().min(1), offered: z.literal(false).optional(), effects: EffectBundleSchema }).strict()
+  .refine((l) => l.offered !== false || (!l.effects.modifiers?.length && !l.effects.triggers?.length), 'a level with `offered: false` has empty effects (#27)');
 export const UpgradeTrackSchema = z.object({
   building: Id,
   levels: z.tuple([TrackLevel, TrackLevel, TrackLevel]),

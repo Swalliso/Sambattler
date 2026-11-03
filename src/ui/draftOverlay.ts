@@ -1,9 +1,9 @@
-// The in-battle draft (SPEC §8.3): opens on the side's open draft in a planning phase of the battle in rounds,
-// which R2b's S5 opens after rounds 2, 4 and 6 and wires to this overlay (T153). Three cards; reroll for battle
-// gold (20, then +10 each) or skip for +40 gold. Picks, rerolls and skips are ordinary commands, so the battle
-// stays replayable.
+// The in-battle draft (SPEC §8.3): opens on the player's open draft in the planning after rounds 2, 4 and 6,
+// as today's centred dialog until R2b's T116 docks it (T153). Three cards; reroll for battle gold (20, then +10
+// each) or skip for +40 gold. Picks, rerolls and skips are ordinary commands, so the battle stays replayable.
 import type { Content } from '../data/registry.ts';
 import type { Atlas } from '../render/atlas.ts';
+import { rerollCost } from '../sim/index.ts';
 import type { BattleState } from '../sim/index.ts';
 import { cardView } from './cards.ts';
 import { h, setText } from './h.ts';
@@ -48,11 +48,10 @@ export class DraftOverlay {
     if (this.el.hidden) sporeBurst(this.el);
     this.el.hidden = false;
     const key = `${d.index}:${d.offer.map((c) => c.id).join(',')}`;
-    const b = this.content.balance;
-    const cost = b.reroll.base + b.reroll.step * d.rerolls;
+    const cost = rerollCost(state, 'player');
     setText(this.rerollCost, String(cost));
     this.rerollBtn.disabled = pending || state.sides.player.gold < cost;
-    this.skipBtn.textContent = `Skip (+${b.skipGold} gold)`;
+    this.skipBtn.textContent = `Skip (+${state.compiled.player.draft?.skipGold ?? this.content.balance.skipGold} gold)`;
     this.skipBtn.disabled = pending;
     if (key === this.shown) return;
     this.shown = key;
