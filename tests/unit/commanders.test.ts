@@ -5,9 +5,9 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { banProblem, battleConfig, botCoreWeights, createRun, loadRun, MemoryStorage, RUN_KEY, runPool, simulateRun } from '../../src/run/index.ts';
 import type { RouteNode } from '../../src/run/index.ts';
-import { buildLibrary, draftPool, generateOffer, parseCard, seedStream } from '../../src/sim/index.ts';
+import { draftLibrary, draftPool, generateOffer, parseCard, seedStream } from '../../src/sim/index.ts';
 import { candidates } from '../../src/sim/draft.ts';
-import { createBattle as createRoundBattle } from '../../src/sim/rounds/index.ts';
+import { createBattle as createRoundBattle } from '../../src/sim/index.ts';
 import type { DraftPool, Loadout } from '../../src/sim/index.ts';
 import { content } from '../helpers.ts';
 
@@ -66,7 +66,7 @@ describe('bans (SPEC §8.1, §8.4)', () => {
     expect(pool.core).toEqual(content.commanders.vesper!.core);
     for (const b of bans) expect(pool.shared).not.toContain(b);
     expect(pool.shared).toEqual(ROSTER.filter((id) => !pool.core.includes(id) && !bans.includes(id)));
-    const lib = buildLibrary(content, ROSTER, pool.relics);
+    const lib = draftLibrary(content, ROSTER, pool.relics);
     const lo: Loadout = { kit: ['sporelingBurrow', 'capguardHall', 'truffleCellar'], upgrades: {}, relics: [] };
     for (let s = 1; s <= 400; s++) {
       for (const c of generateOffer(lib, pool, lo, { cards: 3, battleIndex: 1 + (s % 5) }, seedStream(s, 'draft', 1))) {
@@ -99,12 +99,12 @@ describe('core-pool weighting (SPEC §8.3–8.4)', () => {
   it("weights each commander's core blueprints ×2 against shared ones", () => {
     for (const id of Object.keys(content.commanders)) {
       const pool = draftPool(content, 'velvet-bloom', id, FLAGS);
-      const lib = buildLibrary(content, ROSTER, []);
+      const lib = draftLibrary(content, ROSTER, []);
       const cands = candidates(lib, pool, { kit: [], upgrades: {}, relics: [] }, 'blueprint');
       for (const c of cands) expect(c.weight).toBe(pool.core.includes(parseCard(c.card.id)!.id) ? content.balance.draft.coreWeight : 1);
     }
     // measured: a common core building against a common shared one, by commander (Armilla's Hammercap is shared for Vesper)
-    const lib = buildLibrary(content, ROSTER, []);
+    const lib = draftLibrary(content, ROSTER, []);
     const common = { ...lib, buildings: { ...lib.buildings, hammercapForge: { ...lib.buildings.hammercapForge!, rarity: 'common' as const } } };
     const count = (pool: DraftPool) => {
       const rng = seedStream(5, 'draft', 1);

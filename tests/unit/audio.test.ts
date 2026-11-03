@@ -9,10 +9,10 @@ import { BattleSound, HIT_AT_MS } from '../../src/app/battleSound.ts';
 import { ContentError, REQUIRED_SOUNDS, loadContent } from '../../src/data/registry.ts';
 import { SoundBankSchema } from '../../src/data/schema.ts';
 import type { SoundDef } from '../../src/data/schema.ts';
-import { commandStamp, createBattle as createRoundBattle, makeRoundConfig, queueCommand, step } from '../../src/sim/rounds/index.ts';
+import { commandStamp, createBattle as createRoundBattle, makeRoundConfig, queueCommand, step } from '../../src/sim/index.ts';
 import { readRawContent } from '../../tools/lib/content.ts';
 import { content } from '../helpers.ts';
-import { planningState, plant, sell } from '../roundHelpers.ts';
+import { planningState, plant, sell } from '../helpers.ts';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Loose = Record<string, any>;

@@ -1,15 +1,37 @@
 // Drafts (SPEC §8.3–8.4). An offer is a pure function of (pool, owned cards, battle index, options,
-// `draft` stream), shared by the in-battle drafts here and the run layer's spoils drafts. Each card
-// draws exactly three numbers (type, rarity, item), so the stream advances the same way whatever is
-// left in the pool. In battle, a draft opens at the end of the configured waves and holds the sim
-// until the side picks, rerolls or skips; a pick recompiles both sides.
-import { compileSides } from './compile.ts';
+// `draft` stream), which the run layer's spoils drafts use. Each card draws exactly three numbers (type,
+// rarity, item), so the stream advances the same way whatever is left in the pool. Opening drafts in a
+// battle's planning phases is R2b's T065.
+import type { Content } from '../data/registry.ts';
+import type { BalanceDef, BuildingDef, RelicDef, UpgradeTrackDef } from '../data/schema.ts';
 import { nextFloat } from './rng.ts';
-import { SIDES } from './state.ts';
-import { supplyCapOf } from './world.ts';
-import type {
-  BattleState, CardType, CompiledSide, DraftCard, DraftPool, Library, Loadout, Rarity, Rng4, Side,
-} from './state.ts';
+import type { CardType, DraftCard, DraftPool, Loadout, Rarity, Rng4 } from './state.ts';
+
+/** What an offer reads: the balance's draft constants and the defs of the buildings, upgrade tracks and relics it may offer. */
+export interface DraftLibrary {
+  balance: BalanceDef;
+  buildings: Record<string, BuildingDef>;
+  upgrades: Record<string, UpgradeTrackDef>;
+  relics: Record<string, RelicDef>;
+}
+
+/** The draft library for these buildings (with their upgrade tracks) and relics. */
+export function draftLibrary(content: Content, buildingIds: Iterable<string>, relicIds: Iterable<string>): DraftLibrary {
+  const lib: DraftLibrary = { balance: content.balance, buildings: {}, upgrades: {}, relics: {} };
+  for (const id of buildingIds) {
+    const b = content.buildings[id];
+    if (!b) throw new Error(`unknown building ${id}`);
+    lib.buildings[id] = b;
+    const track = content.upgrades[id];
+    if (track) lib.upgrades[id] = track;
+  }
+  for (const id of relicIds) {
+    const r = content.relics[id];
+    if (!r) throw new Error(`unknown relic ${id}`);
+    lib.relics[id] = r;
+  }
+  return lib;
+}
 
 export const RARITIES: readonly Rarity[] = ['common', 'uncommon', 'rare'];
 const TYPES: readonly CardType[] = ['blueprint', 'upgrade', 'relic'];
@@ -37,7 +59,7 @@ export interface OfferOptions {
 }
 
 /** Rarity weights for a battle: the base split with `rarityShiftPerBattle` points per battle (and any bonus) moved from common to rare. */
-export function rarityWeights(lib: Library, battleIndex: number, rareBonus = 0): [number, number, number] {
+export function rarityWeights(lib: DraftLibrary, battleIndex: number, rareBonus = 0): [number, number, number] {
   const d = lib.balance.draft;
   const [c, u, r] = d.rarity;
   const shift = Math.min(c, d.rarityShiftPerBattle * Math.max(0, battleIndex - 1) + rareBonus);
@@ -45,7 +67,7 @@ export function rarityWeights(lib: Library, battleIndex: number, rareBonus = 0):
 }
 
 /** Card type weights: the base weights, or a fixed blueprint share while the kit is small. */
-export function typeWeights(lib: Library, kitSize: number): Record<CardType, number> {
+export function typeWeights(lib: DraftLibrary, kitSize: number): Record<CardType, number> {
   const d = lib.balance.draft;
   const w = d.typeWeights;
   if (kitSize >= d.smallKit.below) return { ...w };
@@ -61,7 +83,7 @@ export function typeWeights(lib: Library, kitSize: number): Record<CardType, num
 interface Candidate { card: DraftCard; weight: number }
 
 /** Cards of one type the owner could be offered, in pool order (excluding `taken`). */
-export function candidates(lib: Library, pool: DraftPool, owned: Loadout, type: CardType, taken: ReadonlySet<string> = new Set()): Candidate[] {
+export function candidates(lib: DraftLibrary, pool: DraftPool, owned: Loadout, type: CardType, taken: ReadonlySet<string> = new Set()): Candidate[] {
   const out: Candidate[] = [];
   const push = (id: string, rarity: Rarity, weight: number) => {
     const cid = cardId(type, id);
@@ -111,7 +133,7 @@ function pickWeighted<T>(items: readonly T[], weight: (t: T) => number, rng: Rng
  * reweighted away), roll a rarity (falling back to lower, then higher rarities when the rolled one
  * has nothing left), then a weighted item (core blueprints ×coreWeight). No duplicates in an offer.
  */
-export function generateOffer(lib: Library, pool: DraftPool, owned: Loadout, opts: OfferOptions, rng: Rng4): DraftCard[] {
+export function generateOffer(lib: DraftLibrary, pool: DraftPool, owned: Loadout, opts: OfferOptions, rng: Rng4): DraftCard[] {
   const offer: DraftCard[] = [];
   const taken = new Set<string>();
   const tw = typeWeights(lib, owned.kit.length);
@@ -150,105 +172,4 @@ export function applyCard(lo: Loadout, cardIdText: string): void {
   if (c.type === 'blueprint') { if (!lo.kit.includes(c.id)) lo.kit.push(c.id); }
   else if (c.type === 'upgrade') lo.upgrades[c.id] = (lo.upgrades[c.id] ?? 0) + 1;
   else if (!lo.relics.includes(c.id)) lo.relics.push(c.id);
-}
-
-// ---- in-battle drafts ----
-
-/** Offer options for `side`'s in-battle drafts, with the bigger-drafts prototype's rare bonus. */
-function battleOffer(state: BattleState, side: Side, cards = state.compiled[side].draftCards): OfferOptions {
-  const rareBonus = state.rules.bigDrafts?.rareBonus ?? 0;
-  return { cards, battleIndex: state.config.battleIndex, ...(rareBonus ? { rareBonus } : {}) };
-}
-
-/**
- * Opens a draft for `side` if it drafts this battle and anything is left to offer. Holds the sim.
- * `deploy` is the hot-start prototype's free draft before the clock starts: one pick, `cards` cards.
- */
-export function openDraft(state: BattleState, side: Side, deploy?: { cards?: number }): boolean {
-  const pool = state.config[side].draft;
-  const ss = state.sides[side];
-  if (!pool || ss.draft) return false;
-  ss.draftsOpened++;
-  const offer = generateOffer(state.library, pool, ss, deploy ? battleOffer(state, side, deploy.cards) : battleOffer(state, side), state.rng.draft);
-  if (!offer.length) return false;
-  ss.draft = { offer, rerolls: 0, index: ss.draftsOpened };
-  const picks = deploy ? 1 : Math.min(offer.length, state.rules.bigDrafts?.picks ?? 1);
-  if (picks > 1) ss.draft.picks = picks;
-  state.held = true;
-  state.events.push({ t: 'draftOpen', side, index: ss.draftsOpened });
-  return true;
-}
-
-/** Gold the next reroll of the open draft costs. */
-export function rerollCost(state: BattleState, side: Side): number {
-  const cs = state.compiled[side];
-  return cs.rerollBase + cs.rerollStep * (state.sides[side].draft?.rerolls ?? 0);
-}
-
-function closeDraft(state: BattleState, side: Side, cardIdText: string | null): void {
-  state.sides[side].draft = undefined;
-  state.held = SIDES.some((s) => state.sides[s].draft !== undefined);
-  state.events.push({ t: 'drafted', side, cardId: cardIdText, skipped: cardIdText === null });
-}
-
-/** Executes a draft command; returns a rejection reason or null. */
-export function executeDraftCommand(state: BattleState, side: Side, cmd: { type: 'draftPick'; cardId: string } | { type: 'draftReroll' } | { type: 'draftSkip' }): string | null {
-  const ss = state.sides[side];
-  const d = ss.draft;
-  if (!d) return 'no draft is open';
-  if (cmd.type === 'draftPick') {
-    if (!d.offer.some((c) => c.id === cmd.cardId)) return 'that card is not in the offer';
-    applyCard(ss, cmd.cardId);
-    state.stats[side].drafted.push(cmd.cardId);
-    if (d.picks !== undefined && d.picks > 1) {
-      // bigger drafts: the offer stays open with the cards left
-      d.offer = d.offer.filter((c) => c.id !== cmd.cardId);
-      d.picks--;
-      if (d.picks === 1) delete d.picks;
-      state.events.push({ t: 'drafted', side, cardId: cmd.cardId, skipped: false });
-    } else {
-      closeDraft(state, side, cmd.cardId);
-    }
-    recompile(state);
-    return null;
-  }
-  if (cmd.type === 'draftReroll') {
-    const cost = rerollCost(state, side);
-    if (ss.gold < cost) return 'not enough gold to reroll';
-    const offer = generateOffer(state.library, state.config[side].draft!, ss, battleOffer(state, side), state.rng.draft);
-    if (!offer.length) return 'nothing left to offer';
-    ss.gold -= cost;
-    d.rerolls++;
-    d.offer = offer;
-    return null;
-  }
-  const gold = state.compiled[side].skipGold;
-  ss.gold += gold;
-  state.stats[side].goldEarned.drafts += gold;
-  closeDraft(state, side, null);
-  return null;
-}
-
-/**
- * Recompiles both sides from the library after a loadout change. Standing units and buildings keep
- * their HP fraction against their new maximum; everything else reads the compiled set live.
- */
-export function recompile(state: BattleState): void {
-  const loadouts: Record<Side, Loadout> = {
-    player: { kit: state.sides.player.kit, upgrades: state.sides.player.upgrades, relics: state.sides.player.relics },
-    enemy: { kit: state.sides.enemy.kit, upgrades: state.sides.enemy.upgrades, relics: state.sides.enemy.relics },
-  };
-  const next: Record<Side, CompiledSide> = compileSides(state.library, loadouts, state.config.modifiers);
-  for (const side of SIDES) {
-    state.compiled[side] = next[side];
-  }
-  for (const side of SIDES) state.sides[side].supplyCap = supplyCapOf(state, side);
-  for (const b of state.buildings) {
-    const max = state.compiled[b.side].buildings[b.buildingId]?.hp ?? b.maxHp;
-    if (max !== b.maxHp) { b.hp = Math.max(1, Math.round((b.hp * max) / b.maxHp)); b.maxHp = max; }
-  }
-  for (const u of state.units) {
-    const max = state.compiled[u.side].units[u.unitId]?.tiers[u.tier - 1]!.hp ?? u.maxHp;
-    if (max !== u.maxHp) { u.hp = Math.max(1, Math.round((u.hp * max) / u.maxHp)); u.maxHp = max; }
-  }
 }

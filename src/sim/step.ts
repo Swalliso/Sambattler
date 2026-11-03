@@ -1,85 +1,70 @@
-// step(state): advances exactly one tick in the fixed system order of SPEC §14.6.
-import { executeCommands, executeHeldCommands } from './commands.ts';
-import { aiOpener, aiThink } from './ai/controller.ts';
-import { counterTick } from './ai/counter.ts';
-import { fireTriggers } from './effects.ts';
-import { powerClock } from './powers.ts';
-import { healingSystem } from './systems/healing.ts';
-import { attackSystem, deathSystem, resolveHitsSystem } from './systems/combat.ts';
+// step(state) by phase (SPEC §13.3 rule 1, §14.6): planning runs the queued commands and no tick, a clash
+// advances exactly one tick through the kept systems in §14.6's order, the aftermath opens the next round or
+// ends the battle, and an ended battle does nothing.
+import { dropClashCommands, executeCommands } from './commands.ts';
+import { powerThink } from './powers.ts';
+import { endClash, openRound } from './round.ts';
+import type { BattleState } from './state.ts';
+import { clashOver, inMuster, laneEndSystem } from './systems/clash.ts';
 import { cloudSystem } from './systems/clouds.ts';
-import { clockSystem, incomeSystem } from './systems/economy.ts';
+import { attackSystem, deathSystem, resolveHitsSystem } from './systems/combat.ts';
+import { healingSystem } from './systems/healing.ts';
 import { mergingSystem } from './systems/merging.ts';
 import { movementSystem } from './systems/movement.ts';
-import { spawningSystem, waveSystem } from './systems/spawning.ts';
-import { stanceSystem } from './systems/stance.ts';
 import { targetingSystem } from './systems/targeting.ts';
-import { territorySystem } from './systems/territory.ts';
-import { victorySystem } from './systems/victory.ts';
-import { statsSystem } from './stats.ts';
-import { SIDES } from './state.ts';
-import type { BattleState } from './state.ts';
-
-const START = { x: 0, y: 0, lane: 0, sourceBuildingId: 0 };
 
 export function step(state: BattleState): void {
-  if (state.phase === 'ended') return;
+  switch (state.phase) {
+    case 'ended':
+      return;
+    case 'planning':
+      // 1. clear events; 2. run the queue, each command validated as it runs; 3. Begin fields both armies
+      state.events.length = 0;
+      executeCommands(state);
+      return;
+    case 'clash':
+      clashTick(state);
+      return;
+    case 'aftermath':
+      // the last round has its aftermath like any other, then the battle ends (§4.7, §6.5)
+      if (!state.outcome) { openRound(state); return; }
+      state.events.length = 0;
+      state.events.push({ t: 'battleEnded', ...state.outcome });
+      state.phase = 'ended';
+  }
+}
+
+/** One tick of a clash, §14.6's clash steps 1–14. An ended lane's units hold still in every system (§6.7). */
+function clashTick(state: BattleState): void {
+  // 1. clear events; tick++; snapshot previous positions for render interpolation
   state.events.length = 0;
-
-  if (state.held) {
-    // A draft is open (SPEC §8.3): only draft commands run and the clock stays put.
-    executeHeldCommands(state);
-    return;
-  }
-
-  if (state.phase === 'deploy') {
-    // The clock is stopped: only commands run. `begin` ends deploy; the AI sides place their
-    // openers at that moment (executing on the first live tick, like any AI command).
-    if (executeCommands(state, 0)) {
-      state.events.push({ t: 'begin' }, { t: 'wave', n: 1 });
-      for (const side of SIDES) fireTriggers(state, side, 'battleStart', START);
-      for (const side of SIDES) aiOpener(state, side);
-    }
-    return;
-  }
-
-  // 1. clear events (above); snapshot previous positions for render interpolation
   state.tick++;
   for (const u of state.units) { u.px = u.x; u.py = u.y; }
-  // 2. commands (and, with prototype E1, holds that have run out)
-  executeCommands(state, state.tick);
-  if (state.rules.stance) stanceSystem(state);
-  // 3. clock, waves, Sporestorm, power cooldowns
-  clockSystem(state);
-  powerClock(state);
-  // 4. income and interest
-  incomeSystem(state);
-  // 5. building timers and spawns (and, with the combat rework's waves, each side's beat)
-  spawningSystem(state);
-  if (state.rules.waves) waveSystem(state);
-  // 6. AI: the counter cycle's analyses and activations (adaptive sides only), then think
-  for (const side of SIDES) if (state.sides[side].ai?.counter) counterTick(state, side);
-  if (state.tick % state.rules.ai.thinkEvery === 0) {
-    for (const side of SIDES) if (state.sides[side].ai) aiThink(state, side);
+  // 2. the commands due this tick (the power, from the clash's first tick, the muster's included), the player's first
+  executeCommands(state);
+  // 3. the clash clock runs against the cap, which lane ends read (12); 4. the AI thinks only of the power, every 20 ticks
+  powerThink(state);
+  // 5–7. targeting, movement and separation, and attacks, none on the muster's ticks (§5.6, R2-Q11)
+  if (!inMuster(state)) {
+    targetingSystem(state);
+    movementSystem(state);
+    attackSystem(state);
   }
-  // 7. targeting
-  targetingSystem(state);
-  // 8. movement and separation
-  movementSystem(state);
-  // 9. attacks
-  attackSystem(state);
-  // 10. resolve hits due this tick (and, with the combat rework's spore clouds, the clouds' pulses)
+  // 8. hits due this tick, then the spore clouds' pulses
   resolveHitsSystem(state);
   if (state.clouds) cloudSystem(state);
-  // 11. healing (Tenders) and out-of-combat regeneration
+  // 9. healing; 10. deaths, with `unitDeath` triggers; 11. merging on the field
   healingSystem(state);
-  // 12. deaths and removals
   deathSystem(state);
-  // 13. merging (every tick for active knits, every merge.every ticks for new trios)
   mergingSystem(state);
-  // 14. territory
-  territorySystem(state);
-  // 15. victory
-  victorySystem(state);
-  // 16. stats sampling
-  statsSystem(state);
+  // 12. lane ends: each lane's lock, and its freeze
+  laneEndSystem(state);
+  // 13. once every lane has ended, the round is scored, the battle's end checked, and the battle enters the
+  // aftermath; a power still queued is dropped (plan Call 9)
+  if (clashOver(state)) {
+    endClash(state);
+    dropClashCommands(state);
+  }
+  // 14. stats sampling: none is needed, since the most Elders alive is noted at each merge and the
+  // round's stats close as it's scored (`stats.ts`)
 }

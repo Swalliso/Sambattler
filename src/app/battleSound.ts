@@ -7,7 +7,7 @@
 // band's drain rather than to the sim's event, then the battle's win or loss.
 import type { PlayOptions } from '../audio/engine.ts';
 import { AFTERMATH_MS } from '../render/aftermath.ts';
-import type { BattleState, Side } from '../sim/rounds/index.ts';
+import type { BattleState, Side } from '../sim/index.ts';
 import { DRAIN_FROM } from '../ui/hud/top.ts';
 
 /** How far left or right a sound can sit (1 would be hard left or right). */

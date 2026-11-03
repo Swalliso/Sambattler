@@ -5,8 +5,8 @@
 import type { RunEffect } from '../data/schema.ts';
 import { choosePick, seedStream, nextInt } from '../sim/index.ts';
 import type { Content, PowerPolicy, Rng4 } from '../sim/index.ts';
-import { createBattle, hashState, runHeadless } from '../sim/rounds/index.ts';
-import type { BattleState } from '../sim/rounds/index.ts';
+import { createBattle, hashState, runHeadless } from '../sim/index.ts';
+import type { BattleState } from '../sim/index.ts';
 import {
   chooseNode, eventChoose, finishBattle, groveChoose, groveProblem, outcomeAvailable, promptAnswer, spoilsPick,
 } from './flow.ts';

@@ -14,7 +14,7 @@ import type { Atlas } from '../render/atlas.ts';
 import { FieldFrame } from '../render/frame.ts';
 import type { Reveal } from '../render/preview.ts';
 import { RoundRenderer, STRIP, TILE } from '../render/renderer.ts';
-import type { BattleState, SimEvent } from '../sim/rounds/index.ts';
+import type { BattleState, SimEvent } from '../sim/index.ts';
 import { h, setText, toggleClass } from '../ui/h.ts';
 import { helpOverlay } from '../ui/help.ts';
 import { uiIcon } from '../ui/icons.ts';

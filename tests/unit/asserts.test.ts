@@ -2,11 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { checkAssert, getPath, parseAssert } from '../../tools/lib/asserts.ts';
 
 describe('--assert (SPEC §15.2)', () => {
-  it("parses v1's @<tick> checkpoint as before", () => {
+  it("parses a plain path, and refuses v1's @<tick> checkpoint", () => {
     expect(parseAssert('winner=player')).toEqual({ text: 'winner=player', path: 'winner', op: '=', value: 'player' });
-    expect(parseAssert('spawned.player.sporeling@1200 >= 3')).toEqual({
-      text: 'spawned.player.sporeling@1200 >= 3', path: 'spawned.player.sporeling', tick: 1200, op: '>=', value: '3',
-    });
+    expect(() => parseAssert('gold.player@1200>80')).toThrow(/bad --assert/);
   });
 
   it('parses the round checkpoints @r<n> and @r<n>:<t>, and paths with indices', () => {
@@ -34,11 +32,5 @@ describe('--assert (SPEC §15.2)', () => {
     expect(check('x@r2:200>=1')).toBeNull();
     expect(check('x@r2:200>=3')).toBe('x@r2:200>=3: actual 2');
     expect(check('hash@r5=9f2c41d07ab35e18')).toBe('hash@r5=9f2c41d07ab35e18: no summary recorded at r5 (the battle reached round 4)');
-  });
-
-  it("still reads v1's summaries by tick", () => {
-    const result = { durationTicks: 3000, at: { '1200': { gold: { player: 90 } } } };
-    expect(checkAssert(result, parseAssert('gold.player@1200>80'))).toBeNull();
-    expect(checkAssert(result, parseAssert('gold.player@600>80'))).toBe('gold.player@600>80: no summary recorded at tick 600 (battle ended at 3000)');
   });
 });

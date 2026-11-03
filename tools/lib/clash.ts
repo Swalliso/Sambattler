@@ -1,18 +1,24 @@
-// R1's clash check (SPEC §16 R1, §12.2): whole armies at equal gold meet at once, in formation, on
-// v1's sim. This part builds the armies: each spawner's squad (§11.2), the army cards, and an army
-// from a bot spec and a gold budget (R1-Q2, R1-Q4). Then the fields, the line and the slot each
-// building takes (R1-Q1, R1-Q9), and the arrival. R2a's `playRoundClash` builds on `armyFromBot`,
-// `lineOf` and `assignSlots` (R2a/T116); `placeArmy` is a tool on v1's sim. v2's numbers that aren't
-// in the data yet are named here (plan call 19); R2a moves them into balance.json (§11.1).
+// R1's clash check (SPEC §16 R1, §12.2), on the round sim since R2b (T158): whole armies at equal gold meet
+// at once, in formation. This part builds the armies: each spawner's squad (§11.2), the army cards, and an
+// army from a bot spec and a gold budget (R1-Q2, R1-Q4). Then the fields, the line and the slot each building
+// takes (R1-Q1, R1-Q9). `playRoundClash` plays two armies' colonies through one round on the round sim
+// (R2a/T116), and `clashRecord` reads a clash's record for R1's bars from it. Fields with no round source left
+// the record in R2b: the cap reading after the muster (#13), how each lane ended (§6.7's E1–E6), the damage
+// supply, the arrival before the muster, parked units and lanes held by emplacements, with v1's movement and
+// targeting switches and the squad variants on v1's timers. v2's numbers that aren't in the data yet are
+// named here (plan call 19).
 import type { Content } from '../../src/data/registry.ts';
-import { addBuilding, addUnit } from '../../src/sim/create.ts';
-import { formationBox, musterKnits, overflows, slotGrid, slotPositions } from '../../src/sim/formation.ts';
-import type { FieldGeom, MusterUnit, Slot } from '../../src/sim/formation.ts';
-import { SIDES, bloomTrios, createBattle, hash32, makeConfig, nextFloat, other, seedStream, step, topKind } from '../../src/sim/index.ts';
+import type { ScenarioDef } from '../../src/data/schema.ts';
+import { basePlots, buildable, colonyPlots } from '../../src/sim/colony.ts';
+import { overflows, slotGrid } from '../../src/sim/formation.ts';
+import type { FieldGeom } from '../../src/sim/formation.ts';
+import {
+  SIDES, analyzeFielded, bloomTrios, commandStamp, createBattle, createFromScenario, hash32, makeRoundConfig, nextFloat, other, planningView, queueCommand,
+  runHeadless, seedStream, step, topKinds,
+} from '../../src/sim/index.ts';
 import type { BattleState, CounterKind, IntelProfile, Side } from '../../src/sim/index.ts';
 import { nextSigned } from '../../src/sim/rng.ts';
-import { mergeTriosNow } from '../../src/sim/systems/merging.ts';
-import { clampToLane, findUnit, unitDef, unitRadius } from '../../src/sim/world.ts';
+import { clampToLane, unitRadius } from '../../src/sim/world.ts';
 import { rosterIds } from './roster.ts';
 
 /** v2's clash numbers, until R2a puts them in the data (§4.6, §5.6, §6.7, §12.3). */
@@ -23,10 +29,6 @@ export const CLASH = {
   musterTicks: 20,
   /** A clash ends at 45 s, the muster counted (§6.7, §18.2 #13). */
   capTicks: 900,
-  /** Heartcap damage per point of a lane's margin (§6.7). */
-  damagePerSupply: 25,
-  /** Siege units count double toward Heartcap damage (§5.4, §6.7). */
-  siegeDamageMult: 2,
   /** The most Heartcap damage one round deals (§6.7). */
   damageCap: 500,
   /** G13: at most this share of clashes reach the cap (§12.3). */
@@ -59,18 +61,8 @@ export interface Army {
   units: number;
 }
 
-/** How squads are sized (§11.2, §16 R1's squad variants, A010). Each is v2's first guess unless set. */
-export interface SquadOpts {
-  /** v1's timers over this many seconds (default 60). */
-  squadSeconds?: number;
-  /** The 60 s squad × this / 60, halves rounded up: a uniform scale, which `squadSeconds` isn't (A010). */
-  squadScale?: number;
-  /** A fixed squad for these buildings, over the rule. */
-  squad?: Record<string, number>;
-}
-
-/** How an army is built past its bot, gold and plots: its squads, and the copies cap (X4). */
-export interface ArmyOpts extends SquadOpts {
+/** How an army is built past its bot, gold and plots: the copies cap (X4). */
+export interface ArmyOpts {
   /**
    * No card more than this many times (X4). A mono's card is capped at it, and its other plots and gold go
    * by `bot:balanced`'s weights (§18.2 #51's recommendation, provisionally).
@@ -78,20 +70,12 @@ export interface ArmyOpts extends SquadOpts {
   copies?: number;
 }
 
-/**
- * A spawner's squad (§11.2): what it made in `squadSeconds` (60) under v1's timers, in whole batches with
- * halves rounded up, `count × round(seconds / interval)`. Or the 60 s squad scaled by `squadScale` / 60,
- * halves rounded up, or the building's fixed `squad`.
- */
-export function squadSize(content: Content, buildingId: string, opts: SquadOpts = {}): number {
+/** A spawner's squad (§11.2): the units its data's `squad` fields each round. */
+export function squadSize(content: Content, buildingId: string): number {
   const b = content.buildings[buildingId];
   if (!b) throw new Error(`squadSize: unknown building ${buildingId}`);
-  if (!b.spawn) throw new Error(`squadSize: ${buildingId} spawns nothing`);
-  const fixed = opts.squad?.[buildingId];
-  if (fixed !== undefined) return fixed;
-  if (opts.squadSeconds !== undefined && opts.squadScale !== undefined) throw new Error("squadSize: squadSeconds and squadScale don't combine");
-  const over = (seconds: number) => b.spawn!.count * Math.round(seconds / b.spawn!.interval);
-  return opts.squadScale !== undefined ? Math.round((over(60) * opts.squadScale) / 60) : over(opts.squadSeconds ?? 60);
+  if (!b.squad) throw new Error(`squadSize: ${buildingId} fields no squad`);
+  return b.squad.count;
 }
 
 /**
@@ -116,22 +100,22 @@ interface BuildList {
 const buildLists = new WeakMap<Content, Map<string, BuildList>>();
 
 /**
- * The opener, the weights and `maxOwned` of the AI state `createBattle` resolves for `controller`
+ * The opener, the weights and `maxOwned` of the AI state the round `createBattle` resolves for `controller`
  * (§7.1), on a battle that's then dropped, with the economy and utility cards filtered out (R1-Q2).
- * `afterSeconds` is ignored, and "auto" merging reads as on. Neither the seed nor the budget changes
- * them, so each content's lists are kept.
+ * `afterRound` is ignored, and "auto" merging reads as on. Neither the seed nor the budget changes them, so
+ * each content's lists are kept.
  */
 function buildList(content: Content, controller: string): BuildList {
   let lists = buildLists.get(content);
   if (!lists) buildLists.set(content, (lists = new Map()));
   const known = lists.get(controller);
   if (known) return known;
-  const ai = createBattle(content, makeConfig(content, { seed: 1, mapId: 'test-flat', player: controller, enemy: 'human' })).sides.player.ai;
+  const ai = createBattle(content, makeRoundConfig(content, { seed: 1, mapId: 'test-flat', player: controller, enemy: 'human' })).sides.player.ai;
   if (!ai) throw new Error(`armyFromBot: ${controller} has no build list`);
   const cards = new Set(clashArmyIds(content));
   const list: BuildList = {
     opener: ai.opener.filter((id) => cards.has(id)),
-    weights: ai.weights.filter((w) => cards.has(w.building)).map(({ building, weight, maxOwned }) => ({ building, weight, maxOwned })),
+    weights: ai.weights.filter((w) => cards.has(w.building)).map(({ building, weight, maxOwned }) => ({ building, weight, maxOwned: maxOwned ?? -1 })),
     mergeOn: ai.mergePolicy !== 'off',
   };
   lists.set(controller, list);
@@ -148,7 +132,7 @@ function buildList(content: Content, controller: string): BuildList {
  */
 export function armyFromBot(content: Content, controller: string, budget: number, seed: number, plots: number, opts: ArmyOpts = {}): Army {
   const list = buildList(content, controller);
-  const rng = seedStream(hash32(seed, controller, 0), 'ai', 0);
+  const rng = seedStream(hash32(seed, controller, 0), 'ai.player', 0);
   const cost = (id: string): number => content.buildings[id]!.cost;
   const maxOf = new Map(list.weights.map((w) => [w.building, w.maxOwned]));
   const owned = new Map<string, number>();
@@ -194,21 +178,22 @@ export function armyFromBot(content: Content, controller: string, budget: number
   };
   draw(list.weights);
   if (opts.copies !== undefined && controller.startsWith('bot:mono:')) draw(buildList(content, 'bot:balanced').weights);
-  return armyOf(content, controller, budget, built, list.mergeOn, opts);
+  return armyOf(content, controller, budget, built, list.mergeOn);
 }
 
 /**
  * The army these buildings field, in this build-list order: each spawner its squad (§11.2), each tower
  * itself as an emplacement. `spent` is what they cost.
  */
-export function armyOf(content: Content, controller: string, budget: number, buildingIds: readonly string[], mergeOn: boolean, opts: SquadOpts = {}): Army {
+export function armyOf(content: Content, controller: string, budget: number, buildingIds: readonly string[], mergeOn: boolean): Army {
   let spent = 0;
   const entries = buildingIds.map((id): ArmyEntry => {
     const b = content.buildings[id];
     if (!b) throw new Error(`armyOf: unknown building ${id}`);
     spent += b.cost;
-    if (!b.spawn) return { buildingId: id, kind: 'emplacement', count: 1, mergeOn: false };
-    return { buildingId: id, kind: 'squad', unitId: b.spawn.unit, count: squadSize(content, id, opts), mergeOn };
+    if (b.kind === 'tower') return { buildingId: id, kind: 'emplacement', count: 1, mergeOn: false };
+    if (!b.squad) throw new Error(`armyOf: ${id} fields no squad`);
+    return { buildingId: id, kind: 'squad', unitId: b.squad.unit, count: b.squad.count, mergeOn };
   });
   let supply = 0, units = 0;
   for (const e of entries) {
@@ -297,8 +282,8 @@ export function lineOf(content: Content, buildingId: string): Line {
   const b = content.buildings[buildingId];
   if (!b) throw new Error(`lineOf: unknown building ${buildingId}`);
   if (b.kind === 'tower') return 'back';
-  if (b.kind !== 'spawner' || !b.spawn) throw new Error(`lineOf: ${buildingId} isn't an army card`);
-  return content.units[b.spawn.unit]!.tags.some((t) => BACK_TAGS.includes(t)) ? 'back' : 'front';
+  if (b.kind !== 'spawner' || !b.squad) throw new Error(`lineOf: ${buildingId} isn't an army card`);
+  return content.units[b.squad.unit]!.tags.some((t) => BACK_TAGS.includes(t)) ? 'back' : 'front';
 }
 
 /**
@@ -358,51 +343,6 @@ export function assignSlots(content: Content, army: Army, field: ClashField, opt
   });
 }
 
-/**
- * The arrival (§16 R1): one side's army appears in its formation box at once. Units are created in
- * slot order (lane, rank, file), then by j within a squad, whatever order the placements come in, so
- * ids and the muster depend only on the colony, as R2a's arrival will (A024). Each unit stands at
- * `slotPositions` (clamped to its lane by `addUnit`) with its squad's `mergeOn`, burrowed if it tunnels,
- * and counts in `stats.spawned`. Units carry `sourceBuildingId` 0, since no spawner stands on the
- * field and a real building's id could collide with an emplacement's (plan call 20). A tower stands on
- * its slot as a building. Returns each unit's placement, by its index in `placements`.
- */
-export function placeArmy(state: BattleState, side: Side, placements: readonly Placement[]): Map<number, number> {
-  const ranks = Math.max(2, ...placements.map((p) => p.rank + 1));
-  const box = formationBox({ width: state.map.width, lanes: state.lanes, gapTiles: CLASH.gapTiles }, side, ranks);
-  const slotOf = (p: PlotRef): Slot => {
-    const slot = box.find((s) => s.lane === p.lane && s.rank === p.rank && s.file === p.file);
-    if (!slot) throw new Error(`placeArmy: no slot at lane ${p.lane}, rank ${p.rank}, file ${p.file}`);
-    return slot;
-  };
-  const order = placements.map((_, i) => i).sort((i, j) => {
-    const p = placements[i]!, q = placements[j]!;
-    return p.lane - q.lane || p.rank - q.rank || p.file - q.file;
-  });
-  const squadOf = new Map<number, number>();
-  const spawned = state.stats[side].spawned;
-  order.forEach((i, n) => {
-    const p = placements[i]!, e = p.entry;
-    const prev = n > 0 ? placements[order[n - 1]!]! : undefined;
-    if (prev && prev.lane === p.lane && prev.rank === p.rank && prev.file === p.file) throw new Error(`placeArmy: two buildings on one plot (${p.lane}, ${p.rank}, ${p.file})`);
-    const slot = slotOf(p);
-    if (e.kind === 'emplacement') {
-      addBuilding(state, side, e.buildingId, slot.lane, slot.col, slot.row, state.compiled[side].buildings[e.buildingId]?.cost ?? 0);
-      return;
-    }
-    const unitId = e.unitId!;
-    const burrow = state.compiled[side].units[unitId]!.tags.includes('burrow');
-    for (const at of slotPositions(e.count, slot, side)) {
-      const u = addUnit(state, side, unitId, slot.lane, at.x, at.y, 0);
-      u.mergeOn = e.mergeOn;
-      if (burrow) u.burrowed = true;
-      spawned[unitId] = (spawned[unitId] ?? 0) + 1;
-      squadOf.set(u.id, i);
-    }
-  });
-  return squadOf;
-}
-
 /** The options a clash plays under, beside its armies (A017). Each is v2's first guess unless set. */
 export interface ClashOpts {
   /** Merging, at the muster and after it (default on). */
@@ -411,17 +351,13 @@ export interface ClashOpts {
   extraPlots?: number;
   /** How buildings take lanes on a field of more than one (default `line`, R1-Q1). */
   lanesRule?: LanesRule;
-  /** v1's movement, without the idle seek (R1-Q8): units with no target march to the far edge. */
-  v1Movement?: boolean;
-  /** v1's targeting (R1-Q7): siege units go for buildings, the Mortar's first. */
-  v1Targeting?: boolean;
 }
 
 /** One clash to play: two armies at a budget on a field, a seed, which seat the first army takes, and the jitter. */
 export interface ClashJob {
   field: FieldId;
   seed: number;
-  /** The side the first army plays; the second plays the other. */
+  /** The side the job's first army plays; the second plays the other. */
   seat: Side;
   armies: [Army, Army];
   /** Up to ± this many tiles per unit per axis, after the muster's knits (default 0, which draws nothing). */
@@ -429,54 +365,32 @@ export interface ClashJob {
   opts?: ClashOpts;
 }
 
-/** Hooks a test uses to stage units and look at the clash at its start. */
-export interface ClashHooks {
-  /** After the arrival, before the muster: place exact units. */
-  stage?: (state: BattleState) => void;
-  /** At tick 20, after the muster's knits and the jitter, before the first step. */
-  mustered?: (state: BattleState) => void;
-  /** After each step, before the lanes are read. */
-  step?: (state: BattleState) => void;
-}
-
-/** The two readings of the 45 s cap (§18.2 #13): with the muster counted (the first guess), and after it. */
-export type Reading = 'cap' | 'capAfterMuster';
-
-/** How a lane's clash ended: a side wiped out (`wipe`), the 45 s comparison (`cap`), or one of §6.7's edge cases. */
-export type LaneCase = 'wipe' | 'cap' | 'E1' | 'E2' | 'E3' | 'E4' | 'E5' | 'E6';
-
-/** A lane's result in one reading, as it locked (§6.7). */
+/** A lane's result, as the round locked it (§6.7). */
 export interface LaneReading {
-  case: LaneCase;
   winner: Side | 'draw';
-  /** The tick it locked: the lane's length, the muster counted. */
+  /** The tick it locked. */
   ticks: number;
   /** Whether the cap decided it. */
   capped: boolean;
-  /** Each side's surviving supply: its living units' own supply. */
+  /** Each side's surviving supply. */
   surviving: Record<Side, number>;
-  /** Surviving supply with each siege unit counted twice. */
-  damageSupply: Record<Side, number>;
-  /** 25 × the margin, to the loser's Heartcap; 0 for a draw. */
+  /** What the lane's win dealt to the loser's Heartcap, before the round's cap; 0 for a draw. */
   raw: number;
 }
 
 export interface LaneRecord {
   lane: number;
   cap: LaneReading;
-  capAfterMuster: LaneReading;
-  /** The lane reached the cap (`cap` reading) with a side kept in it by emplacements alone (#10). */
-  emplacementsHeld: boolean;
 }
 
-/** A clash's result in one reading (§6.7, R1-Q3). */
+/** A clash's result (§6.7, R1-Q3). */
 export interface ClashReading {
-  /** When its last lane locked: the clash's length in ticks, the muster counted. */
+  /** When its last lane locked: the clash's length in ticks. */
   ticks: number;
   /** Whether any lane reached the cap. */
   capped: boolean;
   lanesWon: Record<Side, number>;
-  /** Each side's Heartcap damage: summed over the lanes it lost (storm ×1.0), and that sum capped at 500. */
+  /** Each side's Heartcap damage taken: summed over the lanes it lost, and the round's, capped (storm ×1.0 in round 1). */
   heartcap: Record<Side, { uncapped: number; capped: number }>;
   /** The clash winner (R1-Q3): more lanes won, then more uncapped Heartcap damage dealt, else a draw. */
   winner: Side | 'draw';
@@ -490,10 +404,12 @@ export interface Merges {
   '3': number;
 }
 
-/** §7.4's four counter kinds' scores, with no noise, and the top kind (ties Elite, Armor, Line, Swarm). */
+/** §7.4's reading of what an army fielded (R2-Q3): its shares and the five kinds' scores, with no noise, and the top kind. */
 export interface KindRead {
+  shares: { light: number; medium: number; heavy: number; ranged: number; elite: number };
   scores: IntelProfile;
-  top: CounterKind;
+  /** Null when it fielded nothing the reading scores, such as emplacements alone. */
+  top: CounterKind | null;
 }
 
 /** A squad too big to stand apart in its slot (§4.6, #11): its units are wider than its grid's spacing. */
@@ -512,28 +428,15 @@ export interface ArmyRecord {
   entries: ArmyEntry[];
   spent: number;
   buildings: number;
-  /** Its units at the arrival, and their supply. */
-  arrival: { units: number; supply: number };
   /** Its units after the muster, by tier, and their supply. */
   mustered: { units: number; supply: number; base: number; bloomed: number; elders: number };
   /** Merges at the muster, and on the field after it. */
   merges: { muster: Merges; field: Merges };
-  /**
-   * After the muster, the share of its units' supply that merged, each unit at its parts' base supply (a
-   * Bloomed unit its 3 parts' tier-1 supply, an Elder its 9; R2-Q3, A014): plain; with the swarm read,
-   * which leaves out units whose base supply is at most `ai.counter.swarmMaxSupply` (1 where the data
-   * leaves it unset); and Elders alone.
-   */
-  eliteShare: { plain: number; swarmRead: number; elderOnly: number };
-  /** The armor classes' and ranged units' shares, by the same measure. */
-  shares: { light: number; medium: number; heavy: number; ranged: number };
-  /** §7.4's kinds under each eliteShare reading (A041). */
-  kinds: Record<keyof ArmyRecord['eliteShare'], KindRead>;
+  /** The round's fielded record as §7.4 reads it (`analyzeFielded`). */
+  kinds: KindRead;
   overflow: Overflow[];
-  /** The most trios Puppet Bloom's circle finds centred on any of its units at tick 20 (A057, R2-Q7). */
+  /** The most trios Puppet Bloom's circle finds centred on any of its units after the muster (A057, R2-Q7). */
   bloomTrios: number;
-  /** Its units within 0.5 tiles of the far edge when their lane locked in the `cap` reading (A021). */
-  parked: number;
 }
 
 /** One clash's record (§16 R1, "Records"). */
@@ -548,158 +451,176 @@ export interface ClashRecord {
   armies: Record<Side, ArmyRecord>;
   lanes: LaneRecord[];
   cap: ClashReading;
-  capAfterMuster: ClashReading;
 }
-
-/** The tick each reading's cap falls on: 45 s of the clash clock, or 45 s after the muster. */
-const CAP_TICK: Record<Reading, number> = { cap: CLASH.capTicks, capAfterMuster: CLASH.capTicks + CLASH.musterTicks };
 
 /** A job's options with v2's first guesses filled in. */
 export function clashOpts(opts: ClashOpts = {}): Required<ClashOpts> {
+  return { merging: opts.merging ?? true, extraPlots: opts.extraPlots ?? 0, lanesRule: opts.lanesRule ?? 'line' };
+}
+
+// ---- one round clash ----
+
+/** One round clash: two armies on one of R1's fields, a seed, the seat the first army takes, and its options. */
+export interface RoundClashJob {
+  field: FieldId;
+  seed: number;
+  /** The side the first army plays; the second plays the other. */
+  seat: Side;
+  armies: [Army, Army];
+  opts?: {
+    /** Merging, at the muster and after it (default on); an army's own policy sets each building's toggle. */
+    merging?: boolean;
+    /** Plots a side opens past the base ones, in a third rank (R1-Q4; default 0). */
+    extraPlots?: number;
+    lanesRule?: LanesRule;
+    /** Per army, whether its front and back ranks trade places, a third rank left where it stands (G16, R2-Q10). */
+    swap?: [boolean, boolean];
+  };
+}
+
+/** A round clash as the tools read it, from the first army's side (`a`) and the second's (`b`). */
+export interface RoundClashRecord {
+  field: FieldId;
+  seed: number;
+  seat: Side;
+  controllers: [string, string];
+  budget: number;
+  lanes: { winner: 'a' | 'b' | null; ticks: number; capped: boolean; survivors: [number, number] }[];
+  /** The Heartcap damage each army dealt: capped (§6.7), and before the cap, each lane's summed. */
+  damage: [number, number];
+  uncapped: [number, number];
+  /** R1-Q3's winner: more lanes won, then more uncapped damage, else a draw. */
+  winner: 'a' | 'b' | 'draw';
+  /** The gold each army has left on the field: every unit's HP share of its building's cost a unit. */
+  value: [number, number];
+  /** The clash's length, its longest lane, the muster counted. */
+  ticks: number;
+}
+
+/**
+ * Each side's slots on R1's field: `assignSlots` over the field's plots that are buildable on that side, since a
+ * stump plot holds no building in rounds (§4.6) and R1's field, on v1's sim, has none (Twin Roots' front rank).
+ */
+function colonyFor(content: Content, army: Army, base: ClashField, side: Side, plots: number, lanesRule?: LanesRule, swap = false): NonNullable<ScenarioDef['sides']['player']['colony']> {
+  const own = colonyPlots(content.maps[base.mapId]!, side, plots);
+  const open = base.open.filter((r) => {
+    const p = own.find((q) => q.lane === r.lane && q.rank === r.rank && q.file === r.file);
+    return p !== undefined && buildable(p);
+  });
+  const traded = (rank: number) => (swap && rank < 2 ? 1 - rank : rank);
+  return assignSlots(content, army, { ...base, open, plots: open.length }, lanesRule ? { lanesRule } : {})
+    .map((p) => {
+      const rank = traded(p.rank);
+      if (!open.some((r) => r.lane === p.lane && r.rank === rank && r.file === p.file)) throw new Error(`colonyFor: ${base.id} has no plot at lane ${p.lane}, rank ${rank}, file ${p.file} to trade ranks into`);
+      return { building: p.entry.buildingId, lane: p.lane, rank, file: p.file, merge: p.entry.mergeOn };
+    });
+}
+
+/** The gold value a side has left on the field: each unit's HP share of what its building cost a unit of its squad. */
+function fieldValue(state: BattleState, side: Side): number {
+  let v = 0;
+  for (const u of state.units) {
+    if (u.side !== side || u.hp <= 0) continue;
+    const b = state.buildings.find((x) => x.id === u.sourceBuildingId);
+    const card = b ? state.compiled[side].buildings[b.buildingId] : undefined;
+    if (card?.squad) v += (u.hp / u.maxHp) * (card.cost / card.squad.count);
+  }
+  return v;
+}
+
+/** Hooks a clash's reader uses: at the clash's first tick, after the arrival and the muster, and at the round's end. */
+export interface RoundClashHooks {
+  begun?: (state: BattleState) => void;
+  ended?: (state: BattleState) => void;
+}
+
+/**
+ * One round clash of two armies from R1's `armyFromBot` (or `armyOf`), on the round sim (R2a/T116, §12.2): their
+ * slots by R1's `assignSlots` become each side's colony in a round scenario (`createFromScenario`, T029), both
+ * sides human; the player's `beginClash` is queued and stepped, which runs the arrival and the muster, then
+ * `runHeadless` plays to round 1's end, and `state.rounds[0]` is read. G1's squad duels, G12's clash rows, G16's
+ * swaps and R1's clash check (`clashRecord`) play through it.
+ */
+export function playRoundClash(content: Content, job: RoundClashJob, hooks: RoundClashHooks = {}): RoundClashRecord {
+  const opts = job.opts ?? {};
+  const base = clashField(content, job.field, { extraPlots: opts.extraPlots ?? 0 });
+  const plots = basePlots(content.maps[base.mapId]!) + (opts.extraPlots ?? 0);
+  const armyOn = (s: Side): Army => job.armies[s === job.seat ? 0 : 1];
+  const swapOn = (s: Side): boolean => opts.swap?.[s === job.seat ? 0 : 1] ?? false;
+  const side = (s: Side) => ({ plots, colony: colonyFor(content, armyOn(s), base, s, plots, opts.lanesRule, swapOn(s)) });
+  const def: ScenarioDef = {
+    id: 'round-clash', description: 'One clash of two armies (R2a/T116).', map: base.mapId,
+    flags: { merging: opts.merging ?? true, adaptiveGeneral: false, powers: false },
+    sides: { player: side('player'), enemy: side('enemy') },
+  };
+  const state = createFromScenario(content, def, { seed: job.seed });
+  queueCommand(state, { ...commandStamp(state), side: 'player', type: 'beginClash' });
+  step(state);
+  hooks.begun?.(state);
+  runHeadless(state, { until: { round: 1 } });
+  hooks.ended?.(state);
+  const r = state.rounds[0];
+  if (!r) throw new Error(`playRoundClash: the clash on ${job.field}, seed ${job.seed}, never ended`);
+  const a = job.seat, b: Side = a === 'player' ? 'enemy' : 'player';
+  const ab = (s: Side | null): 'a' | 'b' | null => (s === null ? null : s === a ? 'a' : 'b');
+  const lanes = r.lanes.map((l) => ({ winner: ab(l.winner), ticks: l.ticks, capped: l.capped, survivors: [l.survivors[a], l.survivors[b]] as [number, number] }));
+  const uncapped = (s: Side) => r.lanes.reduce((n, l) => n + (l.winner === s ? l.damage : 0), 0);
+  const won = (w: 'a' | 'b') => lanes.filter((l) => l.winner === w).length;
+  const ua = uncapped(a), ub = uncapped(b);
+  const winner = won('a') !== won('b') ? (won('a') > won('b') ? 'a' : 'b') : ua !== ub ? (ua > ub ? 'a' : 'b') : 'draw';
   return {
-    merging: opts.merging ?? true, extraPlots: opts.extraPlots ?? 0, lanesRule: opts.lanesRule ?? 'line',
-    v1Movement: opts.v1Movement ?? false, v1Targeting: opts.v1Targeting ?? false,
+    field: job.field, seed: job.seed, seat: job.seat, controllers: [job.armies[0].controller, job.armies[1].controller], budget: job.armies[0].budget,
+    lanes, damage: [r.damage[a], r.damage[b]], uncapped: [ua, ub], winner, value: [fieldValue(state, a), fieldValue(state, b)],
+    ticks: Math.max(...r.lanes.map((l) => l.ticks)),
   };
 }
 
 /**
- * One clash on v1's sim (§16 R1, plan calls 5–8). Both armies arrive at tick 0 in formation (the job's
- * first army in its seat), then the muster: per side, the player first, `musterKnits` runs on the units
- * where they stand and each pass is applied with `mergeTriosNow`, so each merged unit's id is its key
- * (A024). Then the jitter, if any, and the clock jumps to tick 20: nobody moved or attacked in the
- * muster. Lanes where one side or neither fields anything lock at tick 0 (E1, E2). The rest fight on
- * v1's `step`, with v2's targeting and movement switched on unless the job asks for v1's, until each
- * lane ends by §6.7's rule: a side has no units and no emplacements left, or the cap. The cap reading
- * locks the lanes still fighting at tick 900, the muster counted (the first guess); the clash runs on to
- * tick 920 for the other reading (#13). Both are scored by §6.7, storm ×1.0, and by R1-Q3's winner.
+ * One clash for R1's bars (§16 R1, plan calls 5–8), played through `playRoundClash`: both armies arrive in
+ * formation (the job's first army in its seat) and muster at Begin, then the jitter, if any, moves each unit
+ * before the clash's first tick. The record reads the round's result (§6.7): each lane's winner, length,
+ * surviving supply and damage, the Heartcaps' damage summed per side and capped, and R1-Q3's winner. Each
+ * army's mustered units, merges and Puppet Bloom trios are read at the clash's first tick, and §7.4's reading
+ * of its fielded record at the round's end. A clash at jitter 0 draws no random number (both sides are human),
+ * which the cache relies on to play it once for every seed (T055).
  */
-export function playClash(content: Content, job: ClashJob, hooks: ClashHooks = {}): ClashRecord {
+export function clashRecord(content: Content, job: ClashJob): ClashRecord {
   const opts = clashOpts(job.opts);
-  const field = clashField(content, job.field, { extraPlots: opts.extraPlots });
-  const state = createBattle(content, makeConfig(content, {
-    seed: job.seed, mapId: field.mapId, player: 'human', enemy: 'human', flags: { merging: opts.merging },
-    test: {
-      // as the supply duels run, with v1's time limit past the 920 ticks both readings need
-      noTurrets: true, noTerritory: true, noHeartcapTargets: true, timeLimitSeconds: 47,
-      ...(opts.v1Targeting ? {} : { noBuildingPreference: true }), ...(opts.v1Movement ? {} : { idleSeek: true }),
-    },
-  }));
-  state.phase = 'live';
-  // without jitter a clash must draw nothing, since the cache plays it once for every seed (T055)
-  const streams = (job.jitter ?? 0) > 0 ? undefined : JSON.stringify(state.rng);
   const armies = { [job.seat]: job.armies[0], [other(job.seat)]: job.armies[1] } as Record<Side, Army>;
-  for (const side of SIDES) placeArmy(state, side, assignSlots(content, armies[side], field, { lanesRule: opts.lanesRule }));
-  // the pace variant (`clashpace`): the pace rule reads a unit's wave, so every arrival is wave 0 (plan call 9)
-  if (state.rules.waves) for (const u of state.units) u.wave = 0;
-  arrivalShields(content, state);
-  hooks.stage?.(state);
-
-  const arrival = { player: fielded(state, 'player'), enemy: fielded(state, 'enemy') };
-
-  const atMuster = muster(state);
-  jitter(state, job);
-  state.tick = CLASH.musterTicks;
-  const mustered = { player: fielded(state, 'player'), enemy: fielded(state, 'enemy') };
-  const reads = { player: mixOf(state, 'player'), enemy: mixOf(state, 'enemy') };
-  const bloom = { player: mostBloomTrios(content, state, 'player'), enemy: mostBloomTrios(content, state, 'enemy') };
-  hooks.mustered?.(state);
-
-  const lanes = state.lanes.map(() => ({} as Partial<Record<Reading, LaneReading>> & { held?: boolean }));
-  const parked = { player: 0, enemy: 0 };
-  const lockCap = (s: BattleState, l: number, r: LaneReading): void => {
-    lanes[l]!.cap = r;
-    for (const side of SIDES) parked[side] += parkedIn(s, side, l);
-  };
-  // E1 and E2: decided by what each side fields, before anyone moves
-  tally(state).forEach((t, l) => {
-    if (t.player.alive && t.enemy.alive) return;
-    const r = t.player.alive || t.enemy.alive ? ended(t, 0, 'E1') : ended(t, 0, 'E2');
-    lockCap(state, l, r);
-    lanes[l]!.capAfterMuster = r;
-  });
-  const open = () => lanes.some((l) => !l.cap || !l.capAfterMuster);
-  // runHeadless's loop (src/sim/headless.ts) without the hash of the final state it ends on, which the
-  // clash never reads and which cost a quarter of a clash (R1 S4). A clash queues no commands and is never
-  // held for a draft, so each step is one tick.
-  while (open() && state.tick < CAP_TICK.capAfterMuster) {
-    const before = state.tick;
-    step(state);
-    if (state.tick !== before + 1) throw new Error(`playClash: tick ${before} didn't step to the next`);
-    if (state.outcome) throw new Error(`playClash: v1's battle ended at tick ${state.tick}, before the clash did`);
-    hooks.step?.(state);
-    tally(state).forEach((t, l) => {
-      const lane = lanes[l]!;
-      const end = !t.player.alive || !t.enemy.alive ? ended(t, state.tick) : undefined;
-      if (!lane.cap && (end || state.tick >= CAP_TICK.cap)) {
-        lockCap(state, l, end ?? capped(t, state.tick));
-        if (!end) lane.held = t.player.units === 0 || t.enemy.units === 0;
+  const atBegin = {} as Record<Side, Pick<ArmyRecord, 'mustered' | 'overflow' | 'bloomTrios'> & { merges: Merges }>;
+  let streams = '', end: BattleState | undefined;
+  playRoundClash(content, { field: job.field, seed: job.seed, seat: job.seat, armies: job.armies, opts }, {
+    begun: (state) => {
+      for (const side of SIDES) {
+        atBegin[side] = {
+          mustered: fielded(state, side), merges: { ...state.stats[side].merges }, overflow: overflowsOf(state, side, armies[side]),
+          bloomTrios: mostBloomTrios(content, state, side),
+        };
       }
-      if (!lane.capAfterMuster && (end || state.tick >= CAP_TICK.capAfterMuster)) lane.capAfterMuster = end ?? capped(t, state.tick);
-    });
-  }
-  if (streams !== undefined && JSON.stringify(state.rng) !== streams) throw new Error('playClash: a clash at jitter 0 drew a random number, so its seed matters and the cache would merge clashes that differ');
-  const laneRecords = lanes.map((l, lane): LaneRecord => ({ lane, cap: l.cap!, capAfterMuster: l.capAfterMuster!, emplacementsHeld: l.held ?? false }));
+      jitter(state, job);
+      streams = JSON.stringify(state.rng);
+    },
+    ended: (state) => { end = state; },
+  });
+  const state = end!;
+  if (!(job.jitter! > 0) && JSON.stringify(state.rng) !== streams) throw new Error('clashRecord: a clash at jitter 0 drew a random number, so its seed matters and the cache would merge clashes that differ');
+  const r = state.rounds[0]!;
+  const lanes = r.lanes.map((l, lane): LaneRecord => ({
+    lane, cap: { winner: l.winner ?? 'draw', ticks: l.ticks, capped: l.capped, surviving: { ...l.survivors }, raw: l.winner ? l.damage : 0 },
+  }));
   const armyRecord = (side: Side): ArmyRecord => {
-    const army = armies[side], all = state.stats[side].merges, m = atMuster[side];
+    const army = armies[side], b = atBegin[side], all = state.stats[side].merges;
+    const read = analyzeFielded(planningView(state, other(side)), 1, 1);
     return {
-      controller: army.controller, entries: army.entries, spent: army.spent, buildings: army.entries.length,
-      arrival: { units: arrival[side].units, supply: arrival[side].supply }, mustered: mustered[side],
-      merges: { muster: m, field: { '2': all['2'] - m['2'], '3': all['3'] - m['3'] } },
-      ...reads[side], overflow: overflowsOf(state, side, army), bloomTrios: bloom[side], parked: parked[side],
+      controller: army.controller, entries: army.entries, spent: army.spent, buildings: army.entries.length, mustered: b.mustered,
+      merges: { muster: b.merges, field: { '2': all['2'] - b.merges['2'], '3': all['3'] - b.merges['3'] } },
+      kinds: { shares: read.shares, scores: read.scores, top: topKinds(read.scores, 1)[0] ?? null }, overflow: b.overflow, bloomTrios: b.bloomTrios,
     };
   };
   return {
     field: job.field, budget: job.armies[0].budget, seed: job.seed, seat: job.seat, jitter: job.jitter ?? 0, opts,
-    armies: { player: armyRecord('player'), enemy: armyRecord('enemy') },
-    lanes: laneRecords,
-    cap: scoreReading(laneRecords.map((l) => l.cap)),
-    capAfterMuster: scoreReading(laneRecords.map((l) => l.capAfterMuster)),
+    armies: { player: armyRecord('player'), enemy: armyRecord('enemy') }, lanes, cap: scoreReading(lanes, r.damage),
   };
-}
-
-/**
- * The mixed shields at the arrival (`clashshield`, plan call 10), before the muster: `shieldMixedWaves`'s
- * rule (src/sim/systems/spawning.ts) without its wave filter. A side's lane army of `minTypes` or more unit
- * types (a merged form counts as its base type) gives each of its units a shield of `shieldFrac` × its max
- * HP, which a knit keeps in proportion. Emplacements neither count as a type nor take a shield, since a v1
- * building holds none (R2a decides them if #8 is adopted).
- */
-function arrivalShields(content: Content, state: BattleState): void {
-  const mx = content.balance.mixedWave;
-  if (!mx) return;
-  for (const side of SIDES) {
-    state.lanes.forEach((_, lane) => {
-      const mine = state.units.filter((u) => u.side === side && u.lane === lane && u.hp > 0);
-      if (new Set(mine.map((u) => u.unitId)).size < mx.minTypes) return;
-      for (const u of mine) u.shield = Math.max(u.shield ?? 0, Math.round(u.maxHp * mx.shieldFrac));
-    });
-  }
-}
-
-/**
- * The muster's knits (§5.6, plan call 6): per side, the player first, `musterKnits` on the units as they
- * stand, each pass applied with `mergeTriosNow` in its order, so each merged unit's id equals its key.
- * Returns each side's merges. With merging off, nothing knits.
- */
-function muster(state: BattleState): Record<Side, Merges> {
-  const lanes = state.lanes.map((l) => ({ top: l.rowStart, bottom: l.rowEnd }));
-  for (const side of state.config.flags.merging ? SIDES : []) {
-    const firstKey = state.nextId;
-    const res = musterKnits(state.units.filter((u) => u.side === side).map((u): MusterUnit => ({
-      key: u.id, side, lane: u.lane, unitId: u.unitId, tier: u.tier, x: u.x, y: u.y, mergeOn: u.mergeOn, source: u.sourceBuildingId,
-      // §5.6's eligibility apart from the toggle and the tier, which the record carries: burrowed and burst units never knit
-      eligible: !u.burrowed && !(state.rules.burst && unitDef(state, u).tags.includes('burst')),
-    })), {
-      firstKey, mergeRadius: state.compiled[side].mergeRadius, lanes, width: state.map.width,
-      radiusOf: (unitId, tier) => state.compiled[side].units[unitId]!.tiers[tier - 1]!.radius,
-    });
-    for (const pass of res.passes) mergeTriosNow(state, pass.map((trio) => trio.map((key) => findUnit(state, key)!)));
-    const units = state.units.filter((u) => u.side === side);
-    if (units.length !== res.units.length || units.some((u, i) => u.id !== res.units[i]!.key || u.tier !== res.units[i]!.tier)) {
-      throw new Error(`playClash: ${side}'s muster gave units whose ids aren't musterKnits's keys`);
-    }
-  }
-  return { player: { ...state.stats.player.merges }, enemy: { ...state.stats.enemy.merges } };
 }
 
 /**
@@ -715,7 +636,7 @@ function jitter(state: BattleState, job: ClashJob): void {
     u.x += nextSigned(rng) * j;
     u.y += nextSigned(rng) * j;
     clampToLane(state, u, unitRadius(state, u));
-    u.px = u.x; u.py = u.y; u.spawnY = u.y;
+    u.px = u.x; u.py = u.y; u.slotY = u.y;
   }
 }
 
@@ -729,40 +650,6 @@ function fielded(state: BattleState, side: Side): ArmyRecord['mustered'] {
     if (u.tier === 1) out.base++; else if (u.tier === 2) out.bloomed++; else out.elders++;
   }
   return out;
-}
-
-/** A merged unit's parts, by tier: a Bloomed unit knit 3 base units, an Elder 9. */
-const PARTS = [1, 3, 9] as const;
-
-/**
- * A side's mix after the muster (§7.4, R2-Q3): each unit at its parts' base supply, the eliteShare
- * readings, the armor and ranged shares, and the four kinds' scores from `ai.counter`, with no noise.
- */
-function mixOf(state: BattleState, side: Side): Pick<ArmyRecord, 'eliteShare' | 'shares' | 'kinds'> {
-  const cr = state.rules.ai.counter;
-  const swarmMax = cr.swarmMaxSupply ?? 1;
-  let total = 0, light = 0, medium = 0, heavy = 0, ranged = 0, merged = 0, swarmRead = 0, elders = 0;
-  for (const u of state.units) {
-    if (u.side !== side) continue;
-    const def = unitDef(state, u);
-    const base = def.tiers[0].supply;
-    const parts = PARTS[u.tier - 1]! * base;
-    total += parts;
-    if (def.armor === 'light') light += parts; else if (def.armor === 'medium') medium += parts; else heavy += parts;
-    if (def.tags.includes('ranged')) ranged += parts;
-    if (u.tier === 1) continue;
-    merged += parts;
-    if (base > swarmMax) swarmRead += parts;
-    if (u.tier === 3) elders += parts;
-  }
-  const share = (x: number) => (total > 0 ? x / total : 0);
-  const eliteShare = { plain: share(merged), swarmRead: share(swarmRead), elderOnly: share(elders) };
-  const shares = { light: share(light), medium: share(medium), heavy: share(heavy), ranged: share(ranged) };
-  const read = (elite: number): KindRead => {
-    const scores: IntelProfile = { swarm: shares.light * (1 - cr.swarmEliteDiscount * elite), line: shares.medium, armor: shares.heavy, elite: cr.eliteScoreMult * elite };
-    return { scores, top: topKind(scores) };
-  };
-  return { eliteShare, shares, kinds: { plain: read(eliteShare.plain), swarmRead: read(eliteShare.swarmRead), elderOnly: read(eliteShare.elderOnly) } };
 }
 
 /** The army's squads that overflow their slots (§4.6, #11), each building and squad size once. */
@@ -781,7 +668,7 @@ function overflowsOf(state: BattleState, side: Side, army: Army): Overflow[] {
 /** Puppet Bloom's circle (§11.10), from its data. */
 function bloomRadius(content: Content): number {
   const power = Object.values(content.commanders).map((c) => c.power).find((p) => p.kind === 'bloom');
-  if (!power || !('radius' in power)) throw new Error('playClash: no Puppet Bloom in the data');
+  if (!power || !('radius' in power)) throw new Error('clashRecord: no Puppet Bloom in the data');
   return power.radius;
 }
 
@@ -793,94 +680,27 @@ function mostBloomTrios(content: Content, state: BattleState, side: Side): numbe
   return most;
 }
 
-/** A side's units in a lane whose bodies stand within 0.5 tiles of the far edge (A021). */
-function parkedIn(state: BattleState, side: Side, lane: number): number {
-  let n = 0;
-  for (const u of state.units) {
-    if (u.side !== side || u.lane !== lane) continue;
-    const r = unitRadius(state, u);
-    if ((side === 'player' ? state.map.width - (u.x + r) : u.x - r) <= 0.5) n++;
-  }
-  return n;
-}
-
-/** What one side has in a lane: living units and emplacements, its surviving supply and its damage supply. */
-interface SideTally { units: number; towers: number; alive: boolean; surviving: number; damage: number }
-type LaneTally = Record<Side, SideTally>;
-
-/** Each lane's tally (§6.7): every living unit counts its own supply, a siege unit twice for damage. */
-function tally(state: BattleState): LaneTally[] {
-  const out = state.lanes.map((): LaneTally => ({
-    player: { units: 0, towers: 0, alive: false, surviving: 0, damage: 0 },
-    enemy: { units: 0, towers: 0, alive: false, surviving: 0, damage: 0 },
-  }));
-  for (const u of state.units) {
-    if (u.hp <= 0) continue;
-    const t = out[u.lane]![u.side];
-    t.units++;
-    t.surviving += u.supply;
-    t.damage += unitDef(state, u).tags.includes('siege') ? u.supply * CLASH.siegeDamageMult : u.supply;
-  }
-  // every building on a clash's field is an emplacement
-  for (const b of state.buildings) if (b.hp > 0) out[b.lane]![b.side].towers++;
-  for (const t of out) for (const side of SIDES) t[side].alive = t[side].units + t[side].towers > 0;
-  return out;
-}
-
 /**
- * A lane that ended because a side is out of it, or both (E4), at `tick`: the side left wins, its whole
- * damage supply the margin. It's E6 when only emplacements are left to win it. At tick 0, `arrival`
- * names the case: E1 when one side fields nothing, E2 when neither does.
+ * A clash's score (§6.7, R1-Q3): each Heartcap's damage taken, summed over the lanes it lost and as the round
+ * capped it (`dealt`, by the side that dealt it). The clash goes to more lanes won, then more uncapped damage
+ * dealt, else it's a draw; the round, to more capped damage dealt, else it's a drawn round.
  */
-function ended(t: LaneTally, tick: number, arrival?: 'E1' | 'E2'): LaneReading {
-  const winner: Side | 'draw' = t.player.alive ? 'player' : t.enemy.alive ? 'enemy' : 'draw';
-  const kase: LaneCase = arrival ?? (winner === 'draw' ? 'E4' : t[winner].units > 0 ? 'wipe' : 'E6');
-  return lock(t, tick, kase, winner, false);
-}
-
-/**
- * A lane still fighting at the cap: the side with more surviving supply wins it, its margin its damage
- * supply less the loser's, never below 0 (#22's first guess). Only emplacements left on both sides (E5)
- * or equal surviving supply (E3) is a draw.
- */
-function capped(t: LaneTally, tick: number): LaneReading {
-  if (t.player.units === 0 && t.enemy.units === 0) return lock(t, tick, 'E5', 'draw', true);
-  if (t.player.surviving === t.enemy.surviving) return lock(t, tick, 'E3', 'draw', true);
-  return lock(t, tick, 'cap', t.player.surviving > t.enemy.surviving ? 'player' : 'enemy', true);
-}
-
-function lock(t: LaneTally, tick: number, kase: LaneCase, winner: Side | 'draw', isCapped: boolean): LaneReading {
-  const margin = winner === 'draw' ? 0 : Math.max(0, t[winner].damage - t[other(winner)].damage);
-  return {
-    case: kase, winner, ticks: tick, capped: isCapped,
-    surviving: { player: t.player.surviving, enemy: t.enemy.surviving },
-    damageSupply: { player: t.player.damage, enemy: t.enemy.damage },
-    raw: CLASH.damagePerSupply * margin,
-  };
-}
-
-/**
- * A clash's score in one reading (§6.7, R1-Q3): each lane's raw damage to its loser's Heartcap, storm
- * ×1.0 (so `floor(raw × 10000 / 10000)` is the raw), summed per Heartcap and capped at 500. The clash
- * goes to more lanes won, then more uncapped damage dealt, else it's a draw; the round, to more capped
- * damage dealt, else it's a drawn round.
- */
-function scoreReading(lanes: readonly LaneReading[]): ClashReading {
+function scoreReading(lanes: readonly LaneRecord[], dealt: Record<Side, number>): ClashReading {
   const won = { player: 0, enemy: 0 }, taken = { player: 0, enemy: 0 };
-  for (const l of lanes) {
+  for (const { cap: l } of lanes) {
     if (l.winner === 'draw') continue;
     won[l.winner]++;
     taken[other(l.winner)] += l.raw;
   }
   const heartcap = {
-    player: { uncapped: taken.player, capped: Math.min(CLASH.damageCap, taken.player) },
-    enemy: { uncapped: taken.enemy, capped: Math.min(CLASH.damageCap, taken.enemy) },
+    player: { uncapped: taken.player, capped: dealt.enemy },
+    enemy: { uncapped: taken.enemy, capped: dealt.player },
   };
   const more = (p: number, e: number): Side | 'draw' => (p > e ? 'player' : e > p ? 'enemy' : 'draw');
   const byLanes = more(won.player, won.enemy);
   return {
-    ticks: Math.max(...lanes.map((l) => l.ticks)),
-    capped: lanes.some((l) => l.capped),
+    ticks: Math.max(...lanes.map((l) => l.cap.ticks)),
+    capped: lanes.some((l) => l.cap.capped),
     lanesWon: won,
     heartcap,
     winner: byLanes !== 'draw' ? byLanes : more(heartcap.enemy.uncapped, heartcap.player.uncapped),
@@ -918,7 +738,7 @@ export function playPair(content: Content, p: PairOpts): ClashRecord[] {
           armyFromBot(content, p.a, budget, seed, field.plots),
           armyFromBot(content, p.b, budget, p.a === p.b ? MIRROR_SEED + seed : seed, field.plots),
         ];
-        for (const seat of SIDES) out.push(playClash(content, { field: id, seed, seat, armies, jitter: p.jitter ?? 0, ...(p.opts ? { opts: p.opts } : {}) }));
+        for (const seat of SIDES) out.push(clashRecord(content, { field: id, seed, seat, armies, jitter: p.jitter ?? 0, ...(p.opts ? { opts: p.opts } : {}) }));
       }
     }
   }
@@ -926,27 +746,26 @@ export function playPair(content: Content, p: PairOpts): ClashRecord[] {
 }
 
 /**
- * One clash as a line, from the first army's side (`a`, in seat `a=…`) in the `cap` reading: each lane's
- * winner, how it ended, the surviving supply a–b and when; each Heartcap's damage, capped (uncapped
- * beside it when the cap cut it); the clash's length, and when it was capped the other reading; the clash
- * and round results; and each army's merges at the muster, to Bloomed + to Elder.
+ * One clash as a line, from the first army's side (`a`, in seat `a=…`): each lane's winner, whether the cap
+ * decided it, the surviving supply a–b and when; each Heartcap's damage, capped (uncapped beside it when the
+ * cap cut it); the clash's length; the clash and round results; and each army's merges at the muster, to
+ * Bloomed + to Elder.
  */
 export function pairLine(r: ClashRecord): string {
   const a = r.seat, b = other(r.seat);
   const who = (w: Side | 'draw') => (w === 'draw' ? 'draw' : w === a ? 'a' : 'b');
   const sec = (t: number) => `${(t / 20).toFixed(1)} s`;
-  const lanes = r.lanes.map((l) => `L${l.lane} ${who(l.cap.winner)} ${l.cap.case} ${l.cap.surviving[a]}–${l.cap.surviving[b]} at ${sec(l.cap.ticks)}`).join('; ');
+  const lanes = r.lanes.map((l) => `L${l.lane} ${who(l.cap.winner)}${l.cap.capped ? ' at the cap' : ''} ${l.cap.surviving[a]}–${l.cap.surviving[b]} at ${sec(l.cap.ticks)}`).join('; ');
   const dmg = (s: Side) => {
     const h = r.cap.heartcap[s];
     return h.uncapped > h.capped ? `${h.capped} (${h.uncapped} uncapped)` : String(h.capped);
   };
-  const after = r.cap.capped ? `, capped (after the muster: ${sec(r.capAfterMuster.ticks)}, clash ${who(r.capAfterMuster.winner)})` : '';
   const merges = (s: Side) => `${r.armies[s].merges.muster['2']}+${r.armies[s].merges.muster['3']}`;
   return `${r.field.padEnd(5)} ${String(r.budget).padStart(4)}  seed ${r.seed}  a=${a.padEnd(6)}  ${lanes} | damage to a ${dmg(a)}, to b ${dmg(b)}`
-    + ` | ${sec(r.cap.ticks)}${after} | clash ${who(r.cap.winner)}, round ${who(r.cap.round)} | muster a ${merges(a)}, b ${merges(b)}`;
+    + ` | ${sec(r.cap.ticks)} | clash ${who(r.cap.winner)}, round ${who(r.cap.round)} | muster a ${merges(a)}, b ${merges(b)}`;
 }
 
-/** The first army's results over some records, in the `cap` reading: wins, draws and losses, and its score with draws worth half. */
+/** The first army's results over some records: wins, draws and losses, and its score with draws worth half. */
 export function pairScore(records: readonly ClashRecord[]): { wins: number; draws: number; losses: number; score: number; capped: number } {
   let wins = 0, draws = 0, losses = 0, capped = 0;
   for (const r of records) {
@@ -972,10 +791,8 @@ export const FULL_COLONY = {
 export interface ColonySquad {
   buildingId: string;
   unitId: string;
-  /** Its squad at 60 s (§11.2). */
+  /** Its squad (§11.2). No upgrade adds units in rounds until #27's fixed adds (R2b S5). */
   squad: number;
-  /** With every v1 upgrade level that adds units (`building.spawnCount`): the Burrow's 12, the Warren's 9. */
-  upgraded: number;
   /** A unit's supply. */
   supply: number;
   /** Its unit is tagged `swarm`, for Old Mother Mold's passive. */
@@ -997,7 +814,7 @@ export interface ColonyField {
   bySupply: ColonyRead;
   /** The biggest by units is inside §13.7's 150 live units a side. */
   fits: boolean;
-  /** When it isn't, what brings it inside: the squad, the upgrade's +1 per batch, or the plots. */
+  /** When it isn't, what brings it inside: the squad or the plots. */
   levers: string[];
 }
 
@@ -1011,22 +828,14 @@ export interface FullColony {
 
 /**
  * The most a full colony fields (§13.7, §15.4, R1-Q5): every plot a colony can hold planted with one
- * building's biggest squad, the v1 upgrades that add units included. A colony of mixed squads fields no
- * more, since each plot counts alone. Per field, the biggest by units and by supply, against 150 live
+ * building's squad. A colony of mixed squads fields no more, since each plot counts alone. Per field, the biggest by units and by supply, against 150 live
  * units a side at the arrival and "about 100 supply"; then A200's rows for the Rhizome Vault's, the Velvet
  * Shrine's and Old Mother Mold's first guesses (§11.2, §7.7), each an upper bound.
  */
 export function fullColony(content: Content, opts: { fields?: readonly FieldId[] } = {}): FullColony {
-  const squads = clashArmyIds(content).filter((id) => content.buildings[id]!.spawn).map((id): ColonySquad => {
-    const spawn = content.buildings[id]!.spawn!, unit = content.units[spawn.unit]!;
-    let add = 0;
-    for (const level of content.upgrades[id]?.levels ?? []) {
-      for (const m of level.effects.modifiers ?? []) if (m.stat === 'building.spawnCount' && m.op === 'add' && (m.where?.building ?? id) === id) add += m.value;
-    }
-    return {
-      buildingId: id, unitId: spawn.unit, squad: squadSize(content, id), upgraded: (spawn.count + add) * Math.round(60 / spawn.interval),
-      supply: unit.supply, swarm: unit.tags.includes('swarm'),
-    };
+  const squads = clashArmyIds(content).filter((id) => content.buildings[id]!.squad).map((id): ColonySquad => {
+    const squad = content.buildings[id]!.squad!, unit = content.units[squad.unit]!;
+    return { buildingId: id, unitId: squad.unit, squad: squad.count, supply: unit.supply, swarm: unit.tags.includes('swarm') };
   });
   const fields = (opts.fields ?? ['one', 'twin']).map((id) => clashField(content, id, { extraPlots: FULL_COLONY.extraPlots }));
   /** The biggest colony on a field when each plot's squad is `size(squad, plot)`, by `key` (units, or supply), ties to more of the other. */
@@ -1040,31 +849,30 @@ export function fullColony(content: Content, opts: { fields?: readonly FieldId[]
     }
     return best!;
   };
-  const upgraded = (s: ColonySquad) => s.upgraded;
+  const squadOf = (s: ColonySquad) => s.squad;
   const colonies = fields.map((f): ColonyField => {
-    const byUnits = biggest(f, upgraded, 'units'), bySupply = biggest(f, upgraded, 'supply');
+    const byUnits = biggest(f, squadOf, 'units'), bySupply = biggest(f, squadOf, 'supply');
     const fits = byUnits.units <= FULL_COLONY.units;
     const top = squads.find((s) => s.buildingId === byUnits.buildingId)!;
     const levers = fits ? [] : [
       `squads: at most ${Math.floor(FULL_COLONY.units / f.plots)} units a squad on ${f.plots} plots`,
-      ...(top.upgraded > top.squad ? [`the upgrade's +1 per batch: without it, ${f.plots} ${top.buildingId} squads of ${top.squad} field ${f.plots * top.squad}`] : []),
-      `plots: at most ${Math.floor(FULL_COLONY.units / top.upgraded)} plots of ${top.upgraded}`,
+      `plots: at most ${Math.floor(FULL_COLONY.units / top.squad)} plots of ${top.squad}`,
     ];
     return { field: f.id, plots: f.plots, byUnits, bySupply, fits, levers };
   });
   // a plot has one behind it when the next rank opens the same file of its lane
   const behind = (f: ClashField, p: PlotRef) => f.open.some((q) => q.lane === p.lane && q.file === p.file && q.rank === p.rank + 1);
   const rows: { id: FullColony['sensitivity'][number]['id']; label: string; size: (f: ClashField) => (s: ColonySquad, p: PlotRef) => number }[] = [
-    { id: 'vault', label: "every squad +1 (the Rhizome Vault's first guess, §11.2; an upper bound that ignores the Vaults' plots)", size: () => (s) => s.upgraded + 1 },
-    { id: 'shrine', label: "the squad in front +2 (the Velvet Shrine's first guess, §11.2: each squad with a plot behind it; an upper bound that ignores the Shrines' plots)", size: (f) => (s, p) => s.upgraded + (behind(f, p) ? 2 : 0) },
-    { id: 'mold', label: "swarm squads +10%, rounded up (Old Mother Mold's passive, §7.7's first guess)", size: () => (s) => (s.swarm ? Math.ceil((s.upgraded * 11) / 10) : s.upgraded) },
+    { id: 'vault', label: "every squad +1 (the Rhizome Vault's first guess, §11.2; an upper bound that ignores the Vaults' plots)", size: () => (s) => s.squad + 1 },
+    { id: 'shrine', label: "the squad in front +2 (the Velvet Shrine's first guess, §11.2: each squad with a plot behind it; an upper bound that ignores the Shrines' plots)", size: (f) => (s, p) => s.squad + (behind(f, p) ? 2 : 0) },
+    { id: 'mold', label: "swarm squads +10%, rounded up (Old Mother Mold's passive, §7.7's first guess)", size: () => (s) => (s.swarm ? Math.ceil((s.squad * 11) / 10) : s.squad) },
   ];
   const sensitivity = rows.map((r) => ({ id: r.id, label: r.label, fields: fields.map((f) => ({ field: f.id, ...biggest(f, r.size(f), 'units') })) }));
 
   const read = (c: ColonyRead) => `${c.buildingId} ${c.units} units, ${c.supply} supply`;
   const lines = [
-    `full colony (§13.7, §4.6; R1-Q5, A004, A200): every plot planted with one building's biggest squad, the v1 upgrades that add units included; the budget is at most ${FULL_COLONY.units} live units a side at the arrival, beside "about ${FULL_COLONY.supply} supply"`,
-    `  squads at 60 s, upgraded, × supply: ${squads.map((s) => `${s.buildingId} ${s.squad}${s.upgraded > s.squad ? `→${s.upgraded}` : ''}×${s.supply}`).join(' · ')}`,
+    `full colony (§13.7, §4.6; R1-Q5, A004, A200): every plot planted with one building's squad; the budget is at most ${FULL_COLONY.units} live units a side at the arrival, beside "about ${FULL_COLONY.supply} supply"`,
+    `  squads × supply: ${squads.map((s) => `${s.buildingId} ${s.squad}×${s.supply}`).join(' · ')}`,
     ...colonies.map((c) => `  ${c.fits ? 'fits' : 'OVER'} ${c.field} (${c.plots} plots): most units ${read(c.byUnits)}; most supply ${read(c.bySupply)}`
       + `; ${c.bySupply.supply > FULL_COLONY.supply ? 'over' : 'inside'} about ${FULL_COLONY.supply} supply${c.levers.length ? `. Levers: ${c.levers.join('; ')}` : ''}`),
     ...sensitivity.map((r) => `  if ${r.label}: ${r.fields.map((f) => `${f.field} ${f.units} units, ${f.supply} supply${f.units > FULL_COLONY.units ? ' (over)' : ''}`).join(' · ')}`),
@@ -1072,24 +880,23 @@ export function fullColony(content: Content, opts: { fields?: readonly FieldId[]
   return { squads, fields: colonies, sensitivity, lines };
 }
 
-/** A squad's sizes for the overflow table: at 45, 60 and 75 s, and the 60 s squad +1 (the Vault's first guess) and +2 (the Shrine's). */
+/** A squad's sizes for the overflow table: its squad, and the squad +1 (the Vault's first guess) and +2 (the Shrine's). */
 export interface OverflowRow {
   buildingId: string;
   /** Its unit's width, twice its radius. */
   width: number;
-  sizes: { at: '45 s' | '60 s' | '75 s' | '+1' | '+2'; n: number; overflows: boolean }[];
+  sizes: { at: 'squad' | '+1' | '+2'; n: number; overflows: boolean }[];
 }
 
 /**
- * Which squads overflow their slots (§4.6, #11, A020): each spawner's squad at 45, 60 and 75 s, and its
- * 60 s squad +1 and +2, against its slot's grid (k × k cells, 2/k tiles apart). A squad whose units are
+ * Which squads overflow their slots (§4.6, #11, A020): each spawner's squad, and its squad +1 and +2, against its slot's grid (k × k cells, 2/k tiles apart). A squad whose units are
  * wider than that overflows, and fields on the same grid packed tighter.
  */
 export function overflowTable(content: Content): { rows: OverflowRow[]; lines: string[] } {
-  const rows = clashArmyIds(content).filter((id) => content.buildings[id]!.spawn).map((id): OverflowRow => {
-    const radius = content.units[content.buildings[id]!.spawn!.unit]!.radius;
-    const at60 = squadSize(content, id);
-    const sizes = ([['45 s', squadSize(content, id, { squadSeconds: 45 })], ['60 s', at60], ['75 s', squadSize(content, id, { squadSeconds: 75 })], ['+1', at60 + 1], ['+2', at60 + 2]] as const)
+  const rows = clashArmyIds(content).filter((id) => content.buildings[id]!.squad).map((id): OverflowRow => {
+    const radius = content.units[content.buildings[id]!.squad!.unit]!.radius;
+    const n = squadSize(content, id);
+    const sizes = ([['squad', n], ['+1', n + 1], ['+2', n + 2]] as const)
       .map(([at, n]) => ({ at, n, overflows: overflows(n, radius) }));
     return { buildingId: id, width: 2 * radius, sizes };
   });
@@ -1097,7 +904,7 @@ export function overflowTable(content: Content): { rows: OverflowRow[]; lines: s
   return {
     rows,
     lines: [
-      "overflow (§4.6, #11; A020): each squad at 45, 60 and 75 s, then the 60 s squad +1 (the Vault's first guess) and +2 (the Shrine's); * when its units are wider than its slot's grid spacing, so it fields packed tighter",
+      "overflow (§4.6, #11; A020): each squad, then the squad +1 (the Vault's first guess) and +2 (the Shrine's); * when its units are wider than its slot's grid spacing, so it fields packed tighter",
       ...rows.map((r) => `  ${r.buildingId.padEnd(w)} width ${r.width.toFixed(2)}: ${r.sizes.map((x) => `${x.n}${x.overflows ? '*' : ''}`.padStart(4)).join('')}`),
     ],
   };

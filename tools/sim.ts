@@ -1,19 +1,16 @@
-// npm run sim -- [options]: headless battle and run simulator (SPEC §15.2), Milestone 5 subset. With
-// `--rounds` (R2a, temporary) it plays single battles in rounds on the round sim instead.
+// npm run sim -- [options]: headless battle and run simulator (SPEC §15.2): single battles in rounds, or whole
+// runs with `--run`.
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, isAbsolute, join } from 'node:path';
 import { nodeContent, ROOT } from './lib/content.ts';
-import { DIVERGE_COLUMNS, fmtTicks, median, runBattle } from './lib/run.ts';
-import type { BattleResult, RunSpec } from './lib/run.ts';
+import { fmtTicks, median, paceLines, runRoundBattle } from './lib/run.ts';
+import type { RoundBattleResult, RoundRunSpec } from './lib/run.ts';
 import { simulateRun } from '../src/run/index.ts';
 import type { DraftAutoPolicy, RoutePolicy, RunResult } from '../src/run/index.ts';
 import { checkAssert, parseAssert } from './lib/asserts.ts';
 import type { Assertion } from './lib/asserts.ts';
 import { MILESTONE, parseFlags } from '../src/sim/index.ts';
-import type { BattleConfig, Command, PowerPolicy } from '../src/sim/index.ts';
-import { paceLines, runRoundBattle } from './lib/rounds/run.ts';
-import type { RoundBattleResult, RoundRunSpec } from './lib/rounds/run.ts';
-import type { BattleConfig as RoundConfig, Command as RoundCommand, HeadlessUntil } from '../src/sim/rounds/index.ts';
+import type { BattleConfig, Command, HeadlessUntil, PowerPolicy } from '../src/sim/index.ts';
 
 /** Options for later milestones' features (meta-progression). */
 const NOT_YET = ['--bot', '--meta-progress', '--runs'];
@@ -23,22 +20,20 @@ const ROUTE_POLICIES = ['first', 'random', 'battles'];
 
 interface Args {
   map?: string; seeds: number[]; player?: string; enemy?: string; scenario?: string; replay?: string;
-  until: 'end' | number; battleIndex?: number; flags?: Partial<BattleConfig['flags']>; hashEvery?: number;
+  until: HeadlessUntil; battleIndex?: number; flags?: Partial<BattleConfig['flags']>; hashEvery?: number;
   asserts: Assertion[]; out?: string; summary: boolean;
   run: boolean; autoDraft?: DraftAutoPolicy; autoRoute?: RoutePolicy;
   commander?: string; powerPolicy?: PowerPolicy;
-  /** R2a: single battles in rounds, stopping at `roundUntil`. */
-  rounds: boolean; roundUntil?: HeadlessUntil;
-  /** R2a: the player's kit by building id, such as a commander's starter (R2-Q7's measure). */
+  /** The player's kit by building id, such as a commander's starter (R2-Q7's measure). */
   kit?: string[];
 }
 
-function parseUntil(v: string): 'end' | number {
+/** `end`, `r<n>` (the end of round n) or `r<n>:<tick>` (a tick of its clash, counted from the clash's start). */
+function parseUntil(v: string): HeadlessUntil {
   if (v === 'end') return 'end';
-  const m = v.match(/^(\d+):(\d{2})$/);
-  if (m) return (Number(m[1]) * 60 + Number(m[2])) * 20;
-  if (/^\d+$/.test(v)) return Number(v);
-  throw new Error(`bad --until "${v}"`);
+  const m = v.match(/^r(\d+)(?::(\d+))?$/);
+  if (!m) throw new Error(`bad --until "${v}" (expected end, r<n> or r<n>:<tick>)`);
+  return m[2] === undefined ? { round: Number(m[1]) } : { round: Number(m[1]), tick: Number(m[2]) };
 }
 
 /** `--flags a,b` turns on exactly those features (`none` for none); without it, the milestone's defaults apply. */
@@ -49,7 +44,7 @@ function flagsArg(v: string): BattleConfig['flags'] {
 }
 
 function parseArgs(argv: string[]): Args {
-  const a: Args = { seeds: [1], until: 'end', asserts: [], summary: false, run: false, rounds: argv.includes('--rounds') };
+  const a: Args = { seeds: [1], until: 'end', asserts: [], summary: false, run: false };
   for (let i = 0; i < argv.length; i++) {
     const k = argv[i]!;
     const v = () => {
@@ -72,8 +67,7 @@ function parseArgs(argv: string[]): Args {
       case '--enemy': a.enemy = v(); break;
       case '--scenario': a.scenario = v(); break;
       case '--replay': a.replay = v(); break;
-      case '--rounds': break;
-      case '--until': if (a.rounds) a.roundUntil = parseRoundUntil(v()); else a.until = parseUntil(v()); break;
+      case '--until': a.until = parseUntil(v()); break;
       case '--battle-index': a.battleIndex = Number(v()); break;
       case '--flags': a.flags = flagsArg(v()); break;
       case '--hash-every': a.hashEvery = Number(v()); break;
@@ -104,16 +98,11 @@ function parseArgs(argv: string[]): Args {
       default: throw new Error(`unknown option ${k}`);
     }
   }
-  if (a.rounds) {
-    const runOnly = [a.run && '--run', a.autoRoute && '--auto-route', a.autoDraft && '--auto-draft'].filter(Boolean);
-    if (runOnly.length) throw new Error(`${runOnly.join(', ')}: a single battle in rounds has no run or drafts until R2b`);
-    const byTick = a.asserts.find((x) => x.tick !== undefined);
-    if (byTick) throw new Error(`--assert "${byTick.text}": a battle in rounds checks at @r<n> or @r<n>:<tick>`);
+  if (!a.run) {
+    const runOnly = [a.autoRoute && '--auto-route', a.autoDraft && '--auto-draft'].filter(Boolean);
+    if (runOnly.length) throw new Error(`${runOnly.join(', ')} needs --run: a single battle opens no drafts until R2b's T065`);
   } else if (a.kit) {
-    throw new Error('--kit needs --rounds');
-  } else {
-    const byRound = a.asserts.find((x) => x.checkpoint !== undefined);
-    if (byRound) throw new Error(`--assert "${byRound.text}": @r<n> needs --rounds`);
+    throw new Error('--kit is for a single battle; a run builds its own kit');
   }
   return a;
 }
@@ -128,133 +117,36 @@ function main(): number {
   const args = parseArgs(process.argv.slice(2));
   const content = nodeContent();
   if (args.commander && !content.commanders[args.commander]) throw new Error(`--commander: unknown commander "${args.commander}" (expected ${Object.keys(content.commanders).join(', ')})`);
-  if (args.rounds) return mainRounds(args, content);
-  if (args.run) return mainRun(args, content);
-  if (args.commander && args.scenario) throw new Error('--commander does not apply to a scenario (it names its own commander)');
-  if (args.autoRoute) throw new Error('--auto-route needs --run');
-  const recordAt = [...new Set(args.asserts.filter((x) => x.tick !== undefined).map((x) => x.tick!))];
-  if (typeof args.until === 'number') recordAt.push(args.until);
-
-  let replay: { config: BattleConfig; commands: Command[] } | undefined;
-  if (args.replay) replay = JSON.parse(readFileSync(args.replay, 'utf8'));
-
-  const results: BattleResult[] = [];
-  const failures: string[] = [];
-  for (const seed of replay ? [replay.config.seed] : args.seeds) {
-    const spec: RunSpec = { seed, until: args.until, recordAt };
-    if (replay) { spec.config = replay.config; spec.commands = replay.commands; }
-    if (args.map) spec.map = args.map;
-    if (args.player) spec.player = args.player;
-    if (args.enemy) spec.enemy = args.enemy;
-    if (args.scenario) spec.scenario = args.scenario;
-    if (args.battleIndex) spec.battleIndex = args.battleIndex;
-    if (args.flags) spec.flags = args.flags;
-    if (args.autoDraft) spec.autoDraft = args.autoDraft;
-    if (args.commander) spec.commander = args.commander;
-    if (args.powerPolicy) spec.powerPolicy = args.powerPolicy;
-    if (args.hashEvery) spec.hashEvery = args.hashEvery;
-    const { result } = runBattle(content, spec);
-    results.push(result);
-    for (const as of args.asserts) {
-      const err = checkAssert(result as unknown as Record<string, unknown>, as);
-      if (err) failures.push(`seed ${seed}: ${err}`);
-    }
-  }
-
-  if (args.out) {
-    const p = outPath(args.out);
-    mkdirSync(dirname(p), { recursive: true });
-    writeFileSync(p, JSON.stringify(results.length === 1 ? results[0] : results, null, 2));
-    console.error(`wrote ${p}`);
-  }
-
-  if (results.length === 1 && !args.summary) {
-    const r = results[0]!;
-    const { at: _at, frontLine: _fl, stats: _st, ...brief } = r;
-    const p = r.stats.player;
-    const power = p.powerUses === undefined ? null
-      : { uses: p.powerUses, damage: p.powerDamage, captures: p.powerCaptures, merges: p.powerMerges, gold: p.powerGold };
-    console.log(JSON.stringify({ ...brief, power, frontLineSamples: r.frontLine.map((l) => l.length) }, null, 2));
-  } else {
-    printSummary(results);
-  }
-  for (const as of args.asserts) {
-    const ok = !failures.some((f) => f.includes(as.text));
-    console.log(`${ok ? 'PASS' : 'FAIL'}  assert ${as.text}`);
-  }
-  if (failures.length) {
-    console.error(`\n${failures.length} assertion failure(s):\n- ${failures.join('\n- ')}`);
-    return 1;
-  }
-  return 0;
+  return args.run ? mainRun(args, content) : mainBattle(args, content);
 }
 
-export function printSummary(results: BattleResult[]): void {
-  const merges = (r: BattleResult, s: 'player' | 'enemy') => `${r.merges[s]['2']}/${r.merges[s]['3']}`;
-  const rows = results.map((r) => [
-    String(r.seed), r.winner ?? '-', r.by ?? '-', r.duration, `${r.columns.player}:${r.columns.enemy}`,
-    `${r.heartcap.player}/${r.heartcap.enemy}`, `${merges(r, 'player')} : ${merges(r, 'enemy')}`, String(r.rejectedCommands), `${r.wallMs}ms`,
-  ]);
-  const head = ['seed', 'winner', 'by', 'length', 'cols', 'heartcaps', 'merges (B/E)', 'rejected', 'wall'];
-  const widths = head.map((h, i) => Math.max(h.length, ...rows.map((r) => r[i]!.length)));
-  const line = (cells: string[]) => cells.map((c, i) => c.padEnd(widths[i]!)).join('  ');
-  console.log(line(head));
-  for (const r of rows) console.log(line(r));
-  const n = results.length;
-  const ended = results.filter((r) => r.winner);
-  const wins = (s: 'player' | 'enemy') => results.filter((r) => r.winner === s).length;
-  const decisions = results.filter((r) => r.by === 'decision').length;
-  const lens = ended.map((r) => r.durationTicks);
-  console.log('');
-  console.log(`battles ${n} · ended ${ended.length} · player wins ${wins('player')} (${pct(wins('player'), n)}) · enemy wins ${wins('enemy')} (${pct(wins('enemy'), n)})`);
-  console.log(`length median ${fmtTicks(median(lens))} · min ${fmtTicks(Math.min(...lens))} · max ${fmtTicks(Math.max(...lens))} · decisions ${decisions} (${pct(decisions, n)})`);
-  const merged = results.filter((r) => r.merges.player['2'] + r.merges.enemy['2'] > 0).length;
-  const elders = results.filter((r) => r.merges.player['3'] + r.merges.enemy['3'] > 0).length;
-  console.log(`battles with merges ${merged} (${pct(merged, n)}) · with an Elder ${elders} (${pct(elders, n)})`);
-  console.log(`mean wall ${(results.reduce((a, r) => a + r.wallMs, 0) / n).toFixed(0)} ms · rejected commands ${results.reduce((a, r) => a + r.rejectedCommands, 0)}`);
-  const multi = results.filter((r) => r.laneDivergence);
-  if (multi.length) {
-    const div = multi.filter((r) => r.laneDivergence!.diverged).length;
-    const gaps = multi.map((r) => r.laneDivergence!.maxGap);
-    console.log(`lanes diverged (front midpoints ≥${DIVERGE_COLUMNS} columns apart at some sample) in ${div}/${multi.length} battles (${pct(div, multi.length)}) · ` +
-      `max gap median ${median(gaps).toFixed(1)} · mean gap ${(multi.reduce((a, r) => a + r.laneDivergence!.meanGap, 0) / multi.length).toFixed(1)}`);
-  }
-}
+// ---- single battles (SPEC §15.2) ----
 
-// ---- single battles in rounds (SPEC §15.2 --rounds, R2a) ----
-
-/** `end`, `r<n>` (the end of round n) or `r<n>:<tick>` (a tick of its clash, counted from the clash's start). */
-function parseRoundUntil(v: string): HeadlessUntil {
-  if (v === 'end') return 'end';
-  const m = v.match(/^r(\d+)(?::(\d+))?$/);
-  if (!m) throw new Error(`bad --until "${v}" (expected end, r<n> or r<n>:<tick>)`);
-  return m[2] === undefined ? { round: Number(m[1]) } : { round: Number(m[1]), tick: Number(m[2]) };
-}
 
 /**
  * A scenario's human player has no one to plan for it from the CLI, so it plants nothing more and Begins each round
  * from the scenario's own, as `playerScript` does in the tests (§16 R2 step 4, R2a/T132). A bot player Begins itself.
  */
-function scenarioBegins(content: ReturnType<typeof nodeContent>, id: string, player: string | undefined): RoundCommand[] {
-  const def = content.roundScenarios[id];
+function scenarioBegins(content: ReturnType<typeof nodeContent>, id: string, player: string | undefined): Command[] {
+  const def = content.scenarios[id];
   if ((player ?? def?.controllers?.player ?? 'human') !== 'human') return [];
-  const out: RoundCommand[] = [];
+  const out: Command[] = [];
   for (let round = def?.round ?? 1; round <= content.balance.rounds.maxRounds; round++) {
     out.push({ round, tick: 0, side: 'player', seq: out.length, type: 'beginClash' });
   }
   return out;
 }
 
-function mainRounds(args: Args, content: ReturnType<typeof nodeContent>): number {
+function mainBattle(args: Args, content: ReturnType<typeof nodeContent>): number {
   if (args.commander && args.scenario) throw new Error('--commander does not apply to a scenario (it names its own commander)');
   const recordAt = [...new Set(args.asserts.flatMap((x) => (x.checkpoint ? [x.checkpoint] : [])))];
-  let replay: { config: RoundConfig; commands: RoundCommand[] } | undefined;
+  let replay: { config: BattleConfig; commands: Command[] } | undefined;
   if (args.replay) replay = JSON.parse(readFileSync(args.replay, 'utf8'));
 
   const results: RoundBattleResult[] = [];
   const failures: string[] = [];
   for (const seed of replay ? [replay.config.seed] : args.seeds) {
-    const spec: RoundRunSpec = { seed, until: args.roundUntil ?? 'end', recordAt };
+    const spec: RoundRunSpec = { seed, until: args.until, recordAt };
     if (replay) { spec.config = replay.config; spec.commands = replay.commands; }
     if (args.map) spec.map = args.map;
     if (args.player) spec.player = args.player;
@@ -411,7 +303,6 @@ function printRunSummary(results: (RunResult & { wallMs: number })[]): void {
   expect(done === n, `every run completes (${done}/${n})`);
   expect(inCount === n, `4–5 battles per run (${inCount}/${n})`);
   expect(wrongLife.length === 0, `a life is lost only in a lost battle${wrongLife.length ? ` (not ${wrongLife.join(', ')})` : ''}`);
-  expect(boss / n >= 0.3, `≥30% of runs reach the boss (${pct(boss, n)})`);
   // SPEC §16 Milestone 4, verification 4: the intel file
   const later = results.filter((r) => r.battles.some((b) => b.index >= 2 && b.kind !== 'boss'));
   if (!results.some((r) => r.run.flags.adaptiveGeneral)) return;

@@ -7,9 +7,9 @@
 import type { DrawnPreview } from '../render/preview.ts';
 import { hashRun } from '../run/index.ts';
 import type { RunState } from '../run/index.ts';
-import { hashState, summarize } from '../sim/rounds/index.ts';
-import type { BattleState, RoundSummary, Side } from '../sim/rounds/index.ts';
-import { stormBpFor } from '../sim/rounds/systems/victory.ts';
+import { hashState, summarize } from '../sim/index.ts';
+import type { BattleState, RoundSummary, Side } from '../sim/index.ts';
+import { stormBpFor } from '../sim/systems/victory.ts';
 
 /** `summarize`'s, with this round's storm as a multiplier, which the storm chip shows (§6.4, T087); the round log has past rounds'. */
 export type BridgeSummary = RoundSummary & { storm: number };

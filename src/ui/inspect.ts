@@ -5,9 +5,9 @@
 // (`sellValue`), where selling takes two presses. A unit shows its tier, HP, armor and damage type with hints,
 // its damage a second over the last 5 s and its kills, from a log the view feeds each step's events. Its
 // buttons stay mounted, so a re-render never loses a click or focus.
-import { mergePreview, sellValue } from '../sim/rounds/index.ts';
-import type { BattleState, BuildingState, MergePreview, Side, UnitState } from '../sim/rounds/index.ts';
-import { findUnit, tierDef, unitDef } from '../sim/rounds/world.ts';
+import { mergePreview, sellValue } from '../sim/index.ts';
+import type { BattleState, BuildingState, MergePreview, Side, UnitState } from '../sim/index.ts';
+import { findUnit, tierDef, unitDef } from '../sim/world.ts';
 import { h, setText, toggleClass } from './h.ts';
 import { tierPips } from './icons.ts';
 import { TIER_NAME, perkText } from './mergeHints.ts';

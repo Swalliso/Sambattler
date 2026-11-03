@@ -1,31 +1,28 @@
-// The command queue and log (SPEC §14.5). Commands are validated when they execute, so an
-// illegal command becomes a deterministic `commandRejected` event on replay too.
-import { noteBuilt } from './ai/counter.ts';
-import { aiDraft } from './ai/draftPolicy.ts';
-import { addBuilding } from './create.ts';
-import { executeDraftCommand } from './draft.ts';
-import { placementProblem, priceAt } from './placement.ts';
+// The command queue and log in rounds (SPEC §13.3 rule 7, §14.5). A command is stamped {round, tick, side,
+// seq}, with no phase field since its type implies the phase, and the queue sorts by the stamp with the
+// player first (plan Call 7). A planning command runs at the next step, a clash command on its tick.
+// Commands are validated when they run, so an illegal one becomes a deterministic `commandRejected` on
+// replay too.
+import { executePlanning } from './planning.ts';
 import { powerProblem, usePower } from './powers.ts';
-import { releaseStored } from './systems/spawning.ts';
-import { setStance } from './systems/stance.ts';
-import { buildingDef, findBuilding, isBesieged, supplyCapOf } from './world.ts';
 import type { BattleState, Command, CommandBody, Side } from './state.ts';
 
-export type QueuedCommand = { tick: number; side: Side; seq?: number } & CommandBody;
+export type QueuedCommand = { round: number; tick: number; side: Side; seq?: number } & CommandBody;
 
-/** The tick a command issued now will execute on: 0 during deploy, otherwise the next tick. */
-export function nextCommandTick(state: BattleState): number {
-  return state.phase === 'deploy' ? 0 : state.tick + 1;
+/** The stamp a command issued now carries: its round, and `state.tick` in planning or `state.tick + 1` in a clash (§14.5). */
+export function commandStamp(state: BattleState): { round: number; tick: number } {
+  return { round: state.round, tick: state.phase === 'clash' ? state.tick + 1 : state.tick };
 }
 
 function cmpCommand(a: Command, b: Command): number {
+  if (a.round !== b.round) return a.round - b.round;
   if (a.tick !== b.tick) return a.tick - b.tick;
   if (a.side !== b.side) return a.side === 'player' ? -1 : 1;
   return a.seq - b.seq;
 }
 
 /**
- * Queues a command, keeping the queue sorted by (tick, side, seq). Sequence numbers are per side;
+ * Queues a command, keeping the queue sorted by (round, tick, side, seq). Sequence numbers are per side;
  * a replayed command keeps its original seq.
  */
 export function queueCommand(state: BattleState, cmd: QueuedCommand): Command {
@@ -44,128 +41,67 @@ export function queueCommand(state: BattleState, cmd: QueuedCommand): Command {
   return full;
 }
 
-function reject(state: BattleState, cmd: Command, reason: string): void {
-  state.events.push({ t: 'commandRejected', side: cmd.side, seq: cmd.seq, reason });
-  state.stats[cmd.side].rejectedCommands++;
-}
+/** Due once its round and tick are reached: in planning every command stamped for this round, in a clash those for this tick. */
+const isDue = (state: BattleState, c: Command): boolean => c.round < state.round || (c.round === state.round && c.tick <= state.tick);
 
-const isDraft = (c: Command) => c.type === 'draftPick' || c.type === 'draftReroll' || c.type === 'draftSkip';
-
-/**
- * While the sim is held for a draft (SPEC §8.3), runs only the draft commands due by the next tick,
- * in queue order, without advancing the clock. Other commands wait for the hold to end.
- */
-export function executeHeldCommands(state: BattleState): void {
-  const limit = state.tick + 1;
-  for (let i = 0; i < state.queue.length && state.held;) {
-    const cmd = state.queue[i]!;
-    if (cmd.tick > limit) break;
-    if (!isDraft(cmd)) { i++; continue; }
-    state.queue.splice(i, 1);
+/** Runs every queued command that is due, in queue order, logging each as it runs. */
+export function executeCommands(state: BattleState): void {
+  let n = 0;
+  while (n < state.queue.length && isDue(state, state.queue[n]!)) n++;
+  for (const cmd of state.queue.splice(0, n)) {
     state.log.push(cmd);
     execute(state, cmd);
   }
 }
 
-/** True if a draft command is queued for execution by the next tick (lets a held battle make progress). */
-export function draftCommandDue(state: BattleState): boolean {
-  const limit = state.tick + 1;
-  return state.queue.some((c) => c.tick <= limit && isDraft(c));
-}
-
-/** Executes every queued command due at `tick` (player first, then by seq). Returns true if `begin` ran. */
-export function executeCommands(state: BattleState, tick: number): boolean {
-  let begun = false;
-  let n = 0;
-  while (n < state.queue.length && state.queue[n]!.tick <= tick) n++;
-  if (n === 0) return false;
-  const due = state.queue.splice(0, n);
-  for (const cmd of due) {
-    state.log.push(cmd);
-    if (execute(state, cmd)) begun = true;
+/**
+ * At a clash's end, its clash commands still queued (a power stamped past the tick its last lane ended) are
+ * dropped with `commandDropped` (plan Call 9, A046). They never ran, so they aren't logged, and a drop isn't
+ * a rejection, so `rejectedCommands` doesn't count it. A later round's commands stay queued.
+ */
+export function dropClashCommands(state: BattleState): void {
+  const q = state.queue;
+  let w = 0;
+  for (const c of q) {
+    if (phaseOf(c.type) === 'clash' && c.round <= state.round) state.events.push({ t: 'commandDropped', side: c.side, seq: c.seq });
+    else q[w++] = c;
   }
-  return begun;
+  q.length = w;
 }
 
-function execute(state: BattleState, cmd: Command): boolean {
-  const side = cmd.side;
-  const ss = state.sides[side];
-  if (state.phase === 'ended') { reject(state, cmd, 'battle has ended'); return false; }
+function reject(state: BattleState, cmd: Command, reason: string): void {
+  state.events.push({ t: 'commandRejected', side: cmd.side, seq: cmd.seq, reason });
+  state.stats[cmd.side].rejectedCommands++;
+}
+
+/** The phase a command runs in, which its type implies (plan Call 7): the power in a clash, the rest in planning. */
+const phaseOf = (type: Command['type']): BattleState['phase'] => (type === 'power' ? 'clash' : 'planning');
+
+function execute(state: BattleState, cmd: Command): void {
+  if (state.phase !== phaseOf(cmd.type)) { reject(state, cmd, 'wrongPhase'); return; }
   switch (cmd.type) {
-    case 'begin': {
-      if (state.phase !== 'deploy') { reject(state, cmd, 'not in deploy'); return false; }
-      state.phase = 'live';
-      return true;
-    }
-    case 'place': {
-      const problem = placementProblem(state, side, cmd.buildingId, cmd.lane, cmd.col, cmd.row);
-      if (problem) { reject(state, cmd, problem); return false; }
-      if (!ss.kit.includes(cmd.buildingId)) { reject(state, cmd, 'not in your kit'); return false; }
-      const price = priceAt(state, side, cmd.buildingId, cmd.col);
-      if (ss.gold < price) { reject(state, cmd, 'not enough gold'); return false; }
-      ss.gold -= price;
-      const b = addBuilding(state, side, cmd.buildingId, cmd.lane, cmd.col, cmd.row, price);
-      state.stats[side].buildingsBuilt++;
-      state.events.push({ t: 'buildingPlaced', id: b.id });
-      noteBuilt(state, side, cmd.buildingId);
-      return false;
-    }
-    case 'sell': {
-      const b = findBuilding(state, cmd.entityId);
-      if (!b || b.side !== side) { reject(state, cmd, 'not your building'); return false; }
-      if (isBesieged(state, b)) { reject(state, cmd, 'cannot sell while besieged'); return false; }
-      const refund = sellValue(state, b.id);
-      ss.gold += refund;
-      if (b.stored) releaseStored(state, b); // combat rework `waves`: the units waiting inside come out
-      const utility = !!buildingDef(state, b).utility;
-      state.buildings.splice(state.buildings.indexOf(b), 1);
-      if (utility) ss.supplyCap = supplyCapOf(state, side);
-      state.stats[side].buildingsSold++;
-      state.events.push({ t: 'buildingSold', id: b.id, refund });
-      return false;
-    }
-    case 'toggleMerge': {
-      const b = findBuilding(state, cmd.entityId);
-      if (!b || b.side !== side || !state.compiled[side].buildings[b.buildingId]?.spawn) { reject(state, cmd, 'not your spawner'); return false; }
-      b.mergeOn = cmd.on;
-      for (const u of state.units) if (u.sourceBuildingId === b.id) u.mergeOn = cmd.on;
-      return false;
-    }
-    case 'stance': {
-      const st = ss.stance?.[cmd.lane];
-      if (!state.rules.stance) { reject(state, cmd, 'stance is not available in this milestone'); return false; }
-      if (!st) { reject(state, cmd, 'no such lane'); return false; }
-      if (st.hold === cmd.hold) { reject(state, cmd, cmd.hold ? 'already holding' : 'already advancing'); return false; }
-      if (cmd.hold && state.tick < st.readyAt) { reject(state, cmd, 'hold is on cooldown'); return false; }
-      setStance(state, side, cmd.lane, cmd.hold, false);
-      return false;
+    case 'plant':
+    case 'sell':
+    case 'toggleMerge':
+    case 'beginClash': {
+      const problem = executePlanning(state, cmd);
+      if (problem) reject(state, cmd, problem);
+      return;
     }
     case 'power': {
-      const problem = powerProblem(state, side, cmd);
-      if (problem) { reject(state, cmd, problem); return false; }
-      usePower(state, side, cmd);
-      return false;
+      const problem = powerProblem(state, cmd.side, cmd);
+      if (problem) reject(state, cmd, problem);
+      else usePower(state, cmd.side, cmd);
+      return;
     }
+    // R2a has no drafts (plan Call 26), so these are refused
     case 'draftPick':
     case 'draftReroll':
-    case 'draftSkip': {
-      const problem = executeDraftCommand(state, side, cmd);
-      if (problem) reject(state, cmd, problem);
-      // bigger drafts: an AI side takes its next card from an offer still open after a pick
-      else if (cmd.type === 'draftPick' && ss.draft) aiDraft(state, side);
-      return false;
-    }
+    case 'draftSkip':
+      reject(state, cmd, 'notInRoundsYet');
+      return;
     default:
       // every command type is handled above; a malformed replay is rejected, not crashed on
       reject(state, cmd as Command, `${(cmd as Command).type} is not a command`);
-      return false;
   }
-}
-
-/** Refund the player would get for selling now (for the UI). */
-export function sellValue(state: BattleState, buildingId: number): number {
-  const b = findBuilding(state, buildingId);
-  if (!b) return 0;
-  const full = state.phase === 'deploy' || (!b.hasProduced && state.tick - b.placedTick <= state.rules.fullRefundTicks);
-  return full ? b.pricePaid : Math.floor((b.pricePaid * state.compiled[b.side].sellRefundPct) / 100);
 }

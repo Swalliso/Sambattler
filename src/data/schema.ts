@@ -458,7 +458,7 @@ export const BalanceSchema = z.object({
 }).strict();
 
 export const BalanceTargetsSchema = z.object({
-  G1: z.object({ seeds: z.number().int().positive(), goldBudget: z.number().int().positive(), seconds: Pos, maxPairingWinShare: z.number(), clearLossRatio: z.number() }).strict(),
+  G1: z.object({ seeds: z.number().int().positive(), goldBudget: z.number().int().positive(), maxPairingWinShare: z.number(), clearLossRatio: z.number() }).strict(),
   G2: z.object({
     seeds: z.number().int().positive(), supply: z.number().int().positive(), minSeedsForEdge: z.number().int().positive(), maxSeconds: Pos,
     /** Intended counter edges [winner, loser], reported (not asserted); `unit@tier` duels a merged unit. */
@@ -468,9 +468,8 @@ export const BalanceTargetsSchema = z.object({
   }).strict(),
   /** G3: mono bots against `bot:balanced` on every map in the run pool; `seeds` per seat, limits on the mean over maps and the worst map. */
   G3: z.object({ seeds: z.number().int().positive(), maxMeanWinRate: z.number(), maxMapWinRate: z.number() }).strict(),
-  G4: z.object({ seeds: z.number().int().positive(), medianMinSeconds: Pos, medianMaxSeconds: Pos, maxDecisionShare: z.number(), botWinMin: z.number(), botWinMax: z.number() }).strict(),
+  G4: z.object({ seeds: z.number().int().positive(), botWinMin: z.number(), botWinMax: z.number() }).strict(),
   G5: z.object({ seeds: z.number().int().positive(), bonusGold: z.number().int(), minWinRate: z.number(), maxWinRate: z.number() }).strict(),
-  G6: z.object({ seeds: z.number().int().positive(), scenario: Id, minBehindWinRate: z.number() }).strict(),
   /** Each check pits a bot against its own merge-off twin, so merging is the only difference. */
   /** G8: adaptation matters. Mono bots against one general with and without `adaptive`. */
   G8: z.object({
@@ -484,7 +483,7 @@ export const BalanceTargetsSchema = z.object({
   }).strict(),
   G11: z.object({ tickMeanMs: Pos, tickP99Ms: Pos, battleWallMs: Pos, benchTicks: z.number().int().positive(), quickTicks: z.number().int().positive() }).strict(),
   /**
-   * The round forms (SPEC §12.3, R2a/T119), asserted in `tests/slow/rounds/` beside v1's blocks until R2b retires
+   * The round forms (SPEC §12.3, R2a/T119), asserted in `tests/slow/` beside v1's blocks until R2b retires
    * those. G2 stays the block above. The battle-level bands (G4, G6, G8, G13, G16) are the user's, set from R2a's
    * measurement (§18.2 #35, T125, 2026-11-03); R2b sets G14's and G15's and re-reads G8's beside G14.
    */
@@ -814,32 +813,10 @@ const ScenarioUnits = z.object({
   count: z.number().int().positive().optional(), rows: z.number().int().positive().optional(),
   dx: z.number().optional(), dy: z.number().optional(),
 }).strict();
-const ScenarioSide = z.object({
-  gold: z.number().int().nonnegative().optional(),
-  heartcapHp: z.number().int().positive().optional(),
-  kit: z.array(Id).optional(),
-  /** The side's commander: its passive, and its power when the powers flag is on (SPEC §11.10). */
-  commander: Id.optional(),
-  buildings: z.array(z.object({ building: Id, col: z.number().int(), row: z.number().int() }).strict()).optional(),
-  units: z.array(ScenarioUnits).optional(),
-}).strict();
-
-export const ScenarioSchema = z.object({
-  id: Id, description: z.string(), map: Id,
-  clockSeconds: Seconds.optional(),
-  controllers: z.object({ player: z.string().optional(), enemy: z.string().optional() }).strict().optional(),
-  lanes: z.array(z.object({ pBorder: z.number().int(), eBorder: z.number().int() }).strict()).optional(),
-  /** Rule switches that isolate the rule a scenario tests (e.g. no Heartcap turrets). */
-  test: z.object({ noTurrets: z.boolean().optional(), noTerritory: z.boolean().optional(), noHeartcapTargets: z.boolean().optional() }).strict().optional(),
-  /** Feature flags this scenario needs, over the milestone defaults (an explicit --flags still wins). */
-  flags: z.object({ merging: z.boolean().optional(), drafts: z.boolean().optional(), adaptiveGeneral: z.boolean().optional(), powers: z.boolean().optional() }).strict().optional(),
-  sides: z.object({ player: ScenarioSide, enemy: ScenarioSide }).strict(),
-}).strict();
-
-// ---- round scenarios: `data/scenarios/rounds/<id>.json` (SPEC §15.2, R2a plan Call 18) ----
+// ---- scenarios: `data/scenarios/<id>.json` (SPEC §15.2, R2a plan Call 18) ----
 
 const SideName = z.enum(['player', 'enemy']);
-const RoundScenarioSide = z.object({
+const ScenarioSide = z.object({
   /** The buildings planted on its plots before the scenario's round; each merges unless `merge` is false (§5.6). */
   colony: z.array(z.object({
     building: Id, lane: z.number().int().nonnegative(), rank: z.number().int().nonnegative(), file: z.number().int().positive(),
@@ -860,27 +837,28 @@ const RoundScenarioSide = z.object({
   commander: Id.optional(),
 }).strict();
 /** A round before the scenario's: each lane's winner (null for a draw), and the Heartcap damage each side dealt, whose smaller dealer lost it (SPEC §6.7). */
-const RoundScenarioRound = z.object({
+const ScenarioRound = z.object({
   lanes: z.array(SideName.nullable()).optional(),
   damage: z.object({ player: z.number().int().nonnegative(), enemy: z.number().int().nonnegative() }).strict().optional(),
 }).strict();
-const RoundScenarioFielded = z.object({
+const ScenarioFielded = z.object({
   unit: Id, tier: TierSel.optional(), count: z.number().int().positive(), lane: z.number().int().nonnegative().optional(),
 }).strict();
 
-export const RoundScenarioSchema = z.object({
+export const ScenarioSchema = z.object({
   id: Id, description: z.string(), map: Id,
   battleIndex: z.number().int().positive().optional(),
   /** The round it starts in, 1 unless set. */
   round: z.number().int().positive().optional(),
-  controllers: ScenarioSchema.shape.controllers,
-  flags: ScenarioSchema.shape.flags,
-  sides: z.object({ player: RoundScenarioSide, enemy: RoundScenarioSide }).strict(),
+  controllers: z.object({ player: z.string().optional(), enemy: z.string().optional() }).strict().optional(),
+  /** Feature flags this scenario needs, over the milestone defaults (an explicit --flags still wins). */
+  flags: z.object({ merging: z.boolean().optional(), drafts: z.boolean().optional(), adaptiveGeneral: z.boolean().optional(), powers: z.boolean().optional() }).strict().optional(),
+  sides: z.object({ player: ScenarioSide, enemy: ScenarioSide }).strict(),
   /** The last round's result, whose damage counts in each side's `dealt` (R2a plan Call 18, A106). */
-  last: RoundScenarioRound.optional(),
+  last: ScenarioRound.optional(),
   /** Instead of `dealt` and `last`: every round before this one, with what each side fielded, which the counter cycle reads (SPEC §7.4). */
-  rounds: z.array(RoundScenarioRound.extend({
-    fielded: z.object({ player: z.array(RoundScenarioFielded).optional(), enemy: z.array(RoundScenarioFielded).optional() }).strict().optional(),
+  rounds: z.array(ScenarioRound.extend({
+    fielded: z.object({ player: z.array(ScenarioFielded).optional(), enemy: z.array(ScenarioFielded).optional() }).strict().optional(),
   })).optional(),
   /** For rule tests: units placed for a clash directly, which the scenario starts in. */
   clash: z.object({ units: z.array(z.object({ side: SideName, ...ScenarioUnits.shape }).strict()) }).strict().optional(),
@@ -981,7 +959,6 @@ export type SoundBusT = z.infer<typeof SoundBus>;
 export type GeneralDef = z.infer<typeof GeneralSchema>;
 export type BotDef = z.infer<typeof BotSchema>;
 export type ScenarioDef = z.infer<typeof ScenarioSchema>;
-export type RoundScenarioDef = z.infer<typeof RoundScenarioSchema>;
 export type UpgradeTrackDef = z.infer<typeof UpgradeTrackSchema>;
 export type RelicDef = z.infer<typeof RelicSchema>;
 export type EventDef = z.infer<typeof EventSchema>;

@@ -7,8 +7,8 @@ import {
   spoilsReroll,
 } from '../../src/run/index.ts';
 import type { RunState } from '../../src/run/index.ts';
-import { analyzeFielded, basePlots, createBattle, makeRoundConfig, planningView, runHeadless } from '../../src/sim/rounds/index.ts';
-import type { BattleConfig, BattleState, Side } from '../../src/sim/rounds/index.ts';
+import { analyzeFielded, basePlots, createBattle, makeRoundConfig, planningView, runHeadless } from '../../src/sim/index.ts';
+import type { BattleConfig, BattleState, Side } from '../../src/sim/index.ts';
 import { protoContent } from '../../tools/lib/content.ts';
 import { content } from '../helpers.ts';
 

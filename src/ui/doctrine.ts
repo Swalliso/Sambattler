@@ -6,7 +6,7 @@
 // counter in force from its activation on (§7.4), or what the general remembers about you from the intel file
 // while its opening doctrine holds (§7.6). The run's intel bars read their kinds' names and icons here too.
 import type { Content } from '../data/registry.ts';
-import type { AiPlan, BattleState, CounterKind } from '../sim/rounds/index.ts';
+import type { AiPlan, BattleState, CounterKind } from '../sim/index.ts';
 
 export const KIND_LABEL: Record<CounterKind, string> = { swarm: 'SWARM', line: 'LINE', armor: 'ARMOR', elite: 'ELITE', ranged: 'RANGED' };
 /** The four kinds the run's intel bars show (§7.6), with their names, icons and what each answers (help and tooltips). */

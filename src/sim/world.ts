@@ -1,7 +1,9 @@
-// Entity lookup and geometry helpers shared by the systems. Entities live in arrays sorted by id,
-// so lookups are binary searches (no Maps, no allocation).
-import { HEARTCAP_ID } from './state.ts';
-import type { BattleState, BuildingState, CompiledBuilding, CompiledTier, CompiledUnit, Side, UnitState } from './state.ts';
+// Entity lookup and geometry helpers shared by a clash's systems (SPEC §5.2, §5.3, §13.4): v1's
+// `src/sim/world.ts`, typed on rounds' state, without buildings and Heartcaps as targets, besieged spawners,
+// suppression, `columnsOwned` and `supplyCapOf`. Units live in an array sorted by id, so lookups are binary
+// searches (no Maps, no allocation).
+import type { Place } from './effects.ts';
+import type { BattleState, CompiledTier, CompiledUnit, SquadState, UnitState } from './state.ts';
 
 export function findUnit(state: BattleState, id: number): UnitState | undefined {
   const a = state.units;
@@ -15,38 +17,68 @@ export function findUnit(state: BattleState, id: number): UnitState | undefined 
   return undefined;
 }
 
-export function findBuilding(state: BattleState, id: number): BuildingState | undefined {
-  const a = state.buildings;
-  let lo = 0, hi = a.length - 1;
-  while (lo <= hi) {
-    const mid = (lo + hi) >> 1;
-    const b = a[mid] as BuildingState;
-    if (b.id === id) return b;
-    if (b.id < id) lo = mid + 1; else hi = mid - 1;
-  }
-  return undefined;
-}
-
 export function unitDef(state: BattleState, u: UnitState): CompiledUnit {
   return state.compiled[u.side].units[u.unitId] as CompiledUnit;
 }
 
-export function buildingDef(state: BattleState, b: BuildingState): CompiledBuilding {
-  return state.compiled[b.side].buildings[b.buildingId] as CompiledBuilding;
-}
-
-/** A unit's stats at its current merge tier. */
-export function tierDef(state: BattleState, u: UnitState): CompiledTier {
-  return (state.compiled[u.side].units[u.unitId] as CompiledUnit).tiers[u.tier - 1]!;
-}
-
-/** Unit body radius (grows with the merge tier, SPEC §5.6). */
-export function unitRadius(state: BattleState, u: UnitState): number {
-  return tierDef(state, u).radius;
+/** This clash's squad fielded by a building (`squads` is sorted by building id), if any. */
+export function squadOf(state: BattleState, buildingId: number): SquadState | undefined {
+  const a = state.squads;
+  let lo = 0, hi = a.length - 1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    const q = a[mid] as SquadState;
+    if (q.building === buildingId) return q;
+    if (q.building < buildingId) lo = mid + 1; else hi = mid - 1;
+  }
+  return undefined;
 }
 
 /**
- * Combat rework `mixedWave`: `u`'s shield soaks `damage` first, and breaks once spent. Returns the
+ * A unit's stats at its current merge tier: its squad's own, through `sourceBuildingId`, where something
+ * reaches that squad alone (T046), else its side's. A merged unit has its lowest-id parent's building, and
+ * so that parent's squad's stats (R2-Q11).
+ */
+export function tierDef(state: BattleState, u: UnitState): CompiledTier {
+  const own = squadOf(state, u.sourceBuildingId)?.stats;
+  return (own ?? (state.compiled[u.side].units[u.unitId] as CompiledUnit)).tiers[u.tier - 1]!;
+}
+
+/** Unit body radius at its tier (SPEC §5.6). No modifier reaches a radius, so the side's unit holds it. */
+export function unitRadius(state: BattleState, u: UnitState): number {
+  return (state.compiled[u.side].units[u.unitId] as CompiledUnit).tiers[u.tier - 1]!.radius;
+}
+
+/** Where a unit's squad stands, which a trigger's `rank` and `onLoam` read (T046), or undefined for a unit no squad fielded. */
+export function placeOf(state: BattleState, u: UnitState): Place | undefined {
+  const q = squadOf(state, u.sourceBuildingId);
+  const b = q && state.buildings.find((x) => x.id === q.building);
+  return b && { rank: q.rank, terrain: state.sides[q.side].plots[b.plot]!.terrain };
+}
+
+/**
+ * Has a lane's clash ended? It then holds still while the others fight (§6.7, R2-Q11, A030): the clash's
+ * systems skip its units, and its hits in flight and clouds were dropped with its lock.
+ */
+export function frozen(state: BattleState, lane: number): boolean {
+  return state.clash?.lanes[lane]?.ended === true;
+}
+
+/**
+ * The clash's own clock: ticks since Begin, 1 on its first. Staggered and periodic checks count on it, and
+ * phase a unit by its `arrival`, so a clash of unchanged colonies replays the last one exactly (§5.2, §13.3, T149).
+ */
+export function clashTick(state: BattleState): number {
+  return state.tick - (state.clash?.startTick ?? 0);
+}
+
+/** A tower fielding itself (SPEC §6.7): it never moves, merges or pins, and is never healed. */
+export function isEmplacement(state: BattleState, u: UnitState): boolean {
+  return !!unitDef(state, u).emplacement;
+}
+
+/**
+ * The arrival shield (SPEC §5.3, #8): `u`'s shield soaks `damage` first, and breaks once spent. Returns the
  * damage left for its HP.
  */
 export function soakShield(u: UnitState, damage: number): number {
@@ -57,61 +89,10 @@ export function soakShield(u: UnitState, damage: number): number {
   return damage - shield;
 }
 
-/**
- * Combat rework `flyers`: can unit `u`'s attacks reach a flyer? Flyers, ranged units and melee types
- * of at least `reachSupply` supply can (with `mergedReach`, a merged unit's own supply counts); the
- * small fry can't. Always true with the setting off.
- */
-export function reachesAir(state: BattleState, u: UnitState): boolean {
-  return typeReachesAir(state, unitDef(state, u), u.tier);
-}
-
-/** Combat rework `flyers`: can a unit type's attacks reach a flyer at `tier`? See {@link reachesAir}. */
-export function typeReachesAir(state: BattleState, def: CompiledUnit, tier = 1): boolean {
-  const f = state.rules.flying;
-  if (!f) return true;
-  if (def.tags.includes('flying') || def.tags.includes('ranged')) return true;
-  return def.tiers[f.mergedReach ? tier - 1 : 0]!.supply >= f.reachSupply;
-}
-
-/** Combat rework `flyers`: can a tower's attack reach a flyer? A shell that splashes is a lob, and can't. */
-export function towerReachesAir(def: CompiledBuilding): boolean {
-  return !(def.attack && def.attack.splashRadius > 0);
-}
-
-/** x of a side's attackable Heartcap edge. */
-export function heartcapEdgeX(state: BattleState, side: Side): number {
-  return side === 'player' ? 0 : state.map.width;
-}
-
-export function heartcapSideOf(id: number): Side | undefined {
-  return id === HEARTCAP_ID.player ? 'player' : id === HEARTCAP_ID.enemy ? 'enemy' : undefined;
-}
-
-/** Distance from a point to a building's footprint rectangle (0 inside). */
-export function rectDistance(x: number, y: number, col: number, row: number, w: number, h: number): number {
-  const dx = x < col ? col - x : x > col + w ? x - (col + w) : 0;
-  const dy = y < row ? row - y : y > row + h ? y - (row + h) : 0;
-  if (dx === 0) return dy;
-  if (dy === 0) return dx;
-  return Math.sqrt(dx * dx + dy * dy);
-}
-
-export function isBesieged(state: BattleState, b: BuildingState): boolean {
-  return state.tick - b.lastDamagedTick < state.rules.besiegedTicks;
-}
-
-/** Is the building's production (spawn timer, income) halved by siege? Depends on `rules.suppressBy`. */
-export function isSuppressed(state: BattleState, b: BuildingState): boolean {
-  const by = state.rules.suppressBy;
-  if (!by) return isBesieged(state, b);
-  if (by === 'none') return false;
-  return b.lastMeleeDamagedTick !== undefined && state.tick - b.lastMeleeDamagedTick < state.rules.besiegedTicks;
-}
-
 export const laneTop = (state: BattleState, lane: number): number => (state.lanes[lane] as { rowStart: number }).rowStart;
 export const laneBottom = (state: BattleState, lane: number): number => (state.lanes[lane] as { rowEnd: number }).rowEnd + 1;
 
+/** Holds a body inside its lane and between the two Heartcap edges, x = 0 to W (SPEC §5.2). */
 export function clampToLane(state: BattleState, u: UnitState, radius: number): void {
   const top = laneTop(state, u.lane) + radius;
   const bottom = laneBottom(state, u.lane) - radius;
@@ -127,42 +108,4 @@ export function laneOfRow(state: BattleState, row: number): number {
     if (row >= l.rowStart && row <= l.rowEnd) return i;
   }
   return -1;
-}
-
-export function columnsOwned(state: BattleState, side: Side): number {
-  let n = 0;
-  const W = state.map.width;
-  for (const l of state.lanes) n += side === 'player' ? l.pBorder + 1 : W - l.eBorder;
-  return n;
-}
-
-/**
- * A side's supply cap: its compiled cap plus standing utility buildings (Rhizome Vault: each type
- * counts for at most `maxCount` buildings).
- */
-export function supplyCapOf(state: BattleState, side: Side): number {
-  const cs = state.compiled[side];
-  let cap = cs.supplyCap;
-  const counted: Record<string, number> = {};
-  for (const b of state.buildings) {
-    if (b.side !== side || b.hp <= 0) continue;
-    const u = cs.buildings[b.buildingId]?.utility;
-    if (!u) continue;
-    const n = counted[b.buildingId] ?? 0;
-    if (n >= u.maxCount) continue;
-    counted[b.buildingId] = n + 1;
-    cap += u.supplyCapAdd;
-  }
-  return cap;
-}
-
-/** A side's interest cap: its compiled cap plus standing economy buildings that raise it (Spore Exchange). */
-export function interestCapOf(state: BattleState, side: Side): number {
-  const cs = state.compiled[side];
-  let cap = cs.interestCap;
-  for (const b of state.buildings) {
-    if (b.side !== side || b.hp <= 0) continue;
-    cap += cs.buildings[b.buildingId]?.economy?.interestCapAdd ?? 0;
-  }
-  return cap;
 }

@@ -6,17 +6,17 @@
 // not waves. They build DOM through h() (src/ui/h.ts), so a few lines of fake DOM stand in for the browser, and
 // the checks read the text back.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { RoundScenarioDef } from '../../src/data/schema.ts';
+import type { ScenarioDef } from '../../src/data/schema.ts';
 import type { Atlas } from '../../src/render/atlas.ts';
 import { TipCoach } from '../../src/app/tips.ts';
 import type { TipLane } from '../../src/app/tips.ts';
-import { createFromScenario, incomePreview } from '../../src/sim/rounds/index.ts';
-import type { BattleState, Content, SimEvent } from '../../src/sim/rounds/index.ts';
+import { createFromScenario, incomePreview } from '../../src/sim/index.ts';
+import type { BattleState, Content, SimEvent } from '../../src/sim/index.ts';
 import { helpOverlay } from '../../src/ui/help.ts';
 import { goldLesson, goldTip, stormTip } from '../../src/ui/hud/explain.ts';
 import { protoContent } from '../../tools/lib/content.ts';
-import { content, finishRound, planningState } from '../roundHelpers.ts';
-import type { PlotPlace } from '../roundHelpers.ts';
+import { content, finishRound, planningState } from '../helpers.ts';
+import type { PlotPlace } from '../helpers.ts';
 
 /** Just enough of a DOM node for h(), Help's tabs and a sprite canvas. */
 class FakeNode {
@@ -50,13 +50,13 @@ beforeEach(() => {
 });
 afterEach(() => { vi.unstubAllGlobals(); });
 
-type Planted = NonNullable<RoundScenarioDef['sides']['player']['colony']>[number];
+type Planted = NonNullable<ScenarioDef['sides']['player']['colony']>[number];
 /** Bogwater Hollow's one loam plot on the player's side, and a soil plot beside it (§11.9). */
 const LOAM: PlotPlace = { lane: 0, rank: 1, file: 2 }, SOIL: PlotPlace = { lane: 0, rank: 1, file: 1 };
 const on = (building: string, at: PlotPlace): Planted => ({ building, ...at, merge: false });
 
 /** A battle on Bogwater Hollow from a round scenario, in that round's planning, holding `gold`. */
-function planning(round: number, gold: number, sides: Partial<RoundScenarioDef['sides']> = {}): BattleState {
+function planning(round: number, gold: number, sides: Partial<ScenarioDef['sides']> = {}): BattleState {
   const s = createFromScenario(content, {
     id: 'teaching', description: 'A teaching-text test.', map: 'bogwater-hollow', round,
     sides: { player: sides.player ?? {}, enemy: sides.enemy ?? {} },

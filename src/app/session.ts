@@ -7,8 +7,8 @@ import type { Content } from '../data/registry.ts';
 import type { PowerDef } from '../data/schema.ts';
 import {
   bloomTrios, burstPreview, commandStamp, formationOf, plantProblem, powerOf, powerProblem, priceOf, queueCommand, sellValue,
-} from '../sim/rounds/index.ts';
-import type { BattleState, Command, CommandBody, UnitState } from '../sim/rounds/index.ts';
+} from '../sim/index.ts';
+import type { BattleState, Command, CommandBody, UnitState } from '../sim/index.ts';
 import { trayOrder } from '../ui/buildingInfo.ts';
 import { loadSettings } from './settings.ts';
 

@@ -5,7 +5,7 @@
 // (spore-sprawl/tips/v1, through storageKey()); the settings screen turns tips off or shows them all again.
 // v1's time-based tips went with its battle (R2b's T037); R2b's T118
 // writes the round tips and wires the coach into the battle in rounds.
-import type { BattleState } from '../sim/rounds/index.ts';
+import type { BattleState } from '../sim/index.ts';
 import { h } from '../ui/h.ts';
 import { stormText } from '../ui/hud/explain.ts';
 import { loadSettings, markTipShown, onSettings, tipsShown } from './settings.ts';

@@ -1,13 +1,13 @@
-// Combat rework `sporeCloud` (balance `sporeCloud`, docs/archive/v1/ideas/combat-rework.md): a listed tower's
-// shell leaves a spore cloud where it lands, and with `burster` (balance `burst`) so does a Burster's
-// burst. Clouds live in `state.clouds` in the order they formed. On every pulse tick (a fixed cadence
-// on the battle clock) each cloud deals its damage, ignoring armor, to every enemy unit whose body is
-// inside it; then clouds that have run out are removed.
+// Spore clouds and bursts in a clash (SPEC §5.3, §13.4): v1's `systems/clouds.ts`, typed on rounds' state. A
+// listed tower's shell leaves a spore cloud where it lands, and so does a Burster's burst. Clouds live in
+// `state.clouds` in the order they formed. On every pulse tick (a fixed cadence on the clash's clock) each cloud
+// deals its damage, ignoring armor, to every enemy unit whose body is inside it, emplacements included (§6.7),
+// an arrival shield soaking it first; then clouds that have run out are removed.
 import { nearBuffer, queryNear } from '../spatial.ts';
 import { MAX_RADIUS } from '../targets.ts';
 import { other } from '../state.ts';
 import type { BattleState, CloudSpec, CloudState, Side, UnitState } from '../state.ts';
-import { soakShield, tierDef, unitRadius } from '../world.ts';
+import { clashTick, soakShield, tierDef, unitRadius } from '../world.ts';
 
 /** A cloud of `spec` at (x, y), credited to `sourceBuildingId` (hit resolution and bursts call this). */
 export function addCloud(state: BattleState, side: Side, lane: number, x: number, y: number, sourceBuildingId: number, spec: CloudSpec): void {
@@ -27,8 +27,10 @@ export function cloudSystem(state: BattleState): void {
   const clouds = state.clouds;
   if (!clouds || !clouds.length) return;
   const tick = state.tick;
-  // a cloud pulses on the cadence ticks after the one it formed on, up to its last tick: seconds / pulse pulses
-  for (const cl of clouds) if (tick > cl.fromTick && tick % cl.pulseTicks === 0) pulse(state, cl);
+  // a cloud pulses on the cadence ticks after the one it formed on, up to its last tick: seconds / pulse pulses.
+  // The cadence runs on the clash's clock, so it falls alike in every clash (T149).
+  const ct = clashTick(state);
+  for (const cl of clouds) if (tick > cl.fromTick && ct % cl.pulseTicks === 0) pulse(state, cl);
   let w = 0;
   for (let i = 0; i < clouds.length; i++) if (clouds[i]!.untilTick > tick) clouds[w++] = clouds[i]!;
   clouds.length = w;
@@ -41,7 +43,6 @@ function pulse(state: BattleState, cl: CloudState): void {
   for (let k = 0; k < n; k++) {
     const v = state.units[near[k]!]!;
     if (v.side !== enemy || v.lane !== cl.lane || v.hp <= 0 || v.burrowed || !inCloud(cl, v.x, v.y, unitRadius(state, v))) continue;
-    if (v.flying && !state.rules.flying!.cloudsReach) continue; // combat rework `flyers`
     strike(state, cl.side, v, cl.damage, cl.sourceBuildingId, 'sporeCloud', cl.sourceBuildingId);
   }
 }
@@ -62,9 +63,9 @@ function strike(state: BattleState, side: Side, v: UnitState, damage: number, so
 }
 
 /**
- * Combat rework `burster`: `burst` unit `u` bursts at (x, y) and is spent. Its tier damage, ignoring
- * armor, goes to every enemy unit of its lane whose body is within its splash radius of the point, and
- * a spore cloud forms there. Never buildings or friends.
+ * A `burst` unit `u` bursts at (x, y) and is spent (§5.3). Its tier damage, ignoring armor, goes to every
+ * enemy unit of its lane whose body is within its splash radius of the point, emplacements included, and a
+ * spore cloud forms there. Never friends.
  */
 export function burstUnit(state: BattleState, u: UnitState, x: number, y: number): void {
   const t = tierDef(state, u);
@@ -73,7 +74,7 @@ export function burstUnit(state: BattleState, u: UnitState, x: number, y: number
   u.burst = true;
   if (u.hp > 0) u.hp = 0;
   for (const v of state.units) {
-    if (v.side !== enemy || v.lane !== u.lane || v.hp <= 0 || v.burrowed || v.flying) continue; // a burst can't reach a flyer
+    if (v.side !== enemy || v.lane !== u.lane || v.hp <= 0 || v.burrowed) continue;
     const dx = v.x - x, dy = v.y - y;
     if (Math.sqrt(dx * dx + dy * dy) - unitRadius(state, v) > t.splashRadius) continue;
     strike(state, u.side, v, damage, u.sourceBuildingId, u.unitId, u.id);

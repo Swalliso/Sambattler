@@ -6,8 +6,8 @@
 // `aftermathLength` when it's done), and at a battle's end it holds about 1 s more on the fallen Heartcap, which
 // wilts and sheds spores of its own faction's glow. Under reduced motion it's a fade of 120 ms or less with no
 // surge; under `?test=1` it's its final frame throughout.
-import { other } from '../sim/rounds/index.ts';
-import type { BattleState, RoundResult, Side, UnitState } from '../sim/rounds/index.ts';
+import { other } from '../sim/index.ts';
+import type { BattleState, RoundResult, Side, UnitState } from '../sim/index.ts';
 import type { Effects } from './effects.ts';
 import { pixelText } from './pixelText.ts';
 import { TILE } from './renderer.ts';

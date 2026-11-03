@@ -169,7 +169,7 @@ describe('data', () => {
     bad['factions/velvet-bloom/units.json'][0].mergePerks['2'].armor = 'heavy';
     expect(() => loadContent(bad)).toThrow(ContentError);
     const c = loadContent(raw);
-    expect(c.scenarios['unit-lineup']!.sides.player.units!.some((u) => u.tier === 3)).toBe(true);
+    expect(c.scenarios['unit-lineup']!.clash!.units.some((u) => u.tier === 3)).toBe(true);
   });
 
   // The shape language (SPEC §5.8, §14.3, §16 R4 step 1; R4a, T018): the registry holds each unit's sprite to

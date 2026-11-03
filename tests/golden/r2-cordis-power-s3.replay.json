@@ -1,7 +1,6 @@
 {
   "name": "r2-cordis-power-s3",
   "description": "bot:balanced as cordis, with the starter kit and the auto power policy, vs the scripted general, seed 3 (R2a/T111)",
-  "kind": "rounds",
   "config": {
     "seed": 3,
     "battleIndex": 1,

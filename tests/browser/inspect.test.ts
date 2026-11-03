@@ -11,8 +11,8 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { chromium } from 'playwright';
 import type { Browser, Page } from 'playwright';
 import { nodeContent } from '../../tools/lib/content.ts';
-import { roundStateForParams } from '../../tools/lib/rounds/params.ts';
-import { priceOf } from '../../src/sim/rounds/index.ts';
+import { battleStateForParams } from '../../tools/lib/params.ts';
+import { priceOf } from '../../src/sim/index.ts';
 import type { GameBridge } from '../../src/app/debugBridge.ts';
 import { trayOrder } from '../../src/ui/buildingInfo.ts';
 import { closeServers, serve } from './serve.ts';
@@ -45,7 +45,7 @@ async function open(query: string): Promise<Page> {
 }
 
 /** Node's state for the same query, at the same checkpoint (T080). */
-const node = (query: string) => roundStateForParams(content, new URLSearchParams(query));
+const node = (query: string) => battleStateForParams(content, new URLSearchParams(query));
 const text = async (p: Page, sel: string) => (await p.locator(sel).first().textContent())?.trim() ?? '';
 const game = (p: Page) => p.evaluate(() => {
   const g = window.__GAME__ as unknown as GameBridge;

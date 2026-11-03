@@ -1,22 +1,25 @@
-// Healing (SPEC §14.6 step 11). Support units (the Tender, §11.3) heal the ally missing the most HP
-// within their range every heal interval (ties go to the lower id; an Elder Tender heals two).
-// Units with `regenPct` (Elder's Patience) regenerate once a second while out of combat, i.e. after
-// the same quiet window merging uses. Heals never raise HP above the maximum.
+// Healing in a clash (SPEC §14.6 clash step 9, §13.4): v1's `systems/healing.ts`, typed on rounds' state.
+// Support units (the Tender, §11.3) heal the ally missing the most HP within their range every heal interval
+// (ties go to the lower id; an Elder Tender heals two), and never an emplacement (§6.7). Units with
+// `regenPct` (Elder's Patience) regenerate once a second while out of combat, i.e. after the same quiet
+// window merging uses. Heals never raise HP above the maximum.
 import { nearBuffer, queryNear } from '../spatial.ts';
 import { MAX_RADIUS } from '../targets.ts';
 import type { BattleState, CompiledTier, UnitState } from '../state.ts';
-import { tierDef, unitRadius } from '../world.ts';
+import { clashTick, frozen, isEmplacement, tierDef, unitRadius } from '../world.ts';
 
 const picked: UnitState[] = [];
 
 export function healingSystem(state: BattleState): void {
   const tick = state.tick;
+  // heals and regeneration run on the clash's clock, a healer phased by its arrival (T149)
+  const ct = clashTick(state);
   const r = state.rules;
   for (const u of state.units) {
-    if (u.hp <= 0) continue;
+    if (u.hp <= 0 || frozen(state, u.lane)) continue; // nothing heals in an ended lane (§6.7)
     const t = tierDef(state, u);
-    if (t.healAmount > 0 && !u.knit && (tick + u.id) % t.healTicks === 0) heal(state, u, t);
-    if (t.regenPct > 0 && tick % r.tickRate === 0 && u.hp < u.maxHp && tick - u.lastCombatTick >= r.merge.cooldownTicks) {
+    if (t.healAmount > 0 && !u.knit && (ct + u.arrival) % t.healTicks === 0) heal(state, u, t);
+    if (t.regenPct > 0 && ct % r.tickRate === 0 && u.hp < u.maxHp && tick - u.lastCombatTick >= r.merge.cooldownTicks) {
       u.hp = Math.min(u.maxHp, u.hp + Math.max(1, Math.floor(u.maxHp * t.regenPct)));
     }
   }
@@ -32,7 +35,7 @@ function heal(state: BattleState, healer: UnitState, t: CompiledTier): void {
     for (let k = 0; k < n; k++) {
       const v = state.units[near[k]!];
       if (!v || v === healer || v.side !== healer.side || v.lane !== healer.lane || v.hp <= 0 || v.hp >= v.maxHp) continue;
-      if (picked.includes(v)) continue;
+      if (picked.includes(v) || isEmplacement(state, v)) continue;
       const dx = v.x - healer.x, dy = v.y - healer.y;
       if (Math.sqrt(dx * dx + dy * dy) - unitRadius(state, v) > reach) continue;
       const missing = v.maxHp - v.hp;

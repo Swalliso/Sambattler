@@ -6,7 +6,7 @@
 import type { Content } from '../../data/registry.ts';
 import type { Atlas } from '../../render/atlas.ts';
 import { spriteToCanvas } from '../../render/atlas.ts';
-import type { BattleState } from '../../sim/rounds/index.ts';
+import type { BattleState } from '../../sim/index.ts';
 import { trayOrder } from '../buildingInfo.ts';
 import { h, setText } from '../h.ts';
 import { uiIcon } from '../icons.ts';

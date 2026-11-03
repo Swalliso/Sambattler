@@ -7,7 +7,7 @@
 import type { RunEffect } from '../data/schema.ts';
 import { DEFAULT_COMMANDER, MAX_BANS, hashValue, seedStream } from '../sim/index.ts';
 import type { Content, DraftCard, DraftPolicy, PowerPolicy, Rng4 } from '../sim/index.ts';
-import type { BattleConfig, CounterKind, Flags, IntelProfile, RoundResult, Side } from '../sim/rounds/index.ts';
+import type { BattleConfig, CounterKind, Flags, IntelProfile, RoundResult, Side } from '../sim/index.ts';
 import { generateRoute } from './route.ts';
 import type { RouteNode } from './route.ts';
 

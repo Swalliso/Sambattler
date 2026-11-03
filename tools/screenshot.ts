@@ -14,12 +14,11 @@ import type { Page } from 'playwright';
 import { nodeContent, ROOT } from './lib/content.ts';
 import { CVD_MATRICES, cvdMatrixValues } from './lib/cvd.ts';
 import type { CvdFilter } from './lib/cvd.ts';
-import { RUN_SCENES, runForParams, sceneOf } from './lib/params.ts';
-import { roundStateForParams } from './lib/rounds/params.ts';
+import { RUN_SCENES, battleStateForParams, runForParams, sceneOf } from './lib/params.ts';
 import { hashRun, intelDots } from '../src/run/index.ts';
 import { COUNTER_KINDS } from '../src/sim/index.ts';
-import { formationOf as roundFormationOf, hashState as hashRoundState, summarize as summarizeRound } from '../src/sim/rounds/index.ts';
-import type { BattleState as RoundState } from '../src/sim/rounds/index.ts';
+import { formationOf as roundFormationOf, hashState as hashRoundState, summarize as summarizeRound } from '../src/sim/index.ts';
+import type { BattleState as RoundState } from '../src/sim/index.ts';
 
 interface Args {
   name: string; params: string; url?: string; browser: 'chromium' | 'firefox'; filter?: CvdFilter;
@@ -245,7 +244,8 @@ async function main(): Promise<number> {
       if (r.intel) {
         const want = intelDots(r.intel);
         if (intelDom.length !== 4) failures.push(`${scene} shows ${intelDom.length} intel bars (expected 4)`);
-        for (const k of COUNTER_KINDS) {
+        // the bars show v1's four kinds until S9 gives Anti-Ranged its bar
+        for (const k of COUNTER_KINDS.filter((x) => x !== 'ranged')) {
           const got = intelDom.find((x) => x.kind === k);
           if (!got || got.dots !== want[k]) failures.push(`intel bar ${k}: ${got?.dots ?? '-'} dots, the run has ${want[k]}`);
         }
@@ -338,7 +338,7 @@ async function targetingCheck(page: Page, node: RoundState, failures: string[]):
 }
 
 /**
- * A battle scene (`scene=battle`, `scene=report`), checked with §15.6's assertions 2–5 after assertion 1's errors: the page's hash against `roundStateForParams`'s at the same round, phase and tick; a
+ * A battle scene (`scene=battle`, `scene=report`), checked with §15.6's assertions 2–5 after assertion 1's errors: the page's hash against `battleStateForParams`'s at the same round, phase and tick; a
  * canvas that isn't blank with each team's mycelium inside its own colony's columns; the band's gold, plots,
  * round and Heartcaps against the bridge's summary, with no lives in a single battle, and in planning the
  * general's formation as drawn against Node's `formationOf`, unit for unit (T143); and the PNG with a JSON of
@@ -355,7 +355,7 @@ async function roundCapture(page: Page, q: URLSearchParams, args: Args, url: str
   });
   // 2. browser hash == Node hash at the same round, phase and clash tick; a checkpoint Node can't reach fails with its message
   let node: RoundState | null = null;
-  try { node = roundStateForParams(content, q); } catch (e) { failures.push(`node: ${(e as Error).message}`); }
+  try { node = battleStateForParams(content, q); } catch (e) { failures.push(`node: ${(e as Error).message}`); }
   const nodeHash = node ? hashRoundState(node) : '';
   if (node) {
     const want = { round: node.round, phase: node.phase, tick: node.tick };

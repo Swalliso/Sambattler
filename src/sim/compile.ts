@@ -1,219 +1,19 @@
-// Compiles data (seconds, ratios) into the tick- and integer-based definitions stored in state, at
-// battle start and after every draft pick (SPEC §14.1):
-//
-//   base data → (strain patch, M6) → modifiers: sum all `add`, multiply all `mul`, then `set`
-//
-// Unit modifiers resolve against the tier-1 base stats; tier scaling and merge perks apply on top
-// (splash radius is the exception: a perk replaces it, and modifiers adjust the result). A side's
-// compiled set covers its kit, with every unit resolved at all three merge tiers. Everything reads
-// from the battle's `library`, never from content, so `step` can recompile.
+// Compiles a battle in rounds' data into what its state holds (SPEC §11.1, §11.2, §14.2, §14.4): the library,
+// with ids and numbers only (R2-Q8); the rules, from `balance.rounds` and the kept combat; and each side's
+// compiled kit. A spawner fields its `squad`, a tower fields itself as one emplacement unit, an economy
+// building pays its gold a round, and every squad's unit is resolved at all three merge tiers as v1 resolves
+// it (§5.5, §5.6). Modifiers on stats rounds retire compile to nothing and are listed (plan Call 19).
 import type { Content } from '../data/registry.ts';
-import type { BalanceDef, BuildingDef, ModifierDef, SelectorDef, UnitDef } from '../data/schema.ts';
-import { battleModifiers, buildingStat, collectEffects, resolveStat, unitMatcher } from './effects.ts';
+import type { ModifierDef, UnitDef } from '../data/schema.ts';
+import { battleModifiers, buildingMatcher, collectRoundEffects, onPlot, placeMatches, resolveStat, roundModifiers, unitMatcher } from './effects.ts';
+import type { Place, RoundEffects } from './effects.ts';
 import { SIDES } from './state.ts';
+import { MAX_RADIUS } from './targets.ts';
 import type {
-  BattleConfig, BattleModifier, CompiledBuilding, CompiledSide, CompiledTier, CompiledUnit, DamageType, Library, Loadout,
-  Rules, Side, SideConfig, Tier,
+  BattleConfig, CompiledBuilding, CompiledSide, CompiledTier, CompiledUnit, DamageType, KitCard, Library, LibraryUnit, Rules, Side, SquadStats, Tier,
 } from './state.ts';
 
 export const secToTicks = (s: number, tickRate = 20): number => Math.round(s * tickRate);
-
-export function compileRules(b: BalanceDef, config: BattleConfig): Rules {
-  const tr = b.tickRate;
-  const test = config.test ?? {};
-  const battle = battleModifiers(config.modifiers);
-  return {
-    tickRate: tr,
-    waveTicks: secToTicks(b.waveSeconds, tr),
-    incomeTicks: secToTicks(b.incomeTickSeconds, tr),
-    interestPer: b.interestPer,
-    comebackDivisor: b.comebackDivisor,
-    comebackMax: b.comebackMax,
-    fullRefundTicks: secToTicks(b.fullRefundSeconds, tr),
-    besiegedTicks: secToTicks(b.besiegedSeconds, tr),
-    besiegedHalfTicks: Math.round(2 * b.besiegedRate),
-    normalHalfTicks: 2,
-    besiegedIncomePct: Math.round(b.besiegedRate * 100),
-    ...(b.besiegedBy && b.besiegedBy !== 'all' ? { suppressBy: b.besiegedBy } : {}),
-    ...(b.approachRush ? {
-      rush: {
-        units: [...b.approachRush.units], speedMult: b.approachRush.speedMult,
-        ticks: secToTicks(b.approachRush.seconds, tr), cooldownTicks: secToTicks(b.approachRush.cooldownSeconds, tr),
-      },
-    } : {}),
-    ...(b.firingCongestion ? {
-      congestion: { freeRanks: b.firingCongestion.freeRanks, halfWidth: b.firingCongestion.corridorHalfWidth, mult: b.firingCongestion.blockedDamageMult },
-    } : {}),
-    ...(b.unitLifespan ? { lifespan: { ticks: secToTicks(b.unitLifespan.seconds, tr), tierMult: b.unitLifespan.tierMult ?? 1 } } : {}),
-    ...(b.laneStance ? {
-      stance: {
-        rallyBack: b.laneStance.rallyBack,
-        maxHoldTicks: secToTicks(b.laneStance.maxHoldSeconds, tr),
-        cooldownTicks: secToTicks(b.laneStance.cooldownSeconds, tr),
-        ...(b.laneStance.ai ? {
-          ai: {
-            musterSupply: b.laneStance.ai.musterSupply, spentSupply: b.laneStance.ai.spentSupply,
-            ...(b.laneStance.ai.profiles ? { profiles: [...b.laneStance.ai.profiles] } : {}),
-            ...(b.laneStance.ai.advanceWhenBesieged ? { advanceWhenBesieged: true } : {}),
-          },
-        } : {}),
-      },
-    } : {}),
-    ...(b.fallBack ? { fallBack: { radius: b.fallBack.radius, ratio: b.fallBack.ratio, maxHoldTicks: secToTicks(b.fallBack.maxHoldSeconds, tr) } } : {}),
-    ...(b.spawnerDefense ? {
-      spawnerDefense: {
-        damage: b.spawnerDefense.damage, damageType: b.spawnerDefense.damageType, intervalTicks: Math.max(1, secToTicks(b.spawnerDefense.interval, tr)),
-        range: b.spawnerDefense.range, projectileSpeed: b.spawnerDefense.projectileSpeed, homeOnly: b.spawnerDefense.homeOnly,
-      },
-    } : {}),
-    ...(b.diveRanged ? {
-      dive: {
-        units: [...b.diveRanged.units], aggroAdd: b.diveRanged.aggroAdd ?? 0,
-        ...(b.diveRanged.burst ? {
-          burst: {
-            speedMult: b.diveRanged.burst.speedMult, ticks: secToTicks(b.diveRanged.burst.seconds, tr),
-            cooldownTicks: secToTicks(b.diveRanged.burst.cooldownSeconds, tr),
-          },
-        } : {}),
-      },
-    } : {}),
-    ...(b.hotStart?.deployDraft ? { deployDraft: { ...b.hotStart.deployDraft } } : {}),
-    ...(b.bigDrafts ? { bigDrafts: { picks: b.bigDrafts.picks ?? 1, rareBonus: b.bigDrafts.rareBonus ?? 0 } } : {}),
-    ...(b.pinned ? { pin: { radius: b.pinned.radius, permille: Math.round(b.pinned.rateMult * 1000) } } : {}),
-    ...(b.callForHelp ? { help: { radius: b.callForHelp.radius } } : {}),
-    ...(b.waves ? { waves: { rangedGap: b.waves.rangedGap ?? 1, matchPace: b.waves.matchPace ?? true } } : {}),
-    ...(b.waves && b.mixedWave ? { mixed: { minTypes: b.mixedWave.minTypes, shieldFrac: b.mixedWave.shieldFrac } } : {}),
-    ...(b.cleave ? { cleave: { units: [...b.cleave.units] } } : {}),
-    ...(b.waves && b.stormWaves ? { stormWaves: { perStack: b.stormWaves.perStack } } : {}),
-    ...(b.flying ? { flying: { ...b.flying } } : {}),
-    ...(b.burst ? {
-      burst: {
-        cloud: {
-          radius: b.burst.cloud.radius, ticks: secToTicks(b.burst.cloud.seconds, tr), pulseTicks: secToTicks(1, tr),
-          damage: Math.max(1, Math.round(b.burst.cloud.damagePerSecond)),
-        },
-      },
-    } : {}),
-    ...(b.sporeCloud ? {
-      cloud: {
-        buildings: [...b.sporeCloud.buildings], radius: b.sporeCloud.radius, ticks: secToTicks(b.sporeCloud.seconds, tr),
-        pulseTicks: Math.max(1, secToTicks(b.sporeCloud.pulseSeconds ?? 1, tr)),
-        damage: Math.max(1, Math.round(b.sporeCloud.damagePerSecond * (b.sporeCloud.pulseSeconds ?? 1))),
-      },
-    } : {}),
-    timeLimitTicks: secToTicks(test.timeLimitSeconds ?? b.timeLimitSeconds, tr),
-    captureStep: 100,
-    captureThreshold: Math.round(b.captureSeconds * tr * 100),
-    captureDecay: Math.round(100 * b.captureDecayMult),
-    captureRatio: b.captureRatio,
-    retargetEvery: b.retargetEveryTicks,
-    leashMult: b.leashMult,
-    splashFalloff: b.splashFalloff,
-    storm: {
-      startTick: secToTicks(Math.max(0, resolveStat(b.sporestorm.startSeconds, battle, 'battle.sporestormStart')), tr),
-      everyTicks: secToTicks(b.sporestorm.everySeconds, tr),
-      maxStacks: b.sporestorm.maxStacks,
-      unitDamage: b.sporestorm.unitDamagePerStack,
-      turretDamage: b.sporestorm.turretDamagePerStack,
-      heartcapTaken: b.sporestorm.heartcapTakenPerStack,
-    },
-    matrix: b.matrix,
-    siegeMult: b.tagMult.siegeVsStructure,
-    slayerMult: b.tagMult.slayerVsElite,
-    merge: {
-      cooldownTicks: secToTicks(b.mergeCombatCooldownSeconds, tr),
-      every: b.mergeCheckEveryTicks,
-    },
-    draftWaves: [...b.draftWaves],
-    strongAt: b.effectiveness.strongAtLeast,
-    weakAt: b.effectiveness.weakAtMost,
-    spawnOffset: b.movement.spawnOffset,
-    spawnJitter: b.movement.spawnJitter,
-    driftPerTick: b.movement.driftSpeed / tr,
-    separationPasses: b.movement.separationPasses,
-    ai: {
-      thinkEvery: secToTicks(b.ai.thinkEverySeconds, tr),
-      stickyTicks: secToTicks(b.ai.targetStickySeconds, tr),
-      pressureWindow: b.ai.pressureWindowCols,
-      pressureMin: b.ai.pressureMinPresence,
-      threatRadius: b.ai.threatRadius,
-      towerRangeThreat: b.ai.towerRangeThreat,
-      noise: b.ai.placementNoise,
-      economyEarlyTick: secToTicks(b.ai.economyEarly.beforeSeconds, tr),
-      economyEarlyMult: b.ai.economyEarly.mult,
-      economyLateTick: secToTicks(b.ai.economyLate.afterSeconds, tr),
-      economyLateMult: b.ai.economyLate.mult,
-      towerPressureMult: b.ai.towerPressureMult,
-      mergeOffSlayerShare: b.ai.mergeOffSlayerShare,
-      counter: {
-        cycles: b.ai.counter.cycles.map((c) => ({ analyzeTick: secToTicks(c.analyzeSeconds, tr), activeTick: secToTicks(c.activeSeconds, tr) })),
-        bossCycles: b.ai.counter.bossCycles.map((c) => ({ analyzeTick: secToTicks(c.analyzeSeconds, tr), activeTick: secToTicks(c.activeSeconds, tr) })),
-        scoreNoise: b.ai.counter.scoreNoise,
-        swarmEliteDiscount: b.ai.counter.swarmEliteDiscount,
-        eliteScoreMult: b.ai.counter.eliteScoreMult,
-        counterMult: b.ai.counter.counterMult,
-        otherMult: b.ai.counter.otherMult,
-        openingMult: b.ai.counter.openingMult,
-        openingOtherMult: b.ai.counter.openingOtherMult,
-        dualMult: b.ai.counter.dualMult,
-        freeSlots: b.ai.counter.freeSlots,
-        maxSells: b.ai.counter.maxSells,
-        ...(b.ai.counter.counterFloorWeight ? { floorWeight: b.ai.counter.counterFloorWeight } : {}),
-        ...(b.ai.counter.swarmMaxSupply ? { swarmMaxSupply: b.ai.counter.swarmMaxSupply } : {}),
-      },
-      score: { ...b.ai.score },
-    },
-    test: {
-      turrets: !test.noTurrets,
-      territory: !test.noTerritory,
-      heartcapTargets: !test.noHeartcapTargets,
-      // R1's tool-only switches (SPEC §5.2), set only when on, so every battle's rules hash as before
-      ...(test.noBuildingPreference ? { noBuildingPreference: true as const } : {}),
-      ...(test.idleSeek ? { idleSeek: true as const } : {}),
-    },
-  };
-}
-
-/** A building as v1 reads it: without R2a's `squad` and `economy.goldPerRound` (R2a Call 27). */
-function v1Building(b: BuildingDef): BuildingDef {
-  const { squad: _squad, economy, ...rest } = b;
-  if (!economy) return rest;
-  const { goldPerRound: _goldPerRound, ...v1Economy } = economy;
-  return { ...rest, economy: v1Economy };
-}
-
-/**
- * The library a battle needs: the given buildings (both kits plus any draft pool), the units they
- * spawn, their upgrade tracks, the given relics and the balance constants. R2a's rounds data (the
- * `rounds` block, squads and gold a round) stays out, so it never moves a v1 hash (R2a Call 27).
- */
-export function buildLibrary(content: Content, buildingIds: Iterable<string>, relicIds: Iterable<string>): Library {
-  const { rounds: _rounds, ...balance } = content.balance;
-  const lib: Library = { balance, buildings: {}, units: {}, upgrades: {}, relics: {} };
-  for (const id of buildingIds) {
-    const b = content.buildings[id];
-    if (!b) throw new Error(`unknown building ${id}`);
-    lib.buildings[id] = v1Building(b);
-    if (b.spawn) {
-      const u = content.units[b.spawn.unit];
-      if (!u) throw new Error(`unknown unit ${b.spawn.unit}`);
-      lib.units[u.id] = u;
-    }
-    const track = content.upgrades[id];
-    if (track) lib.upgrades[id] = track;
-  }
-  for (const id of relicIds) {
-    const r = content.relics[id];
-    if (!r) throw new Error(`unknown relic ${id}`);
-    lib.relics[id] = r;
-  }
-  return lib;
-}
-
-/** A side's loadout as configured (before any draft pick). */
-export function configLoadout(sc: SideConfig): Loadout {
-  return { kit: [...sc.kit], upgrades: { ...(sc.upgrades ?? {}) }, relics: [...(sc.relics ?? [])] };
-}
 
 type Perk = UnitDef['mergePerks']['2'];
 
@@ -228,11 +28,187 @@ export function perkAt(u: UnitDef, tier: Tier): Perk {
   return out;
 }
 
-function compileTier(lib: Library, u: UnitDef, tier: Tier, mods: readonly ModifierDef[]): CompiledTier {
+/**
+ * The library a battle in rounds needs: both kits' buildings, the units their squads field, the powers in
+ * play and the balance constants, without any name, description or text (R2-Q8), so the UI reads those
+ * from content by id. A run's battle also carries the relics and upgrade tracks its sides hold (R2b), whose
+ * effects compile with the battle's modifiers (`roundModifiers`).
+ */
+export function buildRoundLibrary(content: Content, config: BattleConfig): Library {
+  const lib: Library = { balance: content.balance, buildings: {}, units: {} };
+  for (const id of [...new Set(SIDES.flatMap((s) => config[s].relics))].sort()) {
+    const r = content.relics[id];
+    if (!r) throw new Error(`unknown relic ${id}`);
+    (lib.relics ??= {})[id] = { effects: r.effects };
+  }
+  for (const id of [...new Set(SIDES.flatMap((s) => Object.keys(config[s].upgrades ?? {})))].sort()) {
+    const t = content.upgrades[id];
+    if (!t) throw new Error(`unknown upgrade track ${id}`);
+    (lib.upgrades ??= {})[id] = t.levels.map((l) => ({ effects: l.effects }));
+  }
+  for (const id of [...new Set(SIDES.flatMap((s) => config[s].kit.map((c) => c.building)))].sort()) {
+    const b = content.buildings[id];
+    if (!b) throw new Error(`unknown building ${id}`);
+    const { name: _name, description: _description, ...building } = b;
+    lib.buildings[id] = building;
+    if (!b.squad) continue;
+    const u = content.units[b.squad.unit];
+    if (!u) throw new Error(`unknown unit ${b.squad.unit}`);
+    const { name: _unitName, ...unit } = u;
+    lib.units[u.id] = unit;
+  }
+  // only a battle with powers on carries their definitions
+  const powers = Object.values(content.commanders).map((c) => c.power).filter((p) => SIDES.some((s) => config[s].power === p.id));
+  for (const s of SIDES) if (config[s].power && !powers.some((p) => p.id === config[s].power)) throw new Error(`${s}: unknown power ${config[s].power}`);
+  if (config.flags.powers && powers.length) {
+    lib.powers = Object.fromEntries(powers.map(({ name: _name, text: _text, ...p }) => [p.id, p]));
+  }
+  return lib;
+}
+
+/** The rules of a battle in rounds, from `balance.rounds` and the kept combat, in ticks and integers. */
+export function compileRoundRules(lib: Library, config: BattleConfig): Rules {
+  const b = lib.balance, r = b.rounds, tr = b.tickRate;
+  // `battle.sporestormStart` is a round number in rounds (§6.4)
+  const startRound = Math.max(1, Math.round(resolveStat(r.sporestorm.startRound, battleModifiers(roundModifiers(lib, config)), 'battle.sporestormStart')));
+  return {
+    tickRate: tr,
+    maxRounds: r.maxRounds,
+    clashCapTicks: secToTicks(r.clashCapSeconds, tr),
+    musterTicks: secToTicks(r.musterSeconds, tr),
+    formationGapTiles: r.formationGapTiles,
+    heartcapDamagePerSupply: r.heartcapDamagePerSupply,
+    siegeHeartcapMult: r.siegeHeartcapMult,
+    arrivalShield: { ...r.arrivalShield },
+    roundDamageCap: { ...r.roundDamageCap },
+    decisionBy: r.decision.by,
+    interestPer: r.interestPer,
+    comebackGold: r.comebackGold,
+    storm: { startRound, stepBp: r.sporestorm.stepBp, maxBp: r.sporestorm.maxBp },
+    retargetEvery: b.retargetEveryTicks,
+    leashMult: b.leashMult,
+    splashFalloff: b.splashFalloff,
+    matrix: b.matrix,
+    siegeMult: b.tagMult.siegeVsStructure,
+    slayerMult: b.tagMult.slayerVsElite,
+    merge: { cooldownTicks: secToTicks(b.mergeCombatCooldownSeconds, tr), every: b.mergeCheckEveryTicks },
+    strongAt: b.effectiveness.strongAtLeast,
+    weakAt: b.effectiveness.weakAtMost,
+    driftPerTick: b.movement.driftSpeed / tr,
+    separationPasses: b.movement.separationPasses,
+    ...(b.pinned ? { pin: { radius: b.pinned.radius, permille: Math.round(b.pinned.rateMult * 1000) } } : {}),
+    ...(b.sporeCloud ? {
+      cloud: {
+        buildings: [...b.sporeCloud.buildings], radius: b.sporeCloud.radius, ticks: secToTicks(b.sporeCloud.seconds, tr),
+        pulseTicks: Math.max(1, secToTicks(b.sporeCloud.pulseSeconds ?? 1, tr)),
+        damage: Math.max(1, Math.round(b.sporeCloud.damagePerSecond * (b.sporeCloud.pulseSeconds ?? 1))),
+      },
+    } : {}),
+    ...(b.cleave ? { cleave: { units: [...b.cleave.units] } } : {}),
+    ...(b.burst ? {
+      burst: {
+        cloud: {
+          radius: b.burst.cloud.radius, ticks: secToTicks(b.burst.cloud.seconds, tr), pulseTicks: secToTicks(1, tr),
+          damage: Math.max(1, Math.round(b.burst.cloud.damagePerSecond)),
+        },
+      },
+    } : {}),
+  };
+}
+
+/** Both sides' compiled kits, together, since a modifier may reach the opponent. */
+export function compileRoundSides(lib: Library, config: BattleConfig): Record<Side, CompiledSide> {
+  const fx = collectRoundEffects(roundModifiers(lib, config));
+  const out = {} as Record<Side, CompiledSide>;
+  for (const s of SIDES) out[s] = compileRoundSide(lib, s, config[s].kit, fx[s]);
+  return out;
+}
+
+function compileRoundSide(lib: Library, side: Side, kit: readonly KitCard[], fx: RoundEffects): CompiledSide {
+  const bal = lib.balance, r = bal.rounds;
+  const m = (stat: string, base: number) => resolveStat(base, fx.mods, stat);
+  const buildings: Record<string, CompiledBuilding> = {};
+  const units: Record<string, CompiledUnit> = {};
+  for (const { building: id } of kit) {
+    const cb = compileRoundBuilding(lib, id);
+    buildings[id] = cb;
+    if (cb.kind === 'tower') units[id] = compileEmplacement(lib, id, fx.mods);
+    else if (cb.squad && !(cb.squad.unit in units)) units[cb.squad.unit] = compileRoundUnit(lib, cb.squad.unit, fx.mods);
+  }
+  return {
+    units,
+    buildings,
+    stipend: Math.round(m('side.stipend', r.stipendPerRound)),
+    interestCap: Math.round(m('side.interestCap', r.interestCap)),
+    incomeBp: side === 'enemy' ? Math.round(r.enemyIncomeMult * 10000) : 10000,
+    comebackEnabled: m('side.comebackEnabled', 1) > 0,
+    sellRefundPlantedPct: Math.round(r.sellRefundPlanted * 100),
+    sellRefundPct: Math.round(m('side.sellRefund', bal.sellRefund) * 100),
+    loamBonusPct: Math.round(m('side.loamBonus', bal.loamBonus) * 100),
+    mergeRadius: m('side.mergeRadius', bal.mergeRadius),
+    knitTicks: secToTicks(m('side.knitTicks', bal.mergeKnitSeconds), bal.tickRate),
+    triggers: fx.triggers,
+    ignored: fx.ignored,
+  };
+}
+
+/** A building as a battle in rounds fields it (§4.4): a spawner's squad, a tower's one emplacement, or its gold a round. */
+function compileRoundBuilding(lib: Library, id: string): CompiledBuilding {
+  const b = lib.buildings[id];
+  if (!b) throw new Error(`unknown building ${id}`);
+  const out: CompiledBuilding = { id, kind: b.kind, cost: b.cost };
+  if (b.kind === 'spawner') {
+    if (!b.squad) throw new Error(`spawner ${id} has no squad, so it fields nothing in rounds`);
+    out.squad = { unit: b.squad.unit, count: b.squad.count };
+  } else if (b.kind === 'tower') out.squad = { unit: id, count: 1 };
+  if (b.economy) {
+    if (b.economy.goldPerRound === undefined) throw new Error(`economy building ${id} has no goldPerRound`);
+    out.economy = { goldPerRound: b.economy.goldPerRound, ...(b.economy.interestCapAdd ? { interestCapAdd: b.economy.interestCapAdd } : {}) };
+  }
+  return out;
+}
+
+/**
+ * A unit at its three merge tiers (§5.5, §5.6). Its modifiers resolve against the tier-1 base stats, then
+ * tier scaling and merge perks apply on top, as v1's `compileUnit` has it (a perk replaces the splash
+ * radius, and modifiers adjust the result). A modifier that depends on a plot reaches it only on a squad's
+ * plot, `place` (`squadStats`).
+ */
+export function compileRoundUnit(lib: Library, id: string, mods: readonly ModifierDef[] = [], place?: Place): CompiledUnit {
+  const u = lib.units[id];
+  if (!u) throw new Error(`unknown unit ${id}`);
+  return {
+    id: u.id,
+    armor: u.armor,
+    damageType: u.damageType,
+    projectileSpeed: u.projectileSpeed,
+    aggroRange: u.aggroRange,
+    siege: u.tags.includes('siege'),
+    slayer: u.tags.includes('slayer'),
+    support: !!u.heal,
+    tags: [...u.tags],
+    tiers: [compileTier(lib, u, 1, mods, place), compileTier(lib, u, 2, mods, place), compileTier(lib, u, 3, mods, place)],
+  };
+}
+
+/**
+ * A squad's own unit stats (§5.6, §14.2, T046, A028), compiled at Begin: the side's unit modifiers whose
+ * `rank` or `onLoam` holds at the squad's plot are its patches, and its tiers resolve the side's other
+ * modifiers with the patches after them. Undefined when no patch reaches it, so its units read the side's
+ * unit. R3 adds augment and combo patches to the same list rather than build a second path (A131).
+ */
+export function squadStats(lib: Library, unitId: string, mods: readonly ModifierDef[], place: Place): SquadStats | undefined {
+  const patches = mods.filter((m) => m.stat.startsWith('unit.') && onPlot(m.where) && placeMatches(m.where!, place));
+  if (!patches.length) return undefined;
+  const sideWide = mods.filter((m) => !onPlot(m.where));
+  return { patches, tiers: compileRoundUnit(lib, unitId, [...sideWide, ...patches], place).tiers };
+}
+
+function compileTier(lib: Library, u: LibraryUnit, tier: Tier, mods: readonly ModifierDef[], place?: Place): CompiledTier {
   const b = lib.balance;
   const tr = b.tickRate;
-  const p = perkAt(u, tier);
-  const match = unitMatcher(lib, u, tier);
+  const p = perkAt(u as UnitDef, tier); // it reads only the merge perks, and the library's unit has no name
+  const match = unitMatcher(lib, u, tier, place);
   const m = (stat: string, base: number) => resolveStat(base, mods, stat, match);
   const stat = tier === 1 ? 1 : tier === 2 ? b.tierStatMult : b.tierStatMult * b.tierStatMult;
   const size = tier === 1 ? 1 : tier === 2 ? b.tierRadiusMult : b.tierRadiusMult * b.tierRadiusMult;
@@ -256,138 +232,29 @@ function compileTier(lib: Library, u: UnitDef, tier: Tier, mods: readonly Modifi
   };
 }
 
-export function compileUnit(lib: Library, id: string, mods: readonly ModifierDef[] = []): CompiledUnit {
-  const u = lib.units[id];
-  if (!u) throw new Error(`unknown unit ${id}`);
+/**
+ * A tower as its emplacement (§4.4, §6.7, #10): one unit under the tower's id, with the tower's attack and
+ * `hp` and Structure armor, which never moves or merges and counts no supply. A tower whose shells leave
+ * spore clouds reaches the clouds' range and aims them (§5.3). Its body is the largest a unit's may be, and
+ * its range runs from its centre, as a tower's did (`systems/targeting.ts`, `systems/combat.ts`). Each round's
+ * arrival fields it fresh, at the tower's full `hp`.
+ */
+function compileEmplacement(lib: Library, id: string, mods: readonly ModifierDef[]): CompiledUnit {
+  const b = lib.buildings[id]!;
+  const a = b.attack;
+  if (!a) throw new Error(`tower ${id} has no attack`);
+  const bal = lib.balance;
+  const m = (stat: string, base: number) => resolveStat(base, mods, stat, buildingMatcher(lib, id));
+  const clouds = !!bal.sporeCloud?.buildings.includes(id);
+  const range = m('tower.range', clouds && bal.sporeCloud!.range !== undefined ? bal.sporeCloud!.range : a.range);
+  const tier = (): CompiledTier => ({
+    hp: b.hp, damage: m('tower.damage', a.damage), attackTicks: Math.max(1, secToTicks(a.interval, bal.tickRate)), range,
+    speedPerTick: 0, radius: MAX_RADIUS, splashRadius: m('tower.splashRadius', a.splashRadius ?? 0), slayerMult: 1,
+    resist: { slash: 1, pierce: 1, crush: 1 }, supply: 0, siegeMult: 1, healAmount: 0, healTicks: 0, healTargets: 0, regenPct: 0,
+  });
   return {
-    id: u.id,
-    armor: u.armor,
-    damageType: u.damageType,
-    projectileSpeed: u.projectileSpeed,
-    aggroRange: u.aggroRange,
-    siege: u.tags.includes('siege'),
-    slayer: u.tags.includes('slayer'),
-    support: !!u.heal,
-    tags: [...u.tags],
-    tiers: [compileTier(lib, u, 1, mods), compileTier(lib, u, 2, mods), compileTier(lib, u, 3, mods)],
+    id, armor: 'structure', damageType: a.damageType, projectileSpeed: a.projectileSpeed, aggroRange: range,
+    siege: false, slayer: false, support: false, tags: [], tiers: [tier(), tier(), tier()],
+    emplacement: { minRange: a.minRange ?? 0, clouds },
   };
-}
-
-export function compileBuilding(lib: Library, id: string, mods: readonly ModifierDef[] = []): CompiledBuilding {
-  const b = lib.buildings[id];
-  if (!b) throw new Error(`unknown building ${id}`);
-  const bal = lib.balance;
-  const tr = bal.tickRate;
-  const stat = (key: string, base: number) => buildingStat(lib, b, mods, key, base);
-  const out: CompiledBuilding = {
-    id: b.id, kind: b.kind, w: b.footprint.w, h: b.footprint.h, cost: b.cost, hp: Math.round(stat('building.hp', b.hp).value),
-  };
-  if (b.spawn) {
-    const interval = stat('building.spawnInterval', b.spawn.interval);
-    const intervalTicks = secToTicks(interval.value, tr);
-    // prototype T1: ranged spawners may use their own first-spawn fraction
-    const ranged = bal.rangedFirstSpawnFraction !== undefined && (lib.units[b.spawn.unit]?.projectileSpeed ?? 0) > 0;
-    const first = stat('building.firstSpawnFraction', ranged ? bal.rangedFirstSpawnFraction! : bal.firstSpawnFraction).value;
-    out.spawn = {
-      unit: b.spawn.unit,
-      count: Math.max(1, Math.round(stat('building.spawnCount', b.spawn.count).value)),
-      intervalHalfTicks: intervalTicks * 2,
-      firstHalfTicks: Math.round(intervalTicks * 2 * Math.max(0, first)),
-    };
-    if (interval.positional) out.spawn.positional = interval.positional;
-  }
-  if (b.attack) {
-    // combat rework `sporeCloud`: the cloud towers' base range
-    const cloud = bal.sporeCloud?.range !== undefined && bal.sporeCloud.buildings.includes(b.id) ? bal.sporeCloud.range : undefined;
-    out.attack = {
-      damage: stat('tower.damage', b.attack.damage).value,
-      damageType: b.attack.damageType,
-      intervalTicks: Math.max(1, secToTicks(b.attack.interval, tr)),
-      range: stat('tower.range', cloud ?? b.attack.range).value,
-      minRange: b.attack.minRange ?? 0,
-      splashRadius: stat('tower.splashRadius', b.attack.splashRadius ?? 0).value,
-      projectileSpeed: b.attack.projectileSpeed,
-    };
-  }
-  if (b.economy) {
-    const gold = stat('building.goldPerTick', b.economy.goldPerTick);
-    out.economy = { goldPerTick: Math.round(gold.value) };
-    if (gold.positional) out.economy.positional = gold.positional;
-    if (b.economy.interestCapAdd) out.economy.interestCapAdd = b.economy.interestCapAdd;
-  }
-  if (b.utility) out.utility = { ...b.utility };
-  return out;
-}
-
-/**
- * A selector on a plot of a battle in rounds (T046): a `rank`, or `onLoam` on a unit stat. v1 has no ranks
- * and its units stand on no plot, so it skips such a modifier or trigger rather than apply it to every unit
- * or building, or fire it whatever its condition.
- */
-const roundsOnly = (w: SelectorDef | undefined, unitStat: boolean): boolean => !!w && (w.rank !== undefined || (unitStat && w.onLoam !== undefined));
-
-export function compileSide(lib: Library, lo: Loadout, all: readonly ModifierDef[], triggers: CompiledSide['triggers'] = []): CompiledSide {
-  const mods = all.filter((m) => !roundsOnly(m.where, m.stat.startsWith('unit.')));
-  const bal = lib.balance;
-  const m = (stat: string, base: number) => resolveStat(base, mods, stat);
-  const buildings: Record<string, CompiledBuilding> = {};
-  const units: Record<string, CompiledUnit> = {};
-  for (const id of lo.kit) {
-    const cb = compileBuilding(lib, id, mods);
-    buildings[id] = cb;
-    if (cb.spawn && !(cb.spawn.unit in units)) units[cb.spawn.unit] = compileUnit(lib, cb.spawn.unit, mods);
-  }
-  const out: CompiledSide = {
-    units,
-    buildings,
-    supplyCap: Math.round(m('side.supplyCap', bal.supplyCap)),
-    interestCap: Math.round(m('side.interestCap', bal.interestCap)),
-    stipend: Math.round(m('side.stipend', bal.stipendPerTick)),
-    captureSpeed: m('side.captureSpeed', 1),
-    sellRefundPct: Math.round(m('side.sellRefund', bal.sellRefund) * 100),
-    supplyLineBp: Math.round(m('side.supplyLineRate', bal.supplyLinePerColumn) * 10000),
-    loamBonusPct: Math.round(m('side.loamBonus', bal.loamBonus) * 100),
-    comebackEnabled: m('side.comebackEnabled', 1) > 0,
-    mergeRadius: m('side.mergeRadius', bal.mergeRadius),
-    knitTicks: secToTicks(m('side.knitTicks', bal.mergeKnitSeconds), bal.tickRate),
-    rerollBase: Math.max(0, Math.round(m('side.rerollCost', bal.reroll.base))),
-    rerollStep: bal.reroll.step,
-    skipGold: bal.skipGold,
-    draftCards: Math.max(1, Math.round(m('side.draftCards', bal.draft.cards))),
-    turret: {
-      damage: m('side.turretDamage', bal.turret.damage),
-      damageType: bal.turret.damageType,
-      intervalTicks: Math.max(1, secToTicks(bal.turret.interval, bal.tickRate)),
-      range: bal.turret.range,
-      projectileSpeed: bal.turret.projectileSpeed,
-      perLane: bal.turret.perLane,
-    },
-    // the Heartcap breach prototype's triggers come after the loadout's (absent by default)
-    triggers: [...triggers, ...(bal.sideTriggers ?? [])].filter((t) => !roundsOnly(t.if, false)),
-  };
-  // absent at ×1, so sides without a cooldown relic compile (and hash) as before powers existed
-  const powerCooldown = m('side.powerCooldown', 1);
-  if (powerCooldown !== 1) out.powerCooldownMult = powerCooldown;
-  // combat rework `waves`: the side's beat and wave size, hooks for relics and perks
-  if (bal.waves) {
-    out.waveBeatTicks = Math.max(1, secToTicks(m('side.waveBeat', bal.waves.beatSeconds), bal.tickRate));
-    out.waveSize = Math.max(0, m('side.waveSize', 1));
-  }
-  return out;
-}
-
-/** Compiles both sides together (a modifier may target the opponent). */
-export function compileSides(lib: Library, loadouts: Record<Side, Loadout>, battle: BattleModifier[] = []): Record<Side, CompiledSide> {
-  const fx = collectEffects(lib, loadouts, battle);
-  const out = {} as Record<Side, CompiledSide>;
-  for (const s of SIDES) out[s] = compileSide(lib, loadouts[s], fx[s].mods, fx[s].triggers);
-  return out;
-}
-
-/**
- * A side stat a battle applies once, at creation (starting gold, Heartcap max HP): resolved from
- * the side's own modifiers against the configured base.
- */
-export function creationStat(lib: Library, loadouts: Record<Side, Loadout>, battle: BattleModifier[] | undefined, side: Side, stat: string, base: number): number {
-  return resolveStat(base, collectEffects(lib, loadouts, battle)[side].mods, stat);
 }
