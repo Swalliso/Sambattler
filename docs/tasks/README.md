@@ -19,7 +19,7 @@ R1, R4a, records-1 and R2a are done. R2a's playtest gate passed on 2026-11-03 (S
 |---|---|---|---|---|
 | R1, the clash check | [r1-clash-check.md](r1-clash-check.md), plan [r1-plan.md](../r1-plan.md) | S0–S8 | Done 2026-11-02 | One PR per session into `develop`. No rule changes, so no golden moves |
 | R2a, a battle in rounds | [r2a-battle-in-rounds.md](r2a-battle-in-rounds.md), plan [r2a-plan.md](../r2a-plan.md) | S0–S21 (S3 and S10 in two parts, with S14b) | Done 2026-11-03: the gate passed, and S21b's fixes land with #109 | Beside v1 on `develop`, behind a preview entry (X2). Ends with a playtest gate on the dev site |
-| R2b, the run in rounds | [r2b-run-in-rounds.md](r2b-run-in-rounds.md) | S0–S14 (with S1b and S4b) | Now: S0, the plan (R2a's gate passed 2026-11-03) | S1–S4 and S1b as sub-PRs into `feature/r2b-cutover`, merged into `develop` at S4b once a whole run plays and v1 is gone; S5–S14 one PR each into `develop`. R2b S0 may drop the cutover branch, since X2 lets `develop` switch wholly to v2 |
+| R2b, the run in rounds | [r2b-run-in-rounds.md](r2b-run-in-rounds.md) | S0–S14 (with S1b and S5b) | S0 done 2026-11-03: the plan agreed; S1 next | One PR per session into `develop`: S0 dropped the cutover branch on 2026-11-03 (Call 14) |
 | R3, the kit | [r3-kit.md](r3-kit.md) | S0–S15 | After R2b | One PR per session into `develop` |
 | R4a, shapes on the field | [r4-readable-armies.md](r4-readable-armies.md), part 1 | R4a-S0–S5 (with S2b) | Now, beside R1 (X3). Lands before R2a's playtest | One PR per session into `develop` |
 | R4b, readable cards | [r4-readable-armies.md](r4-readable-armies.md), part 2 | R4b-S0–S7 | After R3 | One PR per session into `develop` |
@@ -76,7 +76,7 @@ Start a new session in its own worktree and run `/implement r1 s1`, or `/impleme
 
 1. **Orients.** Reads [docs/status.md](../status.md), then the task list's **Read first** and **Before you start** sections, its **Technical context**, and the session's row and tasks. It reads the SPEC sections the tasks cite, not the archive.
 2. **Checks the gate.** Everything in the row's **Gate** column has to be true on `origin/develop` (or the integration branch): the named sessions merged, and the named decisions recorded in their clarify.md block's **Decision** line (or satisfied as the ⛔ bullet under [Task format](#task-format) says). If something is missing, the session says what and stops. It doesn't build on a recommendation the user hasn't agreed when a task is marked ⛔, except where that bullet allows.
-3. **Branches.** `git fetch`, then `git switch --no-track -c <the row's branch> origin/develop`. R2b's S1–S4 and S1b branch from `origin/feature/r2b-cutover` instead.
+3. **Branches.** `git fetch`, then `git switch --no-track -c <the row's branch> origin/develop`.
 4. **Works the tasks in order.**
    - Tests first, then the code that passes them.
    - `[P]` tasks may go to parallel subagents, since they touch different files.

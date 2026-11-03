@@ -1,6 +1,6 @@
 # Milestone R2b plan: the run in rounds
 
-**Status: draft, for the user to agree** (S0 of [the task list](tasks/r2b-run-in-rounds.md), T001–T005).
+**Status: agreed with the user on 2026-11-03** (S0 of [the task list](tasks/r2b-run-in-rounds.md), T001–T005). The user took every recommendation for R2b's open calls, kept R1's call on #27's unit levels, dropped the cutover branch (Call 14), and agreed this plan. The answers are dated in `docs/tasks/clarify.md` ("R2b S0"), and S0 wrote them into SPEC before any code.
 
 Written 2026-11-03 against `develop` at `4644feb`, once R2a's gate had passed and S21 ([#108](https://github.com/Swalliso/Sambattler/pull/108)) and S21b ([#109](https://github.com/Swalliso/Sambattler/pull/109)) had merged. R2b is the second part of SPEC §16 "Milestone R2 — Rounds", split by X1. Its tasks are in `docs/tasks/r2b-run-in-rounds.md`, T001–T158, in sessions S0–S14. R2a's plan is [r2a-plan.md](r2a-plan.md).
 
@@ -60,15 +60,15 @@ The full reveal stays the default, Hold stays out, the pace is 100 a supply, and
 
 ## The decisions
 
-T003 settles these with the user. Each has its block in [clarify.md](tasks/clarify.md), with the evidence and alternatives. This table is the recommendation for each until the user answers.
+**Settled on 2026-11-03** (T003). The user took every recommendation below. They chose the three real calls as recommended: "Gold upgrades in R2b" (#67), "Fixed 750 for both" (#68) and "Known misses, owned later" (T133). They took the rest as a batch ("Take them all"). Each ref has a dated Decision line in [clarify.md](tasks/clarify.md), with the evidence and alternatives, and SPEC states the rules. #27's recommendation predated R1's review gate, so the user was asked again at T005 and kept R1's call (below).
 
 **The playtest's questions:**
 
 | Ref | Recommendation | Blocks |
 |---|---|---|
-| #67 | Gold buys upgrades once the colony is full, the user's idea, each a real jump: the first form to measure is a planted building whose squad fields one merge tier up for the rest of the battle. Built in R2b after the drafts, so the measurement first shows what the drafts leave of the banked gold. The general and the bots buy them too | a new session after S5 |
-| #68 | One fixed cap for both sides: 750 a round. It passes every band S21b measured, and it makes D28's bigger Heartcaps cost rounds again | S1 (data and goldens) |
-| #69 | Several openers per general, one drawn per battle | S7 |
+| #67 | Gold buys upgrades once the colony is full, the user's idea, each a real jump: the first form to measure is a planted building whose squad fields one merge tier up for the rest of the battle. Built in R2b after the drafts, so the measurement first shows what the drafts leave of the banked gold. The general and the bots buy them too | S5b (T159–T163) |
+| #68 | One fixed cap for both sides: 750 a round. It passes every band S21b measured, and it makes D28's bigger Heartcaps cost rounds again | S1 (T164) |
+| #69 | Several openers per general, one drawn per battle | S7 (T165) |
 | #70 | No change now. R2b's commander work and its playtest watch it, and the power's timing is the first lever | — |
 | #71 | Keep E1 and E6: a lane you leave empty is a fair trade | — |
 
@@ -76,11 +76,11 @@ T003 settles these with the user. Each has its block in [clarify.md](tasks/clari
 
 | Ref | Recommendation | Blocks |
 |---|---|---|
-| Placing by the squad's spot | A card is placed on its plot only, not by its squad's spot in the field: "stick to just having the user place the buildings" | S2 |
+| Placing by the squad's spot | A card is placed on its plot only, not by its squad's spot in the field: "stick to just having the user place the buildings" | S2 (T167) |
 | Melee fan-out | Not in R2b. It changes how every melee squad moves, so it stays a candidate in `docs/balance-backlog.md`, for R2b's playtest to raise again | — |
 | The Fuse augment's text | R3 rewords it ("wait behind your front rank"), now that Bursters stand in front | R3 |
-| T133's misses | G16's Gill Archer and Mortar pairs wait for R3's combos, as the hub recommended. G1, G2, G3, G7 and G8's mono clause wait for R3's copies, which cap monos (§8.10). Until then the slow suite reports them as known misses, with their numbers, and step 7 passes on the rest | S11, S13 |
-| R2-Q7 | Puppet Bloom lifts same-type units within 3 tiles one tier, and Cordis's knit-time bonus becomes merged units starting at +10% HP | S7 |
+| T133's misses | Known misses through R2b: the slow suite asserts them as expected fails, printing their numbers, and step 7 passes on the rest. S14 tunes G1, G2 and G7 after the playtest, each retune with the user's OK: the Sporeling Burrow wins 9 of 10 duels, the Gill Archer beats no unit, and merging wins 88%. G3 and G8's mono clause wait for R3's copies, which cap monos (§8.10). G16's Gill Archer and Mortar pairs wait for R3's combos, as the hub recommended | S11 (T168), S14 (T169) |
+| R2-Q7 | Puppet Bloom lifts same-type units within 3 tiles one tier, and Cordis's knit-time bonus becomes merged units starting at +10% HP | S7 (T166, T085) |
 | #29 | No bank reserve for the general: it spends what it can | — |
 
 **R2b's blocks, as clarify.md recommends:**
@@ -94,7 +94,7 @@ T003 settles these with the user. Each has its block in [clarify.md](tasks/clari
 | #21 | The general opens the map's plots plus your sprawl gains | S1 |
 | #24 | A heal on a round's result lands after the damage and the cap | S6 |
 | #26 | The Rhizome Vault's effect waits for R3's combos, held out of the pool by `requires` | S6 |
-| #27 | Dead upgrade levels get `offered: false`, so later levels stay reachable; unit levels become fixed adds, re-derived from R1's squads | S5 |
+| #27 | Dead upgrade levels get `offered: false`, so later levels stay reachable. A unit level adds no unit in rounds, as R1's review gate decided (§18.2 #7: one more unit per batch put Twin Roots' full colony at 192 units a side, over §13.7's 150), so it's a dead level too. The recommendation's fixed adds (Burrow +4, Warren +3) predated that gate: asked again at T005, the user chose "Keep R1's call" | S5 (T064, T066) |
 | #28 | `plant`, `sell` and `toggleMerge` are refused while your draft is open | S5 |
 | #32 | A run saved before R2 migrates: lives = 3 − v1 battles lost (at least 1), plots by battles won, and a mid-battle save restarts at round 1's planning with a notice | S1 |
 | #33 | The battle-1 economy tip stays; the playtest decides | S14 |
@@ -119,7 +119,7 @@ R2-Q13, a guaranteed answer in battle 1, is settled at T029 on S1b's pairing tab
 
 ## Calls this plan makes
 
-The task list's "Calls this list makes" (Technical context, Calls 1–15) are this plan's, each reversible. Call 14, the cutover branch, is the user's at T005: X2 lets `develop` switch wholly to v2, so S1–S4 needn't go through `feature/r2b-cutover`.
+The task list's "Calls this list makes" (Technical context, Calls 1–15) are this plan's, each reversible. Call 14 was the user's: at T005 they chose "Drop it, land on develop", which X2 allows. S1–S4 are ordinary PRs into `develop`, each green and playable, there's no `feature/r2b-cutover`, and S4b is dropped. S4 takes its check (T152). `main` keeps v1's game until the user asks for a release.
 
 ## Stand-ins
 
@@ -129,7 +129,7 @@ Each is temporary, and the task named lifts it:
 - From S1 until S8 (T095, T096), a reload mid-battle restarts that battle at round 1's planning, with the restart notice.
 - From S5 (T153) until S10 (T116), the draft is today's centred dialog, which covers the general's formation (A062).
 - From S3 until S12 (T129), retired selectors and triggers still in the data compile to no-ops, their schema keys remain, and R2a's `rounds` data blocks sit beside v1's keys.
-- Once the run in rounds is on `develop` (S4b, or S1 if the cutover branch is dropped), each stand-in still open is on the dev site. `docs/status.md` lists them, and the session that lifts one updates that list.
+- From S1 on, the run in rounds is on `develop`, so each stand-in still open is on the dev site. S1 lists them in `docs/status.md`, T152 checks the list once S4 has merged, and the session that lifts one updates it.
 
 ## Steps
 
@@ -138,8 +138,8 @@ The task list's Sessions table:
 | Phase | Sessions | What lands |
 |---|---|---|
 | Setup | S0 | This plan and R2b's decisions |
-| The switch-over | S1, S1b, S2, S3, S4, S4b | The run plays rounds with lives, `RUN_VERSION` 2 and the migration; battle 1's pairing table (R2-Q13); one battle screen; v1 gone from the sim, tools and tests; the retired presets gone; the switch-over on `develop` |
-| Content | S5, S6, S7 | Drafts in rounds 3, 5 and 7; relics; commanders, generals, elites and the boss |
+| The switch-over, on `develop` | S1, S1b, S2, S3, S4 | The run plays rounds with lives, `RUN_VERSION` 2, the migration and the fixed cap; battle 1's pairing table (R2-Q13); one battle screen, with cards placed on plots only; v1 gone from the sim, tools and tests; the retired presets gone, and T152's check |
+| Content | S5, S5b, S6, S7 | Drafts in rounds 3, 5 and 7; gold upgrades once the colony is full (#67); relics; commanders, generals, elites and the boss |
 | Saves, screens, teaching | S8, S9, S10 | Saves between rounds; run screens for lives; the draft sheet, Help and tips |
 | Tools | S11 | G14 and G15, the run pool, the slow suite's budget |
 | Polish | S12, S13 | v1's keys retired and the `rounds` blocks folded; every golden regenerated; §16 R2's verification |
@@ -155,17 +155,17 @@ Where sessions may run side by side is in the task list's "Dependencies and para
 
 ## Open questions for the user
 
-**At S0** (T003, T005): the decisions above; whether to keep `feature/r2b-cutover` (Call 14); and agreeing this plan.
+**At S0: answered 2026-11-03.** The user took every recommendation (above), kept R1's call on #27's unit levels, dropped the cutover branch (Call 14), and agreed this plan.
 
 **Later:**
 - **S1b (T029):** R2-Q13, on battle 1's pairing table.
-- **S4b (T152):** the stand-ins still open on the dev site (Call 14), if the cutover branch is kept.
+- **S5b (T163):** the upgrades' price, from its measurement (#67).
 - **S12 (T131):** G14's and G15's bands, from S11's measurement (#35).
-- **S14 (T148, T149):** the playtest gate, the tuning, #17's clean-win half, #33, and X6's target.
+- **S14 (T148, T149, T169):** the playtest gate, the tuning (G1, G2 and G7 among it), #17's clean-win half, #33, and X6's target.
 
 ## Handoffs
 
-- **To R3:** the Fuse augment's text, now that Bursters stand in front; T133's misses (above); and the late game's gold, if #67 is deferred.
+- **To R3:** the Fuse augment's text ("wait behind your front rank"), now that Bursters stand in front; G3 and G8's mono clause, for its copies; G16's Gill Archer and Mortar pairs, for its combos; and #67's upgrades beside its augments.
 
 ## As built
 

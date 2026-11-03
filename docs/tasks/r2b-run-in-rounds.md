@@ -1,12 +1,10 @@
 # R2b — The run in rounds: tasks
 
-R2b finishes SPEC §16 R2's Goal: the battle in rounds that R2a built now sits "inside a run with lives". A whole run plays in rounds, from round 1's planning to the run summary, and v1's battle is deleted from the game, its tests and its tools. R2b switches the game over on a short integration branch, `feature/r2b-cutover` (S1–S4), and merges it into `develop` once a whole run plays in rounds and v1 is gone (S4b, X2, Call 14). The sessions after that are ordinary PRs into `develop`. This list is a draft of 2026-11-01, made from SPEC v2 and `docs/tasks/spec-analysis.md` before R1's results, before R2a is built and before R2a's playtest.
+R2b finishes SPEC §16 R2's Goal: the battle in rounds that R2a built now sits "inside a run with lives". A whole run plays in rounds, from round 1's planning to the run summary, and v1's battle is deleted from the game, its tests and its tools. R2b switches the game over on `develop` in S1–S4, each an ordinary PR that keeps verify green and the game playable (X2; Call 14, settled at S0 on 2026-11-03), and the sessions after them are PRs into `develop` too. This list was drafted on 2026-11-01, made from SPEC v2 and `docs/tasks/spec-analysis.md` before R1's results, before R2a is built and before R2a's playtest.
 
-**Status:** Draft, not agreed · **Spec:** SPEC §16 "Milestone R2 — Rounds" and the sections it cites · **Plan:** `docs/r2b-plan.md` (written in S0; R2a's is `docs/r2a-plan.md`) · **Gate in:** R2a merged into `develop`, its playtest answered, and R2a/T139 done: the user agreed to start R2b's S0 · **Gate out:** a whole run plays in rounds on the dev site, nothing from Appendix A's R2 rows remains, §16 R2 verification steps 1–9 pass in full, and the full playtest gate (step 10) has been put to the user
+**Status:** Agreed 2026-11-03 (S0) · **Spec:** SPEC §16 "Milestone R2 — Rounds" and the sections it cites · **Plan:** `docs/r2b-plan.md` (written in S0; R2a's is `docs/r2a-plan.md`) · **Gate in:** R2a merged into `develop`, its playtest answered, and R2a/T139 done: the user agreed to start R2b's S0 · **Gate out:** a whole run plays in rounds on the dev site, nothing from Appendix A's R2 rows remains, §16 R2 verification steps 1–9 pass in full, and the full playtest gate (step 10) has been put to the user
 
-If the user picks X2's alternative (one `feature/r2-rounds` for all of R2), this file's sessions become sub-PRs into that branch after R2a's, S4b drops, and the playtest gate merges with R2a's. The tasks stay the same. If the user rejects X1 (one R2), this file and R2a's merge into one list and one plan, with one gate at the end.
-
-X1 and X2 were decided on 2026-11-02 (`docs/tasks/clarify.md`). R2 splits in two, and R2a goes beside v1. The user also said develop may switch wholly to v2 from now on. So S0 decides whether S1–S4 still need `feature/r2b-cutover` or land on develop directly (Call 14). Verify stays green on every PR either way.
+X1 and X2 were decided on 2026-11-02. At S0 (2026-11-03) the user dropped the cutover branch (Call 14): S1–S4 land on `develop` directly, each green and playable, and S4b is gone. S0 also refreshed this list with the user's decisions: T159–T169, US10 and S5b are new.
 
 ## Read first
 
@@ -26,7 +24,7 @@ X1 and X2 were decided on 2026-11-02 (`docs/tasks/clarify.md`). R2 splits in two
   - R4's task list (`docs/tasks/r4-readable-armies.md`): its Call 3 (the lineup scenarios whose round-form copies R2b moves into place), R4/T009, R4/T043, and its handoff on `src/render/unitSprite.ts`.
   - `docs/status.md`, `CLAUDE.md` ("How we work", "Checks"), `.claude/rules/balance.md`, `.claude/rules/storage.md`, `.claude/rules/v1-code.md`.
   - `docs/balance-backlog.md` (R1's and R2a's results), `docs/playtest-feedback.md` (R2a's gate answers).
-  - `docs/tasks/run-it-back.md`'s handoffs: records-1 touches `src/app/run.ts`, `src/app/main.ts` and `src/ui/screens/run.ts`, adds `#run-it-back` and its profile key, and should merge before `feature/r2b-cutover` is cut. Under X10, records-1 records no runs and counts no play time (agreed 2026-11-01); R2a/T128's `PlayClock` is the one play-time module.
+  - `docs/tasks/run-it-back.md`'s handoffs: records-1 touches `src/app/run.ts`, `src/app/main.ts` and `src/ui/screens/run.ts`, adds `#run-it-back` and its profile key, and merged on 2026-11-01 (T004). Under X10, records-1 records no runs and counts no play time (agreed 2026-11-01); R2a/T128's `PlayClock` is the one play-time module.
 - **Code:**
   - The run: `src/run/runState.ts`, `src/run/flow.ts` (`battleConfig`, `generalKit`, `bossCounters`, `finishBattle`, `groveChoose`, `recoverPendingChoice`), `src/run/rewards.ts`, `src/run/resume.ts`, `src/run/auto.ts`, `src/run/scenes.ts`, `src/run/intel.ts`, `src/run/route.ts`.
   - The app and UI: `src/app/run.ts`, `src/app/main.ts`, `src/app/channel.ts`, `src/app/loop.ts`, `src/app/debugBridge.ts`, `src/app/tips.ts`, `src/ui/screens/run.ts`, `src/ui/screens/title.ts`, `src/ui/report.ts`, `src/ui/help.ts`, `src/ui/draftOverlay.ts`.
@@ -37,11 +35,11 @@ X1 and X2 were decided on 2026-11-02 (`docs/tasks/clarify.md`). R2 splits in two
 
 ## Before you start
 
-**Decisions** (clarify refs, and the session each one blocks):
+**Decisions** (clarify refs, and the session each one blocks). All were decided at S0 on 2026-11-03, as recommended (`docs/r2b-plan.md`, "The decisions"), with #27's unit levels as R1's review gate left them. R2-Q13 waits for T029, on S1b's table, and #17's clean-win half and #33 for the playtest (S14):
 
 | Ref | Decision (recommendation) | Blocks |
 |---|---|---|
-| X1, X2 | R2 split in two; R2b's S1–S4 on `feature/r2b-cutover`, merged into develop at S4b (Call 14). Decided 2026-11-02: split, and develop may switch wholly to v2, so S0 decides whether the cutover branch is still needed | S0 |
+| X1, X2 | R2 split in two (2026-11-02). At S0 (2026-11-03) the user dropped the cutover branch: S1–S4 land on develop directly (Call 14) | S0 |
 | #32 | A run saved before R2 migrates: lives = 3 − v1 battles lost (at least 1), plots by sprawl | S1 |
 | R2-Q23 | The run's kit stays a list of building ids until R3 (copy counts if X4 brought copies into R2a) | S1 |
 | #16 | A boss loss ends the run; "lives left count at the boss" as a default-off knob | S1 |
@@ -107,8 +105,8 @@ If one of those went the other way:
 **Names from R2a.** R2a stages every v2 file under a `rounds/` folder, as R2a's Technical context table lists: `src/sim/rounds/`, `src/app/rounds/`, `src/ui/rounds/`, `src/render/rounds/`, `tests/unit/rounds/`, `tests/browser/rounds/`, `tests/slow/rounds/`, `tests/roundHelpers.ts`, `data/scenarios/rounds/` and `tools/lib/rounds/`. It records its As built and the per-file test inventory (R2a/T136) in `docs/r2a-plan.md`. S0 checks the table against that As built (T001). R2b moves the battle scene in S2 (T150) and the rest in S3 (T151, T043, T048, T050). A path marked "(R2a)" is one R2a creates: before its move it sits at its `rounds/` path, which S1's tasks name; after it, at the path written here. A path marked "(new)" is one this file creates.
 
 **Where code lands:**
-- **Branches.** S1–S4 each branch `feature/r2b-<short>` from `feature/r2b-cutover` and open one PR into it (when the user asks). Before each sub-PR, merge `origin/develop` into your sub-branch in its own commit and run `npm run verify`. Nothing reaches `feature/r2b-cutover` except through a sub-PR the user merges, or T152's merge of develop, pushed when the user asks. Each PR keeps `npm run verify`, the browser tests and both builds green on the branch, and leaves the game playable there (a run plays from the title to the summary). S4b opens the PR from `feature/r2b-cutover` into `develop` (when the user asks). From S5 on, each session branches `feature/r2b-<short>` from `origin/develop` and opens one PR into `develop` (when the user asks), green and playable as CLAUDE.md asks.
-- **Order of the switch-over.** S1 makes the run play R2a's round battle while v1's sim still exists. S2 makes every battle entry open R2a's battle scene, moves that scene to §13.4's paths (T150) and deletes v1's battle UI and R2a's dev-only entry, so nothing outside `src/sim`, `tools` and `tests` reads v1 state. S3 deletes v1 from the sim, tools and tests, and moves R2a's sim, tests, scenarios and tool libraries into place. S4 deletes the presets of retired systems. S4b merges the cutover into develop. From S5 on, every edit is in place, on develop, on a code base with one battle.
+- **Branches.** Each session branches `feature/r2b-<short>` from `origin/develop` and opens one PR into `develop` (Call 14), as CLAUDE.md's "Pushing and merging" says. Each PR keeps `npm run verify`, the browser tests and both builds green, and leaves the game playable: from S1 on, a run plays from the title to the summary.
+- **Order of the switch-over.** S1 makes the run play R2a's round battle while v1's sim still exists. S2 makes every battle entry open R2a's battle scene, moves that scene to §13.4's paths (T150) and deletes v1's battle UI and R2a's dev-only entry, so nothing outside `src/sim`, `tools` and `tests` reads v1 state. S3 deletes v1 from the sim, tools and tests, and moves R2a's sim, tests, scenarios and tool libraries into place. S4 deletes the presets of retired systems. From S5 on, every edit is in place, on a code base with one battle.
 - **New files:** `docs/r2b-plan.md`, `src/run/migrate.ts`, `tests/unit/migrate.test.ts`, `tests/fixtures/saves/v1/` (fixtures recorded from v1's code), `tests/unit/flyers.test.ts`, `tests/slow/runs.test.ts`, `tests/golden/r2-armilla-power-s3.replay.json`.
 - **Rewritten:** `src/run/runState.ts` (RunState v2), `src/run/resume.ts` (saves between rounds), `src/run/rewards.ts`, `src/run/intel.ts`, the run screens in `src/ui/screens/run.ts`, `src/ui/help.ts`, `src/app/tips.ts`, `src/ui/draftOverlay.ts`, and the content files `data/relics.json`, `data/events.json`, `data/commanders.json`, `data/generals.json`, `data/elites.json`, `data/upgrades.json`.
 - **Retired:** listed per file in T030–T061, T150, T151 and T129. The v1 files that go whole:
@@ -133,7 +131,7 @@ If one of those went the other way:
 - From S1 until S8 (T095, T096), a reload mid-battle restarts that battle at round 1's planning, with the restart notice.
 - From S5 (T153) until S10 (T116), the draft is today's centred dialog, which covers the general's formation (A062).
 - From S3 until S12 (T129), retired selectors and triggers still in the data compile to no-ops, their schema keys remain, and R2a's `rounds` data blocks sit beside v1's keys.
-- From S4b on, each stand-in still open is on the dev site. T152 lists them in `docs/status.md`, and the session that lifts one updates that list.
+- From S1 on, each stand-in still open is on the dev site (Call 14). S1 lists them in `docs/status.md`, T152 checks the list once S4 has merged, and the session that lifts one updates it.
 
 **Determinism and goldens:**
 - S1 deletes the v1 run golden `m3-run-s7` and records `r2-run-s7` on rounds. S3 deletes the other seven v1 goldens. S5, S6 and S7 change content, so each runs `npm run golden -- update` and says so in its commit and PR. S7 records Armilla's power replay (T156). S12 regenerates every golden once more, on the final rules and after T129's fold.
@@ -156,7 +154,7 @@ If one of those went the other way:
 11. `scene=draft` opens round 3's planning, with the bot's rounds 1–2 played and its round-3 plan run once the player's draft resolves (A079).
 12. A `?proto=` spec naming an unknown preset shows a visible notice and opens no prototype save space (A117).
 13. A `melee` selector matches a unit without the `ranged` tag, for Quick Roots. SPEC §14.2 gains it in T135.
-14. **The cutover merges into develop after S4** (S4b, X2: "once a whole run plays"). From then on the dev site plays the run in rounds with the stand-ins still open, listed in `docs/status.md`, and S5–S14 are ordinary PRs into develop, so no long branch drifts from develop (R2a fixes, R4a, records-1, hotfixes). The alternative: keep the branch to the end; S5–S13 then target `feature/r2b-cutover`, `origin/develop` is merged into each sub-branch in its own commit with `npm run verify` before its sub-PR (nothing is pushed to `feature/r2b-cutover` except through a sub-PR the user merges), and T147 opens the one PR into develop when the user asks.
+14. **No cutover branch** (S0, 2026-11-03; the user chose "Drop it, land on develop", which X2 allows). S1–S4 are ordinary PRs into develop, each green and playable, so the dev site plays the run in rounds from S1 with the stand-ins still open, listed in `docs/status.md`. No long branch drifts from develop, and S4b is dropped. `main` keeps v1's game until the user asks for a release.
 15. R2a's battle scene keeps its module names at §13.4's `src/app` paths, with `src/app/phases/{planning,clash,aftermath}.ts` added to the tree (T135). R2a's `startRounds` folds into `src/app/main.ts`, its `urlParams.ts` into `src/app/urlParams.ts` and its `bridge.ts` into `src/app/debugBridge.ts`. `scene=rounds` and `scene=deploy` get the visible "not part of" message rather than an alias (T032).
 
 ## Stories
@@ -165,25 +163,26 @@ If one of those went the other way:
 |---|---|---|---|
 | US1 | P1 | A player plays a whole run in rounds: each battle has its own Heartcaps, the run has 3 lives, a lost battle costs one and the run goes on, the Grove regains a life or lets you leave, and won battles add plots. A run saved before R2 carries on, migrated, with a notice | `npm run sim -- --run --seeds 1..20 --player bot:balanced --auto-draft greedy --auto-route random --summary`: every run completes in 4–5 battles, and none loses a life in a won battle. `tests/unit/migrate.test.ts` passes. The browser case for a v1 battle save opens round 1's planning with its notice |
 | US2 | P2 | Every battle the game opens is the round battle, at §13.4's paths. v1's battle screen, its controls, its browser cases and R2a's dev-only entry are gone | `npm run test:browser` passes, and `grep -rnE "scene=(deploy|rounds)|proto=rework|hotstart|spawnTimers|\bstance\b" tests/browser` finds nothing; T040's grep for v1-only sim exports in `src/app`, `src/ui` and `src/render` finds nothing |
-| US3 | P2 | The sim, the tools and the tests hold only the round battle: v1's systems, goldens, guardrails and scenarios, the presets of retired systems and R2a's `rounds/` folders are gone, and the cutover is in develop | `npm run verify`, `npm run test:slow` and `npm run test:browser` pass; the grep for retired names finds only the keys S12 removes; `find src tools tests data -type d -name rounds` finds nothing; `PROTO_PRESETS` equals the agreed list |
+| US3 | P2 | The sim, the tools and the tests hold only the round battle: v1's systems, goldens, guardrails and scenarios, the presets of retired systems and R2a's `rounds/` folders are gone | `npm run verify`, `npm run test:slow` and `npm run test:browser` pass; the grep for retired names finds only the keys S12 removes; `find src tools tests data -type d -name rounds` finds nothing; `PROTO_PRESETS` equals the agreed list |
 | US4 | P2 | Drafts open in the planning phases of rounds 3, 5 and 7, with v1's cards, and must be resolved before Begin | `tests/unit/drafts.test.ts` passes; a 40-seed sim with drafts on has `rejectedCommands` = 0 |
 | US5 | P2 | Every relic, commander passive and power, general's passive and elite modifier has its v2 effect, or stays out of the pool until its system exists, and the boss's extra cards are real answers | `tests/unit/effects.test.ts`, `tests/unit/powers.test.ts`, `tests/unit/commanders.test.ts`, `tests/unit/ai.test.ts` and `tests/unit/run.test.ts` pass; `npm run verify`'s Armilla and Cordis smokes assert their power stats; `npm run golden -- verify` holds Armilla's replay |
 | US6 | P2 | A reload resumes the planning phase as it was, or the clash's first tick; a finished battle is recorded before its report; a fired power stays fired | `tests/unit/resume.test.ts` and `tests/browser/resume.test.ts` pass; `npm run bench` reports the resume replay inside its budget |
 | US7 | P3 | The run screens show lives and rounds: the title, the run bar, the Grove, the route nodes' kits and the summary's round sparklines. The link previews and the title describe the round game, and play time shows | `tests/browser/runScreens.test.ts` passes; the `r2-route`, `r2-run-planning`, summary and `r2-title` screenshots pass |
 | US8 | P3 | The draft sits as a bottom sheet with the general's army in view, and Help and the first-time tips teach rounds | the draft case in `tests/browser/rounds.test.ts` (R2a's `tests/browser/rounds/rounds.test.ts`, moved in T150), `tests/unit/teachingText.test.ts` and the tip cases in `tests/browser/clarity.test.ts` pass |
 | US9 | P3 | The tools measure whole runs in rounds, G14 and G15 assert in `npm run test:slow`, and the slow suite finishes in its time budget | `tests/slow/runs.test.ts` passes; `npm run balance -- tournament --commanders all` reports lives, battle 1 and the boss |
+| US10 | P2 | Once your colony is full, gold buys upgrades: a planted building's squad fields one merge tier up for the rest of the battle, and the general and the bots buy them too (#67) | `tests/unit/upgrades.test.ts` passes; T163's 200 battles keep G4, G8 and G13 in band with upgrades on |
 
 ## Phase 1: Setup
 
 - [x] T001 Check R2a's Technical context table of `rounds/` paths (`docs/tasks/r2a-battle-in-rounds.md`) against `docs/r2a-plan.md`'s As built (R2a), and record in `docs/r2b-plan.md` (new) every file R2a renamed, added or didn't build, with its battle scene's entry, its round tools' options, its round goldens, its `tests/slow/rounds/` files, its play-time store and R2a/T136's test inventory. Rename the paths in this file in the same commit (X2, §13.4)
 - [x] T002 Write the rest of `docs/r2b-plan.md` in CLAUDE.md's format: Goal (§16 R2's run half), Scope (US1–US9), Stand-ins (Technical context's list), Steps (the Sessions table), Verification (§16 R2 steps 1–10), Open questions for the user (the refs in "Before you start") (§16 R2)
-- [ ] T003 [USER] Settle the R2b blocks of `docs/tasks/clarify.md` with the user: R2-Q14–R2-Q24 (R2-Q13 at T029, after S1b's table, unless R1's pairing table already settles it); §18.2 #16, #17's Rout-kit half and what a Decision's "2 cards" means (its clean-win half waits for T148), #18, #20, #21, #24, #26, #27, #28, #32, #56 and #35's R2b half; and §8.7's event first guesses (Fallen Oak, Quiet Clearing's Rest, Mold Bloom), recorded in `docs/r2b-plan.md` since clarify.md has no block for them. For each clarify ref, write the Decision line with the date, change the SPEC section it names in `SPEC.md` (the §18.2 row marked "(closed)"), and note it in `docs/status.md` (§18.2, §16 R2, §8.7)
+- [x] T003 [USER] Settle the R2b blocks of `docs/tasks/clarify.md` with the user: R2-Q14–R2-Q24 (R2-Q13 at T029, after S1b's table, unless R1's pairing table already settles it); §18.2 #16, #17's Rout-kit half and what a Decision's "2 cards" means (its clean-win half waits for T148), #18, #20, #21, #24, #26, #27, #28, #32, #56 and #35's R2b half; and §8.7's event first guesses (Fallen Oak, Quiet Clearing's Rest, Mold Bloom), recorded in `docs/r2b-plan.md` since clarify.md has no block for them. For each clarify ref, write the Decision line with the date, change the SPEC section it names in `SPEC.md` (the §18.2 row marked "(closed)"), and note it in `docs/status.md` (§18.2, §16 R2, §8.7)
   - Where the user picks an alternative, edit the affected tasks in this file before S1. Each task says what changes.
   - The SPEC wording fixes in `docs/tasks/spec-analysis.md`'s R2b table (A063, A073, A074, A089, A090, A093, A098, A114, A156) go in with them.
 - [x] T004 Check that R2a's playtest answers are in `docs/playtest-feedback.md` and the user's tuning calls from them are in `data/CHANGELOG-balance.md`, and that records-1 has merged into develop (`docs/tasks/run-it-back.md`). If either is missing, stop and ask the user (§16 R2 verification 10, X1, X10)
-- [ ] T005 [USER] Agree `docs/r2b-plan.md` with the user, open the plan's docs-only PR into develop when the user asks and merge it when the user asks; then, when the user asks, create and push `feature/r2b-cutover` from `origin/develop`, and record its base commit in `docs/r2b-plan.md` with S1's first commit (X2, §16)
+- [x] T005 [USER] Agree `docs/r2b-plan.md` with the user, open the plan's docs-only PR into develop when the user asks and merge it when the user asks, and record the user's call on the cutover branch (Call 14) in the plan (X2, §16)
 
-**Checkpoint:** `npm run verify` passes on the docs PR; `docs/r2b-plan.md` is agreed and `feature/r2b-cutover` exists.
+**Checkpoint:** `npm run verify` passes on the docs PR; `docs/r2b-plan.md` is agreed and Call 14 is settled.
 
 ## Phase 2: Foundational (blocks every story)
 
@@ -255,6 +254,7 @@ These tasks land in S1's PR together with US1, so `RUN_VERSION` 2 and the migrat
 
 S1b (the battle-1 measurement):
 
+- [ ] T164 [US1] Set the round cap to one fixed 750 for both sides (#68, the user, 2026-11-03): `balance.rounds.roundDamageCap` in `data/balance.json` becomes `{ "flat": 750 }`, which S18's code already reads. The `round-damage-cap` scenario, `scoring.test.ts`'s cap cases and any text that names the cap as a share follow, and `npm run golden -- update` moves the round goldens. Log it in `data/CHANGELOG-balance.md` (§6.7, D28)
 - [ ] T028 [US1] Measure battle 1 per commander and battle-1 general for R2-Q13, unless R1 recorded the table: `npm run sim -- --run --seeds 1..100 --player bot:balanced --commander <c> --auto-draft greedy --auto-route random --power-policy auto --summary` for Vesper, Armilla and Cordis, read by the battle-1 general (Old Mother Mold, the Lichen Baron). Write the table in `docs/balance-backlog.md`, noting that run battles have no in-battle drafts yet and Armilla's Tithe is refused until T082 (§7.8, §8.1, §12.3 G14, A201)
 - [ ] T029 [US1] [USER] Put R2-Q13 to the user with T028's table, and record the decision in `docs/tasks/clarify.md`. If the user adopts the opening pick, agree its building list for T068 (§8.3, §12.3) ⛔ R2-Q13
 
@@ -298,12 +298,13 @@ S1b (the battle-1 measurement):
 - [ ] T038 [US2] Play battle sounds by phase in `src/app/battleSound.ts` and `data/sounds.json`, unless R2a's scene already does: drop `spawned`, `columnFlipped`, `buildingDestroyed`, `counterWarned`, `counterActive`, `sporestorm`, `wave` and v1's `ended` (`battleSound.ts:48-92`); planning, clash and aftermath sounds per §13.9; rewrite the battle-sound cases in `tests/unit/audio.test.ts` (`audio.test.ts:200-255`) for v2's events (§13.9, §15.7)
 - [ ] T039 [US2] Make `tools/screenshot.ts` capture the round battle at its final scenes: R2a's captures move from `scene=rounds` to `scene=battle` (R2a has no `--dev` mode since its S0), and every battle scene's expected hash comes from R2a's `roundStateForParams` (`tools/lib/rounds/params.ts`, R2a/T080). Remove v1's assertions: the supply check (`screenshot.ts:199`), the Intent panel's "must stay vague" check (`:212`) and the countdown check (`:219`). Drop the queued `begin` for bots in `tools/lib/params.ts` if R2a left it (§15.6)
 - [ ] T040 [US2] Check the cut: `grep -rnE "\b(columnsOwned|supplyUsed|stance|stanceRows|stanceShown|laneStance|waveTicks|turretPos|legalPlacements|priceAt|depthOf|heldColumns|surgeLanes|powerCooldownTicks|powerFirstReadyTicks|incomePerMinute|isBesieged|isSuppressed|lanePresence|frontier|frontierBlocked|holdsLane|rallyX|draftCommandDue)\b|\.held\b" src/app src/ui src/render` finds nothing, `find src/app src/ui src/render -type d -name rounds` finds nothing, and `npm run build` and `npm run build:dev` pass (§13.2, Appendix A)
+- [ ] T167 [US2] Place a card on its plot only (S21b's note; the user, 2026-11-03: "stick to just having the user place the buildings"): with a card chosen, hovering or clicking a squad's spot in the field no longer places it, in the planning input (`src/app/input.ts` and `src/app/phases/planning.ts` after T150), with a case in `tests/browser/planning.test.ts` (§10.2)
 
 **Checkpoint:** `npm run verify`, `npm run test:browser`, both builds, and R2a's screenshot commands on `scene=battle` pass; a run and a single battle both play in rounds.
 
 ## Phase 5: US3 — v1 is gone from the sim, the tools and the tests (P2)
 
-**Goal:** only the round battle is left: v1's systems, the v1 parts of the files R2 keeps, v1's goldens, guardrails, scenarios and tests, the presets of retired systems and R2a's temporary switches are deleted; R2a's sim, tests, scenarios and tool libraries sit at §13.4's paths; R1's clash check plays on the round sim; and the cutover is in develop. **Independent test:** `npm run verify`, `npm run test:slow` and `npm run test:browser` pass; T158's two clash-check commands run; T054's grep finds only the schema and data keys T129 removes; `find src tools tests data -type d -name rounds` finds nothing; `PROTO_PRESETS` equals the agreed list.
+**Goal:** only the round battle is left: v1's systems, the v1 parts of the files R2 keeps, v1's goldens, guardrails, scenarios and tests, the presets of retired systems and R2a's temporary switches are deleted; R2a's sim, tests, scenarios and tool libraries sit at §13.4's paths; and R1's clash check plays on the round sim. **Independent test:** `npm run verify`, `npm run test:slow` and `npm run test:browser` pass; T158's two clash-check commands run; T054's grep finds only the schema and data keys T129 removes; `find src tools tests data -type d -name rounds` finds nothing; `PROTO_PRESETS` equals the agreed list.
 
 S3 (the systems):
 
@@ -379,11 +380,11 @@ S4 (the presets):
 - [ ] T060 [US3] Rewrite the `flyers` preset in squad form in `src/data/proto.ts` (the Drift Stalk: a squad of 6 Driftlings, §11.2), and drop `holdsGround` and the flying clauses about turrets and waves (`towerReachesAir` if emplacements are units) from `src/data/schema.ts` (§1.3 #11, §11.2, X9)
 - [ ] T061 [US3] Make an unknown preset visible in `src/app/main.ts` and `src/app/channel.ts`: a `?proto=` spec naming one shows a notice on the page and opens no prototype save space (`protoSpace()` returns null for it) (§13.8, A117)
 
-S4b (the cutover into develop):
+S4's last task (S0 dropped S4b with the cutover branch, 2026-11-03):
 
-- [ ] T152 [US3] [USER] Merge the cutover into develop (Call 14, X2): merge `origin/develop` into `feature/r2b-cutover` in its own commit, pushed when the user asks; run `npm run verify`, `npm run test:slow`, `npm run test:browser`, both builds and US1's sim command; write in `docs/status.md` that the dev site plays the run in rounds, with each stand-in still open and the session that lifts it; then open the PR from `feature/r2b-cutover` into `develop` when the user asks, ending with the attribution line, and merge it when the user asks (§16 R2, X2)
+- [ ] T152 [US3] Check the switch-over once S4's tasks are done (Call 14, X2): `npm run verify`, `npm run test:slow`, `npm run test:browser`, both builds and US1's sim command pass, and `docs/status.md` lists each stand-in still open with the session that lifts it (§16 R2, X2)
 
-**Checkpoint:** `npm run verify`, `npm run test:slow`, `npm run test:browser` and both builds pass; T158's two clash-check commands run on the round sim; T054's list holds only schema and data keys; `find src tools tests data -type d -name rounds` finds nothing; `PROTO_PRESETS` equals the agreed list. After T152, the dev site plays a whole run in rounds.
+**Checkpoint:** `npm run verify`, `npm run test:slow`, `npm run test:browser` and both builds pass; T158's two clash-check commands run on the round sim; T054's list holds only schema and data keys; `find src tools tests data -type d -name rounds` finds nothing; `PROTO_PRESETS` equals the agreed list. The dev site plays a whole run in rounds from S1 on.
 
 ## Phase 6: US4 — Drafts in planning (P2)
 
@@ -404,7 +405,7 @@ S4b (the cutover into develop):
   - The draft rounds are R2a's `balance.rounds.draftRounds` [2, 4, 6] (R2a/T008), the planning after each; add no `draft.rounds`. `draftWaves` stays until T129.
   - `offered: false` with empty effects: Truffle Cellar L2 and Spore Exchange L2 (HP +200), Amanita Lodge L3 (spawn speed), the Rhizome Vault's whole track.
   - `building.goldPerTick` +1 becomes `building.goldPerRound` +12: Truffle Cellar L1 and L3, Spore Exchange L1.
-  - `building.spawnCount` +1 becomes `building.squadCount`: the Burrow's L3 +4 and the Morel Warren's L3 +3, re-derived from R1's squad sizes.
+  - `building.spawnCount` +1 levels, the Burrow's L3 and the Morel Warren's L3, get `offered: false` with empty effects too: a unit level adds no unit in rounds (§18.2 #7, R1's review gate; #27, 2026-11-03).
   - Texts: the Rootbreaker's L3 "+25% against structures" applies to emplacements; the Mortar's levels to its emplacement.
 - [ ] T065 [US4] Open drafts in planning in `src/sim/draft.ts`, `src/sim/round.ts` (R2a), `src/sim/planning.ts` (R2a), `src/sim/state.ts` and `src/sim/ai/draftPolicy.ts` (§8.3, §4.7, §14.5, §14.6) ⛔ §18.2 #28, X4
   - Remove R2a's refusal of `flags.drafts` in a round battle, and fill `openRound`'s empty draft hook (R2a Call 26, R2a/T055).
@@ -412,7 +413,7 @@ S4b (the cutover into develop):
   - `beginClash`, `plant`, `sell` and `toggleMerge` are refused while the side's draft is open (#28). `draftSkip` adds +40 at once; `draftReroll` costs 20 + 10 per extra reroll in this draft; `draftPick` adds the card and recompiles without v1's building-HP rescale (`draft.ts:236-254`).
   - A player-side bot answers through `aiDraft` before step 7's plan. Offers draw from the battle's draft stream (A093).
   - Under X4, `draftPick` adds copies as T062 says.
-- [ ] T066 [US4] Skip `offered: false` levels in `src/sim/draft.ts` (the in-order offer, `draft.ts:79-83`) and `src/run/flow.ts` (`upgradeable`, `flow.ts:35-41`; `generalKit`'s random levels and Veteran, `flow.ts:155-190`, reading track lengths from data and filtering on `squad` instead of `spawn`). The Grove's graft, Spore Merchant, Twin Spores and Quiet Clearing's forage use the same rule, and `recoverPendingChoice`'s notice covers a saved prompt naming a level now skipped (§11.6, §7.8, §8.7, §8.9) ⛔ §18.2 #27
+- [ ] T066 [US4] Skip `offered: false` levels in `src/sim/draft.ts` (the in-order offer, `draft.ts:79-83`) and `src/run/flow.ts` (`upgradeable`, `flow.ts:35-41`; `generalKit`'s random levels and Veteran, `flow.ts:155-190`, reading track lengths from data). The Grove's graft, Spore Merchant, Twin Spores and Quiet Clearing's forage use the same rule, and `recoverPendingChoice`'s notice covers a saved prompt naming a level now skipped (§11.6, §7.8, §8.7, §8.9) ⛔ §18.2 #27
 - [ ] T153 [US4] Show the draft in planning with today's dialog until T116 docks it: `src/app/battleView.ts` opens `src/ui/draftOverlay.ts` when the player's `side.draft` is set in planning, sends `draftPick`, `draftReroll` and `draftSkip`, and closes it when the draft resolves; Begin is unlit while it's open (§8.3, §10.2, §14.5)
 - [ ] T067 [US4] Turn drafts on in run battles in `src/run/flow.ts` (`battleConfig`'s `flags.drafts`), record each battle's picks in `BattleRecord.drafted`, and in `dealSpoils` add one spoils pick for each round in `draftRounds` whose next planning the won battle didn't reach (§8.3, §8.6, A207) ⛔ §18.2 #17, X4
   - Under X4, a spoils pick adds copies as T062 says (`dealSpoils`, `spoilsPick`). If X4 is no, none of this.
@@ -420,6 +421,22 @@ S4b (the cutover into develop):
 - [ ] T069 [US4] Run `npm run golden -- update` for the moved round goldens in `tests/golden/` and say so in the commit; log the draft data in `data/CHANGELOG-balance.md` (§15.5, §12.4)
 
 **Checkpoint:** `npm run verify`, `npx vitest run tests/unit/drafts.test.ts tests/unit/run.test.ts`, and the US4 sim command with `rejectedCommands` = 0; on `npm run dev`, a run opens round 3's draft, and play goes on after a pick or a skip.
+
+## Phase 6b: US10 — Gold buys upgrades once the colony is full (P2)
+
+S5b, after S5's drafts (#67, the user, 2026-11-03).
+
+- [ ] T159 [US10] Measure the late game with S5's drafts on, before building: over `npm run sim -- --seeds 1..40 --player bot:balanced --enemy general:scripted --flags drafts --summary`, the round each colony fills and the gold banked each round after it, for both sides, in `docs/balance-backlog.md` (§6.1, #67)
+- [ ] T160 [US10] Write `tests/unit/upgrades.test.ts` (new) first (§6.1, §4.4, §5.6, §7.1, #67)
+  - An `upgrade` command on a planted building costs its price, and is refused on an empty plot, on an upgraded building, without the gold, and while the side's draft is open (#28).
+  - From the next Begin, the building's squad fields one merge tier up for the rest of the battle, and the formation preview equals what fields.
+  - Selling refunds the upgrade with the building, by the phase rule.
+  - The general and the bots buy upgrades only once their plots are full, and the general never reads what the player buys in the same phase.
+- [ ] T161 [US10] Build it in `src/sim/planning.ts` and `src/sim/state.ts` (the command, the plot's flag and its event), `src/sim/formation.ts` (the squad's tier at the muster), and `src/sim/ai/controller.ts` with the bots (spending once the plots are full), with the price in `data/balance.json` and its schema in `src/data/schema.ts`. Log it in `data/CHANGELOG-balance.md` (§6.1, §7.2, §14.5, #67)
+- [ ] T162 [US10] Show it: the Upgrade button and its price on a planted building's inspect panel (`src/ui/inspect.ts`), the upgraded squad's tier in the formation preview and on its plot (`src/render/renderer.ts`), the general's upgrades in its plan, and a line in Help's planning tab for T117 (§10.2, §10.4, #67)
+- [ ] T163 [US10] Set the price from a measurement: G4, G8 and G13 over 200 battles with upgrades on (`npm run experiment -- --checks g4,g8`), the price that keeps them in band in `data/balance.json` (with the user's OK), the results in `docs/balance-backlog.md`, and `npm run golden -- update` (§12.3, #67)
+
+**Checkpoint:** `npx vitest run tests/unit/upgrades.test.ts` passes, and `npm run verify` is green with the goldens updated.
 
 ## Phase 7: US5 — Content in rounds (P2)
 
@@ -478,6 +495,8 @@ S7 (commanders, powers, generals, the boss's extra cards):
 - [ ] T087 [US5] Swap the opener's last army card for the opening doctrine's cheapest kit counter in the general's round-1 plan in `src/sim/ai/controller.ts` (R2a's planner), when its kit holds one (§7.6, A042) ⛔ R2-Q18
 - [ ] T155 [US5] Make `bossCounters` in `src/run/flow.ts` (`flow.ts:191-203`) read R2a's counter sets (`src/sim/ai/counter.ts`, R2a/T099: no `swarm` unit in the Anti-Swarm or Anti-Line set) and take, for each of the top two intel kinds, the cheapest counter whose unit beats that kind's dominant armor in the matrix, R2a/T099's missing-answer rule, instead of the cheapest building in the set (§7.8, §7.4, A056)
 - [ ] T088 [US5] Show harvest in the power's preview and tooltip in `src/app/battleView.ts` and `src/app/phases/clash.ts` (R2a/T109's power controls, moved in T150) and `src/ui/words.ts`: the gold so far this clash on the reticle and "fire it before the last kill" (§6.6, §10.2)
+- [ ] T165 [US5] Give each general 2–3 openers in `data/generals.json` (its schema in `src/data/schema.ts`), one drawn per battle from the general's own stream for its round-1 plan in `src/sim/ai/controller.ts`, with cases in `tests/unit/ai.test.ts`: one seed always draws the same opener, and across seeds each opener is drawn. T087's doctrine swap applies to the drawn opener (§7.7, §11.11, #69)
+- [ ] T166 [US5] Give Puppet Bloom its v2 job in `src/sim/powers.ts` and `data/commanders.json`: it lifts the same-type units within 3 tiles one tier, since S16 read a median of 0 trios after the muster (R2-Q7, 2026-11-03). Its cases go in T079's `tests/unit/powers.test.ts`, the auto policy fires it where the lift is largest, T084's Sigil scales its radius, and T089's Cordis smoke asserts it (§11.10, A057)
 - [ ] T089 [US5] Restore the power smokes in `tools/verify.ts`: Armilla asserts `stats.player.powerGold>=1`, Cordis `stats.player.powerMerges>=1` (or R2-Q7's v2 stat), and every smoke `stats.player.powerUses<=rounds` (§15.1, §6.6, A057)
 - [ ] T156 [US5] Add `r2-armilla-power-s3` to `REPLAYS` in `tools/golden.ts` (seed 3, `bot:balanced`, `--commander armilla --power-policy auto`, flags `merging,adaptive,powers`, as R2a's Vesper and Cordis replays are), and record `tests/golden/r2-armilla-power-s3.replay.json` (new) with `npm run golden -- update` after T082 and T083; say so in the commit (§15.5, §6.6)
 - [ ] T090 [US5] Run `npm run golden -- update` for the power replays in `tests/golden/` and the other moved goldens, and say so in the commit (§15.5)
@@ -557,6 +576,7 @@ S7 (commanders, powers, generals, the boss's extra cards):
 - [ ] T125 [US9] Finish `tools/sim.ts`'s `--run --summary` per §15.2: each battle's result, lives lost and left, how the run ended, runs won and the boss reached (§15.2, §16 R2 verification 5)
 - [ ] T126 [US9] Pick the run golden's seed in `tools/golden.ts`: a whole run with drafts after rounds 2, 4 and 6 and a life lost in a run that goes on. Keep `r2-run-s7` if it qualifies; otherwise search seeds and rename it `r2-run-s<seed>` (§15.5)
 - [ ] T127 [US9] Split `tests/slow` so vitest runs the files in parallel (R2a's battle files, moved in T151, and `tests/slow/runs.test.ts`), set per-test timeouts in `vitest.config.ts` from measured runtimes, and bring the suite to about 15 minutes on the dev machine. Record each file's runtime in `docs/balance-backlog.md`. Past 20 minutes, ask the user whether G12 screens in the suite and confirms with `--checks counters` (§12.3, A102) ⛔ R2-Q9
+- [ ] T168 [US9] Keep T133's misses as known misses in the slow suite (the user, 2026-11-03): G1, G2, G3, G7, G8's mono clause and G16 assert as expected fails in `tests/slow/` (R2a's `tests/slow/rounds/`, moved in T151), each printing its numbers and failing once it passes, so a fix shows. Their owners: S14's tuning for G1, G2 and G7 (T169), R3's copies for G3 and G8's mono clause, and R3's combos for G16's Gill Archer and Mortar pairs. §16 R2 step 7 passes on the rest (§12.3, §16 R2 step 7)
 - [ ] T128 [US9] Run G14, G15 and T122's readouts and write the results in `docs/balance-backlog.md`. Report a miss with its numbers; any retune waits for the user (`.claude/rules/balance.md`) (§12.3, §12.4)
 
 **Checkpoint:** `npm run test:slow` finishes inside its timeouts with G14 and G15 asserting, and `npm run balance -- tournament --commanders all` prints the table.
@@ -604,22 +624,24 @@ S14 (the playtest and tuning):
 
 - [ ] T148 [USER] §16 R2 verification 10, the playtest gate: the user plays at least one full run on the dev site and answers all seven questions (R2a asked 1, 2, 3, 6 and 7 of a single battle; ask them again of a whole run, with 4 on lives and 5 on planning time and run length), plus #33 (did the economy tip help?), #17 (would a clean win want a bonus?), and, if R2a kept them, R2-Q1's reveal A/B and X8's knobs. The user also plays one run with `?proto=bosslives` and says whether lives left at the boss mattered (#16, A199). The answers go in `docs/playtest-feedback.md` (§16 R2, X6) ⛔ §18.2 #33, §18.2 #17, X6
 - [ ] T149 [USER] Tune before R3 with the user: re-set X6's run-length target from the measured play time, and if the run is long, pick the lever (rounds per battle first, then the route's length, moving the route's shape from `src/run/route.ts` into data as §8.2's SHOULD asks); decide #33, #17 and the `bosslives` knob; log every data change in `data/CHANGELOG-balance.md` (§16 R2, §8.2, §12.4) ⛔ X6, §18.2 #33, §18.2 #17
+- [ ] T169 [USER] Tune G1, G2 and G7 after the playtest, each retune with the user's OK: the Sporeling Burrow's and the Rhizomorph Tunnel's duels (G1), the Gill Archer's and the Amanita Knight's edges (G2) and merging's edge (G7), measured with `npm run experiment -- --checks` and logged in `docs/balance-backlog.md` and `data/CHANGELOG-balance.md`. T168's expected fails become asserts as each passes (§12.3)
 
 **Checkpoint:** on S13's branch, `npm run verify`, `npm run test:slow`, `npm run test:browser`, both builds, `npm run golden -- verify` and T138–T144's commands pass, and T145's Done-when list is complete in `docs/r2b-plan.md`. S14 ends with the answers in `docs/playtest-feedback.md`.
 
 ## Dependencies and parallel work
 
-**Phase order:** Setup (S0) → Foundational and US1 (S1, then S1b's measurement) → US2 (S2) → US3 (S3, then S4) → the cutover into develop (S4b) → US4 (S5) → US5 (S6, then S7) → US6 (S8) → US7 (S9) → US8 (S10) → US9 (S11) → Polish (S12, then S13) → the playtest and tuning (S14).
+**Phase order:** Setup (S0) → Foundational and US1 (S1, then S1b's measurement) → US2 (S2) → US3 (S3, then S4) → US4 (S5) → US5 (S6, then S7) → US6 (S8) → US7 (S9) → US8 (S10) → US9 (S11) → Polish (S12, then S13) → the playtest and tuning (S14).
 
 **Story dependencies:**
 - US1 needs only Setup. US2 needs US1, since v1's battle UI can't go while the run still plays v1 battles. US3 needs US2, since the sim's deletion breaks any UI that still reads v1 state.
-- US4, US5 and US6 edit the sim in place, so they come after S4b. US5's S7 needs S6's DSL (`rank`, `inCounterSet`, `powerEffectMult`, the clash-gold path). US6 needs US4, for the saves with an open draft.
-- US7 needs US2's UI move (T150) and runs from develop after S4b. US8 needs US4 (the draft and T153's wiring), US5's S7 (the power's text) and US6 (the reroll resume). US9 needs US4 and US5, since G14 and G15 read the run with its content.
+- US4, US5 and US6 edit the sim in place, so they come after S4. US5's S7 needs S6's DSL (`rank`, `inCounterSet`, `powerEffectMult`, the clash-gold path). US6 needs US4, for the saves with an open draft.
+- US7 needs US2's UI move (T150) and runs after S4. US8 needs US4 (the draft and T153's wiring), US5's S7 (the power's text) and US6 (the reroll resume). US9 needs US4 and US5, since G14 and G15 read the run with its content.
 - Polish needs every story: T129 can't retire a key while data still uses it. S14 needs S13 merged, so the playtest runs on the finished game.
 
 **In parallel** (each its own session and worktree):
-- S1b beside S2, S3 and S4 (docs only; it PRs into the cutover branch before S4b).
-- After S4b: S5, S6 and S9. S5 and S6 both edit `src/data/schema.ts`, `src/sim/state.ts` and `src/run/flow.ts`, in different functions; the second to merge rebases.
+- S1b beside S2, S3 and S4 (docs only).
+- After S4: S5, S6 and S9. S5 and S6 both edit `src/data/schema.ts`, `src/sim/state.ts` and `src/run/flow.ts`, in different functions; the second to merge rebases.
+- After S5: S5b, then S11 measures the run with upgrades on. S5b and S6 both edit `src/data/schema.ts` and `data/balance.json`: land one, then rebase the other.
 - After S5: S8, beside S6 and S7. S8 owns `src/app/run.ts`, `src/run/resume.ts` and `src/ui/report.ts`.
 - After S5, S6 and S7: S11. After S5, S7 and S8: S10. S10 and S11 may run together.
 - S9 and S10 both edit `src/ui/styles.css`, S9 and S6 both edit `src/ui/words.ts`, and S7's T155 and S9's T105 both read `src/run/flow.ts`'s kit code: land one, then rebase the other.
@@ -643,23 +665,25 @@ S14 (the playtest and tuning):
 
 | Session | Tasks | Branch | Gate (true before starting) | Ends with |
 |---|---|---|---|---|
-| S0 | T001–T005 | `feature/r2b-plan` → `develop` (docs only) | R2a merged into develop; R2a's playtest answered and R2a/T139 done (the user agreed to start R2b's S0); X1 and X2 decided | `docs/r2b-plan.md` agreed; the R2b decisions recorded in clarify.md, SPEC and the plan; `feature/r2b-cutover` created |
-| S1 | T006–T027 | `feature/r2b-run` → `feature/r2b-cutover` | S0 done; #32, #16, #17, #18, #20, #21, R2-Q14, R2-Q21, R2-Q23, #56 and §8.7's events decided; R1-Q5's budget known | A run plays rounds with lives; `RUN_VERSION` 2 and `migrateRun` in the same PR; v1 single battles still verify |
-| S1b | T028–T029 | `feature/r2b-battle1` → `feature/r2b-cutover` | S1 merged into the cutover branch | R2-Q13's table in `docs/balance-backlog.md`; R2-Q13 decided before S5 |
-| S2 | T030–T040, T150 | `feature/r2b-screen` → `feature/r2b-cutover` | S1 merged | Every battle is the round battle, at §13.4's paths; R2a's preview entry gone; T040's grep empty; the browser suite ported |
-| S3 | T041–T054, T151, T158 | `feature/r2b-delete-v1` → `feature/r2b-cutover` | S2 merged | v1 gone from the sim, tools and tests; R2a's sim, tests, scenarios and tool libraries at §13.4's paths, with no `rounds/` folder left; `--rounds` gone; R1's clash check on the round sim; T054's list in the plan |
-| S4 | T055–T061 | `feature/r2b-presets` → `feature/r2b-cutover` | S3 merged; R1's knob outcomes recorded (A109) | `PROTO_PRESETS` equals the agreed list; flyers in squad form; unknown presets visible |
-| S4b | T152 | `feature/r2b-cutover` → `develop` | S1b, S2, S3 and S4 merged into the cutover branch; the user agrees to the open stand-ins on the dev site (Call 14) | The run in rounds on develop and the dev site (merged when the user asks); the open stand-ins listed in `docs/status.md` |
-| S5 | T062–T069, T153 | `feature/r2b-drafts` → `develop` | S4b merged; #27, #28, #17 and R2-Q13 decided; R1's squad sizes agreed | Drafts open in rounds 3, 5 and 7 in runs and with `--flags drafts`, in today's dialog; goldens updated |
-| S6 | T070–T078 | `feature/r2b-relics` → `develop` | S4b merged; R2-Q17, R2-Q19, R2-Q20, #24, #26 and R2-Q8 decided | All 21 relics in v2 form; the `requires` gates; one path for clash gold; goldens updated |
-| S7 | T079–T090, T154–T156 | `feature/r2b-commanders` → `develop` | S6 merged; R2-Q15, R2-Q16, R2-Q17 and R2-Q18 decided; R2-Q7 settled in R2a | Passives, the Tithe, the Sigil, the generals, the elites and the boss's extra cards in v2 form; the power smokes assert; Armilla's replay recorded |
+| S0 | T001–T005 | `feature/r2b-plan` → `develop` (docs only) | R2a merged into develop; R2a's playtest answered and R2a/T139 done (the user agreed to start R2b's S0); X1 and X2 decided | `docs/r2b-plan.md` agreed; the R2b decisions recorded in clarify.md, SPEC and the plan; Call 14 settled |
+| S1 | T006–T027, T164 | `feature/r2b-run` → `develop` | S0 done; #32, #16, #17, #18, #20, #21, R2-Q14, R2-Q21, R2-Q23, #56, #68 and §8.7's events decided; R1-Q5's budget known | A run plays rounds with lives; `RUN_VERSION` 2 and `migrateRun` in the same PR; v1 single battles still verify |
+| S1b | T028–T029 | `feature/r2b-battle1` → `develop` | S1 merged | R2-Q13's table in `docs/balance-backlog.md`; R2-Q13 decided before S5 |
+| S2 | T030–T040, T150, T167 | `feature/r2b-screen` → `develop` | S1 merged | Every battle is the round battle, at §13.4's paths; R2a's preview entry gone; T040's grep empty; the browser suite ported |
+| S3 | T041–T054, T151, T158 | `feature/r2b-delete-v1` → `develop` | S2 merged | v1 gone from the sim, tools and tests; R2a's sim, tests, scenarios and tool libraries at §13.4's paths, with no `rounds/` folder left; `--rounds` gone; R1's clash check on the round sim; T054's list in the plan |
+| S4 | T055–T061, T152 | `feature/r2b-presets` → `develop` | S3 merged; R1's knob outcomes recorded (A109) | `PROTO_PRESETS` equals the agreed list; flyers in squad form; unknown presets visible |
+| S5 | T062–T069, T153 | `feature/r2b-drafts` → `develop` | S4 merged; #27, #28, #17 and R2-Q13 decided; R1's squad sizes agreed | Drafts open in rounds 3, 5 and 7 in runs and with `--flags drafts`, in today's dialog; goldens updated |
+| S5b | T159–T163 | `feature/r2b-upgrades` → `develop` | S5 merged; #67 decided | Gold buys upgrades once the colony is full, for you, the general and the bots; T159's measurement and the price in `docs/balance-backlog.md`; goldens updated |
+| S6 | T070–T078 | `feature/r2b-relics` → `develop` | S4 merged; R2-Q17, R2-Q19, R2-Q20, #24, #26 and R2-Q8 decided | All 21 relics in v2 form; the `requires` gates; one path for clash gold; goldens updated |
+| S7 | T079–T090, T154–T156, T165, T166 | `feature/r2b-commanders` → `develop` | S6 merged; R2-Q15, R2-Q16, R2-Q17, R2-Q18, #69 and R2-Q7's v2 jobs decided (R2b S0) | Passives, the Tithe, the Sigil, the generals, the elites and the boss's extra cards in v2 form; the power smokes assert; Armilla's replay recorded |
 | S8 | T091–T100 | `feature/r2b-saves` → `develop` | S5 merged; R2-Q22 decided | Battle saves `v: 3` between rounds; the battle's end recorded before its report; the resume bench case |
-| S9 | T101–T110, T157 | `feature/r2b-run-screens` → `develop` | S4b merged; #56 and X6's measurement decided | Run screens for lives; route node kits; link previews and og image; play time on the summary; `scene=run` at a round and phase |
+| S9 | T101–T110, T157 | `feature/r2b-run-screens` → `develop` | S4 merged; #56 and X6's measurement decided | Run screens for lives; route node kits; link previews and og image; play time on the summary; `scene=run` at a round and phase |
 | S10 | T111–T118 | `feature/r2b-teaching` → `develop` | S5, S7 and S8 merged; R2-Q24 decided | The draft as a bottom sheet; Help's six tabs; the round tips |
-| S11 | T119–T128 | `feature/r2b-run-tools` → `develop` | S5, S6 and S7 merged; R2-Q9 and X7 settled | G14 and G15 assert; the run pool; the slow suite inside its budget; results in the backlog |
-| S12 | T129–T135 | `feature/r2b-cleanup` → `develop` | S5–S11 merged; T128's results in `docs/balance-backlog.md` | v1's keys retired and R2a's `rounds` blocks folded; G14's and G15's bands agreed (T131); every golden regenerated; rules, docs and SPEC updated |
+| S11 | T119–T128, T168 | `feature/r2b-run-tools` → `develop` | S5, S5b, S6 and S7 merged; R2-Q9 and X7 settled | G14 and G15 assert; the run pool; the slow suite inside its budget; results in the backlog |
+| S12 | T129–T135 | `feature/r2b-cleanup` → `develop` | S5–S11 merged, S5b among them; T128's results in `docs/balance-backlog.md` | v1's keys retired and R2a's `rounds` blocks folded; G14's and G15's bands agreed (T131); every golden regenerated; rules, docs and SPEC updated |
 | S13 | T136–T147 | `feature/r2b-verify` → `develop` | S12 merged | §16 R2 verification 1–9 logged in `docs/r2b-plan.md`; the PR into develop (merged when the user asks) |
-| S14 | T148–T149 | `feature/r2b-tune` → `develop` | S13 merged; the dev site plays the whole round game | The answers in `docs/playtest-feedback.md`; the tuning in `data/CHANGELOG-balance.md`; X6's target re-set |
+| S14 | T148–T149, T169 | `feature/r2b-tune` → `develop` | S13 merged; the dev site plays the whole round game | The answers in `docs/playtest-feedback.md`; the tuning in `data/CHANGELOG-balance.md`; X6's target re-set |
+
+S4b, which merged the cutover branch, was dropped at S0 (Call 14, 2026-11-03); its T152 is S4's last task.
 
 ## Coverage
 
@@ -724,7 +748,7 @@ S14 (the playtest and tuning):
 | A197 (medium): the boss's win is a half-reward Decision | R2-Q14, X5; T013, T018 |
 | A199 (medium): lives rarely bind, and lives at the boss are worth nothing | §18.2 #16, §18.2 #35; T021, T119, T131, T148 |
 | A207 (medium): an early Rout pays less kit than a late Decision | §18.2 #17; T063, T067 |
-| A025, A101, A195 (high), A066 (medium): R2 can't land piecemeal or stay green in place | X1, X2; S1–S4's order, S4b and Call 14 (Technical context); the moves T150, T151, T043, T048, T050 |
+| A025, A101, A195 (high), A066 (medium): R2 can't land piecemeal or stay green in place | X1, X2; S1–S4's order and Call 14 (Technical context); the moves T150, T151, T043, T048, T050 |
 | A027, A103 (medium): §13.4 calls kept files "unchanged"; R2a's copies | R2a's copies (R2a Call 3); T043 moves them over v1's files; T135 fixes §13.4 |
 | A102 (medium): the slow suite will pass vitest's timeout | R2-Q9; T121, T127 |
 | A104 (medium): §15.7's rows miss files with v1 cases | R2a/T136's inventory; T031, T041, T151, T135 |
@@ -736,3 +760,14 @@ S14 (the playtest and tuning):
 | A175 (medium): feat stats in §5.7 | M6-Q1 (R2a records them); not handled here: R2b only keeps them, and T132 regenerates the goldens with them |
 | A024, A041 (high); A026, A028–A030, A059 (downgraded on re-check), A039, A043–A046, A060, A061, A064, A065, A076, A106–A108, A119 (medium) | R2a's own findings (`docs/tasks/spec-analysis.md`, R2a). R2b relies on A028's per-squad path (T072, T085, T086), A059's planning checkpoint (T157) and A076's captures (T144) |
 | A077 (medium): Twin Roots below 2× | Not handled here: R4a's #52 |
+
+**Table 3: R2b S0's decisions (2026-11-03)**
+
+| Decision | Tasks |
+|---|---|
+| #67, gold buys upgrades once the colony is full | T159–T163 (S5b) |
+| #68, one fixed round cap of 750 | T164 |
+| #69, several openers per general | T165 |
+| R2-Q7, Puppet Bloom's and Cordis's v2 jobs | T166, T085, T089 |
+| Placing on plots only (S21b's note) | T167 |
+| T133's misses, known through R2b | T168, T169 |
