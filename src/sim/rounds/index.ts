@@ -15,7 +15,7 @@ export { queueCommand, commandStamp } from './commands.ts';
 export { aimedLane, autoPowerTarget, bestBloom, bloomTrios, burstPreview, powerOf, powerProblem } from './powers.ts';
 export type { QueuedCommand } from './commands.ts';
 export { legalPlots, plantProblem, priceOf, sellValue } from './planning.ts';
-export { inKit, kitOf } from './kit.ts';
+export { inKit, kitCards, kitOf } from './kit.ts';
 export { formationOf, mergePreview } from './formation.ts';
 export type { MergePreview, MusterTrio, PlanChange, SquadPlan, TierCounts } from './formation.ts';
 export { matchupClass } from './matchups.ts';

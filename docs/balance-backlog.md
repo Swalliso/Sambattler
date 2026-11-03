@@ -21,6 +21,29 @@ v1's backlog is archived at [docs/archive/v1/balance-backlog.md](archive/v1/bala
 - **R1's review gate** (S8, T049): the user reads R1's entry below and settles §18.2 #7–#15, X4, X5, #36's reading and each knob's outcome (A109). R2a starts after that.
 - **The pace of a battle in rounds** (R2a S10b, below): step 3 misses its median rounds and its round-9 share. It waits for S18's G4 run and the user's call on #35's bands.
 
+## R2a S16 · Puppet Bloom's trios in rounds, R2-Q7 (2026-11-03)
+
+T107's reading of R2-Q7 and A057 in real rounds, on `feature/r2a-powers`: Cordis with the commander's starter kit and the auto power policy, 40 seeds against each general. Nothing was tuned.
+
+```bash
+npm run sim -- --rounds --seeds 1..40 --player bot:balanced --enemy general:mother-mold --commander cordis --power-policy auto --kit sporelingBurrow,gillNest,truffleCellar --summary
+npm run sim -- --rounds --seeds 1..40 --player bot:balanced --enemy general:lichen-baron --commander cordis --power-policy auto --kit sporelingBurrow,gillNest,truffleCellar --summary
+```
+
+That's Bogwater Hollow, battle 1, with the default flags. The summary's last line reads the player's Puppet Bloom clash by clash (`bloom` in `--out`): the most trios a 3-tile circle could merge on the clash's first tick, after the muster, and at any of the auto policy's think ticks (every 20 ticks of the clash clock) before the power was used.
+
+| Trios a clash | Old Mother Mold (336 clashes) | The Lichen Baron (345 clashes) |
+|---|---|---|
+| after the muster: median (mean, at least 1) | 0 (0.10, 8%) | 0 (0.10, 9%) |
+| the best before the power was used | 0 (0.12, 10%) | 0 (0.16, 14%) |
+| the auto policy fired (2 trios, or 1 in combat) | in 18 clashes, merging 23 trios | in 33 clashes, merging 40 trios |
+
+- **The median is 0 in real rounds,** as R1 found at 300 and 600 gold (R1: a median of 0 there, 1 from 900). The muster knits to a fixed point, so few trios are left, and the auto policy fires in 5% and 10% of clashes.
+- **A few seeds carry the merges:** 6 of 40 against Mold (3, 9, 11, 21, 22, 31) and 9 of 40 against the Baron. Seed 11 merges 8 trios against both, and it's the Cordis smoke's seed (T110).
+- **Without `adaptive`** the 80 battles play the same, since the counter cycle isn't in rounds until S15. So T110's smokes and T111's replays leave it off, and S15 can't move them. Against the scripted general the median is 0 too (at least 1 in 9% of 331 clashes), and the policy fired in 33.
+- **Guardrail:** G14 (R2b) runs every commander on the auto policy, and Cordis's verify smoke needs a merge.
+- **Recommended:** R2-Q7's decision now applies. The median stays below 1, so R2b's S0 gives Puppet Bloom a v2 job, such as lifting same-type units within 3 tiles one tier (A057), and turns Cordis's knit-time bonus into something the muster uses, such as merged units starting at +10% HP (A096). Both are rule changes, so they wait for the user at R2b's S0. Until then both stay as written.
+
 ## R2a S10b · step 3 in rounds (2026-11-02)
 
 T073's reading of §16 R2 step 3 in round form, on `feature/r2a-general-check`: the code after T149, with the general planning first. Nothing was tuned.
