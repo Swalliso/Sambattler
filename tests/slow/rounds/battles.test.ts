@@ -15,7 +15,7 @@ let g4: RoundBattleRecord[];
 
 describe('the battle guardrails in rounds (§12.3)', () => {
   beforeAll(async () => { g4 = await g4Battles(content, pool.run); }, 60_000);
-  it('G4 rounds per battle: bot:balanced vs the scripted general, median 6–8 rounds, ≤15% reach round 9, the bot wins 30–70%', () => assertVerdict(evaluateG4(content, g4)));
+  it('G4 rounds per battle: bot:balanced vs the scripted general, median 6–8 rounds, ≤20% reach round 9, the bot wins 30–70%', () => assertVerdict(evaluateG4(content, g4)));
   it('G5 snowball: +150 starting gold wins 55–75%', async () => assertVerdict(await evaluateG5(content, pool.run)), 60_000);
   it("G6 comeback: 1275 behind at round 4, the behind side wins 20–45%; the winner's Heartcap is hit in ≥50% of G4's battles", async () => assertVerdict(await evaluateG6(content, pool.run, g4)), 60_000);
   it('G7 merging: merge-on wins 55–70% of the mirror, ≤50% with ~25% Slayers', async () => assertVerdict(await evaluateG7(content, pool.run)), 120_000);

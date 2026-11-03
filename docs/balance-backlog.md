@@ -19,7 +19,7 @@ v1's backlog is archived at [docs/archive/v1/balance-backlog.md](archive/v1/bala
 ## Open
 
 - **R1's review gate** (S8, T049): the user reads R1's entry below and settles §18.2 #7–#15, X4, X5, #36's reading and each knob's outcome (A109). R2a starts after that.
-- **The pace and #35's bands, after T125** (R2a S18, below): at 75 a supply, agreed on 2026-11-03, G4 reaches round 9 in 18% of battles (≤ 15%), and G6's behind side wins 46% (≤ 45%). Both go to S21's playtest.
+- **The pace and #35's bands, after T125** (R2a S18, below): at 75 a supply, agreed on 2026-11-03, 23.5% of 200 battles reach round 9, over G4's 20% (the suite's 40 read 18%), and G6's behind side wins 46% (≤ 45%). Both go to S21's playtest.
 - **S18's other guardrail misses** (below): G1, G2, G3, G7, G8's mono drops and G16 (the formation rule loses to its ranks traded). Each waits for the user.
 - **X8's readouts** (R2a S15, below): your colony is full from round 5, and once both colonies are full, half the clashes replay the last one. They go to S18's pace call and S21's playtest, with X8's two knobs still off.
 - **Gill Archers tie Swarm and Ranged** (R2a S15, below): the noise, not #14's tie order, picks between them. A rule change waits for the user.
@@ -111,7 +111,7 @@ npm run experiment -- --rounds --checks g4,g6 --proto <lever>
 
 | | Reading at 75 a supply | |
 |---|---|---|
-| G4 | 7 rounds; 18% reach round 9 (≤ 15%); the bot wins 60% | miss, by 3 points, as measured before the call |
+| G4 | 7 rounds; 18% reach round 9 (≤ 20% since the rerun); the bot wins 60% | pass on 40 battles; 23.5% over 200 |
 | G5 | 63% | pass |
 | G6 | the behind side wins 46% from 1275 behind (20–45%); the winner is hit in 75% | miss, by 1 point |
 | G8 | `bot:balanced` 50% (40–65%), `bot:answer` 70% (≤ 80%); 1 of 8 asserted monos drops 20 points (the Hammercap, 87% → 63%) | the bands hold; the mono clause misses |
@@ -120,6 +120,15 @@ npm run experiment -- --rounds --checks g4,g6 --proto <lever>
 | G16 | 24% | miss (a rule question) |
 | G1, G2, G3, G7 | as above, G3's same 8 builds | miss |
 
+- **The rerun over 200 battles** (the user's call through the hub, "Yes, with the rerun": 40 battles can't tell 18% from 15%), `bot:balanced` against the scripted general on Bogwater Hollow, seeds 1–200:
+
+  | Damage a supply | Median rounds | Reach round 9 | Bot wins | Rounds with damage at the cap | Battles with a capped round |
+  |---|---|---|---|---|---|
+  | 25 (before) | 9 | 67.5% | 58.5% | 14.9% | 42% |
+  | **75 (agreed)** | **7** | **23.5%** | **58.5%** | **59.5%** | **95%** |
+  | 100 | 7 | 18.5% | 58.5% | 69.7% | 98.5% |
+
+  By the user's rule, 75 stays and G4's limit becomes 20% rather than going to 100. Over 200 battles 75 still misses 20%, at 23.5%; the suite's 40 battles read 18%, inside it. At 75 the damage cap binds in 60% of rounds, against 15% at 25.
 - **G6's deficit hardly matters:** from 1275 behind the behind side still wins 46%, against 49% from 700 at the same pace. A round's cap and the comeback gold keep the race close, so being behind after round 3 costs about 4 points. The band, the deficit or the comeback gold is the user's call, with S21's playtest.
 
 ## R2a S17 · the round bench against §13.7, and the first `g4` in rounds (2026-11-03)

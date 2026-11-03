@@ -10,7 +10,7 @@ v1's, now [archived](../docs/archive/v1/balance-backlog.md).
 
 ## R2a-S18 T125: the pace, 75 a supply, and #35's bands for R2a (2026-11-03)
 
-**A rule number, approved by the user** ("Take them all", 2026-11-03, on S18's proposal). **The five round replays moved,
+**A rule number, approved by the user** ("Take them all" in S18, and through the hub "Yes, with the rerun", 2026-11-03, on S18's proposal). **The five round replays moved,
 v1's eight didn't**: rounds' state hashes its rules, and v1's library leaves `balance.rounds` out (Call 27).
 `git diff --stat tests/golden/m*` shows nothing.
 - **`rounds.heartcapDamagePerSupply` 25 → 75** (SPEC §6.7, §18.3; R2a/T124, T125). At 25, `bot:balanced` against the
@@ -25,7 +25,7 @@ v1's eight didn't**: rounds' state hashes its rules, and v1's library leaves `ba
   share still gives you the Decision that damage dealt would give the general; in `both-heartcaps-zero` the general's
   max HP is 3000, so your capped 750 still wins the round its 630 loses (E8). The other scenarios' expected damage
   triples where no cap binds; `scoring.test.ts` keeps §6.7's steps worked at 25 a supply, set on the state.
-- **`balance-targets.json`'s `rounds` bands** (#35, R2a's part): G4 6–8 rounds, ≤ 15% at round 9, the bot 30–70%; G6
+- **`balance-targets.json`'s `rounds` bands** (#35, R2a's part): G4 6–8 rounds, ≤ 20% at round 9 (was 15%: over 200 battles 75 a supply reads 23.5%, and the user took 75 over 100, whose 18.5% comes with the damage cap binding in 70% of rounds), the bot 30–70%; G6
   20–45% and ≥ 50%; G8 40–65% for `bot:balanced` and at most 80% for `bot:answer`, now one band per policy; G13 ≤ 15%
   capped and a median clash of 15–40 s (was 20–40); G16 ≥ 60%. G14 and G15 are R2b's.
 
