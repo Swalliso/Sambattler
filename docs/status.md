@@ -1,6 +1,6 @@
 # Where things stand
 
-Updated 2026-11-02, on `docs/r2a-s10b-s13` (the hub's docs PR into `develop`). This is the hand-over page. It covers what we're working on, what's waiting on the user's decision, and where each piece lives. Update it when work lands or the user decides something. Keep the detail in the docs it links to.
+Updated 2026-11-02, on `docs/r2a-s14` (the hub's docs PR into `develop`). This is the hand-over page. It covers what we're working on, what's waiting on the user's decision, and where each piece lives. Update it when work lands or the user decides something. Keep the detail in the docs it links to.
 
 ## In short
 
@@ -18,7 +18,7 @@ Updated 2026-11-02, on `docs/r2a-s10b-s13` (the hub's docs PR into `develop`). T
   See [SPEC §0.1](../SPEC.md#01-what-changed-in-v2), [§1.3](../SPEC.md#13-v2-decisions-2026-10-31) and the [P3 notes](playtest-feedback.md#2026-10-31-p3-the-combat-rework-the-user).
 - **SPEC v2 is on `develop`** ([#39](https://github.com/Swalliso/Sambattler/pull/39)). **Nothing in v2 is built yet.** Until milestone R2 lands, the code follows v1: the M5 battle, with the rework's pieces behind `?proto=rework` on the dev site.
 - **The spec is broken into task lists** in [docs/tasks/](tasks/README.md) ([#40](https://github.com/Swalliso/Sambattler/pull/40), on `develop`), spec-kit style: one list per milestone, one session per row of its Sessions table. The decisions each milestone needs from the user are in [clarify.md](tasks/clarify.md), and the problems the breakdown found in SPEC v2 are in [spec-analysis.md](tasks/spec-analysis.md). Lists after R1's are drafts, refreshed when each milestone's plan is agreed.
-- **Milestone R1, the clash check, is done** ([SPEC §16](../SPEC.md#16-milestone-plan)). A headless tool fought whole armies at equal gold, with no rule change, to set squad sizes and check that every strong army has an answer before the round loop is built. At its review gate on 2026-11-02 you took every recommendation (below). **R2a's plan is agreed** (S0, 2026-11-02), **R2a S1 to S13 have merged**, with S7b's and S9b's fixes: US1 (a round's clash, scored) and US2 (a battle in rounds, with the general planning first) are done, a round in which nothing changed replays the last clash exactly, and the first round golden is recorded. `/?scene=rounds` shows the field with both formations, the top band and the Intent panel. **S14 now runs, the last row before your rough playtest.**
+- **Milestone R1, the clash check, is done** ([SPEC §16](../SPEC.md#16-milestone-plan)). A headless tool fought whole armies at equal gold, with no rule change, to set squad sizes and check that every strong army has an answer before the round loop is built. At its review gate on 2026-11-02 you took every recommendation (below). **R2a's plan is agreed** (S0, 2026-11-02), **R2a S1 to S13 have merged**, with S7b's and S9b's fixes: US1 (a round's clash, scored) and US2 (a battle in rounds, with the general planning first) are done, a round in which nothing changed replays the last clash exactly, and the first round golden is recorded. **S14 ([#95](https://github.com/Swalliso/Sambattler/pull/95)), the last row before your rough playtest, passed the hub's review.** With it, `/?scene=rounds` plays a whole battle in rounds, from round 1's planning to the report.
 - **Then:**
   - R2: rounds, the general plans first, lives, and the planning screen. R2a's plan, [r2a-plan.md](r2a-plan.md), was agreed on 2026-11-02. The task lists split it in two (X1): R2a, a single battle in rounds, then R2b, the run in rounds. R2a gets a rough playtest after S14, as soon as a battle in rounds is properly playable and before its counter cycle and powers (R2-Q25, agreed 2026-11-01), and S21's playtest stays the gate;
   - R3: the kit, the six archetypes, augments, combos and run packs;
@@ -27,11 +27,10 @@ Updated 2026-11-02, on `docs/r2a-s10b-s13` (the hub's docs PR into `develop`). T
 
   [docs/tasks/README.md](tasks/README.md) has the full order and every milestone's sessions.
 
-## Next session: R2a S14, then your rough playtest
+## Next: your rough playtest (S14b)
 
-- **Work from** [docs/tasks/r2a-battle-in-rounds.md](tasks/r2a-battle-in-rounds.md). S14 started on 2026-11-02, on your OK, once S12 and S13 had merged. It runs alone, and the hub records its outcome.
-  - **S14** (`feature/r2a-ui-panels`, T092–T097, T143): the tray, inspect, the planning and clash chrome, the report by round, and the screenshot tool's assertion 4. It ends US3: on the dev site, a battle in rounds plays from round 1's planning to the report.
-- **Then: S14b, your rough playtest** on the dev site, once S14 has merged and deployed (R2-Q25). The hub stops there to ask you. Watch the pace (S10b, below). Your notes go into `docs/playtest-feedback.md`, and any change to S15–S20 into the task list.
+- **S14** (`feature/r2a-ui-panels`, T092–T097, T143, [#95](https://github.com/Swalliso/Sambattler/pull/95)) passed the hub's review. It merges itself once CI passes, and the dev site deploys it then. It ends US3.
+- **Then S14b, your rough playtest** on the dev site (R2-Q25, T145, T146). Press "A battle in rounds (preview)" on [the dev site](https://swalliso.github.io/Sambattler/dev/)'s title, or open `?scene=rounds` there. The hub waits for your notes. Watch the pace (S10b, below). Your notes go into `docs/playtest-feedback.md`, and any change to S15–S20 into the task list.
 - **After it:** S15 (the counter cycle) and S16 (powers), side by side.
 
 ## R2a, a battle in rounds
@@ -135,6 +134,18 @@ Updated 2026-11-02, on `docs/r2a-s10b-s13` (the hub's docs PR into `develop`). T
     - the general's Intent panel, from `ai.plans`.
 
     Its styles are in `src/ui/rounds/rounds.css`.
+- **S14** (`feature/r2a-ui-panels`, T092–T097 and T143, [#95](https://github.com/Swalliso/Sambattler/pull/95)): passed the hub's review. A battle in rounds now plays on the preview from round 1's planning to the report by round. No golden moved. US3 is done.
+  - **What it builds:**
+    - the tray: prices from `priceOf`, "need N" on a card you can't afford, and tooltips with `matchupClass`'s strong and weak;
+    - inspect for buildings and units, from `mergePreview` and `sellValue`;
+    - rounds' own callouts, in §10.2's priority order;
+    - the pinned planning hint, which in round 9 names who leads on the Decision (`decisionWinner`);
+    - the report by round, with Again and Rematch.
+
+    Help and the settings screen sit in the controls and hold a clash and the aftermath while open.
+  - **How it was checked:** on the dev build, the title's button opened the preview and a battle played to the report (a Rout in round 7). T135's captures pass §15.6's assertions 1–5.
+  - **A small change to Call 14:** choosing a card no longer releases a `phase=planning` or `paused=1` hold, so a capture of the marks can click a card. Every other key or press still releases it.
+  - **For S20 (T138):** Help in the preview is v1's. It's read from a v1 rules-only battle, the way the title's Help builds it. That's the one place a `rounds/` file uses v1's `BattleState`, so T138's line in `.claude/rules/v1-code.md` keeps it as an exception until R2b rewrites Help.
 - **What R2a starts from:** R1's chosen set as default data (all of `kept`, the arrival shield, Capguard Hall's squad at 3, the Elder's splash on); X5's cap and Decision by share; no copies before R3 (D45); the Anti-Ranged kind and the three fixes to the counter sets (§7.4); and eliteShare by Elder parts.
 - **For R2a to watch** (R1, and the readings of S1 and S7b):
   - Capguard Hall at 3 still won 92% at 300 gold and 2% at 1,500;
@@ -216,7 +227,7 @@ Updated 2026-11-02, on `docs/r2a-s10b-s13` (the hub's docs PR into `develop`). T
 
 ## Waiting on the user
 
-1. **R2a's next calls:** S14b, your rough playtest, once S14 is on the dev site (T145). Watch the pace there: S10b's step 3 reading has battles running long (a median of 9 rounds, and 73% reach round 9), and each lever for it is a retune that waits for your OK. Then #35's battle-level bands at S18 (T125), and the playtest gate at S21. R2a's plan and its 26 calls were settled at S0 on 2026-11-02.
+1. **R2a's next calls:** S14b, your rough playtest, once S14's [#95](https://github.com/Swalliso/Sambattler/pull/95) is on the dev site (T145). Press "A battle in rounds (preview)" on [the dev site](https://swalliso.github.io/Sambattler/dev/)'s title. Help there is still v1's, since R2b and R4b bring v2's. Watch the pace: S10b's step 3 reading has battles running long (a median of 9 rounds, and 73% reach round 9), and each lever for it is a retune that waits for your OK. Then #35's battle-level bands at S18 (T125), and the playtest gate at S21. R2a's plan and its 26 calls were settled at S0 on 2026-11-02.
 2. **The decisions that shape the milestones**, X1–X10 in [clarify.md](tasks/clarify.md#index). Each has a recommendation. The task lists assume them and say what changes otherwise.
    - X1 and X2 were decided on 2026-11-02. R2 splits into R2a and R2b, and R2a is built beside v1 on `develop`. You also said `develop` may switch wholly to v2 from now on, so R2b's switch-over needn't go through `feature/r2b-cutover`. Verify still stays green on every PR, since a failing `develop` blocks every deploy. X3 (split R4, the field's shapes first) and X10 (Run it back in two parts) were agreed on 2026-11-01.
    - X4 and X5 were decided at R1's review gate on 2026-11-02: no copies before R3, and a cap of 25% of the loser's max HP with a Decision by share.
@@ -245,6 +256,7 @@ Updated 2026-11-02, on `docs/r2a-s10b-s13` (the hub's docs PR into `develop`). T
 
 | Work | Where | State |
 |---|---|---|
+| R2a S14: the tray, inspect, the chrome and the report (2026-11-02) | [#95](https://github.com/Swalliso/Sambattler/pull/95) | Passed the hub's review, and merges itself once CI passes. No golden moved. US3 is done, so your rough playtest is next |
 | R2a S10b, S12 and S13, side by side (2026-11-02) | [#91](https://github.com/Swalliso/Sambattler/pull/91) (the first round golden, step 3 in rounds), [#93](https://github.com/Swalliso/Sambattler/pull/93) (the field), [#92](https://github.com/Swalliso/Sambattler/pull/92) (the top band and the Intent panel) | Merged after the hub's review and a check of all three together. Only the new golden was added. Step 3 misses its pace (a median of 9 rounds). S14 runs next, then your rough playtest |
 | R2a S9b and S11, side by side (2026-11-02) | [#88](https://github.com/Swalliso/Sambattler/pull/88) (clash timers on the clash's clock), [#89](https://github.com/Swalliso/Sambattler/pull/89) (the `scene=rounds` preview) | Merged after the hub's review. #89's CI ran before #88 landed, so the hub checked the two together locally. No golden moved. S10b, S12 and S13 run next, side by side |
 | R2a S9 and S10a, side by side (2026-11-02) | [#85](https://github.com/Swalliso/Sambattler/pull/85) (`runHeadless`, `sim --rounds`, round replays), [#86](https://github.com/Swalliso/Sambattler/pull/86) (`src/sim/rounds/ai/`) | Merged after the hub's review and a check of both together. No golden moved. S9 found T149, so S9b runs next beside S11 |
