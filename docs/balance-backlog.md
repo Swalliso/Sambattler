@@ -30,6 +30,21 @@ v1's backlog is archived at [docs/archive/v1/balance-backlog.md](archive/v1/bala
 - **The first fighting tick's frame in Chromium** (R2a S17, below): 4.8–11.4 ms once a page, against §13.7's 8 ms.
 - **Battle 1 misses G14** (R2b S1b, below; for R2-Q13): `bot:balanced` wins 52%, 29% and 45% of battle 1s for Vesper, Armilla and Cordis, against 70–90%. Old Mother Mold wins 73–94% of her pairings. A free blueprint lifts those by at most 21 points, while a softer Mold opener brings Vesper and Cordis inside the band. The user chose the softer opener on 2026-11-03 (R2-Q13), and S5 lands it (T068).
 
+## R2b S5b · the late game's gold with drafts on, for #67 (2026-11-03)
+
+- **Measured** (T159): `npm run sim -- --seeds 1..40 --player bot:balanced --enemy general:scripted --flags merging,drafts,adaptive,powers --summary`, on Bogwater Hollow at battle index 1, read from X8's lines (`paceLines`, `tools/lib/run.ts`). The task wrote `--flags drafts`, but `--flags` sets exactly the features it names (`parseFlags`), so that alone turns merging, the adaptive general and the powers off. The game's four flags are named here, with the task's command and the default flags (no drafts) beside them.
+
+| Variant | Full at Begin from, median round (never full) | Banked a round once full, median (mean) | Banked at Begin r6 · r7 · r8 · r9, median |
+|---|---|---|---|
+| The game, drafts on | player 5 (6 of 40), general 5 (5 of 40) | player 329 (400), general 285 (364) | 251/257 · 599/465 · 750/671 · 1002/1006 |
+| Default flags, no drafts | 5 (6), 5 (5) | 306 (366), 273 (340) | 251/257 · 555/404 · 756/596 · 1011/1006 |
+| `--flags drafts` alone | 5 (13), 5 (4) | 410 (496), 291 (398) | 285/231 · 611/464 · 836/715 · 1154/963 |
+
+- **With drafts on:** the player wins 60% (24 of 40), battles take a median of 7 rounds, 18% reach round 9, 10% of clashes reach the cap, and no command is rejected.
+- **Result:** the drafts leave the banked gold almost as it was, at +23 a round for the player, since the greedy policy buys no rerolls. Once full, both sides still bank about 300 a round, and from round 7 they hold 465–1,000 at Begin with nothing to buy.
+- **Touches:** nothing yet. G4, G8 and G13 read the upgrades in T163.
+- **Recommended:** price an upgrade as a share of its building's cost, since spawners cost 110–260. At 200% (220–520), a full colony buys one every round or two, two or three a battle. T163 sweeps the share.
+
 ## R2b S1b · battle 1 per commander and general, for R2-Q13 (2026-11-03)
 
 **Measured** (T028; no rule changed):
