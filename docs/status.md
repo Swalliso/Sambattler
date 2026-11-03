@@ -1,6 +1,6 @@
 # Where things stand
 
-Updated 2026-11-03, on `docs/r2a-s17-s19` (the hub's docs PR into `develop`). This is the hand-over page. It covers what we're working on, what's waiting on the user's decision, and where each piece lives. Update it when work lands or the user decides something. Keep the detail in the docs it links to.
+Updated 2026-11-03, on `docs/r2a-s17-s18` (the hub's docs PR into `develop`). This is the hand-over page. It covers what we're working on, what's waiting on the user's decision, and where each piece lives. Update it when work lands or the user decides something. Keep the detail in the docs it links to.
 
 ## In short
 
@@ -18,7 +18,7 @@ Updated 2026-11-03, on `docs/r2a-s17-s19` (the hub's docs PR into `develop`). Th
   See [SPEC §0.1](../SPEC.md#01-what-changed-in-v2), [§1.3](../SPEC.md#13-v2-decisions-2026-10-31) and the [P3 notes](playtest-feedback.md#2026-10-31-p3-the-combat-rework-the-user).
 - **SPEC v2 is on `develop`** ([#39](https://github.com/Swalliso/Sambattler/pull/39)). **Nothing in v2 is built yet.** Until milestone R2 lands, the code follows v1: the M5 battle, with the rework's pieces behind `?proto=rework` on the dev site.
 - **The spec is broken into task lists** in [docs/tasks/](tasks/README.md) ([#40](https://github.com/Swalliso/Sambattler/pull/40), on `develop`), spec-kit style: one list per milestone, one session per row of its Sessions table. The decisions each milestone needs from the user are in [clarify.md](tasks/clarify.md), and the problems the breakdown found in SPEC v2 are in [spec-analysis.md](tasks/spec-analysis.md). Lists after R1's are drafts, refreshed when each milestone's plan is agreed.
-- **Milestone R1, the clash check, is done** ([SPEC §16](../SPEC.md#16-milestone-plan)). A headless tool fought whole armies at equal gold, with no rule change, to set squad sizes and check that every strong army has an answer before the round loop is built. At its review gate on 2026-11-02 you took every recommendation (below). **R2a's plan is agreed** (S0, 2026-11-02), **R2a S1 to S13 have merged**, with S7b's and S9b's fixes: US1 (a round's clash, scored) and US2 (a battle in rounds, with the general planning first) are done, a round in which nothing changed replays the last clash exactly, and the first round golden is recorded. S14 ([#95](https://github.com/Swalliso/Sambattler/pull/95)) made `/?scene=rounds` play a whole battle in rounds, from round 1's planning to the report, and your rough playtest (S14b) found the loop working. **S15 ([#99](https://github.com/Swalliso/Sambattler/pull/99)), the counter cycle, S16 ([#98](https://github.com/Swalliso/Sambattler/pull/98)), the power once per clash, and S19 ([#101](https://github.com/Swalliso/Sambattler/pull/101)), the playtest's measures, have merged. S17 ([#102](https://github.com/Swalliso/Sambattler/pull/102)), the round tools, passed the hub's review and lands when CI passes.**
+- **Milestone R1, the clash check, is done** ([SPEC §16](../SPEC.md#16-milestone-plan)). A headless tool fought whole armies at equal gold, with no rule change, to set squad sizes and check that every strong army has an answer before the round loop is built. At its review gate on 2026-11-02 you took every recommendation (below). **R2a's plan is agreed** (S0, 2026-11-02), **R2a S1 to S13 have merged**, with S7b's and S9b's fixes: US1 (a round's clash, scored) and US2 (a battle in rounds, with the general planning first) are done, a round in which nothing changed replays the last clash exactly, and the first round golden is recorded. S14 ([#95](https://github.com/Swalliso/Sambattler/pull/95)) made `/?scene=rounds` play a whole battle in rounds, from round 1's planning to the report, and your rough playtest (S14b) found the loop working. **S15 ([#99](https://github.com/Swalliso/Sambattler/pull/99)), the counter cycle, S16 ([#98](https://github.com/Swalliso/Sambattler/pull/98)), the power once per clash, S17 ([#102](https://github.com/Swalliso/Sambattler/pull/102)), the round tools, and S19 ([#101](https://github.com/Swalliso/Sambattler/pull/101)), the playtest's measures, have merged. S18 ([#104](https://github.com/Swalliso/Sambattler/pull/104)), the round guardrails and the answer bot, passed the hub's review and lands when CI passes. At its T125 you set the pace at 100 damage a supply (was 25) and R2a's bands.**
 - **Then:**
   - R2: rounds, the general plans first, lives, and the planning screen. R2a's plan, [r2a-plan.md](r2a-plan.md), was agreed on 2026-11-02. The task lists split it in two (X1): R2a, a single battle in rounds, then R2b, the run in rounds. R2a gets a rough playtest after S14, as soon as a battle in rounds is properly playable and before its counter cycle and powers (R2-Q25, agreed 2026-11-01), and S21's playtest stays the gate;
   - R3: the kit, the six archetypes, augments, combos and run packs;
@@ -27,11 +27,12 @@ Updated 2026-11-03, on `docs/r2a-s17-s19` (the hub's docs PR into `develop`). Th
 
   [docs/tasks/README.md](tasks/README.md) has the full order and every milestone's sessions.
 
-## Next: S18 up to T125, then S20
+## Next: S20, then your playtest gate (S21)
 
-- S17 ([#102](https://github.com/Swalliso/Sambattler/pull/102)) lands when CI passes, with its auto-merge on. The hub's check of S17 and S19 together was clean.
-- Then S18 (the round guardrails and the answer bot, T119–T125) runs. It stops before T125, for your call on the bands and the pace. S17's first G4 reading in rounds is below: a median of 9 rounds against G4's 6–8.
-- Then S20 (verification and the As built, once S18 and S19 have merged), its deploy to the dev site, and your playtest gate at S21.
+- S18 ([#104](https://github.com/Swalliso/Sambattler/pull/104)) lands when CI passes, with its auto-merge on.
+- Then S20 (T129–T136, T138): R2's verification steps, T136's inventory, and the docs and As built before the playtest. Its deploy to the dev site follows.
+- Then your playtest gate at S21 (T137, T144, T139).
+- G16's formation finding (below) is a rule change worth deciding before S21, since the playtest tests formations.
 
 ## R2a, a battle in rounds
 
@@ -171,7 +172,7 @@ Updated 2026-11-03, on `docs/r2a-s17-s19` (the hub's docs PR into `develop`). Th
     - the power replays use the commander's starter kit (`starter: true` in `ROUND_REPLAYS`), since with the faction roster Cordis's Bloom never fires on seed 3;
     - the tooltip is worded from the power's numbers, since the data's text is v1's, which R2b rewords.
   - **Merging with S15:** the joint check found four conflicts, each two additions in one place, in `battleView.ts`, `tools/lib/rounds/run.ts`, `tools/sim.ts` and `tools/verify.ts`. It also found the two power replays' hashes moved by S15's keys, with the battles unchanged. S16 merged `develop`, kept both sides and refreshed its replays to the hashes the hub computed.
-- **S17** (`feature/r2a-tools`, T148, T112–T118, [#102](https://github.com/Swalliso/Sambattler/pull/102)): passed the hub's review, and lands when CI passes.
+- **S17** (`feature/r2a-tools`, T148, T112–T118, [#102](https://github.com/Swalliso/Sambattler/pull/102)): merged after the hub's review.
   - **The tools in round form:**
     - two round replays, Twin Roots and the merge mirror;
     - G11's round budgets as a slow test;
@@ -201,7 +202,7 @@ Updated 2026-11-03, on `docs/r2a-s17-s19` (the hub's docs PR into `develop`). Th
     - The lever is to let a unit felled by a burst still attack that tick. That's a rule change, so it waits for your OK. Until then the case is an `it.fails`.
   - **Departures, for S20's As built:**
     - the clash's first fighting tick runs cold in Chromium, 4.8–11.4 ms once per page load, so the frame check reads the frames after it. A warm-up in `src/app/rounds/main.ts` would fix it, a job for S20;
-    - the Chromium checks hold statistics that a single slow frame can't decide: the p95 frame, as SPEC §16's Milestone 8 words the budget, and the median of five plants. CI's shared runner failed one run on single-frame spikes (a 4.5 ms plant, and a 12.4 ms frame with the median at 1.4 ms), and the budgets themselves stay as they are;
+    - off CI, the Chromium checks hold §13.7's budgets on statistics a single slow frame can't decide: the p95 frame, as SPEC §16's Milestone 8 words the budget, and the median of five plants. On CI they hold a guard of 3× each budget instead, and so do the round bench's timings in verify. CI's shared runner, with the other browser files running beside it, takes about three times as long on the frames that run a tick (a p95 of 9.6–10.6 ms, where this machine reads 3.4 ms at most), so the budgets hold on a real machine;
     - Twin Roots' full colony is 120 units a side, not 128, since one front-rank plot on each side is a stump;
     - supply duels end at the 45 s clash cap.
 - **S19** (`feature/r2a-measures`, T126–T128, [#101](https://github.com/Swalliso/Sambattler/pull/101)): merged. It changed only the app's views and the report, so it needed no review.
@@ -221,7 +222,7 @@ Updated 2026-11-03, on `docs/r2a-s17-s19` (the hub's docs PR into `develop`). Th
   - at `tierRadiusMult` 1.0 (S1), R1's chosen set fails G3 on the Sporeling's worst field in R1's tool: 62% on Twin Roots against a 60% bar, where 1.25 passed. Nothing changed for it; S17 and S18 read G3 in rounds;
   - a Burster's strike lands at once inside the attack step, so it may fell a later unit before that unit attacks (S7b). S17's T148 measured it: a mirror of Bursters is decided by seat (above).
 - **Open for you in R2a:**
-  - the battle-level bands at S18 (T125), with a pace retune beside them if G4 misses;
+  - S18's G16 finding: the formation rule loses 76% to its own ranks swapped, since front-rank Gill Archers start within aggro range of the enemy (6 tiles against a 6-tile gap) and fire first. Fixing it is a rule change, worth deciding before S21;
   - S15's Gill Archer tie: one of two fixes in [balance-backlog.md](balance-backlog.md), or neither;
   - S17's Burster seat effect (T148): a unit felled by a burst still attacks that tick, or no change;
   - the playtest gate at S21 (T137, T139).
@@ -295,11 +296,12 @@ Updated 2026-11-03, on `docs/r2a-s17-s19` (the hub's docs PR into `develop`). Th
 ## Waiting on the user
 
 1. **R2a's next calls:**
-   - #35's battle-level bands at S18 (T125), with a pace retune beside them if G4 misses. S17's first G4 reading in rounds had a median of 9 rounds, and 73% of battles reaching round 9. Each lever is a retune that waits for your OK.
+   - S18's G16 finding: front-rank Gill Archers fire first, so the formation rule loses 76% to its own ranks swapped. Fixing it is a rule change, worth deciding before S21's playtest.
    - Then the playtest gate at S21.
    - S15's Gill Archer tie and S17's Burster seat effect (T148) also wait for you. Each fix is a rule change, and they're in [balance-backlog.md](balance-backlog.md).
+   - S18's other misses are balance work for later, with no call needed yet. They are G1, G2, G3, G7 and G8's mono clause, some of them R1's known ones.
 
-   S18 runs up to T125 once S17 lands. R2a's plan and its 26 calls were settled at S0 on 2026-11-02.
+   You settled T125 on 2026-11-03: the pace at 100 damage a supply, and R2a's bands. R2a's plan and its 26 calls were settled at S0 on 2026-11-02.
 2. **The decisions that shape the milestones**, X1–X10 in [clarify.md](tasks/clarify.md#index). Each has a recommendation. The task lists assume them and say what changes otherwise.
    - X1 and X2 were decided on 2026-11-02. R2 splits into R2a and R2b, and R2a is built beside v1 on `develop`. You also said `develop` may switch wholly to v2 from now on, so R2b's switch-over needn't go through `feature/r2b-cutover`. Verify still stays green on every PR, since a failing `develop` blocks every deploy. X3 (split R4, the field's shapes first) and X10 (Run it back in two parts) were agreed on 2026-11-01.
    - X4 and X5 were decided at R1's review gate on 2026-11-02: no copies before R3, and a cap of 25% of the loser's max HP with a Decision by share.
@@ -328,7 +330,8 @@ Updated 2026-11-03, on `docs/r2a-s17-s19` (the hub's docs PR into `develop`). Th
 
 | Work | Where | State |
 |---|---|---|
-| R2a S17 and S19 (2026-11-03) | [#102](https://github.com/Swalliso/Sambattler/pull/102) (the round tools), [#101](https://github.com/Swalliso/Sambattler/pull/101) (the playtest's measures) | #101 merged. #102 passed the hub's review and lands when CI passes. Before that, S17 made its Chromium timing checks hold against CI's single-frame spikes. The hub checked the two together. S18 runs next, up to T125 |
+| R2a S18 (2026-11-03) | [#104](https://github.com/Swalliso/Sambattler/pull/104) (the round guardrails and the answer bot) | Passed the hub's review and lands when CI passes. At T125 you set the pace at 100 damage a supply after a 200-battle rerun: a median of 7 rounds, 18.5% reaching round 9, and the damage cap binding in 70% of damaging rounds. G4 and G6 pass. S20 runs next |
+| R2a S17 and S19 (2026-11-03) | [#102](https://github.com/Swalliso/Sambattler/pull/102) (the round tools), [#101](https://github.com/Swalliso/Sambattler/pull/101) (the playtest's measures) | Merged. #102's timing checks hold §13.7's budgets on a real machine, and a guard of 3× each budget on CI's slower shared runner. The hub checked the two together |
 | R2a S14b, S15 and S16 (2026-11-02 and 03) | [#97](https://github.com/Swalliso/Sambattler/pull/97) (your rough playtest), [#99](https://github.com/Swalliso/Sambattler/pull/99) (the counter cycle), [#98](https://github.com/Swalliso/Sambattler/pull/98) (the power once per clash) | Merged. The hub checked #98 and #99 together |
 | R2a S14: the tray, inspect, the chrome and the report (2026-11-02) | [#95](https://github.com/Swalliso/Sambattler/pull/95) | Merged after the hub's review. No golden moved. US3 is done, and your rough playtest followed |
 | R2a S10b, S12 and S13, side by side (2026-11-02) | [#91](https://github.com/Swalliso/Sambattler/pull/91) (the first round golden, step 3 in rounds), [#93](https://github.com/Swalliso/Sambattler/pull/93) (the field), [#92](https://github.com/Swalliso/Sambattler/pull/92) (the top band and the Intent panel) | Merged after the hub's review and a check of all three together. Only the new golden was added. Step 3 misses its pace (a median of 9 rounds). S14 runs next, then your rough playtest |
