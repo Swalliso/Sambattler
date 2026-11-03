@@ -175,6 +175,53 @@ describe('placing (§10.2 "Placing")', () => {
   });
 });
 
+describe('one highlight when placing (S21b/T161)', () => {
+  it('lights the plot a chosen card hovers and stands its ghost squad in the field, with no box at the slot', async () => {
+    page = await open('scene=rounds&seed=1&test=1&phase=planning');
+    // every outline the canvas draws, as [x, y, w, h] in its own pixels
+    await page.evaluate(() => {
+      const w = window as unknown as { rects: number[][] };
+      w.rects = [];
+      const stroke = CanvasRenderingContext2D.prototype.strokeRect;
+      CanvasRenderingContext2D.prototype.strokeRect = function (x, y, rw, rh) { w.rects.push([x, y, rw, rh]); stroke.call(this, x, y, rw, rh); };
+    });
+    const s = await battle(page);
+    const plot = plotOf(s, 0, 2), p = s.sides.player.plots[plot]!;
+    const geom = { width: s.map.width, lanes: s.lanes, gapTiles: s.rules.formationGapTiles };
+    const ranks = s.sides.player.plots.reduce((n, q) => Math.max(n, q.rank + 1), 1);
+    const slot = formationBox(geom, 'player', ranks).find((sl) => sl.lane === 0 && sl.rank === 0 && sl.file === 2)!;
+    /** Whether the frames drawn since the last call outlined the square whose top-left tile is (col, row). */
+    const outlined = (sq: { col: number; row: number }) => page!.evaluate(([c, r]) => {
+      const cv = document.getElementById('battlefield') as HTMLCanvasElement;
+      const b = (window.__GAME__ as unknown as RoundsBridge).battle()!;
+      const tile = cv.height / b.map.height, strip = (cv.width / tile - b.map.width) / 2;
+      const w = window as unknown as { rects: number[][] };
+      const hit = w.rects.some(([x, y]) => Math.abs(x! - ((c! + strip) * tile + 0.5)) < 0.01 && Math.abs(y! - (r! * tile + 0.5)) < 0.01);
+      w.rects = [];
+      return hit;
+    }, [sq.col, sq.row]);
+    const frames = () => page!.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
+
+    // with no card, hovering a plot lights its slot too (T083)
+    await hover(page, p);
+    await until(page, (i) => (window.__GAME__ as unknown as RoundsBridge).preview()!.player.hover === i, plot);
+    await frames();
+    await outlined(slot);
+    await frames();
+    expect(await outlined(slot), 'the slot, hovering its plot with no card').toBe(true);
+
+    // with a card chosen, the plot is lit and the ghost squad stands in its slot, unboxed
+    await page.keyboard.press(await keyOf(page, 'capguardHall'));
+    await until(page, () => !!(window.__GAME__ as unknown as RoundsBridge).preview()!.player.squads.some((q) => q.ghost), 0);
+    await frames();
+    await outlined(slot);
+    await frames();
+    expect(await outlined(p), 'the plot').toBe(true);
+    await frames();
+    expect(await outlined(slot), 'the slot').toBe(false);
+  });
+});
+
 describe('the matchup marks (§10.4, plan Call 22, T084)', () => {
   it('marks the general\'s Gill Archers strong and its Capguards with none for a chosen Sporeling Burrow', async () => {
     page = await open('scene=rounds&seed=1&test=1&scenario=formation-from-plots&phase=planning');
