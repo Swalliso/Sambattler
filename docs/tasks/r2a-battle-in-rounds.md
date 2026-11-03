@@ -750,6 +750,7 @@ S1 to S4: the data, the colony, the round state machine and the planning command
 
 **S17: goldens, the bench and the balance tools**
 
+- [ ] T148 [US6] Add a Burster mirror to `tests/unit/rounds/seats.test.ts`, played with each side's ids first. A Burster's strike lands at once inside the attack step, so it may fell a unit later in the list before that unit attacks. If the mirror differs by seat, report it before changing any rule (§5.3, T147; #82's review, 2026-11-02)
 - [ ] T112 [US6] Record `tests/golden/r2-twin-roots-<what>-s<seed>.replay.json` (new; Twin Roots, each lane its own clash) and `tests/golden/r2-merge-mirror-s3.replay.json` (new; the merge mirror, knitting at the muster), each pinning its flags (§15.5) (A115)
   - Add both entries to `ROUND_REPLAYS` in `tools/golden.ts`, run `npm run golden -- update`, then check that `git diff --stat tests/golden/m*` shows no change.
 - [ ] T113 [US6] Write `tests/slow/rounds/perf.test.ts` (new). It asserts G11's round budgets: arrival ≤ 5 ms, the general's planning turn ≤ 20 ms, one battle of rounds with bots on both sides ≤ 3 s, and a tick mean ≤ 1.0 ms and p99 ≤ 2.5 ms at 300 live units. It also asserts the sim part of a planning command under its Node budget, and peak units ≥ 300 (§13.7, §15.4) (A113)
@@ -902,7 +903,7 @@ Each session is about a day, ends in one PR into `develop` (opened when the user
 | S6 | T042, T046, T043–T045 | `feature/r2a-clash` | S5 merged | Per-squad stats; Begin, the arrival with its shield, and the muster; lane ends and freeze |
 | S7 | T047–T052 | `feature/r2a-scoring` | S6 merged | Scoring, the Heartcap race, the Decision; every rule scenario passing (US1 done) |
 | S7b | T147 | `feature/r2a-seat-fix` | S7 merged | No seat decides a clash: separation and movement read positions independently of unit order |
-| S8 | T053–T057 | `feature/r2a-economy` | S7 merged | Opening a round, income, stats per round, the summary |
+| S8 | T053–T057 | `feature/r2a-economy` | S7b merged | Opening a round, income, stats per round, the summary |
 | S9 | T058–T064 | `feature/r2a-headless` | S8 merged | `runHeadless` by phase, `npm run sim -- --rounds`, round asserts, `ROUND_REPLAYS` in the golden tool, determinism tests |
 | S10a | T065–T069 | `feature/r2a-general` | S9 merged | The general plans first through `planningView`; its scores, turn and profiles; bots plan after it |
 | S10b | T070–T073 | `feature/r2a-general-check` | S10a merged | `general-plans-first`, the round smoke, the first round golden, step 3's reading (US2 done) |
@@ -913,7 +914,7 @@ Each session is about a day, ends in one PR into `develop` (opened when the user
 | S14b | T145, T146 | `feature/r2a-rough-playtest` | S14 merged and deployed to the dev site | The user's rough-playtest notes in `docs/playtest-feedback.md`, and any change to S15–S20 written into this list (docs only); S15 and S16 may start |
 | S15 | T098–T103 | `feature/r2a-counters` | S14b done | The counter cycle in rounds; X8's readouts and knobs; the adaptive smoke (US4 done) |
 | S16 | T104–T111 | `feature/r2a-powers` | S14b done | The power once per clash, its controls, its smokes and replays (US5 done) |
-| S17 | T112–T118 | `feature/r2a-tools` | S15 and S16 merged | Twin Roots and merge-mirror replays, the round bench and frame check, balance and experiment in rounds with `playRoundClash` |
+| S17 | T148, T112–T118 | `feature/r2a-tools` | S15 and S16 merged | Twin Roots and merge-mirror replays, the round bench and frame check, balance and experiment in rounds with `playRoundClash` |
 | S18 | T119–T125 | `feature/r2a-guardrails` | S17 merged; #35's approach agreed at S0 (T124 and T125 set its battle-level bands) | The round guardrails in `tests/slow/rounds/`, the answer bot, the bands agreed (US6 done) |
 | S19 | T126–T128 | `feature/r2a-measures` | S18 merged | The "last fielded" view and planning seconds per round on the report (US7 done) |
 | S20 | T129–T136, T138 | `feature/r2a-verify` | S19 merged | Steps 1–4 and 7–9 passing; T136's inventory; the docs and As built before the playtest |
