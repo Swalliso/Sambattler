@@ -74,14 +74,21 @@ Updated 2026-11-03, on `docs/r2b-s4-done` (the hub's docs PR into `develop`). Th
   - **The rule,** in CLAUDE.md, `.claude/rules/balance.md` and SPEC §16 R2: no new named presets. A candidate rule is a data change measured with `--proto path:value`, or code on a short-lived branch merged as the default with your OK, or it's deleted. Any temporary switch names the session that removes it.
   - **For R3:** its task list had planned the Air pack's dealable case on the `flyers` preset. That case now adds a Drift Stalk with `path:value` overrides.
   - S5 and S6 start once this merges, since they also edit `src/data/schema.ts`.
+- **S5** (`feature/r2b-drafts`, T062–T069 and T153): in review. Drafts open in planning, in runs and with `--flags drafts`:
+  - **Drafts in planning** (T065): a draft opens in the planning of rounds 3, 5 and 7, after the general has planned, with v1's cards. Begin, plant, sell and the merge toggle are refused while it's open (#28), a skip pays +40 at once, and rerolls cost 20, then 30. A bot player answers before it plans, and the general never drafts. `npm run sim -- --seeds 1..40 --player bot:balanced --enemy general:scripted --flags merging,drafts --auto-draft greedy --summary` reads 0 rejected commands.
+  - **#27's levels** (T064, T066): the levels that do nothing in rounds (the Cellar's and the Exchange's HP, the Lodge's spawn speed, the Vault's track, and the Burrow's and the Warren's +1 unit) have `offered: false` and empty effects, and drafts, spoils, events, the general's levels and Veteran skip past them. Gold a tick is +12 gold a round.
+  - **In runs** (T067): you draft in every run battle, your picks join the run and its record, and a won battle pays each draft it ended before as an extra spoils pick. A saved spoils offer or upgrade prompt that names a skipped level is dealt again or rebuilt, with a notice.
+  - **Old Mother Mold** opens battle 1 with a Sporeling Burrow and a Truffle Cellar (T068, R2-Q13).
+  - **Today's dialog** (T153) shows the draft over the field, with keys 1–3, and Begin unlit until you pick or skip.
+  - **Goldens:** `r2-run-s7` moved (drafts in runs, Mold's opener). The five single-battle goldens hold, since a battle without drafts compiles as before.
+  - **Not built:** the relics-and-upgrades popover listed under S2 as "S5, S6": no S5 task names it, and `src/ui/hud/kit.ts` is imported by nothing.
 - **The stand-ins open on `develop`** from S1 (Call 14), each with the session that lifts it (checked at S4, T152):
-  - run battles open no in-battle drafts until S5 (T067);
   - relics on retired systems do nothing in a round battle until S6, and passives until S7, which also ends Rhizome Tithe's refusal (T082);
   - a reload mid-battle restarts it at round 1's planning, with the notice when a battle save was found, until S8 (T095, T096);
   - the route's intel bars show v1's four kinds, without Anti-Ranged, until S9;
-  - `scene=draft` opens a run battle with no draft, so its capture finds none, until S5 (T067) and S10 (T115);
+  - `scene=draft` opens round 1's planning of a run battle, so its capture shows no draft until round 3, until S10 (T115);
   - retired selectors and triggers still in the data compile to no-ops, v1's keys stay in the data and the schema, and R2a's `rounds` data blocks sit beside them, until S12 (T129);
-  - from S5 (T153) until S10 (T116), the draft will be today's centred dialog, which covers the general's formation.
+  - the draft is today's centred dialog, which covers the general's formation, until S10 (T116).
 - **Next:** S5 (drafts), S6 (relics) and S9 (run screens) can start side by side once S4 merges.
 
 ## R2a, a battle in rounds
