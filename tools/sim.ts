@@ -1,4 +1,5 @@
-// npm run sim -- [options]: headless battle and run simulator (SPEC §15.2), Milestone 5 subset.
+// npm run sim -- [options]: headless battle and run simulator (SPEC §15.2), Milestone 5 subset. With
+// `--rounds` (R2a, temporary) it plays single battles in rounds on the round sim instead.
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, isAbsolute, join } from 'node:path';
 import { nodeContent, ROOT } from './lib/content.ts';
@@ -10,6 +11,9 @@ import { checkAssert, parseAssert } from './lib/asserts.ts';
 import type { Assertion } from './lib/asserts.ts';
 import { MILESTONE, parseFlags } from '../src/sim/index.ts';
 import type { BattleConfig, Command, PowerPolicy } from '../src/sim/index.ts';
+import { runRoundBattle } from './lib/rounds/run.ts';
+import type { RoundBattleResult, RoundRunSpec } from './lib/rounds/run.ts';
+import type { BattleConfig as RoundConfig, Command as RoundCommand, HeadlessUntil } from '../src/sim/rounds/index.ts';
 
 /** Options for later milestones' features (meta-progression). */
 const NOT_YET = ['--bot', '--meta-progress', '--runs'];
@@ -23,6 +27,8 @@ interface Args {
   asserts: Assertion[]; out?: string; summary: boolean;
   run: boolean; autoDraft?: DraftAutoPolicy; autoRoute?: RoutePolicy;
   commander?: string; powerPolicy?: PowerPolicy;
+  /** R2a: single battles in rounds, stopping at `roundUntil`. */
+  rounds: boolean; roundUntil?: HeadlessUntil;
 }
 
 function parseUntil(v: string): 'end' | number {
@@ -41,7 +47,7 @@ function flagsArg(v: string): BattleConfig['flags'] {
 }
 
 function parseArgs(argv: string[]): Args {
-  const a: Args = { seeds: [1], until: 'end', asserts: [], summary: false, run: false };
+  const a: Args = { seeds: [1], until: 'end', asserts: [], summary: false, run: false, rounds: argv.includes('--rounds') };
   for (let i = 0; i < argv.length; i++) {
     const k = argv[i]!;
     const v = () => {
@@ -64,7 +70,8 @@ function parseArgs(argv: string[]): Args {
       case '--enemy': a.enemy = v(); break;
       case '--scenario': a.scenario = v(); break;
       case '--replay': a.replay = v(); break;
-      case '--until': a.until = parseUntil(v()); break;
+      case '--rounds': break;
+      case '--until': if (a.rounds) a.roundUntil = parseRoundUntil(v()); else a.until = parseUntil(v()); break;
       case '--battle-index': a.battleIndex = Number(v()); break;
       case '--flags': a.flags = flagsArg(v()); break;
       case '--hash-every': a.hashEvery = Number(v()); break;
@@ -94,6 +101,15 @@ function parseArgs(argv: string[]): Args {
       default: throw new Error(`unknown option ${k}`);
     }
   }
+  if (a.rounds) {
+    const runOnly = [a.run && '--run', a.autoRoute && '--auto-route', a.autoDraft && '--auto-draft'].filter(Boolean);
+    if (runOnly.length) throw new Error(`${runOnly.join(', ')}: a single battle in rounds has no run or drafts until R2b`);
+    const byTick = a.asserts.find((x) => x.tick !== undefined);
+    if (byTick) throw new Error(`--assert "${byTick.text}": a battle in rounds checks at @r<n> or @r<n>:<tick>`);
+  } else {
+    const byRound = a.asserts.find((x) => x.checkpoint !== undefined);
+    if (byRound) throw new Error(`--assert "${byRound.text}": @r<n> needs --rounds`);
+  }
   return a;
 }
 
@@ -107,6 +123,7 @@ function main(): number {
   const args = parseArgs(process.argv.slice(2));
   const content = nodeContent();
   if (args.commander && !content.commanders[args.commander]) throw new Error(`--commander: unknown commander "${args.commander}" (expected ${Object.keys(content.commanders).join(', ')})`);
+  if (args.rounds) return mainRounds(args, content);
   if (args.run) return mainRun(args, content);
   if (args.commander && args.scenario) throw new Error('--commander does not apply to a scenario (it names its own commander)');
   if (args.autoRoute) throw new Error('--auto-route needs --run');
@@ -197,6 +214,89 @@ export function printSummary(results: BattleResult[]): void {
     console.log(`lanes diverged (front midpoints ≥${DIVERGE_COLUMNS} columns apart at some sample) in ${div}/${multi.length} battles (${pct(div, multi.length)}) · ` +
       `max gap median ${median(gaps).toFixed(1)} · mean gap ${(multi.reduce((a, r) => a + r.laneDivergence!.meanGap, 0) / multi.length).toFixed(1)}`);
   }
+}
+
+// ---- single battles in rounds (SPEC §15.2 --rounds, R2a) ----
+
+/** `end`, `r<n>` (the end of round n) or `r<n>:<tick>` (a tick of its clash, counted from the clash's start). */
+function parseRoundUntil(v: string): HeadlessUntil {
+  if (v === 'end') return 'end';
+  const m = v.match(/^r(\d+)(?::(\d+))?$/);
+  if (!m) throw new Error(`bad --until "${v}" (expected end, r<n> or r<n>:<tick>)`);
+  return m[2] === undefined ? { round: Number(m[1]) } : { round: Number(m[1]), tick: Number(m[2]) };
+}
+
+function mainRounds(args: Args, content: ReturnType<typeof nodeContent>): number {
+  if (args.commander && args.scenario) throw new Error('--commander does not apply to a scenario (it names its own commander)');
+  const recordAt = [...new Set(args.asserts.flatMap((x) => (x.checkpoint ? [x.checkpoint] : [])))];
+  let replay: { config: RoundConfig; commands: RoundCommand[] } | undefined;
+  if (args.replay) replay = JSON.parse(readFileSync(args.replay, 'utf8'));
+
+  const results: RoundBattleResult[] = [];
+  const failures: string[] = [];
+  for (const seed of replay ? [replay.config.seed] : args.seeds) {
+    const spec: RoundRunSpec = { seed, until: args.roundUntil ?? 'end', recordAt };
+    if (replay) { spec.config = replay.config; spec.commands = replay.commands; }
+    if (args.map) spec.map = args.map;
+    if (args.player) spec.player = args.player;
+    if (args.enemy) spec.enemy = args.enemy;
+    if (args.scenario) spec.scenario = args.scenario;
+    if (args.battleIndex) spec.battleIndex = args.battleIndex;
+    if (args.flags) spec.flags = args.flags;
+    if (args.commander) spec.commander = args.commander;
+    if (args.powerPolicy) spec.powerPolicy = args.powerPolicy;
+    if (args.hashEvery) spec.hashEvery = args.hashEvery;
+    const { result } = runRoundBattle(content, spec);
+    results.push(result);
+    for (const as of args.asserts) {
+      const err = checkAssert(result as unknown as Record<string, unknown>, as);
+      if (err) failures.push(`seed ${seed}: ${err}`);
+    }
+  }
+
+  if (args.out) {
+    const p = outPath(args.out);
+    mkdirSync(dirname(p), { recursive: true });
+    writeFileSync(p, JSON.stringify(results.length === 1 ? results[0] : results, null, 2));
+    console.error(`wrote ${p}`);
+  }
+  if (results.length === 1 && !args.summary) {
+    const { at: _at, stats: _st, ...brief } = results[0]!;
+    console.log(JSON.stringify(brief, null, 2));
+  } else {
+    printRoundSummary(results, content.balance.rounds.maxRounds);
+  }
+  for (const as of args.asserts) console.log(`${failures.some((f) => f.includes(as.text)) ? 'FAIL' : 'PASS'}  assert ${as.text}`);
+  if (failures.length) {
+    console.error(`\n${failures.length} assertion failure(s):\n- ${failures.join('\n- ')}`);
+    return 1;
+  }
+  return 0;
+}
+
+export function printRoundSummary(results: RoundBattleResult[], maxRounds: number): void {
+  const merges = (r: RoundBattleResult, s: 'player' | 'enemy') => `${r.merges[s]['2']}/${r.merges[s]['3']}`;
+  const rows = results.map((r) => [
+    String(r.seed), r.winner ?? '-', r.by ?? '-', String(r.rounds), r.clashTime, `${r.heartcap.player}/${r.heartcap.enemy}`,
+    `${r.dealt.player}/${r.dealt.enemy}`, `${merges(r, 'player')} : ${merges(r, 'enemy')}`, String(r.rejectedCommands), `${r.wallMs}ms`,
+  ]);
+  const head = ['seed', 'winner', 'by', 'rounds', 'clash time', 'heartcaps', 'dealt', 'merges (B/E)', 'rejected', 'wall'];
+  const widths = head.map((h, i) => Math.max(h.length, ...rows.map((r) => r[i]!.length)));
+  const line = (cells: string[]) => cells.map((c, i) => c.padEnd(widths[i]!)).join('  ');
+  console.log(line(head));
+  for (const r of rows) console.log(line(r));
+  const n = results.length;
+  const wins = (s: 'player' | 'enemy') => results.filter((r) => r.winner === s).length;
+  const rounds = results.map((r) => r.rounds);
+  const last = results.filter((r) => r.rounds >= maxRounds).length;
+  // each lane's clash is its own (§6.7): a round on Twin Roots has two
+  const clashes = results.flatMap((r) => r.roundLog.flatMap((l) => l.lanes));
+  const capped = clashes.filter((c) => c.capped).length;
+  console.log('');
+  console.log(`battles ${n} · ended ${results.filter((r) => r.winner).length} · player wins ${wins('player')} (${pct(wins('player'), n)}) · enemy wins ${wins('enemy')} (${pct(wins('enemy'), n)})`);
+  console.log(`rounds median ${median(rounds)} · min ${Math.min(...rounds)} · max ${Math.max(...rounds)} · reached round ${maxRounds} ${last} (${pct(last, n)})`);
+  console.log(`clashes ${clashes.length} · at the cap ${capped} (${pct(capped, clashes.length)}) · length median ${clashes.length ? fmtTicks(median(clashes.map((c) => c.ticks))) : '-'}`);
+  console.log(`mean wall ${(results.reduce((a, r) => a + r.wallMs, 0) / n).toFixed(0)} ms · rejected commands ${results.reduce((a, r) => a + r.rejectedCommands, 0)}`);
 }
 
 // ---- whole runs (SPEC §15.2 --run) ----

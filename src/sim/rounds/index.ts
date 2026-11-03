@@ -1,5 +1,5 @@
 // The sim API for a battle in rounds (SPEC §14.6). It stands beside v1's `src/sim/index.ts` until R2b moves
-// it there; later sessions add `runHeadless` and `matchupClass`.
+// it there; a later session adds `matchupClass`.
 export { loadContent, ContentError } from '../../data/registry.ts';
 export type { Content, RawContent } from '../../data/registry.ts';
 export {
@@ -9,6 +9,8 @@ export type { Flags, RoundBattleOptions, RoundScenarioOverrides } from './create
 export { emptyStats, foldRounds } from './stats.ts';
 export { summarize } from './summary.ts';
 export type { RoundLogEntry, RoundSummary } from './summary.ts';
+export { runHeadless } from './headless.ts';
+export type { HeadlessOptions, HeadlessResult, HeadlessUntil } from './headless.ts';
 export { queueCommand, commandStamp } from './commands.ts';
 export type { QueuedCommand } from './commands.ts';
 export { legalPlots, plantProblem, priceOf, sellValue } from './planning.ts';

@@ -1,7 +1,8 @@
 // npm run golden -- verify | update (SPEC §15.5). Golden replays pin the sim's behaviour: a battle
 // replay holds a config, a command log and the expected state hashes at checkpoints; a run replay
 // (`kind: "run"`) holds a seed and autoplay policies and pins every battle's checkpoint hashes plus
-// the final run-state hash.
+// the final run-state hash. R2a's round replays (`kind: "rounds"`) play through the rounds API beside them,
+// with the round checkpoints (R2a plan Call 17).
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { nodeContent, ROOT } from './lib/content.ts';
@@ -9,6 +10,8 @@ import { createBattle, makeConfig, runHeadless } from '../src/sim/index.ts';
 import type { BattleConfig, Command, Flags, PowerPolicy } from '../src/sim/index.ts';
 import { hashRun, simulateRun } from '../src/run/index.ts';
 import type { AutoPolicies } from '../src/run/index.ts';
+import { createBattle as createRoundBattle, makeRoundConfig, runHeadless as runRoundHeadless } from '../src/sim/rounds/index.ts';
+import type { BattleConfig as RoundConfig, Command as RoundCommand, Flags as RoundFlags } from '../src/sim/rounds/index.ts';
 
 const DIR = join(ROOT, 'tests', 'golden');
 const CHECK_EVERY = 600;
@@ -78,6 +81,76 @@ function verifyRun(rep: RunReplay): boolean {
   return !diverged;
 }
 
+// ---- battles in rounds (R2a, SPEC §15.5) ----
+
+/** A round golden hashes every phase's checkpoint and every 200 ticks of each clash (R2a plan Call 17). */
+const ROUND_CHECK_EVERY = 200;
+
+interface RoundReplay {
+  name: string;
+  description: string;
+  kind: 'rounds';
+  config: RoundConfig;
+  commands: RoundCommand[];
+  expected: Record<string, string>;
+}
+
+/**
+ * R2a's round replays (`r2-…`), recorded beside v1's. `update` writes a round golden only for an entry here,
+ * and a round rule or data change refreshes them without moving v1's.
+ */
+const ROUND_REPLAYS: {
+  name: string; description: string; seed: number; player: string; enemy: string; flags: Partial<RoundFlags>;
+  commander?: string; powerPolicy?: PowerPolicy; map?: string;
+}[] = [];
+
+function roundReplayConfig(r: (typeof ROUND_REPLAYS)[number]): RoundConfig {
+  const config = makeRoundConfig(nodeContent(), {
+    seed: r.seed, player: r.player, enemy: r.enemy, flags: r.flags,
+    ...(r.map ? { mapId: r.map } : {}), ...(r.commander ? { commander: r.commander } : {}),
+  });
+  if (r.powerPolicy) config.player.powerPolicy = r.powerPolicy;
+  return config;
+}
+
+function roundReplayHashes(config: RoundConfig, commands: RoundCommand[]): Record<string, string> {
+  const res = runRoundHeadless(createRoundBattle(nodeContent(), config), { until: 'end', commands, hashEvery: ROUND_CHECK_EVERY });
+  return { ...res.hashes, final: res.finalHash };
+}
+
+/** A round checkpoint's place in its battle: its round, then planning, the clash, its ticks and the aftermath; `final` last. */
+function checkpointRank(key: string): [number, number] {
+  const last = Number.MAX_SAFE_INTEGER;
+  const m = key.match(/^r(\d+)(?:\.(planning|clash|aftermath)|:(\d+))$/);
+  if (!m) return [last, last];
+  return [Number(m[1]), m[3] !== undefined ? Number(m[3]) : m[2] === 'planning' ? -2 : m[2] === 'clash' ? -1 : last];
+}
+
+function byCheckpoint(a: string, b: string): number {
+  const [ra, ta] = checkpointRank(a), [rb, tb] = checkpointRank(b);
+  return ra !== rb ? ra - rb : ta - tb;
+}
+
+function verifyRounds(rep: RoundReplay): boolean {
+  let got: Record<string, string>;
+  try {
+    got = roundReplayHashes(rep.config, rep.commands);
+  } catch (e) {
+    console.log(`FAIL  ${rep.name}: ${(e as Error).message}`);
+    return false;
+  }
+  // the first key in battle order where the two differ, a key one of them lacks included
+  const keys = [...new Set([...Object.keys(rep.expected), ...Object.keys(got)])].sort(byCheckpoint);
+  const diverged = keys.find((k) => got[k] !== rep.expected[k]);
+  if (diverged) {
+    console.log(`FAIL  ${rep.name}: first divergence at ${diverged === 'final' ? 'the final hash' : diverged} ` +
+      `(expected ${rep.expected[diverged] ?? '-'}, got ${got[diverged] ?? '-'})`);
+  } else {
+    console.log(`PASS  ${rep.name}: ${keys.length} checkpoints, final ${got.final}`);
+  }
+  return !diverged;
+}
+
 function replayConfig(r: (typeof REPLAYS)[number]): BattleConfig {
   const config = makeConfig(nodeContent(), {
     seed: r.seed, player: r.player, enemy: r.enemy, flags: r.flags,
@@ -104,8 +177,9 @@ function verify(): number {
   if (!list.length) { console.error('no golden replays in tests/golden (run `npm run golden -- update`)'); return 1; }
   let failed = 0;
   for (const f of list) {
-    const raw = JSON.parse(readFileSync(join(DIR, f), 'utf8')) as Replay | RunReplay;
+    const raw = JSON.parse(readFileSync(join(DIR, f), 'utf8')) as Replay | RunReplay | RoundReplay;
     if ('kind' in raw && raw.kind === 'run') { if (!verifyRun(raw)) failed++; continue; }
+    if ('kind' in raw && raw.kind === 'rounds') { if (!verifyRounds(raw)) failed++; continue; }
     const rep = raw as Replay;
     const got = replayHashes(rep.config, rep.commands);
     const keys = Object.keys(rep.expected).filter((k) => k !== 'final').sort((a, b) => Number(a) - Number(b));
@@ -153,9 +227,21 @@ function update(): number {
     writeFileSync(join(DIR, `${r.name}.replay.json`), JSON.stringify(rep, null, 2) + '\n');
     console.log(`updated ${r.name}.replay.json: ${rep.expected.battles.length} battles, run ${rep.expected.run}`);
   }
+  for (const r of ROUND_REPLAYS) {
+    const file = `${r.name}.replay.json`;
+    // a listed replay keeps its commands and takes its config afresh, so data changes flow into it
+    const commands = existing.has(file) ? (JSON.parse(readFileSync(join(DIR, file), 'utf8')) as RoundReplay).commands : [];
+    const config = roundReplayConfig(r);
+    const rep: RoundReplay = { name: r.name, description: r.description, kind: 'rounds', config, commands, expected: roundReplayHashes(config, commands) };
+    writeFileSync(join(DIR, file), JSON.stringify(rep, null, 2) + '\n');
+    console.log(`updated ${file}: ${Object.keys(rep.expected).length} checkpoints, final ${rep.expected.final}`);
+  }
+  const listed = [...REPLAYS, ...RUN_REPLAYS, ...ROUND_REPLAYS].map((r) => `${r.name}.replay.json`);
   for (const f of files()) {
-    if (REPLAYS.some((r) => `${r.name}.replay.json` === f) || RUN_REPLAYS.some((r) => `${r.name}.replay.json` === f)) continue;
-    const rep = JSON.parse(readFileSync(join(DIR, f), 'utf8')) as Replay;
+    if (listed.includes(f)) continue;
+    const raw = JSON.parse(readFileSync(join(DIR, f), 'utf8')) as Replay | RoundReplay;
+    if ('kind' in raw && raw.kind === 'rounds') { console.log(`left ${f}: a round golden is written only from ROUND_REPLAYS`); continue; }
+    const rep = raw as Replay;
     rep.expected = replayHashes(rep.config, rep.commands);
     writeFileSync(join(DIR, f), JSON.stringify(rep, null, 2) + '\n');
     console.log(`updated ${f}`);

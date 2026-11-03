@@ -5,7 +5,8 @@
 // with T052.
 import { nodeContent } from '../tools/lib/content.ts';
 import { commandStamp, createFromScenario, queueCommand, SIDES, step } from '../src/sim/rounds/index.ts';
-import type { BattleState, CommandBody, Flags, RoundScenarioOverrides, Side, SimEvent } from '../src/sim/rounds/index.ts';
+import type { BattleState, Command, CommandBody, Flags, RoundScenarioOverrides, Side, SimEvent } from '../src/sim/rounds/index.ts';
+import type { RoundScenarioDef } from '../src/data/schema.ts';
 
 export const content = nodeContent();
 
@@ -45,6 +46,39 @@ export function planningState(opts: PlanningOptions = {}): BattleState {
 /** A battle in rounds from `data/scenarios/rounds/<id>.json` (T029). */
 export function fromScenario(id: string, over: RoundScenarioOverrides = {}): BattleState {
   return createFromScenario(content, id, over);
+}
+
+/**
+ * A whole battle for the headless and determinism tests (T059, T064): both sides human, each colony a Capguard
+ * Hall, a Gill Archer Nest and a Sporeling Burrow, so it plays every round from the player's commands alone
+ * (`playerScript`), and each clash runs some hundreds of ticks.
+ */
+export const SCRIPTED_BATTLE: RoundScenarioDef = {
+  id: 'scripted-battle', description: 'scriptedBattle', map: 'bogwater-hollow',
+  sides: {
+    player: { colony: [
+      { building: 'capguardHall', lane: 0, rank: 0, file: 2 }, { building: 'gillNest', lane: 0, rank: 1, file: 2 },
+      { building: 'sporelingBurrow', lane: 0, rank: 0, file: 3 },
+    ] },
+    enemy: { colony: [
+      { building: 'capguardHall', lane: 0, rank: 0, file: 2 }, { building: 'gillNest', lane: 0, rank: 1, file: 2 },
+      { building: 'sporelingBurrow', lane: 0, rank: 0, file: 1 },
+    ] },
+  },
+};
+
+export const scriptedBattle = (): BattleState => createFromScenario(content, SCRIPTED_BATTLE);
+
+/**
+ * A human player's commands for rounds 1 to `rounds`: each round's `plans`, then its Begin. Each is stamped
+ * tick 0, which is due in its round's planning however many clash ticks came before (§14.5).
+ */
+export function playerScript(rounds: number, plans: Record<number, CommandBody[]> = {}): Command[] {
+  const out: Command[] = [];
+  for (let round = 1; round <= rounds; round++) {
+    for (const body of [...(plans[round] ?? []), { type: 'beginClash' } as const]) out.push({ round, tick: 0, side: 'player', seq: out.length, ...body });
+  }
+  return out;
 }
 
 /** A plot named as §4.6 names it. */
