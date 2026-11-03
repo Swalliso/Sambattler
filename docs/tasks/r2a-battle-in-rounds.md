@@ -728,7 +728,7 @@ S1 to S4: the data, the colony, the round state machine and the planning command
 
 **S16: powers in rounds** (may run beside S15)
 
-- [ ] T104 [US5] Write `tests/unit/rounds/powers.test.ts` (new) (§6.6, §11.10, §14.5) (A030, A046, A053):
+- [x] T104 [US5] Write `tests/unit/rounds/powers.test.ts` (new) (§6.6, §11.10, §14.5) (A030, A046, A053):
   - a power is refused in planning, the aftermath and `ended`;
   - it fires on the clash's first tick, during the muster, and hits the merged units (#25);
   - a second use in the same clash is refused, and nothing carries to the next clash;
@@ -739,10 +739,10 @@ S1 to S4: the data, the colony, the round state machine and the planning command
   - Rhizome Tithe is refused with `notInRoundsYet`;
   - the auto policy is deterministic and thinks every 20 ticks of the clash clock from its first tick;
   - Cordis's merge radius of 2.0 widens the muster's reach, and its knit-time bonus acts only after the muster.
-- [ ] T105 [US5] Build powers in `src/sim/rounds/powers.ts` (new) (§6.6, §11.10, §14.5) (A046, A053)
+- [x] T105 [US5] Build powers in `src/sim/rounds/powers.ts` (new) (§6.6, §11.10, §14.5) (A046, A053)
   - `powerUsed` resets at the arrival, and the refusals are T104's. Burst and Bloom keep their effects. The Tithe is a stand-in (Call 19). Clash commands still queued when a clash ends are dropped (Call 9).
   - The auto policy: Burst fires at the best point worth at least 180 damage, emplacements included; Bloom at 2 or more trios, or one blocked.
-- [ ] T106 [US5] Wire powers into `src/sim/rounds/step.ts` (clash steps 2 and 4) and `src/sim/rounds/round.ts` (the arrival's reset) (§14.6)
+- [x] T106 [US5] Wire powers into `src/sim/rounds/step.ts` (clash steps 2 and 4) and `src/sim/rounds/round.ts` (the arrival's reset) (§14.6)
 - [ ] T107 [US5] Measure R2-Q7: Puppet Bloom's trios available per clash for Cordis's starter kits, over 40 seeds against Mold and the Baron, with `npm run sim -- --rounds --commander cordis --power-policy auto`. Record the median in `docs/balance-backlog.md` beside R1's (0 at 300 and 600 gold, 1 from 900), with the recommendation for R2b's knit content if it's below 1 (§11.10, §12.4) (A057, A096)
 - [ ] T108 [US5] Write `tests/browser/rounds/commanders.test.ts` (new): Q aims during a paused muster and fires on the next tick; the button then shows "used this clash"; Q again is refused with a callout; the next clash allows it again; no tooltip mentions a cooldown (§6.6, §10.2, §10.3)
 - [ ] T109 [US5] Build the power's controls in `src/app/rounds/battleView.ts` and `src/app/rounds/phases/clash.ts`: Ready, Aiming, Next tick, Used this clash, and unlit outside a clash. The reticle previews Burst's targets and damage, and Bloom's trios. Q is refused outside a clash or once spent (§6.6, §10.2, §10.3)

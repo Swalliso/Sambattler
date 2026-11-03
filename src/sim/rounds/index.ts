@@ -12,6 +12,7 @@ export type { RoundLogEntry, RoundSummary } from './summary.ts';
 export { runHeadless } from './headless.ts';
 export type { HeadlessOptions, HeadlessResult, HeadlessUntil } from './headless.ts';
 export { queueCommand, commandStamp } from './commands.ts';
+export { aimedLane, autoPowerTarget, bestBloom, bloomTrios, burstPreview, powerOf, powerProblem } from './powers.ts';
 export type { QueuedCommand } from './commands.ts';
 export { legalPlots, plantProblem, priceOf, sellValue } from './planning.ts';
 export { inKit, kitOf } from './kit.ts';

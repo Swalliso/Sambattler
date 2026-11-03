@@ -10,6 +10,17 @@ import type { RoundSession } from '../session.ts';
 export const STEP_MS = 50;
 const MAX_STEPS = 12;
 
+/** `powerProblem`'s reasons in the callout's words, after the power's name (§6.6, §10.3, R2-Q11). */
+export const POWER_REFUSALS: Record<string, string> = {
+  wrongPhase: 'works only in a clash',
+  powerUsed: 'is used this clash',
+  laneEnded: "this lane's clash is over",
+  notInRoundsYet: 'waits for the run in rounds',
+  needsTarget: 'needs a point on the field',
+  offField: 'needs a point on the field',
+  mergingOff: 'needs merging, which is off in this battle',
+};
+
 export class ClashPhase {
   private acc = 0;
 
