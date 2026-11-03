@@ -37,7 +37,7 @@ function paid(s: BattleState): Record<Side, { income: number; interest: number }
 
 describe("income at a round's opening (§4.7 step 5, §6.2, §14.6 opening step 2)", () => {
   it('pays nothing in round 1, where starting gold takes its place, and a stipend of 100 from round 2', () => {
-    const first = createBattle(content, makeRoundConfig(content, { seed: 1 }));
+    const first = createBattle(content, makeRoundConfig(content, { seed: 1, enemy: 'human' }));
     expect([first.sides.player.gold, first.sides.enemy.gold, first.events.filter((e) => e.t === 'income' || e.t === 'interest')]).toEqual([300, 300, []]);
     const s = opened({ player: { gold: 0 }, enemy: { gold: 0 } });
     expect(paid(s)).toEqual({ player: { income: 100, interest: 0 }, enemy: { income: 100, interest: 0 } });

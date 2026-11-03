@@ -525,7 +525,7 @@ S1 to S4: the data, the colony, the round state machine and the planning command
 
 **S10a: the general plans first, and the bots**
 
-- [ ] T065 [US2] Write `tests/unit/rounds/ai.test.ts` (new) for the planning turn (§7.1–§7.3, §7.9, §15.7 Planning, AI) (A043, A045, A047, A070):
+- [x] T065 [US2] Write `tests/unit/rounds/ai.test.ts` (new) for the planning turn (§7.1–§7.3, §7.9, §15.7 Planning, AI) (A043, A045, A047, A070):
   - a plan is a function of its view: two states that differ only in the player's current colony give identical commands and the same ai-stream position;
   - round 1's opener comes first, skipping what it can't afford, then weighted picks × doctrine;
   - economy is × 1.5 in rounds 1–2 and × 0.3 from round 7; the Mortar is × 2 only after a lost round, not a drawn one;
@@ -536,16 +536,16 @@ S1 to S4: the data, the colony, the round state machine and the planning command
   - merging switches off on its swarm buildings when Slayers made up more than 25% of the supply you fielded last round (from `fielded`), and stays on at 20%;
   - `generalPlanned` fires, and `ai.plans[round]` holds the plan;
   - bots: a bot plans after the general, then queues `beginClash`; a fixed-weight bot's plan is unchanged when the general's changes; `bot:mono:<id>` fills its plots; limits read `afterRound`.
-- [ ] T066 [US2] Build `planningView(state, side)` in `src/sim/rounds/ai/view.ts` (new), the only thing a planner may read (§7.1, §7.2, §7.5)
+- [x] T066 [US2] Build `planningView(state, side)` in `src/sim/rounds/ai/view.ts` (new), the only thing a planner may read (§7.1, §7.2, §7.5)
   - Every side sees its own state and the round.
   - The enemy side sees the player only through `state.rounds[]` (§7.1).
   - A player-side planner also sees the general's current colony and `formationOf(state, 'enemy')`, as a player does (§7.5). Fixed-weight bots ignore that part; `bot:answer` reads it (T121).
-- [ ] T067 [US2] Build §7.3's scores in `src/sim/rounds/ai/formationScore.ts` (new): Call 11's back-line term, noise of ±0.5 from the side's ai stream, ties to the front rank then the lower file, building ties by id, and the lane rule reading `FieldedSquad.lane` (§7.3) (A043, A047)
-- [ ] T068 [US2] Build `planTurn(state, side)` in `src/sim/rounds/ai/controller.ts` (new): step 1, a due doctrine change (T099 fills it in); step 2, the buy loop with placement; step 3, the merge toggles (§7.1, §7.2, §14.6 opening steps 5 and 7) (A045, A070)
+- [x] T067 [US2] Build §7.3's scores in `src/sim/rounds/ai/formationScore.ts` (new): Call 11's back-line term, noise of ±0.5 from the side's ai stream, ties to the front rank then the lower file, building ties by id, and the lane rule reading `FieldedSquad.lane` (§7.3) (A043, A047)
+- [x] T068 [US2] Build `planTurn(state, side)` in `src/sim/rounds/ai/controller.ts` (new): step 1, a due doctrine change (T099 fills it in); step 2, the buy loop with placement; step 3, the merge toggles (§7.1, §7.2, §14.6 opening steps 5 and 7) (A045, A070)
   - Its commands run at once through `planning.ts`'s executors and go to the log; then `generalPlanned`, and the plan goes in `ai.plans`.
   - The enemy plans at the opening's step 5, a player-side bot or general at step 7, which queues `beginClash`.
   - A single battle's general buys only its listed weights. `maxOwned` and `afterRound` apply, the bank reserve is 0, and a refused AI command counts in `rejectedCommands`.
-- [ ] T069 [US2] Build the profiles in `src/sim/rounds/ai/profiles.ts` (new): generals and bots read from `data/generals.json` and `data/bots.json`, with limits read in rounds and `fixedWeights`. `placement` is ignored, and rush and turtle are weight profiles. `bot:mono:<id>` opens with as many as its gold buys, then refills each round (§7.1, §7.2) (A044, A052)
+- [x] T069 [US2] Build the profiles in `src/sim/rounds/ai/profiles.ts` (new): generals and bots read from `data/generals.json` and `data/bots.json`, with limits read in rounds and `fixedWeights`. `placement` is ignored, and rush and turtle are weight profiles. `bot:mono:<id>` opens with as many as its gold buys, then refills each round (§7.1, §7.2) (A044, A052)
 
 **S10b: the general's checks, the first round golden and step 3**
 

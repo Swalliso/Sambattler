@@ -5,6 +5,7 @@ import type { Content } from '../../data/registry.ts';
 import type { RoundScenarioDef } from '../../data/schema.ts';
 import { parseController } from '../create.ts';
 import { seedStream } from '../rng.ts';
+import { resolveProfile } from './ai/profiles.ts';
 import { basePlots, colonyPlots } from './colony.ts';
 import { buildRoundLibrary, compileRoundRules, compileRoundSides } from './compile.ts';
 import { collectRoundEffects, resolveStat } from './effects.ts';
@@ -136,7 +137,7 @@ function newBattle(content: Content, config: BattleConfig): BattleState {
       powerUsed: false,
       draftsOpened: 0,
     };
-    if (sc.controller.kind !== 'human') st.ai = { profileId: `${sc.controller.kind}:${sc.controller.id}`, plans: [] };
+    if (sc.controller.kind !== 'human') st.ai = resolveProfile(content, sc.controller, sc);
     return st;
   };
   const state: BattleState = {

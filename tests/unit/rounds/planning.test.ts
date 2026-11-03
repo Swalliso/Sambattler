@@ -235,10 +235,11 @@ describe('the kit (§4.4, §7.8, §18.1 D45, plan Call 29)', () => {
 
   it("keeps the general on its maxOwned (§7.8): at most 3 Truffle Cellars, while yours have no limit", () => {
     const cellars = [1, 2].map((file) => ({ building: 'truffleCellar', ...front(file) }));
-    const s = createFromScenario(content, scenario({ player: { gold: 1000 }, enemy: { colony: cellars } }), { enemy: 'general:mother-mold' });
+    // with no gold the general's own turn plants nothing, so its plants run by hand here
+    const s = createFromScenario(content, scenario({ player: { gold: 1000 }, enemy: { colony: cellars, gold: 0 } }), { enemy: 'general:mother-mold' });
+    s.sides.enemy.gold = 1000;
     expect(s.sides.enemy.kit.find((c) => c.building === 'truffleCellar')).toEqual({ building: 'truffleCellar', maxOwned: 3 });
     expect(s.sides.player.kit.find((c) => c.building === 'truffleCellar')).toEqual({ building: 'truffleCellar' });
-    // the general's turn runs its plants at once in the round's opening (T068); here they run by hand
     const third = plotAt(s, 'enemy', front(3)), fourth = plotAt(s, 'enemy', front(4));
     expect(plantAtOnce(s, 'enemy', 'truffleCellar', third)).toBeNull();
     expect([plantProblem(s, 'enemy', 'truffleCellar', fourth), legalPlots(s, 'enemy', 'truffleCellar')]).toEqual(['maxOwned', []]);
