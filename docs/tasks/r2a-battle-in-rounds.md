@@ -493,7 +493,7 @@ S1 to S4: the data, the colony, the round state machine and the planning command
   - Heartcap damage dealt and taken after the cap and the storm; gold by source summing to the income;
   - buildings planted and sold (sold after fielding counted apart); power use; the most Elders alive at once; the most gold banked; M6-Q1's feat stats;
   - the report's gold rows add up.
-- [ ] T057 [US2] Build stats per round in `src/sim/rounds/stats.ts` (new) and `summarize` in `src/sim/rounds/summary.ts` (new) (§5.7, §14.4) (A064, A175)
+- [x] T057 [US2] Build stats per round in `src/sim/rounds/stats.ts` (new) and `summarize` in `src/sim/rounds/summary.ts` (new) (§5.7, §14.4) (A064, A175)
   - The stats are §5.7's list, plus M6-Q1's: economy buildings planted, the most economy buildings on loam at once, buildings sold after fielding, each Heartcap's lowest HP fraction, and damage by unit tag in the round a Heartcap fell.
   - The summary gives round, phase, both Heartcaps, `dealt`, `roundLog`, gold, plots planted of owned, and the stats.
 

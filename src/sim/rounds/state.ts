@@ -284,6 +284,8 @@ export interface ClashState {
   lanes: LaneLock[];
   /** What each side fields this round, recorded at Begin as it stands after the muster; scoring puts it in the round's `RoundResult` (T051). */
   fielded: Record<Side, FieldedSquad[]>;
+  /** The most Elders each side has had alive at once in this clash, the muster's included, for the round's stats (§5.7). */
+  maxElders: Record<Side, number>;
 }
 
 export interface LaneResult {
@@ -310,6 +312,8 @@ export interface RoundResult {
   /** Per side and building entity: damage dealt, and units left standing at the clash's end, for inspect and the report (§5.7, A064). */
   damageByBuilding: Record<Side, Record<number, number>>;
   survivorsByBuilding: Record<Side, Record<number, number>>;
+  /** Each side's figures for the round (§5.7), closed once its `roundWon` triggers have fired. */
+  stats: Record<Side, RoundStats>;
 }
 
 /** One entry of the fielded record, which the counter cycle (§7.4) and the intel file (§7.6) read. */
@@ -401,30 +405,56 @@ export interface SideState {
   ai?: AiState;
 }
 
-/** A side's counters for the battle (§5.7). T057 keeps them by round and adds M6-Q1's feat stats. */
-export interface SideStats {
+/**
+ * A side's figures for one round (§5.7, A064): its share of each counter, and its own most and least. Each
+ * round's is kept in its `RoundResult`, and a battle's figure is the sum of its rounds', or their most or
+ * least (`foldRounds` in `stats.ts`). Ids and numbers only (R2-Q8).
+ */
+export interface RoundStats {
+  /** Merges by the tier they made, at the muster and after it. */
   merges: { '2': number; '3': number };
   damageDealt: number;
-  /** Building entity id → damage dealt by its units, clouds and bursts included, and its type, for reports. */
+  /** Building entity id → damage dealt by its units, clouds and bursts included. */
   damageByBuilding: Record<string, number>;
-  buildingTypes: Record<string, string>;
-  /** Attacker kind (unit id or tower building id) → damage dealt. */
+  /** Attacker kind (unit id, tower building id or `sporeCloud`) → damage dealt. */
   damageBySource: Record<string, number>;
+  /** Unit tag → damage dealt by the buildings whose squads carry it (M6-Q1); a tower's emplacement has no tags. */
+  damageByTag: Record<string, number>;
+  /** Heartcap damage after the storm and the cap, before the HP floor (§6.7, R2-Q11). */
+  heartcapDamageDealt: number;
   heartcapDamageTaken: number;
   /** By source (§6.2): the opening's income, and effects' gold paid at once. Pending gold counts when it's paid. */
   goldEarned: { stipend: number; economy: number; comeback: number; interest: number; pending: number; effects: number };
+  /** Building entity id → its economy gold. */
   goldByBuilding: Record<string, number>;
   healingDone: number;
   buildingsPlanted: number;
   buildingsSold: number;
+  /** M6-Q1: economy buildings planted, and buildings sold after they had fielded (selling in the phase planted is free, §4.4). */
+  economyPlanted: number;
+  soldAfterFielding: number;
   unitsLost: number;
-  maxEldersAlive: number;
-  maxGoldBanked: number;
   rejectedCommands: number;
-  /** Commander power use, for a side with a power: uses, damage dealt and trios merged. */
+  /** The most Elders alive at once. */
+  maxEldersAlive: number;
+  /** The gold banked at Begin, which interest reads (§6.2). */
+  maxGoldBanked: number;
+  /** M6-Q1: the most economy buildings on loam plots at once, as Begin fields the colony. */
+  maxEconomyOnLoam: number;
+  /** M6-Q1: the side's own Heartcap's lowest HP fraction, in basis points of its max HP, as the round leaves it. */
+  lowestHeartcapBp: number;
+  /** Commander power use, for a side with a power: uses, damage dealt and trios merged (§6.6). */
   powerUses?: number;
   powerDamage?: number;
   powerMerges?: number;
+}
+
+/** A side's figures for the battle so far (§5.7): the systems count into it as they run, and each round's record closes from it. */
+export interface SideStats extends RoundStats {
+  /** Building entity id → its building's id, for reports: a sold building keeps its entry. */
+  buildingTypes: Record<string, string>;
+  /** M6-Q1: the side's damage by unit tag in the round a Heartcap fell, empty without a Rout. */
+  routRoundDamageByTag: Record<string, number>;
 }
 
 export type CommandBody =

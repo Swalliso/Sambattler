@@ -81,13 +81,14 @@ export function mergeTriosNow(state: BattleState, trios: UnitState[][]): void {
   if (elders) noteElders(state);
 }
 
-/** Records the most Elders each side has had alive at once. */
+/** Records the most Elders each side has had alive at once, in the battle and in this clash (§5.7). */
 function noteElders(state: BattleState): void {
   for (const side of SIDES) {
     let n = 0;
     for (const u of state.units) if (u.side === side && u.tier === 3) n++;
-    const st = state.stats[side];
+    const st = state.stats[side], clash = state.clash;
     if (n > st.maxEldersAlive) st.maxEldersAlive = n;
+    if (clash && n > clash.maxElders[side]) clash.maxElders[side] = n;
   }
 }
 

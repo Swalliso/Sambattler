@@ -14,6 +14,7 @@ import { addUnit } from './create.ts';
 import { collectRoundEffects, fireTriggers } from './effects.ts';
 import { formationOf } from './formation.ts';
 import type { MusterTrio, SquadPlan } from './formation.ts';
+import { closeRound, emptyRoundStats } from './stats.ts';
 import { SIDES, other } from './state.ts';
 import type { BattleState, ClashState, FieldedSquad, LaneResult, RoundResult, Side, SquadState } from './state.ts';
 import { payIncome } from './systems/economy.ts';
@@ -40,6 +41,7 @@ export function newClash(state: BattleState): ClashState {
       ended: false, endTick: 0, winner: null, capped: false, survivors: { player: 0, enemy: 0 }, damageSupply: { player: 0, enemy: 0 }, margin: 0,
     })),
     fielded: { player: [], enemy: [] },
+    maxElders: { player: 0, enemy: 0 },
   };
 }
 
@@ -160,13 +162,14 @@ function fieldedOf(state: BattleState, side: Side): FieldedSquad[] {
 
 /**
  * The clash's end (§4.7 step 17, §14.6 clash step 13), on the tick its last lane ends: the round is scored
- * from the lanes' locks, the round's winner fires its `roundWon` triggers (none after a drawn round), and
- * the battle's end is checked, which sets `outcome`. Either way the battle enters the aftermath, whose step
- * ends the battle or opens the next round.
+ * from the lanes' locks, the round's winner fires its `roundWon` triggers (none after a drawn round), the
+ * round's stats close (§5.7), and the battle's end is checked, which sets `outcome`. Either way the battle
+ * enters the aftermath, whose step ends the battle or opens the next round.
  */
 export function endClash(state: BattleState): void {
   const { winner } = roundOutcome(scoreRound(state).damage);
   if (winner) fireTriggers(state, winner, 'roundWon', { x: 0, y: 0, lane: -1, sourceBuildingId: 0 });
+  closeRound(state);
   const outcome = battleOutcome(state);
   if (outcome) state.outcome = outcome;
   state.phase = 'aftermath';
@@ -178,7 +181,8 @@ export function endClash(state: BattleState): void {
  * damage-taken modifiers; each Heartcap's sum over the lanes it lost is then capped and applied, down to 0,
  * with `heartcapDamaged`. The round's `RoundResult` records each side's damage capped, before the HP floor
  * (R2-Q11), and each lane's before the cap (A068). The clash's fielded record moves into it, with this
- * round's damage and survivors by building (plan Call 13, A064).
+ * round's damage and survivors by building (plan Call 13, A064). Its stats close in `endClash`, once its
+ * `roundWon` triggers have fired (`closeRound`).
  */
 export function scoreRound(state: BattleState): RoundResult {
   const clash = state.clash!, rules = state.rules;
@@ -205,6 +209,7 @@ export function scoreRound(state: BattleState): RoundResult {
     if (amount === 0) continue;
     ss.heartcapHp = Math.max(0, ss.heartcapHp - amount);
     state.stats[s].heartcapDamageTaken += amount;
+    state.stats[other(s)].heartcapDamageDealt += amount;
     state.events.push({ t: 'heartcapDamaged', side: s, amount, stormBp, capped: cut });
   }
   const result: RoundResult = {
@@ -213,6 +218,7 @@ export function scoreRound(state: BattleState): RoundResult {
     fielded: clash.fielded,
     damageByBuilding: { player: roundDamageByBuilding(state, 'player'), enemy: roundDamageByBuilding(state, 'enemy') },
     survivorsByBuilding: { player: survivorsByBuilding(state, 'player'), enemy: survivorsByBuilding(state, 'enemy') },
+    stats: { player: emptyRoundStats(), enemy: emptyRoundStats() },
   };
   clash.fielded = { player: [], enemy: [] };
   state.rounds.push(result);
