@@ -8,10 +8,10 @@ SPEC v2, broken into task lists that later sessions work through one row of a Se
 
 | Now | Session | Waits on |
 |---|---|---|
-| 1 | **R2b S0** in [r2b-run-in-rounds.md](r2b-run-in-rounds.md), the run in rounds' plan (T001–T005) | S21b ([#109](https://github.com/Swalliso/Sambattler/pull/109)) merged. The user agreed in S21 to start R2b once S21 and S21b have merged |
-| 2 | **R2b S1** onward, by R2b's Sessions table | S0's plan agreed (T005) |
+| 1 | **R2b S1** in [r2b-run-in-rounds.md](r2b-run-in-rounds.md), the run plays rounds with lives (T006–T027, T164) | Nothing: S0 ([#111](https://github.com/Swalliso/Sambattler/pull/111)) settled its decisions. It waits for the user to start it |
+| 2 | **R2b S1b**, then S2 to S4, by R2b's Sessions table | S1 merged. S1b is docs only and runs beside S2 to S4 |
 
-R1, R4a, records-1 and R2a are done. R2a's playtest gate passed on 2026-11-03 (S21, [#108](https://github.com/Swalliso/Sambattler/pull/108)), and S21b ([#109](https://github.com/Swalliso/Sambattler/pull/109)) lands the fixes it found. The user settled T125 the same day: the pace at 100 damage a supply, and R2a's bands. R2b's sessions are in its Sessions table.
+R1, R4a, records-1 and R2a are done. R2a's playtest gate passed on 2026-11-03 (S21, [#108](https://github.com/Swalliso/Sambattler/pull/108)), and S21b ([#109](https://github.com/Swalliso/Sambattler/pull/109)) fixed what it found. The user settled T125 the same day: the pace at 100 damage a supply, and R2a's bands. R2b's plan was agreed at its S0 ([#111](https://github.com/Swalliso/Sambattler/pull/111)), and its sessions are in its Sessions table.
 
 ## Milestones
 
