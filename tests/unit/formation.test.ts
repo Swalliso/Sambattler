@@ -18,7 +18,7 @@ import { clashTick, findUnit } from '../../src/sim/world.ts';
 import { ROOT } from '../../tools/lib/content.ts';
 import { colonyPlots, openOrder } from '../../src/sim/colony.ts';
 import { hashState, restore, snapshot } from '../../src/sim/index.ts';
-import { plant as plantAtOnce, sell as sellAtOnce, toggleMerge as toggleAtOnce } from '../../src/sim/planning.ts';
+import { plant as plantAtOnce, sell as sellAtOnce, toggleMerge as toggleAtOnce, upgrade as upgradeAtOnce } from '../../src/sim/planning.ts';
 import { content, planningState, plotAt } from '../helpers.ts';
 
 /** A map's geometry with the clash check's 6-tile gap between the front ranks (plan call 19). */
@@ -637,7 +637,8 @@ describe("formationOf and mergePreview on a battle's state (SPEC §4.6, §5.6, �
   ];
   /** The change, made as its command makes it: at once, as the general's turn runs its commands in the opening (T068). */
   const make = (s: BattleState, side: Side, c: PlanChange): string | null =>
-    'plant' in c ? plantAtOnce(s, side, c.plant.buildingId, c.plant.plot) : 'sell' in c ? sellAtOnce(s, side, c.sell) : toggleAtOnce(s, side, c.toggle.id, c.toggle.on);
+    'plant' in c ? plantAtOnce(s, side, c.plant.buildingId, c.plant.plot) : 'sell' in c ? sellAtOnce(s, side, c.sell)
+      : 'toggle' in c ? toggleAtOnce(s, side, c.toggle.id, c.toggle.on) : upgradeAtOnce(s, side, c.upgrade);
 
   it("builds T020's input from the state: the squads and the muster the plain records give", () => {
     const s = colony();

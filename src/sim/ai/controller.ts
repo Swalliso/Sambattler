@@ -5,11 +5,11 @@
 // `planning.ts`'s executors, run at once, since a queued enemy plan is refused (plan Call 8), so it stamps,
 // logs and counts its own refusals as the queue does. Its plan for the round goes in `ai.plans` (plan Call
 // 12). An adaptive general's counter cycle (`counter.ts`) is step 1, and X8's two default-off knobs are read
-// here (§7.2).
+// here (§7.2). Once no plot is free, its gold buys upgrades (§6.1, #67).
 import { nextFloat } from '../rng.ts';
 import { commandStamp, queueCommand } from '../commands.ts';
 import { executeDraft } from '../draft.ts';
-import { plant, sell, sellValue, toggleMerge } from '../planning.ts';
+import { plant, sell, sellValue, toggleMerge, upgrade, upgradeCost } from '../planning.ts';
 import { other } from '../state.ts';
 import type { AiPlan, AiState, AiWeight, BattleState, BuildingState, Command, CommandBody, Side } from '../state.ts';
 import { roundOutcome } from '../systems/victory.ts';
@@ -20,7 +20,7 @@ import { planningView } from './view.ts';
 import type { PlanningView } from './view.ts';
 
 /** The commands a planner runs at once. */
-export type PlanBody = Extract<CommandBody, { type: 'plant' | 'sell' | 'toggleMerge' | 'draftPick' }>;
+export type PlanBody = Extract<CommandBody, { type: 'plant' | 'sell' | 'toggleMerge' | 'upgrade' | 'draftPick' }>;
 
 /**
  * The side's planning turn (§7.2), which `openRound` runs for each AI side. `income` is what the round's
@@ -37,17 +37,22 @@ export function planTurn(state: BattleState, side: Side, income = 0): void {
   };
   // 1. a due counter, which may sell for room (§7.4); round 1's opening doctrine came with the profile (§7.6)
   const counter = runCycle(planningView(state, side), ai, sellNow);
-  // 2. buy and plant in a loop, then X8's replace-when-full when it's on
+  // 2. buy and plant in a loop, then X8's replace-when-full when it's on, then gold upgrades once no plot is free
   const planted = buy(state, side, ai);
   if (ai.counter && state.library.balance.rounds.ai.replaceWhenFull) replaceWhenFull(state, side, sellNow, planted);
+  const upgraded = buyUpgrades(state, side);
   // 3. set the merge toggles
   setToggles(state, side);
   const plan: AiPlan = {
-    round: state.round, planted: planted.map((b) => ({ building: b.buildingId, plot: b.plot })), sold, income, banked: state.sides[side].gold,
-    ...(counter ? { counter: counter.kind } : {}),
+    round: state.round, planted: planted.map((b) => ({ building: b.buildingId, plot: b.plot })), sold,
+    ...(upgraded.length ? { upgraded: upgraded.map((b) => ({ building: b.buildingId, plot: b.plot })) } : {}),
+    income, banked: state.sides[side].gold, ...(counter ? { counter: counter.kind } : {}),
   };
   ai.plans.push(plan);
-  state.events.push({ t: 'generalPlanned', side, planted: planted.map((b) => b.id), sold: sold.map((x) => x.building), ...(counter ? { counter: counter.kind } : {}) });
+  state.events.push({
+    t: 'generalPlanned', side, planted: planted.map((b) => b.id), sold: sold.map((x) => x.building),
+    ...(upgraded.length ? { upgraded: upgraded.map((b) => b.id) } : {}), ...(counter ? { counter: counter.kind } : {}),
+  });
   if (side === 'player') queueCommand(state, { ...commandStamp(state), side, type: 'beginClash' });
 }
 
@@ -60,7 +65,8 @@ export function runAtOnce(state: BattleState, side: Side, body: PlanBody): strin
   state.log.push(cmd);
   const problem = body.type === 'plant' ? plant(state, side, body.buildingId, body.plot)
     : body.type === 'sell' ? sell(state, side, body.entityId)
-    : body.type === 'toggleMerge' ? toggleMerge(state, side, body.entityId, body.on) : executeDraft(state, side, body);
+    : body.type === 'toggleMerge' ? toggleMerge(state, side, body.entityId, body.on)
+    : body.type === 'upgrade' ? upgrade(state, side, body.entityId) : executeDraft(state, side, body);
   if (problem) {
     state.events.push({ t: 'commandRejected', side, seq: cmd.seq, reason: problem });
     state.stats[side].rejectedCommands++;
@@ -171,6 +177,33 @@ function replaceWhenFull(state: BattleState, side: Side, sellNow: (b: BuildingSt
     .sort((a, b) => weigh(b) - weigh(a) || view.cards[b]!.cost - view.cards[a]!.cost || (a < b ? -1 : a > b ? 1 : 0));
   if (!card || !sellNow(low)) return;
   plantBest(state, side, planningView(state, side), card, planted);
+}
+
+/**
+ * Gold upgrades (§6.1, #67), once no plot of its colony is free: the spawner its buying weights rate highest
+ * first (its doctrine's and counter's multipliers and X8's lean included), ties to the dearer card, then plot
+ * order. It keeps no reserve (#29), so it goes on while its gold reaches the next, and stops at the first it
+ * can't afford, as a target out of reach stops its buying (§7.2). It draws on no stream. It returns what it upgraded.
+ */
+function buyUpgrades(state: BattleState, side: Side): BuildingState[] {
+  const view = planningView(state, side);
+  if (freePlots(view).length > 0) return [];
+  const answer = leanKind(view);
+  const listed = new Map(view.ai!.weights.map((w) => [w.building, w]));
+  const weigh = (id: string) => { const w = listed.get(id); return w ? weightOf(view, w, answer) : 0; };
+  const cost = (b: BuildingState) => view.cards[b.buildingId]!.cost;
+  const order = view.buildings
+    .filter((b) => !b.upgrade && view.cards[b.buildingId]?.kind === 'spawner')
+    .sort((a, b) => weigh(b.buildingId) - weigh(a.buildingId) || cost(b) - cost(a) || a.plot - b.plot || a.id - b.id);
+  const out: BuildingState[] = [];
+  let gold = view.gold;
+  for (const b of order) {
+    const price = upgradeCost(cost(b), view.upgradeCostPct);
+    if (gold < price || runAtOnce(state, side, { type: 'upgrade', entityId: b.id })) break;
+    gold -= price;
+    out.push(state.buildings.find((x) => x.id === b.id)!);
+  }
+  return out;
 }
 
 /** A weighted pick from its stream (§7.2), in the profile's order, by building id; null when nothing weighs anything. */

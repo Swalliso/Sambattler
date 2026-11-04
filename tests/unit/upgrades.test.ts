@@ -54,10 +54,10 @@ describe('the upgrade command (§6.1, §14.5)', () => {
     const s = full();
     const burrow = buildingAt(s, 'player', front(1));
     expect(upgradePrice(s, 'player', 'sporelingBurrow')).toBe(Math.floor((110 * PCT) / 100));
-    const price = upgradePrice(s, 'player', 'sporelingBurrow');
+    const price = upgradePrice(s, 'player', 'sporelingBurrow'), gold = s.sides.player.gold;
     const events = upgrade(s, 'player', burrow.id);
     expect(events).toContainEqual({ t: 'buildingUpgraded', id: burrow.id, side: 'player', price });
-    expect(s.sides.player.gold).toBe(1000 - price);
+    expect(s.sides.player.gold).toBe(gold - price);
     expect(burrow.upgrade).toEqual({ paid: price, fielded: false });
     expect([s.stats.player.upgradesBought, s.stats.player.rejectedCommands]).toEqual([1, 0]);
   });
@@ -72,7 +72,7 @@ describe('the upgrade command (§6.1, §14.5)', () => {
     expect(rejected(upgrade(s, 'player', burrow.id))).toEqual(['alreadyUpgraded']);
     s.sides.player.gold = upgradePrice(s, 'player', 'gillNest') - 1;
     expect(rejected(upgrade(s, 'player', buildingAt(s, 'player', back(1)).id))).toEqual(['notEnoughGold']);
-    expect(s.stats.player.rejectedCommands).toBe(4);
+    expect(s.stats.player.rejectedCommands).toBe(5);
 
     const part = full({ colony: FULL.slice(0, 7) });
     expect(colonyFull(part, 'player')).toBe(false);
@@ -104,8 +104,10 @@ describe('the upgrade command (§6.1, §14.5)', () => {
 describe('an upgraded squad arrives Bloomed (§6.1, §5.5, §5.6)', () => {
   it('every unit arrives at tier 2 from the next Begin, for the rest of the battle', () => {
     const s = full();
-    const burrow = buildingAt(s, 'player', front(1));
+    const burrow = buildingAt(s, 'player', front(1)), other = buildingAt(s, 'player', front(3));
+    // with their toggles off, the squads stand as they arrived
     toggle(s, 'player', burrow.id, false);
+    toggle(s, 'player', other.id, false);
     upgrade(s, 'player', burrow.id);
     const bloomed = s.compiled.player.units.sporeling!.tiers[1]!;
     for (let round = 0; round < 2; round++) {
@@ -115,7 +117,7 @@ describe('an upgraded squad arrives Bloomed (§6.1, §5.5, §5.6)', () => {
       for (const u of units) expect([u.tier, u.maxHp, u.supply]).toEqual([2, bloomed.hp, bloomed.supply]);
       expect(s.squads.find((q) => q.building === burrow.id)!.supply).toBe(8 * bloomed.supply);
       // the other Burrow, not upgraded, fields Sporelings at tier 1
-      expect(s.units.filter((u) => u.sourceBuildingId === buildingAt(s, 'player', front(3)).id).every((u) => u.tier === 1)).toBe(true);
+      expect(s.units.filter((u) => u.sourceBuildingId === other.id).map((u) => u.tier)).toEqual(Array(8).fill(1));
       finishRound(s);
       step(s);
       expect(s.phase).toBe('planning');

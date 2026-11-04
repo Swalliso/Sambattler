@@ -115,6 +115,7 @@
     "enemyIncomeMult": 1.0,
     "sellRefundPlanted": 1.0,
     "draftRounds": [2, 4, 6],
+    "upgradeCostPct": 200,
     "lives": 3,
     "plotGrowth": { "perWin": 1, "max": 4 },
     "ai": {

@@ -383,6 +383,8 @@ export interface BuildingState {
   /** True once it has been through a clash: selling it then refunds 60% (§4.4). */
   fielded: boolean;
   mergeOn: boolean;
+  /** A gold upgrade (§6.1, #67): its squad arrives Bloomed. What it cost, and whether it has fielded, which its refund reads. */
+  upgrade?: { paid: number; fielded: boolean };
 }
 
 /** A squad in this clash (§4.6). */
@@ -530,6 +532,8 @@ export interface AiPlan {
   round: number;
   planted: { building: string; plot: number }[];
   sold: { building: string; plot: number }[];
+  /** The spawners it upgraded with gold once its colony was full (§6.1), in order; absent when none. */
+  upgraded?: { building: string; plot: number }[];
   income: number;
   banked: number;
   /** The counter that activated in this round's planning (§7.4), if one did. */
@@ -653,6 +657,8 @@ export interface RoundStats {
   /** M6-Q1: economy buildings planted, and buildings sold after they had fielded (selling in the phase planted is free, §4.4). */
   economyPlanted: number;
   soldAfterFielding: number;
+  /** Gold upgrades bought (§6.1), present once the side has bought one. */
+  upgradesBought?: number;
   unitsLost: number;
   rejectedCommands: number;
   /** The most Elders alive at once. */
@@ -682,6 +688,7 @@ export type CommandBody =
   | { type: 'plant'; buildingId: string; plot: number }
   | { type: 'sell'; entityId: number }
   | { type: 'toggleMerge'; entityId: number; on: boolean }
+  | { type: 'upgrade'; entityId: number }
   | { type: 'beginClash' }
   | { type: 'draftPick'; cardId: string }
   | { type: 'draftReroll' }
@@ -703,11 +710,12 @@ export type SimEvent =
   | { t: 'draftOpen'; side: Side; index: number }
   | { t: 'drafted'; side: Side; cardId: string | null; skipped: boolean }
   /** `sold` by building id; `counter` when one activated in this planning (§7.4). */
-  | { t: 'generalPlanned'; side: Side; planted: number[]; sold: string[]; counter?: CounterKind }
+  | { t: 'generalPlanned'; side: Side; planted: number[]; sold: string[]; upgraded?: number[]; counter?: CounterKind }
   // planning
   | { t: 'buildingPlanted'; id: number }
   | { t: 'buildingSold'; id: number; side: Side; refund: number }
   | { t: 'mergeToggled'; id: number; on: boolean }
+  | { t: 'buildingUpgraded'; id: number; side: Side; price: number }
   | { t: 'commandRejected'; side: Side; seq: number; reason: string }
   // the clash
   | { t: 'clashStarted'; round: number; supply: Record<Side, number> }

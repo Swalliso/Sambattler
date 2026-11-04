@@ -167,6 +167,8 @@ export const RoundsSchema = z.object({
   sellRefundPlanted: z.number().min(0).max(1),
   /** R2b's, data only in R2a: the drafts, lives and plot growth (§8.3, §8.5, §4.6). */
   draftRounds: z.array(Round),
+  /** A gold upgrade's price, in percent of its building's cost: once its colony is full, a side's spawner fields Bloomed (§6.1, #67). */
+  upgradeCostPct: z.number().int().positive(),
   lives: z.number().int().positive(),
   plotGrowth: z.object({ perWin: z.number().int().nonnegative(), max: z.number().int().nonnegative() }).strict(),
   /** The planning AI (§7.2, §7.3), and the counter cycle by round (§7.4): in `round`'s planning it reads rounds `from` to `round` − 1. */

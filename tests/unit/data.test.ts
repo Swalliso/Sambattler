@@ -152,7 +152,7 @@ describe('data', () => {
         roundDamageCap: { flat: 750 }, decision: { by: 'shareOfMaxHp' }, interestPer: 10, interestCap: 30,
         sporestorm: { startRound: 5, stepBp: 2000, maxBp: 20000 },
         stipendPerRound: 100, comebackGold: 40, enemyIncomeMult: 1, sellRefundPlanted: 1,
-        draftRounds: [2, 4, 6], lives: 3, plotGrowth: { perWin: 1, max: 4 },
+        draftRounds: [2, 4, 6], upgradeCostPct: 200, lives: 3, plotGrowth: { perWin: 1, max: 4 },
         ai: {
           economyEarly: { beforeRound: 3, mult: 1.5 }, economyLate: { fromRound: 7, mult: 0.3 }, towerAfterLossMult: 2,
           score: { depth: 10, offCentre: 1, besideSame: 2, frontSupport: 3, loam: 8, backThird: 2, noise: 0.5 },
