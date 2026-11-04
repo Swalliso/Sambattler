@@ -5,8 +5,10 @@
 // building costs the same on every plot (§6.3). A card you can't afford is unlit, with a bar filling toward the
 // price and "need N". In a clash the tray takes no clicks, since planting is a planning action, but its
 // tooltips still open: the squad and its unit's stats, strong vs, weak vs and armor, merge perks, and an
-// economy card's rounds to pay for itself. R2a's single battles have no copies to show (D45). Each card
-// carries `data-building` for tests and captures. The card styles and compact fit are v1's tray's.
+// economy card's rounds to pay for itself. R2a's single battles have no copies to show (D45). A draft pick
+// changes the cards in the phase it's made (§8.3): a blueprint's card joins the tray, so it plants at once, and a
+// level or relic redraws the cards it changes. Each card carries `data-building` for tests and captures. The card
+// styles and compact fit are v1's tray's.
 import '../battle.css';
 import type { Content } from '../../data/registry.ts';
 import type { Atlas } from '../../render/atlas.ts';
@@ -151,12 +153,30 @@ export class RoundTray implements HudPart {
   private cards: Card[] = [];
   /** The state last drawn, so a click knows the phase. */
   private state: BattleState;
+  /**
+   * What the cards were made from: the player's compiled side and kit. A draft pick adds a blueprint to the kit and
+   * recompiles the side, with a level's or relic's prices, squads and income (§8.3), so either changing remakes them.
+   */
+  private madeFrom: { compiled: BattleState['compiled'][Side]; kit: number } | null = null;
+  /** False from making the cards until they're fitted: cards made while the tray has no width fit once it has one. */
+  private fitted = false;
 
-  constructor(mount: HTMLElement, hud: HudContext, state: BattleState, private hooks: TrayHooks) {
-    const { content, atlas } = hud;
+  constructor(mount: HTMLElement, private hud: HudContext, state: BattleState, private hooks: TrayHooks) {
     this.state = state;
     this.tip = new AnchoredTip('card-tip', 'above', 'card-tip');
-    trayOrder(content, state.sides.player.kit.map((k) => k.building)).forEach((id, i) => {
+    this.make(state);
+    mount.append(this.el, this.tip.el);
+  }
+
+  /** Your kit's cards in tray order, made again whenever a draft pick changes what they show. */
+  private make(state: BattleState): void {
+    const { content, atlas } = this.hud, hooks = this.hooks;
+    const kit = state.sides.player.kit;
+    this.madeFrom = { compiled: state.compiled.player, kit: kit.length };
+    this.cards = [];
+    this.fitted = false;
+    this.el.replaceChildren();
+    trayOrder(content, kit.map((k) => k.building)).forEach((id, i) => {
       const b = content.buildings[id]!, cb = state.compiled.player.buildings[id]!;
       const key = i < 9 ? `[${i + 1}]` : '';
       const sprite = spriteToCanvas(atlas, b.sprite, 'velvet-bloom');
@@ -183,7 +203,6 @@ export class RoundTray implements HudPart {
     });
     this.el.style.setProperty('--n', String(this.cards.length));
     this.el.style.setProperty('--cols', String(Math.ceil(this.cards.length / 2)));
-    mount.append(this.el, this.tip.el);
   }
 
   /**
@@ -200,10 +219,13 @@ export class RoundTray implements HudPart {
       c.nameEl.classList.add('squeeze');
       if (c.nameEl.scrollWidth > c.nameEl.clientWidth) c.nameEl.classList.add('squeeze-more');
     }
+    this.fitted = true;
   }
 
   update(state: BattleState): void {
     this.state = state;
+    if (state.compiled.player !== this.madeFrom?.compiled || state.sides.player.kit.length !== this.madeFrom.kit) this.make(state);
+    if (!this.fitted && this.el.clientWidth > 0) this.fit();
     const planning = state.phase === 'planning';
     toggleClass(this.el, 'locked', !planning);
     const available = this.hooks.available(), gold = Math.max(0, available), placing = planning ? this.hooks.placing() : null;
