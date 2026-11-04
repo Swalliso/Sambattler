@@ -4,9 +4,7 @@ Updated 2026-11-03, on `docs/r2b-s8-done` (the hub's docs PR into `develop`). Th
 
 ## In short
 
-- **The game on `develop`:** Milestones 1–5 are built, plus the combat rework behind `?proto=rework`.
-  - `main` has M1–M4 and the UI work.
-  - M5 (commanders and powers) is only on `develop` ([#22](https://github.com/Swalliso/Sambattler/pull/22)).
+- **The game on `develop`:** the whole run in rounds since R2b: lives, drafts, relics, commanders, gold upgrades and saves between rounds. `main` still has v1's M1–M4 and the UI work, until the user asks for a release.
 - **The design changed on 2026-10-31.** After the rework's playtest (P3), the user moved the game to **SPEC v2**:
   - battles become rounds: you plan with the clock stopped, then both whole armies clash;
   - the general plans first, and you see its whole army before you plan;
@@ -16,7 +14,7 @@ Updated 2026-11-03, on `docs/r2b-s8-done` (the hub's docs PR into `develop`). Th
   - six core archetypes, with augments and combos.
 
   See [SPEC §0.1](../SPEC.md#01-what-changed-in-v2), [§1.3](../SPEC.md#13-v2-decisions-2026-10-31) and the [P3 notes](playtest-feedback.md#2026-10-31-p3-the-combat-rework-the-user).
-- **SPEC v2 is on `develop`** ([#39](https://github.com/Swalliso/Sambattler/pull/39)). **Nothing in v2 is built yet.** Until milestone R2 lands, the code follows v1: the M5 battle, with the rework's pieces behind `?proto=rework` on the dev site.
+- **SPEC v2 is on `develop`** ([#39](https://github.com/Swalliso/Sambattler/pull/39)). R1 (the clash check) is done, R2a built a battle in rounds and R2b the run in rounds. v1's battle went in R2b's S3, and its last data keys in S12.
 - **The spec is broken into task lists** in [docs/tasks/](tasks/README.md) ([#40](https://github.com/Swalliso/Sambattler/pull/40), on `develop`), spec-kit style: one list per milestone, one session per row of its Sessions table. The decisions each milestone needs from the user are in [clarify.md](tasks/clarify.md), and the problems the breakdown found in SPEC v2 are in [spec-analysis.md](tasks/spec-analysis.md). Lists after R1's are drafts, refreshed when each milestone's plan is agreed.
 - **Milestone R1, the clash check, is done** ([SPEC §16](../SPEC.md#16-milestone-plan)). A headless tool fought whole armies at equal gold, with no rule change, to set squad sizes and check that every strong army has an answer before the round loop is built. At its review gate on 2026-11-02 you took every recommendation (below). **R2a's plan is agreed** (S0, 2026-11-02), **R2a S1 to S13 have merged**, with S7b's and S9b's fixes: US1 (a round's clash, scored) and US2 (a battle in rounds, with the general planning first) are done, a round in which nothing changed replays the last clash exactly, and the first round golden is recorded. S14 ([#95](https://github.com/Swalliso/Sambattler/pull/95)) made `/?scene=rounds` play a whole battle in rounds, from round 1's planning to the report, and your rough playtest (S14b) found the loop working. **S15 ([#99](https://github.com/Swalliso/Sambattler/pull/99)), the counter cycle, S16 ([#98](https://github.com/Swalliso/Sambattler/pull/98)), the power once per clash, S17 ([#102](https://github.com/Swalliso/Sambattler/pull/102)), the round tools, S18 ([#104](https://github.com/Swalliso/Sambattler/pull/104)), the round guardrails and the answer bot, S19 ([#101](https://github.com/Swalliso/Sambattler/pull/101)), the playtest's measures, and S20 ([#106](https://github.com/Swalliso/Sambattler/pull/106)), the verification steps and the As built, have merged. At S18's T125 you set the pace at 100 damage a supply (was 25) and R2a's bands. Your playtest passed R2a's gate on 2026-11-03 (S21, [#108](https://github.com/Swalliso/Sambattler/pull/108)). S21b ([#109](https://github.com/Swalliso/Sambattler/pull/109)) fixed what it found: Bursters stand in the front line, the Mortar is drawn in the clash, and placing lights only the plot. That finished R2a. R2b's plan is agreed (S0, [#111](https://github.com/Swalliso/Sambattler/pull/111)), and S1 ([#113](https://github.com/Swalliso/Sambattler/pull/113)) made a whole run play in rounds, with lives, and S2 ([#115](https://github.com/Swalliso/Sambattler/pull/115)) made every battle the round battle, and S3 ([#118](https://github.com/Swalliso/Sambattler/pull/118)) deleted v1's battle from the sim, the tools and the tests, and S4 ([#120](https://github.com/Swalliso/Sambattler/pull/120)) and S4c ([#121](https://github.com/Swalliso/Sambattler/pull/121)) cut the prototype presets down to `bosslives`. S5 ([#124](https://github.com/Swalliso/Sambattler/pull/124)), S6 ([#125](https://github.com/Swalliso/Sambattler/pull/125)) and S9 ([#123](https://github.com/Swalliso/Sambattler/pull/123)) brought drafts, the relics in v2 form and the run screens, S5b ([#129](https://github.com/Swalliso/Sambattler/pull/129)), S7 ([#128](https://github.com/Swalliso/Sambattler/pull/128)) and S8 ([#127](https://github.com/Swalliso/Sambattler/pull/127)) the gold upgrades, the commanders and saves between rounds, and S10 and S11 are running.**
 - **Then:**
@@ -134,9 +132,14 @@ Updated 2026-11-03, on `docs/r2b-s8-done` (the hub's docs PR into `develop`). Th
   - **Mold's openers from battle 2** are no harder than her soft one, and she's the hardest general from battle 2.
   - **A crash fixed:** a Spore Cloud from a kill in the muster read a stale spatial grid. Vesper's runs with the auto power crashed about 1 in 11. No golden moved.
   - **T168:** T133's six misses, G4's round-9 clause, G5, G14 and G15 assert as expected fails, each printing its numbers and failing once it passes.
+- **S12** (`feature/r2b-cleanup`, T129–T135): in review. v1's keys retired, and G14's and G15's bands set:
+  - **The fold (T129):** v1's last keys left the schema and the data, and R2a's `rounds` blocks are §11.1's top-level names, so a `--proto` path drops `rounds.` (`upgradeCostPct:400`). X8's two knobs are deleted. No outcome moved: S11's runs replay exactly.
+  - **The bands and retune B** (T131; you decided 2026-11-04, "B, the boss too"): G14 70–90% of battle 1s for each commander; G15 40–95% of runs reaching the boss and 40–70% of boss fights won. B is the general's income × 1.10, Armilla's Burster Pod (in her starter for the Mortar and her core for the Vault), the general's upgrade levels 3 a battle and the boss's 12, and the boss's Heartcap 4,500. Battle 1 now reads 88%, 74% and 100% for Vesper, Armilla and Cordis; 96% of runs reach the boss, and 71% of boss fights are won.
+  - **Cordis** can't be tuned with data (91% even with her passive off and Puppet Bloom almost off), so S14 reworks her as a rule change with your OK (T169). Until then G14 and G15 stay known misses.
+  - **Also:** Appendix A's R2 rows checked against the code (T130), every golden regenerated (T132), and the rules, docs and SPEC brought up to date (T133–T135).
 - **The stand-ins open on `develop`** from S1 (Call 14), each with the session that lifts it (checked at S4, T152):
   - ~~`scene=draft` opens round 1's planning of a run battle, so its capture shows no draft until round 3~~: lifted by S10 (T115);
-  - retired selectors and triggers still in the data compile to no-ops, v1's keys stay in the data and the schema, and R2a's `rounds` data blocks sit beside them, until S12 (T129);
+  - ~~retired selectors and triggers still in the data compile to no-ops, v1's keys stay in the data and the schema, and R2a's `rounds` data blocks sit beside them~~: lifted by S12 (T129);
   - ~~the draft is today's centred dialog, which covers the general's formation~~: lifted by S10 (T116), a bottom sheet.
 - **Next:** S5 (drafts), S6 (relics) and S9 (run screens) can start side by side once S4 merges.
 
@@ -532,26 +535,6 @@ Updated 2026-11-03, on `docs/r2b-s8-done` (the hub's docs PR into `develop`). Th
 **Before v2:**
 - **Archived:** the reviews, the combat rework, rounds as a paper design, flyers, the measurement steps and the prototypes. The [archive's README](archive/README.md) lists them.
 - **Still in code and tools:** the tools they built, for engagement, runs, spread, counters and lanes. The rework stays behind `?proto=rework` until R2.
-
-## The rework on the dev site, until R2
-
-- **Play** at https://swalliso.github.io/Sambattler/dev/?proto=rework. Without `?proto=`, the dev site plays like M5.
-  - A prototype run saves under its own keys ([#34](https://github.com/Swalliso/Sambattler/pull/34)).
-- **What `rework` turns on** (`src/data/proto.ts`):
-  - waves on a 20 s beat, with mixed-wave shields;
-  - pinning and call for help;
-  - the Rhizomorph and the Burster;
-  - the Elder Sporeling without splash;
-  - storm-grown waves;
-  - the general's swarm read;
-  - flyers under rule C.
-- **Measuring it:** `tools/experiment.ts`'s header documents every option. For example:
-
-  ```bash
-  npm run experiment -- --proto rework --checks g3,g4 --g4seeds 200 --workers 8
-  ```
-
-  Add `--checks counters` for the strict counter bar, and `path:value` overrides for variants. These measure the v1 battle. Don't tune it unless the user asks; v2's measurements start with R1.
 
 ## Starting a session
 

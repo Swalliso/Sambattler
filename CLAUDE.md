@@ -2,8 +2,8 @@
 
 A round-based lane auto-battler roguelite in the browser (TypeScript, Vite, Canvas). The design and
 milestones live in `SPEC.md`, which is v2 since 2026-10-31: read its §0.1 (what changed) and §1.3 (the
-decisions) before design work. Since R2b's S3 the code runs only v2's battle in rounds, though v1's keys stay
-in the data until R2b's S12 removes them (S4 removed v1's `?proto=` knobs). This file holds only what every
+decisions) before design work. Since R2b the code and the data hold only v2's battle in rounds: S3 deleted v1's
+battle and S12 its last data keys. This file holds only what every
 session needs. Rules that matter in only some files live in `.claude/rules/` and load when Claude opens
 one of those files (see the end).
 
@@ -59,7 +59,7 @@ Both sites share the swalliso.github.io origin, so every localStorage key goes t
 
 - `npm run verify` is the gate (SPEC §15.1): typecheck, lint, data validation, unit tests, golden replays, sim smoke and a quick bench.
 - One test file: `npx vitest run tests/unit/<name>.test.ts`.
-- `npm run test:browser` and `npm run test:slow` run separately. `test:slow` asserts the round guardrails (SPEC §12.3). R2a's six known misses (T133) are expected fails through R2b, as the user decided at R2b's S0 (T168): S14 tunes G1, G2 and G7, R3's copies take G3 and G8's mono clause, and R3's combos take G16's pairs. Keep the rest passing. With `?debug=1` or `?test=1` the page exposes `window.__GAME__` (`src/app/debugBridge.ts`) for scripted browser checks.
+- `npm run test:browser` and `npm run test:slow` run separately. `test:slow` asserts the round guardrails (SPEC §12.3). Ten known misses are expected fails through R2b (T168): R2a's six (T133: G1, G2, G3, G7, G8's mono clause and G16), G4's round-9 clause and G5 since S5b's upgrades, and G14 and G15, which Cordis's runs keep outside their bands after S12's retune. S14 tunes G1, G2, G7, G4's round-9 clause and G5 and reworks Cordis for G14 and G15 (T169), R3's copies take G3 and G8's mono clause, and R3's combos take G16's pairs. Keep the rest passing. With `?debug=1` or `?test=1` the page exposes `window.__GAME__` (`src/app/debugBridge.ts`) for scripted browser checks.
 - Any change to the sim's rules or data changes the golden hashes. Refresh them with `npm run golden -- update`, and log data changes in `data/CHANGELOG-balance.md`.
 
 ## Topic rules (`.claude/rules/`)
@@ -68,4 +68,4 @@ Both sites share the swalliso.github.io origin, so every localStorage key goes t
 | --- | --- | --- |
 | `balance.md` | `data/`, `src/data/`, the balance, experiment and golden tools, `tools/lib/`, `tests/slow/`, `tests/golden/`, `docs/balance-backlog.md` | the approval rule, prototypes, changelog entries, goldens, guardrails, sweeps |
 | `storage.md` | `src/app/channel.ts`, `settings.ts`, `run.ts`, `tips.ts`, `src/run/storage.ts`, `resume.ts`, `runState.ts`, `flow.ts`, `src/meta/` | the storage keys, `storageKey()`, the `Storage` interface, the profile |
-| `v1-code.md` | `src/`, `tests/`, `tools/` | what's left of v1 after R2b's S3: don't extend retired systems, and new work follows SPEC v2 |
+| `v1-code.md` | `src/`, `tests/`, `tools/` | the code runs v2's battle in rounds: don't rebuild retired systems, what v1 left on purpose, and new work follows SPEC v2 |

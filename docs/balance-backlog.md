@@ -1037,9 +1037,9 @@ R1's runs (S7, T040–T048, T052), measured on `develop` at `fd9621f` (#62), wit
 
 **Not measured, or left for later:** `--proto rework` (refused, not R1's variant); the late-run colony and the three-lane screen are leads outside the bars (in the screens table); and R2-Q13's table is on today's combat, not on R2a's set.
 
-## Until R2
+## The guardrails after R2
 
-- **The guardrails** in `npm run test:slow` are still v1's, and they measure the v1 battle.
-  - Keep them passing after a code change.
-  - Don't tune the v1 battle to improve them, because R2 replaces it.
-  - A v1 miss isn't open work.
+- **`npm run test:slow` asserts the round guardrails** since R2b's S3, when v1's went with its battle (SPEC §12.3).
+  - Keep them passing after a code change, but for T168's ten known misses, which print their numbers and fail once
+    they pass (the Open list above has each one's owner).
+  - v1's misses and tuning are history, in `docs/archive/v1/balance-backlog.md`.
