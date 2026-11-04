@@ -178,6 +178,25 @@ What else S3 found, for later sessions:
 - **The clash check on the round sim** (T158): its records read the round's result, so R1's second cap reading (after the muster), the lane cases E1–E6, the damage supply, the arrival count, parked units and lanes held by emplacements left the record, and so did the `--v1-movement`, `--v1-targeting` and squad-timer variants. `playRoundClash` sits in `tools/lib/clash.ts`, beside the armies it plays, so the clash and balance modules don't import each other. The race section still reads R1's 500 cap, while the round's cap is 750 (#68); S11's run tools can read it from the data.
 - **The full colony and the overflow table** read the data's squads: 12 Burrows of 8 field 96 units on one lane and 128 on Twin Roots, inside 150, since no upgrade adds units until #27's fixed adds (S5).
 
+## Appendix A's R2 rows (T130)
+
+S12 tagged each row of SPEC's Appendix A with the milestone that removes it (A114), then grepped `src`, `tools` and
+`tests` for each R2 row's names: the keys, events, states and presets that carried it. Only comments that say a system
+is gone remain, and the pieces T054 kept on purpose (the `'turret'` damage label of a run migrated from v1, the v1 tip ids
+in the tips store, the migration's repair fields and fixtures, and `scene=deploy`'s message).
+
+| Rows | Milestone | Checked |
+|---|---|---|
+| The live battle: spawn timers, the 60 s wave, the deploy phase, placing while live, Hold / Advance, power cooldowns, the income tick | R2 | Gone. A planning command runs only in planning (`src/sim/planning.ts`); `laneStance`, the wave and tick keys and the power's cooldown left the data and schema in T129, and the `spawn`, `wave` and `column-*` sounds with them |
+| Territory: column capture, borders and frontiers, presence, forward building and its supply line, besieged spawners, buildings as targets, comeback income by columns, loam and stumps in the middle, the front-line graph | R2 | Gone. Buildings have no HP but an emplacement's (`attack.hp`), and the maps' loam and stumps sit in their colonies (§11.9) |
+| The Heartcap's defenses and clock: turrets, the 10:00 Decision, the timed Sporestorm | R2 | Gone: the `turret` block and sprite, `timeLimitSeconds` and the timed `sporestorm` left in T129 |
+| The run's Heartcap: its HP across a run, repairs | R2 | Gone, but for `src/run/migrate.ts`, which reads them from a v1 save (§8.9) |
+| The supply cap, the vague telegraph, the spawn-mix read, selling by timer, mid-battle saves from the command log, effects tied to retired systems, guardrails and tests of retired systems | R2 | Gone. Plots replace the cap (R3's copies finish the job, §8.10); a battle saves between rounds as BattleSave `v: 3`; T129 removed the retired stats, selectors, triggers and actions |
+| Bigger merged units | R2 and R4a | `tierRadiusMult` is 1.0, so a merged unit's body doesn't grow (R2); pips mark tiers in R4a's shapes |
+| Random enemy upgrade levels, upgrade tracks, the shared unlocked pool | R3 | Still in use as R2's stand-ins until augments and run packs (§7.8, §11.6, §11.15); T131's retune B tuned the general's levels |
+| The rework's pieces and prototypes not adopted: waves on a beat, Hold under waves, call for help, storm-grown waves, the Elder Sporeling's splash off, flyers, the general's swarm read, `bigdrafts` | R2 | Gone with their presets (S4, S4c); the mixed-wave shields became the arrival shield (§5.3) |
+| Exclusions removed (flyers, burrowing, core placement synergy) | later | Not retirements: later milestones may build them (§17) |
+
 ## Handoffs
 
 - **To R3:** the Fuse augment's text ("wait behind your front rank"), now that Bursters stand in front; G3 and G8's mono clause, for its copies; G16's Gill Archer and Mortar pairs, for its combos; and #67's upgrades beside its augments.
