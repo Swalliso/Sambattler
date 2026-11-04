@@ -8,6 +8,26 @@ replaces. None of it is open work, including headings that say "Open:". From mil
 entries measure or tune v2's round battle (SPEC §11, §12). "The backlog" in the entries below means
 v1's, now [archived](../docs/archive/v1/balance-backlog.md).
 
+## R2b-S5b T159–T163: gold upgrades once the colony is full, and the general's income × 1.05 (2026-11-03)
+
+**The rule and both numbers were approved by the user** (#67, 2026-11-03): the details as recommended ("Take them all",
+and "Take both" when the hub relayed them), and the price with its counterweight ("300% and ×1.05"). SPEC §6.1, §6.2
+and §11.1.
+- **`rounds.upgradeCostPct`: 300** (new). Once a side's colony is full, an `upgrade` command buys one of its spawners an
+  upgrade for 300% of the building's cost: a Burrow's 330, a Hall's 450. That squad then arrives Bloomed for the rest of
+  the battle. The general and the bots buy them too, once no plot is free. T159's measurement shows why: with drafts on,
+  both colonies fill at round 5 and then bank a median of about 300 a round with nothing to buy.
+- **`rounds.enemyIncomeMult`: 1.0 → 1.05.** T163's sweep (`docs/balance-backlog.md`) found no price of 150–300% that
+  keeps G4 and G8 in band, since upgrades favour your side:
+  - The baseline, with no upgrades: `bot:balanced` beats the scripted general 65%, 13% of battles reach round 9, and G8
+    reads balanced 51%, answer 69%.
+  - At 200% alone: 71%, 18%, then 73% and 88%.
+  - At 300% with × 1.05: 63%, 21%, then 61% and 77%, with about one upgrade a battle each side.
+  - G13 holds throughout, with 6–9% of clashes at the cap and a median clash of 18–19.5 s.
+- **A new known miss:** G4's round-9 clause, at 21% against ≤ 20%, until S14's tuning (T168, T169).
+- **Goldens:** all six moved at round 1's first checkpoint, since the battle's library carries the new key. The battle
+  replays move further where a colony fills and buys upgrades, and with the general's income.
+
 ## R2b-S6 T070–T078: the relics in v2 form, the `requires` gates and one path for clash gold (2026-11-03)
 
 **Content the user approved at R2b's S0** (2026-11-03, "Take them all": R2-Q19, R2-Q20, #24 and #26, SPEC §11.7). No

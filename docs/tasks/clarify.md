@@ -926,6 +926,12 @@ The R2a plan settles these itself, with no call from you: A027, A032, A034, A036
   - the price is a share of the building's cost: the lowest of 150%, 200% and 300% that keeps G4, G8 and G13 in band over T163's 200 battles, set without a second stop.
 
   In SPEC §6.1, §4.4 and §14.5.
+- **S5b's price:** 2026-11-03 (the user: "300% and ×1.05", relayed by the hub). No share of 150–300% kept G4 and G8 in band (T163, `docs/balance-backlog.md`), since upgrades favour your side. So:
+  - an upgrade costs 300% of its building's cost;
+  - the general's income goes × 1.05 (`enemyIncomeMult`, §6.2);
+  - G4's round-9 clause (21% against ≤ 20%) is a known miss until S14's tuning (T168, T169).
+
+  In SPEC §6.1, §6.2 and §11.1.
 
 ### #68 · The Heartcap cap and D28
 

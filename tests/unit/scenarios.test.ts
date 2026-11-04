@@ -201,8 +201,10 @@ describe('each scenario’s own rule', () => {
     });
     expect(colony('player')).toEqual(colony('enemy'));
     expect([s.round, s.sides.player.bankedAtBegin, s.sides.player.heartcapMaxHp]).toEqual([4, s.sides.enemy.bankedAtBegin, s.sides.enemy.heartcapMaxHp]);
-    // round 4's opening pays you the comeback gold for round 3 (§6.2)
-    expect([s.sides.player.gold - s.sides.enemy.gold, s.stats.player.goldEarned.comeback]).toEqual([40, 40]);
+    // round 4's opening pays you the comeback gold for round 3, and the general its income × `enemyIncomeMult` (§6.2), so
+    // the gold apart is the openings' difference alone
+    const paidTo = (side: Side) => s.events.reduce((n, e) => n + ((e.t === 'income' || e.t === 'interest') && e.side === side ? e.amount : 0), 0);
+    expect([s.sides.player.gold - s.sides.enemy.gold, s.stats.player.goldEarned.comeback]).toEqual([paidTo('player') - paidTo('enemy'), 40]);
     expect(s.sides.enemy.heartcapHp - s.sides.player.heartcapHp).toBe(1550);
     expect(s.rounds.map((r) => roundOutcome(r.damage).loser)).toEqual(['player', 'player', 'player']);
     // the record of rounds 1–3 is what this colony musters now

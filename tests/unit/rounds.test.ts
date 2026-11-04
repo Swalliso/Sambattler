@@ -12,7 +12,7 @@ import {
 import type { BattleState, Side } from '../../src/sim/index.ts';
 import { readRawContent } from '../../tools/lib/content.ts';
 import { newClash } from '../../src/sim/round.ts';
-import { begin, content, finishRound, planningState } from '../helpers.ts';
+import { begin, content, finishRound, planningState, theirs } from '../helpers.ts';
 
 /** Battle `battleIndex` on Bogwater Hollow against `enemy`, with a human player. */
 const battle = (enemy = 'human', battleIndex = 1, from: Content = content): BattleState =>
@@ -269,8 +269,8 @@ describe("a round's order (§4.7, §14.6's opening steps 1–7, §15.7 Rounds)",
     expect(kinds(s)).toEqual(['income', 'income', 'interest', 'interest', 'roundStarted', 'gold:5', 'buildingPlanted', 'generalPlanned']);
     expect([s.round, s.phase]).toEqual([2, 'planning']);
     // Mold's opener, a Burrow and a Truffle Cellar (T068), won round 1 against nobody: the general's 100, the Cellar's 75 on
-    // loam and 4 on the 40 it banked, then the Burster Pod it carried
-    expect(s.sides.enemy.ai!.plans[1]).toMatchObject({ round: 2, income: 179, planted: [{ building: 'bursterPod' }] });
+    // loam and 4 on the 40 it banked, each × `enemyIncomeMult` (§6.2), then the Burster Pod it carried
+    expect(s.sides.enemy.ai!.plans[1]).toMatchObject({ round: 2, income: theirs(100) + theirs(75) + theirs(4), planted: [{ building: 'bursterPod' }] });
   });
 
   it.each([[4, 10000, 0], [5, 12000, 1], [9, 20000, 5]])("sets round %i's storm before roundStarted: %i bp, step %i (§6.4)", (round, stormBp, storm) => {

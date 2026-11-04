@@ -5,7 +5,7 @@ import type { Content } from '../../src/data/registry.ts';
 import type { ScenarioDef } from '../../src/data/schema.ts';
 import { createBattle, createFromScenario, incomePreview, makeRoundConfig, SIDES, step } from '../../src/sim/index.ts';
 import type { BattleState, Side } from '../../src/sim/index.ts';
-import { begin, content, finishRound, plant } from '../helpers.ts';
+import { begin, content, finishRound, plant, theirs } from '../helpers.ts';
 import type { PlotPlace } from '../helpers.ts';
 
 type Sides = ScenarioDef['sides'];
@@ -40,8 +40,9 @@ describe("income at a round's opening (§4.7 step 5, §6.2, §14.6 opening step 
     const first = createBattle(content, makeRoundConfig(content, { seed: 1, enemy: 'human' }));
     expect([first.sides.player.gold, first.sides.enemy.gold, first.events.filter((e) => e.t === 'income' || e.t === 'interest')]).toEqual([300, 300, []]);
     const s = opened({ player: { gold: 0 }, enemy: { gold: 0 } });
-    expect(paid(s)).toEqual({ player: { income: 100, interest: 0 }, enemy: { income: 100, interest: 0 } });
-    expect([s.sides.player.gold, s.sides.enemy.gold]).toEqual([100, 100]);
+    // the general's side is paid × `enemyIncomeMult` (§6.2)
+    expect(paid(s)).toEqual({ player: { income: 100, interest: 0 }, enemy: { income: theirs(100), interest: 0 } });
+    expect([s.sides.player.gold, s.sides.enemy.gold]).toEqual([100, theirs(100)]);
     expect(s.stats.player.goldEarned).toEqual({ stipend: 100, economy: 0, interest: 0, comeback: 0, clash: 0, effects: 0 });
   });
 
@@ -77,15 +78,15 @@ describe("income at a round's opening (§4.7 step 5, §6.2, §14.6 opening step 
     expect([s.sides.player.bankedAtBegin, s.sides.enemy.bankedAtBegin]).toEqual([190, 300]);
     finishRound(s);
     step(s);
-    expect([s.round, paid(s).player.interest, paid(s).enemy.interest]).toEqual([2, 19, 30]);
+    expect([s.round, paid(s).player.interest, paid(s).enemy.interest]).toEqual([2, 19, theirs(30)]);
   });
 
   it("pays +40 to the last round's loser, and nothing after a drawn round", () => {
     const lost = opened({ player: { heartcapHp: 2900 } }, { last: { damage: { player: 0, enemy: 100 } } });
-    expect(paid(lost)).toEqual({ player: { income: 140, interest: 30 }, enemy: { income: 100, interest: 30 } });
+    expect(paid(lost)).toEqual({ player: { income: 140, interest: 30 }, enemy: { income: theirs(100), interest: theirs(30) } });
     expect([lost.stats.player.goldEarned.comeback, lost.stats.enemy.goldEarned.comeback]).toEqual([40, 0]);
     const drawn = opened({ player: { heartcapHp: 2900 }, enemy: { heartcapHp: 1900 } }, { last: { damage: { player: 100, enemy: 100 } } });
-    expect(paid(drawn)).toEqual({ player: { income: 100, interest: 30 }, enemy: { income: 100, interest: 30 } });
+    expect(paid(drawn)).toEqual({ player: { income: 100, interest: 30 }, enemy: { income: theirs(100), interest: theirs(30) } });
   });
 
   it("multiplies the general's income by enemyIncomeMult, source by source, rounded down (§6.2, §7.1)", () => {
@@ -122,6 +123,6 @@ describe('incomePreview (§6.2, §10.2, §14.6)', () => {
     expect(incomePreview(s, 'player')).toMatchObject({ comeback: 40, total: 100 + 50 + 30 + 40 });
     step(s);
     // the general won the round, so it gets its stipend and interest only
-    expect(SIDES.map((side) => paid(s)[side].income + paid(s)[side].interest)).toEqual([220, 130]);
+    expect(SIDES.map((side) => paid(s)[side].income + paid(s)[side].interest)).toEqual([220, theirs(100) + theirs(30)]);
   });
 });

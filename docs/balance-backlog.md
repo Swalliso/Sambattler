@@ -20,6 +20,7 @@ v1's backlog is archived at [docs/archive/v1/balance-backlog.md](archive/v1/bala
 
 - **The pace after T125** (R2a S18, below): at 100 a supply, agreed on 2026-11-03, battles take a median of 7 rounds, 18.5% of 200 reach round 9 (G4: ≤ 20%), and the damage cap binds in 70% of damaging rounds. S21's playtest reads whether a win's size still counts.
 - **The round guardrails that miss on the final data** (R2a S20, confirming S18's, below): G1, G2, G3, G7, G8's mono drops and G16 (the formation rule loses to its ranks traded). Each waits for the user, G16 best before S21.
+- **G4's round-9 clause after S5b's upgrades** (R2b S5b, below; the user, 2026-11-03): at 300% with the general's income × 1.05, 21% of battles reach round 9 (G4: ≤ 20%), a known miss until S14's tuning.
 - **A fixed round cap** (R2a S21b, below; measurement only): a fixed 750 for both sides passes G4, G6, G8's bands and G13 (6 rounds, 13% reach round 9); a fixed 500 fails G4 (34%). Today's 25% is even in capped rounds (4 each). For R2b's S0.
 - **The Morel Runners** (R2a S21b, below): intended under §5.2, not a bug. A pair charges in a column, so it reads as one runner, and the runners that "pushed in to the enemy base" were striking the invisible Mortar that T160 fixed. A fan-out rule would be the user's call.
 - **G16 after the Burster moved to the front** (R2a S21b, below; the user's OK, 2026-11-03): 40%, from 24%. The Gill Archer and Mortar pairs are what's left (55% and 26%), and only a 2-tile gap fixed them in the levers' entry. They wait for the playtest's calls and R3's combos.
@@ -55,7 +56,7 @@ v1's backlog is archived at [docs/archive/v1/balance-backlog.md](archive/v1/bala
   - Against the scripted general, both sides buy about as many (1.4 and 1.3 a battle at 200%, mostly Burrows and Capguard Halls), yet you win 6 points more. Upgrades make the late rounds more decisive, and at battle 1 the general has 2,000 HP to your 3,000, so a faster race favours you.
   - The adaptive general also fills its colony later, since its counter cycle frees two plots at round 4. It is full at round 5's planning in 18% of battles, against your 57%, so it buys half as many upgrades (0.80 against 1.57).
 - **Result:** only 600% keeps every band, and only just (G4 at 70%). An upgrade then costs 660–1,560, and comes in about one battle in five, which does little for #67. A small lift in the general's income (`enemyIncomeMult`, §6.2) brings the win rates back in band, but more battles then reach round 9: 21% at × 1.05, one point over G4's limit, within the noise of 200 battles.
-- **Waits on the user.**
+- **Decided** (the user, 2026-11-03: "300% and ×1.05"): 300%, with the general's income × 1.05. G4's round-9 clause (21%) is a known miss until S14's tuning (T168, T169). `data/CHANGELOG-balance.md` logs it.
 
 ## R2b S5b · the late game's gold with drafts on, for #67 (2026-11-03)
 

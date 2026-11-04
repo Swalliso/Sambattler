@@ -112,10 +112,10 @@
     "sporestorm": { "startRound": 5, "stepBp": 2000, "maxBp": 20000 },
     "stipendPerRound": 100,
     "comebackGold": 40,
-    "enemyIncomeMult": 1.0,
+    "enemyIncomeMult": 1.05,
     "sellRefundPlanted": 1.0,
     "draftRounds": [2, 4, 6],
-    "upgradeCostPct": 200,
+    "upgradeCostPct": 300,
     "lives": 3,
     "plotGrowth": { "perWin": 1, "max": 4 },
     "ai": {
