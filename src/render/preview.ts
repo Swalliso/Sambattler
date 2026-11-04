@@ -40,6 +40,8 @@ export interface DrawnSquad {
   unitId: string;
   /** Its plot, an index into its side's colony. */
   plot: number;
+  /** Its slot in the formation box, a 2×2 tile square from its top-left tile (§4.6). */
+  slot: { col: number; row: number };
   /** Its units where it drew them, dimmed: `formationOf`'s positions, where they arrive (§4.6). */
   units: { x: number; y: number }[];
   /** Its merge preview: what it fields after the muster (§5.6). */
@@ -187,6 +189,9 @@ export class FormationPreview {
   /** Each plot's slot for a side, as the clash's formation box lays them out (§4.6); empty before the first draw. */
   slotsOf(side: Side): readonly Slot[] { return this.cache?.[side].slots ?? []; }
 
+  /** The slots a side's squads stand in, as last drawn: the draft's dim leaves the general's lit (§10.2, R2-Q24). */
+  squadSlots(side: Side): readonly Slot[] { return this.cache?.[side].squads.map((q) => q.slot) ?? []; }
+
   /** Recomputes the squads and merge previews when the colony or the ghost changed, and what the cursor lights. */
   update(state: BattleState, v: PreviewView): void {
     const ghost = v.ghost?.legal ? v.ghost : null;
@@ -289,7 +294,7 @@ export class FormationPreview {
       squads: c.squads.map((q) => {
         const fields = { ...c.merge.byBuilding[q.building]! };
         return {
-          building: q.building, unitId: q.unitId, plot: q.plot, units: q.units.map((u) => ({ x: u.x, y: u.y })), fields,
+          building: q.building, unitId: q.unitId, plot: q.plot, slot: { col: q.slot.col, row: q.slot.row }, units: q.units.map((u) => ({ x: u.x, y: u.y })), fields,
           marks: marks ? this.marksOn(state, q, fields) : null, ...(q.building === c.ghost ? { ghost: true as const } : {}),
         };
       }),

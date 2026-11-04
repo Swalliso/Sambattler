@@ -217,8 +217,6 @@ html.assist .tugbar .p { background: repeating-linear-gradient(90deg, var(--lila
 
 /* ---- callouts + field ---- */
 .callouts { height: 30px; display: flex; justify-content: center; align-items: center; gap: 10px; }
-/* a first-time tip about the draft shows above the draft's scrim (the lane sits above the field, clear of the cards) */
-body:has(.draft-overlay:not([hidden])) .callouts { position: relative; z-index: 11; }
 .callout kbd { font-size: 12px; }
 .callout { display: inline-flex; align-items: center; gap: var(--space-3); padding: 3px 12px; border: 1px solid var(--line-strong); background: var(--panel-2); border-radius: var(--radius-sm); font-size: 13px; animation: pop .18s ease-out; white-space: nowrap; }
 .callout.good { border-color: var(--violet); color: var(--lilac); }
@@ -403,6 +401,8 @@ body:has(.draft-overlay:not([hidden])) .callouts { position: relative; z-index: 
 .kit-ups ol { margin: 2px 0 0; padding-left: 18px; font-size: 12px; color: var(--muted); }
 .kit-ups ol li.on { color: var(--text); }
 .kit-ups ol li.on::marker { color: var(--lilac); }
+/* the gold upgrades bought this battle (§6.1, R2b/T175) */
+.kit-ups .kit-gold { margin-top: 2px; font-size: 12px; color: var(--lilac); }
 .inspect { border: 1px solid var(--line); background: var(--panel-2); border-radius: 4px; padding: 6px 8px; font-size: 12px; overflow: hidden; display: flex; flex-direction: column; gap: 3px; }
 .inspect h3 { margin: 0 0 2px; font-size: 13px; letter-spacing: .04em; }
 .inspect .muted { color: var(--muted); }
@@ -496,7 +496,7 @@ body:has(.draft-overlay:not([hidden])) .callouts { position: relative; z-index: 
 .matrix td.strong { color: var(--ink); background: var(--gold); font-weight: 700; }
 .matrix td.weak { color: var(--weak-cell-text); background: var(--weak-cell); }
 .roster { width: 100%; font-size: 12px; }
-.roster th, .roster td { padding: 4px 8px; border-bottom: 1px solid var(--line); text-align: left; }
+.roster th, .roster td { padding: 3px 8px; border-bottom: 1px solid var(--line); text-align: left; }
 .roster th { color: var(--muted); font-weight: 400; }
 .kindlist { list-style: none; padding: 0 !important; display: flex; flex-direction: column; gap: var(--space-4); }
 .kind-tag { display: inline-block; min-width: 64px; padding: 0 6px; border: 1px solid var(--gold-deep); border-radius: var(--radius-pill); color: var(--warn); font-size: 12px; letter-spacing: .06em; text-align: center; }
@@ -516,7 +516,6 @@ body:has(.draft-overlay:not([hidden])) .callouts { position: relative; z-index: 
 kbd { font-family: var(--font-mono); font-size: 12px; line-height: 16px; padding: 0 5px; border: 1px solid var(--line-strong); border-bottom-width: 2px; border-radius: var(--radius-sm); background: var(--panel-2); color: var(--text); }
 
 /* ---- drafts (in battle and spoils): rarity frames, a type icon, stat chips, a keycap; dealt in, lifted on hover ---- */
-.draftcard { width: 940px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: var(--space-6) 22px; display: flex; flex-direction: column; gap: var(--space-6); }
 .draft-top { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
 .draft-top h2 { margin: 0; font: 400 30px/32px var(--font-display); font-synthesis: none; }
 .draft-top kbd { margin: 0 2px; }
@@ -551,7 +550,30 @@ kbd { font-family: var(--font-mono); font-size: 12px; line-height: 16px; padding
 .chip-sm .price { font-size: 20px; line-height: 16px; }
 .draft-chips .role { align-self: center; }
 .draft-key { position: absolute; right: 14px; bottom: 14px; }
-.draftcard .actions, .runpanel .actions { display: flex; gap: 8px; justify-content: flex-end; }
+.runpanel .actions { display: flex; gap: 8px; justify-content: flex-end; }
+/* The in-battle draft as a bottom sheet in the bottom band's place (§10.2, R2-Q24, R2b/T116): its title and keys,
+   three shorter cards with their text cut to two lines (the rest in a tooltip), then Reroll, Skip and Begin, unlit
+   until you pick or skip. It keeps the band's height, so the field above doesn't move, and lifts a lilac edge. */
+.draft-sheet { position: relative; display: grid; grid-template-columns: 156px minmax(0, 1fr) 224px; gap: 10px; height: 204px; padding: 8px 12px 10px; background: var(--panel); border-top: 1px solid var(--lilac); box-shadow: 0 -6px 18px var(--glow-lilac); }
+.draft-side { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
+.draft-side h2 { margin: 0; font: 400 30px/32px var(--font-display); font-synthesis: none; }
+.draft-side .hint { margin: 0; line-height: 18px; }
+.draft-side kbd { margin: 0 2px; }
+.draft-sheet .draft-cards { gap: var(--space-5); padding: 0; min-height: 0; }
+.draft-sheet .draft-card { min-height: 0; height: 100%; padding: 10px 12px; gap: var(--space-2); }
+.draft-sheet .draft-art { height: 40px; }
+.draft-sheet .draft-art .draft-sprite { width: 32px; height: 32px; }
+.draft-sheet .draft-art .draft-badge { left: calc(50% + 10px); bottom: 0; width: 16px; height: 16px; }
+.draft-sheet .draft-card .sparkle.s1 { top: 30px; }
+.draft-sheet .draft-card .sparkle.s2 { top: 48px; }
+.draft-sheet .draft-name { font-size: 20px; line-height: 22px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.draft-sheet .draft-text { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; font-size: 12px; line-height: 16px; }
+.draft-sheet .draft-key { right: 10px; bottom: 10px; }
+.draft-actions { display: flex; flex-direction: column; justify-content: flex-end; gap: var(--space-3); min-width: 0; }
+.draft-actions .btn { justify-content: center; box-shadow: var(--shadow-bevel); }
+.draft-actions .btn:hover:not(:disabled) { border-color: var(--lilac); }
+.draft-actions .btn.primary[aria-disabled="true"] { background: var(--panel); border-color: var(--line); color: var(--muted); box-shadow: none; cursor: not-allowed; }
+.draft-actions .btn.primary[aria-disabled="true"] kbd { color: var(--muted); border-color: var(--line); }
 
 /* ---- run screens ---- */
 .runscreen { position: relative; flex: 1; display: flex; flex-direction: column; min-height: 0; }

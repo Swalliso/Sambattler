@@ -244,13 +244,13 @@ function startRun(content: Content, atlas: ReturnType<typeof bakeAtlas>, params:
   // a save that can't be read goes to the title, which says so and asks before replacing it (§8.9, A084)
   if (loaded.kind === 'unreadable') { openTitle(content, atlas, { ...params, scene: TITLE }); return; }
   const seed = params.seed ?? randomSeed();
-  const at = runCheckpoint(location.search);
+  const at = runCheckpoint(location.search, content);
   const run = loaded.kind === 'run' ? loaded.run
     : runForScene(content, { scene: params.scene, seed, player: params.player, autoplay: params.autoplay, enterBattle: at !== null });
   const notice = loaded.kind === 'run' ? loaded.notice : undefined;
   let ctl: RunController | null = null;
   const bridge = params.debug || params.test
-    ? installBridge({ scene: params.scene, battle: () => ctl?.battleState ?? null, run: () => ctl?.run ?? run, playTime: () => ctl?.playTime() ?? null }, errors)
+    ? installBridge({ scene: params.scene, battle: () => ctl?.battleState ?? null, preview: () => ctl?.preview ?? null, run: () => ctl?.run ?? run, playTime: () => ctl?.playTime() ?? null }, errors)
     : null;
   let opening: { state: BattleState; hold: boolean; holdAftermath: boolean } | undefined;
   if (at && run.screen.kind === 'battle') {

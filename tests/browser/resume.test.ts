@@ -217,6 +217,36 @@ describe('battle saves between rounds', () => {
     expect(await page.evaluate(() => window.__GAME__!.errors)).toEqual([]);
   });
 
+  // R2b/T114: the draft sheet's commands go through the queue, so a reroll saves and resumes like any planning command
+  it("resumes a draft reroll in round 3's planning, and runs it once", async () => {
+    const run = runAt(9);
+    const s = battleOf(run);
+    // a human who plants nothing and Begins, to round 3's planning, where its first draft opens
+    idle(s, (x) => x.round === 3 && x.phase === 'planning');
+    expect(s.sides.player.draft).toBeDefined();
+    await openSavedRun(JSON.stringify(run), JSON.stringify(battleSave(s)));
+    expect(await page.evaluate(() => [window.__GAME__!.phase, window.__GAME__!.round])).toEqual(['planning', 3]);
+    expect(await page.locator('#draft').isVisible()).toBe(true);
+    const drafting = () => page.evaluate(() => {
+      const p = window.__GAME__!.battle()!.sides.player;
+      return { gold: p.gold, offer: p.draft?.offer.map((c) => c.id) ?? [], rerolls: p.draft?.rerolls ?? -1 };
+    });
+    const before = await drafting();
+    await page.locator('#draft-reroll').click();
+    await page.waitForFunction(() => (JSON.parse(localStorage.getItem('spore-sprawl.battle.v1') ?? '{}').commands ?? []).some((c: { type: string }) => c.type === 'draftReroll'));
+    const after = await drafting();
+    expect(after).toMatchObject({ rerolls: 1, gold: before.gold - 20 });
+    await page.reload();
+    await ready();
+    // the save replays the reroll once: the same offer and gold, one reroll paid, and the sheet still open
+    expect(await page.evaluate(() => [window.__GAME__!.phase, window.__GAME__!.round])).toEqual(['planning', 3]);
+    expect(await drafting()).toEqual(after);
+    expect((await stored<BattleSave>(BATTLE_KEY))!.commands.filter((c) => c.type === 'draftReroll')).toHaveLength(1);
+    expect(await page.locator('#draft').isVisible()).toBe(true);
+    expect(await page.locator('#save-recovery').count()).toBe(0);
+    expect(await page.evaluate(() => window.__GAME__!.errors)).toEqual([]);
+  });
+
   it("restarts a save whose hash doesn't match at round 1's planning, with the notice, and keeps the run", async () => {
     const run = runAt(9);
     const s = battleOf(run);
