@@ -25,13 +25,13 @@
   },
   {
     "id": "puffballMortar", "name": "Puffball Mortar", "sprite": "b-puffballMortar", "milestone": 1,
-    "description": "A tower that lobs bursting puffballs. Crush splash; cannot hit units hugging it.",
+    "description": "A tower that lobs bursting puffballs: Crush damage to everything near where they land. It can't hit units right next to it.",
     "kind": "tower", "footprint": { "w": 2, "h": 2 }, "cost": 160,
     "attack": { "damage": 24, "damageType": "crush", "interval": 3.0, "range": 6, "minRange": 1.5, "splashRadius": 1.0, "projectileSpeed": 6, "hp": 500 }
   },
   {
     "id": "truffleCellar", "name": "Truffle Cellar", "sprite": "b-truffleCellar", "milestone": 1,
-    "description": "Grows truffles for gold every income tick. +50% on Rich Loam.",
+    "description": "Grows truffles: 50 gold every round. +50% on a Rich Loam plot.",
     "kind": "economy", "footprint": { "w": 2, "h": 2 }, "cost": 150,
     "economy": { "goldPerRound": 50 }
   },
@@ -78,7 +78,7 @@
   },
   {
     "id": "sporeExchange", "name": "Spore Exchange", "sprite": "b-sporeExchange", "milestone": 4, "rarity": "uncommon",
-    "description": "Trades spores for interest: +1 gold per income tick and +10 to your interest cap while it stands.",
+    "description": "Trades spores for interest: 12 gold every round, and +10 to your interest cap while it stands.",
     "kind": "economy", "footprint": { "w": 2, "h": 2 }, "cost": 160,
     "economy": { "interestCapAdd": 10, "goldPerRound": 12 }
   },
