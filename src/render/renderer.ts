@@ -3,7 +3,8 @@
 // never changes the sim. Layers, back to front: the terrain with both Heartcaps (baked); the colonies, each
 // side's mycelium under its open plots with their faint 2×2 grid, and closed plots as dark, unlit soil with a
 // small mark (plan Call 21, also baked); while a card is chosen, the free plots lit; the buildings, with their
-// "New" sprout in planning (under `reveal=last` the general's from Begin, T127) and the merge-off knot; in
+// "New" sprout in planning (under `reveal=last` the general's from Begin, T127; under v3 a sprout with the round
+// it fields in, until it fields, C3.2) and the merge-off knot; in
 // planning the formation preview (`preview.ts`), and in a clash spore clouds and the units, sorted by y then
 // id, through R4a's `drawUnitSprite` (an emplacement with its `emplacementSprite`), posed by the aftermath
 // (`aftermath.ts`) once the clash is over; projectiles; sparks, puffs, merge pops and coin pops; the
@@ -20,7 +21,8 @@ import { INK_DEEP, PIP_SIZE, drawPips, drawUnitSprite } from './unitSprite.ts';
 import type { UnitSpriteOpts } from './unitSprite.ts';
 import { AftermathView } from './aftermath.ts';
 import type { AftermathPose } from './aftermath.ts';
-import { FormationPreview } from './preview.ts';
+import { FormationPreview, fruitsIn } from './preview.ts';
+import { pixelText } from './pixelText.ts';
 import { unitLook } from './unitLook.ts';
 import type { UnitLook } from './unitLook.ts';
 
@@ -326,8 +328,10 @@ export class RoundRenderer {
     g.drawImage(this.colonies, 0, 0);
     if (view.lit) this.drawLit(state.sides.player.plots, view.lit);
 
-    // the preview says which buildings stand: under `reveal=last`, the general's as it fielded last round (T127)
+    // the preview says which buildings stand: under `reveal=last`, the general's as it fielded last round (T127),
+    // and under v3 without this round's plantings until Begin (C3.1)
     if (planning) this.preview.update(state, view);
+    else this.preview.noteColony(state);
     for (const b of this.preview.buildingsShown(state)) {
       const p = state.sides[b.side].plots[b.plot]!;
       const x = this.sx(p.col), y = p.row * TILE;
@@ -337,8 +341,11 @@ export class RoundRenderer {
         g.lineWidth = 1;
         g.strokeRect(x + 0.5, y + 0.5, 2 * TILE - 1, 2 * TILE - 1);
       }
-      // the general's counters land as buildings with a "New" sprout, so you see them before you plan (§7.4, §10.4)
-      if (this.preview.sproutOn(state, b)) sprout(g, x + 2, y + 2);
+      // the general's counters land as buildings with a "New" sprout, so you see them before you plan (§7.4, §10.4);
+      // under v3 a sprout carries the round it fields in, its timer (C3.2, T013)
+      const fruits = fruitsIn(state, b);
+      if (fruits !== undefined) sproutTimer(g, x + 2, y + 2, fruits);
+      else if (this.preview.sproutOn(state, b)) sprout(g, x + 2, y + 2);
       if (!b.mergeOn && state.compiled[b.side].buildings[b.buildingId]?.kind === 'spawner') knotOff(g, x + 2 * TILE - 9, y + 2 * TILE - 9, this.mat(b.side).glow);
       // a gold upgrade: its squad arrives Bloomed, so the plot carries a Bloomed pip in its top-right corner (§6.1, §10.4)
       if (b.upgrade) drawPips(g, this.atlas, x + 2 * TILE - 3 - PIP_SIZE.w / 2, y + 3, 2);
@@ -620,6 +627,15 @@ export class RoundRenderer {
   private calm(): boolean {
     return this.still || (typeof document !== 'undefined' && document.documentElement.classList.contains('reduce-motion'));
   }
+}
+
+/**
+ * A v3 sprout's timer (C3.2, T013): the sprout glyph, then "R" and the round whose clash it first fields in, on
+ * its plot and in its empty slot in the formation preview.
+ */
+export function sproutTimer(g: CanvasRenderingContext2D, x: number, y: number, round: number): void {
+  sprout(g, x, y);
+  pixelText(g, `R${round}`, x + 8, y + 1, '#9fe0a0');
 }
 
 /** The "New" status glyph (§10.4): a sprout on a building planted this planning phase, until the clash. */

@@ -8,17 +8,20 @@
 // general's squads carry the marks of your hits on them from `matchupClass`: on their base-tier units, plus a
 // pips mark when their merged units take a different class (Call 22). The reverse direction and the cards'
 // marks are R4b's. Under `reveal=last` the general's colony and squads stand as it fielded them last round,
-// from round 2 (§7.5, R2-Q1, T127): a view rule, so the sim never sees it. The squads and merge previews are
+// from round 2 (§7.5, R2-Q1, T127): a view rule, so the sim never sees it. Under the v3 prototype's rules (C3.1,
+// C3.2, T013, T014) the general stands as `visibleColony` has it, its plantings this round held back until Begin,
+// and a sprout's empty slot carries its sprout and the round it fields in. The squads and merge previews are
 // cached by the colony's version and the ghost (§13.6), and what it drew is kept for the bridge's `preview()`
 // (T079).
 import type { Content } from '../data/registry.ts';
 import { formationBox } from '../sim/formation.ts';
 import type { Slot } from '../sim/formation.ts';
-import { SIDES, formationOf, matchupClass, mergePreview } from '../sim/index.ts';
+import { SIDES, formationOf, matchupClass, mergePreview, visibleColony } from '../sim/index.ts';
+import { isSprout, v3Of } from '../sim/v3.ts';
 import type { BattleState, BuildingState, Effectiveness, MergePreview, PlanChange, Side, SquadPlan, TierCounts } from '../sim/index.ts';
 import type { Atlas } from './atlas.ts';
 import { pixelText, textWidth } from './pixelText.ts';
-import { TILE, factionOf } from './renderer.ts';
+import { TILE, factionOf, sproutTimer } from './renderer.ts';
 import { INK_DEEP, PIP_SIZE, drawPips, drawUnitSprite } from './unitSprite.ts';
 import type { UnitSpriteOpts } from './unitSprite.ts';
 import { unitLook } from './unitLook.ts';
@@ -58,8 +61,10 @@ export interface DrawnBuilding {
   building: number;
   buildingId: string;
   plot: number;
-  /** Its "New" sprout (§10.4). */
+  /** Its "New" sprout (§10.4); under v3, its sprout until it fields (C3.2). */
   sprout: boolean;
+  /** Under v3, a sprout's timer: the round whose clash it first fields in (C3.2, T013). */
+  fruits?: number;
 }
 
 /** One side's preview as it was last drawn, which the bridge's `preview()` returns (T079). */
@@ -76,8 +81,33 @@ export interface DrawnPreview {
 /** How the general shows from round 2 (§7.5, R2-Q1): its whole current plan, or as it fielded last round (`reveal=last`, T127). */
 export type Reveal = 'full' | 'last';
 
-/** Whether the general's changes this round wait for Begin: under `reveal=last`, in planning from round 2 (T127). */
-export const heldUntilBegin = (reveal: Reveal, state: BattleState): boolean => reveal === 'last' && state.round > 1 && state.phase === 'planning';
+/**
+ * Whether the general's changes this round wait for Begin: under `reveal=last`, in planning from round 2 (T127);
+ * under v3, in planning from `hideFromRound`, whatever `reveal` says (C3.1).
+ */
+export function heldUntilBegin(reveal: Reveal, state: BattleState): boolean {
+  if (state.phase !== 'planning') return false;
+  const v3 = v3Of(state);
+  return v3 ? state.round >= v3.hideFromRound : reveal === 'last' && state.round > 1;
+}
+
+/** Under v3, the round a sprout first fields in, else undefined: the clash after the round it was planted in (C3.2). */
+export const fruitsIn = (state: BattleState, b: BuildingState): number | undefined => (isSprout(state, b) ? b.plantedRound + 1 : undefined);
+
+/**
+ * The general's colony as you may see it under v3 (C3.1, T014), shaped as `lastFielded`'s: `visibleColony`'s,
+ * its plantings this round held back until Begin. Its sales and merge toggles show at once, so nothing stands
+ * again. Null when nothing is held back, as in round 1, or under v2. It writes nothing.
+ */
+export function v3Held(state: BattleState): LastFielded | null {
+  if (!v3Of(state)) return null;
+  const seen = visibleColony(state, 'enemy');
+  const shown = new Set(seen.buildings.map((b) => b.id));
+  const hidden = new Set(state.buildings.filter((b) => b.side === 'enemy' && !shown.has(b.id)).map((b) => b.id));
+  if (!hidden.size) return null;
+  const buildings = state.buildings.filter((b) => !hidden.has(b.id));
+  return { state: { ...state, sides: { ...state.sides, enemy: { ...state.sides.enemy, plots: seen.plots } }, buildings }, hidden, restored: [] };
+}
 
 /** The general's colony as it fielded last round (`reveal=last`): what stands again, and what's hidden until Begin. */
 export interface LastFielded {
@@ -167,8 +197,10 @@ export class FormationPreview {
   drawn: Record<Side, DrawnPreview> | null = null;
   /** How the general shows from round 2, from the page's `reveal=` (T127). */
   reveal: Reveal = 'full';
-  /** Under `reveal=last`, the general as it fielded last round, for this planning phase; null while it shows as it stands. */
+  /** Under `reveal=last`, the general as it fielded last round, for this planning phase, or under v3 as you may see it; null while it shows as it stands. */
   private fielded: LastFielded | null = null;
+  /** Outside planning, the battle the colony's record was last taken of (`noteColony`). */
+  private noted = '';
   /** What the cache was computed for: the colony's version, the ghost's card and plot, and the colonies' sizes. */
   private seen = { colony: -1, card: '', plot: -1, plots: -1 };
   /** The record is rebuilt when the cache, the lit plots or the marks' attacker change. */
@@ -199,7 +231,7 @@ export class FormationPreview {
     const plots = state.sides.player.plots.length * 1000 + state.sides.enemy.plots.length;
     if (v.colony !== s.colony || card !== s.card || plot !== s.plot || plots !== s.plots) {
       s.colony = v.colony; s.card = card; s.plot = plot; s.plots = plots;
-      this.fielded = this.reveal === 'last' ? lastFielded(state) : null;
+      this.fielded = v3Of(state) ? v3Held(state) : this.reveal === 'last' ? lastFielded(state) : null;
       this.cache = { player: this.sideCache(state, 'player', ghost), enemy: this.sideCache(this.fielded?.state ?? state, 'enemy', null) };
       this.stale = true;
     }
@@ -217,8 +249,21 @@ export class FormationPreview {
   }
 
   /**
+   * Outside planning the formation preview isn't drawn, but the colony is: the record's colony follows the
+   * battle's there, so the bridge sees the general's plantings appear at Begin (T012). The squads stay planning's.
+   */
+  noteColony(state: BattleState): void {
+    const key = `${state.round}|${state.phase}|${state.buildings.length}`;
+    if (key === this.noted) return;
+    this.noted = key;
+    this.drawn ??= { player: { squads: [], knits: [], hover: null, colony: [] }, enemy: { squads: [], knits: [], hover: null, colony: [] } };
+    for (const side of SIDES) this.drawn[side].colony = this.colonyOf(state, side);
+  }
+
+  /**
    * The buildings the colony layer draws (§10.2): the battle's, except that under `reveal=last` in planning from
-   * round 2 the general's stand as it fielded last round (T127). Planning reads it after `update`.
+   * round 2 the general's stand as it fielded last round (T127), and under v3 from `hideFromRound` its plantings
+   * this round wait for Begin (C3.1). Planning reads it after `update`.
    */
   buildingsShown(state: BattleState): readonly BuildingState[] {
     const f = heldUntilBegin(this.reveal, state) ? this.fielded : null;
@@ -231,6 +276,8 @@ export class FormationPreview {
    * the aftermath instead (§7.5, T127).
    */
   sproutOn(state: BattleState, b: BuildingState): boolean {
+    // under v3 a sprout carries it until it fields, through its round's clash and aftermath, on both sides (C3.2)
+    if (v3Of(state)) return isSprout(state, b);
     if (b.plantedRound !== state.round) return false;
     if (this.reveal === 'last' && b.side === 'enemy' && state.round > 1) return state.phase === 'clash' || state.phase === 'aftermath';
     return state.phase === 'planning';
@@ -300,9 +347,16 @@ export class FormationPreview {
       }),
       knits: c.knits,
       hover: this.hovered[side],
-      colony: this.buildingsShown(state).filter((b) => b.side === side)
-        .map((b) => ({ building: b.id, buildingId: b.buildingId, plot: b.plot, sprout: this.sproutOn(state, b) })),
+      colony: this.colonyOf(state, side),
     };
+  }
+
+  /** A side's buildings as the colony layer draws them, with their sprouts and, under v3, their timers. */
+  private colonyOf(state: BattleState, side: Side): DrawnBuilding[] {
+    return this.buildingsShown(state).filter((b) => b.side === side).map((b) => {
+      const fruits = fruitsIn(state, b);
+      return { building: b.id, buildingId: b.buildingId, plot: b.plot, sprout: this.sproutOn(state, b), ...(fruits !== undefined ? { fruits } : {}) };
+    });
   }
 
   /** Layer 4: both formations' slots and dimmed squads, the ghost's included, with their merge previews. */
@@ -340,6 +394,18 @@ export class FormationPreview {
         drawUnitSprite(g, this.atlas, o);
       }
       for (const q of c.squads) this.drawMergePreview(g, q, c.merge.byBuilding[q.building]!, side, sx);
+      // under v3 a sprout's slot stands empty, with its sprout and the round it fields in (C3.2, T013)
+      for (const b of this.drawn?.[side].colony ?? []) {
+        const slot = b.fruits !== undefined ? c.slots[b.plot] : undefined;
+        if (!slot) continue;
+        g.globalAlpha = SLOT_ALPHA;
+        g.strokeStyle = glowOf(side);
+        g.setLineDash([2, 2]);
+        g.strokeRect(sx(slot.col) + 0.5, slot.row * TILE + 0.5, 2 * TILE - 1, 2 * TILE - 1);
+        g.setLineDash([]);
+        g.globalAlpha = 1;
+        sproutTimer(g, sx(slot.col) + 8, slot.row * TILE + 13, b.fruits!);
+      }
     }
   }
 

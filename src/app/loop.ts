@@ -13,7 +13,7 @@ import { playTimeText } from '../ui/report.ts';
 import { RoundsView } from './battleView.ts';
 import type { RoundViewActions } from './battleView.ts';
 import { bindRoundInput } from './input.ts';
-import { AftermathPhase } from './phases/aftermath.ts';
+import { AftermathPhase, emptyClash } from './phases/aftermath.ts';
 import { ClashPhase } from './phases/clash.ts';
 import { planningFrame } from './phases/planning.ts';
 import { PlayClock, readoutOf } from './playTime.ts';
@@ -62,7 +62,11 @@ export class RoundLoop {
     if (state.phase === was) return;
     this.session.phaseOpened(now);
     if (state.phase === 'clash') this.clash.reset();
-    if (state.phase === 'aftermath') this.aftermath.enter();
+    if (state.phase === 'aftermath') {
+      // an empty clash has nothing to show: straight on to the next round's planning (v3, C3.2, T017)
+      if (emptyClash(state)) { this.advance(now); return; }
+      this.aftermath.enter();
+    }
   }
 
   private frame(now: number): void {

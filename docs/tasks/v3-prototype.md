@@ -10,7 +10,7 @@ The v3 prototype is step C of the plan in `docs/design-brief.md`. It's one battl
 
 v2's game stays the default, with its rules and goldens, as R2a was built beside v1 (X2). The switch is temporary, and S10 removes it.
 
-**Status:** Agreed 2026-11-04 (the user's "Start S1"); S1 built T001–T011 · **Concept:** `docs/spec-v3-concept.md` · **Plan:** `docs/v3-proto-plan.md` · **Decisions:** the audit's V3-Q1–V3-Q13 (`docs/spec-v3-audit.md`, section 5, decided 2026-11-04) and the plan's open questions (Plan-Q1–Q4) · **Gate in:** the user has reviewed the concept and answered Plan-Q1
+**Status:** Agreed 2026-11-04 (the user's "Start S1"); S1 built T001–T011, S2 T012–T017 · **Concept:** `docs/spec-v3-concept.md` · **Plan:** `docs/v3-proto-plan.md` · **Decisions:** the audit's V3-Q1–V3-Q13 (`docs/spec-v3-audit.md`, section 5, decided 2026-11-04) and the plan's open questions (Plan-Q1–Q4) · **Gate in:** the user has reviewed the concept and answered Plan-Q1
 
 "C3.2" cites the concept's section 3.2. "§" cites SPEC v2.
 
@@ -155,22 +155,34 @@ v2's game stays the default, with its rules and goldens, as R2a was built beside
 
 **Checkpoint (S1 ends):** `npm run verify` passes, the goldens hold, and `npm run sim -- --rules v3 --seeds 1..5 --summary` shows sprouts fielding a clash later.
 
-- [ ] T012 [P] [US1] Browser tests (`tests/browser/v3.test.ts` (new), from `tests/browser/reveal.test.ts`):
+- [x] T012 [P] [US1] Browser tests (`tests/browser/v3.test.ts` (new), from `tests/browser/reveal.test.ts`):
   - from round 2, the general's plantings are neither drawn nor inspectable until Begin, then they appear as sprouts;
   - both sides' sprouts show their timer;
   - the formation preview leaves sprout slots empty.
-- [ ] T013 [US1] Draw a sprout with a timer ("fruits next clash") on its plot and in the formation preview, for both sides (`src/render/renderer.ts`, `src/render/preview.ts`; C3.2)
-- [ ] T014 [US1] Under v3, the planning view draws the general from T010's visible colony and closes S19's four gaps (`src/app/battleView.ts`, `src/app/phases/planning.ts`, `src/ui/hud/explain.ts`, `tools/screenshot.ts`; C3.1, `docs/ideas/reveal-last-fielded.md`):
+
+  *As built:* five browser tests, and `tests/unit/v3View.test.ts` (new) for the pure parts. A human player can't be fast-forwarded to round 2 headlessly, so the inspect check plays from round 1, through the empty clash. The checks without input use `bot:balanced` at round 2 and compare with Node, since any input lets a bot's queued Begin through
+- [x] T013 [US1] Draw a sprout with a timer ("fruits next clash") on its plot and in the formation preview, for both sides (`src/render/renderer.ts`, `src/render/preview.ts`; C3.2). *As built:* the timer is "R" and the round whose clash it first fields in ("R3"), beside the sprout glyph. It's drawn on the plot through planning, the clash and the aftermath, and in the sprout's dashed, empty slot in the formation preview. Inspect adds a "Sprout" row ("fields from round 3"; an economy building "pays from") and hides the gold upgrade's button under v3 (C3.3). The bridge's `preview()` gives each building's `fruits`, and its colony follows the battle outside planning
+- [x] T014 [US1] Under v3, the planning view draws the general from T010's visible colony and closes S19's four gaps (`src/app/battleView.ts`, `src/app/phases/planning.ts`, `src/ui/hud/explain.ts`, `tools/screenshot.ts`; C3.1, `docs/ideas/reveal-last-fielded.md`):
   - a plot holding a hidden building opens no details;
   - a sold building that's drawn again can be inspected;
   - the empty-lane warning reads the visible formation;
   - `tools/screenshot.ts`'s assertion 4 passes a v3 capture from round 2.
-- [ ] T015 [US1] The Intent panel shows the general's gold at the start of its turn and its income rows (Plan-Q2) (`src/ui/hud/explain.ts`, `src/ui/doctrine.ts`; C3.1)
-- [ ] T016 [US1] The preview link (`src/ui/screens/title.ts`, `src/app/main.ts`; plan Scope, §13.8):
+
+  *As built:* `v3Held` in `src/render/preview.ts` gives the preview `visibleColony`'s colony, in `lastFielded`'s shape, and `heldUntilBegin` holds under v3 in planning from `hideFromRound`. The gaps:
+  - a click reads the visible plots (`RoundSession.selectAt`);
+  - the second doesn't arise under v3: the general's sales show at once (C3.1), so no sold building is drawn again;
+  - `emptyLanes`, now in `src/app/phases/planning.ts`, reads `visibleColony`'s formation. Under the default timing a hidden planting is also a sprout, so the warning only differs under another timing, which the unit test uses;
+  - assertion 4 compares with `visibleColony(node, 'enemy').formation`, and v3 captures of round 1, round 2's planning and its clash pass.
+
+  `reveal=last`, which isn't adopted, keeps its four gaps
+- [x] T015 [US1] The Intent panel shows the general's gold at the start of its turn and its income rows (Plan-Q2) (`src/ui/hud/explain.ts`, `src/ui/doctrine.ts`; C3.1). *As built:* in planning from `hideFromRound`, the panel reads "gold 154", "income 114" and "Plantings show at Begin", with any sale. Its tip has Gold, Income and "Banked: shows at Begin", since what it banked would give away what it planted. From Begin, it shows what it banked and planted, as v2 does (`src/ui/hud/top.ts`)
+- [x] T016 [US1] The preview link (`src/ui/screens/title.ts`, `src/app/main.ts`; plan Scope, §13.8):
   - a title button, on the dev site only, that opens `?scene=battle&rules=v3`;
   - a "v3 prototype" tag on the battle screen;
   - a v3 battle writes no save or record.
-- [ ] T017 [US1] An empty clash shows no clash or aftermath: Begin goes straight to the next round's planning, with the callout "Both colonies sprout" (`src/app/phases/clash.ts`, `src/app/phases/aftermath.ts`; C3.2)
+
+  *As built:* the button is "v3 prototype" (`#title-v3`), and the tag (`#v3-tag`) shows on any v3 battle, under the dev badge where there is one. A single battle already saves nothing (§13.8). The tips store remembers the tips shown, as in any battle
+- [x] T017 [US1] An empty clash shows no clash or aftermath: Begin goes straight to the next round's planning, with the callout "Both colonies sprout" (`src/app/phases/clash.ts`, `src/app/phases/aftermath.ts`; C3.2). *As built:* `emptyClash` in `src/app/phases/aftermath.ts`. The loop steps through an empty clash's aftermath in the same frame (`src/app/loop.ts`), and the view says the callout as the next round opens and mutes the empty clash's lane news. Under v3, round 1's hint adds "it sprouts, and fields from round 2"
 
 **Checkpoint (S2 ends):** `npm run verify` and `npm run test:browser` pass, and the dev build plays a v3 battle from the title.
 

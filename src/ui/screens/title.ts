@@ -1,7 +1,8 @@
 // The title screen (SPEC §10.5, docs/archive/v1/ui-ux-plan.md A4): the wordmark over the Heartcap's silhouette, lit
 // from below, with spores drifting through the dark, and a blurb on rounds (A074). Continue (only with a saved
 // run, naming its row and Regrowths), New run, How to play (Help) and Settings (the settings screen,
-// src/ui/settingsScreen.ts).
+// src/ui/settingsScreen.ts). On the dev site, a button opens the v3 prototype's battle (T016), until the
+// prototype's S10 removes the switch.
 import type { Atlas } from '../../render/atlas.ts';
 import { spriteToCanvas } from '../../render/atlas.ts';
 import { sporeLayer } from '../../render/spores.ts';
@@ -22,6 +23,8 @@ export interface TitleActions {
   help(): void;
   /** The button that opens the settings screen (src/ui/settingsScreen.ts), labelled Settings. */
   settings: HTMLElement;
+  /** On the dev site only: opens the v3 prototype's battle, `?scene=battle&rules=v3` (T016; S10 removes it). */
+  v3?: () => void;
 }
 
 export function titleScreen(atlas: Atlas, actions: TitleActions, still: boolean, foot: string): HTMLElement {
@@ -44,6 +47,7 @@ export function titleScreen(atlas: Atlas, actions: TitleActions, still: boolean,
     actions.continueRun ? h('button', { class: 'btn', id: 'title-new', onclick: actions.newRun }, 'New run') : null,
     h('button', { class: 'btn', id: 'title-help', onclick: actions.help }, 'How to play'),
     actions.settings,
+    actions.v3 ? h('button', { class: 'btn', id: 'title-v3', onclick: actions.v3, title: 'One battle by the v3 prototype\'s rules: hidden plantings and sprouts. It saves nothing.' }, 'v3 prototype') : null,
   );
   const sky = h('div', { class: 'title-sky', 'aria-hidden': 'true' });
   const el = h('div', { class: 'runscreen titlescreen', id: 'title' },

@@ -14,6 +14,7 @@ import type { RunState } from '../run/index.ts';
 import { DEFAULT_COMMANDER, MILESTONE } from '../sim/index.ts';
 import { createBattle, makeRoundConfig } from '../sim/index.ts';
 import type { BattleState, Content } from '../sim/index.ts';
+import { isV3 } from '../sim/v3.ts';
 import { h } from '../ui/h.ts';
 import { helpOverlay } from '../ui/help.ts';
 import { applyMotion, sporeWipe } from '../ui/motion.ts';
@@ -219,6 +220,8 @@ function openTitle(content: Content, atlas: ReturnType<typeof bakeAtlas>, params
       },
       help: openHelp,
       settings: settingsButton(atlas, openSettingsScreen, 'Settings'),
+      // the v3 prototype's preview link, on the dev site only, until its S10 removes the switch (T016)
+      ...(DEV_SITE ? { v3: () => { location.search = '?scene=battle&rules=v3'; } } : {}),
     }, params.test, `Milestone ${MILESTONE}${DEV_SITE ? ` · dev build${BUILD_SHA ? ` ${BUILD_SHA}` : ''}` : ''}`);
     document.getElementById('app')!.replaceChildren(screen);
     screen.querySelector<HTMLElement>('.title-menu .primary')?.focus({ preventScroll: true });
@@ -322,6 +325,8 @@ function startBattle(content: Content, atlas: ReturnType<typeof bakeAtlas>, scen
     holdAftermath: params.test && params.phase !== null, measure: params.measure === 'frames',
     onFrame: () => { if (bridge) bridge.ready = true; },
   });
+  // the v3 prototype says so on its battle, which saves nothing, as no single battle does (T016)
+  if (isV3(state.config)) document.body.append(h('div', { class: 'v3-tag', id: 'v3-tag', title: 'A battle by the v3 prototype\'s rules (docs/v3-proto-plan.md). It saves nothing.' }, 'v3 prototype'));
   // a pause or `phase=planning` holds planning until input, and a pause never carries into a clash (plan Call 14)
   if (state.phase === 'planning') battle.session.hold = params.phase === 'planning' || params.paused;
   else battle.session.paused = params.paused;

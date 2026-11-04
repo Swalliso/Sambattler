@@ -19,7 +19,7 @@ import { generalKit, hashRun, intelDots, isBattle, nodeBattleIndex } from '../sr
 import type { RunState } from '../src/run/index.ts';
 import { battleOutcome } from '../src/ui/words.ts';
 import { COUNTER_KINDS } from '../src/sim/index.ts';
-import { formationOf as roundFormationOf, hashState as hashRoundState, summarize as summarizeRound } from '../src/sim/index.ts';
+import { hashState as hashRoundState, summarize as summarizeRound, visibleColony } from '../src/sim/index.ts';
 import type { BattleState as RoundState } from '../src/sim/index.ts';
 
 interface Args {
@@ -425,7 +425,8 @@ async function roundCapture(page: Page, q: URLSearchParams, args: Args, url: str
     if (!canvas.enemyTint) failures.push('gray mat tint missing from the general\'s colony\'s columns');
   }
   // 4. the band agrees with the summary, with no lives in a single battle (A063), and in planning the general's
-  //    whole colony and formation are drawn before your first command, as Node's formationOf has them (§7.5, §10.2)
+  //    whole colony and formation are drawn before your first command, as Node's formationOf has them (§7.5, §10.2):
+  //    as you may see it (`visibleColony`), so a v3 capture from round 2 holds its plantings back (C3.1, T014)
   // (a script string, not a function: tsx would inject __name helpers the page does not have)
   const hud = await page.evaluate(`(() => {
     const t = (sel) => document.querySelector(sel)?.textContent ?? null;
@@ -445,7 +446,7 @@ async function roundCapture(page: Page, q: URLSearchParams, args: Args, url: str
   let preview: { squads: number; units: number } | null = null;
   if (node?.phase === 'planning') {
     const drawn = await page.evaluate(() => (window.__GAME__ as unknown as { preview(): { enemy: { squads: { building: number; ghost?: true; units: { x: number; y: number }[] }[] } } | null }).preview()?.enemy ?? null);
-    const plans = roundFormationOf(node, 'enemy');
+    const plans = visibleColony(node, 'enemy').formation;
     const want = plans.map((q) => ({ building: q.building, units: q.units.map((u) => ({ x: u.x, y: u.y })) }));
     const got = drawn ? drawn.squads.filter((q) => !q.ghost).map((q) => ({ building: q.building, units: q.units.map((u) => ({ x: u.x, y: u.y })) })) : null;
     if (!got) failures.push('preview().enemy is null in planning: the general\'s formation isn\'t drawn');

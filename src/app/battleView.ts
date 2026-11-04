@@ -40,7 +40,7 @@ import type { PlayTimeReadout } from '../ui/report.ts';
 import { loadSettings, onSettings, settingsStore } from './settings.ts';
 import { BattleSound } from './battleSound.ts';
 import { sfx, soundDim, soundPrefs, soundSpeed, soundToggle } from './sound.ts';
-import { resultBanner } from './phases/aftermath.ts';
+import { emptyClash, resultBanner } from './phases/aftermath.ts';
 import { aimText, laneCallout, powerButton, powerNews, powerRefusal, powerText, powerUse } from './phases/clash.ts';
 import { generalNews, planningHint } from './phases/planning.ts';
 import type { RoundSession } from './session.ts';
@@ -378,7 +378,10 @@ export class RoundsView {
       if (e.t === 'generalPlanned') {
         const news = e.side === 'enemy' ? generalNews(this.content, state) : null;
         if (news) this.say('counter', news);
-      } else if (e.t === 'laneWon') {
+      } else if (e.t === 'roundStarted' && emptyClash(state)) {
+        // under v3 Begin went straight here from an empty clash, as from round 1, when both openers sprout (T017)
+        this.say('info', 'Both colonies sprout');
+      } else if (e.t === 'laneWon' && !emptyClash(state)) {
         const c = laneCallout(state, e);
         if (c) this.callouts.push('lane', c.text, c.tone, now);
       } else if (e.t === 'merged' && e.tier === 3) {

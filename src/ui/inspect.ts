@@ -7,6 +7,7 @@
 // buttons stay mounted, so a re-render never loses a click or focus.
 import { mergePreview, sellValue } from '../sim/index.ts';
 import type { BattleState, BuildingState, MergePreview, Side, UnitState } from '../sim/index.ts';
+import { isSprout, isV3 } from '../sim/v3.ts';
 import { findUnit, tierDef, unitDef } from '../sim/world.ts';
 import { h, setText, toggleClass } from './h.ts';
 import { tierPips } from './icons.ts';
@@ -145,6 +146,8 @@ export class RoundInspect implements HudPart {
     } else if (cb.kind === 'tower') pairs.push(['Fields', 'one emplacement']);
     else if (cb.economy) pairs.push(['Earns', `${cb.economy.goldPerRound} gold a round${plot.terrain === 'loam' ? `, +${state.compiled[b.side].loamBonusPct}% on this loam` : ''}`]);
     pairs.push(['Plot', `${state.lanes.length > 1 ? `lane ${plot.lane + 1}, ` : ''}${RANK[plot.rank] ?? `rank ${plot.rank + 1}`} rank, file ${plot.file}${plot.terrain === 'loam' ? ', loam' : ''}`]);
+    // under v3 it's a sprout until the clash after the round it was planted in (C3.2)
+    if (isSprout(state, b)) pairs.push(['Sprout', `${cb.economy ? 'pays' : 'fields'} from round ${b.plantedRound + 1}`]);
     if (cb.squad) pairs.push(...this.clashRows(state, b));
     if (cb.economy) pairs.push(['Gold produced', String(state.stats[b.side].goldByBuilding[String(b.id)] ?? 0)]);
     setText(this.title, `${content.buildings[b.buildingId]?.name ?? b.buildingId} · ${sideWord(b.side)}`);
@@ -161,9 +164,10 @@ export class RoundInspect implements HudPart {
       this.mergeBtn.disabled = !planning;
       setText(this.mergeBtn, `Merge ${on ? 'ON' : 'OFF'} [M]`);
     }
-    // the gold upgrade (§6.1): once every plot is built on, its squad arrives Bloomed for the rest of the battle
-    this.upgradeBtn.hidden = cb.kind !== 'spawner';
-    if (cb.kind === 'spawner') {
+    // the gold upgrade (§6.1): once every plot is built on, its squad arrives Bloomed for the rest of the battle;
+    // the v3 prototype has none (C3.3)
+    this.upgradeBtn.hidden = cb.kind !== 'spawner' || isV3(state.config);
+    if (!this.upgradeBtn.hidden) {
       const block = b.upgrade ? 'upgraded' : this.hooks.upgradeBlock(b.id);
       this.upgradeBtn.disabled = !planning || block !== null;
       this.upgradeBtn.title = b.upgrade ? 'Upgraded: its squad arrives Bloomed for the rest of the battle'
@@ -185,7 +189,7 @@ export class RoundInspect implements HudPart {
     const s = b.side, key = String(b.id);
     if (state.phase === 'clash') {
       const squad = state.squads.find((q) => q.building === b.id);
-      if (!squad) return [['This clash', 'planted after Begin: fields next round']];
+      if (!squad) return [['This clash', isSprout(state, b) ? 'a sprout: it fields nothing yet' : 'planted after Begin: fields next round']];
       const before = state.rounds.reduce((n, r) => n + (r.damageByBuilding[s][b.id] ?? 0), 0);
       // a merged unit counts once, so the muster's knits leave fewer units than arrived
       const standing = state.units.filter((u) => u.sourceBuildingId === b.id).length;

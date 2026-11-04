@@ -10,6 +10,7 @@ import type { Content } from '../../data/registry.ts';
 import { aftermathLength } from '../../render/aftermath.ts';
 import type { BattleState } from '../../sim/index.ts';
 import { roundOutcome } from '../../sim/systems/victory.ts';
+import { isV3 } from '../../sim/v3.ts';
 import { resultOf } from '../../ui/hud/explain.ts';
 import type { RoundSession } from '../session.ts';
 
@@ -33,11 +34,23 @@ export class AftermathPhase {
 
   /** One frame: true once the aftermath is skipped or its view has played out at the speed, when the loop steps once. */
   frame(session: RoundSession, dt: number): boolean {
+    // an empty clash has no aftermath to show, even from a `phase=aftermath` checkpoint (T017)
+    if (emptyClash(session.state)) return true;
     if (session.overlayOpen) return false;
     this.elapsed += dt * session.speed;
     session.aftermathMs = this.elapsed;
     return this.skipped || (!this.waits && this.elapsed >= aftermathLength(session.state));
   }
+}
+
+/**
+ * Whether the last clash scored was empty: under v3, neither side fielded a squad, as in round 1, when both
+ * openers sprout (C3.2, Plan-Q1). The screen shows no clash or aftermath for it, and Begin goes straight to the
+ * next round's planning (T017). Never under v2.
+ */
+export function emptyClash(state: BattleState): boolean {
+  const r = state.rounds.at(-1);
+  return isV3(state.config) && !!r && !r.fielded.player.length && !r.fielded.enemy.length;
 }
 
 /**

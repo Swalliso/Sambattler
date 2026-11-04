@@ -6,11 +6,13 @@
 import type { Content } from '../data/registry.ts';
 import type { PowerDef } from '../data/schema.ts';
 import {
-  bloomLift, burstPreview, commandStamp, formationOf, harvestGold, killedSupply, plantProblem, powerNow, powerOf, powerProblem, priceOf, queueCommand, sellValue,
-  upgradePrice, upgradeProblem,
+  bloomLift, burstPreview, commandStamp, harvestGold, killedSupply, plantProblem, powerNow, powerOf, powerProblem, priceOf, queueCommand, sellValue,
+  upgradePrice, upgradeProblem, visibleColony,
 } from '../sim/index.ts';
 import type { BattleState, Command, CommandBody, UnitState } from '../sim/index.ts';
+import { isV3 } from '../sim/v3.ts';
 import { trayOrder } from '../ui/buildingInfo.ts';
+import { emptyLanes } from './phases/planning.ts';
 import { loadSettings } from './settings.ts';
 
 /** The ghost of the chosen card, snapped to one of your plots (§10.2 "Placing"). */
@@ -296,12 +298,16 @@ export class RoundSession {
     this.sellArmed = null;
   }
 
-  /** A click in planning: the building on the plot under the tile, yours or the general's. */
+  /**
+   * A click in planning: the building on the plot under the tile, yours or the general's as you may see it, so
+   * under v3 a plot holding a planting hidden until Begin opens nothing (C3.1, T014).
+   */
   selectAt(col: number, row: number): void {
     const s = this.state;
     let id: number | null = null;
     for (const side of ['player', 'enemy'] as const) {
-      const p = s.sides[side].plots.find((q) => col >= q.col && col < q.col + 2 && row >= q.row && row < q.row + 2);
+      const plots = side === 'enemy' && isV3(s.config) ? visibleColony(s, 'enemy').plots : s.sides[side].plots;
+      const p = plots.find((q) => col >= q.col && col < q.col + 2 && row >= q.row && row < q.row + 2);
       if (p?.building) id = p.building;
     }
     this.selected = id;
@@ -322,13 +328,8 @@ export class RoundSession {
     this.selectAt(col, row);
   }
 
-  /** The lanes where you'd field nothing and the general fields something (§10.2): on a one-lane map, your whole formation. */
-  emptyLanes(): number[] {
-    const s = this.state;
-    const fields = (side: 'player' | 'enemy') => new Set(formationOf(s, side).map((q) => q.lane));
-    const mine = fields('player'), theirs = fields('enemy');
-    return s.lanes.flatMap((_, i) => (!mine.has(i) && theirs.has(i) ? [i] : []));
-  }
+  /** The lanes where you'd field nothing and the general, as you may see it, fields something (§10.2, `emptyLanes`). */
+  emptyLanes(): number[] { return emptyLanes(this.state); }
 
   /**
    * Begin (§10.2): the first press over an empty lane pins the warning instead, and the next press begins. A
