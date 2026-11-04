@@ -2,7 +2,7 @@
 
 **Status:** not adopted. A design review for the user to discuss before R3's plan (R3's S0), written on 2026-11-04 beside R2b's S14. Nothing here is built, and no code, data, rule or test changed.
 
-**Touches:** SPEC §1.3 #5, #7 and #12; §4.4 (planting and selling); §6.1 (gold upgrades); §6.2 (income); §6.4 (the Sporestorm); §7.2 and §7.8 (the general's turn and kit); §8.3, §8.6 and §8.10 (drafts, rewards, the kit); §11.7 (relics); §11.13 and §11.14 (augments, combos); §14.5 (commands); §16 R3; §18.2 #17 (a clean-win bonus).
+**Touches:** SPEC §1.3 #5, #7 and #12; §4.4 (planting and selling); §6.1 (gold upgrades); §6.2 (income); §6.4 (the Sporestorm); §7.2 and §7.8 (the general's turn and kit); §8.3, §8.6 and §8.10 (drafts, rewards, the kit); §11.7 (relics); §11.13 and §11.14 (augments, combos); §14.5 (commands); §16 R3; §18.2 #17 (a clean-win bonus); Appendix A (SPEC's record of the research proposals).
 
 **Measured or a guess:** "Measured" marks a number from the sim on `develop` at `5065430`, or from a doc this file cites. "Guess" marks my judgment, untested. Every number is provisional: S14 is tuning merging, the Sporeling Burrow and Cordis on `feature/r2b-tune` while this is written, so this review recommends no retune of those.
 
@@ -16,6 +16,8 @@
   3. fewer, bigger relics (Keystones) in place of the relics in in-battle drafts;
   4. a shared offer each round, prototyped after the first;
   5. a clean-win bonus, which the user has already said yes to.
+- **Does R3 as planned fix it?** No. R3 makes the decisions a round already has weigh more (the draft pick, and where the one building goes), and it makes runs differ more. But it changes none of gold, prices, plots or what gold buys, and SPEC's own expected income is "about one new spawner a round after the opener" (§6.2). Section 3 has the detail. What would fix it is a second thing to buy that takes no plot: the shortlist's first item.
+- **What SPEC v2 already did with these ideas:** it folded mutation cards in as augments and themed packs as run packs, both in R3. It deferred Keystones and Seasons, and it built interest, comeback gold and the gold upgrade. The per-round shared offer, sends, tech bought with gold, the income ramp, commissions, Omens and cheap moves are new to SPEC. Each candidate below is marked.
 - **For R3:** the first changes how R3 deals augments and retires S5b's gold upgrade. The third changes R3's relic pass. The rest are small, or come after R3.
 
 ## 1. The problem, measured
@@ -110,7 +112,7 @@ R3 already plans the last: augments, copies and packs.
 
 ## 2. Candidates
 
-Eight, from the hub's starting list and the research. Each gives how it works in a round of plan-then-fight, the complaints it answers, what it replaces, its cost, its risks, how to measure it and where it sits against R3. "Decisions per round" below means purchases and changes in planning: plants, sales, techs, upgrades, toggles and moves, with the draft pick counted apart.
+Eight, from the hub's starting list and the research. Each gives how it works in a round of plan-then-fight, the complaints it answers, what it replaces, its cost, its risks and how to measure it. Each ends with what SPEC v2 already did with it: R3 already brings it, SPEC deferred it, it's built, or it's new to SPEC. "Decisions per round" below means purchases and changes in planning: plants, sales, techs, upgrades, toggles and moves, with the draft pick counted apart.
 
 ### 1. Tech: augments bought with gold during a battle
 
@@ -153,7 +155,11 @@ Eight, from the hub's starting list and the research. Each gives how it works in
 - **The guardrails:** techs bought per battle by each side; the clash check with techs, against G12's strict bar and G2's edges; G5; G8, which reads whether the general answers techs.
 - **In a playtest:** planning commands per round from the save's command log, and the median planning seconds a round, 11 s today.
 
-**R3:** changes its scope. US3's augments are dealt by gold as well as by drafts (its S7 and S10), the gold upgrade retires beside the upgrade tracks (S12b), and the tray and draft UI change (S9, S11).
+**In SPEC v2: R3 already brings augments, but not this.**
+- **What SPEC did:** it folded the rework review's mutation cards ([after-the-rework.md](../archive/v1/ideas/after-the-rework.md), Tier 4 #4) in as augments (§1.3 #7, Appendix A). R3 deals them as draft cards in rounds 3, 5 and 7 and in spoils (§8.3).
+- **Does R3 as written answer the playtest?** Partly. It answers "drafts rarely change the build". But an augment costs no battle gold and adds no decision to the other rounds, so it doesn't answer "one building a round".
+- **New to SPEC:** buying them with gold.
+- **What it changes in R3:** US3's augments are bought with battle gold as well as drafted (its S7 and S10), the gold upgrade retires beside the upgrade tracks (S12b), and the tray and draft UI change (S9, S11). R3's task list (a draft of 2026-11-01) predates S5b's gold upgrade, so it says nothing about it yet.
 
 ### 2. Levels: a cheaper, earlier gold upgrade
 
@@ -173,7 +179,7 @@ Eight, from the hub's starting list and the research. Each gives how it works in
 
 **Measure:** G5, G4's round-9 clause, upgrades per battle, banked at Begin.
 
-**R3:** not in R3. If #1 is taken, this goes.
+**In SPEC v2: built, in R2b.** The gold upgrade is #67, built in S5b at 300% and only once the colony is full (§6.1). R3 retires v1's upgrade tracks (§11.6), and R1's call that a level adds no unit stands (#27). R3's task list predates S5b, so it neither keeps nor retires the gold upgrade. Reshaping it is a rule and data change. If #1 is taken, this goes.
 
 ### 3. A shared offer each round: one-clash tactics
 
@@ -210,7 +216,7 @@ Eight, from the hub's starting list and the research. Each gives how it works in
 
 **Measure:** decisions per round; banked at Begin; how often each tactic is bought (one bought in more than half of rounds is a tax); G3, G12, and G13 for tactics that stall clashes.
 
-**R3:** new. Not in R3's scope, so S0 decides whether it goes in R3 or after.
+**In SPEC v2: new.** Neither SPEC nor its record of the research (Appendix A) has a per-round offer, a one-clash card or a send. R3 doesn't cover it, so S0 decides whether it goes in R3 or after.
 
 ### 4. An economy that pays
 
@@ -236,7 +242,12 @@ Eight, from the hub's starting list and the research. Each gives how it works in
 
 **Measure:** the Cellar opener's win rate against an opener without one, as a bot pair with `--proto`; banked at Begin; G4; G5.
 
-**R3:** new. A data change, measured in R3's guardrail session (its S14) or after, with the user's OK.
+**In SPEC v2: partly built, partly new.**
+- **Built:** interest at 1 per 10 gold, up to 30 (R2-Q2), and comeback gold, which does the loss streak's job (§6.2).
+- **SPEC's own target** is "about one new spawner a round after the opener" (§6.2), so the playtest's one building a round is the design working as written. Raising income alone would fill the colony sooner.
+- **New to SPEC:** the income ramp. The Sporestorm escalates damage, not income (§6.4).
+- **Data:** the Cellar's yield.
+- **R3** doesn't touch income. A fix is a data change, measured in R3's guardrail session (its S14) or after, with the user's OK.
 
 ### 5. Keystones in place of the in-battle relics
 
@@ -267,7 +278,9 @@ Eight, from the hub's starting list and the research. Each gives how it works in
 
 **Measure:** `--checks cards,runs` as §16 R3 step 4 sets it: a rule-changing card owned at the end of at least 30% of runs, and the top building's damage share below about 60%.
 
-**R3:** changes its relic task ("each with its v2 effect, or retired", §16 R3) and S10's draft weights.
+**In SPEC v2: deferred.** Appendix A's "Not in v2 yet" lists Keystones and Seasons (the rework review's Tier 4 #5 and #10): "For now augments, combos and relics carry run variety" (§1.3 #7, #8).
+- **What would change that:** the playtest found that the relics of rounds 3, 5 and 7 rarely change the build, and R3's relic pass revisits every relic anyway.
+- **What it changes in R3:** its relic task ("each with its v2 effect, or retired", §16 R3) and S10's draft weights.
 
 ### 6. Commissions: a goal each battle
 
@@ -290,7 +303,7 @@ Progress shows in the top band.
 
 **Measure:** how often each goal is completed; planning seconds a round.
 
-**R3:** new. Better built with M6's feats.
+**In SPEC v2: new.** SPEC's goals are the feats (§9.2), which are meta-progression in M6, and the quests printed on locked cards in M6's unlock ladder (the rework review's Tier 4 #7). A goal within a battle isn't in SPEC. It's better built with M6's feats.
 
 ### 7. Stakes for a one-sided battle: the clean-win bonus and Omens
 
@@ -313,7 +326,10 @@ Progress shows in the top band.
 
 **Measure:** G15, spoils per run.
 
-**R3:** (a) is a run reward (§8.6), which the hub records as the user's answer; (b) is new.
+**In SPEC v2:**
+- **(a) is open** (§18.2 #17): not adopted, and R2b's playtest asked again. The user said yes on 2026-11-04, so the hub records it. It's a run reward (§8.6).
+- **(b), Omens, is new** to SPEC.
+- **Elite prizes** aren't in SPEC's record (Appendix A). §8.6 keeps v1's elite rewards, and the rework review's Tier 4 #2 ("elites that pay") went unlisted.
 
 ### 8. Cheap moves: placement as a per-round decision
 
@@ -329,44 +345,84 @@ Progress shows in the top band.
 
 **Measure:** G16 and moves per round, after R3's combos.
 
-**R3:** after its combos (S8, S9). Not shortlisted.
+**In SPEC v2: SPEC set the opposite.** §4.4 makes a move a sale and a replant, so it costs 40%, and a cheaper move is new. Placement's own fix is R3's combos (§11.14), which also cover the rework review's lane pairs (Appendix A, Tier 4 #8). This comes after R3's combos (S8, S9), and isn't shortlisted.
 
 ### Dropped, or already covered
 
-- **Mutations** (research mechanic 1): R3's augments are mutations already (§11.13).
-- **Curated pools** (Battlegrounds' 5 of 10 minion types, Super Auto Pets' packs): R3's run packs deal 4 of 10 (§11.15).
-- **Legion TD 2's sends as a verb of their own:**
+- **Mutations** (research mechanic 1). *R3 already brings them:* the rework review's mutation cards became augments (§11.13, Appendix A).
+- **Curated pools** (Battlegrounds' 5 of 10 minion types, Super Auto Pets' packs). *R3 already brings them:* themed packs became run packs, 4 of 10 a run (§11.15, Appendix A).
+- **Legion TD 2's sends as a verb of their own** (*new to SPEC*):
   - In Legion, a send attacks the other player's lane. Here both armies meet in one clash per lane, so a send has nothing of its own to attack. It's a one-clash reinforcement, folded into #3.
   - Its other half, spending that raises income, would tie the economy to spending. That's left out as too much to learn at once (a guess).
-- **Streaks** (TFT): a win-streak bonus pays the side already ahead, and the loser's +40 already does the loss streak's job (§6.2).
-- **Seasons** (research mechanic 5): one run-wide rule for both sides, cheap with the modifier machinery. But it adds variety, not decisions in a round, and R3's packs make runs differ first. It fits later, beside M7's blights.
-- **Elite prizes** (research mechanic 11): folded into #5, where an elite pays a Keystone, and into #7.
-- **Battle XP** (lane mechanic 14), where kills buy ranks or gold: it overlaps with #2, and it snowballs.
-- **Interest:** already a choice, at 1 per 10 gold up to 30 (R2-Q2). Its cap is #4's fix (c).
+- **Streaks** (TFT). *Built in another form:* a win-streak bonus pays the side already ahead, and the loser's +40 already does the loss streak's job (§6.2).
+- **Seasons** (research mechanic 5). *SPEC deferred them,* with Keystones (Appendix A). One run-wide rule for both sides, cheap with the modifier machinery. But it adds variety, not decisions in a round, and R3's packs make runs differ first. It fits later, beside M7's blights.
+- **Elite prizes** (research mechanic 11). *Not in SPEC's record:* folded into #5, where an elite pays a Keystone, and into #7.
+- **Battle XP** (lane mechanic 14), where kills buy ranks or gold. *New to SPEC:* it overlaps with #2, and it snowballs.
+- **Interest.** *Built:* already a choice, at 1 per 10 gold up to 30 (R2-Q2). Its cap is #4's fix (c).
 
-## 3. The shortlist, in order
+## 3. Does R3 as planned add decisions each round?
 
-| # | Candidate | Why this place | What it changes in R3's plan |
-|---|---|---|---|
-| 1 | **Tech** (#1), in place of the gold upgrade | It gives every round from round 2 a second purchase and a second kind of answer to the general, and late gold a use. It reuses R3's augment content and sim work | Augments are bought with battle gold. A drafted augment unlocks its tech for the run (option A). The general buys techs at its turn, instead of gaining augments by battle index (§7.8). S5b's gold upgrade retires with the upgrade tracks (S12b). The clash check with techs is R3's step 3, and the tray and draft UI change (S9, S11) |
-| 2 | **The economy, measured against tech** (#4) | The Cellar's payback of 3 rounds can't be judged while late gold has nothing to buy. Fixing it first would tune against a state that #1 removes | One task in R3's guardrail session (S14): the Cellar opener against no Cellar, with techs in. If it still loses, the ramp or a faster Cellar, as a data change with the user's OK |
-| 3 | **Keystones** (#5) | The user's "relics … fairly inconsequential". R3 already revisits every relic, so the extra cost is the schedule | Relics leave the in-battle drafts (R3's S10 weights). Keystone picks come after battles 1 and 3, before the boss and at elites. The 21 relics are sorted in R3's S1 content work |
-| 4 | **A shared offer each round** (#3), as a prototype after #1 | The only candidate that brings a fresh decision every round. But it's a new system with new content, and #1 may be enough | None in R3 unless S0 adds it. A short-lived prototype branch once #1 lands, measured on banked gold, decisions per round and planning seconds |
-| 5 | **The clean-win bonus** (#7a), Omens later | The user said yes. It gives a dominating player stakes in each round, and it's cheap | A run reward in §8.6, placed by R3's S0 or S14 once the hub records the answer. Omens wait for M7's blights |
+### What SPEC v2 already took in
 
-**If only one thing happens:** #1. The other four either depend on it (#2, #4), fit inside work R3 already plans (#3), or are small (#5).
+SPEC records what it did with the research's proposals at its end: Appendix A's paragraph on the rework review's proposals ([after-the-rework.md](../archive/v1/ideas/after-the-rework.md), history rather than current design), and its table "Not in v2 yet (undecided)".
 
-**What R3 already covers:** copies make "mass the cheapest" impossible, and choosing which card to copy is a decision of its own. Augments make draft picks change how units play, combos make placement count (G16), and packs make runs differ. So, of the user's findings:
-- the drafts rarely changing the build, placement and variety are R3's;
-- one building a round, the economy and the one-sided battles are not, and #1, #2 and #5 are aimed at those;
+| Idea | In SPEC v2 | Where |
+|---|---|---|
+| Mutation cards, as augments | R3 brings it | §1.3 #7, §11.13 |
+| Themed packs, as run packs | R3 brings it | §1.3 #8, §11.15 |
+| Lane pairs, as combos | R3 brings it | §11.14 |
+| Lives, and the general planning first | Built in R2 | §1.3 #2, #3 |
+| Interest raised, comeback gold, the gold upgrade | Built in R2a and R2b | §6.1, §6.2 |
+| Keystones, Seasons, the boss's Edict, a branching route | Deferred: "for now augments, combos and relics carry run variety" | Appendix A, §1.3 #7, #8 |
+| Merging's rework | v1's rule stays until the playtests decide. This playtest says it needs more, and S14 is measuring it | §1.3 #9 |
+| The per-round shared offer, sends, tech bought with gold, an income ramp, commissions, Omens, cheap moves | New to SPEC | – |
+
+### What R3 does to a round
+
+- **Copies** (§8.10) limit what you can plant, so the plant decision becomes a choice among cards, but they add none.
+  - **The starting kit:** each commander's starter is two spawners and the Truffle Cellar, at 2 copies each. So battle 1 opens with 6 buildings for 8 plots, and only 4 of them field units, until drafts add cards.
+  - **The cliff:** copies may bring it forward, or leave plots empty (a guess; measure free plots at Begin with copies on).
+- **Augments** (§11.13) are dealt in the drafts of rounds 3, 5 and 7 and in spoils. They make those picks weigh more, and the general's army takes more reading. They cost no battle gold and add no decision to the other rounds.
+- **Combos** (§11.14) make where the one building goes matter more (G16). Re-arranging still costs 40% (§4.4).
+- **Run packs, the four card types and the relics' v2 effects** make runs differ before and during a run (§8.3, §8.4, §11.7).
+
+### So
+
+**What R3 as written does:** it makes the decisions a round already has weigh more, and makes runs differ more. It doesn't add decisions each round. "One building a round" is SPEC's own expected income ("about one new spawner a round after the opener", §6.2), and R3 changes none of gold, prices, plots or what gold buys. Of the user's findings, R3 as written answers:
+- the drafts rarely changing the build (augments, copies and blueprints);
+- placement (combos);
+- variety between runs (packs).
+
+It doesn't answer one building a round, the economy, or the empty late rounds.
+
+**What would fix one building a round:** a second thing gold buys that takes no plot, from round 2. That's candidate #1, tech, or the smaller candidate #2, levels.
+- **More gold alone wouldn't:** at today's prices it fills the colony sooner, and the late rounds already bank 200–300 with nothing to buy.
+- **If tech isn't enough,** candidate #3, the shared offer, keeps the late rounds fresh.
+
+## 4. The shortlist, in order
+
+| Rank | Candidate (section 2's number) | In SPEC v2 | Why this place | What it changes in R3's plan |
+|---|---|---|---|---|
+| 1 | **Tech** (#1), in place of the gold upgrade | R3 brings augments as draft cards; buying them with gold is new | It gives every round from round 2 a second purchase and a second kind of answer to the general, and late gold a use. It reuses R3's augment content and sim work | Augments are bought with battle gold. A drafted augment unlocks its tech for the run (option A). The general buys techs at its turn, instead of gaining augments by battle index (§7.8). S5b's gold upgrade retires with the upgrade tracks (S12b). The clash check with techs is R3's step 3, and the tray and draft UI change (S9, S11) |
+| 2 | **The economy, measured against tech** (#4) | Interest and comeback gold are built; the ramp is new | The Cellar's payback of 3 rounds can't be judged while late gold has nothing to buy. Fixing it first would tune against a state that tech removes | One task in R3's guardrail session (S14): the Cellar opener against no Cellar, with techs in. If it still loses, the ramp or a faster Cellar, as a data change with the user's OK |
+| 3 | **Keystones** (#5) | Deferred (Appendix A) | The user's "relics … fairly inconsequential". R3 already revisits every relic, so the extra cost is the schedule | Relics leave the in-battle drafts (R3's S10 weights). Keystone picks come after battles 1 and 3, before the boss and at elites. The 21 relics are sorted in R3's S1 content work |
+| 4 | **A shared offer each round** (#3), as a prototype after tech | New | The only candidate that brings a fresh decision every round. But it's a new system with new content, and tech may be enough | None in R3 unless S0 adds it. A short-lived prototype branch once tech lands, measured on banked gold, decisions per round and planning seconds |
+| 5 | **The clean-win bonus** (#7a), Omens later | Open (§18.2 #17); Omens are new | The user said yes. It gives a dominating player stakes in each round, and it's cheap | A run reward in §8.6, placed by R3's S0 or S14 once the hub records the answer. Omens wait for M7's blights |
+
+**If only one thing happens:** tech. Of the other four, the economy and the shared offer depend on it, Keystones fit inside work R3 already plans, and the clean-win bonus is small.
+
+**Who owns which finding:**
+- the drafts rarely changing the build, placement and variety are R3's (section 3);
+- one building a round, the economy and the one-sided battles are not, and tech, the economy's re-measure and the clean-win bonus are aimed at those;
 - merging and balance are S14's.
 
 ## Questions for the user
 
-1. **Tech.** Should augments be something you buy with gold during a battle, the way Mechabellum's tech works? Each round you'd choose between planting a new building and teching one you already have. Or should they stay draft cards that last the whole run, as R3 plans? *Recommended: buy them in battle.*
-2. **If you buy them:** should drafting an augment be what unlocks it for the run, so drafts still shape your build? And should each starting card come with one tech unlocked, so battle 1 has the choice too? *Recommended: yes to both, as first guesses.*
-3. **The gold upgrade.** Should tech replace it, or should it stay, with the "full colony" rule dropped? *Recommended: replace it.* Cheaper upgrades made the richer side win too often (G5 at 89–90%).
-4. **The economy.** Should we measure Truffle Cellars again once gold has more to buy, before changing their price or yield? Or should late income rise now? *Recommended: measure first.*
-5. **Relics.** Fewer, bigger relics (Keystones) at set points of the run, in place of relics in every in-battle draft? *Recommended: yes, in R3's relic pass.*
-6. **A shared offer each round.** Is it worth a prototype after tech: a few one-round tactics, the same offer for you and the general, with the general's pick shown? *Recommended: decide after tech's playtest.*
-7. **The clean-win bonus.** Extra Spores, or a better spoils pick, and at what Heartcap line? *Recommended: a better spoils pick, since it feeds the build.*
+1. **R3's job.** R3 as planned adds weight to a round's picks and variety between runs, but not more decisions each round (section 3). Should R3 also take on "one building a round", through tech (question 2)? Or should R3 stay as planned, with that fixed after it? *Recommended: take it on in R3,* since tech reuses R3's augments, and R3's S0 is the cheapest moment to change how they're dealt.
+2. **Tech.** Should augments be something you buy with gold during a battle, the way Mechabellum's tech works? Each round you'd choose between planting a new building and teching one you already have. Or should they stay draft cards that last the whole run, as R3 plans? *Recommended: buy them in battle.*
+3. **If you buy them:** should drafting an augment be what unlocks it for the run, so drafts still shape your build? And should each starting card come with one tech unlocked, so battle 1 has the choice too? *Recommended: yes to both, as first guesses.*
+4. **The gold upgrade.** Should tech replace it, or should it stay, with the "full colony" rule dropped? *Recommended: replace it.* Cheaper upgrades made the richer side win too often (G5 at 89–90%).
+5. **The economy.** Should we measure Truffle Cellars again once gold has more to buy, before changing their price or yield? Or should late income rise now? *Recommended: measure first.*
+6. **Relics.** Fewer, bigger relics (Keystones) at set points of the run, in place of relics in every in-battle draft? *Recommended: yes, in R3's relic pass.*
+7. **A shared offer each round.** Is it worth a prototype after tech: a few one-round tactics, the same offer for you and the general, with the general's pick shown? *Recommended: decide after tech's playtest.*
+8. **The clean-win bonus.** Extra Spores, or a better spoils pick, and at what Heartcap line? *Recommended: a better spoils pick, since it feeds the build.*
