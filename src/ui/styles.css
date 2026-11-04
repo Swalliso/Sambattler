@@ -240,9 +240,9 @@ html.assist .tugbar .p { background: repeating-linear-gradient(90deg, var(--lila
 .ghost-tip .bad { color: var(--danger-soft); }
 .ghost-tip .good { color: var(--ok); }
 .ghost-tip .muted { color: var(--muted); }
-/* the v3 prototype's battle (T016), under the dev badge where there is one */
+/* the v3 prototype's battle (T016): a badge of its own, or a part of the dev site's */
 .v3-tag { position: fixed; left: 50%; top: 0; transform: translateX(-50%); z-index: 30; pointer-events: none; padding: 0 8px; border: 1px solid var(--role-economy, #6fbf73); border-top: 0; border-radius: 0 0 4px 4px; background: var(--tooltip-bg); color: #9fe0a0; font: 10px/13px var(--font-mono); letter-spacing: .08em; text-transform: uppercase; }
-.dev-badge ~ .v3-tag { top: 14px; }
+.dev-badge .v3-tag { position: static; transform: none; padding: 0; border: 0; background: none; }
 .dev-badge { position: fixed; left: 50%; top: 0; transform: translateX(-50%); z-index: 30; pointer-events: none; padding: 0 8px; border: 1px solid var(--gold-deep); border-top: 0; border-radius: 0 0 4px 4px; background: var(--tooltip-bg); color: var(--gold); font: 10px/13px var(--font-mono); letter-spacing: .08em; }
 /* a `?proto=` spec naming a preset that doesn't exist (A117): said on every scene, under the dev badge */
 .proto-notice { position: fixed; left: 50%; top: 16px; transform: translateX(-50%); z-index: 30; pointer-events: none; max-width: calc(100vw - 32px); padding: 4px 10px; border: 1px solid var(--gold-deep); border-radius: 4px; background: var(--tooltip-bg); color: var(--text); font: 12px/16px var(--font-mono); }

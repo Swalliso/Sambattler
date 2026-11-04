@@ -325,8 +325,14 @@ function startBattle(content: Content, atlas: ReturnType<typeof bakeAtlas>, scen
     holdAftermath: params.test && params.phase !== null, measure: params.measure === 'frames',
     onFrame: () => { if (bridge) bridge.ready = true; },
   });
-  // the v3 prototype says so on its battle, which saves nothing, as no single battle does (T016)
-  if (isV3(state.config)) document.body.append(h('div', { class: 'v3-tag', id: 'v3-tag', title: 'A battle by the v3 prototype\'s rules (docs/v3-proto-plan.md). It saves nothing.' }, 'v3 prototype'));
+  // the v3 prototype says so on its battle, which saves nothing, as no single battle does (T016): in the dev
+  // site's badge, or in a badge of its own
+  if (isV3(state.config)) {
+    const tag = h('span', { class: 'v3-tag', id: 'v3-tag', title: 'A battle by the v3 prototype\'s rules (docs/v3-proto-plan.md). It saves nothing.' }, 'v3 prototype');
+    const badge = document.querySelector('.dev-badge');
+    if (badge) badge.append(' · ', tag);
+    else document.body.append(tag);
+  }
   // a pause or `phase=planning` holds planning until input, and a pause never carries into a clash (plan Call 14)
   if (state.phase === 'planning') battle.session.hold = params.phase === 'planning' || params.paused;
   else battle.session.paused = params.paused;

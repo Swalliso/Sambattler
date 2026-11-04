@@ -181,7 +181,7 @@ v2's game stays the default, with its rules and goldens, as R2a was built beside
   - a "v3 prototype" tag on the battle screen;
   - a v3 battle writes no save or record.
 
-  *As built:* the button is "v3 prototype" (`#title-v3`), and the tag (`#v3-tag`) shows on any v3 battle, under the dev badge where there is one. A single battle already saves nothing (§13.8). The tips store remembers the tips shown, as in any battle
+  *As built:* the button is "v3 prototype" (`#title-v3`), and the tag (`#v3-tag`) shows on any v3 battle, inside the dev site's badge ("DEV BUILD · … · V3 PROTOTYPE") or as a badge of its own. A single battle already saves nothing (§13.8). The tips store remembers the tips shown, as in any battle
 - [x] T017 [US1] An empty clash shows no clash or aftermath: Begin goes straight to the next round's planning, with the callout "Both colonies sprout" (`src/app/phases/clash.ts`, `src/app/phases/aftermath.ts`; C3.2). *As built:* `emptyClash` in `src/app/phases/aftermath.ts`. The loop steps through an empty clash's aftermath in the same frame (`src/app/loop.ts`), and the view says the callout as the next round opens and mutes the empty clash's lane news. Under v3, round 1's hint adds "it sprouts, and fields from round 2"
 
 **Checkpoint (S2 ends):** `npm run verify` and `npm run test:browser` pass, and the dev build plays a v3 battle from the title.
