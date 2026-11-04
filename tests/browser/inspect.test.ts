@@ -1,5 +1,6 @@
 // The bottom band and the chrome of a battle in rounds (SPEC §4.4, §10.2, §10.3, §10.4) (A068, A071): the tray's
-// price is `priceOf` on any free plot and a card is unlit only when gold is short; selling takes two presses
+// price is `priceOf` on any free plot and a card is unlit only when gold is short, and a drafted blueprint's card
+// joins it at once and plants in the same phase, as a drafted level redraws its card (§8.3); selling takes two presses
 // and refunds the full price in the planting phase, 60% once the building has fielded; Enter's Begin never
 // presses a focused inspector button; Begin sits in the bottom band, the planning hint in the callout lane, and
 // the speed control replaces Begin from the clash on; an empty colony against the scripted general warns first;
@@ -113,6 +114,37 @@ describe('the tray (§10.2, §4.4)', () => {
     expect(poor.find((c) => c.id === id)!.need).toBe('need 1');
     await setGold(page, price);
     expect(await page.locator(`#tray [data-building=${id}]`).getAttribute('class')).not.toContain('poor');
+  });
+
+  it("takes a drafted blueprint's card at once, which plants in the same phase, and redraws a card a drafted level changes (§8.3)", async () => {
+    // a run's battle in round 1's planning, with a draft staged: the Gill Archer Nest's blueprint, then the Truffle Cellar's first level
+    page = await open('scene=run&seed=1&test=1&round=1');
+    const pick = async (card: { id: string; type: 'blueprint' | 'upgrade' }) => {
+      await page!.evaluate((c) => { window.__GAME__!.battle()!.sides.player.draft = { offer: [{ ...c, rarity: 'common' }], rerolls: 0, index: 1 }; }, card);
+      await until(page!, () => !document.getElementById('draft')!.hidden);
+      await page!.keyboard.press('1');
+      await until(page!, (g) => !g.battle()!.sides.player.draft);
+      await frames(page!);
+    };
+    const cards = () => page!.locator('#tray .card[data-building]').evaluateAll((els) => els.map((e) => e.getAttribute('data-building')!));
+    const kit = () => page!.evaluate(() => window.__GAME__!.battle()!.sides.player.kit.map((k) => k.building));
+    expect(await cards()).not.toContain('gillNest');
+    await pick({ id: 'bp:gillNest', type: 'blueprint' });
+    expect(await kit()).toContain('gillNest');
+    expect(await cards()).toEqual(trayOrder(content, await kit()));
+    await setGold(page, 9999);
+    const plot = (await freePlots(page))[0]!;
+    const built = await plantAt(page, 'gillNest', plot);
+    expect(await page.evaluate((x) => window.__GAME__!.battle()!.buildings.find((b) => b.id === x)?.buildingId, built)).toBe('gillNest');
+    expect(await game(page)).toMatchObject({ round: 1, phase: 'planning' });
+    // the level recompiles the side: the Cellar's card shows its new income
+    const income = () => page!.evaluate(() => window.__GAME__!.battle()!.compiled.player.buildings.truffleCellar!.economy!.goldPerRound);
+    const before = await income();
+    expect(await text(page, '#tray [data-building=truffleCellar] .out')).toBe(`+${before}\u00a0gold a\u00a0round`);
+    await pick({ id: 'up:truffleCellar', type: 'upgrade' });
+    expect(await income()).toBe(before + 12);
+    expect(await text(page, '#tray [data-building=truffleCellar] .out')).toBe(`+${before + 12}\u00a0gold a\u00a0round`);
+    expect((await game(page)).errors).toEqual([]);
   });
 });
 
