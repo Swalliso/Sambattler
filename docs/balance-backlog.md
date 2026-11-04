@@ -24,7 +24,7 @@ v1's backlog is archived at [docs/archive/v1/balance-backlog.md](archive/v1/bala
 - **A fixed round cap** (R2a S21b, below; measurement only): a fixed 750 for both sides passes G4, G6, G8's bands and G13 (6 rounds, 13% reach round 9); a fixed 500 fails G4 (34%). Today's 25% is even in capped rounds (4 each). For R2b's S0.
 - **The Morel Runners** (R2a S21b, below): intended under §5.2, not a bug. A pair charges in a column, so it reads as one runner, and the runners that "pushed in to the enemy base" were striking the invisible Mortar that T160 fixed. A fan-out rule would be the user's call.
 - **G16 after the Burster moved to the front** (R2a S21b, below; the user's OK, 2026-11-03): 40%, from 24%. The Gill Archer and Mortar pairs are what's left (55% and 26%), and only a 2-tile gap fixed them in the levers' entry. They wait for the playtest's calls and R3's combos.
-- **Step 3's round-9 limit** (R2a S20, below): SPEC §16 R2 step 3 still says 15%, where G4's agreed band says 20% over 200 battles. Its 40 battles read 15%, at the limit.
+- **Step 3's round-9 limit** (R2a S20, below): settled. SPEC's step 3 reads G4's 20% since #35, and T138's line since S13. S13's 40 battles read 20%, at the limit (R2b S13, below).
 - **X8's readouts** (R2a S15, below): your colony is full from round 5, and once both colonies are full, half the clashes replay the last one. They go to S18's pace call and S21's playtest, with X8's two knobs still off.
 - **Gill Archers tie Swarm and Ranged** (R2a S15, below): the noise, not #14's tie order, picks between them. A rule change waits for the user.
 - **The Burster's seat effect** (R2a S17, below): a mirror of Bursters goes to whichever side's ids come first. A rule change waits for the user.
@@ -36,6 +36,55 @@ v1's backlog is archived at [docs/archive/v1/balance-backlog.md](archive/v1/bala
   - **S12's reading** (R2b S12, below): the bands as §12.3 has them, but reach at most 95%; the general's income × 1.10 and Armilla's Burster Pod bring Vesper and Armilla into band; Cordis needs a rework (a rule change) that data can't do. Waiting on the user.
 - **G5 misses since S5b's upgrades** (R2b S11, below): the +150-gold side wins 89%, against 55–75%, and no price from 200% to 600% passes. It's the same cause as G4's round-9 clause. It's a known miss until S14 (the user, 2026-11-04), which measures two levers: upgrades from a fixed round, and at most one a side a round.
 - **X8's two knobs show no need** (R2b S11, below): S12 deletes them (T129).
+
+## R2b S13 · §16 R2's verification on the final data (2026-11-04)
+
+T138, T140 and T142 on `feature/r2b-verify`, cut from `develop` after S12 (#134), with retune B. Nothing was tuned, and
+no data or golden changed. The other steps' results are in `docs/r2b-plan.md`'s As built.
+
+**Step 3** (T138): `npm run sim -- --seeds 1..40 --player bot:balanced --enemy general:scripted --summary`:
+
+| Step 3 expects | S13 | |
+|---|---|---|
+| every battle ends, with no rejected command | 40 of 40, none rejected | pass |
+| a median of 6–8 rounds | 7 (4 to 9) | pass |
+| at most 20% reach round 9 (G4's band since #35) | 20% (8 of 40) | pass, at the limit |
+| at most 15% of clashes at the 45 s cap | 8% (23 of 274), a median clash of 17 s | pass |
+| the bot wins 30–70% | 50% | pass |
+| a mean wall time within §13.7's 3 s a battle | 38 ms | pass |
+
+**Step 5** (T140): `npm run sim -- --run --seeds 1..20 --player bot:balanced --auto-draft greedy --auto-route random
+--summary`, as Vesper (the default commander):
+- every run completes, in 3 to 5 battles (a median of 4; seed 1 ends out of lives after 3), and a life is lost only in a
+  lost battle;
+- battle 1 is won in 16 of 20 (80%), 19 runs reach the boss (95%) and 12 of the 19 boss fights are won (63%), so 12
+  runs win (60%). These sit inside G14's and G15's bands, reach at its ceiling, and agree with G14's and G15's 100 runs as
+  Vesper (88%, 98%, 66 of 98);
+- lives left average 1.6, and 2.1 at the boss; the clashes take a median of 10.8 minutes a run (6.9 to 15.5), planning
+  untimed.
+
+**Step 7** (T142): `npm run test:slow` takes **2 min 51 s** on this machine (12 cores), against SPEC's "about 15
+minutes": G12's strict counter bar takes 107 s of it, and G16 8 s. Every reading is S12's after retune B, so nothing
+moved:
+
+| | Reading | |
+|---|---|---|
+| G4 | a median of 7 rounds, the bot wins 55%, 0 rejected; 22% of 200 reach round 9 (≤ 20%) | known miss: round 9 (S14) |
+| G5 | the +150 side wins 89% of 80 (55–75%) | known miss (S14) |
+| G6 | the behind side wins 29% of 80 (20–45%); the winner is hit in 83% of G4's battles | pass |
+| G7 | merge-on wins 96% of 200 (55–70%), 78% with Slayers at 24% of the supply (≤ 50%) | known miss (S14) |
+| G8 | `bot:balanced` 50% (40–65%), `bot:answer` 63% (≤ 80%); of the six monos above the baseline, only the Gill Nest's drops 20 points | known miss: monos (R3) |
+| G11 | the bench's budgets | pass |
+| G12 | every mono above 40% in G3 has an answer winning ≥ 60% on every map | pass |
+| G13 | 8% of 1,362 clashes at the cap, a median clash of 19.9 s | pass |
+| G14 | battle 1: Vesper 88%, Armilla 74%, Cordis 100% (70–90% each) | known miss: Cordis (S14) |
+| G15 | 96% of 300 runs reach the boss (≤ 95%), 71% of 289 boss fights won (40–70%) | known miss (S14) |
+| G1, G2, G3, G16 | as at S12: the Sporeling Burrow wins 9 of 10 duels, the Gill Archer beats no unit, the Sporeling Burrow's mono 75%, the formation rule 39% | known misses (S14; R3) |
+
+- **What's recommended:** nothing new. S14 takes T169's list with the user (G1, G2, G7, G4's round-9 clause, G5, and G14
+  and G15 with Cordis's rework, then the boss re-read), and R3 takes G3, G8's mono clause and G16.
+- **SPEC's runtime:** step 7 says the suite takes about 15 minutes. It took under 3 here since S11's run pool, so S14
+  can reword it with its tuning.
 
 ## R2b S12 · G14's and G15's bands, and a data-only retune, for T131 (2026-11-04)
 

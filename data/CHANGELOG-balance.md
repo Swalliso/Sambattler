@@ -8,6 +8,15 @@ replaces. None of it is open work, including headings that say "Open:". From mil
 entries measure or tune v2's round battle (SPEC §11, §12). "The backlog" in the entries below means
 v1's, now [archived](../docs/archive/v1/balance-backlog.md).
 
+## R2b-S13: §16 R2's verification, no data change (2026-11-04)
+
+No data, rule or golden changed. S13 ran SPEC §16 R2's steps 1–9 on the data after retune B, and every step passes, step
+7 with T168's ten known misses (`docs/r2b-plan.md`'s As built; the numbers in `docs/balance-backlog.md`, "R2b S13"). Step
+5 now reads "every run completes, in 3 to 5 battles" (the user, 2026-11-04), and `tools/sim.ts`'s run check with it.
+- **Waiting on the user, at S14 (T169):** G1, G2 and G7; G4's round-9 clause (22%) and G5 (89%), with the two upgrade
+  levers; G14 and G15 with Cordis's rework, then the boss re-read.
+- **R3 takes** G3, G8's mono clause and G16's pairs.
+
 ## R2b-S12 T131: G14's and G15's bands, and retune B (2026-11-04)
 
 **Approved by the user** (#35, 2026-11-04, relayed by the hub): "B, the boss too", with the bands and Cordis's plan as
