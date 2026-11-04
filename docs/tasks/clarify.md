@@ -81,7 +81,7 @@ This is the clarify step for SPEC v2. SPEC.md is the spec, `docs/<milestone>-pla
 | #29 | A bank reserve for the general | R2a S0 | 0 (decided 2026-11-02) |
 | #30 | The general's lane rule on Twin Roots | R2a S0 | First guess; a lane in the fielded record (decided 2026-11-02) |
 | #31 | A counter a round late? | R2a S0 | No (decided 2026-11-02) |
-| #35 | The guardrail bands | R2a S0, R2b S0 | One measurement; upper bounds on G6 and G15 (approach agreed 2026-11-02; R2a's bands and the pace agreed 2026-11-03 at T125; G14 and G15 at R2b S0) |
+| #35 | The guardrail bands | R2a S0, R2b S0, R2b S12 | One measurement; upper bounds on G6 and G15 (approach agreed 2026-11-02; R2a's bands and the pace agreed 2026-11-03 at T125; G14 and G15 at R2b S0, their bands and retune B on 2026-11-04 at T131) |
 | M6-Q1 | Record the feat stats in R2 | R2a S0 | Yes (decided 2026-11-02) |
 | M7-Q1 | Gray Rot records and its trait | R2a S0 (trait), M7 S0 | Mirror records; drop the trait (the trait dropped 2026-11-02; the records at M7 S0) |
 | RB-Q3 | Active play time | R2a S0 (R2a S19 at the latest), records-2's S3 (RB/T024) | Visible wall time, 60 s idle cutoff (decided 2026-11-02) |
@@ -683,6 +683,17 @@ R1 reports a measure for each row, and you settle it at R1's review gate (§16 R
   - **Until S12:** G14 and G15 assert as known misses in the slow suite, each printing its numbers and failing once it passes (T168), owned by S12's T131.
   - **At T131:** S12 agrees their bands with the user, and proposes a data-only retune, measured with `--proto path:value`, that brings both inside them, for the user's OK before S14's playtest. The hub suggested three levers: the general's income, its Heartcap, and the drafts' generosity.
   - **Armilla:** her gap (59% of battle 1s, 67 of 95 boss fights) is a commander fix of its own, which S12 raises.
+- **G14's and G15's bands, and retune B:** 2026-11-04 (R2b S12, T131; the user: "B, the boss too", relayed by the hub with
+  the bands and Cordis's plan). From S12's measurement (`docs/balance-backlog.md`, "R2b S12"):
+  - **The bands:** G14 70–90% of battle 1s for each commander; G15 40–70% of boss fights won and 40–95% of runs reaching
+    the boss. The ceiling moved from 85%: with 3 lives over 3–4 battles before the boss, 85% needs battles 2–4 won about
+    45% of the time.
+  - **Retune B, data only:** the general's income × 1.10 (from × 1.05); Armilla's Burster Pod in her starter (for the
+    Puffball Mortar) and her core (for the Rhizome Vault); the general's upgrade levels 3 a battle (from 1) and the boss's
+    12 (from 4); the boss's Heartcap 4,500 (from 3,600). Battle 1 reads 88%, 74% and 100% for Vesper, Armilla and Cordis;
+    96% of runs reach the boss, and 71% of boss fights are won.
+  - **Cordis:** no data brings her battle 1 under 91%. S14 reworks her as a rule change with the user's OK: her cards, and
+    a Puppet Bloom that lifts less (T169). Until then G14 (on her alone) and G15 stay known misses, owned by S14 (T168).
 
 The R2a plan settles these itself, with no call from you: A027, A032, A034, A036, A039, A043, A046, A052, A059, A060, A061, A064, A067, A068, A069, A070, A071, A072, A075, A076, A103, A104, A106, A110, A113, A114, A115, A118, A121.
 

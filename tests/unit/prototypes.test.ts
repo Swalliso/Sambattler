@@ -89,6 +89,6 @@ describe('proto overrides of buildings, units and bots', () => {
     expect(c.commanders.armilla!.starter).toEqual(['capguardHall', 'truffleCellar', 'gillNest']);
     expect(c.commanders.armilla!.core).toContain('gillNest');
     expect(c.commanders.cordis!.power).toMatchObject({ kind: 'bloom', radius: 2 });
-    expect(content.commanders.armilla!.starter).toEqual(['capguardHall', 'truffleCellar', 'puffballMortar']);
+    expect(content.commanders.armilla!.starter).toEqual(['capguardHall', 'truffleCellar', 'bursterPod']);
   });
 });

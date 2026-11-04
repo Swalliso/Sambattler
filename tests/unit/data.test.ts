@@ -188,7 +188,7 @@ describe('data', () => {
         arrivalShield: { minTypes: 2, shieldFrac: 0.2 },
         roundDamageCap: { flat: 750 }, decision: { by: 'shareOfMaxHp' }, interestPer: 10, interestCap: 30,
         sporestorm: { startRound: 5, stepBp: 2000, maxBp: 20000 },
-        stipendPerRound: 100, comebackGold: 40, enemyIncomeMult: 1.05, sellRefund: 0.6, sellRefundPlanted: 1,
+        stipendPerRound: 100, comebackGold: 40, enemyIncomeMult: 1.1, sellRefund: 0.6, sellRefundPlanted: 1,
         draftRounds: [2, 4, 6], upgradeCostPct: 300, lives: 3, plotGrowth: { perWin: 1, max: 4 },
       });
       // the planning AI's round keys beside the counter weights v1's AI had (§7.2–§7.4); X8's two knobs are gone (T172)

@@ -8,7 +8,7 @@ import type { ScenarioDef } from '../src/data/schema.ts';
 
 export const content = nodeContent();
 
-/** One source of the general's side's income: × `enemyIncomeMult` (1.05), rounded down as the sim pays it (§6.2). */
+/** One source of the general's side's income: × `enemyIncomeMult` (1.10), rounded down as the sim pays it (§6.2). */
 export const theirs = (gold: number): number => Math.floor((gold * Math.round(content.balance.enemyIncomeMult * 10000)) / 10000);
 
 export interface PlanningOptions {

@@ -499,10 +499,11 @@ describe('clash gold takes one path (SPEC §6.2, R2-Q20)', () => {
 });
 
 describe('the `requires` gates (SPEC §8.4, §11.7, A083, #26)', () => {
-  it("Mycorrhizal Link and the Rhizome Vault wait for R3's combos: no draft, spoils or event offers them, so Armilla's core offers five", () => {
+  it("Mycorrhizal Link and the Rhizome Vault wait for R3's combos: no draft, spoils or event offers them, and no core holds the Vault", () => {
     const pool = draftPool(content, 'velvet-bloom', 'armilla', DEFAULT_FLAGS);
-    expect(pool.core).toEqual(content.commanders.armilla!.core.filter((id) => id !== 'rhizomeVault'));
-    expect(pool.core).toHaveLength(5);
+    // Armilla's core traded the Vault for the Burster Pod (T131), so it offers all six
+    expect(pool.core).toEqual(content.commanders.armilla!.core);
+    for (const c of Object.values(content.commanders)) expect(c.core, c.id).not.toContain('rhizomeVault');
     expect(pool.shared).not.toContain('rhizomeVault');
     expect(pool.relics).not.toContain('mycorrhizalLink');
     expect(pool.relics).toContain('sporestormSigil');

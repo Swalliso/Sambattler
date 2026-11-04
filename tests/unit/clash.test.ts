@@ -318,7 +318,7 @@ describe("battle 1's pairings (`--checks pairings`, SPEC §7.8, §8.1, §11.10; 
 
   it("a starter's candidates are the monos and even pairs of its army cards", () => {
     expect(starterCandidates(content, 'vesper')).toEqual(['bot:mono:sporelingBurrow', 'bot:mono:capguardHall', 'bot:pair-sporelingBurrow-capguardHall']);
-    expect(starterCandidates(content, 'armilla')).toEqual(['bot:mono:capguardHall', 'bot:mono:puffballMortar', 'bot:pair-capguardHall-puffballMortar']);
+    expect(starterCandidates(content, 'armilla')).toEqual(['bot:mono:capguardHall', 'bot:mono:bursterPod', 'bot:pair-capguardHall-bursterPod']);
     expect(starterCandidates(content, 'cordis')).toEqual(['bot:mono:sporelingBurrow', 'bot:mono:gillNest', 'bot:pair-sporelingBurrow-gillNest']);
   });
 

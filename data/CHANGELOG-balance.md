@@ -8,6 +8,31 @@ replaces. None of it is open work, including headings that say "Open:". From mil
 entries measure or tune v2's round battle (SPEC §11, §12). "The backlog" in the entries below means
 v1's, now [archived](../docs/archive/v1/balance-backlog.md).
 
+## R2b-S12 T131: G14's and G15's bands, and retune B (2026-11-04)
+
+**Approved by the user** (#35, 2026-11-04, relayed by the hub): "B, the boss too", with the bands and Cordis's plan as
+recommended. Measured in `docs/balance-backlog.md` ("R2b S12"), `bot:balanced`, 100 runs a commander. SPEC §11.1, §11.10,
+§12.3 and D28.
+- **The bands** (`data/balance-targets.json`): G14 stays 70–90% of battle 1s for each commander. G15 stays 40–70% of boss
+  fights won and at least 40% reaching the boss, with reach now **at most 95%** (from 85%). With 3 lives over 3–4 battles
+  before the boss, 85% needs battles 2–4 won only about 45% of the time.
+- **The general's income** (`enemyIncomeMult`): × 1.05 → **× 1.10**. Vesper's battle 1 drops from 93% to 88%. G4's bot
+  wins 55% (from 63%), G8 reads 50% for `bot:balanced` and 63% for `bot:answer`, and G6 and G13 still pass.
+- **Armilla's Burster Pod** (`data/commanders.json`): in her starter for the Puffball Mortar, and in her core for the
+  Rhizome Vault, which no draft deals before R3's combos. Her battle 1 rises from 59% to 74% at × 1.10.
+- **The general's kit** (`enemyKit`): **3** upgrade levels a battle index past the first (from 1), and the boss's **12**
+  (from 4). Battles 2–4 are won 78%, 68% and 69% (from 84%, 82% and 80%).
+- **The boss's Heartcap** (`heartcapEnemyHp.boss`): 3,600 → **4,500**, which 6 capped rounds still rout.
+- **The result** (`npm run balance -- tournament --commanders all`):
+  - G14: Vesper 88%, Armilla 74% and Cordis 100% (band 70–90%). `bot:answer` reads 88%, 59% and 100%.
+  - G15: 96% of runs reach the boss (≤ 95%), and 71% of boss fights are won (40–70%). Vesper wins 66 of 98, Armilla 43 of
+    91 and Cordis 96 of 100.
+  - Runs won: Vesper 66%, Armilla 43%, Cordis 96%. M5's spread is 53 points, from 32.
+- **Still known misses, now owned by S14:** G14, on Cordis alone, and G15, held up by her runs (T168, T169). No data
+  brings her battle 1 under 91%; S14 reworks her as a rule change with the user's OK (her cards, and a Puppet Bloom that
+  lifts less).
+- **Goldens:** regenerated in the same branch on the final rules (T132).
+
 ## R2b-S12 T129: v1's keys retired, and R2a's `rounds` blocks folded into §11.1's names (2026-11-04)
 
 **No number changed** (T129, §11.1, §14.2; X8's knobs deleted by the user's call, 2026-11-03, "Cleanup first", after S11

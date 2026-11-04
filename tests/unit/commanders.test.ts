@@ -41,7 +41,8 @@ describe('the three commanders (SPEC §11.10)', () => {
       expect(c.power).not.toHaveProperty('firstReady');
       expect(c.passive.effects.modifiers?.length).toBeGreaterThan(0);
     }
-    expect(content.commanders.armilla!.starter).toEqual(['capguardHall', 'truffleCellar', 'puffballMortar']);
+    // Armilla's Burster Pod for the Puffball Mortar, in her starter and her core for the Rhizome Vault (T131, the user, 2026-11-04)
+    expect(content.commanders.armilla!.starter).toEqual(['capguardHall', 'truffleCellar', 'bursterPod']);
     expect(content.commanders.cordis!.core).toContain('tendersRing');
   });
 
@@ -141,7 +142,7 @@ describe('core-pool weighting (SPEC §8.3–8.4)', () => {
 
   it("gives a bot player weight on its commander's core buildings its profile never buys (runs only)", () => {
     expect(botCoreWeights(content, createRun(content, { seed: 1, player: 'bot:balanced', commander: 'vesper' }))).toEqual({});
-    expect(botCoreWeights(content, createRun(content, { seed: 1, player: 'bot:balanced', commander: 'armilla' }))).toEqual({ hammercapForge: 1, rhizomeVault: 1 });
+    expect(botCoreWeights(content, createRun(content, { seed: 1, player: 'bot:balanced', commander: 'armilla' }))).toEqual({ hammercapForge: 1 });
     expect(botCoreWeights(content, createRun(content, { seed: 1, player: 'bot:balanced', commander: 'cordis' }))).toEqual({ tendersRing: 1 });
     expect(botCoreWeights(content, createRun(content, { seed: 1, commander: 'cordis' }))).toEqual({});
   });
