@@ -1,8 +1,9 @@
-// Your relics and upgrades during a battle (playtest round 3: "I want to see what I've unlocked"). A chip
-// in the top band counts them; a click, Enter or `R` opens a popover under it with the run bar's relic
-// badges (each with its tooltip, on hover or focus) and every upgraded building with its levels. Esc,
-// `R`, the chip again or a press outside closes it. Drafted cards join it live. The battle in rounds doesn't
-// mount it yet: R2b's later sessions bring the run's relics and upgrades into rounds (S5, S6).
+// Your relics and upgrades during a battle (SPEC §10.2, §10.3 `R`; playtest round 3: "I want to see what I've
+// unlocked"), back in rounds since R2b/T175. In a run's battle, or any battle you draft in, a chip in the top band
+// counts them; a click, Enter or `R` opens a popover under it with the run bar's relic badges (each with its v2
+// text in a tooltip, on hover or focus) and every upgraded building with its levels, the gold upgrades bought this
+// battle among them (§6.1). Esc, `R`, the chip again or a press outside closes it. Drafted cards and upgrades join
+// it live.
 import type { Content } from '../../data/registry.ts';
 import type { Atlas } from '../../render/atlas.ts';
 import { spriteToCanvas } from '../../render/atlas.ts';
@@ -13,6 +14,11 @@ import { uiIcon } from '../icons.ts';
 import { uiScale } from '../scale.ts';
 import { relicBadge } from '../screens/run.ts';
 import { upgradeText } from '../words.ts';
+
+/** The player's spawners upgraded with gold this battle (§6.1, R2b/T161), a building id each, in plot order. */
+function goldUpgrades(state: BattleState): string[] {
+  return state.buildings.filter((b) => b.side === 'player' && b.upgrade).sort((a, b) => a.plot - b.plot).map((b) => b.buildingId);
+}
 
 export class KitView {
   readonly chip: HTMLButtonElement;
@@ -73,12 +79,13 @@ export class KitView {
   update(state: BattleState): void {
     this.state = state;
     const p = state.sides.player;
-    const levels = Object.values(p.upgrades).reduce((n, v) => n + v, 0);
+    const bought = goldUpgrades(state);
+    const levels = Object.values(p.upgrades).reduce((n, v) => n + v, 0) + bought.length;
     setText(this.relicCount, String(p.relics.length));
     setText(this.upgradeCount, String(levels));
-    this.chip.setAttribute('aria-label', `Your relics and upgrades: ${p.relics.length} relic${p.relics.length === 1 ? '' : 's'}, ${levels} upgrade level${levels === 1 ? '' : 's'}`);
+    this.chip.setAttribute('aria-label', `Your relics and upgrades: ${p.relics.length} relic${p.relics.length === 1 ? '' : 's'}, ${levels} upgrade${levels === 1 ? '' : 's'}`);
     if (!this.open) return;
-    const key = `${p.relics.join()}|${JSON.stringify(p.upgrades)}|${p.kit.map((k) => k.building).join()}`;
+    const key = `${p.relics.join()}|${JSON.stringify(p.upgrades)}|${p.kit.map((k) => k.building).join()}|${bought.join()}`;
     if (key === this.key) return;
     this.key = key;
     this.render(state);
@@ -87,8 +94,9 @@ export class KitView {
   private render(state: BattleState): void {
     const { content, atlas } = this;
     const p = state.sides.player;
-    const upgraded = trayOrder(content, p.kit.map((k) => k.building)).filter((id) => (p.upgrades[id] ?? 0) > 0 && content.upgrades[id]);
-    const draftNote = state.config.flags.drafts ? `Drafts offer them after rounds ${content.balance.rounds.draftRounds.join(', ')}.` : '';
+    const bought = goldUpgrades(state);
+    const upgraded = trayOrder(content, p.kit.map((k) => k.building)).filter((id) => ((p.upgrades[id] ?? 0) > 0 && content.upgrades[id]) || bought.includes(id));
+    const draftNote = state.config.flags.drafts ? `Drafts offer them in rounds ${content.balance.rounds.draftRounds.map((r) => r + 1).join(', ')}.` : '';
     this.body.replaceChildren(
       h('section', { class: 'kit-sec', 'aria-labelledby': 'kit-relics' },
         h('h3', { id: 'kit-relics' }, uiIcon(atlas, 'i-relic'), 'Relics', h('small', null, 'last the whole run')),
@@ -101,17 +109,19 @@ export class KitView {
           ? h('ul', { class: 'kit-ups', id: 'kit-upgrade-list' }, ...upgraded.map((id) => {
             const b = content.buildings[id]!;
             const lvl = p.upgrades[id] ?? 0;
-            const levels = content.upgrades[id]!.levels;
+            const levels = lvl > 0 ? content.upgrades[id]?.levels ?? [] : [];
+            const gold = bought.filter((x) => x === id).length;
             const art = spriteToCanvas(atlas, b.sprite, 'velvet-bloom');
             art.setAttribute('aria-hidden', 'true');
             return h('li', { 'data-upgrade': id },
               art,
               h('div', null,
-                h('div', { class: 'kit-up-name' }, h('b', null, b.name), h('span', { class: 'lvl' }, `Level ${lvl} of ${levels.length}`)),
+                h('div', { class: 'kit-up-name' }, h('b', null, b.name), levels.length ? h('span', { class: 'lvl' }, `Level ${lvl} of ${levels.length}`) : null),
                 // a level that isn't offered does nothing in rounds, so it isn't listed (#27)
-                h('ol', null, ...levels.flatMap((l, i) => (l.offered === false ? [] : [h('li', { class: i < lvl ? 'on' : '' }, upgradeText(content, id, i + 1))])))));
+                levels.length ? h('ol', null, ...levels.flatMap((l, i) => (l.offered === false ? [] : [h('li', { class: i < lvl ? 'on' : '' }, upgradeText(content, id, i + 1))]))) : null,
+                gold ? h('p', { class: 'kit-gold', 'data-gold-upgrades': gold }, `${gold === 1 ? 'One' : gold} upgraded with gold: ${gold === 1 ? 'its squad arrives' : 'their squads arrive'} Bloomed for the rest of this battle.`) : null));
           }))
-          : h('p', { class: 'muted' }, `None yet. ${draftNote}`)),
+          : h('p', { class: 'muted' }, `None yet. ${draftNote} Once every plot is built on, gold buys one: select a spawner and press U.`)),
     );
   }
 

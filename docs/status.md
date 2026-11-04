@@ -114,10 +114,17 @@ Updated 2026-11-03, on `docs/r2b-s6-done` (the hub's docs PR into `develop`). Th
   - **The general and the bots** buy upgrades once no plot is free, their weights' favourite spawner first, and the general's plan shows them. Its income is × 1.05, since upgrades favoured your side (T163).
   - **T159:** with drafts on, both colonies fill at round 5, then bank about 300 a round. **T163:** no price of 150–300% kept G4 and G8 in band. At 300% with × 1.05, G4 reads 63%, G8 61% and 77%, and G13 holds. G4's round-9 clause (21% against ≤ 20%) is a new known miss until S14 (T168, T169).
   - **Goldens:** regenerated with S7 merged. All seven moved at round 1, since the battle's library carries the new key. `r2-balanced-vs-scripted-s1` now ends in round 5, not 6, and `r2-armilla-power-s3` in round 9, not 7.
+- **S10** (`feature/r2b-teaching`, T111–T118 and T175): in review. Teaching for rounds, with a first plain wording that R4b rewords:
+  - **The draft is a bottom sheet** (R2-Q24, T116): it takes the bottom band's place at the same height, with three shorter cards (the full text in a tooltip), Reroll with its cost, Skip with its +40 gold and Begin unlit ("Pick or skip the draft first"). The field stays uncovered and dims, except the general's squads' slots, whose squads stay hoverable.
+  - **`scene=draft` opens round 3's planning** with its draft (T115), the bot's rounds 1–2 played, and the bot plans that round once you pick or skip.
+  - **Help has its six tabs** (T117): Matrix, Merging (the muster and the toggle), The general (plans first, counters in rounds 4 and 7, no countdown), Economy ("bank 140 for +14"), Rounds (the three phases, what a clash costs, the storm by round, the Decision and Regrowths, and S5b's upgrades) and Keys by phase. Each fits 1280×720.
+  - **The round tips** (T118): reading the general's army, the formation, the clash and the power, the aftermath, the first draft, the storm's escalation and interest, each once, ever, in battles 1–2, and counted as shown only once on screen (A067). Battle 1's economy tip is back as #33's first guess: round 2's planning with no economy building tips the first economy card and pulses the economy cards for 12 s, or until one is chosen. The playtest judges it (T148).
+  - **Your relics and upgrades are back** (T175, which you added on 2026-11-04): in a run's battle a chip in the top band, or `R`, opens the popover with the run's relics in their v2 text and your upgrade levels, the gold upgrades bought this battle among them.
+  - **No golden moved,** and no rule or data changed.
 - **The stand-ins open on `develop`** from S1 (Call 14), each with the session that lifts it (checked at S4, T152):
-  - `scene=draft` opens round 1's planning of a run battle, so its capture shows no draft until round 3, until S10 (T115);
+  - ~~`scene=draft` opens round 1's planning of a run battle, so its capture shows no draft until round 3~~: lifted by S10 (T115);
   - retired selectors and triggers still in the data compile to no-ops, v1's keys stay in the data and the schema, and R2a's `rounds` data blocks sit beside them, until S12 (T129);
-  - the draft is today's centred dialog, which covers the general's formation, until S10 (T116).
+  - ~~the draft is today's centred dialog, which covers the general's formation~~: lifted by S10 (T116), a bottom sheet.
 - **Next:** S5 (drafts), S6 (relics) and S9 (run screens) can start side by side once S4 merges.
 
 ## R2a, a battle in rounds

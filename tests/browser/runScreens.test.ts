@@ -113,7 +113,7 @@ describe('the title', () => {
   it('opens Help in six tabs, and the settings screen with sound and damage numbers', async () => {
     const p = await open('/?test=1');
     await p.locator('#title-help').click();
-    expect(await p.locator('#help [role="tab"]').allTextContents()).toEqual(['Matrix', 'Merging', 'The general', 'Economy', 'Sporestorm', 'Keys']);
+    expect(await p.locator('#help [role="tab"]').allTextContents()).toEqual(['Matrix', 'Merging', 'The general', 'Economy', 'Rounds', 'Keys']);
     await p.locator('#help-tab-matrix').focus();
     await p.keyboard.press('ArrowRight');
     expect(await p.locator('#help-tab-merging').getAttribute('aria-selected')).toBe('true');
@@ -335,7 +335,7 @@ describe('fit at small windows', () => {
   ] as const) it(`Help fits at 1280×720 with no key cell over two lines: ${label}`, async () => {
     const p = await open(query);
     await p.locator('#help-btn').click();
-    for (const tab of ['matrix', 'merging', 'general', 'economy', 'storm', 'keys']) {
+    for (const tab of ['matrix', 'merging', 'general', 'economy', 'rounds', 'keys']) {
       await p.locator(`#help-tab-${tab}`).click();
       const fit = await p.evaluate(() => {
         const card = document.getElementById('help')!.getBoundingClientRect();

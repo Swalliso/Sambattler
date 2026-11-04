@@ -23,6 +23,12 @@ export const stormText = (bp: number): string => {
   return `×${Number.isInteger(x * 10) ? x.toFixed(1) : x}`;
 };
 
+/** A round's Heartcap damage cap in words (§6.7, X5): "750 HP", or "25% of its max HP"; null with none set. Help and the tips say it. */
+export function capWords(c: BattleState['rules']['roundDamageCap']): string | null {
+  if (c.flat !== undefined) return `${c.flat} HP`;
+  return c.maxHpBp !== undefined ? `${c.maxHpBp / 100}% of its max HP` : null;
+}
+
 /** A round's or a lane's result for you (§6.7). */
 export type Result = 'won' | 'lost' | 'drawn';
 export const resultOf = (winner: Side | null): Result => (winner === 'player' ? 'won' : winner === 'enemy' ? 'lost' : 'drawn');

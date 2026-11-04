@@ -6,8 +6,9 @@
 // under the chips in their own mount (`tally.ts`), and the General's Intent panel closes the band in its own.
 // The sim scores a round on its clash's last tick, so a Heartcap's number holds at the round's starting HP
 // through the clash and drains in the aftermath. The Intent panel shows the general's plan for the round, with
-// no countdown (`doctrine.ts`). The Heartcap block, chips, tightening fit and Intent panel are v1's, on rounds'
-// state, in v1's styles.
+// no countdown (`doctrine.ts`). In a run's battle, or one you draft in, a last chip opens your relics and upgrades
+// (`kit.ts`, R2b/T175). The Heartcap block, chips, tightening fit and Intent panel are v1's, on rounds' state, in
+// v1's styles.
 import '../battle.css';
 import type { Content } from '../../data/registry.ts';
 import type { Atlas } from '../../render/atlas.ts';
@@ -23,6 +24,7 @@ import { reducedMotion } from '../motion.ts';
 import { AnchoredTip } from '../tooltip.ts';
 import { cutShort, intentOf } from '../doctrine.ts';
 import { goldTip, intentTip, plotsTip, roundTip, stormText, stormTip } from './explain.ts';
+import { KitView } from './kit.ts';
 import { LIVES_TIP, regrowths } from '../words.ts';
 
 /** A band or panel in its mount (T088–T091): drawn each frame, laid out afresh on a resize, removed with the view. */
@@ -151,6 +153,8 @@ export class TopBand implements HudPart {
   private tight = 0;
   private chipsLen = -1;
   private hearts: Record<Side, HeartBar>;
+  /** Your relics and upgrades, in a run's battle or one you draft in (§10.2, T175); null in other single battles. */
+  readonly kit: KitView | null;
   /** Each Heartcap's HP before the aftermath, which its number holds until the aftermath drains it. */
   private shownHp: Record<Side, number>;
   /** The round and phase last drawn, so the gold chip pulses once as income lands. */
@@ -174,8 +178,10 @@ export class TopBand implements HudPart {
     hud.tip.attach(plotsStat, plotsTip(content, atlas, state));
     hud.tip.attach(this.roundStat, roundTip(content, atlas, state));
     hud.tip.attach(this.stormStat, stormTip(content, atlas, state));
-    this.chips = h('div', { class: 'chips', 'data-native-tab': '' }, this.goldStat, plotsStat, this.roundStat, this.stormStat);
+    this.kit = hud.lives || state.config.player.draft ? new KitView(content, atlas, state) : null;
+    this.chips = h('div', { class: 'chips', 'data-native-tab': '' }, this.goldStat, plotsStat, this.roundStat, this.stormStat, this.kit?.chip ?? null);
     mount.append(this.hearts.player.el, this.chips, this.hearts.enemy.el, hud.tip.el);
+    if (this.kit) mount.append(this.kit.el);
     this.seen = `${state.round}|${state.phase}`;
   }
 
@@ -206,6 +212,7 @@ export class TopBand implements HudPart {
       this.seen = seen;
     }
     this.hud.tip.refresh();
+    this.kit?.update(state);
     this.fitChips();
   }
 
@@ -245,6 +252,7 @@ export class TopBand implements HudPart {
 
   dispose(): void {
     this.hud.tip.dispose();
+    this.kit?.dispose();
   }
 }
 

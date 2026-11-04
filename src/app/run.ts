@@ -6,6 +6,7 @@
 // report, so a reload on the report opens the next screen (R2-Q22, T097). One play clock times the run's
 // battles for the summary (§8.2, T109).
 import type { Atlas } from '../render/atlas.ts';
+import type { DrawnPreview } from '../render/preview.ts';
 import { runItBackSetup, setLastSetup, updateRecords } from '../meta/index.ts';
 import {
   BATTLE_KEY, battleSave, chooseNode, clearBattle, clearRun, createRun, eventChoose, finishBattle, groveChoose, powerSave, promptAnswer,
@@ -15,7 +16,7 @@ import type { RunState, Storage } from '../run/index.ts';
 import type { RunEffect } from '../data/schema.ts';
 import type { Content } from '../sim/index.ts';
 import { createBattle } from '../sim/index.ts';
-import type { BattleState } from '../sim/index.ts';
+import type { BattleState, Side } from '../sim/index.ts';
 import {
   eventResultScreen, eventScreen, groveScreen, promptScreen, routeScreen, runChanges, runSnapshot, spoilsScreen, summaryScreen,
 } from '../ui/screens/run.ts';
@@ -120,6 +121,8 @@ export class RunController {
 
   /** The battle on screen, if any (for the debug bridge). */
   get battleState(): BattleState | null { return this.battle?.state ?? null; }
+  /** What the battle's formation preview last drew, for the bridge (T083), as a single battle's. */
+  get preview(): Record<Side, DrawnPreview> | null { return this.battle?.view.renderer.preview.drawn ?? null; }
 
   /** The run's play time so far, as the summary shows it (T109). */
   playTime(): PlayTimeReadout { return readoutOf(this.clock); }

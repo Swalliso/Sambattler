@@ -5,7 +5,9 @@
 // lists the general's changes this round, with no countdown (A070). States come from the battle's parameters
 // and Node's same checkpoint, computed live, so no combat outcome is pinned (A059, A075). v1's cases that still
 // hold follow, on the round battle: the tray fits the kit with nothing clipped and unlights what you can't
-// afford, the ghost tip keeps clear of its plot and names a closed plot, and the cog holds a clash.
+// afford, the ghost tip keeps clear of its plot and names a closed plot, and the cog holds a clash. Battle 1's
+// economy tip is back in rounds (R2b/T113, T118, #33's first guess): round 2's planning with no economy building
+// planted tips it and pulses the economy cards.
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { chromium } from 'playwright';
 import type { Browser, Page } from 'playwright';
@@ -355,5 +357,33 @@ describe('controls (§10.2)', () => {
     const t = (await page.locator('#inspect').textContent())!;
     expect(t).toContain('Click a building or a unit');
     expect(t).not.toContain('Tab cycle');
+  });
+});
+
+// #33's first guess, which R2b's playtest judges (T148, T149)
+describe('battle 1', () => {
+  it("tips the economy as round 2's planning opens with none planted, and pulses the economy cards until one is chosen", async () => {
+    // the first-time tips of rounds 1 and 2 have been seen, so the economy tip has the lane to itself
+    page = await browser!.newPage({ viewport: { width: 1280, height: 720 } });
+    await page.addInitScript(() => localStorage.setItem('spore-sprawl/tips/v1', JSON.stringify({ shown: ['army', 'formation', 'clash', 'aftermath', 'roundInterest'] })));
+    await page.goto(`${base}/?scene=battle&map=test-flat&seed=1&test=1&battleIndex=1`);
+    await page.waitForFunction(() => window.__GAME__?.ready === true);
+    // round 1 with nothing planted: Begin, past the empty-lane warning (Begin by key waits 400 ms, R2-Q12)
+    await page.waitForTimeout(450);
+    await page.keyboard.press('Enter');
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(() => window.__GAME__!.round === 2 && window.__GAME__!.phase === 'planning', null, { timeout: 30_000 });
+    const tip = page.locator('#callouts .callout.tip');
+    await expect.poll(() => tip.textContent(), { timeout: 10_000 }).toContain('A Truffle Cellar 1 earns');
+    // the hotkey is a keycap, as the design system's tips show it
+    expect(await tip.locator('kbd').textContent()).toBe('1');
+    const nudged = (id: string) => page!.locator(`[data-building="${id}"]`).evaluate((c) => c.classList.contains('nudge'));
+    expect(await nudged('truffleCellar')).toBe(true);
+    expect(await nudged('capguardHall')).toBe(false);
+    // it isn't remembered: it's battle 1's, whenever it comes
+    expect(await page.evaluate(() => localStorage.getItem('spore-sprawl/tips/v1'))).not.toContain('economy');
+    // choosing an economy card stops the pulse
+    await page.keyboard.press('1');
+    await expect.poll(() => nudged('truffleCellar')).toBe(false);
   });
 });
