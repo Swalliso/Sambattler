@@ -65,9 +65,17 @@ interface RunReplay {
   expected: { battles: Record<string, string>[]; run: string };
 }
 
-/** Whole-run replays (SPEC §15.5, §16 R2): a run in rounds, which R2b's S1 recorded in place of v1's `m3-run-s7` (T027). */
+/**
+ * Whole-run replays (SPEC §15.5, §16 R2): a run in rounds, which R2b's S1 recorded in place of v1's `m3-run-s7` (T027).
+ * Its seed (R2b/T126) is the first whose run has drafts after rounds 2, 4 and 6 and a life lost in a run that goes on:
+ * seed 1 loses battle 2, then wins battles 3 and 4 in rounds 8 and 7 with all three drafts, and the boss. Seed 7 lost a
+ * life but no battle reached round 7.
+ */
 const RUN_REPLAYS: Omit<RunReplay, 'expected' | 'kind'>[] = [
-  { name: 'r2-run-s7', description: 'a whole run in rounds, seed 7: bot:balanced, greedy drafts, random route (R2b/T027)', seed: 7, policies: { route: 'random', draft: 'greedy', player: 'bot:balanced' } },
+  {
+    name: 'r2-run-s1', description: 'a whole run in rounds, seed 1: bot:balanced, greedy drafts, random route; a life lost in battle 2, drafts after rounds 2, 4 and 6 (R2b/T126)',
+    seed: 1, policies: { route: 'random', draft: 'greedy', player: 'bot:balanced' },
+  },
 ];
 
 /** Each battle's round checkpoints, as a round golden takes them (R2a plan Call 17), and the run's final hash. */

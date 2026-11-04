@@ -41,6 +41,8 @@
     },
     "G12": { "screenSeeds": 10, "confirmSeeds": 50, "top": 3, "minBuildMean": 0.4, "minAnswerRate": 0.6 },
     "G13": { "maxCappedShare": 0.15, "clashSecondsMin": 15, "clashSecondsMax": 40 },
+    "G14": { "runs": 100, "policies": [{ "bot": "balanced", "min": 0.7, "max": 0.9 }, { "bot": "answer" }] },
+    "G15": { "policies": [{ "bot": "balanced", "minReach": 0.4, "maxReach": 0.85, "minWin": 0.4, "maxWin": 0.7 }, { "bot": "answer" }] },
     "G16": { "seeds": 10, "budgets": [300, 600, 900, 1200, 1500], "minWinRate": 0.6, "pairs": "roleSplit" }
   }
 }

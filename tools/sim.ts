@@ -254,7 +254,7 @@ function mainRun(args: Args, content: ReturnType<typeof nodeContent>): number {
   }
   if (results.length === 1 && !args.summary) {
     const { run: _run, battles, ...brief } = results[0]!;
-    console.log(JSON.stringify({ ...brief, intel: results[0]!.run.intel ?? null, battles: battles.map((b) => `${b.index} ${b.kind} ${b.map} ${b.general} ${b.winner} by ${b.by} in round ${b.rounds.length}` +
+    console.log(JSON.stringify({ ...brief, ended: runEnded(results[0]!), intel: results[0]!.run.intel ?? null, battles: battles.map((b) => `${b.index} ${b.kind} ${b.map} ${b.general} ${b.winner} by ${b.by} in round ${b.rounds.length}` +
       `${b.lifeLost ? ', a life lost' : ''}${b.opening ? ` opening ${b.opening.dual ? 'dual ' : ''}${b.opening.kinds.join('+')}` : ''}${b.counters?.length ? ` counters ${b.counters.map((c) => `${c.kind}@r${c.round}`).join(',')}` : ''}`) }, null, 2));
   } else {
     printRunSummary(results);
@@ -267,16 +267,23 @@ function mainRun(args: Args, content: ReturnType<typeof nodeContent>): number {
   return 0;
 }
 
+/** How a run ended (§8.5, §15.2): it won the boss, lost the boss, ran out of lives, or was stopped by `maxBattles`. */
+export function runEnded(r: Pick<RunResult, 'outcome' | 'battles'>): 'won the boss' | 'lost the boss' | 'out of lives' | 'stopped' {
+  if (r.outcome === 'victory') return 'won the boss';
+  if (r.outcome === 'incomplete') return 'stopped';
+  return r.battles.at(-1)?.kind === 'boss' ? 'lost the boss' : 'out of lives';
+}
+
 function printRunSummary(results: (RunResult & { wallMs: number })[]): void {
   const mark = (b: RunResult['battles'][number]) => `${b.kind === 'boss' ? 'B' : b.kind === 'elite' ? 'E' : 'b'}${b.winner === 'player' ? '+' : '-'}${b.by[0]}`;
   const KIND = { swarm: 'S', line: 'L', armor: 'A', elite: 'E', ranged: 'R' } as const;
   const opening = (b: RunResult['battles'][number]) => (b.opening ? `${b.opening.dual ? '2:' : ''}${b.opening.kinds.map((k) => KIND[k]).join('')}` : '-');
   const rows = results.map((r) => [
-    String(r.seed), r.outcome, String(r.battleCount), fmtTicks(r.totalBattleTicks), r.reachedBoss ? 'yes' : 'no',
-    `${r.lives.left}/${r.lives.max}`, r.battles.map(mark).join(' '), r.battles.map((b) => b.general.split('-').map((w) => w[0]).join('')).join(' '),
-    r.battles.map(opening).join(' '), String(r.cards.length), String(r.spores), `${r.wallMs}ms`,
+    String(r.seed), runEnded(r), String(r.battleCount), fmtTicks(r.totalBattleTicks), r.reachedBoss ? 'yes' : 'no',
+    String(r.battles.filter((b) => b.lifeLost).length), `${r.lives.left}/${r.lives.max}`, r.battles.map(mark).join(' '),
+    r.battles.map((b) => b.general.split('-').map((w) => w[0]).join('')).join(' '), r.battles.map(opening).join(' '), String(r.cards.length), String(r.spores), `${r.wallMs}ms`,
   ]);
-  const head = ['seed', 'outcome', 'battles', 'clash time', 'boss', 'lives', 'results', 'generals', 'opening', 'cards', 'spores', 'wall'];
+  const head = ['seed', 'ended', 'battles', 'clash time', 'boss', 'lives lost', 'lives left', 'results', 'generals', 'opening', 'cards', 'spores', 'wall'];
   const widths = head.map((h, i) => Math.max(h.length, ...rows.map((r) => r[i]!.length)));
   const line = (cells: string[]) => cells.map((c, i) => c.padEnd(widths[i]!)).join('  ');
   console.log(line(head));
@@ -294,7 +301,9 @@ function printRunSummary(results: (RunResult & { wallMs: number })[]): void {
   const lives = results.map((r) => r.lives.left);
   const livesAtBoss = bossRuns.map((r) => r.lives.left + (r.battles.find((b) => b.kind === 'boss')?.lifeLost ? 1 : 0));
   console.log('');
+  const ended = (e: ReturnType<typeof runEnded>) => results.filter((r) => runEnded(r) === e).length;
   console.log(`runs ${n} · victories ${wins} (${pct(wins, n)}) · reached the boss ${boss} (${pct(boss, n)})`);
+  console.log(`how runs ended: won the boss ${ended('won the boss')} · lost the boss ${ended('lost the boss')} · out of lives ${ended('out of lives')}${ended('stopped') ? ` · stopped ${ended('stopped')}` : ''}`);
   console.log(`battles per run: median ${median(counts)} · min ${Math.min(...counts)} · max ${Math.max(...counts)} · ${inCount}/${n} runs fought 4–5`);
   console.log(`lives left at the end: mean ${(lives.reduce((a, b) => a + b, 0) / n).toFixed(1)} · runs that lost one ${results.filter((r) => r.battles.some((b) => b.lifeLost)).length}/${n}` +
     `${livesAtBoss.length ? ` · at the boss: mean ${(livesAtBoss.reduce((a, b) => a + b, 0) / livesAtBoss.length).toFixed(1)}` : ''}`);

@@ -7,9 +7,11 @@
 // supply duels at 12, 30 and 60 supply) and `g4` (bot:balanced against the scripted general by rounds on
 // `--maps`, `--g4seeds n` battles, with G13 over the same battles). It also takes `g3` (`--maps`, `--g3seeds`),
 // `g5`–`g8` (G6 with G4's battles for its second clause, G8 under both planning policies), `g11` (the round
-// bench), `counters` (G12, the strict bar, after G3) and `formation` (G16); `boss` and `runs` (how runs end,
-// `--runs n` a commander, default 80, with `--commander <id|all>` and `--power-policy none|auto`); and the
-// clash check and battle 1's pairings below. Writes reports/experiments/<label>.json and prints a summary.
+// bench), `counters` (G12, the strict bar, after G3), `formation` (G16; `spread` is its old name, kept as an alias)
+// and `engagement` (over G4's battles: the clash's length, a round's Heartcap damage, comebacks and the lead's
+// changes); `boss` and `runs` (how runs end and the lives, `--runs n` a commander, default 80, with `--commander
+// <id|all>` and `--power-policy none|auto`); and the clash check and battle 1's pairings below. Writes
+// reports/experiments/<label>.json and prints a summary.
 //
 // The clash check (clash, SPEC §12.2 and §16 R1, tools/lib/clash.ts and the clash bars in tools/lib/balance.ts,
 // opt-in): R1's whole armies at equal gold, meeting at once in formation, each clash one round on the round sim
@@ -80,7 +82,7 @@ import type { DuelOutcome, RoundBattleRecord, RoundG3Verdict, Verdict } from './
 import { roundBenchChecks, runRoundBench } from './lib/bench.ts';
 import { clashArmyIds, clashOpts, fullColony, overflowTable, pairLine, pairScore, playPair } from './lib/clash.ts';
 import type { ArmyOpts, ClashOpts, FieldId, LanesRule } from './lib/clash.ts';
-import { runEndingLines, runEndings } from './lib/engagement.ts';
+import { engagement, engagementLines, runEndingLines, runEndings } from './lib/engagement.ts';
 import { clashPool, defaultWorkers, inProcessClashes, inProcessRounds, roundPool } from './lib/pool.ts';
 import { simulateRun } from '../src/run/index.ts';
 import type { PowerPolicy } from '../src/sim/index.ts';
@@ -89,10 +91,12 @@ const args = process.argv.slice(2);
 const opt = (k: string): string | undefined => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : undefined; };
 const proto = opt('--proto') ?? '';
 /** The checks on battles in rounds (T117, T123), and the ones played unless `--checks` names others. */
-const ROUND_CHECKS = ['duels', 'g3', 'g4', 'g5', 'g6', 'g7', 'g8', 'g11', 'counters', 'formation'];
+const ROUND_CHECKS = ['duels', 'g3', 'g4', 'g5', 'g6', 'g7', 'g8', 'g11', 'counters', 'formation', 'engagement'];
+/** Old check names that still work: `spread` is R2a/T123's `formation` check (G16) since v1's spread check went (R2b/T124). */
+const ALIASES: Record<string, string> = { spread: 'formation' };
 const ALL_CHECKS = [...ROUND_CHECKS, 'boss', 'runs', 'clash', 'pairings'];
 const DEFAULT_CHECKS = ['duels', 'g4'];
-const checks = new Set((opt('--checks') ?? DEFAULT_CHECKS.join(',')).split(','));
+const checks = new Set((opt('--checks') ?? DEFAULT_CHECKS.join(',')).split(',').map((c) => ALIASES[c] ?? c));
 const unknown = [...checks].filter((c) => !ALL_CHECKS.includes(c));
 if (unknown.length) throw new Error(`--checks takes ${ALL_CHECKS.join(', ')}, not ${unknown.join(', ')}`);
 const roundChecks = new Set([...checks].filter((c) => ROUND_CHECKS.includes(c)));
@@ -240,6 +244,12 @@ if (roundChecks.size) {
       g3 = await timed('g3', () => evaluateG3(rc, run, { ...(mapsOpt ? { maps: mapsOpt } : {}), ...(g3SeedsOpt ? { seeds: g3SeedsOpt } : {}) }));
       out.G3 = verdict(g3);
     }
+    if (roundChecks.has('engagement')) {
+      g4 ??= await timed('engagement', () => g4Battles(rc, run, { seeds: roundG4Seeds }));
+      const e = engagement(g4, rc.balance.tickRate);
+      lines.push(...engagementLines(e));
+      out.engagement = e;
+    }
     if (roundChecks.has('g5')) out.G5 = verdict(await timed('g5', () => evaluateG5(rc, run)));
     if (roundChecks.has('g6')) {
       g4 ??= await g4Battles(rc, run, { seeds: roundG4Seeds });
@@ -261,14 +271,17 @@ if (roundChecks.size) {
 
 if (checks.has('boss')) {
   const n = Number(opt('--runs') ?? 80);
-  let boss = 0, wins = 0;
+  let boss = 0, wins = 0, lost = 0;
+  const atBoss: number[] = [];
   for (let seed = 1; seed <= n; seed++) {
     const r = simulateRun(content, seed, { player: 'bot:balanced', draft: 'greedy', route: 'random' });
-    if (r.reachedBoss) boss++;
+    if (r.reachedBoss) { boss++; atBoss.push(r.lives.left + (r.battles.find((b) => b.kind === 'boss')?.lifeLost ? 1 : 0)); }
     if (r.outcome === 'victory') wins++;
+    lost += r.battles.filter((b) => b.lifeLost).length;
   }
-  out.boss = { runs: n, reached: boss / n, victories: wins / n };
-  lines.push(`runs reaching the boss: ${boss}/${n} (${pct(boss / n)}), victories ${wins}/${n}`);
+  const livesAtBoss = atBoss.reduce((a, b) => a + b, 0) / Math.max(1, atBoss.length);
+  out.boss = { runs: n, reached: boss / n, victories: wins / n, livesLost: lost / n, livesAtBoss };
+  lines.push(`runs reaching the boss: ${boss}/${n} (${pct(boss / n)}), victories ${wins}/${n}; lives lost ${(lost / n).toFixed(2)} a run, ${livesAtBoss.toFixed(2)} left when the boss battle began`);
 }
 if (checks.has('runs')) {
   const rows = commanders.map((commander) => runEndings(content, Number(opt('--runs') ?? 80), { power, ...(commander ? { commander } : {}) }));

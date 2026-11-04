@@ -114,10 +114,10 @@ export interface RunBattleResult { state: BattleState; record: BattleRecord; has
  * Plays the current battle node to the end with bots and applies it to the run. A player-side bot plans and
  * begins each round's clash itself (§14.6), so nothing is queued for it.
  */
-export function autoBattle(content: Content, run: RunState, hashEvery?: number): RunBattleResult {
+export function autoBattle(content: Content, run: RunState, hashEvery?: number, onTick?: (state: BattleState) => void): RunBattleResult {
   if (run.screen.kind !== 'battle') throw new Error('no battle to play');
   const state = createBattle(content, run.screen.config);
-  const res = runHeadless(state, { until: 'end', ...(hashEvery ? { hashEvery } : {}) });
+  const res = runHeadless(state, { until: 'end', ...(hashEvery ? { hashEvery } : {}), ...(onTick ? { onTick } : {}) });
   const record = finishBattle(content, run, state);
   return { state, record, hashes: { ...res.hashes, final: hashState(state) } };
 }
@@ -149,6 +149,8 @@ export interface SimulateOptions extends Partial<RunOptions> {
   /** Stop after this many battles (the browser's `autoplay=battles:<n>`). */
   maxBattles?: number;
   onBattle?: (r: RunBattleResult) => void;
+  /** Watches each clash tick of each battle, as `runHeadless`'s `onTick` does; it reads and never writes (the run tools' readouts). */
+  onTick?: (state: BattleState) => void;
 }
 
 /** Plays a whole run (or its first `maxBattles` battles) with the given policies. */
@@ -162,7 +164,7 @@ export function simulateRun(content: Content, seed: number, policies: AutoPolici
   for (let guard = 0; !run.outcome && guard < 200; guard++) {
     if (run.screen.kind === 'battle') {
       if (opts.maxBattles !== undefined && run.battles.length >= opts.maxBattles) break;
-      const r = autoBattle(content, run, opts.hashEvery);
+      const r = autoBattle(content, run, opts.hashEvery, opts.onTick);
       hashes.push(r.hashes);
       opts.onBattle?.(r);
     } else if (run.screen.kind === 'summary') {

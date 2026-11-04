@@ -10,7 +10,9 @@ import type { RouteNode, RunState } from '../../src/run/index.ts';
 import { analyzeFielded, basePlots, createBattle, hashState, makeRoundConfig, planningView, runHeadless } from '../../src/sim/index.ts';
 import type { BattleConfig, BattleState, IntelProfile, Side } from '../../src/sim/index.ts';
 import { matchupClass } from '../../src/sim/matchups.ts';
+import type { RunJob } from '../../tools/lib/balance.ts';
 import { protoContent } from '../../tools/lib/content.ts';
+import { inProcessRuns, runJobPool } from '../../tools/lib/pool.ts';
 import { content, playOn } from '../helpers.ts';
 
 const bal = content.balance;
@@ -744,13 +746,41 @@ describe('save and resume (SPEC §8.9)', () => {
 });
 
 describe('whole runs (autoplay)', () => {
-  it('are deterministic per seed and policies', () => {
-    const p = { route: 'random' as const, draft: 'greedy' as const, player: 'bot:balanced' };
-    const a = simulateRun(content, 7, p, { maxBattles: 2 });
-    const b = simulateRun(content, 7, p, { maxBattles: 2 });
-    expect(a.hashes).toEqual(b.hashes);
-    expect(hashRun(a.run)).toBe(hashRun(b.run));
+  it('are deterministic per seed and policies, under both planning policies (§15.2, X7)', () => {
+    for (const player of ['bot:balanced', 'bot:answer']) {
+      const p = { route: 'random' as const, draft: 'greedy' as const, player, power: 'auto' as const };
+      const a = simulateRun(content, 7, p, { commander: 'armilla' });
+      const b = simulateRun(content, 7, p, { commander: 'armilla' });
+      expect(a.outcome, player).not.toBe('incomplete');
+      expect(a.hashes).toEqual(b.hashes);
+      expect(hashRun(a.run)).toBe(hashRun(b.run));
+    }
   });
+
+  it('a run that loses battle 1 costs a life and goes on to battle 2 (§8.5)', () => {
+    const p = { route: 'random' as const, draft: 'greedy' as const, player: 'bot:balanced' };
+    const lost = Array.from({ length: 30 }, (_, i) => simulateRun(content, i + 1, p, { maxBattles: 2 })).find((r) => r.battles[0]!.winner === 'enemy');
+    expect(lost, 'a seed in 1–30 whose battle 1 is lost').toBeDefined();
+    const [first, second] = lost!.battles;
+    expect(first!.lifeLost).toBe(true);
+    expect(second?.index).toBe(2);
+    expect(lost!.outcome).toBe('incomplete');
+  });
+
+  it('a run played on the pool equals one played in process (§12.2, A102)', async () => {
+    const jobs: RunJob[] = [
+      { seed: 3, player: 'bot:balanced', commander: 'cordis', maxBattles: 2 },
+      { seed: 4, player: 'bot:answer', commander: 'vesper', maxBattles: 1 },
+    ];
+    const pool = runJobPool('', 1);
+    try {
+      const pooled = await pool.run(jobs);
+      expect(pooled).toEqual(await inProcessRuns(content)(jobs));
+      expect(pooled.map((r) => r.battles.length)).toEqual([2, 1]);
+    } finally {
+      await pool.close();
+    }
+  }, 60_000);
 
   it('play to the summary in rounds: a life lost only in a lost battle, and 4–5 battles in a finished run', () => {
     for (const seed of [1, 2]) {

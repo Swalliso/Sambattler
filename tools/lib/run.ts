@@ -132,6 +132,15 @@ const atBegin = (state: BattleState): AtBegin => ({
   banked: per((s) => state.sides[s].bankedAtBegin),
 });
 
+/** X8's readouts for one battle: `onTick` notes what each Begin left, and `read` gives them by round with the AI's plans (§7.2). */
+export function paceReader(): { onTick: (s: BattleState) => void; read: (s: BattleState) => Pick<RoundBattleResult, 'byRound' | 'fullAt'> } {
+  const begins = new Map<number, AtBegin>();
+  return {
+    onTick: (s) => { if (s.tick - s.clash!.startTick === 1) begins.set(s.round, atBegin(s)); },
+    read: (s) => roundPace(s, begins),
+  };
+}
+
 /** X8's readouts from the battle's rounds, its AI plans and what each Begin left (§7.2). */
 function roundPace(state: BattleState, begins: Map<number, AtBegin>): { byRound: RoundPace[]; fullAt: RoundBattleResult['fullAt'] } {
   const plan = (s: Side, round: number) => state.sides[s].ai?.plans.find((p) => p.round === round);
@@ -168,7 +177,7 @@ function bloomReadout(state: BattleState): { onTick: (s: BattleState) => void; c
 export function runRoundBattle(content: Content, spec: RoundRunSpec): { state: BattleState; result: RoundBattleResult } {
   const state = buildRoundState(content, spec);
   const bloom = bloomReadout(state);
-  const begins = new Map<number, AtBegin>();
+  const pace = paceReader();
   const t0 = performance.now();
   const res = runHeadless(state, {
     until: spec.until ?? 'end',
@@ -176,7 +185,7 @@ export function runRoundBattle(content: Content, spec: RoundRunSpec): { state: B
     ...(spec.hashEvery ? { hashEvery: spec.hashEvery } : {}),
     ...(spec.recordAt ? { recordAt: spec.recordAt } : {}),
     onTick: (s) => {
-      if (s.tick - s.clash!.startTick === 1) begins.set(s.round, atBegin(s));
+      pace.onTick(s);
       bloom?.onTick(s);
     },
   });
@@ -207,7 +216,7 @@ export function runRoundBattle(content: Content, spec: RoundRunSpec): { state: B
     merges: per((s) => ({ ...sum.stats[s].merges })),
     goldEarned: per((s) => ({ ...sum.stats[s].goldEarned })),
     counters: roundCounters(state),
-    ...roundPace(state, begins),
+    ...pace.read(state),
     events: res.eventCounts,
     stats: sum.stats,
     rejectedCommands: sum.rejectedCommands,
@@ -228,7 +237,7 @@ const medianOrNull = (xs: number[]): number | null => {
  * plots and banked gold at Begin among the battles that reached it; the round each side's colony fills, and the gold
  * it banks from then on; and the share of clashes that replayed the last one exactly.
  */
-export function paceLines(results: RoundBattleResult[]): string[] {
+export function paceLines(results: readonly Pick<RoundBattleResult, 'byRound' | 'fullAt'>[]): string[] {
   const last = Math.max(0, ...results.map((r) => r.byRound.length));
   const both = (f: (p: RoundPace, s: Side) => number) => (round: number) => {
     const at = results.flatMap((r) => r.byRound.filter((p) => p.round === round));
