@@ -30,6 +30,8 @@ export interface TrayHooks {
   available(): number;
   placing(): string | null;
   pick(id: string): void;
+  /** Battle 1's economy tip pulses the economy cards (§10.2, #33): `src/app/tips.ts` says while. */
+  nudge?(): boolean;
 }
 
 const ARMORS: Armor[] = ['light', 'medium', 'heavy'];
@@ -140,7 +142,7 @@ function cardTip(content: Content, atlas: Atlas, state: BattleState, id: string,
 
 interface Card {
   id: string; name: string; el: HTMLElement; nameEl: HTMLElement; price: number; fill: HTMLElement; need: HTMLElement;
-  poor: boolean | null; short: number;
+  poor: boolean | null; short: number; economy: boolean;
 }
 
 export class RoundTray implements HudPart {
@@ -176,7 +178,7 @@ export class RoundTray implements HudPart {
         h('div', { class: 'need' }, h('span', { class: 'needbar', 'aria-hidden': 'true' }, fill), need),
       );
       this.tip.attach(el, cardTip(content, atlas, state, id, key));
-      this.cards.push({ id, name: b.name, el, nameEl, price, fill, need, poor: null, short: -1 });
+      this.cards.push({ id, name: b.name, el, nameEl, price, fill, need, poor: null, short: -1, economy: cb.kind === 'economy' });
       this.el.append(el);
     });
     this.el.style.setProperty('--n', String(this.cards.length));
@@ -205,7 +207,9 @@ export class RoundTray implements HudPart {
     const planning = state.phase === 'planning';
     toggleClass(this.el, 'locked', !planning);
     const available = this.hooks.available(), gold = Math.max(0, available), placing = planning ? this.hooks.placing() : null;
+    const nudge = planning && (this.hooks.nudge?.() ?? false);
     for (const c of this.cards) {
+      toggleClass(c.el, 'nudge', nudge && c.economy);
       const poor = available < c.price;
       if (poor !== c.poor) {
         c.poor = poor;

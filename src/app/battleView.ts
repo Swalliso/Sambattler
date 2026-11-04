@@ -7,9 +7,10 @@
 // control without pause and pins the round's result banner once the bars have drained (A071). The commander
 // power's button leads the controls, lit only in a clash (§6.6, §10.2, T109): Ready, Aiming, Next tick and Used
 // this clash, with its reticle and aim callout while aiming. Help and the settings screen hold a clash and the
-// aftermath while they're open (A078). A draft in planning opens today's centred dialog over the field until
-// S10 docks it (T153, T116): its cards, reroll and skip send draft commands, and Begin stays unlit while it's
-// open (§8.3). At the battle's end the report by round arrives behind the spore wipe.
+// aftermath while they're open (A078). A draft in planning opens as a bottom sheet in the bottom band's place
+// (R2-Q24, T116): its cards, reroll and skip send draft commands, its Begin stays unlit, and the field dims
+// except the general's formation preview (§8.3, §10.2). The first-time tips come through the callout lane (T118).
+// At the battle's end the report by round arrives behind the spore wipe.
 // Its sounds come from each step's events (`battleSound.ts`), and the speaker button sits beside the cog.
 import type { Content } from '../data/registry.ts';
 import type { Atlas } from '../render/atlas.ts';
@@ -43,6 +44,7 @@ import { resultBanner } from './phases/aftermath.ts';
 import { aimText, laneCallout, powerButton, powerNews, powerRefusal, powerText, powerUse } from './phases/clash.ts';
 import { generalNews, planningHint } from './phases/planning.ts';
 import type { RoundSession } from './session.ts';
+import { TipCoach } from './tips.ts';
 
 /** The mounts the bands and panels fill (T077): S13's T088, T089 and T091, S14's T093 and T094. */
 export interface RoundMounts {
@@ -116,8 +118,11 @@ export class RoundsView {
   private sound: BattleSound;
   private settingsShown = false;
   private report: HTMLElement | null = null;
-  /** The player's draft in planning, today's centred dialog (§8.3, T153). */
+  /** The player's draft in planning, a bottom sheet in the bottom band's place (§8.3, §10.2, R2-Q24). */
   private draft: DraftOverlay;
+  private bottom: HTMLElement;
+  /** The first-time tips and battle 1's economy tip (§10.2, T118). */
+  private coach: TipCoach;
   private onResize = () => this.fit();
   private unsubscribe: () => void;
   scale = 1;
@@ -148,13 +153,17 @@ export class RoundsView {
     };
     this.mounts.callouts.style.display = 'contents';
     this.mounts.callouts.append(this.callouts.el);
+    this.coach = new TipCoach(this.callouts, content);
     // the aftermath's drain holds while Help or the settings screen is open, as the loop's aftermath does
     const hud = this.hud = hudContext(content, atlas, () => (session.overlayOpen ? 0 : session.speed), still, reveal, lives);
     this.topBand = new TopBand(this.mounts.top, hud, state);
     this.bands.push(this.topBand);
     this.bands.push(new RoundTally(this.mounts.tally, hud, state));
     this.bands.push(new IntentPanel(this.mounts.intent, hud, state));
-    this.bands.push(new RoundTray(this.mounts.tray, hud, state, { available: () => session.available(), placing: () => session.placing, pick: (id) => session.pick(id) }));
+    this.bands.push(new RoundTray(this.mounts.tray, hud, state, {
+      available: () => session.available(), placing: () => session.placing, pick: (id) => session.pick(id),
+      nudge: () => this.coach.pulsing(session.state, session.placing, performance.now()),
+    }));
     this.bands.push(new RoundInspect(this.mounts.inspect, hud, this.log, {
       selected: () => session.selected, sellArmed: () => session.sellArmed, mergeShown: (id) => session.mergeShown(id), sell: () => this.sell(), toggleMerge: () => { session.toggleMerge(); },
       upgrade: () => { session.upgrade(); }, upgradeBlock: (id) => session.upgradeBlock(id), upgradeCost: (id) => session.upgradeCostOf(id),
@@ -174,6 +183,7 @@ export class RoundsView {
     this.settingsBtn = settingsButton(atlas, () => this.toggleSettings());
     this.draft = new DraftOverlay(content, atlas, {
       pick: (cardId) => this.draftCommand({ type: 'draftPick', cardId }), reroll: () => this.draftCommand({ type: 'draftReroll' }), skip: () => this.draftCommand({ type: 'draftSkip' }),
+      begin: () => this.say('refused', 'Pick or skip the draft first'),
     });
     const power = session.power();
     if (power) {
@@ -203,11 +213,12 @@ export class RoundsView {
       ),
       this.powerTip.el,
     );
+    this.bottom = h('footer', { class: 'bottom' }, controls, this.mounts.tray, this.mounts.inspect);
     this.root = h('div', { id: 'battle', class: 'rounds', style: 'display:contents' },
       this.top,
       this.mounts.callouts,
       this.field,
-      h('footer', { class: 'bottom' }, controls, this.mounts.tray, this.mounts.inspect),
+      this.bottom,
       this.draft.el,
     );
     window.addEventListener('resize', this.onResize);
@@ -216,6 +227,7 @@ export class RoundsView {
     // the opening's news, such as round 1's intel, came before the view, so its first callout is said here
     const news = session.state.phase === 'planning' ? generalNews(content, session.state) : null;
     if (news) this.say('counter', news);
+    this.coach.watch(state);
   }
 
   dispose(): void {
@@ -223,6 +235,8 @@ export class RoundsView {
     soundSpeed(1);
     soundDim(false);
     this.unsubscribe();
+    this.coach.dispose();
+    this.draft.dispose();
     for (const b of this.bands) b.dispose();
     this.powerTip.dispose();
     if (this.settingsShown) closeSettings();
@@ -237,6 +251,9 @@ export class RoundsView {
 
   /** `I`: keyboard focus on the gold chip, whose tip opens; Tab then moves along the band (§10.2). */
   focusChips(): void { this.topBand.focusChips(); }
+
+  /** `R`: your relics and upgrades, in a run's battle or one you draft in (§10.3, T175). */
+  toggleKit(): void { this.topBand.kit?.toggle(); }
 
   /** A callout in the lane: a refused key, a sell's refund, news. */
   say(kind: RoundCalloutKind, text: string, tone: 'good' | 'bad' | '' = ''): void {
@@ -355,6 +372,7 @@ export class RoundsView {
     this.renderer.onTick(state, now);
     this.log.onTick(state);
     this.sound.onTick(state);
+    this.coach.onTick(state);
     for (const e of state.events) {
       if (e.t === 'buildingPlanted' || e.t === 'buildingSold' || e.t === 'mergeToggled' || e.t === 'buildingUpgraded' || e.t === 'roundStarted') this.colonyVersion++;
       if (e.t === 'generalPlanned') {
@@ -402,6 +420,8 @@ export class RoundsView {
       placing: s.placing,
       colony: this.colonyVersion,
       aftermathMs: s.aftermathMs,
+      // the draft's sheet dims the field, except the general's formation preview (§10.2, R2-Q24)
+      dim: this.draft.open,
       power: def ? {
         reticle,
         marks: preview?.reach.map((u) => ({ x: u.x, y: u.y, r: state.compiled[u.side].units[u.unitId]!.tiers[u.tier - 1]!.radius })) ?? [],
@@ -421,8 +441,10 @@ export class RoundsView {
     this.sound.frame(state, s.aftermathMs);
     soundSpeed(clash || aftermath ? s.speed : 1);
     soundDim(clash && s.paused);
-    // planning: the draft first, then Begin, the hint, and the empty-lane warning while it stands
+    // planning: the draft first, in the bottom band's place while it's open, then Begin, the hint, and the
+    // empty-lane warning while it stands
     this.draft.update(state, this.draftPending(state));
+    this.bottom.hidden = this.draft.open;
     this.beginBtn.hidden = !planning;
     this.beginBtn.disabled = state.queue.some((c) => c.type === 'beginClash') || !!state.sides.player.draft;
     setText(this.beginLabel, s.warned ? 'Begin anyway' : 'Begin');
@@ -453,6 +475,7 @@ export class RoundsView {
       this.callouts.pin('round-banner', this.banner);
     } else this.callouts.unpin('round-banner');
     this.callouts.update(now);
+    this.coach.frame(now);
     for (const b of this.bands) b.update(state, now);
     if (phase === 'ended' && !this.report) this.openReport(state);
   }

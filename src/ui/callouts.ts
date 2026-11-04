@@ -2,7 +2,8 @@
 // priority order: a counter moment > a lane won, lost or drawn > a refused key > tips > an Elder, on either
 // side > other news. A Bloomed merge gets none, since squads knit every round. Pinned callouts come first and
 // stay until they no longer apply: the planning hint, the empty-lane warning, "Paused" and the round's result
-// banner through the aftermath (A071). A callout's text may hold keycaps. It copies v1's lane with rounds' kinds.
+// banner through the aftermath (A071). A callout's text may hold keycaps. It copies v1's lane with rounds' kinds,
+// and says which callouts it has on screen, so the first-time tips (`src/app/tips.ts`) count one as shown only then.
 import { h } from './h.ts';
 
 export type RoundCalloutKind = 'counter' | 'lane' | 'refused' | 'tip' | 'elder' | 'info';
@@ -18,17 +19,24 @@ export class RoundCallouts {
   private items: Item[] = [];
   private pinned = new Map<string, HTMLElement>();
 
-  /** `content` is plain text, or text and keycaps; `life` overrides the kind's time on screen. */
-  push(kind: RoundCalloutKind, content: string | (string | Node)[], tone: 'good' | 'bad' | '', now: number, life?: number): void {
+  /** `content` is plain text, or text and keycaps; `life` overrides the kind's time on screen. It returns the callout. */
+  push(kind: RoundCalloutKind, content: string | (string | Node)[], tone: 'good' | 'bad' | '', now: number, life?: number): HTMLElement {
     const parts = typeof content === 'string' ? [content] : content;
     const text = parts.map((p) => (typeof p === 'string' ? p : p.textContent ?? '')).join('');
     // an identical live callout restarts instead of stacking a duplicate
     const dup = this.items.find((i) => i.text === text);
-    if (dup) { dup.t0 = now; return; }
+    if (dup) { dup.t0 = now; return dup.el; }
     const el = h('div', { class: `callout ${tone} ${kind}`.trim() }, ...parts);
     this.items.push({ kind, text, t0: now, life: life ?? (kind === 'tip' ? TIP_MS : LIFE_MS), el });
     this.render();
+    return el;
   }
+
+  /** Whether a timed callout of this kind is in the lane, on screen or waiting behind the pinned ones. */
+  live(kind: RoundCalloutKind): boolean { return this.items.some((i) => i.kind === kind); }
+
+  /** Whether this callout is on screen now: past the first three the lane slices the rest off, so a first-time tip counts as shown only once it's here (A067). */
+  showing(el: HTMLElement): boolean { return el.parentNode === this.el; }
 
   /** Shows `el` (a `.callout`) until unpin(key); pinning the same key again is a no-op. */
   pin(key: string, el: HTMLElement): void {

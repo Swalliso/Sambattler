@@ -111,6 +111,7 @@ export function bindRoundInput(session: RoundSession, view: RoundsView, hooks: R
         break;
       case 'q': case 'Q': view.togglePower(); break;
       case 'i': case 'I': view.focusChips(); break;
+      case 'r': case 'R': view.toggleKit(); break;
       case 'h': case 'H': view.toggleHelp(); break;
       case 'F3': ev.preventDefault(); hooks.toggleDebug(); break;
     }

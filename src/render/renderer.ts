@@ -7,8 +7,8 @@
 // planning the formation preview (`preview.ts`), and in a clash spore clouds and the units, sorted by y then
 // id, through R4a's `drawUnitSprite` (an emplacement with its `emplacementSprite`), posed by the aftermath
 // (`aftermath.ts`) once the clash is over; projectiles; sparks, puffs, merge pops and coin pops; the
-// Sporestorm's haze; the aftermath's numbers; then the overlays: the lit plot and slot, the matchup marks, the
-// ghost and F3's debug. Its tile size, mat tiles and damage-number settings are v1's, which the settings
+// Sporestorm's haze; the aftermath's numbers; while a draft is open, its dim, which leaves the general's preview lit;
+// then the overlays: the lit plot and slot, the matchup marks, the ghost and F3's debug. Its tile size, mat tiles and damage-number settings are v1's, which the settings
 // screen's assist preview shares (`assistPreview.ts`).
 import type { Content } from '../data/registry.ts';
 import { formationBox } from '../sim/formation.ts';
@@ -114,7 +114,13 @@ export interface RoundView {
   aftermathMs: number;
   /** The commander power's reticle and its marks while aiming, and a use queued while paused. */
   power?: RoundPowerAim | null;
+  /** The draft is open: the field dims, except the general's formation preview (§10.2, R2-Q24). */
+  dim?: boolean;
 }
+
+/** The draft's dim over the field, and how far past the general's slots it stays off, so no sprite is cut. */
+const DIM_FILL = 'rgba(8, 6, 10, 0.6)';
+const DIM_PAD = 3;
 
 export class RoundRenderer {
   readonly canvas: HTMLCanvasElement;
@@ -137,6 +143,9 @@ export class RoundRenderer {
   /** Ambient motion holds still (`?test=1`, set by the view). */
   still = false;
   private sorted: UnitState[] = [];
+  /** The draft's dim, with holes at the general's slots, redrawn only when they move. */
+  private dimMask: HTMLCanvasElement | null = null;
+  private dimKey = '';
   /** Each economy building's gold total at the last income, so a coin pop shows what it just paid (§13.6). */
   private goldSeen = new Map<string, number>();
   /** This step's formations, read as its `arrived` events come, one per squad in arrival order. */
@@ -364,10 +373,33 @@ export class RoundRenderer {
     this.labels.draw(g, t, this.toScreen, TILE);
     if (state.sporestorm > 0) this.drawStorm(state.sporestorm, this.still ? 0 : t);
     if (over) this.aftermath.draw(g, state, this.toScreen, this.glowOf);
+    if (planning && view.dim) this.drawDim();
     if (planning) this.preview.drawOverlays(g, state, this.toScreen);
     if (view.ghost) this.drawGhost(state, view.ghost);
     if (view.power) this.drawPowerAim(view.power, t);
     if (view.debug) this.drawDebug(state);
+  }
+
+  /**
+   * The draft's dim (§10.2, R2-Q24): the field darkens, except the general's formation preview, which stays lit so
+   * the cards can be weighed against its army. The hover outlines and marks draw over it, so its squads stay
+   * hoverable. The mask is a canvas of its own, its holes cleared at the general's slots.
+   */
+  private drawDim(): void {
+    const slots = this.preview.squadSlots('enemy');
+    const key = slots.map((s) => `${s.col},${s.row}`).join(';');
+    if (!this.dimMask || key !== this.dimKey) {
+      const m = this.dimMask ?? document.createElement('canvas');
+      this.dimMask = m;
+      this.dimKey = key;
+      m.width = this.width;
+      m.height = this.height;
+      const g = m.getContext('2d')!;
+      g.fillStyle = DIM_FILL;
+      g.fillRect(0, 0, this.width, this.height);
+      for (const s of slots) g.clearRect(this.sx(s.col) - DIM_PAD, s.row * TILE - DIM_PAD, 2 * TILE + 2 * DIM_PAD, 2 * TILE + 2 * DIM_PAD);
+    }
+    this.ctx.drawImage(this.dimMask, 0, 0);
   }
 
   /** v1's reticle (`src/render/renderer.ts`): a breathing wash in a steady ring with a dark edge, and a crosshair; lilac, or red where it can't fire. */

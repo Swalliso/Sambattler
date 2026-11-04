@@ -2,7 +2,8 @@
 // so the screenshot check can compare state hashes: a battle scene's (`scene=battle`, `scene=report`) at the
 // same round, phase and tick (SPEC §15.6, R2a plan Calls 14 and 16), through the page's own `battleForParams`,
 // so the checkpoints match exactly, with the seed the page would have written into its URL; and a run scene's
-// run state, with the battle state for `scene=draft` and for `scene=run` at a round and phase (R2b/T157).
+// run state, with the battle state for `scene=draft` at its first draft (R2b/T115) and for `scene=run` at a round
+// and phase (R2b/T157).
 import type { Content } from '../../src/data/registry.ts';
 import { battleForParams, forwardBattle, parseRoundParams, runCheckpoint, sceneOf } from '../../src/app/urlParams.ts';
 import { runForScene } from '../../src/run/index.ts';
@@ -20,22 +21,21 @@ export function battleStateForParams(content: Content, q: URLSearchParams): Batt
 }
 
 /**
- * Run scenes: the run state, plus the battle on screen: `scene=draft`'s at round 1's planning (its draft opens in
- * planning from R2b's T067 and T115), and `scene=run`'s at the round and phase it names, as the page plays it
- * (T157). Throws a `BattleRefusal` with the page's message for a checkpoint it can't reach.
+ * Run scenes: the run state, plus the battle on screen: `scene=draft`'s at round 3's planning, its first draft
+ * (R2b/T115), and `scene=run`'s at the round and phase it names (T157), as the page plays them, through the page's
+ * own `runCheckpoint`. Throws a `BattleRefusal` with the page's message for a checkpoint it can't reach.
  */
 export function runForParams(content: Content, q: URLSearchParams): { run: RunState; battle: BattleState | null } {
   const scene = sceneOf(q);
   const auto = q.get('autoplay');
   const am = auto?.match(/^battles:(\d+)$/);
-  const at = runCheckpoint(q);
+  const at = runCheckpoint(q, content);
   const run = runForScene(content, {
     scene, seed: Number(q.get('seed') ?? 1),
     player: q.get('player') ?? (scene === 'draft' ? 'bot:balanced' : 'human'),
     autoplay: auto === 'run' ? { battles: 'all' } : am ? { battles: Number(am[1]) } : null,
     enterBattle: at !== null,
   });
-  if (run.screen.kind !== 'battle' || (scene !== 'draft' && !at)) return { run, battle: null };
-  const battle = createBattle(content, run.screen.config);
-  return { run, battle: at ? forwardBattle(battle, at) : battle };
+  if (run.screen.kind !== 'battle' || !at) return { run, battle: null };
+  return { run, battle: forwardBattle(createBattle(content, run.screen.config), at) };
 }

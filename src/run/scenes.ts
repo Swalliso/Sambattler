@@ -1,7 +1,8 @@
 // Run states for URL scenes (SPEC §15.6), shared by the browser and the Node screenshot mirror so
 // both build exactly the same state: `scene=route` (optionally after `autoplay=battles:<n>`),
-// `scene=summary&autoplay=run`, `scene=draft` (battle 1 of the run with a bot placing and the
-// drafts left to the player), and `scene=run` at a round and phase (its current battle, T157).
+// `scene=summary&autoplay=run`, `scene=draft` (battle 1 of the run with a bot planting and the
+// drafts left to the player, which opens at round 3's planning, its first draft: `runCheckpoint`,
+// R2b/T115), and `scene=run` at a round and phase (its current battle, T157).
 import { chooseNode } from './flow.ts';
 import { isBattle } from './route.ts';
 import { simulateRun } from './auto.ts';

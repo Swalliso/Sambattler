@@ -199,12 +199,17 @@ export function forwardBattle(state: BattleState, p: Checkpoint): BattleState {
 }
 
 /**
- * `scene=run`'s checkpoint (T157): with `round=` or `phase=`, the run enters its current row's first battle
- * (`runForScene`'s `enterBattle`), which opens there, held as a single battle is. Null opens the run as it stands.
+ * A run scene's checkpoint, where its battle opens, held as a single battle is (§15.6). `scene=run` with `round=` or
+ * `phase=` (T157): the run enters its current row's first battle (`runForScene`'s `enterBattle`), which opens there.
+ * `scene=draft` (T115, A079): its battle opens at the planning of its first draft round, round 3, with the bot's
+ * rounds before it played, and the bot plans that round once the player's draft resolves. Null opens the run as it stands.
  */
-export function runCheckpoint(search: string | URLSearchParams): RoundParams | null {
+export function runCheckpoint(search: string | URLSearchParams, content: Content): RoundParams | null {
   const q = typeof search === 'string' ? new URLSearchParams(search) : search;
-  return sceneOf(q) === 'run' && (q.has('round') || q.has('phase')) ? parseRoundParams(q) : null;
+  const scene = sceneOf(q);
+  const first = content.balance.rounds.draftRounds[0];
+  if (scene === 'draft') return first === undefined ? null : { ...parseRoundParams(q), round: first + 1, phase: 'planning', ticks: null };
+  return scene === 'run' && (q.has('round') || q.has('phase')) ? parseRoundParams(q) : null;
 }
 
 /** Where a phase falls in its round. */
