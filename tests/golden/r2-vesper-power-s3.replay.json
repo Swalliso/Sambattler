@@ -102,11 +102,19 @@
         "effects": {
           "modifiers": [
             {
-              "stat": "building.spawnInterval",
+              "stat": "unit.hp",
               "op": "mul",
-              "value": 0.91,
+              "value": 1.1,
               "where": {
-                "zone": "home"
+                "rank": 0
+              }
+            },
+            {
+              "stat": "unit.damage",
+              "op": "mul",
+              "value": 1.1,
+              "where": {
+                "rank": 0
               }
             }
           ]
@@ -116,21 +124,17 @@
   },
   "commands": [],
   "expected": {
-    "r1.planning": "85d6231874bc14d7",
-    "r1.clash": "7882c23b58eee615",
-    "r1.aftermath": "5c901f9c14e9506c",
-    "r2.planning": "b126326ef67178a8",
-    "r2.clash": "50e4936a5b593174",
-    "r2:200": "1526500f39f76713",
-    "r2.aftermath": "60caecd7b06f20c2",
-    "r3.planning": "6ac85133828a113d",
-    "r3.clash": "c104a5b5f54b5014",
-    "r3:200": "16c8a24b33f43e12",
-    "r3.aftermath": "9ac6b6479cd5a44b",
-    "r4.planning": "53580078cc22fef3",
-    "r4.clash": "d268782a96881452",
-    "r4:200": "745d32209b994a96",
-    "r4.aftermath": "53d7d025f2e5feb2",
-    "final": "31b094141cee3eb7"
+    "r1.planning": "14da55d28a419632",
+    "r1.clash": "9d373339411e5c29",
+    "r1.aftermath": "d6bd65dd01e041cf",
+    "r2.planning": "90f47791ec4444bf",
+    "r2.clash": "d53ba50f27a58b69",
+    "r2:200": "c86a75ae3c35b34a",
+    "r2.aftermath": "38b4dc025524d8f3",
+    "r3.planning": "93370b4d76b7ab02",
+    "r3.clash": "1a82b6dc1ddcdb8a",
+    "r3:200": "df11e443e6d245ee",
+    "r3.aftermath": "ed25a574055ddebd",
+    "final": "915a1f6fc8d74c19"
   }
 }

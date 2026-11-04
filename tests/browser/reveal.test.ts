@@ -75,12 +75,13 @@ async function drawsLastFielded(seed: number, round: number): Promise<void> {
 
 /** A round whose plan sold something (the counter cycle sells for room, S15), on the first seed that has one. */
 function roundWithSale(): { seed: number; round: number } {
-  for (const seed of [1, 2, 3, 4, 5]) {
+  // Home Brood (R2b S7) ends seeds 1–5 before the round-7 counter, the one that sells for room
+  for (let seed = 1; seed <= 10; seed++) {
     const end = node(`${bot(seed)}&phase=ended`);
     const plan = end.sides.enemy.ai!.plans.find((p) => p.round > 1 && p.sold.length > 0 && p.planted.length > 0);
     if (plan) return { seed, round: plan.round };
   }
-  throw new Error('the general neither planted nor sold in one round on seeds 1 to 5');
+  throw new Error('the general neither planted nor sold in one round on seeds 1 to 10');
 }
 
 describe('the "last fielded" view, reveal=last (§7.5, R2-Q1, T127)', () => {

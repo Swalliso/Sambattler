@@ -46,7 +46,9 @@ SPEC §6.6, §7.6–§7.8, §11.10, §11.11). No unit, building or rule number w
   Ranged take their set's cheapest), as a missing answer is chosen (A056). Against a Swarm that's the Rhizomorph
   Tunnel and against a Line the Veilstalker Hollow, where v1's sets gave the Sporeling Burrow and the Morel Warren.
 - **Goldens:** the Vesper and Cordis power replays and `r2-run-s7` moved; `r2-armilla-power-s3` is new (T156). The
-  three replays with no commander or general passive hold their hashes.
+  three replays with no commander or general passive hold their hashes, byte for byte. On seed 3 with the starter
+  kits, Vesper and Cordis rout the scripted general in round 3 (Puppet Bloom lifting 11 units), and Armilla falls in
+  round 7, her five Tithes paying 100 gold.
 
 ## R2b-S6 T070–T078: the relics in v2 form, the `requires` gates and one path for clash gold (2026-11-03)
 

@@ -46,9 +46,11 @@ const REPLAYS: {
     name: 'r2-merge-mirror-s3', description: 'merge-on vs merge-off mirror (bot:balanced vs bot:balanced-nomerge, the G7 setup), knitting at the muster, seed 3 (R2a/T112)',
     seed: 3, player: 'bot:balanced', enemy: 'bot:balanced-nomerge', flags: { merging: true, adaptiveGeneral: false, powers: false },
   },
-  // the power once per clash (§15.5), with the adaptive general off so the counter cycle can't move them (R2a/T111)
-  ...(['vesper', 'cordis'] as const).map((c) => ({
-    name: `r2-${c}-power-s3`, description: `bot:balanced as ${c}, with the starter kit and the auto power policy, vs the scripted general, seed 3 (R2a/T111)`,
+  // the power once per clash (§15.5), with the adaptive general off so the counter cycle can't move them (R2a/T111),
+  // and Armilla's Rhizome Tithe once it pays in rounds (R2b/T156)
+  ...(['vesper', 'cordis', 'armilla'] as const).map((c) => ({
+    name: `r2-${c}-power-s3`,
+    description: `bot:balanced as ${c}, with the starter kit and the auto power policy, vs the scripted general, seed 3 (${c === 'armilla' ? 'R2b/T156' : 'R2a/T111'})`,
     seed: 3, player: 'bot:balanced', enemy: 'general:scripted', flags: { merging: true, adaptiveGeneral: false, powers: true },
     commander: c, powerPolicy: 'auto' as const, starter: true,
   })),
