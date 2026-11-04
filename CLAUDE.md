@@ -7,6 +7,8 @@ battle and S12 its last data keys. This file holds only what every
 session needs. Rules that matter in only some files live in `.claude/rules/` and load when Claude opens
 one of those files (see the end).
 
+**A v3 redesign is under way** (2026-11-04). [docs/design-brief.md](docs/design-brief.md) sets its fantasy and pillars. A hub runs it in steps: an audit, a concept, then a prototype. R3 and every later v2 milestone are paused until the prototype is judged. Read the brief before design work, and `docs/status.md` for where it stands.
+
 ## How we work
 
 - **Start from `develop`.** New desktop-app sessions are often cut from `main`, which lags `develop`. For feature work, `git fetch` and then `git switch --no-track -c feature/<name> origin/develop`.
