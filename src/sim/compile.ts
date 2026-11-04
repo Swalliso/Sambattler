@@ -1,8 +1,8 @@
 // Compiles a battle in rounds' data into what its state holds (SPEC §11.1, §11.2, §14.2, §14.4): the library,
-// with ids and numbers only (R2-Q8); the rules, from `balance.rounds` and the kept combat; and each side's
-// compiled kit. A spawner fields its `squad`, a tower fields itself as one emplacement unit, an economy
+// with ids and numbers only (R2-Q8); the rules, from the balance's round keys and the kept combat; and each
+// side's compiled kit. A spawner fields its `squad`, a tower fields itself as one emplacement unit, an economy
 // building pays its gold a round, and every squad's unit is resolved at all three merge tiers as v1 resolves
-// it (§5.5, §5.6). Modifiers on stats rounds retire compile to nothing and are listed (plan Call 19).
+// it (§5.5, §5.6). A modifier on a stat a battle doesn't read (R3's corner combos, the run's) is listed.
 import type { Content } from '../data/registry.ts';
 import type { ModifierDef, UnitDef } from '../data/schema.ts';
 import { battleModifiers, buildingMatcher, collectRoundEffects, onPlot, placeMatches, resolveStat, roundModifiers, unitMatcher } from './effects.ts';
@@ -79,25 +79,25 @@ export function buildRoundLibrary(content: Content, config: BattleConfig): Libra
   return lib;
 }
 
-/** The rules of a battle in rounds, from `balance.rounds` and the kept combat, in ticks and integers. */
+/** The rules of a battle in rounds, from the balance's round keys and the kept combat, in ticks and integers. */
 export function compileRoundRules(lib: Library, config: BattleConfig): Rules {
-  const b = lib.balance, r = b.rounds, tr = b.tickRate;
+  const b = lib.balance, tr = b.tickRate;
   // `battle.sporestormStart` is a round number in rounds (§6.4)
-  const startRound = Math.max(1, Math.round(resolveStat(r.sporestorm.startRound, battleModifiers(roundModifiers(lib, config)), 'battle.sporestormStart')));
+  const startRound = Math.max(1, Math.round(resolveStat(b.sporestorm.startRound, battleModifiers(roundModifiers(lib, config)), 'battle.sporestormStart')));
   return {
     tickRate: tr,
-    maxRounds: r.maxRounds,
-    clashCapTicks: secToTicks(r.clashCapSeconds, tr),
-    musterTicks: secToTicks(r.musterSeconds, tr),
-    formationGapTiles: r.formationGapTiles,
-    heartcapDamagePerSupply: r.heartcapDamagePerSupply,
-    siegeHeartcapMult: r.siegeHeartcapMult,
-    arrivalShield: { ...r.arrivalShield },
-    roundDamageCap: { ...r.roundDamageCap },
-    decisionBy: r.decision.by,
-    interestPer: r.interestPer,
-    comebackGold: r.comebackGold,
-    storm: { startRound, stepBp: r.sporestorm.stepBp, maxBp: r.sporestorm.maxBp },
+    maxRounds: b.maxRounds,
+    clashCapTicks: secToTicks(b.clashCapSeconds, tr),
+    musterTicks: secToTicks(b.musterSeconds, tr),
+    formationGapTiles: b.formationGapTiles,
+    heartcapDamagePerSupply: b.heartcapDamagePerSupply,
+    siegeHeartcapMult: b.siegeHeartcapMult,
+    arrivalShield: { ...b.arrivalShield },
+    roundDamageCap: { ...b.roundDamageCap },
+    decisionBy: b.decision.by,
+    interestPer: b.interestPer,
+    comebackGold: b.comebackGold,
+    storm: { startRound, stepBp: b.sporestorm.stepBp, maxBp: b.sporestorm.maxBp },
     retargetEvery: b.retargetEveryTicks,
     leashMult: b.leashMult,
     splashFalloff: b.splashFalloff,
@@ -141,7 +141,7 @@ export function compileRoundSides(lib: Library, config: BattleConfig, sides: Rec
 }
 
 function compileRoundSide(lib: Library, side: Side, kit: readonly KitCard[], fx: RoundEffects, drafts: boolean): CompiledSide {
-  const bal = lib.balance, r = bal.rounds;
+  const bal = lib.balance;
   const m = (stat: string, base: number) => resolveStat(base, fx.mods, stat);
   const buildings: Record<string, CompiledBuilding> = {};
   const units: Record<string, CompiledUnit> = {};
@@ -154,12 +154,12 @@ function compileRoundSide(lib: Library, side: Side, kit: readonly KitCard[], fx:
   return {
     units,
     buildings,
-    stipend: Math.round(m('side.stipend', r.stipendPerRound)),
-    interestCap: Math.round(m('side.interestCap', r.interestCap)),
+    stipend: Math.round(m('side.stipend', bal.stipendPerRound)),
+    interestCap: Math.round(m('side.interestCap', bal.interestCap)),
     // the general's income starts at `enemyIncomeMult` (§7.1)
-    incomeBp: Math.round(m('side.incomeMult', side === 'enemy' ? r.enemyIncomeMult : 1) * 10000),
+    incomeBp: Math.round(m('side.incomeMult', side === 'enemy' ? bal.enemyIncomeMult : 1) * 10000),
     comebackEnabled: m('side.comebackEnabled', 1) > 0,
-    sellRefundPlantedPct: Math.round(r.sellRefundPlanted * 100),
+    sellRefundPlantedPct: Math.round(bal.sellRefundPlanted * 100),
     sellRefundPct: Math.round(m('side.sellRefund', bal.sellRefund) * 100),
     loamBonusPct: Math.round(m('side.loamBonus', bal.loamBonus) * 100),
     mergeRadius: m('side.mergeRadius', bal.mergeRadius),
@@ -192,7 +192,6 @@ function compileRoundBuilding(lib: Library, id: string, mods: readonly ModifierD
     out.squad = { unit: b.squad.unit, count: b.squad.count };
   } else if (b.kind === 'tower') out.squad = { unit: id, count: 1 };
   if (b.economy) {
-    if (b.economy.goldPerRound === undefined) throw new Error(`economy building ${id} has no goldPerRound`);
     const goldPerRound = Math.max(0, Math.round(resolveStat(b.economy.goldPerRound, mods, 'building.goldPerRound', buildingMatcher(lib, id))));
     out.economy = { goldPerRound, ...(b.economy.interestCapAdd ? { interestCapAdd: b.economy.interestCapAdd } : {}) };
   }
@@ -265,16 +264,16 @@ function compileTier(lib: Library, u: LibraryUnit, tier: Tier, mods: readonly Mo
 }
 
 /**
- * A tower as its emplacement (§4.4, §6.7, #10): one unit under the tower's id, with the tower's attack and
- * `hp` and Structure armor, which never moves or merges and counts no supply. A tower whose shells leave
+ * A tower as its emplacement (§4.4, §6.7, #10): one unit under the tower's id, with the tower's attack, its
+ * `attack.hp` and Structure armor, which never moves or merges and counts no supply. A tower whose shells leave
  * spore clouds reaches the clouds' range and aims them (§5.3). Its body is the largest a unit's may be, and
  * its range runs from its centre, as a tower's did (`systems/targeting.ts`, `systems/combat.ts`). Each round's
  * arrival fields it fresh, at the tower's full `hp`.
  */
 function compileEmplacement(lib: Library, id: string, mods: readonly ModifierDef[]): CompiledUnit {
   const b = lib.buildings[id]!;
-  const a = b.attack, hp = b.hp;
-  if (!a || hp === undefined) throw new Error(`tower ${id} has no attack or no hp`);
+  const a = b.attack, hp = a?.hp;
+  if (!a || hp === undefined) throw new Error(`tower ${id} has no attack or no attack.hp`);
   const bal = lib.balance;
   const m = (stat: string, base: number) => resolveStat(base, mods, stat, buildingMatcher(lib, id));
   const clouds = !!bal.sporeCloud?.buildings.includes(id);

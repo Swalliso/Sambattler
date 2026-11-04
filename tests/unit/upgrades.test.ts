@@ -14,7 +14,7 @@ import { begin, command, content, finishRound, plotAt, sell, toggle } from '../h
 
 type ScenarioSide = ScenarioDef['sides']['player'];
 
-const PCT = content.balance.rounds.upgradeCostPct;
+const PCT = content.balance.upgradeCostPct;
 const front = (file: number) => ({ lane: 0, rank: 0, file });
 const back = (file: number) => ({ lane: 0, rank: 1, file });
 

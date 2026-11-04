@@ -194,7 +194,7 @@ export function createRun(content: Content, opts: RunOptions): RunState {
     draft: seedStream(seed, 'draft', 0),
     meta: seedStream(seed, 'meta', 0),
   };
-  const lives = content.balance.rounds.lives;
+  const lives = content.balance.lives;
   return {
     v: RUN_VERSION,
     seed,

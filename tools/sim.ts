@@ -132,7 +132,7 @@ function scenarioBegins(content: ReturnType<typeof nodeContent>, id: string, pla
   const def = content.scenarios[id];
   if ((player ?? def?.controllers?.player ?? 'human') !== 'human') return [];
   const out: Command[] = [];
-  for (let round = def?.round ?? 1; round <= content.balance.rounds.maxRounds; round++) {
+  for (let round = def?.round ?? 1; round <= content.balance.maxRounds; round++) {
     out.push({ round, tick: 0, side: 'player', seq: out.length, type: 'beginClash' });
   }
   return out;
@@ -179,7 +179,7 @@ function mainBattle(args: Args, content: ReturnType<typeof nodeContent>): number
     const { at: _at, stats: _st, ...brief } = results[0]!;
     console.log(JSON.stringify(brief, null, 2));
   } else {
-    printRoundSummary(results, content.balance.rounds.maxRounds);
+    printRoundSummary(results, content.balance.maxRounds);
   }
   for (const as of args.asserts) console.log(`${failures.some((f) => f.includes(as.text)) ? 'FAIL' : 'PASS'}  assert ${as.text}`);
   if (failures.length) {

@@ -293,7 +293,7 @@ export function stormTip(content: Content, atlas: Atlas, state: BattleState): Ti
       const out: Node[] = [head(atlas, 'i-storm', 'Sporestorm', stormText(now), now > 10000 ? 'lit' : '')];
       out.push(para(`The Sporestorm raises the Heartcap damage a round deals: from round ${st.startRound} by ${st.stepBp / 100}% a round, up to ${stormText(st.maxBp)}. `
         + 'It hits both Heartcaps alike, so battles end sooner.'));
-      if (st.startRound !== content.balance.rounds.sporestorm.startRound) out.push(para(`An event moved its start to round ${st.startRound} in this battle.`));
+      if (st.startRound !== content.balance.sporestorm.startRound) out.push(para(`An event moved its start to round ${st.startRound} in this battle.`));
       out.push(sec('By round'));
       const before = Math.min(st.startRound, r.maxRounds + 1) - 1;
       if (state.round <= before) {

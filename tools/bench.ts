@@ -8,7 +8,7 @@ import { RESUME_ABOUT_MS, TURN_GENERALS, roundBenchChecks, runRoundBench } from 
 
 const quick = process.argv.includes('--quick');
 const content = nodeContent();
-const g = content.targets.rounds.G11;
+const g = content.targets.G11;
 const r = runRoundBench(content, { quick });
 const ms = (x: number) => `${x.toFixed(3)} ms`;
 const within = (ok: boolean) => (ok ? 'within' : 'over');

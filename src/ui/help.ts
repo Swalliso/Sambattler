@@ -46,7 +46,6 @@ const listWord = (xs: (number | string)[]) => (xs.length > 1 ? `${xs.slice(0, -1
 export function helpOverlay(content: Content, state: BattleState, onClose: () => void): HTMLElement {
   const r = state.rules;
   const b = content.balance;
-  const rb = b.rounds;
   const cs = state.compiled.player;
   const kit = state.sides.player.kit.map((k) => k.building);
   const secs = (ticks: number) => Math.round(ticks / r.tickRate);
@@ -81,14 +80,14 @@ export function helpOverlay(content: Content, state: BattleState, onClose: () =>
   const banked = Math.min(cs.interestCap, Math.floor(BANK_EXAMPLE / r.interestPer));
 
   // the general's counter cycles by round (§7.4), from the data
-  const cycles = rb.ai.counter.cycles;
+  const cycles = b.ai.counter.cycles;
   const cycleText = cycles.map((c) => `in round ${c.round}'s planning it reads ${roundsWord(c.from, c.round - 1)}`);
-  const boss = rb.ai.counter.bossCycles[0];
+  const boss = b.ai.counter.bossCycles[0];
 
   // a round in three phases (§4.7, §6.7), the storm by round (§6.4) and the end (§6.5, §8.5)
   const st = r.storm;
   const capped = capWords(r.roundDamageCap);
-  const drafts = rb.draftRounds.map((x) => x + 1);
+  const drafts = b.draftRounds.map((x) => x + 1);
   const def = powerOf(state, 'player');
   const power = def && Object.values(content.commanders).find((c) => c.power.id === def.id)?.power;
   const stormTable = h('table', { class: 'rules storm-table', id: 'help-storm' },
@@ -182,7 +181,7 @@ export function helpOverlay(content: Content, state: BattleState, onClose: () =>
           p(h('b', null, 'Planning. '), 'The clock is stopped and the general has planned. Plant, sell and set merge toggles, then press Begin.'
             + ` In rounds ${listWord(drafts)} a draft opens first: pick a card, reroll or skip.`),
           h('p', { id: 'help-upgrades' }, h('b', null, 'Upgrades. '), 'Once every plot is built on, gold buys upgrades: select a spawner and press ', h('kbd', null, 'U'),
-            `. For ${rb.upgradeCostPct}% of its price its squad arrives ${TIER_NAME[1]} for the rest of the battle, and can knit on to ${TIER_NAME[2]}s. The general upgrades too.`),
+            `. For ${b.upgradeCostPct}% of its price its squad arrives ${TIER_NAME[1]} for the rest of the battle, and can knit on to ${TIER_NAME[2]}s. The general upgrades too.`),
           p(h('b', null, 'Clash. '), `Both whole armies fight, lane by lane. A lane ends when one side has nothing left in it, or at ${secs(r.clashCapTicks)} s, when the side with more supply left wins it.`
             + `${power ? ` ${power.name} fires once a clash.` : ''}`),
           p(h('b', null, 'Aftermath. '), `A lane's winner deals ${r.heartcapDamagePerSupply} Heartcap damage for each supply it has left over the loser's (siege units count double)`
@@ -192,7 +191,7 @@ export function helpOverlay(content: Content, state: BattleState, onClose: () =>
           stormTable,
           h('h3', null, 'How a battle ends'),
           p(`A Heartcap at 0 loses the battle (a Rout). After round ${r.maxRounds}, if both Heartcaps stand, the battle ends by Decision: whoever dealt the larger share of the other's max HP wins.`),
-          p(`In a run a lost battle costs a Regrowth, one of your ${rb.lives} lives, and a won one never does. The run ends when the last is gone, or if you lose the boss.`))),
+          p(`In a run a lost battle costs a Regrowth, one of your ${b.lives} lives, and a won one never does. The run ends when the last is gone, or if you lose the boss.`))),
     ],
     keys: [
       h('div', { class: 'helpgrid keys-grid', id: 'help-keys' },

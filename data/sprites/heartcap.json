@@ -97,21 +97,6 @@
         "knnnhhhhhhhhhbnbbnnnbbnnnnnnnnnk",
         "knnbnbnbbnnbnnnnbnnbnnnnnnnnbnnk"
       ]
-     ]},
-    {"id": "turret", "w": 10, "h": 10, "anchor": [5, 5], "factionSwap": true, "palette": {".": null, "e": "#120a16", "g": "#f0c85a", "k": "#1a1020", "l": "#c9a2ff", "v": "#8a4fd8"},
-     "frames": [
-      [
-        "..kkkkkk..",
-        ".klllvvvk.",
-        "klllvvvvvk",
-        "kllvvveevk",
-        "klvvveegek",
-        "kvvvveeeek",
-        "kvvvvveevk",
-        "kvvvvvvvvk",
-        ".kvvvvvvk.",
-        "..kkkkkk.."
-      ]
      ]}
   ]
 }

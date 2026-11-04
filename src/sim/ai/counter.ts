@@ -32,7 +32,7 @@ export interface FieldedAnalysis {
  * elite, with the five kinds' scores. Counting parts replaced the combat rework's swarm read, which is gone (A109).
  */
 export function analyzeFielded(view: PlanningView, from: number, to: number): FieldedAnalysis {
-  const k = view.counterKnobs;
+  const k = view.knobs.counter;
   const sum = { light: 0, medium: 0, heavy: 0, ranged: 0, elite: 0 };
   let total = 0;
   for (const r of view.rounds) {
@@ -78,7 +78,7 @@ export function topKinds(scores: IntelProfile, n: number): CounterKind[] {
 /** Step 5 (§7.4): seeded noise of ±`scoreNoise` on each score, drawn in `COUNTER_KINDS`' order from its own stream, and the highest. */
 function pickKind(view: PlanningView, scores: Record<CounterKind, number>): CounterKind {
   const noisy = { ...scores };
-  for (const k of COUNTER_KINDS) noisy[k] += nextSigned(view.rng) * view.counterKnobs.scoreNoise;
+  for (const k of COUNTER_KINDS) noisy[k] += nextSigned(view.rng) * view.knobs.counter.scoreNoise;
   return topKind(noisy);
 }
 
@@ -177,7 +177,7 @@ export function answersTo(view: AnswerView, kinds: readonly CounterKind[], have:
  * dominant armor first (the lowest matrix multiplier), then the rearmost, the lower file, the building id and the entity id.
  */
 export function sellsForRoom(view: PlanningView, set: string[], armor: BodyArmor): BuildingState[] {
-  const need = Math.min(view.counterKnobs.maxSells, view.knobs.counter.freePlots - freePlots(view).length);
+  const need = Math.min(view.knobs.counter.maxSells, view.knobs.counter.freePlots - freePlots(view).length);
   if (need <= 0) return [];
   const mult = (b: BuildingState) => view.matrix[spawnerUnit(view, b.buildingId)!.damageType][armor];
   const plot = (b: BuildingState) => view.plots[b.plot]!;
@@ -238,7 +238,7 @@ export function runCycle(view: PlanningView, ai: AiState, sell: (b: BuildingStat
 export function doctrineMult(view: PlanningView, buildingId: string): number {
   const c = view.ai?.counter;
   if (!c) return 1;
-  const k = view.counterKnobs, kinds = counterKindsOf(view, buildingId);
+  const k = view.knobs.counter, kinds = counterKindsOf(view, buildingId);
   const now = c.history.at(-1);
   let m = now ? (kinds.includes(now.kind) ? k.counterMult : k.otherMult) : 1;
   if (c.opening && (c.opening.dual || !now)) {
@@ -259,12 +259,6 @@ export function doctrineKinds(c: CounterState | undefined): CounterKind[] {
   const kinds: CounterKind[] = now ? [now.kind] : [];
   if (c.opening && (c.opening.dual || !now)) for (const k of c.opening.kinds) if (!kinds.includes(k)) kinds.push(k);
   return kinds;
-}
-
-/** The kind that answers what the other side fielded last round, before any noise; null in round 1 or after a round it fielded nothing. */
-export function lastAnswer(view: PlanningView): CounterKind | null {
-  const a = analyzeFielded(view, view.round - 1, view.round - 1);
-  return a.total > 0 ? topKind(a.scores) : null;
 }
 
 /** The counter in force for the Intent panel and the report (§7.5): the last activation, if any. */

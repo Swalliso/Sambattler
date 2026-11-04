@@ -3,7 +3,7 @@
 // behind, economy at the back. Call 11's back-line term prefers the third rank to the front (A043). Each
 // candidate takes noise of ±`score.noise` from the side's own AI stream, drawn in plot order, before the
 // ties, which go to the front rank, then the lower file. On a map of several lanes it first picks a lane by
-// #30's rule, which reads only the fielded record (A047). The weights are `balance.rounds.ai.score`.
+// #30's rule, which reads only the fielded record (A047). The weights are `balance.ai.score`.
 import { nextSigned } from '../rng.ts';
 import { buildable, plotNeighbors } from '../colony.ts';
 import type { ColonyPlot } from '../colony.ts';

@@ -461,7 +461,7 @@ describe('Begin: the arrival (SPEC §4.7 steps 12–13, §14.6 planning step 3)'
 
   it('fields an emplacement at its tower’s full HP each round, whatever the last clash left it (T041)', () => {
     const s = battle([at('puffballMortar', 0, 1, 2), at('capguardHall', 0, 0, 2)]);
-    const full = s.library.buildings.puffballMortar!.hp;
+    const full = s.library.buildings.puffballMortar!.attack!.hp;
     const mortar = () => s.units.find((u) => u.unitId === 'puffballMortar')!;
     begin(s);
     expect([mortar().hp, mortar().maxHp]).toEqual([full, full]);
@@ -682,7 +682,7 @@ describe('per-squad stats (SPEC §5.6, §14.2, T046, A028, A131)', () => {
     expect(of(loam)).toEqual(Array(3).fill([base.hp, base.hp, base.damage * 2]));
     expect(of(theirs)).toEqual(Array(3).fill([base.hp, base.hp, base.damage]));
     // a unit modifier never reaches an emplacement, which has its tower's stats
-    expect(of(mortar).map(([hp]) => hp)).toEqual([s.library.buildings.puffballMortar!.hp]);
+    expect(of(mortar).map(([hp]) => hp)).toEqual([s.library.buildings.puffballMortar!.attack!.hp]);
     // each squad's table: its side's unit plus the patches that reach it alone (A131)
     const patches = (b: number) => s.squads.find((q) => q.building === b)!.stats?.patches;
     expect([patches(front), patches(back), patches(loam), patches(theirs)]).toEqual([

@@ -36,9 +36,9 @@ describe('the presets are the agreed list (§16 R2, A109)', () => {
     }
   });
 
-  it("keeps X8's data knobs in data/balance.json, both off (R2a/T101)", () => {
-    expect(content.balance.rounds.ai.leanToLastAnswer).toBe(0);
-    expect(content.balance.rounds.ai.replaceWhenFull).toBe(false);
+  it("drops X8's two data knobs, which S11 measured as moving neither G14 nor G15 (T129, T172)", () => {
+    expect(content.balance.ai).not.toHaveProperty('leanToLastAnswer');
+    expect(content.balance.ai).not.toHaveProperty('replaceWhenFull');
   });
 
   it('bosslives sets its key in the content', () => {

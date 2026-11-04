@@ -152,7 +152,7 @@ export function colonyFull(state: BattleState, side: Side): boolean {
 
 /** A gold upgrade's price for the side's building: `upgradeCostPct` of its price, rounded down (§6.1). */
 export function upgradePrice(state: BattleState, side: Side, buildingId: string): number {
-  return upgradeCost(priceOf(state, side, buildingId), state.library.balance.rounds.upgradeCostPct);
+  return upgradeCost(priceOf(state, side, buildingId), state.library.balance.upgradeCostPct);
 }
 
 /** `upgradePrice` from a building's price and the percentage, which the planning view carries (§6.1). */

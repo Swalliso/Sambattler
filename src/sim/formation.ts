@@ -264,7 +264,7 @@ export interface FormationPlot {
 }
 
 export interface FormationInput {
-  /** The map's width and lanes, and `balance.rounds.formationGapTiles` between the front ranks. */
+  /** The map's width and lanes, and `balance.formationGapTiles` between the front ranks. */
   geom: FieldGeom;
   side: Side;
   /** The side's plots, as `colonyPlots` gives them. */

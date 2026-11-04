@@ -187,9 +187,9 @@ if (roundChecks.size) {
   const rc = needsBots ? protoContent(spec) : content;
   const pool = workers > 1 ? roundPool(spec, workers) : undefined;
   const run = pool?.run ?? inProcessRounds(rc);
-  const maxRounds = rc.balance.rounds.maxRounds;
+  const maxRounds = rc.balance.maxRounds;
   // G4's battles in rounds: the `rounds` target's 200 unless `--g4seeds` says otherwise
-  const roundG4Seeds = Number(opt('--g4seeds') ?? 0) || rc.targets.rounds.G4.seeds;
+  const roundG4Seeds = Number(opt('--g4seeds') ?? 0) || rc.targets.G4.seeds;
   const verdict = (v: Verdict): Verdict => {
     lines.push(`${v.pass ? 'PASS' : 'FAIL'}  ${v.id}: ${v.summary}`, ...v.details.map((d) => `        ${d}`));
     return v;

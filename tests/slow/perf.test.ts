@@ -1,7 +1,7 @@
 // G11's round budgets (SPEC §12.3, §13.7, §15.4; R2a/T113, A113), on the round bench's cases
 // (`tools/lib/rounds/bench.ts`, plan Call 24): a tick of bench-300's clash at 300 live units, the arrival of two
 // full colonies, the general's planning turn, one battle of rounds with bots on both sides, and the sim part of a
-// planning command. Every budget is G11's round form in `data/balance-targets.json`'s `rounds` block (T119): v1's
+// planning command. Every budget is G11's in `data/balance-targets.json` (T119, folded in R2b's T129): v1's
 // tick and battle budgets, and the arrival, the turn, the planning command and the full colony, new in v2. The
 // 4 ms Chromium figure for the whole command is `tests/browser/rounds/perf.test.ts`'s.
 import { describe, expect, it } from 'vitest';
@@ -9,7 +9,7 @@ import { nodeContent } from '../../tools/lib/content.ts';
 import { bench300, fullBattle, fullColonyClashes, generalTurns, planCommand } from '../../tools/lib/bench.ts';
 
 const content = nodeContent();
-const g = content.targets.rounds.G11;
+const g = content.targets.G11;
 
 describe("G11's round budgets (§13.7)", () => {
   it('a tick of bench-300 at 300 live units: mean ≤ 1.0 ms and p99 ≤ 2.5 ms, weighted by live units, peaking at 300', () => {

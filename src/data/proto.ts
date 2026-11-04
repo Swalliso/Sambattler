@@ -1,7 +1,7 @@
 // Prototype knobs (`?proto=`, `--proto`): named presets and `path:value` overrides applied to the raw content
 // before validation, so a knob can be measured by the tools (`--proto`) or playtested in the browser (`?proto=`)
-// without editing data. Every knob here is absent from balance.json by default, so without a spec the rules are
-// unchanged. Since R2b's S4c one preset is left (SPEC §16 R2, A109): lives at the boss, for R2b's playtest (#16),
+// without editing data. The preset's key is absent from balance.json by default, so without a spec the rules are
+// unchanged; X8's two AI knobs, the last in the data, went in R2b's T129. Since R2b's S4c one preset is left (SPEC §16 R2, A109): lives at the boss, for R2b's playtest (#16),
 // which S14 adopts as data or deletes. R1's chosen set and the arrival shield are default data since R2a, the
 // presets of retired systems are gone (Appendix A), and the user dropped A2, B3 and the flyers (2026-11-03). A spec
 // that names a gone preset reports it as unknown (A117). Add no preset: measure a data change with a `path:value`
@@ -133,7 +133,7 @@ export function applyProtoToBalance(balance: unknown, spec: string): { balance: 
 /**
  * The raw content with a prototype spec applied (validation happens in loadContent). Balance
  * presets and paths go to balance.json, and a preset may also carry content paths. Content paths
- * patch an entry by id: `building.gillNest.spawn.interval:19`, `unit.gillArcher.hp:100`,
+ * patch an entry by id: `building.gillNest.squad.count:5`, `unit.gillArcher.hp:100`,
  * `faction.gray-rot.buildings+:"rhizomorphTunnel"`. `<kind>.<id>:{…}` replaces an entry, or adds it
  * when no entry has that id (a new building, unit, bot or general goes to the first file of its kind;
  * the reference bots are untouched unless named).

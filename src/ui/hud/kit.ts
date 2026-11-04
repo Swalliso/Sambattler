@@ -96,7 +96,7 @@ export class KitView {
     const p = state.sides.player;
     const bought = goldUpgrades(state);
     const upgraded = trayOrder(content, p.kit.map((k) => k.building)).filter((id) => ((p.upgrades[id] ?? 0) > 0 && content.upgrades[id]) || bought.includes(id));
-    const draftNote = state.config.flags.drafts ? `Drafts offer them in rounds ${content.balance.rounds.draftRounds.map((r) => r + 1).join(', ')}.` : '';
+    const draftNote = state.config.flags.drafts ? `Drafts offer them in rounds ${content.balance.draftRounds.map((r) => r + 1).join(', ')}.` : '';
     this.body.replaceChildren(
       h('section', { class: 'kit-sec', 'aria-labelledby': 'kit-relics' },
         h('h3', { id: 'kit-relics' }, uiIcon(atlas, 'i-relic'), 'Relics', h('small', null, 'last the whole run')),

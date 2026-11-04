@@ -75,6 +75,6 @@ export function resolveProfile(content: Content, ctl: Controller, side: SideConf
     ...(answer ? { policy: 'answer' as const } : {}),
     plans: [],
     ...(drafts.length ? { pool: drafts } : {}),
-    ...(adaptive && flags?.adaptiveGeneral ? { counter: newCounterState(content.balance.rounds.ai.counter, boss, side.intel) } : {}),
+    ...(adaptive && flags?.adaptiveGeneral ? { counter: newCounterState(content.balance.ai.counter, boss, side.intel) } : {}),
   };
 }

@@ -19,7 +19,7 @@
     },
     "limits": {
       "truffleCellar": { "maxOwned": 3 },
-      "rootbreakerDen": { "afterSeconds": 180, "afterRound": 4 }
+      "rootbreakerDen": { "afterRound": 4 }
     },
     "preferred": ["capguardHall", "gillNest", "puffballMortar", "rootbreakerDen", "scythecapGrove", "veilstalkerHollow"],
     "laneStyle": "defensive",

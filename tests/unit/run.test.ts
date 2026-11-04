@@ -147,7 +147,7 @@ describe('battle setup and rewards (SPEC §4.5, §4.6, §6.1, §6.5, §8.5–8.6
     expect(boss.kit).toHaveLength(bal.enemyKit.bossBuildings);
     expect(levels(boss.upgrades)).toBe(bal.enemyKit.bossUpgrades);
     const vet = generalKit(content, run, { kind: 'elite', map: 'stumpfield', general: 'scripted', elite: 'veteran' }, 2);
-    const spawners = vet.kit.filter((id) => content.buildings[id]!.spawn);
+    const spawners = vet.kit.filter((id) => content.buildings[id]!.squad);
     for (const id of spawners) expect(vet.upgrades[id]).toBeGreaterThanOrEqual(1); // Veteran: +1 on every unit track
     expect(levels(vet.upgrades)).toBe(spawners.length + 2); // plus (i − 1) + elite random levels
     expect(generalKit(content, run, { kind: 'battle', map: 'stumpfield', general: 'scripted' }, 3)).toEqual(k3); // deterministic
@@ -701,7 +701,7 @@ describe('Grove and events (SPEC §8.7)', () => {
     chooseNode(content, run, 0);
     const c = configOf(run);
     expect(c.player.startingGold).toBe(bal.startingGold + 150);
-    expect(createBattle(content, c).rules.storm.startRound).toBe(bal.rounds.sporestorm.startRound - 1);
+    expect(createBattle(content, c).rules.storm.startRound).toBe(bal.sporestorm.startRound - 1);
     finishBattle(content, run, ended(run, 'player', 'decision'));
     expect(run.next).toEqual({ startingGold: 0, sporestormShiftRounds: 0, heartcapMaxHpPct: 0 });
   });

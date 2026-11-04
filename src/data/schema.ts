@@ -33,15 +33,14 @@ export const UNIT_STATS = [
   'unit.openingSpeed',
 ] as const;
 export const BUILDING_STATS = [
-  'building.hp', 'building.spawnInterval', 'building.spawnCount', 'building.goldPerTick', 'building.goldPerRound', 'building.firstSpawnFraction',
   'tower.damage', 'tower.range', 'tower.splashRadius',
-  // R2b: v2's squad and gold a round, which replace `spawnCount` and `goldPerTick` (§14.2)
+  // R2b: v2's squad and gold a round, which replaced v1's `spawnCount` and `goldPerTick` (§14.2)
   'building.squadCount', 'building.goldPerRound',
 ] as const;
 export const SIDE_STATS = [
-  'side.supplyCap', 'side.interestCap', 'side.stipend', 'side.captureSpeed', 'side.startingGold', 'side.sellRefund',
-  'side.supplyLineRate', 'side.knitTicks', 'side.mergeRadius', 'side.rerollCost', 'side.draftCards', 'side.heartcapMaxHp',
-  'side.turretDamage', 'side.comebackEnabled', 'side.loamBonus', 'side.powerCooldown',
+  'side.interestCap', 'side.stipend', 'side.startingGold', 'side.sellRefund',
+  'side.knitTicks', 'side.mergeRadius', 'side.rerollCost', 'side.draftCards', 'side.heartcapMaxHp',
+  'side.comebackEnabled', 'side.loamBonus',
   // R2b (§14.2): the colony's plots, × the Heartcap damage it takes (in basis points, §6.7 step 3), × its income, × its
   // power's effect, and, for R3's combos only, plots touching at a corner
   'side.plots', 'side.heartcapDamageTaken', 'side.incomeMult', 'side.powerEffectMult', 'side.comboCorners',
@@ -51,23 +50,20 @@ export const BATTLE_STATS = ['battle.sporestormStart'] as const;
 export const RUN_STATS = ['run.maxLives'] as const;
 export const StatKey = z.enum([...UNIT_STATS, ...BUILDING_STATS, ...SIDE_STATS, ...BATTLE_STATS, ...RUN_STATS]);
 /** Building stats that may use positional selectors; they are evaluated when used, not compiled once. */
-export const POSITIONAL_STATS: readonly string[] = ['building.spawnInterval', 'building.goldPerTick', 'building.squadCount'];
+export const POSITIONAL_STATS: readonly string[] = ['building.squadCount'];
 /** Stats read each time they're used, so a modifier on one may hold only from a round or with the storm on (`if`). */
 export const CONDITIONAL_STATS: readonly string[] = ['side.powerEffectMult'];
 /**
  * Unit stats may also select by a plot's `rank` and `onLoam`, its building's planting and the general's counter
- * sets: a battle in rounds compiles them per squad at Begin (§14.2, T046). v1's compile skips them, since v1 has
- * no ranks and its units stand on no plot.
+ * sets: a battle in rounds compiles them per squad at Begin (§14.2, T046).
  */
-const byPlot = (stat: string, w: { zone?: unknown; adjacentOwnBuildingsGte?: unknown }): boolean =>
-  stat.startsWith('unit.') && w.zone === undefined && w.adjacentOwnBuildingsGte === undefined;
+const byPlot = (stat: string): boolean => stat.startsWith('unit.');
 
 const TierSel = z.union([z.literal(1), z.literal(2), z.literal(3)]);
 export const SelectorSchema = z.object({
   unit: Id.optional(), building: Id.optional(), tag: Tag.optional(), tier: TierSel.optional(),
-  zone: z.enum(['home', 'contested']).optional(), onLoam: z.boolean().optional(),
-  adjacentOwnBuildingsGte: z.number().int().positive().optional(),
-  /** R2a: the plot's rank in a battle in rounds, 0 at the front (§4.6, §14.2); positional, and v1 has no ranks. */
+  onLoam: z.boolean().optional(),
+  /** R2a: the plot's rank, 0 at the front (§4.6, §14.2); positional. It replaced v1's `zone`. */
   rank: z.union([z.literal(0), z.literal(1), z.literal(2)]).optional(),
   /** R2b, positional: a building planted in this planning phase (Fresh Spores, §11.7). */
   plantedThisRound: z.boolean().optional(),
@@ -79,8 +75,7 @@ export const SelectorSchema = z.object({
 
 /** A selector's parts that need a squad's plot, so they reach a squad only as it fields (§14.2). */
 const isPositional = (w: z.infer<typeof SelectorSchema>): boolean =>
-  w.zone !== undefined || w.onLoam !== undefined || w.adjacentOwnBuildingsGte !== undefined || w.rank !== undefined
-  || w.plantedThisRound !== undefined || w.inCounterSet !== undefined;
+  w.onLoam !== undefined || w.rank !== undefined || w.plantedThisRound !== undefined || w.inCounterSet !== undefined;
 
 export const ModifierSchema = z.object({
   stat: StatKey, op: z.enum(['add', 'mul', 'set']), value: z.number(),
@@ -93,8 +88,8 @@ export const ModifierSchema = z.object({
   const w = m.where ?? {};
   const scope = m.stat.split('.')[0];
   if ((scope === 'side' || scope === 'battle' || scope === 'run') && m.where) ctx.addIssue({ code: 'custom', message: `${m.stat} applies to the whole ${scope}; it takes no "where"` });
-  if (isPositional(w) && !POSITIONAL_STATS.includes(m.stat) && !byPlot(m.stat, w)) {
-    ctx.addIssue({ code: 'custom', message: `positional selectors (zone, onLoam, adjacentOwnBuildingsGte, rank, plantedThisRound, inCounterSet) only work on ${POSITIONAL_STATS.join(', ')} and unit stats` });
+  if (isPositional(w) && !POSITIONAL_STATS.includes(m.stat) && !byPlot(m.stat)) {
+    ctx.addIssue({ code: 'custom', message: `positional selectors (onLoam, rank, plantedThisRound, inCounterSet) only work on ${POSITIONAL_STATS.join(', ')} and unit stats` });
   }
   if (w.tier !== undefined && scope !== 'unit') ctx.addIssue({ code: 'custom', message: 'a tier selector only applies to unit stats' });
   if (m.if && !CONDITIONAL_STATS.includes(m.stat)) ctx.addIssue({ code: 'custom', message: `an "if" only works on a stat read when it's used: ${CONDITIONAL_STATS.join(', ')}` });
@@ -105,8 +100,6 @@ export const ModifierSchema = z.object({
 export const EffectActionSchema = z.union([
   z.object({ gainGold: z.number().int() }).strict(),
   z.object({ explode: z.object({ damage: Pos, damageType: DamageType, radius: Pos }).strict() }).strict(),
-  /** v1's, retired with the run's Heartcap (§1.3 #2): rounds list it and run nothing, until T129 removes it. */
-  z.object({ repairHeartcapPct: z.number().positive().max(1) }).strict(),
   /** R2b: a spore cloud where the trigger fired, or on the middle of the enemy's front rank in each lane (Forward Spores, §11.7). */
   z.object({
     cloud: z.object({ radius: Pos, seconds: Pos, damagePerSecond: Pos, at: z.enum(['self', 'enemyFrontRank']).optional() }).strict(),
@@ -116,11 +109,8 @@ export const EffectActionSchema = z.union([
 ]);
 
 export const TriggerSchema = z.object({
-  /**
-   * `roundStart`, `clashStart` and `roundWon` are R2a's, and `squadWiped` R2b's, for a battle in rounds (§14.2,
-   * §14.6). `buildingDestroyed` and `waveStart` went with v1's battle: rounds list them and fire nothing.
-   */
-  on: z.enum(['merge', 'unitDeath', 'buildingDestroyed', 'enemyUnitKilled', 'waveStart', 'battleStart', 'roundStart', 'clashStart', 'roundWon', 'squadWiped']),
+  /** `roundStart`, `clashStart` and `roundWon` are R2a's, and `squadWiped` R2b's (§14.2, §14.6). */
+  on: z.enum(['merge', 'unitDeath', 'enemyUnitKilled', 'battleStart', 'roundStart', 'clashStart', 'roundWon', 'squadWiped']),
   if: SelectorSchema.extend({ sporestormGte: z.number().int().nonnegative().optional() }).strict().optional(),
   do: z.array(EffectActionSchema).min(1),
 }).strict();
@@ -135,10 +125,12 @@ const Round = z.number().int().positive();
 const RoundCycle = z.object({ round: Round, from: Round }).strict();
 
 /**
- * R2a's battle in rounds (SPEC §4.2, §6, §7.2–§7.4, §11.1): v2's keys, beside v1's until R2b folds them into
- * §11.1's names. v1's library leaves this block out (R2a Call 27), so it never moves a v1 golden.
+ * `data/balance.json` (SPEC §11.1, §14.2): the battle in rounds, its economy, the kit and the colony, and the
+ * combat kept from v1. R2b's T129 retired v1's keys and folded R2a's `rounds` block into these names.
  */
-export const RoundsSchema = z.object({
+export const BalanceSchema = z.object({
+  tickRate: z.literal(20),
+  // ---- rounds and battles (§1.3 #1 and #2, §4.2, §6) ----
   maxRounds: Round,
   clashCapSeconds: Pos,
   musterSeconds: Seconds,
@@ -155,83 +147,70 @@ export const RoundsSchema = z.object({
     .strict().refine((c) => (c.maxHpBp === undefined) !== (c.flat === undefined), 'a round damage cap names one base: maxHpBp or flat'),
   /** After `maxRounds`, a Decision by the share of max HP dealt (X5), or by damage dealt (§6.5). */
   decision: z.object({ by: z.enum(['shareOfMaxHp', 'damage']) }).strict(),
-  /** Interest on the gold banked at the end of planning (§6.2, R2-Q2). */
-  interestPer: z.number().int().positive(),
-  interestCap: z.number().int().nonnegative(),
   /** The storm by round (§6.4): from `startRound`, +`stepBp` a round, at most `maxBp`. */
   sporestorm: z.object({ startRound: Round, stepBp: Bp, maxBp: Bp }).strict(),
-  stipendPerRound: z.number().int().nonnegative(),
-  comebackGold: z.number().int().nonnegative(),
-  enemyIncomeMult: Pos,
-  /** Selling a building in the planning phase it was planted refunds this share (§4.4). */
-  sellRefundPlanted: z.number().min(0).max(1),
-  /** R2b's, data only in R2a: the drafts, lives and plot growth (§8.3, §8.5, §4.6). */
-  draftRounds: z.array(Round),
-  /** A gold upgrade's price, in percent of its building's cost: once its colony is full, a side's spawner fields Bloomed (§6.1, #67). */
-  upgradeCostPct: z.number().int().positive(),
+  heartcapPlayerHp: z.number().int().positive(),
+  heartcapEnemyHp: z.object({ base: z.number().int().positive(), perBattle: z.number().int().nonnegative(), boss: z.number().int().positive() }).strict(),
   lives: z.number().int().positive(),
-  plotGrowth: z.object({ perWin: z.number().int().nonnegative(), max: z.number().int().nonnegative() }).strict(),
-  /** The planning AI (§7.2, §7.3), and the counter cycle by round (§7.4): in `round`'s planning it reads rounds `from` to `round` − 1. */
-  ai: z.object({
-    economyEarly: z.object({ beforeRound: Round, mult: z.number().nonnegative() }).strict(),
-    economyLate: z.object({ fromRound: Round, mult: z.number().nonnegative() }).strict(),
-    towerAfterLossMult: z.number().nonnegative(),
-    score: z.object({
-      depth: z.number(), offCentre: z.number(), besideSame: z.number(), frontSupport: z.number(), loam: z.number(),
-      backThird: z.number(), noise: z.number().nonnegative(),
-    }).strict(),
-    counter: z.object({ cycles: z.array(RoundCycle), bossCycles: z.array(RoundCycle), freePlots: z.number().int().nonnegative() }).strict(),
-    /**
-     * X8's knobs, both off by default, for a general that runs the counter cycle (§7.2): from round 2 its weights
-     * on the answer to last round's army × (1 + `leanToLastAnswer`), 0 for off; and with `replaceWhenFull`, once its
-     * colony is full it sells its lowest-weighted fielded spawner at 60% for a heavier card.
-     */
-    leanToLastAnswer: z.number().nonnegative(),
-    replaceWhenFull: z.boolean(),
-  }).strict(),
-}).strict();
-
-export const BalanceSchema = z.object({
-  tickRate: z.literal(20),
-  waveSeconds: Pos,
-  incomeTickSeconds: Pos,
-  stipendPerTick: z.number().int().nonnegative(),
-  startingGold: z.number().int().nonnegative(),
-  startingGoldPerBattle: z.number().int().nonnegative(),
-  supplyCap: z.number().int().positive(),
-  interestPer: z.number().int().positive(),
-  interestCap: z.number().int().nonnegative(),
-  comebackDivisor: z.number().int().positive(),
-  comebackMax: z.number().int().nonnegative(),
-  loamBonus: z.number().nonnegative(),
-  supplyLinePerColumn: z.number().nonnegative(),
-  sellRefund: z.number().min(0).max(1),
-  fullRefundSeconds: Seconds,
-  besiegedSeconds: Seconds,
-  besiegedRate: z.number().min(0).max(1),
-  /**
-   * E1 (engagement review; adopted 2026-10-28, set in balance.json): a per-lane Hold / Advance
-   * command. While a side holds a lane, its idle units gather at a rally line `rallyBack` tiles
-   * behind the front edge of its border column; units that dealt or took damage in the last 2 s fight as usual. A held lane
-   * advances on its own after `maxHoldSeconds`, and can't be held again for `cooldownSeconds` after
-   * it advances. `ai` gives every AI side (or those whose profile id starts with one of `profiles`)
-   * a muster policy: hold a lane until `musterSupply` stands in it, then advance; hold again once it
-   * drops below `spentSupply`. With `advanceWhenBesieged`, it never holds while one of its buildings
-   * in the lane is besieged.
-   */
-  laneStance: z.object({
-    rallyBack: Seconds,
-    maxHoldSeconds: Pos,
-    cooldownSeconds: Seconds,
-    ai: z.object({
-      musterSupply: Pos, spentSupply: Seconds, profiles: z.array(z.string()).optional(), advanceWhenBesieged: z.boolean().optional(),
-    }).strict().optional(),
-  }).strict().optional(),
   /**
    * "Lives left count at the boss" (§8.5, §18.2 #16, A199), absent by default: in the boss battle your
    * Heartcap's max gains `heartcapPerLife` for each life the run has left. A knob for R2b's playtest (`bosslives`).
    */
   livesAtBoss: z.object({ heartcapPerLife: z.number().int().positive() }).strict().optional(),
+  // ---- the economy per round (§1.3 #12, §6.1, §6.2) ----
+  startingGold: z.number().int().nonnegative(),
+  startingGoldPerBattle: z.number().int().nonnegative(),
+  stipendPerRound: z.number().int().nonnegative(),
+  /** Interest on the gold banked at the end of planning (§6.2, R2-Q2). */
+  interestPer: z.number().int().positive(),
+  interestCap: z.number().int().nonnegative(),
+  comebackGold: z.number().int().nonnegative(),
+  loamBonus: z.number().nonnegative(),
+  enemyIncomeMult: Pos,
+  /** Selling refunds `sellRefund` once a building has fielded, and `sellRefundPlanted` in the planning phase it was planted (§4.4). */
+  sellRefund: z.number().min(0).max(1),
+  sellRefundPlanted: z.number().min(0).max(1),
+  /** A gold upgrade's price, in percent of its building's cost: once its colony is full, a side's spawner fields Bloomed (§6.1, #67). */
+  upgradeCostPct: z.number().int().positive(),
+  // ---- the run: drafts and the colony's growth (§8.3, §4.6) ----
+  draftRounds: z.array(Round),
+  plotGrowth: z.object({ perWin: z.number().int().nonnegative(), max: z.number().int().nonnegative() }).strict(),
+  reroll: z.object({ base: z.number().int(), step: z.number().int() }).strict(),
+  skipGold: z.number().int(),
+  /** A general's kit across a run (SPEC §7.8): opener + preferred blueprints and random upgrade levels by battle index. */
+  enemyKit: z.object({
+    blueprintsPerBattle: z.number().int().nonnegative(),
+    upgradesPerBattle: z.number().int().nonnegative(),
+    eliteUpgrades: z.number().int().nonnegative(),
+    bossBuildings: z.number().int().positive(),
+    bossUpgrades: z.number().int().nonnegative(),
+  }).strict(),
+  /** Draft offer generation (SPEC §8.3): type weights, rarity weights and their per-battle shift. */
+  draft: z.object({
+    cards: z.number().int().positive(),
+    typeWeights: z.object({ blueprint: z.number().nonnegative(), upgrade: z.number().nonnegative(), relic: z.number().nonnegative() }).strict(),
+    smallKit: z.object({ below: z.number().int().positive(), blueprintShare: z.number().min(0).max(1) }).strict(),
+    rarity: z.tuple([z.number().nonnegative(), z.number().nonnegative(), z.number().nonnegative()]),
+    rarityShiftPerBattle: z.number().nonnegative(),
+    eliteRareBonus: z.number().nonnegative(),
+    rarityBiasStep: z.number().nonnegative(),
+    coreWeight: z.number().positive(),
+  }).strict(),
+  // ---- merging and combat, kept from v1 (§5) ----
+  mergeRadius: Pos,
+  mergeCombatCooldownSeconds: Seconds,
+  mergeKnitSeconds: Seconds,
+  mergeCheckEveryTicks: z.number().int().positive(),
+  tierStatMult: Pos,
+  tierSupplyMult: z.tuple([Pos, Pos, Pos]),
+  tierRadiusMult: Pos,
+  retargetEveryTicks: z.number().int().positive(),
+  leashMult: Pos,
+  splashFalloff: z.number().min(0).max(1),
+  matrix: z.object({ slash: MatrixRow, pierce: MatrixRow, crush: MatrixRow }).strict(),
+  tagMult: z.object({ siegeVsStructure: Pos, slayerVsElite: Pos }).strict(),
+  effectiveness: z.object({ strongAtLeast: Pos, weakAtMost: Pos }).strict(),
+  movement: z.object({ driftSpeed: z.number().nonnegative(), separationPasses: z.number().int().nonnegative() }).strict(),
   /**
    * Pinning (§5.3; the combat rework's P1, default data since R2a): a `ranged` unit with an enemy unit
    * within `radius` tiles (edge distance) attacks at `rateMult` × its normal rate.
@@ -263,71 +242,25 @@ export const BalanceSchema = z.object({
    * `cloud.damagePerSecond` (each second) to the enemy units inside it. Never buildings or friends.
    */
   burst: z.object({ cloud: z.object({ radius: Pos, seconds: Pos, damagePerSecond: Pos }).strict() }).strict().optional(),
-  firstSpawnFraction: z.number().min(0).max(1),
-  timeLimitSeconds: Pos,
-  heartcapPlayerHp: z.number().int().positive(),
-  heartcapEnemyHp: z.object({ base: z.number().int().positive(), perBattle: z.number().int().nonnegative(), boss: z.number().int().positive() }).strict(),
-  turret: z.object({
-    perLane: z.number().int().nonnegative(), damage: Pos, damageType: DamageType,
-    interval: Pos, range: Pos, projectileSpeed: Pos,
-  }).strict(),
-  captureSeconds: Pos,
-  captureRatio: Pos,
-  captureDecayMult: Pos,
-  mergeRadius: Pos,
-  mergeCombatCooldownSeconds: Seconds,
-  mergeKnitSeconds: Seconds,
-  mergeCheckEveryTicks: z.number().int().positive(),
-  tierStatMult: Pos,
-  tierSupplyMult: z.tuple([Pos, Pos, Pos]),
-  tierRadiusMult: Pos,
-  retargetEveryTicks: z.number().int().positive(),
-  leashMult: Pos,
-  splashFalloff: z.number().min(0).max(1),
-  sporestorm: z.object({
-    startSeconds: Seconds, everySeconds: Pos, maxStacks: z.number().int().nonnegative(),
-    unitDamagePerStack: z.number(), turretDamagePerStack: z.number(), heartcapTakenPerStack: z.number(),
-  }).strict(),
-  routRepair: z.number(), decisionLossDamage: z.number(), groveRepair: z.number(),
-  draftWaves: z.array(z.number().int().positive()),
-  reroll: z.object({ base: z.number().int(), step: z.number().int() }).strict(),
-  skipGold: z.number().int(),
-  /** A general's kit across a run (SPEC §7.8): opener + preferred blueprints and random upgrade levels by battle index. */
-  enemyKit: z.object({
-    blueprintsPerBattle: z.number().int().nonnegative(),
-    upgradesPerBattle: z.number().int().nonnegative(),
-    eliteUpgrades: z.number().int().nonnegative(),
-    bossBuildings: z.number().int().positive(),
-    bossUpgrades: z.number().int().nonnegative(),
-  }).strict(),
-  /** Draft offer generation (SPEC §8.3): type weights, rarity weights and their per-battle shift. */
-  draft: z.object({
-    cards: z.number().int().positive(),
-    typeWeights: z.object({ blueprint: z.number().nonnegative(), upgrade: z.number().nonnegative(), relic: z.number().nonnegative() }).strict(),
-    smallKit: z.object({ below: z.number().int().positive(), blueprintShare: z.number().min(0).max(1) }).strict(),
-    rarity: z.tuple([z.number().nonnegative(), z.number().nonnegative(), z.number().nonnegative()]),
-    rarityShiftPerBattle: z.number().nonnegative(),
-    eliteRareBonus: z.number().nonnegative(),
-    rarityBiasStep: z.number().nonnegative(),
-    coreWeight: z.number().positive(),
-  }).strict(),
-  matrix: z.object({ slash: MatrixRow, pierce: MatrixRow, crush: MatrixRow }).strict(),
-  tagMult: z.object({ siegeVsStructure: Pos, slayerVsElite: Pos }).strict(),
-  effectiveness: z.object({ strongAtLeast: Pos, weakAtMost: Pos }).strict(),
-  movement: z.object({ spawnOffset: z.number(), spawnJitter: z.number().nonnegative(), driftSpeed: z.number().nonnegative(), separationPasses: z.number().int().nonnegative() }).strict(),
+  // ---- the general (§7.2–§7.4, §7.6) ----
+  /**
+   * The planning AI's economy by round, its emplacement weight after a lost round and its placement score (§7.2,
+   * §7.3), its merge policy's Slayer share (§7.2), and the counter cycle by round (§7.4): in `round`'s planning it
+   * reads rounds `from` to `round` − 1, with v1's analysis weights and intel (§7.6).
+   */
   ai: z.object({
-    thinkEverySeconds: Pos, targetStickySeconds: Pos, pressureWindowCols: z.number().int().positive(),
-    pressureMinPresence: z.number().int().nonnegative(), threatRadius: Pos, towerRangeThreat: z.number(),
-    placementNoise: z.number().nonnegative(),
-    economyEarly: z.object({ beforeSeconds: Seconds, mult: z.number().nonnegative() }).strict(),
-    economyLate: z.object({ afterSeconds: Seconds, mult: z.number().nonnegative() }).strict(),
-    towerPressureMult: z.number().nonnegative(),
     mergeOffSlayerShare: z.number().min(0).max(1),
-    /** The counter cycle and intel doctrines (SPEC §7.4, §7.6). */
+    economyEarly: z.object({ beforeRound: Round, mult: z.number().nonnegative() }).strict(),
+    economyLate: z.object({ fromRound: Round, mult: z.number().nonnegative() }).strict(),
+    towerAfterLossMult: z.number().nonnegative(),
+    score: z.object({
+      depth: z.number(), offCentre: z.number(), besideSame: z.number(), frontSupport: z.number(), loam: z.number(),
+      backThird: z.number(), noise: z.number().nonnegative(),
+    }).strict(),
     counter: z.object({
-      /** Analysis times and the activation delay, in seconds; the boss adds `bossCycles`. */
-      cycles: z.array(z.object({ analyzeSeconds: Seconds, activeSeconds: Seconds }).strict()),
-      bossCycles: z.array(z.object({ analyzeSeconds: Seconds, activeSeconds: Seconds }).strict()),
+      cycles: z.array(RoundCycle), bossCycles: z.array(RoundCycle),
+      /** Free plots wanted at activation before the general sells (at most `maxSells`). */
+      freePlots: z.number().int().nonnegative(),
       scoreNoise: z.number().nonnegative(),
       swarmEliteDiscount: z.number().min(0).max(1),
       eliteScoreMult: z.number().nonnegative(),
@@ -336,23 +269,19 @@ export const BalanceSchema = z.object({
       openingMult: z.number().nonnegative(),
       openingOtherMult: z.number().nonnegative(),
       dualMult: z.number().nonnegative(),
-      /** Free 2×2 slots wanted at activation before the general sells (at most `maxSells`). */
-      freeSlots: z.number().int().nonnegative(),
       maxSells: z.number().int().nonnegative(),
       /** Intel: weight of the previous file in `intel = keep × intel + (1 − keep) × profile`. */
       intelKeep: z.number().min(0).max(1),
     }).strict(),
-    score: z.object({
-      spawnerDepth: z.number(), spawnerThreat: z.number(), spawnerSurcharge: z.number(),
-      economyLoam: z.number(), economyDepth: z.number(), economyThreat: z.number(),
-      towerFront: z.number(), towerThreat: z.number(),
-    }).strict(),
   }).strict(),
-  rounds: RoundsSchema,
 }).strict();
 
+/**
+ * `data/balance-targets.json` (SPEC §12.3): the round guardrails, asserted in `tests/slow/`. R2b's T129 folded R2a's
+ * `rounds` block into these names, in place of v1's. The battle-level bands (G4, G6, G8, G13, G16) are the user's, set
+ * from R2a's measurement (§18.2 #35, T125, 2026-11-03); G14's and G15's from R2b's (T131).
+ */
 export const BalanceTargetsSchema = z.object({
-  G1: z.object({ seeds: z.number().int().positive(), goldBudget: z.number().int().positive(), maxPairingWinShare: z.number(), clearLossRatio: z.number() }).strict(),
   G2: z.object({
     seeds: z.number().int().positive(), supply: z.number().int().positive(), minSeedsForEdge: z.number().int().positive(), maxSeconds: Pos,
     /** Intended counter edges [winner, loser], reported (not asserted); `unit@tier` duels a merged unit. */
@@ -360,80 +289,57 @@ export const BalanceTargetsSchema = z.object({
     /** Intended edges that must hold (in ≥ minSeedsForEdge seeds) for G2 to pass: the M4 edges. */
     assertedEdges: z.array(z.tuple([DuelUnit, DuelUnit])).optional(),
   }).strict(),
-  /** G3: mono bots against `bot:balanced` on every map in the run pool; `seeds` per seat, limits on the mean over maps and the worst map. */
+  G1: z.object({ seeds: z.number().int().positive(), goldBudget: z.number().int().positive(), maxPairingWinShare: z.number(), clearLossRatio: z.number() }).strict(),
   G3: z.object({ seeds: z.number().int().positive(), maxMeanWinRate: z.number(), maxMapWinRate: z.number() }).strict(),
-  G4: z.object({ seeds: z.number().int().positive(), botWinMin: z.number(), botWinMax: z.number() }).strict(),
-  G5: z.object({ seeds: z.number().int().positive(), bonusGold: z.number().int(), minWinRate: z.number(), maxWinRate: z.number() }).strict(),
-  /** Each check pits a bot against its own merge-off twin, so merging is the only difference. */
-  /** G8: adaptation matters. Mono bots against one general with and without `adaptive`. */
-  G8: z.object({
-    seeds: z.number().int().positive(), general: Id, minDrop: z.number(), minBaseline: z.number(),
-    balancedMin: z.number(), balancedMax: z.number(),
+  /** `bot:balanced` against the scripted general on Bogwater Hollow: the median rounds, the share reaching the last round, the bot's wins. */
+  G4: z.object({
+    seeds: z.number().int().positive(), medianMinRounds: z.number().int().positive(), medianMaxRounds: z.number().int().positive(),
+    maxRound9Share: z.number(), botWinMin: z.number(), botWinMax: z.number(),
   }).strict(),
+  G5: z.object({ seeds: z.number().int().positive(), bonusGold: z.number().int(), minWinRate: z.number(), maxWinRate: z.number() }).strict(),
+  /** `scenario` played by `bot` in both seats, with equal max HP; and in G4's games, the winner's Heartcap hit in at least `winnerHitShare`. */
+  G6: z.object({
+    seeds: z.number().int().positive(), scenario: Id, bot: Id, minBehindWinRate: z.number(), maxBehindWinRate: z.number(), winnerHitShare: z.number(),
+  }).strict(),
+  /** As v1's G7, the Slayer share read from what each side fielded (§14.4's `fielded`). */
   G7: z.object({
     seeds: z.number().int().positive(),
     mirror: z.object({ mergeBot: Id, noMergeBot: Id, minWinRate: z.number(), maxWinRate: z.number() }).strict(),
     slayers: z.object({ mergeBot: Id, noMergeBot: Id, share: z.number(), maxWinRate: z.number() }).strict(),
   }).strict(),
-  G11: z.object({ tickMeanMs: Pos, tickP99Ms: Pos, battleWallMs: Pos, benchTicks: z.number().int().positive(), quickTicks: z.number().int().positive() }).strict(),
+  /** As v1's G8, with a band for each planning policy's bot against the adaptive general (X7): `bot:balanced`'s, and `bot:answer`'s ceiling. */
+  G8: z.object({
+    seeds: z.number().int().positive(), general: Id, minDrop: z.number(), minBaseline: z.number(),
+    policies: z.array(z.object({ bot: Id, min: z.number().optional(), max: z.number().optional() }).strict()).min(1),
+  }).strict(),
+  /** v1's G11, plus the budgets new in v2 (§13.7): the arrival, the general's turn, a planning command's sim part, and a full colony's units a side. */
+  G11: z.object({
+    tickMeanMs: Pos, tickP99Ms: Pos, battleWallMs: Pos, benchTicks: z.number().int().positive(), quickTicks: z.number().int().positive(),
+    arrivalMs: Pos, generalTurnMs: Pos, planCommandMs: Pos, colonyUnits: z.number().int().positive(),
+  }).strict(),
+  /** The strict counter bar: an answer winning `minAnswerRate` on every run-pool map for each build whose G3 mean is above `minBuildMean`. */
+  G12: z.object({
+    screenSeeds: z.number().int().positive(), confirmSeeds: z.number().int().positive(), top: z.number().int().positive(),
+    minBuildMean: z.number(), minAnswerRate: z.number(),
+  }).strict(),
+  G13: z.object({ maxCappedShare: z.number(), clashSecondsMin: Pos, clashSecondsMax: Pos }).strict(),
   /**
-   * The round forms (SPEC §12.3, R2a/T119), asserted in `tests/slow/` beside v1's blocks until R2b retires
-   * those. G2 stays the block above. The battle-level bands (G4, G6, G8, G13, G16) are the user's, set from R2a's
-   * measurement (§18.2 #35, T125, 2026-11-03); R2b sets G14's and G15's and re-reads G8's beside G14.
+   * Battle 1 of whole runs (R2b/T119): each policy's bot plays `runs` runs per commander, and a policy with a band
+   * holds it for every commander; one without is reported only (X7). S12 sets the bands (T131).
    */
-  rounds: z.object({
-    G1: z.object({ seeds: z.number().int().positive(), goldBudget: z.number().int().positive(), maxPairingWinShare: z.number(), clearLossRatio: z.number() }).strict(),
-    G3: z.object({ seeds: z.number().int().positive(), maxMeanWinRate: z.number(), maxMapWinRate: z.number() }).strict(),
-    /** `bot:balanced` against the scripted general on Bogwater Hollow: the median rounds, the share reaching the last round, the bot's wins. */
-    G4: z.object({
-      seeds: z.number().int().positive(), medianMinRounds: z.number().int().positive(), medianMaxRounds: z.number().int().positive(),
-      maxRound9Share: z.number(), botWinMin: z.number(), botWinMax: z.number(),
-    }).strict(),
-    G5: z.object({ seeds: z.number().int().positive(), bonusGold: z.number().int(), minWinRate: z.number(), maxWinRate: z.number() }).strict(),
-    /** `scenario` played by `bot` in both seats, with equal max HP; and in G4's games, the winner's Heartcap hit in at least `winnerHitShare`. */
-    G6: z.object({
-      seeds: z.number().int().positive(), scenario: Id, bot: Id, minBehindWinRate: z.number(), maxBehindWinRate: z.number(), winnerHitShare: z.number(),
-    }).strict(),
-    /** As v1's G7, the Slayer share read from what each side fielded (§14.4's `fielded`). */
-    G7: z.object({
-      seeds: z.number().int().positive(),
-      mirror: z.object({ mergeBot: Id, noMergeBot: Id, minWinRate: z.number(), maxWinRate: z.number() }).strict(),
-      slayers: z.object({ mergeBot: Id, noMergeBot: Id, share: z.number(), maxWinRate: z.number() }).strict(),
-    }).strict(),
-    /** As v1's G8, with a band for each planning policy's bot against the adaptive general (X7): `bot:balanced`'s, and `bot:answer`'s ceiling. */
-    G8: z.object({
-      seeds: z.number().int().positive(), general: Id, minDrop: z.number(), minBaseline: z.number(),
-      policies: z.array(z.object({ bot: Id, min: z.number().optional(), max: z.number().optional() }).strict()).min(1),
-    }).strict(),
-    /** v1's G11, plus the budgets new in v2 (§13.7): the arrival, the general's turn, a planning command's sim part, and a full colony's units a side. */
-    G11: z.object({
-      tickMeanMs: Pos, tickP99Ms: Pos, battleWallMs: Pos, benchTicks: z.number().int().positive(), quickTicks: z.number().int().positive(),
-      arrivalMs: Pos, generalTurnMs: Pos, planCommandMs: Pos, colonyUnits: z.number().int().positive(),
-    }).strict(),
-    /** The strict counter bar: an answer winning `minAnswerRate` on every run-pool map for each build whose G3 mean is above `minBuildMean`. */
-    G12: z.object({
-      screenSeeds: z.number().int().positive(), confirmSeeds: z.number().int().positive(), top: z.number().int().positive(),
-      minBuildMean: z.number(), minAnswerRate: z.number(),
-    }).strict(),
-    G13: z.object({ maxCappedShare: z.number(), clashSecondsMin: Pos, clashSecondsMax: Pos }).strict(),
-    /**
-     * Battle 1 of whole runs (R2b/T119): each policy's bot plays `runs` runs per commander, and a policy with a band
-     * holds it for every commander; one without is reported only (X7). S12 sets the bands (T131).
-     */
-    G14: z.object({
-      runs: z.number().int().positive(),
-      policies: z.array(z.object({ bot: Id, min: z.number().optional(), max: z.number().optional() }).strict()).min(1),
-    }).strict(),
-    /** The boss in G14's runs, pooled over the commanders: the share that reach it, and the boss fights won; a policy without a band is reported only. */
-    G15: z.object({
-      policies: z.array(z.object({
-        bot: Id, minReach: z.number().optional(), maxReach: z.number().optional(), minWin: z.number().optional(), maxWin: z.number().optional(),
-      }).strict()).min(1),
-    }).strict(),
-    /** The formation rule against its front and back ranks swapped, pooled over role-split pairs (R2-Q10), a column per budget. */
-    G16: z.object({
-      seeds: z.number().int().positive(), budgets: z.array(z.number().int().positive()).min(1), minWinRate: z.number(), pairs: z.literal('roleSplit'),
-    }).strict(),
+  G14: z.object({
+    runs: z.number().int().positive(),
+    policies: z.array(z.object({ bot: Id, min: z.number().optional(), max: z.number().optional() }).strict()).min(1),
+  }).strict(),
+  /** The boss in G14's runs, pooled over the commanders: the share that reach it, and the boss fights won; a policy without a band is reported only. */
+  G15: z.object({
+    policies: z.array(z.object({
+      bot: Id, minReach: z.number().optional(), maxReach: z.number().optional(), minWin: z.number().optional(), maxWin: z.number().optional(),
+    }).strict()).min(1),
+  }).strict(),
+  /** The formation rule against its front and back ranks swapped, pooled over role-split pairs (R2-Q10), a column per budget. */
+  G16: z.object({
+    seeds: z.number().int().positive(), budgets: z.array(z.number().int().positive()).min(1), minWinRate: z.number(), pairs: z.literal('roleSplit'),
   }).strict(),
 }).strict();
 
@@ -477,30 +383,22 @@ export const BuildingSchema = z.object({
   kind: z.enum(['spawner', 'tower', 'economy', 'utility']),
   footprint: z.object({ w: z.number().int().positive(), h: z.number().int().positive() }).strict(),
   cost: z.number().int().positive(),
-  /**
-   * A tower's emplacement's HP (§6.7). v1's buildings took damage, so the data's other buildings still carry
-   * one until R2b's T129 moves the tower's to `attack.hp`; a building in squad form needs none.
-   */
-  hp: z.number().int().positive().optional(),
-  /** v1's spawn timer, still in the data until R2b's T129; nothing in rounds reads it, and a building in squad form has none. */
-  spawn: z.object({ unit: Id, count: z.number().int().positive(), interval: Pos, mergeForced: z.boolean().optional(), knitMult: Pos.optional() }).strict().optional(),
-  /** The squad a spawner fields every round (§4.4, §11.2). */
+  /** The squad a spawner fields every round (§4.4, §11.2); it replaced v1's `spawn` timer. */
   squad: z.object({ unit: Id, count: z.number().int().positive() }).strict().optional(),
+  /** A tower's attack, and its emplacement's HP (§6.7, §14.2): buildings aren't in clashes, but an emplacement fields as a unit. */
   attack: z.object({
     damage: Pos, damageType: DamageType, interval: Pos, range: Pos,
     minRange: z.number().nonnegative().optional(), splashRadius: Pos.optional(), projectileSpeed: z.number().nonnegative(),
+    hp: z.number().int().positive().optional(),
   }).strict().optional(),
-  /** `goldPerRound` is R2a's, beside v1's `goldPerTick` until R2b replaces it (§6.2, §11.2). v1 never reads it. */
-  economy: z.object({
-    goldPerTick: z.number().int().nonnegative(), interestCapAdd: z.number().int().optional(), goldPerRound: z.number().int().nonnegative().optional(),
-  }).strict().optional(),
-  /** Utility effects while the building stands (Rhizome Vault: +supply cap, at most `maxCount` count). */
-  utility: z.object({ supplyCapAdd: z.number().int().positive(), maxCount: z.number().int().positive() }).strict().optional(),
+  /** Gold a round (§6.2, §11.2), which replaced v1's gold a tick; the Spore Exchange also raises the interest cap. */
+  economy: z.object({ goldPerRound: z.number().int().nonnegative(), interestCapAdd: z.number().int().optional() }).strict().optional(),
+  // A utility building (the Rhizome Vault) has no block until R3's combos give it `utility.effects` (§11.2, §14.2, #26).
 }).strict().superRefine((b, ctx) => {
   const need = { spawner: 'squad', tower: 'attack', economy: 'economy', utility: null } as const;
   const key = need[b.kind];
   if (key && !b[key]) ctx.addIssue({ code: 'custom', message: `${b.kind} building ${b.id} needs a "${key}" block` });
-  if (b.kind === 'tower' && b.hp === undefined) ctx.addIssue({ code: 'custom', message: `tower ${b.id} needs "hp", its emplacement's` });
+  if (b.kind === 'tower' && b.attack && b.attack.hp === undefined) ctx.addIssue({ code: 'custom', message: `tower ${b.id} needs "attack.hp", its emplacement's` });
 });
 
 export const FactionSchema = z.object({
@@ -699,8 +597,8 @@ export const SoundBankSchema = z.object({
   sounds: z.array(SoundSchema).min(1),
 }).strict();
 
-/** `afterRound` is R2a's reading of `afterSeconds`, one round a minute (§7.2, §14.2); v1's profiles never copy it. */
-const Limit = z.object({ maxOwned: z.number().int().nonnegative().optional(), afterSeconds: Seconds.optional(), afterRound: Round.optional() }).strict();
+/** At most `maxOwned`, and bought only from `afterRound` on (§7.2, §14.2): it replaced v1's `afterSeconds`, one round a minute. */
+const Limit = z.object({ maxOwned: z.number().int().nonnegative().optional(), afterRound: Round.optional() }).strict();
 
 export const GeneralSchema = z.object({
   id: Id, name: z.string(), sprite: Id, faction: Id, milestone: z.number().int().positive(), description: z.string().optional(),

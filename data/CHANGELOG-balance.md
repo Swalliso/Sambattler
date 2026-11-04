@@ -8,6 +8,35 @@ replaces. None of it is open work, including headings that say "Open:". From mil
 entries measure or tune v2's round battle (SPEC §11, §12). "The backlog" in the entries below means
 v1's, now [archived](../docs/archive/v1/balance-backlog.md).
 
+## R2b-S12 T129: v1's keys retired, and R2a's `rounds` blocks folded into §11.1's names (2026-11-04)
+
+**No number changed** (T129, §11.1, §14.2; X8's knobs deleted by the user's call, 2026-11-03, "Cleanup first", after S11
+measured that neither moves G14 or G15). The goldens move only because the battle's library carries the balance; T132
+regenerates them.
+- **The fold:** `data/balance.json`'s `rounds` block moved to the top level under the same names (`maxRounds`,
+  `clashCapSeconds`, `heartcapDamagePerSupply`, `roundDamageCap`, `sporestorm` by round, `stipendPerRound`,
+  `interestPer` 10 and `interestCap` 30, `comebackGold`, `enemyIncomeMult`, `draftRounds`, `upgradeCostPct`, `lives`,
+  `plotGrowth` and the rest). Its `ai` block joined the kept `ai` keys: `mergeOffSlayerShare`, and in `ai.counter` the
+  multipliers, noise, sells and intel beside the cycles by round and `freePlots`. `data/balance-targets.json`'s `rounds`
+  block replaced v1's blocks of the same names; G2 stays as it was. A `--proto` path drops its `rounds.` prefix:
+  `--proto upgradeCostPct:400`.
+- **Retired from the data and the schema:**
+  - `data/balance.json`: `waveSeconds`, `incomeTickSeconds`, `stipendPerTick`, `supplyCap`, v1's `interestPer` 20 and
+    `interestCap` 10, `comebackDivisor`, `comebackMax`, `supplyLinePerColumn`, `fullRefundSeconds`, `besiegedSeconds`,
+    `besiegedRate`, `firstSpawnFraction`, `timeLimitSeconds`, `turret`, `captureSeconds`, `captureRatio`,
+    `captureDecayMult`, the time-based `sporestorm`, `routRepair`, `decisionLossDamage`, `groveRepair`, `draftWaves`,
+    `laneStance`, `movement.spawnOffset` and `spawnJitter`, and v1's `ai` timings and placement score.
+  - X8's `ai.leanToLastAnswer` (0) and `ai.replaceWhenFull` (false), with their code in the general's planner.
+  - Buildings: `hp` (the Puffball Mortar's 500 moved to `attack.hp`, its emplacement's), `spawn`, `economy.goldPerTick`
+    and the Rhizome Vault's `utility` block (its v2 effect comes with R3's combos, #26).
+  - Limits: `afterSeconds` (`afterRound` stays) in `data/bots.json` and `data/generals.json`.
+  - The DSL: v1's stats (`building.hp`, `spawnInterval`, `spawnCount`, `goldPerTick`, `firstSpawnFraction`,
+    `side.supplyCap`, `captureSpeed`, `supplyLineRate`, `turretDamage`, `powerCooldown`), the `zone` and
+    `adjacentOwnBuildingsGte` selectors, the `buildingDestroyed` and `waveStart` triggers and the `repairHeartcapPct`
+    action. Their no-op compile path went with them.
+  - The Heartcap `turret` sprite, and the sounds of v1's events (`spawn`, `column-gained`, `column-lost`,
+    `building-lost`, `building-razed`, `counter-warn`, `counter-active`, `wave`), which R2b's S2 replaced.
+
 ## R2b-S5b T159–T163: gold upgrades once the colony is full, and the general's income × 1.05 (2026-11-03)
 
 **The rule and both numbers were approved by the user** (#67, 2026-11-03): the details as recommended ("Take them all",

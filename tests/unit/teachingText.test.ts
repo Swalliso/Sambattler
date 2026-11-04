@@ -195,7 +195,7 @@ describe('Help (§10.3, §10.5)', () => {
     expect(pays(content, s)).toBe(14);
     expect(help(content, s).tab('economy')).toContain('bank 140 for +14');
     // at v1's 1 per 20, the same bank pays +7 (R2-Q2 moved it)
-    const slow = protoContent('rounds.interestPer:20');
+    const slow = protoContent('interestPer:20');
     const t = createFromScenario(slow, { id: 'teaching', description: 'A teaching-text test.', map: 'bogwater-hollow', sides: { player: {}, enemy: {} } });
     expect(pays(slow, t)).toBe(7);
     expect(help(slow, t).tab('economy')).toContain('bank 140 for +7');
@@ -208,9 +208,9 @@ describe('Help (§10.3, §10.5)', () => {
     expect(rounds).toContain(`or at ${s.rules.clashCapTicks / s.rules.tickRate} s`);
     expect(rounds).toContain(`deals ${s.rules.heartcapDamagePerSupply} Heartcap damage for each supply`);
     expect(rounds).toContain('up to 750 HP a round');
-    expect(rounds).toContain(`After round ${content.balance.rounds.maxRounds}, if both Heartcaps stand, the battle ends by Decision`);
+    expect(rounds).toContain(`After round ${content.balance.maxRounds}, if both Heartcaps stand, the battle ends by Decision`);
     expect(rounds).toContain('costs a Regrowth');
-    expect(rounds).toContain(`For ${content.balance.rounds.upgradeCostPct}% of its price`);
+    expect(rounds).toContain(`For ${content.balance.upgradeCostPct}% of its price`);
     expect(rounds).toContain('In rounds 3, 5 and 7 a draft opens first');
     for (const tab of ['matrix', 'merging', 'general', 'economy', 'rounds', 'keys']) expect(help(content, s).tab(tab)).not.toMatch(/wave|column|forward|frontier/i);
   });
