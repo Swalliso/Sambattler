@@ -223,6 +223,7 @@ merged, with no rule, data or golden change.
 | 5 | T140 | `npm run sim -- --run --seeds 1..20 --player bot:balanced --auto-draft greedy --auto-route random --summary` | Passes on the user's wording: all 20 runs complete, in 3 to 5 battles (a median of 4; seed 1 ends out of lives after 3), and no life is lost in a won battle. 12 runs win (60%), 19 reach the boss (95%) and 12 of the 19 boss fights are won (63%); battle 1 is won in 16 of 20 (80%). Lives left average 1.6, and 2.1 at the boss. Against G14's 70–90% and G15's 40–95% reach and 40–70% boss wins, this bot's runs are inside, at reach's ceiling. The slow suite reads them per commander (step 7) |
 | 6 | T141 | `npx vitest run tests/unit/migrate.test.ts`, and `tests/browser/resume.test.ts` in `npm run test:browser` | 19 of 19, and the browser suite's 147 of 147. A run saved under `RUN_VERSION` 1 loads migrated with its notice, never null ("a migrated v1 run with its notice"), and a v1 battle save in a run that goes on opens at round 1's planning, with the restart notice and the run migrated |
 | 8 | T143 | `npm run bench` | Inside §13.7. R1's full-colony clash: a mean tick of 0.27 ms and a p99 of 0.79 ms on one lane (96 units a side), 0.33 ms and 0.82 ms on Twin Roots (120 a side), against 1 and 2.5 ms. The clash's first tick 0.30 ms (5 ms), the general's planning turn 0.40 ms at most (20 ms), a planning command's sim part 0.39 ms (2 ms), a full battle 18 ms (3 s), and the resume replay of a round-9 save 51 ms (about 1 s) |
+| 9 | T144 | `npm run screenshot`, step 9's seven captures with R2a's `r2-aftermath` and `r2-planning-twin`, and the run summary | All ten pass §15.6's assertions, each with the browser's hash equal to Node's, and read right against step 9's checklist (below). Both builds pass |
 
 **Step 1's round rows,** in `tests/unit/`:
 - the order of a round's events: `rounds.test.ts` (round 1's opening, the queue and the step by phase, a round's order);
@@ -236,3 +237,20 @@ merged, with no rule, data or golden change.
 - refunds by phase: `planning.test.ts` (100% in the phase planted, 60% once fielded);
 - the general planning first and never reading what you plant: `ai.test.ts` (`planningView`, the general's turn in the round's opening, bots planning after the general) and the `general-plans-first` scenario;
 - a save round trip between rounds: `resume.test.ts` (a planning save, an open draft, a Begin save, a power fired in a clash) and `determinism.test.ts` (resume from each save point).
+
+**Step 9's captures** (`artifacts/screenshots/s13/`): `r2-planning-1`, `r2-planning-4` with the Sporeling Burrow's card
+chosen, `r2-clash-start`, `r2-clash`, `r2-aftermath` (`round=4&phase=aftermath`) and `r2-planning-twin`
+(`map=twin-roots&round=2&phase=planning`), each on `scene=battle&seed=1&player=bot:balanced&enemy=general:scripted`;
+`r2-report` (a Rout in round 5); `r2-route` and `r2-run-planning` on seed 7; and `r2-summary`
+(`scene=summary&seed=7&autoplay=run`). Against the checklist:
+- both colonies show their plots, Bogwater Hollow's loam and Twin Roots' loam and stumps drawn as themselves;
+- in planning the general's whole army stands in formation before any command, and assertion 4 holds both previews
+  against the clash's first tick in `r2-clash-start`;
+- the top band shows both Heartcaps, the round of 9 and the round tally, and the clash shows the lane tug;
+- the matchup marks show on the general's squads while the Sporeling Burrow's card is chosen;
+- nothing from the retired list shows: no territory, frontier, Hold, spawn timers, supply chip or countdown;
+- the report shows the round chart, and the route's battle nodes show their generals' kits;
+- `r2-run-planning` shows 3 Regrowths, and its `#hud-lives` (3 lit of 3) equals `__GAME__.run().lives` (A063);
+- the summary reads the run right: seed 7 loses battles 1–3, regains two Regrowths at the Groves between them, and wins
+  the boss by Decision with 2 of 3 left;
+- nothing is clipped at 1280×720.
