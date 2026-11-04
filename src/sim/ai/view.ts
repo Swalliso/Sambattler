@@ -7,6 +7,7 @@ import type { BalanceDef } from '../../data/schema.ts';
 import { formationOf } from '../formation.ts';
 import type { SquadPlan } from '../formation.ts';
 import { other } from '../state.ts';
+import { isHidden, isV3 } from '../v3.ts';
 import type { AiState, BattleState, BuildingState, CompiledBuilding, CompiledUnit, KitCard, PlotState, Rng4, RoundResult, Side } from '../state.ts';
 
 /** A colony as another side sees it: its plots and buildings, and the squads it will field (§7.5). */
@@ -14,6 +15,8 @@ export interface ColonyView {
   plots: PlotState[];
   buildings: BuildingState[];
   formation: SquadPlan[];
+  /** Under v3 only: the side's gold at the start of its turn, which is in view while its plantings aren't (C3.1, Plan-Q2). */
+  gold?: number;
 }
 
 /** Everything a planner reads (§7.1). Its own plots and buildings are copies, so planning changes the state only by commands. */
@@ -49,7 +52,7 @@ export interface PlanningView {
   theirUnits: Record<string, CompiledUnit>;
   /** Its own side's AI stream, the only one it draws on (plan Call 10). */
   rng: Rng4;
-  /** A planner on the player's side sees the general's colony and formation (§7.5). */
+  /** A planner on the player's side sees the general's colony and formation as the player may (§7.5, `visibleColony`). */
   general?: ColonyView;
 }
 
@@ -75,8 +78,28 @@ export function planningView(state: BattleState, side: Side): PlanningView {
     rng: state.rng.ai[side],
   };
   if (ss.ai) view.ai = ss.ai;
-  if (side === 'player') view.general = { ...colonyOf(state, 'enemy'), formation: formationOf(state, 'enemy') };
+  if (side === 'player') view.general = visibleColony(state, 'enemy');
   return view;
+}
+
+/**
+ * A side's colony as the other side may see it (§7.5; C3.1, T010), which a planner after the general reads, as the
+ * player does. Under v2 it's the colony as it stands. Under v3 its plantings from `hideFromRound` are held back until
+ * Begin (`isHidden`): their plots show empty and their squads aren't in the formation. Its sales and merge toggles
+ * show at once, and its gold is what it held at the start of its turn. It writes nothing.
+ */
+export function visibleColony(state: BattleState, side: Side): ColonyView {
+  const colony = colonyOf(state, side), formation = formationOf(state, side);
+  if (!isV3(state.config)) return { ...colony, formation };
+  const hidden = new Set(state.buildings.filter((b) => b.side === side && isHidden(state, b)).map((b) => b.id));
+  const plans = state.sides[side].ai?.plans ?? [];
+  const plan = plans.length && plans[plans.length - 1]!.round === state.round ? plans[plans.length - 1] : undefined;
+  return {
+    plots: colony.plots.map((p) => (hidden.has(p.building) ? { ...p, building: 0 } : p)),
+    buildings: colony.buildings.filter((b) => !hidden.has(b.id)),
+    formation: formation.filter((p) => !hidden.has(p.building)),
+    gold: plan?.goldAtStart ?? state.sides[side].gold,
+  };
 }
 
 function colonyOf(state: BattleState, side: Side): Pick<ColonyView, 'plots' | 'buildings'> {

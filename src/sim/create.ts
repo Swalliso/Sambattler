@@ -88,6 +88,8 @@ export interface RoundBattleOptions {
   flags?: Partial<Flags>;
   /** The player's commander (§11.10): its passive, and its power with `flags.powers`. */
   commander?: string;
+  /** `v3` plays the v3 prototype's rules (`src/sim/v3.ts`); v2's unless set. */
+  rules?: 'v2' | 'v3';
 }
 
 const perSide = <T>(f: (s: Side) => T): Record<Side, T> => ({ player: f('player'), enemy: f('enemy') });
@@ -99,6 +101,9 @@ const perSide = <T>(f: (s: Side) => T): Record<Side, T> => ({ player: f('player'
  */
 export function makeRoundConfig(content: Content, opts: RoundBattleOptions): BattleConfig {
   const bal = content.balance;
+  // v3's block sets the Heartcaps once S8 tunes them (V3-Q9), and both kits (`kitOf`)
+  const v3 = opts.rules === 'v3' ? bal.v3 : undefined;
+  if (opts.rules === 'v3' && !v3) throw new Error("rules v3 needs data/balance.json's v3 block");
   const battleIndex = opts.battleIndex ?? 1;
   const mapId = opts.mapId ?? 'bogwater-hollow';
   const map = content.maps[mapId];
@@ -111,7 +116,9 @@ export function makeRoundConfig(content: Content, opts: RoundBattleOptions): Bat
       faction, controller, kit: [], relics: [],
       // `createBattle` refuses a map without a colony block, with a message
       plots: map.colony ? basePlots(map) : 0,
-      heartcapMaxHp: s === 'player' ? bal.heartcapPlayerHp : bal.heartcapEnemyHp.base + bal.heartcapEnemyHp.perBattle * (battleIndex - 1),
+      heartcapMaxHp: s === 'player'
+        ? v3?.heartcapPlayerHp ?? bal.heartcapPlayerHp
+        : v3?.heartcapEnemyHp ?? bal.heartcapEnemyHp.base + bal.heartcapEnemyHp.perBattle * (battleIndex - 1),
       startingGold: bal.startingGold + bal.startingGoldPerBattle * (battleIndex - 1),
     };
   };
@@ -122,6 +129,7 @@ export function makeRoundConfig(content: Content, opts: RoundBattleOptions): Bat
     player: side('player', ctl(opts.player, 'human')),
     enemy: side('enemy', ctl(opts.enemy, 'general:scripted')),
     flags: { ...DEFAULT_FLAGS, ...opts.flags },
+    ...(v3 ? { rules: 'v3' as const } : {}),
   };
   for (const s of SIDES) config[s].kit = kitOf(content, s, config);
   if (opts.commander) setCommander(content, config.player, opts.commander);
@@ -257,6 +265,7 @@ export interface RoundScenarioOverrides {
   player?: string;
   enemy?: string;
   flags?: Partial<Flags>;
+  rules?: 'v2' | 'v3';
 }
 
 /**
@@ -277,6 +286,7 @@ export function createFromScenario(content: Content, scenario: string | Scenario
     player: over.player ?? sc.controllers?.player ?? 'human',
     enemy: over.enemy ?? sc.controllers?.enemy ?? 'human',
     flags: over.flags ?? sc.flags ?? {},
+    ...(over.rules ? { rules: over.rules } : {}),
   });
   config.scenario = sc.id;
   for (const s of SIDES) {

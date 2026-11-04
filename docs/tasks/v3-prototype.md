@@ -10,7 +10,7 @@ The v3 prototype is step C of the plan in `docs/design-brief.md`. It's one battl
 
 v2's game stays the default, with its rules and goldens, as R2a was built beside v1 (X2). The switch is temporary, and S10 removes it.
 
-**Status:** Draft, 2026-11-04 (step B), for the user's review with the concept · **Concept:** `docs/spec-v3-concept.md` · **Plan:** `docs/v3-proto-plan.md` · **Decisions:** the audit's V3-Q1–V3-Q13 (`docs/spec-v3-audit.md`, section 5, decided 2026-11-04) and the plan's open questions (Plan-Q1–Q4) · **Gate in:** the user has reviewed the concept and answered Plan-Q1
+**Status:** Agreed 2026-11-04 (the user's "Start S1"); S1 built T001–T011 · **Concept:** `docs/spec-v3-concept.md` · **Plan:** `docs/v3-proto-plan.md` · **Decisions:** the audit's V3-Q1–V3-Q13 (`docs/spec-v3-audit.md`, section 5, decided 2026-11-04) and the plan's open questions (Plan-Q1–Q4) · **Gate in:** the user has reviewed the concept and answered Plan-Q1
 
 "C3.2" cites the concept's section 3.2. "§" cites SPEC v2.
 
@@ -47,8 +47,8 @@ v2's game stays the default, with its rules and goldens, as R2a was built beside
 | Ref | Decision | Blocks |
 |---|---|---|
 | V3-Q1–V3-Q13 | Taken as recommended, 2026-11-04 ("Take them all") | Everything |
-| Plan-Q1 | Fruiting's timing: **open** (recommended: every building fruits a round after it's planted, and round 1 has no clash) | S1's default for `v3.fruitFromRound` (T002) |
-| Plan-Q2–Q4 | First guesses that stand unless the user changes them at the review | S2 (Q2), S6 (Q3), S8 (Q4) |
+| Plan-Q1 | Fruiting's timing: **decided 2026-11-04, the recommendation** ("Start S1"): every building fruits a round after it's planted, the opener too, and round 1 has no clash. `v3.fruitFromRound` is 1 | S1's default for `v3.fruitFromRound` (T002) |
+| Plan-Q2–Q4 | First guesses, which stand (the user, 2026-11-04, "Start S1"): the general's gold at the start of its turn is the tell; the Blightwright is the counter-builder; battle index 1, with the cap and the Heartcaps left to S8's levers | S2 (Q2), S6 (Q3), S8 (Q4) |
 
 **The switch.**
 - Every v3 rule runs only when the battle's config says `rules: 'v3'`, and the `v3` block in `data/balance.json` is read only then.
@@ -74,7 +74,7 @@ v2's game stays the default, with its rules and goldens, as R2a was built beside
 
 | Rule | Sim | Data | Screen | Tools |
 |---|---|---|---|---|
-| The switch | `create.ts` (`rules` in the config), `state.ts`, `compile.ts` | `data/balance.json` (`v3`), `src/data/schema.ts` | `src/app/urlParams.ts` (`rules`), `src/ui/screens/title.ts` | `tools/lib/params.ts` (`--rules`), `tools/golden.ts` |
+| The switch | `create.ts` (`rules` in the config), `state.ts`, `compile.ts`, `v3.ts` (the rules' tests) | `data/balance.json` (`v3`), `src/data/schema.ts` | `src/app/urlParams.ts` (`rules`), `src/ui/screens/title.ts` | `tools/sim.ts` and `tools/lib/run.ts` (`--rules`), `tools/golden.ts`; `tools/lib/params.ts` mirrors the page's `?rules=` |
 | Fruiting | `colony.ts` (the round planted), `formation.ts` (sprouts field nothing), `round.ts` and `systems/clash.ts` (the empty clash) | `v3.fruitFromRound` | `src/render/renderer.ts`, `src/render/preview.ts`, `src/app/phases/` | – |
 | Hidden plantings | `ai/view.ts` (the visible colony), `ai/answer.ts`, `planning.ts` (gold at the start of the general's turn) | `v3.hideFromRound` | `src/app/battleView.ts`, `src/app/phases/planning.ts`, `src/ui/hud/explain.ts` | `tools/screenshot.ts` (assertion 4) |
 | Plots | `commands.ts` (`buyPlot`), `colony.ts`, `planning.ts`, `ai/controller.ts` | `v3.plotPrices`; plot weights in `data/generals.json` and `data/bots.json` | `src/app/phases/planning.ts`, `src/render/renderer.ts` | – |
@@ -97,8 +97,8 @@ v2's game stays the default, with its rules and goldens, as R2a was built beside
 
 ## Phase 1: Setup
 
-- [ ] T001 Add `rules: 'v2' | 'v3'` to the battle config, defaulting to v2, read from `?rules=` in `src/app/urlParams.ts` (`BATTLE_PARAMS`) and `--rules` in `tools/lib/params.ts`. An unknown value is refused visibly, as `reveal` is (`src/sim/create.ts`, `src/sim/state.ts`; plan Scope)
-- [ ] T002 Add the `v3` block to `data/balance.json`, with its schema in `src/data/schema.ts`. ⛔ Plan-Q1 sets `fruitFromRound`'s default. The block holds:
+- [x] T001 Add `rules: 'v2' | 'v3'` to the battle config, defaulting to v2, read from `?rules=` in `src/app/urlParams.ts` (`BATTLE_PARAMS`) and `--rules` in `tools/sim.ts` (through `tools/lib/run.ts`; `tools/lib/params.ts` mirrors the page's). An unknown value is refused visibly, as `reveal` is (`src/sim/create.ts`, `src/sim/state.ts`; plan Scope). *As built:* the config names `rules` only for v3, so v2's configs are as before. `src/sim/v3.ts` holds the rules' tests (`isV3`, `isSprout`, `isHidden`)
+- [x] T002 Add the `v3` block to `data/balance.json`, with its schema in `src/data/schema.ts`. ⛔ Plan-Q1 sets `fruitFromRound`'s default. The block holds:
   - `fruitFromRound`: 1 or 2;
   - `hideFromRound`: 2;
   - `tierStatMult`: 2.0;
@@ -107,8 +107,8 @@ v2's game stays the default, with its rules and goldens, as R2a was built beside
   - `combos`: on or off for each of the four;
   - V3-Q9's levers, unset until S8 sets them: the Cellar's cost and yield, the round cap, and each Heartcap's HP.
 
-  `--proto v3.<key>:<value>` reaches the block through `src/data/proto.ts` unchanged (C3, C4)
-- [ ] T003 Under `rules: 'v3'` (`src/sim/compile.ts`, `src/sim/commands.ts`, `src/sim/ai/controller.ts`; C3.3, C3.5, C4):
+  `--proto v3.<key>:<value>` reaches the block through `src/data/proto.ts` unchanged (C3, C4). *As built:* `fruitFromRound` 1 (Plan-Q1). The levers are `cellar` (`cost`, `goldPerRound`), `roundDamageCap`, `heartcapPlayerHp` and `heartcapEnemyHp`, and each replaces v2's number once set. Only a v3 battle's library carries the block, so v2's state hashes as before
+- [x] T003 Under `rules: 'v3'` (`src/sim/compile.ts`, `src/sim/commands.ts`, `src/sim/ai/controller.ts`; C3.3, C3.5, C4):
   - compile the battle's balance with the block's overrides;
   - keep both kits to `v3.roster`;
   - refuse the `upgrade` command;
@@ -116,11 +116,11 @@ v2's game stays the default, with its rules and goldens, as R2a was built beside
 
 ## Phase 2: Foundational (blocks every story)
 
-- [ ] T004 [P] Unit tests (`tests/unit/v3Rules.test.ts` (new); §13.3):
+- [x] T004 [P] Unit tests (`tests/unit/v3Rules.test.ts` (new); §13.3):
   - a config without `rules` hashes as before;
   - under v3, `tierStatMult` is 2.0, `upgrade` is refused and the kits hold the roster;
   - `--proto v3.tierStatMult:2.1` applies.
-- [ ] T005 Teach `tools/golden.ts` a replay's `rules`, and record `tests/golden/v3-mold-bogwater-s1.replay.json` and `tests/golden/v3-baron-twin-s1.replay.json` (new), with `bot:balanced` in the player's seat (§13.3; plan, Goldens)
+- [x] T005 Teach `tools/golden.ts` a replay's `rules`, and record `tests/golden/v3-mold-bogwater-s1.replay.json` and `tests/golden/v3-baron-twin-s1.replay.json` (new), with `bot:balanced` in the player's seat (§13.3; plan, Goldens)
 
 **Checkpoint:**
 - `npm run verify` passes.
@@ -132,26 +132,26 @@ v2's game stays the default, with its rules and goldens, as R2a was built beside
 **Goal:** a v3 battle in which what you plant from `fruitFromRound` fields a clash later, and the general's plantings this round stay hidden until Begin. **Test:** as the Stories table says.
 
 **Tests first:**
-- [ ] T006 [P] [US1] Unit tests for fruiting (`tests/unit/v3Fruiting.test.ts` (new); C3.2):
+- [x] T006 [P] [US1] Unit tests for fruiting (`tests/unit/v3Fruiting.test.ts` (new); C3.2):
   - a building planted in round r ≥ `fruitFromRound` fields from clash r + 1;
   - until then `formationOf` and `mergePreview` leave its slot empty;
   - a building sold and replanted sprouts again;
   - economy pays from the next round's income, as before;
   - with `fruitFromRound` 1, round 1's clash fields nothing and ends on tick 0, a draw with no damage.
-- [ ] T007 [P] [US1] Unit tests for the hidden view (`tests/unit/v3Hidden.test.ts` (new); C3.1):
+- [x] T007 [P] [US1] Unit tests for the hidden view (`tests/unit/v3Hidden.test.ts` (new); C3.1):
   - from `hideFromRound`, the general's plantings this round are missing from the visible colony until Begin;
   - its sales and merge toggles show;
   - the general's gold at the start of its turn is recorded;
   - `bot:answer` plans from the visible colony, not the state.
 
 **Then:**
-- [ ] T008 [US1] Record the round each building was planted in. Under v3, a sprout's slot stays empty in `formationOf` and `mergePreview` (`src/sim/colony.ts`, `src/sim/formation.ts`; C3.2)
-- [ ] T009 [US1] A clash in which neither side fields anything ends on tick 0, as a draw that deals no damage, and the round moves on (`src/sim/round.ts`, `src/sim/systems/clash.ts`; C3.2, Plan-Q1)
-- [ ] T010 [US1] The visible colony (`src/sim/ai/view.ts`, `src/sim/planning.ts`, `src/sim/ai/answer.ts`; C3.1):
+- [x] T008 [US1] Record the round each building was planted in. Under v3, a sprout's slot stays empty in `formationOf` and `mergePreview` (`src/sim/colony.ts`, `src/sim/formation.ts`; C3.2). *As built:* buildings already recorded `plantedRound`, so only `formation.ts` changed
+- [x] T009 [US1] A clash in which neither side fields anything ends on tick 0, as a draw that deals no damage, and the round moves on (`src/sim/round.ts`, `src/sim/systems/clash.ts`; C3.2, Plan-Q1)
+- [x] T010 [US1] The visible colony (`src/sim/ai/view.ts`, `src/sim/planning.ts`, `src/sim/ai/answer.ts`; C3.1). *As built:* `visibleColony` in `ai/view.ts`, which `planningView` gives a planner on the player's side; the gold is the plan's `goldAtStart` (`ai/controller.ts`); `answer.ts` needed no change, since it reads the view:
   - a pure function that gives the general's colony as the player may see it, holding back this round's plantings from `hideFromRound` until Begin;
   - the general's gold at the start of its turn, recorded;
   - `bot:answer` reads both.
-- [ ] T011 [US1] Re-record v3's goldens, and confirm the `r2-*` ones haven't moved (plan, Goldens)
+- [x] T011 [US1] Re-record v3's goldens, and confirm the `r2-*` ones haven't moved (plan, Goldens)
 
 **Checkpoint (S1 ends):** `npm run verify` passes, the goldens hold, and `npm run sim -- --rules v3 --seeds 1..5 --summary` shows sprouts fielding a clash later.
 

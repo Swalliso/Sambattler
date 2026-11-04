@@ -22,6 +22,7 @@ import type { BattleState, ClashState, FieldedSquad, LaneResult, RoundResult, Si
 import { payIncome } from './systems/economy.ts';
 import { mergeTriosNow } from './systems/merging.ts';
 import { capFor, decisionWinner, laneDamage, roundOutcome, stormBpFor, stormStep, stormed, takenMods } from './systems/victory.ts';
+import { isV3 } from './v3.ts';
 import { findUnit, isEmplacement } from './world.ts';
 
 /**
@@ -94,6 +95,20 @@ export function startClash(state: BattleState): void {
   const supply = (s: Side) => state.lanes.reduce((n, _, lane) => n + survivingSupply(state, s, lane), 0);
   state.events.splice(begun, 0, { t: 'clashStarted', round: state.round, supply: { player: supply('player'), enemy: supply('enemy') } });
   for (const s of SIDES) fireTriggers(state, s, 'clashStart', { x: 0, y: 0, lane: -1, sourceBuildingId: 0 });
+  // v3's empty clash (C3.2, Plan-Q1): with nothing on the field, as in round 1 when both openers sprout, it ends now
+  if (isV3(state.config) && !state.units.length) endEmptyClash(state);
+}
+
+/**
+ * A clash in which neither side fields anything (v3, T009): every lane ends on the clash's first tick, Begin's, as a
+ * draw that deals no damage, and the round is scored, so the battle enters the aftermath and the round moves on.
+ */
+function endEmptyClash(state: BattleState): void {
+  state.clash!.lanes.forEach((lock, lane) => {
+    Object.assign(lock, { ended: true, endTick: state.tick, winner: null, capped: false });
+    state.events.push({ t: 'laneWon', lane, winner: null, survivors: { player: 0, enemy: 0 }, capped: false });
+  });
+  endClash(state);
 }
 
 /**

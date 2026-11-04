@@ -31,6 +31,8 @@ const REPLAYS: {
   commander?: string; powerPolicy?: PowerPolicy; map?: string;
   /** The player's kit is its commander's starter (§11.10) rather than the faction's roster. */
   starter?: boolean;
+  /** `v3` plays the v3 prototype's rules (`src/sim/v3.ts`); its replays are `v3-…`, beside v2's unchanged `r2-…`. */
+  rules?: 'v3';
 }[] = [
   {
     name: 'r2-balanced-vs-scripted-s1', description: 'bot:balanced vs the scripted general, which plans first, a battle in rounds on Bogwater Hollow, seed 1 (R2a/T072)',
@@ -54,6 +56,19 @@ const REPLAYS: {
     seed: 3, player: 'bot:balanced', enemy: 'general:scripted', flags: { merging: true, adaptiveGeneral: false, powers: true },
     commander: c, powerPolicy: 'auto' as const, starter: true,
   })),
+  // the v3 prototype's battle (docs/v3-proto-plan.md, Goldens; T005): its rules on both maps, Vesper with the auto
+  // power policy against Old Mother Mold and the Lichen Baron, at battle index 1. Each session that changes v3's
+  // rules or data re-records them; the `r2-…` replays never move for v3
+  {
+    name: 'v3-mold-bogwater-s1', description: 'bot:balanced as Vesper vs Old Mother Mold on Bogwater Hollow by the v3 prototype\'s rules, seed 1 (v3 prototype T005)',
+    seed: 1, player: 'bot:balanced', enemy: 'general:mother-mold', flags: { merging: true, adaptiveGeneral: true, powers: true },
+    commander: 'vesper', powerPolicy: 'auto', rules: 'v3',
+  },
+  {
+    name: 'v3-baron-twin-s1', description: 'bot:balanced as Vesper vs the Lichen Baron on Twin Roots by the v3 prototype\'s rules, seed 1 (v3 prototype T005)',
+    seed: 1, player: 'bot:balanced', enemy: 'general:lichen-baron', flags: { merging: true, adaptiveGeneral: true, powers: true },
+    commander: 'vesper', powerPolicy: 'auto', map: 'twin-roots', rules: 'v3',
+  },
 ];
 
 interface RunReplay {
@@ -106,7 +121,7 @@ function verifyRun(rep: RunReplay): boolean {
 function replayConfig(r: (typeof REPLAYS)[number]): BattleConfig {
   const config = makeRoundConfig(nodeContent(), {
     seed: r.seed, player: r.player, enemy: r.enemy, flags: r.flags,
-    ...(r.map ? { mapId: r.map } : {}), ...(r.commander ? { commander: r.commander } : {}),
+    ...(r.map ? { mapId: r.map } : {}), ...(r.commander ? { commander: r.commander } : {}), ...(r.rules ? { rules: r.rules } : {}),
   });
   if (r.powerPolicy) config.player.powerPolicy = r.powerPolicy;
   if (r.starter && r.commander) config.player.kit = kitCards(nodeContent(), config.player.controller, nodeContent().commanders[r.commander]!.starter);

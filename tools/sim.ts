@@ -20,7 +20,7 @@ const ROUTE_POLICIES = ['first', 'random', 'battles'];
 
 interface Args {
   map?: string; seeds: number[]; player?: string; enemy?: string; scenario?: string; replay?: string;
-  until: HeadlessUntil; battleIndex?: number; flags?: Partial<BattleConfig['flags']>; hashEvery?: number;
+  until: HeadlessUntil; battleIndex?: number; flags?: Partial<BattleConfig['flags']>; hashEvery?: number; rules?: 'v2' | 'v3';
   asserts: Assertion[]; out?: string; summary: boolean;
   run: boolean; autoDraft?: DraftAutoPolicy; autoRoute?: RoutePolicy;
   commander?: string; powerPolicy?: PowerPolicy;
@@ -70,6 +70,13 @@ function parseArgs(argv: string[]): Args {
       case '--until': a.until = parseUntil(v()); break;
       case '--battle-index': a.battleIndex = Number(v()); break;
       case '--flags': a.flags = flagsArg(v()); break;
+      case '--rules': {
+        // `v3` plays the v3 prototype's rules (`src/sim/v3.ts`), a temporary switch its S10 removes
+        const r = v();
+        if (r !== 'v2' && r !== 'v3') throw new Error(`--rules expects v2 | v3, not ${r}`);
+        a.rules = r;
+        break;
+      }
       case '--hash-every': a.hashEvery = Number(v()); break;
       case '--assert': a.asserts.push(parseAssert(v())); break;
       case '--out': a.out = v(); break;
@@ -98,6 +105,7 @@ function parseArgs(argv: string[]): Args {
       default: throw new Error(`unknown option ${k}`);
     }
   }
+  if (a.run && a.rules === 'v3') throw new Error('--rules v3 plays a single battle: the v3 prototype has no run');
   if (!a.run) {
     if (a.autoRoute) throw new Error('--auto-route needs --run');
     // a single battle drafts with `--flags drafts` (§8.3), a bot player by `--auto-draft` (greedy unless set)
@@ -156,6 +164,7 @@ function mainBattle(args: Args, content: ReturnType<typeof nodeContent>): number
     if (args.scenario && !replay) spec.commands = scenarioBegins(content, args.scenario, args.player);
     if (args.battleIndex) spec.battleIndex = args.battleIndex;
     if (args.flags) spec.flags = args.flags;
+    if (args.rules) spec.rules = args.rules;
     if (args.commander) spec.commander = args.commander;
     if (args.powerPolicy) spec.powerPolicy = args.powerPolicy;
     if (args.autoDraft) spec.autoDraft = args.autoDraft;

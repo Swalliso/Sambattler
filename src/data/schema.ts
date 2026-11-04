@@ -124,6 +124,36 @@ const Bp = z.number().int().positive();
 const Round = z.number().int().positive();
 const RoundCycle = z.object({ round: Round, from: Round }).strict();
 
+/** The most a Heartcap takes in a round (§6.7), which the balance and the v3 block share. */
+const RoundDamageCap = z.object({ maxHpBp: Bp.optional(), flat: z.number().int().positive().optional(), stormScales: z.boolean().optional() })
+  .strict().refine((c) => (c.maxHpBp === undefined) !== (c.flat === undefined), 'a round damage cap names one base: maxHpBp or flat');
+
+/**
+ * The v3 prototype's block (`docs/v3-proto-plan.md`; the concept's sections 3 and 4), read only by a battle whose
+ * config says `rules: 'v3'`, a temporary switch that the prototype's S10 removes. Under v2 no battle carries it.
+ */
+const V3Schema = z.object({
+  /** Fruiting (C3.2): what's planted from this round fields from the next clash. 1, the user's call on Plan-Q1 (2026-11-04), so round 1's clash is empty; 2 fields round 1's opener at once. */
+  fruitFromRound: z.union([z.literal(1), z.literal(2)]),
+  /** Hidden plantings (C3.1): from this round, the general's plantings this round stay hidden until Begin. */
+  hideFromRound: Round,
+  /** Merging (C3.5): a Bloomed unit has × this its parts' stats, and an Elder its square. */
+  tierStatMult: Pos,
+  /** A closed plot's price, by how many a side has bought before (C3.3; first guesses). */
+  plotPrices: z.array(z.number().int().positive()).min(1),
+  /** Both kits (C4): the six core archetypes and the Truffle Cellar. */
+  roster: z.array(z.string()).min(1),
+  /** The four combos (C3.4), each on or off. */
+  combos: z.object({ shieldWall: z.boolean(), spottedScreen: z.boolean(), chainBurst: z.boolean(), truffleHunters: z.boolean() }).strict(),
+  // V3-Q9's levers, unset until the prototype's S8 tunes them: each replaces v2's number under v3
+  /** The Truffle Cellar's cost and gold a round. */
+  cellar: z.object({ cost: z.number().int().positive().optional(), goldPerRound: z.number().int().nonnegative().optional() }).strict().optional(),
+  roundDamageCap: RoundDamageCap.optional(),
+  heartcapPlayerHp: z.number().int().positive().optional(),
+  /** The general's Heartcap, whatever the battle index. */
+  heartcapEnemyHp: z.number().int().positive().optional(),
+}).strict();
+
 /**
  * `data/balance.json` (SPEC §11.1, §14.2): the battle in rounds, its economy, the kit and the colony, and the
  * combat kept from v1. R2b's T129 retired v1's keys and folded R2a's `rounds` block into these names.
@@ -143,8 +173,7 @@ export const BalanceSchema = z.object({
    * The most a Heartcap takes in a round (§6.7): `maxHpBp` of the loser's max HP (X5), or a `flat` amount;
    * `stormScales` multiplies it by the storm (A208). The other shapes are for T124's measurements.
    */
-  roundDamageCap: z.object({ maxHpBp: Bp.optional(), flat: z.number().int().positive().optional(), stormScales: z.boolean().optional() })
-    .strict().refine((c) => (c.maxHpBp === undefined) !== (c.flat === undefined), 'a round damage cap names one base: maxHpBp or flat'),
+  roundDamageCap: RoundDamageCap,
   /** After `maxRounds`, a Decision by the share of max HP dealt (X5), or by damage dealt (§6.5). */
   decision: z.object({ by: z.enum(['shareOfMaxHp', 'damage']) }).strict(),
   /** The storm by round (§6.4): from `startRound`, +`stepBp` a round, at most `maxBp`. */
@@ -269,6 +298,8 @@ export const BalanceSchema = z.object({
       intelKeep: z.number().min(0).max(1),
     }).strict(),
   }).strict(),
+  /** The v3 prototype's rules and levers, read only under `rules: 'v3'` (V3Schema). */
+  v3: V3Schema.optional(),
 }).strict();
 
 /**
@@ -769,6 +800,7 @@ export const CommanderSchema = z.object({
 });
 
 export type BalanceDef = z.infer<typeof BalanceSchema>;
+export type V3Def = z.infer<typeof V3Schema>;
 export type BalanceTargets = z.infer<typeof BalanceTargetsSchema>;
 export type UnitDef = z.infer<typeof UnitSchema>;
 export type BuildingDef = z.infer<typeof BuildingSchema>;

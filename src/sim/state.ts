@@ -193,6 +193,11 @@ export interface BattleConfig {
   /** `drafts` opens a draft for each side with a pool in the planning after each round in `draftRounds` (§8.3). */
   flags: { merging: boolean; drafts: boolean; adaptiveGeneral: boolean; powers: boolean };
   scenario?: string;
+  /**
+   * `v3` plays the v3 prototype's rules (docs/v3-proto-plan.md, `src/sim/v3.ts`), a temporary switch that its S10
+   * removes. Absent means v2's: `makeRoundConfig` never writes `v2`, so v2's configs and hashes are as before.
+   */
+  rules?: 'v2' | 'v3';
 }
 
 // ---- the library and the compiled sides (ids and numbers only, R2-Q8) ----
@@ -540,6 +545,8 @@ export interface AiPlan {
   upgraded?: { building: string; plot: number }[];
   income: number;
   banked: number;
+  /** Under v3 only: its gold at the start of its turn, the round's income paid, which the other side sees (C3.1, Plan-Q2). */
+  goldAtStart?: number;
   /** The counter that activated in this round's planning (§7.4), if one did. */
   counter?: CounterKind;
 }

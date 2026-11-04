@@ -18,6 +18,8 @@ export interface RoundRunSpec {
   scenario?: string | ScenarioDef;
   battleIndex?: number;
   flags?: Partial<Flags>;
+  /** `v3` plays the v3 prototype's rules (`src/sim/v3.ts`); v2's unless set. */
+  rules?: 'v2' | 'v3';
   /** The player's commander (its passive, and its power with the powers flag). */
   commander?: string;
   /** Whether a bot player fires its power, at most once per clash (§6.6). */
@@ -97,6 +99,7 @@ export function buildRoundState(content: Content, spec: RoundRunSpec): BattleSta
     if (spec.player) over.player = spec.player;
     if (spec.enemy) over.enemy = spec.enemy;
     if (spec.flags) over.flags = spec.flags;
+    if (spec.rules) over.rules = spec.rules;
     const state = createFromScenario(content, spec.scenario, over);
     // nothing in a round's opening reads the power policy, so it's set as the config would have held it
     if (spec.powerPolicy) state.config.player.powerPolicy = spec.powerPolicy;
@@ -110,6 +113,7 @@ export function buildRoundState(content: Content, spec: RoundRunSpec): BattleSta
     enemy: spec.enemy ?? 'general:scripted',
     ...(spec.flags ? { flags: spec.flags } : {}),
     ...(spec.commander ? { commander: spec.commander } : {}),
+    ...(spec.rules ? { rules: spec.rules } : {}),
   });
   if (spec.powerPolicy) config.player.powerPolicy = spec.powerPolicy;
   if (spec.autoDraft) config.player.autoDraft = spec.autoDraft;

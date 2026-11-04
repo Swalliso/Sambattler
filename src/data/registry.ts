@@ -300,6 +300,11 @@ export function loadContent(raw: RawContent): Content {
     for (const map of Object.values(maps)) {
       if (map.lanes.length > 3) problems.push(`map ${map.id}: at most 3 lanes`);
     }
+    // the v3 prototype's roster is both kits under `rules: 'v3'`, so each card is in both factions' rosters
+    for (const id of balance.v3?.roster ?? []) {
+      buildingRef('balance.json v3 roster', id);
+      for (const f of Object.values(factions)) if (id in buildings && !f.buildings.includes(id)) problems.push(`balance.json v3 roster: ${id} isn't in faction ${f.id}'s roster`);
+    }
   }
   if (targets) {
     for (const edge of targets.G2.intendedEdges) {

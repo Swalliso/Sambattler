@@ -4,15 +4,17 @@
 // building pays its gold a round, and every squad's unit is resolved at all three merge tiers as v1 resolves
 // it (§5.5, §5.6). A modifier on a stat a battle doesn't read (R3's corner combos, the run's) is listed.
 import type { Content } from '../data/registry.ts';
-import type { ModifierDef, UnitDef } from '../data/schema.ts';
+import type { BalanceDef, ModifierDef, UnitDef, V3Def } from '../data/schema.ts';
 import { battleModifiers, buildingMatcher, collectRoundEffects, onPlot, placeMatches, resolveStat, roundModifiers, unitMatcher } from './effects.ts';
 import type { Place, RoundEffects } from './effects.ts';
 import { SIDES } from './state.ts';
 import { MAX_RADIUS } from './targets.ts';
 import type {
-  BattleConfig, CompiledBuilding, CompiledSide, CompiledTier, CompiledUnit, DamageType, KitCard, Library, LibraryUnit, Rules, Side, SquadStats, Tier,
+  BattleConfig, CompiledBuilding, CompiledSide, CompiledTier, CompiledUnit, DamageType, KitCard, Library, LibraryBuilding, LibraryUnit, Rules, Side,
+  SquadStats, Tier,
 } from './state.ts';
 import type { RoundLoadout } from './effects.ts';
+import { isV3 } from './v3.ts';
 
 export const secToTicks = (s: number, tickRate = 20): number => Math.round(s * tickRate);
 
@@ -42,7 +44,11 @@ export function drafting(config: BattleConfig, side: Side): boolean {
  * every building and relic it may be offered, and the tracks of its kit and its pool's buildings.
  */
 export function buildRoundLibrary(content: Content, config: BattleConfig): Library {
-  const lib: Library = { balance: content.balance, buildings: {}, units: {} };
+  // v2's battle never carries the v3 block, so its state hashes as before; v3's has it, with its overrides applied
+  const { v3: block, ...balance } = content.balance;
+  const v3 = isV3(config) ? block : undefined;
+  if (isV3(config) && !v3) throw new Error("rules v3 needs data/balance.json's v3 block");
+  const lib: Library = { balance: v3 ? v3Balance(balance, v3) : balance, buildings: {}, units: {} };
   const pools = SIDES.filter((s) => drafting(config, s)).map((s) => config[s].draft!);
   const kits = SIDES.flatMap((s) => config[s].kit.map((c) => c.building));
   const buildings = [...kits, ...pools.flatMap((p) => [...p.core, ...p.shared])];
@@ -63,7 +69,7 @@ export function buildRoundLibrary(content: Content, config: BattleConfig): Libra
     const b = content.buildings[id];
     if (!b) throw new Error(`unknown building ${id}`);
     const { name: _name, description: _description, ...building } = b;
-    lib.buildings[id] = building;
+    lib.buildings[id] = v3?.cellar && id === V3_CELLAR ? v3Cellar(building, v3.cellar) : building;
     if (!b.squad) continue;
     const u = content.units[b.squad.unit];
     if (!u) throw new Error(`unknown unit ${b.squad.unit}`);
@@ -77,6 +83,24 @@ export function buildRoundLibrary(content: Content, config: BattleConfig): Libra
     lib.powers = Object.fromEntries(powers.map(({ name: _name, text: _text, ...p }) => [p.id, p]));
   }
   return lib;
+}
+
+/**
+ * A v3 battle's balance (C3.5, V3-Q9): v2's with the block's `tierStatMult`, and its round cap once S8 sets one. It
+ * carries the block, which v3's rules read (`src/sim/v3.ts`). Its Heartcaps reach the config (`makeRoundConfig`).
+ */
+function v3Balance(balance: Omit<BalanceDef, 'v3'>, v3: V3Def): BalanceDef {
+  return { ...balance, tierStatMult: v3.tierStatMult, ...(v3.roundDamageCap ? { roundDamageCap: { ...v3.roundDamageCap } } : {}), v3 };
+}
+
+/** The Truffle Cellar, whose cost and gold a round are V3-Q9's levers. */
+const V3_CELLAR = 'truffleCellar';
+
+/** The Cellar with the v3 block's cost and gold a round, where S8 has set them. */
+function v3Cellar(b: LibraryBuilding, cellar: NonNullable<V3Def['cellar']>): LibraryBuilding {
+  const out = { ...b, ...(cellar.cost !== undefined ? { cost: cellar.cost } : {}) };
+  if (cellar.goldPerRound !== undefined && out.economy) out.economy = { ...out.economy, goldPerRound: cellar.goldPerRound };
+  return out;
 }
 
 /** The rules of a battle in rounds, from the balance's round keys and the kept combat, in ticks and integers. */

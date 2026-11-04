@@ -75,5 +75,13 @@
       "counterMult": 3, "otherMult": 0.6, "openingMult": 2, "openingOtherMult": 0.8, "dualMult": 2.5,
       "maxSells": 2, "intelKeep": 0.5
     }
+  },
+  "v3": {
+    "fruitFromRound": 1,
+    "hideFromRound": 2,
+    "tierStatMult": 2.0,
+    "plotPrices": [100, 150, 200, 250],
+    "roster": ["sporelingBurrow", "capguardHall", "gillNest", "amanitaLodge", "hammercapForge", "bursterPod", "truffleCellar"],
+    "combos": { "shieldWall": true, "spottedScreen": true, "chainBurst": true, "truffleHunters": true }
   }
 }

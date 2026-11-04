@@ -18,6 +18,7 @@ import { buildingMatcher, resolveStat } from './effects.ts';
 import type { Place } from './effects.ts';
 import { plantProblem, sellProblem, toggleProblem, upgradeProblem } from './planning.ts';
 import type { BattleState, CompiledBuilding, CompiledUnit, Side, Tier } from './state.ts';
+import { isSprout } from './v3.ts';
 
 /** A field's geometry: its width in tiles, its lanes' tile rows, and the tiles between the two front ranks. */
 export interface FieldGeom {
@@ -450,32 +451,42 @@ export function fieldPlace(state: BattleState, side: Side, plot: number, buildin
   };
 }
 
-/** T020's plain input from the state: the map's geometry and the side's plots, each with its building as the formation reads it. */
+/**
+ * T020's plain input from the state: the map's geometry and the side's plots, each with its building as the formation
+ * reads it. Under v3 a sprout's plot is empty, since it fields nothing until the next clash (C3.2).
+ */
 function formationInput(state: BattleState, side: Side, change: PlanChange | undefined): FormationInput {
   const plots: FormationPlot[] = state.sides[side].plots.map((p, i) => {
-    const b = p.building ? state.buildings.find((x) => x.id === p.building) : undefined;
+    const found = p.building ? state.buildings.find((x) => x.id === p.building) : undefined;
+    const b = found && !isSprout(state, found) ? found : undefined;
     return { lane: p.lane, rank: p.rank, file: p.file, building: b ? fielding(state, side, b.id, b.buildingId, b.mergeOn, i, b.plantedRound, b.upgrade !== undefined) : null };
   });
   if (change) applyChange(state, side, plots, change);
   return { geom: { width: state.map.width, lanes: state.lanes, gapTiles: state.rules.formationGapTiles }, side, plots };
 }
 
-/** Makes a change on the input's own plots, as its command would make it, unless the command would refuse it now. */
+/**
+ * Makes a change on the input's own plots, as its command would make it, unless the command would refuse it now.
+ * Under v3 a building planted now is a sprout, and a sprout's plot is already empty, so neither changes the formation.
+ */
 function applyChange(state: BattleState, side: Side, plots: FormationPlot[], change: PlanChange): void {
-  const at = (id: number): FormationPlot => plots.find((p) => p.building?.id === id)!;
+  const at = (id: number): FormationPlot | undefined => plots.find((p) => p.building?.id === id);
   if ('plant' in change) {
     const { buildingId, plot } = change.plant;
     // with the id `plant` would give it, and its toggle on
-    if (!plantProblem(state, side, buildingId, plot)) plots[plot]!.building = fielding(state, side, state.nextId, buildingId, true, plot, state.round, false);
+    if (plantProblem(state, side, buildingId, plot) || isSprout(state, { plantedRound: state.round })) return;
+    plots[plot]!.building = fielding(state, side, state.nextId, buildingId, true, plot, state.round, false);
   } else if ('sell' in change) {
-    if (!sellProblem(state, side, change.sell)) at(change.sell).building = null;
+    const p = at(change.sell);
+    if (p && !sellProblem(state, side, change.sell)) p.building = null;
   } else if ('upgrade' in change) {
-    if (upgradeProblem(state, side, change.upgrade)) return;
+    const p = at(change.upgrade);
+    if (!p || upgradeProblem(state, side, change.upgrade)) return;
     const b = state.buildings.find((x) => x.id === change.upgrade)!;
-    at(b.id).building = fielding(state, side, b.id, b.buildingId, b.mergeOn, b.plot, b.plantedRound, true);
-  } else if (!toggleProblem(state, side, change.toggle.id)) {
+    p.building = fielding(state, side, b.id, b.buildingId, b.mergeOn, b.plot, b.plantedRound, true);
+  } else {
     const p = at(change.toggle.id);
-    p.building = { ...p.building!, mergeOn: change.toggle.on };
+    if (p && !toggleProblem(state, side, change.toggle.id)) p.building = { ...p.building!, mergeOn: change.toggle.on };
   }
 }
 

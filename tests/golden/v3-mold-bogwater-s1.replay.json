@@ -1,0 +1,150 @@
+{
+  "name": "v3-mold-bogwater-s1",
+  "description": "bot:balanced as Vesper vs Old Mother Mold on Bogwater Hollow by the v3 prototype's rules, seed 1 (v3 prototype T005)",
+  "config": {
+    "seed": 1,
+    "battleIndex": 1,
+    "mapId": "bogwater-hollow",
+    "player": {
+      "faction": "velvet-bloom",
+      "controller": {
+        "kind": "bot",
+        "id": "balanced"
+      },
+      "kit": [
+        {
+          "building": "sporelingBurrow"
+        },
+        {
+          "building": "capguardHall"
+        },
+        {
+          "building": "gillNest"
+        },
+        {
+          "building": "amanitaLodge"
+        },
+        {
+          "building": "hammercapForge"
+        },
+        {
+          "building": "bursterPod"
+        },
+        {
+          "building": "truffleCellar"
+        }
+      ],
+      "relics": [],
+      "plots": 8,
+      "heartcapMaxHp": 3000,
+      "startingGold": 300,
+      "commander": "vesper",
+      "power": "sporeBurst",
+      "powerPolicy": "auto"
+    },
+    "enemy": {
+      "faction": "gray-rot",
+      "controller": {
+        "kind": "general",
+        "id": "mother-mold"
+      },
+      "kit": [
+        {
+          "building": "sporelingBurrow"
+        },
+        {
+          "building": "capguardHall"
+        },
+        {
+          "building": "gillNest"
+        },
+        {
+          "building": "amanitaLodge"
+        },
+        {
+          "building": "hammercapForge"
+        },
+        {
+          "building": "bursterPod"
+        },
+        {
+          "building": "truffleCellar",
+          "maxOwned": 3
+        }
+      ],
+      "relics": [],
+      "plots": 8,
+      "heartcapMaxHp": 2000,
+      "startingGold": 300
+    },
+    "flags": {
+      "merging": true,
+      "drafts": false,
+      "adaptiveGeneral": true,
+      "powers": true
+    },
+    "rules": "v3",
+    "modifiers": [
+      {
+        "side": "enemy",
+        "source": "general:mother-mold",
+        "effects": {
+          "modifiers": [
+            {
+              "stat": "unit.hp",
+              "op": "mul",
+              "value": 1.1,
+              "where": {
+                "tag": "swarm"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "side": "player",
+        "source": "commander:vesper",
+        "effects": {
+          "modifiers": [
+            {
+              "stat": "unit.hp",
+              "op": "mul",
+              "value": 1.1,
+              "where": {
+                "rank": 0
+              }
+            },
+            {
+              "stat": "unit.damage",
+              "op": "mul",
+              "value": 1.1,
+              "where": {
+                "rank": 0
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "commands": [],
+  "expected": {
+    "r1.planning": "9e41f42f450b78ae",
+    "r1.aftermath": "b653f1c7f70e3da9",
+    "r2.planning": "7926b835a0f29ed1",
+    "r2.clash": "1d581b27bcf3a833",
+    "r2:200": "a794052a1303a443",
+    "r2.aftermath": "c225aab454db509a",
+    "r3.planning": "8d277b8abcd7a188",
+    "r3.clash": "6a30058afd1c7f56",
+    "r3.aftermath": "b9905c718e75a7e4",
+    "r4.planning": "26bc1e5e7049e4c4",
+    "r4.clash": "80ef0cd3eb61d4e9",
+    "r4.aftermath": "82be7bd34303eb40",
+    "r5.planning": "9e422cbf6e984c4e",
+    "r5.clash": "b70f4abdca598157",
+    "r5:200": "2eb233802ff53358",
+    "r5.aftermath": "5c1bd915c69869bc",
+    "final": "eb8e0ad03293d466"
+  }
+}

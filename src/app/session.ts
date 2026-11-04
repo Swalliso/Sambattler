@@ -39,6 +39,7 @@ const UPGRADE_REASONS: Record<string, string> = {
   notASpawner: 'only a spawner upgrades',
   alreadyUpgraded: 'upgraded',
   colonyNotFull: 'fill every plot first',
+  upgradeRetired: 'the v3 prototype has no gold upgrade',
 };
 
 export class RoundSession {

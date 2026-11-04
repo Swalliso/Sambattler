@@ -1,6 +1,6 @@
 # v3 prototype plan: one battle in rounds, by v3's rules
 
-**Status: drafted on 2026-11-04** by step B of the v3 plan ([design-brief.md](design-brief.md)), for the user to review with the concept. It isn't agreed yet. The user reviews [spec-v3-concept.md](spec-v3-concept.md) and answers open question 1 before S1 starts.
+**Status: agreed on 2026-11-04.** Drafted by step B of the v3 plan ([design-brief.md](design-brief.md)). The user reviewed [spec-v3-concept.md](spec-v3-concept.md) and said "Start S1" to the hub's summary, which took open question 1's recommendation and the first guesses in questions 2–4 (below). S1 builds from it.
 
 Written against `develop` at `acbeefd`. The rules are the concept's section 3, from the audit's decisions ([spec-v3-audit.md](spec-v3-audit.md), V3-Q1–V3-Q13). The tasks are [tasks/v3-prototype.md](tasks/v3-prototype.md), T001–T045, in sessions S1–S10.
 
@@ -153,12 +153,12 @@ The sessions, with their tasks in [the task list](tasks/v3-prototype.md). Hub re
 
 ## Open questions for the user
 
-1. **Fruiting's timing (blocks S1's default).** Under V3-Q3 as decided, round 1's opener fields at once and fruiting starts with round 2's plantings. So clash 2 has clash 1's armies, and R2a's sim replays an unchanged round exactly: the opener's result counts twice, and you watch the same clash again.
+1. **Fruiting's timing (blocks S1's default).** **Decided 2026-11-04: the recommendation** ("Start S1"). `v3.fruitFromRound` is 1, so every building fruits a round after it's planted and round 1's clash is empty. S1 built it. Under V3-Q3 as decided, round 1's opener fields at once and fruiting starts with round 2's plantings. So clash 2 has clash 1's armies, and R2a's sim replays an unchanged round exactly: the opener's result counts twice, and you watch the same clash again.
    - **Recommendation:** every building fruits a round after it's planted, the opener too, and round 1 has no clash. Both openers sprout in view, and the first fight is round 2's (the concept, section 3.2). It keeps V3-Q2's and V3-Q3's reasons with one rule and no exception.
    - **Alternatives:** as decided, with the rerun.
    - **Either way:** S1 builds the timing as data (`v3.fruitFromRound`: 1 or 2), so the playtest can try the other with `?proto=v3.fruitFromRound:2`.
 
-The rest are first guesses the concept made. Change any at the review. Otherwise they stand:
+The rest are first guesses the concept made. **They stand** (the user, 2026-11-04, "Start S1"), unless the user changes one later:
 
 2. **The general's gold as a tell:** its gold at the start of its turn, not what's left once it has planned. What's left would give away the price of what it planted, though sums blur it (a Burrow and a Cellar cost 260, the same as an Amanita Lodge). Used in S2.
 3. **The counter-builder is the Blightwright,** with the roster's cards in place of its Rootbreaker opener. The alternative is the Pale Sovereign, whose doctrine-led weights fit, but it brings the boss's rules. Used in S6.
