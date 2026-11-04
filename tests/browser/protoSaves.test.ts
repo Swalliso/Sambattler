@@ -4,7 +4,7 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { chromium } from 'playwright';
 import type { Browser, Page } from 'playwright';
-import { RUN_KEY, chooseNode, createRun } from '../../src/run/index.ts';
+import { BATTLE_KEY, RUN_KEY, chooseNode, createRun } from '../../src/run/index.ts';
 import { nodeContent } from '../../tools/lib/content.ts';
 import { PROTO, closeServers, serve } from './serve.ts';
 
@@ -59,6 +59,17 @@ describe('prototype runs and saves', () => {
     const real = `dev/${RUN_KEY}`;
     expect(await openRun(`${dev}/?scene=run&debug=1&proto=${PROTO}`, { [real]: unbegun, [`dev/proto=${PROTO}/${RUN_KEY}`]: begun })).toBe(1);
     expect(await stored(real)).toBe(unbegun);
+  });
+
+  // R2b/T100 (§13.8): the battle save is `v: 3` there too, under the prototype's own key
+  it('saves a prototype battle under its own key, in v: 3', async () => {
+    const { begun, unbegun } = savedRuns();
+    const space = `dev/proto=${PROTO}/`;
+    expect(await openRun(`${dev}/?scene=run&debug=1&proto=${PROTO}`, { [`dev/${RUN_KEY}`]: unbegun, [space + RUN_KEY]: begun })).toBe(1);
+    expect(await page.evaluate(() => window.__GAME__!.phase)).toBe('planning');
+    expect(JSON.parse((await stored(space + BATTLE_KEY))!)).toMatchObject({ v: 3, round: 1, phase: 'planning' });
+    expect(await stored(`dev/${BATTLE_KEY}`)).toBeNull();
+    expect(await stored(BATTLE_KEY)).toBeNull();
   });
 
   it("keeps the dev site's real save for a run without a prototype", async () => {

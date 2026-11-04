@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
+import { battleSave, powerSave, resumeBattle } from '../../src/run/index.ts';
 import { hashValue } from '../../src/sim/hash.ts';
 import { hashState, legalPlots, restore, runHeadless, snapshot, step } from '../../src/sim/index.ts';
 import type { BattleState, Command, HeadlessUntil } from '../../src/sim/index.ts';
-import { begin, playerScript, scriptedBattle } from '../helpers.ts';
+import { begin, content, humanPlan, playerScript, powerCommand, runBattle, scriptedBattle } from '../helpers.ts';
 
 // round 2 plants a Sporeling Burrow, so its clash differs from round 1's, and from round 3 the colonies stand still
 const plot = legalPlots(scriptedBattle(), 'player', 'sporelingBurrow')[0]!;
@@ -106,5 +107,53 @@ describe('determinism in rounds (SPEC §13.3, §15.5)', () => {
     const { third, fourth } = quietOnce();
     const differs = fourth.hashes.findIndex((h, t) => h !== third.hashes[t]);
     expect([fourth.hashes.length, differs]).toEqual([third.hashes.length, -1]);
+  });
+});
+
+// R2b/T092: a run's battle with your power fired 30 ticks into round 2's clash, saved where the page saves it
+describe('resume from each save point (§8.9, §15.5)', () => {
+  /** Queues your power for the next tick 30 ticks into round 2's clash, unless it's used or already queued; returns it. */
+  function powerAt30(s: BattleState): Command | null {
+    if (s.phase !== 'clash' || s.round !== 2 || s.tick - s.clash!.startTick !== 30) return null;
+    if (s.sides.player.powerUsed || s.queue.some((c) => c.side === 'player' && c.type === 'power')) return null;
+    return powerCommand(s);
+  }
+
+  /** Plays the battle to its end; with `saves`, keeps round 2's: its planning after the plant, Begin, and the power's. */
+  function play(s: BattleState, saves?: Record<string, string>): void {
+    let begun: BattleState | null = null;
+    while (s.phase !== 'ended') {
+      if (s.phase === 'planning') {
+        const round2 = saves && s.round === 2;
+        humanPlan(s, () => { if (round2) saves.planning = JSON.stringify(battleSave(s)); });
+        if (round2) { saves.begin = JSON.stringify(battleSave(s)); begun = structuredClone(s); }
+        continue;
+      }
+      const power = powerAt30(s);
+      step(s);
+      if (saves && power) saves.power = JSON.stringify(powerSave(begun!, power));
+      // a save requested in the aftermath writes nothing, so the latest is still the power's
+      if (saves && s.phase === 'aftermath' && s.round === 2) {
+        expect(battleSave(s)).toBeNull();
+        saves.aftermath ??= saves.power!;
+      }
+    }
+  }
+
+  it('a resume from round 2\'s planning, its Begin, the power and its aftermath matches the uninterrupted battle', () => {
+    const whole = runBattle();
+    const saves: Record<string, string> = {};
+    play(whole, saves);
+    expect(Object.keys(saves)).toEqual(['planning', 'begin', 'power', 'aftermath']);
+    // the power fired: it ran in round 2, and nothing of yours was refused
+    expect(whole.log.some((c) => c.side === 'player' && c.type === 'power' && c.round === 2)).toBe(true);
+    expect(whole.stats.player.rejectedCommands).toBe(0);
+    for (const [at, text] of Object.entries(saves)) {
+      const back = resumeBattle(content, text, whole.config);
+      expect(back, at).not.toBeNull();
+      play(back!);
+      expect(back!.outcome, at).toEqual(whole.outcome);
+      expect(hashState(back!), at).toBe(hashState(whole));
+    }
   });
 });

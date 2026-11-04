@@ -1,13 +1,15 @@
 // The run controller (SPEC §8): shows the current run screen, plays each battle in rounds on the battle
 // scene (`openRoundBattle`), with the run's lives under your Heartcap, applies results through the pure run
-// layer, and autosaves at every node boundary. Until R2b's S8 saves a battle between rounds (T095, T096), a
-// battle in progress isn't saved: a reload restarts it at round 1's planning, with a notice when an older
-// battle save was found (SPEC §8.9). One play clock times the run's battles for the summary (§8.2, T109).
+// layer, and autosaves at every node boundary. A battle saves between rounds (§8.9, T096): at each planning
+// phase, at Begin and when your power fires, and a reload resumes it there, or restarts it at round 1's
+// planning with a notice when its save can't be rebuilt. Its end is the run's node boundary, saved before its
+// report, so a reload on the report opens the next screen (R2-Q22, T097). One play clock times the run's
+// battles for the summary (§8.2, T109).
 import type { Atlas } from '../render/atlas.ts';
 import { runItBackSetup, setLastSetup, updateRecords } from '../meta/index.ts';
 import {
-  BATTLE_KEY, battleRewards, chooseNode, clearBattle, clearRun, createRun, currentRow, eventChoose, finishBattle, groveChoose, promptAnswer,
-  recoverPendingChoice, rewardRules, saveRun, spoilsPick, spoilsReroll,
+  BATTLE_KEY, battleSave, chooseNode, clearBattle, clearRun, createRun, eventChoose, finishBattle, groveChoose, powerSave, promptAnswer,
+  recoverPendingChoice, resumeBattle, saveBattle, saveRun, spoilsPick, spoilsReroll,
 } from '../run/index.ts';
 import type { RunState, Storage } from '../run/index.ts';
 import type { RunEffect } from '../data/schema.ts';
@@ -26,7 +28,8 @@ import { storageKey } from './channel.ts';
 import { openRoundBattle } from './loop.ts';
 import type { RoundBattle } from './loop.ts';
 import { PlayClock, readoutOf } from './playTime.ts';
-import type { PlayTimeReadout } from '../ui/report.ts';
+import { resultNotice, runLinesOf } from '../ui/report.ts';
+import type { PlayTimeReadout, RunLines } from '../ui/report.ts';
 import { settingsStore } from './settings.ts';
 import { soundPrefs, soundToggle } from './sound.ts';
 
@@ -76,7 +79,17 @@ interface EventTrail { before: RunSnapshot; event: string | null; title: string;
 
 export class RunController {
   private battle: RoundBattle | null = null;
+  /** The battle on screen saves between rounds: in normal play, but not at a checkpoint's capture (`scene=run&round=`). */
+  private saves = false;
+  /** The battle as its clash's Begin left it, for the save when your power fires (R2-Q22). */
+  private begun: BattleState | null = null;
+  /** The battle just ended, as its end recorded it in the run, for its report (T098). */
+  private ended: RunLines | null = null;
+  /** The tab's visibility listener while a battle is on screen, removed with it. */
+  private unwatch: (() => void) | null = null;
   private rewardRecoveryNotice: string | null = null;
+  /** A reload on a battle's report: the battle's result, on the next screen (R2-Q22). */
+  private reportNotice: string | null = null;
   /** A migrated save's notice (§8.9, #32), shown on the run's first screen. */
   private runNotice: string | null = null;
   private trail: EventTrail | null = null;
@@ -96,6 +109,13 @@ export class RunController {
     this.runNotice = notice ?? null;
     this.rewardRecoveryNotice = recoverPendingChoice(env.content, run);
     if (this.rewardRecoveryNotice) this.save();
+    // the run moved on as the battle ended, so its next screen says how it went (§8.9, R2-Q22)
+    if (run.reportOpen) {
+      const last = run.battles.at(-1);
+      this.reportNotice = last ? resultNotice(last, run) : null;
+      delete run.reportOpen;
+      this.save();
+    }
   }
 
   /** The battle on screen, if any (for the debug bridge). */
@@ -140,6 +160,9 @@ export class RunController {
   private stopBattle(): void {
     this.battle?.stop();
     this.battle = null;
+    this.unwatch?.();
+    this.unwatch = null;
+    this.begun = null;
   }
 
   /** Shows the run's current screen behind a spore wipe (src/ui/motion.ts). */
@@ -211,8 +234,10 @@ export class RunController {
       el.prepend(sky);
       requestAnimationFrame(() => sporeLayer(sky, { scale: 3, density: 1.2, still: this.env.still }));
       if (this.rewardRecoveryNotice) el.prepend(h('div', { class: 'hint', id: 'reward-recovery', role: 'status' }, this.rewardRecoveryNotice));
+      if (this.reportNotice) el.prepend(h('div', { class: 'hint', id: 'report-recovery', role: 'status' }, this.reportNotice));
       if (this.runNotice) el.prepend(h('div', { class: 'hint', id: 'run-notice', role: 'status' }, this.runNotice));
       this.runNotice = null;
+      this.reportNotice = null;
       app.replaceChildren(el);
       // run screens have no game loop: report readiness on the next frame
       requestAnimationFrame(() => this.onFrame?.());
@@ -220,57 +245,98 @@ export class RunController {
   }
 
   /**
-   * The battle on R2a's battle scene (§10.2), from round 1's planning, or the first battle at `scene=run`'s
-   * checkpoint (T157): the general has planned, and a bot player plans and begins on its own. Your lives show
-   * under your Heartcap (§8.5, T106), and the battle feeds the run's play clock (T109). A battle save found here
-   * can't be restored (R2b saves none until S8), so it's cleared and the battle restarts with the notice (§8.9).
+   * The battle on R2a's battle scene (§10.2), where its save left it, else from round 1's planning, or the first
+   * battle at `scene=run`'s checkpoint (T157): the general has planned, and a bot player plans and begins on its
+   * own. Your lives show under your Heartcap (§8.5, T106), and the battle feeds the run's play clock (T109). A
+   * battle save that can't be rebuilt, of an older build's among them, is replaced as the battle restarts at
+   * round 1's planning, with the notice (§8.9, A089). A checkpoint's battle is a capture, and saves nothing.
    */
   private startBattle(): void {
     if (this.run.screen.kind !== 'battle') return;
-    const { content, atlas } = this.env;
-    const restarted = this.env.persist && this.env.storage.get(BATTLE_KEY) !== null;
-    if (restarted) clearBattle(this.env.storage);
+    const { content, atlas, storage, persist } = this.env;
+    const config = this.run.screen.config;
     const opening = this.opening;
     this.opening = null;
-    const state = opening?.state ?? createBattle(content, this.run.screen.config);
+    const saved = persist ? storage.get(BATTLE_KEY) : null;
+    const resumed = saved !== null && !opening ? resumeBattle(content, saved, config) : null;
+    const restarted = saved !== null && !resumed;
+    if (restarted) clearBattle(storage);
+    const state = opening?.state ?? resumed ?? createBattle(content, config);
+    this.saves = persist && !opening;
+    this.ended = null;
+    // a battle resumed at its clash's first tick is as Begin left it, for the power's save
+    this.begun = state.phase === 'clash' ? structuredClone(state) : null;
     this.battle = openRoundBattle(content, atlas, state, {
-      actions: { continueRun: () => this.finish(), runNote: (st) => this.runNoteOf(st) },
+      actions: { continueRun: () => this.finish(), runLines: () => this.ended },
       still: this.env.still, debug: this.env.debug, onFrame: () => this.onFrame?.(),
       lives: { ...this.run.lives }, runClock: this.clock, holdAftermath: opening?.holdAftermath ?? false,
+      onStep: (st, was) => this.stepped(st, was),
     });
     // as a single battle's: planning held until input, and a pause never carries into a clash (plan Call 14)
     if (opening?.hold) {
       if (state.phase === 'planning') this.battle.session.hold = true;
       else this.battle.session.paused = true;
     }
+    if (this.saves) {
+      // round 1's planning, once the general has planned (§8.9); a resumed battle's save stands
+      if (!resumed) this.saveBattle(state);
+      // a save requested as the tab hides: the planning so far, or nothing new in a clash or an aftermath
+      const hidden = () => { if (document.visibilityState === 'hidden') this.saveBattle(state); };
+      document.addEventListener('visibilitychange', hidden);
+      this.unwatch = () => document.removeEventListener('visibilitychange', hidden);
+    }
     if (restarted) this.battle.view.notice('save-recovery', RESTART_NOTICE);
     if (this.runNotice) this.battle.view.notice('run-notice', this.runNotice);
     this.runNotice = null;
   }
 
-  /** What the battle on screen means for the run, for its report (the rewards table, SPEC §8.5, §8.6). */
-  private runNoteOf(state: BattleState): string {
-    const run = this.run;
-    const row = currentRow(run) - 1;
-    const node = run.route[row]?.[run.path[row]!];
-    if (!node || !state.outcome) return '';
-    const r = battleRewards(node.kind, state.outcome.winner, state.outcome.by, rewardRules(this.env.content));
-    if (state.outcome.winner !== 'player') {
-      const left = run.lives.left - 1;
-      const end = left <= 0 || node.kind === 'boss' ? ' The run ends.' : '';
-      return `You lose a Regrowth: ${Math.max(0, left)} of ${run.lives.max} left.${end}`;
-    }
-    const amber = r.amber ? ` · +${r.amber} Amber` : r.amberChance ? ` · ${Math.round(r.amberChance * 100)}% chance of +1 Amber` : '';
-    const plot = node.kind !== 'boss' && run.plotsGained < this.env.content.balance.rounds.plotGrowth.max ? ' · your colony gains a plot' : '';
-    return `+${r.spores} Spores${amber}${plot}.`;
+  /** The battle's save at a save point (§8.9): none later in a clash or in an aftermath, so the latest stands. */
+  private saveBattle(state: BattleState): void {
+    const save = battleSave(state);
+    if (save) saveBattle(this.env.storage, save);
   }
 
-  /** The report's Continue: applies the battle to the run. */
-  private finish(): void {
-    const state = this.battle?.state;
-    if (!state?.outcome) return;
+  /**
+   * After each step of the battle (§8.9, T096, T097): a round's opening and each planning command save the planning
+   * so far, Begin saves the clash's first tick, and your power saves as it runs, at its tick. The battle's end is
+   * the run's node boundary.
+   */
+  private stepped(state: BattleState, was: BattleState['phase']): void {
+    if (state.phase === 'ended') { this.battleEnded(state); return; }
+    if (!this.saves) return;
+    if (state.phase === 'planning') this.saveBattle(state);
+    else if (state.phase === 'clash' && was === 'planning') {
+      this.begun = structuredClone(state);
+      this.saveBattle(state);
+    } else if (state.phase === 'clash' && this.begun) {
+      // this tick's commands are the log's last
+      for (let i = state.log.length - 1; i >= 0 && state.log[i]!.tick === state.tick; i--) {
+        const c = state.log[i]!;
+        if (c.side === 'player' && c.type === 'power') saveBattle(this.env.storage, powerSave(this.begun, c));
+      }
+    }
+  }
+
+  /**
+   * The battle's end, before its report (§8.9, A081, R2-Q22): the life, the Spores, the Amber roll and the spoils
+   * dealt (`finishBattle`), the run saved and the battle's save cleared. The report reads the new BattleRecord.
+   */
+  private battleEnded(state: BattleState): void {
+    const run = this.run;
+    if (run.screen.kind !== 'battle' || !state.outcome) return;
+    const plots = run.plotsGained;
+    const record = finishBattle(this.env.content, run, state);
+    this.ended = runLinesOf(record, run, plots);
+    run.reportOpen = true;
+    this.save();
     if (this.env.persist) clearBattle(this.env.storage);
-    this.act(() => finishBattle(this.env.content, this.run, state));
+  }
+
+  /** The report's Continue: the run's next screen, which the battle's end has saved (T097). */
+  private finish(): void {
+    if (!this.ended) return;
+    this.ended = null;
+    this.act(() => { delete this.run.reportOpen; });
   }
 
   private abandon(): void {
