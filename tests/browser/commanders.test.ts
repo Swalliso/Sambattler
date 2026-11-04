@@ -151,8 +151,8 @@ describe('the Underroot', () => {
     await p.locator('[data-commander="armilla"]').click();
     expect(await p.locator('[data-commander="armilla"]').getAttribute('aria-pressed')).toBe('true');
     // a starter building's tooltip says what it does
-    await p.locator('[data-commander="armilla"] .uc-starter [data-building="puffballMortar"]').hover();
-    expect(await p.locator('#underroot-tip').textContent()).toContain('Puffball Mortar');
+    await p.locator('[data-commander="armilla"] .uc-starter [data-building="bursterPod"]').hover();
+    expect(await p.locator('#underroot-tip').textContent()).toContain('Burster Pod');
 
     await p.locator('#tab-bans').click();
     expect(await p.locator('#bans').isVisible()).toBe(true);
@@ -168,7 +168,7 @@ describe('the Underroot', () => {
     await p.locator('#underroot-begin').click();
     await p.waitForSelector('#route');
     const run = await p.evaluate(() => window.__GAME__!.run());
-    expect(run).toMatchObject({ commander: 'armilla', bans: ['sporelingBurrow', 'amanitaLodge'], kit: ['capguardHall', 'truffleCellar', 'puffballMortar'] });
+    expect(run).toMatchObject({ commander: 'armilla', bans: ['sporelingBurrow', 'amanitaLodge'], kit: ['capguardHall', 'truffleCellar', 'bursterPod'] });
   });
 
   it('switching commander drops bans that are in the new core; Back returns to the title; the tip shows once', async () => {

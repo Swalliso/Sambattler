@@ -245,7 +245,8 @@ describe('motion', () => {
   });
 
   it('rewards roll up to their totals, and show them at once under ?test=1', async () => {
-    const q = '/?scene=summary&seed=6&autoplay=run';
+    // seed 2's run earns Spores under S12's retune B (seed 6's loses every battle now)
+    const q = '/?scene=summary&seed=2&autoplay=run';
     const p = await open(`${q}&test=1`);
     const spores = Number(await p.locator('#run-spores').textContent());
     expect(spores).toBeGreaterThan(0);
