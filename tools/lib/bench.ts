@@ -1,13 +1,14 @@
 // Performance measurement for battles in rounds, shared by `npm run bench` and the round G11 test (SPEC §13.7,
 // §15.4; R2a plan Call 24, T113, T114). Its cases: bench-300's clash, played as repeated fresh clashes and
 // weighted by live units (A112, A119); R1's full-colony clash on the round loop, its arrival timed (R1-Q5, #7,
-// A200); the general's planning turn; one battle with bots on both sides; and the sim part of a planning
-// command (A113).
+// A200); the general's planning turn; one battle with bots on both sides; the sim part of a planning
+// command (A113); and a resume's replay of a round-9 planning save (§8.9, A088), which is report-only.
 import { performance } from 'node:perf_hooks';
 import type { ScenarioDef } from '../../src/data/schema.ts';
+import { battleSave, resumeBattle } from '../../src/run/index.ts';
 import { basePlots, buildable, colonyPlots } from '../../src/sim/colony.ts';
 import {
-  SIDES, commandStamp, createFromScenario, formationOf, mergePreview, queueCommand, restore, snapshot, step,
+  SIDES, commandStamp, createFromScenario, formationOf, mergePreview, queueCommand, restore, runHeadless, snapshot, step,
 } from '../../src/sim/index.ts';
 import type { BattleState, Content, Side } from '../../src/sim/index.ts';
 import { FULL_COLONY } from './clash.ts';
@@ -297,6 +298,43 @@ export function planCommand(content: Content, runs: number): PlanCommandCase[] {
   });
 }
 
+// ---- a resume ----
+
+/** About how long a resume's replay may take (§8.9, A088): past it, save a hash-checked snapshot at each planning start, or say "Restoring the battle…". */
+export const RESUME_ABOUT_MS = 1000;
+
+export interface ResumeCase {
+  seed: number;
+  /** The rounds replayed before the saved planning, and their clash ticks. */
+  rounds: number;
+  ticks: number;
+  /** The save's size as the page stores it. */
+  bytes: number;
+  ms: number;
+}
+
+/**
+ * A resume's replay (§8.9, §13.7, §15.4, A088): the first seed's battle of `bot:balanced` against the scripted
+ * general that reaches round 9, saved at round 9's planning as the page saves it, then rebuilt from the save by
+ * `resumeBattle`: eight rounds replayed from their commands, each clash tick by tick, and the hash checked. It's
+ * timed after a warm one.
+ */
+export function resumeReplay(content: Content): ResumeCase {
+  for (let seed = 1; seed <= 50; seed++) {
+    const s = buildRoundState(content, { seed, player: 'bot:balanced', enemy: 'general:scripted' });
+    runHeadless(s, { until: { round: 8 } });
+    if (s.phase !== 'aftermath' || s.outcome) continue;
+    step(s);
+    const text = JSON.stringify(battleSave(s));
+    if (!resumeBattle(content, text, s.config)) throw new Error(`seed ${seed}'s round-9 save didn't resume`);
+    const t0 = performance.now();
+    resumeBattle(content, text, s.config);
+    const ms = performance.now() - t0;
+    return { seed, rounds: 8, ticks: s.tick, bytes: text.length, ms };
+  }
+  throw new Error('no seed of 1–50 reaches round 9');
+}
+
 // ---- the whole bench ----
 
 export interface RoundBench {
@@ -306,6 +344,7 @@ export interface RoundBench {
   turns: GeneralTurns;
   battle: { wallMs: number; rounds: number };
   plans: PlanCommandCase[];
+  resume: ResumeCase;
 }
 
 /** Every case, `quick` with G11's quick ticks, one seed a general and fewer plants (verify's run, §15.1). */
@@ -318,6 +357,7 @@ export function runRoundBench(content: Content, opts: { quick: boolean }): Round
     turns: generalTurns(content, opts.quick ? [1] : [1, 2, 3]),
     battle: fullBattle(content),
     plans: planCommand(content, opts.quick ? 20 : 50),
+    resume: resumeReplay(content),
   };
 }
 

@@ -309,7 +309,7 @@ export function finishBattle(content: Content, run: RunState, state: BattleState
   const record: BattleRecord = {
     index, row, kind: node.kind, map: map.id, mapName: map.name, lanes: map.lanes.length,
     general: node.general ?? 'scripted', winner, by, finalHash: hashState(state), rounds: structuredClone(state.rounds),
-    heartcaps: { player: heartcap('player'), enemy: heartcap('enemy') }, lifeLost, damageByBuilding: damage, drafted, spores: r.spores,
+    heartcaps: { player: heartcap('player'), enemy: heartcap('enemy') }, lifeLost, damageByBuilding: damage, drafted, spores: r.spores, amber,
   };
   if (node.elite) record.elite = node.elite;
   const opening = state.sides.enemy.ai?.counter?.opening;

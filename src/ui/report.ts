@@ -4,12 +4,15 @@
 // hanging in ash, each Heartcap's HP after the round as a line, Sporestorm rounds marked and, on Twin Roots,
 // each lane's result as a half-pip under its column; then damage by building over the battle, units fielded
 // and merged from the fielded record, gold by source with the gold banked at each Begin (R2-Q2), the general's
-// counters by round, and the play clock's line, which the app passes in (X6, T128). There are no lives in a
-// single battle (R2b). Again replays the seed and Rematch draws a new one, both on the same parameters. Its
+// counters by round, and the play clock's line, which the app passes in (X6, T128). A run's battle adds what it
+// paid to the banner and what it cost under it, from its BattleRecord, since the battle's end recorded it before
+// the report (R2-Q22, T098); there are no lives in a single battle. Again replays the seed and Rematch draws a
+// new one, both on the same parameters. Its
 // figures are plain functions of the state, which `tests/unit/report.test.ts` reads. The banner's art and the
 // MVP callout are v1's, which the run's summary shares.
 import type { Content } from '../data/registry.ts';
 import type { Atlas } from '../render/atlas.ts';
+import type { BattleRecord, RunState } from '../run/index.ts';
 import { spriteToCanvas } from '../render/atlas.ts';
 import { sporeLayer } from '../render/spores.ts';
 import { POWER_SOURCE_ID, SIDES } from '../sim/index.ts';
@@ -18,7 +21,7 @@ import { h } from './h.ts';
 import { KIND_LABEL } from './doctrine.ts';
 import { resultOf, stormText } from './hud/explain.ts';
 import type { Result } from './hud/explain.ts';
-import { LIVES_TIP } from './words.ts';
+import { LIVES_TIP, battleOutcome } from './words.ts';
 
 const SVG = 'http://www.w3.org/2000/svg';
 const COLOR: Record<Side, string> = { player: '#8a4fd8', enemy: '#7d8a7a' };
@@ -229,6 +232,57 @@ function counterSection(content: Content, state: BattleState): HTMLElement {
   return h('section', { id: 'report-counters' }, h('h3', null, 'The general countered…'), h('ul', { class: 'counterlist' }, ...lines));
 }
 
+/** A run battle's figures for its report (§8.5, §8.6, T098), from its BattleRecord and the run as the battle's end left it. */
+export interface RunLines {
+  spores: number;
+  /** The Amber the battle's end rolled, an elite's chance included (R2-Q22). */
+  amber: number;
+  lifeLost: boolean;
+  /** Your lives after the battle. */
+  lives: { left: number; max: number };
+  /** A won battle's sprawl added a plot (#18). */
+  plot: boolean;
+  /** The battle ended the run. */
+  ended: boolean;
+}
+
+/** A run battle's lines: `plotsBefore` is the run's sprawl before the battle. */
+export function runLinesOf(record: Pick<BattleRecord, 'spores' | 'amber' | 'lifeLost'>, run: Pick<RunState, 'lives' | 'plotsGained' | 'outcome'>, plotsBefore: number): RunLines {
+  return {
+    spores: record.spores, amber: record.amber ?? 0, lifeLost: record.lifeLost, lives: { ...run.lives }, plot: run.plotsGained > plotsBefore, ended: !!run.outcome,
+  };
+}
+
+/** What a won run battle paid, for its banner: its Spores and the Amber rolled. A lost one pays nothing. */
+const paid = (r: { spores: number; amber?: number }): string => `+${r.spores} Spores${r.amber ? ` · +${r.amber} Amber` : ''}`;
+
+/**
+ * The banner's line (§10.5): the rounds, the damage both ways and the gold earned, and in a run what a won battle
+ * paid, from its record (T098).
+ */
+export function bannerLine(state: BattleState, run?: RunLines): string {
+  const earned = Object.values(state.stats.player.goldEarned).reduce((a, b) => a + b, 0);
+  const n = state.rounds.length;
+  const line = `${n} round${n === 1 ? '' : 's'} · you dealt ${dealtBy(state, 'player')} and took ${dealtBy(state, 'enemy')} · ${earned} gold earned`;
+  return run && !run.lifeLost ? `${line} · ${paid(run)}` : line;
+}
+
+/** The run's line under the report (§8.5): the Regrowth a loss cost and those left, or what a win adds to the run. */
+export function runLine(run: RunLines): string | null {
+  if (run.lifeLost) return `You lose a Regrowth: ${run.lives.left} of ${run.lives.max} left.${run.ended ? ' The run ends.' : ''}`;
+  if (run.plot) return 'Your colony gains a plot.';
+  return run.ended ? 'The run is won.' : null;
+}
+
+/**
+ * The one-line notice on the next screen after a reload on a run battle's report (§8.9, R2-Q22), from its record:
+ * "Won by Rout in round 6 · +20 Spores", or "Lost by Decision · a Regrowth lost, 2 of 3 left".
+ */
+export function resultNotice(record: BattleRecord, run: Pick<RunState, 'lives'>): string {
+  const what = record.lifeLost ? `a Regrowth lost, ${run.lives.left} of ${run.lives.max} left` : paid(record);
+  return `${battleOutcome(record)} · ${what}`;
+}
+
 /** A single battle's report has Again and Rematch; a run's battle has Continue in their place, with what it meant for the run. */
 export interface RoundsReportActions {
   /** The same seed and parameters. */
@@ -237,8 +291,8 @@ export interface RoundsReportActions {
   rematch?(): void;
   /** In a run: on to the run's next screen. */
   continueRun?(): void;
-  /** In a run: one line on what the battle means for it, such as its Spores or a lost Regrowth (§8.5, §8.6). */
-  runNote?: string;
+  /** In a run: what the battle paid and cost, from its record (§8.5, §8.6, T098). */
+  run?: RunLines;
 }
 
 /** The play clock's readout (§8.2, X6, RB-Q3; T128), which the app passes in, since `src/ui` can't import `src/app`. */
@@ -273,7 +327,6 @@ export function roundsReport(content: Content, state: BattleState, actions: Roun
   const o = state.outcome!;
   const won = o.winner === 'player';
   const st = state.stats;
-  const sum = (x: Record<string, number>) => Object.values(x).reduce((a, b) => a + b, 0);
   const damage: Bar[] = [], gold: Bar[] = [];
   for (const side of SIDES) {
     for (const r of damageByType(content, state, side).slice(0, 5)) damage.push({ label: r.label, value: r.value, side });
@@ -283,14 +336,14 @@ export function roundsReport(content: Content, state: BattleState, actions: Roun
   const mvp = mvpOf(Object.fromEntries(mine.map((r) => [r.type, r.value])), Object.fromEntries(mine.map((r) => [r.type, r.count])));
   const row = (label: string, f: (s: Side) => string | number) => h('tr', null, h('td', null, label), h('td', null, String(f('player'))), h('td', null, String(f('enemy'))));
   const banked = bankedByRound(state);
+  const runText = actions.run ? runLine(actions.run) : null;
   const card = h('div', { class: 'reportcard rounds-report', id: 'report', role: 'dialog', 'aria-label': 'Battle report' },
     h('div', { class: `banner reveal ${won ? 'win' : 'loss'}`, style: '--d:0' },
       outcomeArt(atlas, won),
       h('div', { class: 'banner-text' },
         h('h1', { class: won ? 'win' : 'loss', id: 'end-title' }, won ? 'Victory' : 'Defeat'),
         h('div', { class: 'how', id: 'end-how' }, outcomeText(state)),
-        h('div', { class: 'banner-meta' },
-          h('span', { class: 'hint' }, `${state.rounds.length} round${state.rounds.length === 1 ? '' : 's'} · you dealt ${dealtBy(state, 'player')} and took ${dealtBy(state, 'enemy')} · ${sum(st.player.goldEarned)} gold earned`))),
+        h('div', { class: 'banner-meta' }, h('span', { class: 'hint' }, bannerLine(state, actions.run)))),
       mvpCallout(content, atlas, mvp, 'this battle'),
     ),
     h('div', { class: 'reveal', style: '--d:1' },
@@ -320,7 +373,7 @@ export function roundsReport(content: Content, state: BattleState, actions: Roun
       ),
     ),
     // a lost Regrowth carries lives' tooltip, as everywhere Regrowths show (#56)
-    actions.runNote ? h('div', { class: 'hint reveal', id: 'report-run', style: '--d:3', title: actions.runNote.includes('Regrowth') ? LIVES_TIP : null }, actions.runNote) : null,
+    runText ? h('div', { class: 'hint reveal', id: 'report-run', style: '--d:3', title: actions.run!.lifeLost ? LIVES_TIP : null }, runText) : null,
     h('div', { class: 'actions' },
       ...(actions.continueRun
         ? [h('button', { class: 'btn primary', onclick: actions.continueRun, id: 'report-continue', title: 'On to the run' }, 'Continue')]

@@ -6,11 +6,13 @@
 // in Node without a page.
 import { describe, expect, it } from 'vitest';
 import type { ScenarioDef } from '../../src/data/schema.ts';
-import { createFromScenario, runHeadless, step } from '../../src/sim/index.ts';
+import { chooseNode, createRun, finishBattle } from '../../src/run/index.ts';
+import type { RunState } from '../../src/run/index.ts';
+import { createBattle, createFromScenario, runHeadless, step } from '../../src/sim/index.ts';
 import type { BattleState, Side } from '../../src/sim/index.ts';
 import { resultOf } from '../../src/ui/hud/explain.ts';
-import { bankedByRound, goldBySource, outcomeText, roundChart } from '../../src/ui/report.ts';
-import { content, finishRound, fromScenario, playerScript, scriptedBattle } from '../helpers.ts';
+import { bankedByRound, bannerLine, goldBySource, outcomeText, resultNotice, roundChart, runLine, runLinesOf } from '../../src/ui/report.ts';
+import { command, content, finishRound, fromScenario, playerScript, scriptedBattle } from '../helpers.ts';
 
 /** Plays the round to its end and steps the aftermath, which ends the battle after its last round. */
 function finish(s: BattleState): BattleState {
@@ -94,3 +96,59 @@ describe('the outcome (§10.4, §6.5)', () => {
     expect(text).toContain('65%');
   });
 });
+
+// R2b/T094, T098: a run battle's report reads its BattleRecord, written as the battle ended (R2-Q22)
+describe("a run battle's lines (§10.4, §10.5, §8.5)", () => {
+  /** A run at its first node of `kind`, with that battle ended at once: `winner` by Rout, so it has no rounds to name. */
+  function endedAt(seed: number, kind: 'battle' | 'elite', winner: Side): { run: RunState; state: BattleState } {
+    const run = createRun(content, { seed });
+    const row = run.route.findIndex((r) => r.some((n) => n.kind === kind));
+    run.path = Array.from({ length: row }, () => 0);
+    chooseNode(content, run, run.route[row]!.findIndex((n) => n.kind === kind));
+    if (run.screen.kind !== 'battle') throw new Error('not in battle');
+    const state = createBattle(content, run.screen.config);
+    state.phase = 'ended';
+    state.outcome = { winner, by: 'rout', round: 5 };
+    return { run, state };
+  }
+
+  it("a loss's name the Regrowth lost and those left, and pay nothing; a single battle's say nothing of lives", () => {
+    // a run's first battle played by a human who plants nothing, so the general routs it
+    const run = createRun(content, { seed: 9 });
+    chooseNode(content, run, 0);
+    if (run.screen.kind !== 'battle') throw new Error('not in battle');
+    const state = createBattle(content, run.screen.config);
+    while (state.phase !== 'ended') {
+      if (state.phase !== 'planning') step(state);
+      else command(state, 'player', state.sides.player.draft ? { type: 'draftSkip' } : { type: 'beginClash' });
+    }
+    expect(state.outcome).toMatchObject({ winner: 'enemy', by: 'rout' });
+    const plots = run.plotsGained;
+    const record = finishBattle(content, run, state);
+    const lines = runLinesOf(record, run, plots);
+    expect(runLine(lines)).toBe('You lose a Regrowth: 2 of 3 left.');
+    expect(bannerLine(state, lines)).not.toMatch(/Spores|Amber/);
+    expect(resultNotice(record, run)).toBe(`Lost by Rout in round ${state.outcome!.round} · a Regrowth lost, 2 of 3 left`);
+    expect(bannerLine(state)).not.toMatch(/Regrowth|Spores|Amber/);
+  });
+
+  it("a win's banner has its Spores and the Amber the battle's end rolled, an elite's chance included (R2-Q22)", () => {
+    const rolled = new Set<number>();
+    for (let seed = 1; seed <= 40 && rolled.size < 2; seed++) {
+      const { run, state } = endedAt(seed, 'elite', 'player');
+      const amber = run.amber, plots = run.plotsGained;
+      const record = finishBattle(content, run, state);
+      expect(record.amber, `seed ${seed}`).toBe(run.amber - amber);
+      rolled.add(record.amber!);
+      const banner = bannerLine(state, runLinesOf(record, run, plots));
+      expect(banner).toContain(`+${record.spores} Spores`);
+      expect(banner.includes('Amber'), `seed ${seed}: ${banner}`).toBe(record.amber! > 0);
+      if (record.amber) expect(banner).toContain(`+${record.amber} Amber`);
+      expect(runLine(runLinesOf(record, run, plots))).toBe('Your colony gains a plot.');
+      expect(resultNotice(record, run)).toBe(`Won by Rout · +${record.spores} Spores${record.amber ? ` · +${record.amber} Amber` : ''}`);
+    }
+    // the elite's 25% chance came up both ways
+    expect([...rolled].sort()).toEqual([0, 1]);
+  });
+});
+

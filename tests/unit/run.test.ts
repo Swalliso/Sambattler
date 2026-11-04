@@ -2,15 +2,15 @@
 // events, saves and whole runs played headless. Runs saved before R2 are in migrate.test.ts.
 import { describe, expect, it } from 'vitest';
 import {
-  MemoryStorage, battleConfig, battleProfile, battleRewards, chooseNode, createRun, eventChoose, finishBattle, generalKit, groveChoose,
-  groveProblem, hashRun, loadRun, mapPool, outcomeAvailable, promptAnswer, recoverPendingChoice, runPool, saveRun, simulateRun, spoilsPick,
-  spoilsReroll,
+  BATTLE_KEY, MemoryStorage, battleConfig, battleSave, battleProfile, battleRewards, chooseNode, createRun, eventChoose, finishBattle, generalKit, groveChoose,
+  groveProblem, hashRun, loadRun, mapPool, outcomeAvailable, promptAnswer, recoverPendingChoice, resumeBattle, runPool, saveBattle, saveRun, simulateRun,
+  spoilsPick, spoilsReroll,
 } from '../../src/run/index.ts';
 import type { RunState } from '../../src/run/index.ts';
-import { analyzeFielded, basePlots, createBattle, makeRoundConfig, planningView, runHeadless } from '../../src/sim/index.ts';
+import { analyzeFielded, basePlots, createBattle, hashState, makeRoundConfig, planningView, runHeadless } from '../../src/sim/index.ts';
 import type { BattleConfig, BattleState, Side } from '../../src/sim/index.ts';
 import { protoContent } from '../../tools/lib/content.ts';
-import { content } from '../helpers.ts';
+import { content, playOn } from '../helpers.ts';
 
 const bal = content.balance;
 
@@ -706,6 +706,21 @@ describe('save and resume (SPEC §8.9)', () => {
     const back = load(storage);
     expect(back).toEqual(r.run);
     expect(hashRun(back)).toBe(hashRun(r.run));
+  });
+
+  it("a save round-trip between rounds: the run at its battle and the battle at round 2's planning load back as they were (§16 R2 verification 1)", () => {
+    const run = createRun(content, { seed: 9 });
+    chooseNode(content, run, 0);
+    const s = createBattle(content, configOf(run));
+    playOn(s, (x) => x.round === 2);
+    const storage = new MemoryStorage();
+    saveRun(storage, run);
+    saveBattle(storage, battleSave(s)!);
+    const back = load(storage);
+    expect(back).toEqual(run);
+    const battle = resumeBattle(content, storage.get(BATTLE_KEY)!, configOf(back))!;
+    expect([battle.round, battle.phase]).toEqual([2, 'planning']);
+    expect(hashState(battle)).toBe(hashState(s));
   });
 });
 
