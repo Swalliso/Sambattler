@@ -161,6 +161,10 @@ Where sessions may run side by side is in the task list's "Dependencies and para
 - **S1b (T029):** R2-Q13, on battle 1's pairing table. Answered 2026-11-03: soften Mold's opener.
 - **S5b (T163):** the upgrades' price, from its measurement (#67).
 - **S12 (T131):** G14's and G15's bands, from S11's measurement (#35).
+- **S13 (T140):** §16 R2 step 5's wording. It read "every run completes with 4–5 battles", but a run has 3 lives, so one
+  that loses its first three battles ends after 3, as seed 4's did in S1's and S4's 20 runs. Answered 2026-11-04: "Yes,
+  both", to the hub's "with step 5 reading '3 to 5 battles'". Step 5 and T140 now read "every run completes, in 3 to 5
+  battles".
 - **S14 (T148, T149, T169):** the playtest gate, the tuning (G1, G2 and G7 among it), #17's clean-win half, #33, and X6's target.
 
 ## What S3 left (T054)
@@ -199,8 +203,117 @@ in the tips store, the migration's repair fields and fixtures, and `scene=deploy
 
 ## Handoffs
 
+- **To S14** (T148, T149, T169): the playtest gate, with questions 4 and 5; the tuning of G1, G2, G7, G4's round-9 clause,
+  G5, and G14 and G15 with Cordis's rework, each with the user's OK; `bosslives`, adopted as data or deleted; and the run
+  golden's seed and description (S13's finding).
 - **To R3:** the Fuse augment's text ("wait behind your front rank"), now that Bursters stand in front; G3 and G8's mono clause, for its copies; G16's Gill Archer and Mortar pairs, for its combos; and #67's upgrades beside its augments.
 
 ## As built
 
-Written by the last session (S13).
+Written by the last session (S13), on `develop` after S12 (#134).
+
+### What R2b built
+
+| Sessions | PRs | What landed |
+|---|---|---|
+| S0 | #111 | This plan and R2b's decisions |
+| S1, S1b | #113, #117 | A run in rounds with 3 Regrowths and per-battle Heartcaps, `RUN_VERSION` 2 with v1's runs migrated, the fixed round cap of 750 (#68), and battle 1's pairing table (R2-Q13) |
+| S2 | #115 | One battle screen, `scene=battle`, with cards placed on plots only |
+| S3, S4, S4c | #118, #120, #121 | v1's battle gone from the sim, the tools and the tests; the presets cut to `bosslives`; T152's switch-over check |
+| S5, S5b | #124, #129 | Drafts after rounds 2, 4 and 6, and gold upgrades once the colony is full (#67) |
+| S6, S7 | #125, #128 | The relics in v2 form; the commanders, the generals with several openers (#69), the elites and the boss in rounds |
+| S8 | #127 | Saves between rounds (BattleSave `v: 3`) |
+| S9, S10 | #123, #131 | The run screens for lives; the draft sheet, Help and the tips in rounds, the relics popover |
+| S11 | #132 | The run tools: the run pool, G14 and G15, the slow suite's budget, T168's known misses |
+| S12 | #134 | v1's keys retired and the `rounds` blocks folded, X8's knobs deleted, G14's and G15's bands with retune B (T131), every golden regenerated |
+| S13 | this branch | §16 R2's verification, below |
+
+### §16 R2's Done when (T145)
+
+- **A whole run plays in rounds, round 1's planning to the summary:** the 20 runs of step 5 play it headlessly, and in the
+  browser step 9 captures a run from round 1's planning to its summary, which the browser suite also plays (147 cases).
+  A human's run on the dev site is S14's playtest (T148).
+- **Nothing from Appendix A's R2 rows remains** in the game, its tests or its tools: S13 re-ran T130's grep on the merged
+  `develop` (`spawned`, `columnFlipped`, `buildingDestroyed`, `waveStart`, `laneStance`, `turret`, `frontier`, `besieged`,
+  `deploy`, `liveState`, `timeLimitSeconds`, `supplyCap`, `spawnTimer` and `supplyLine`), and `find` finds no `rounds/`
+  folder. What's left is comments that say a system is gone, tests that assert the names are rejected or absent, the
+  synth's `wave` (a waveform), and the pieces T054 kept on purpose.
+- **Every verification step passes:** steps 1–9, below, with step 7's known misses as the step allows.
+- **The gate's questions 4 and 5** go to the user at S14's playtest (T148).
+
+### §16 R2's verification (S13, 2026-11-04)
+
+S13 ran SPEC §16 R2's steps 1–9 in their final forms on `feature/r2b-verify`, cut from `develop` once S12 (#134) had
+merged, with no rule, data or golden change.
+
+| Step | Task | Command | Result |
+|---|---|---|---|
+| 1 | T136 | `npm run verify` | Green in 19 s: typecheck, lint, data, 45 unit files with 907 cases passing and one expected fail (T148's Burster seat effect, `seats.test.ts`), the seven goldens, the five sim smokes, the `clash-cap` scenario and the quick bench. Every round row of §15.7 has its cases (below) |
+| 2 | T137 | `npm run golden -- verify` | The seven replays pass, and they are §15.5's set: `r2-balanced-vs-scripted-s1` (the general plans first), `r2-twin-roots-balanced-vs-scripted-s3`, `r2-merge-mirror-s3` (knitting at the muster), `r2-run-s1` (a whole run) and `r2-vesper-power-s3`, `r2-cordis-power-s3` and `r2-armilla-power-s3` (each power once per clash). Since retune B, `r2-run-s1` loses all three of its battles (below) |
+| 3 | T138 | `npm run sim -- --seeds 1..40 --player bot:balanced --enemy general:scripted --summary` | Every expectation passes: all 40 end with 0 rejected commands, a median of 7 rounds, 8 battles (20%) reach round 9 against G4's at most 20%, 23 of 274 clashes (8%) reach the cap, the bot wins 50%, and a battle takes 38 ms of wall time against §13.7's 3 s |
+| 4 | T139 | `npx vitest run tests/unit/scenarios.test.ts` | 34 of 34 pass. Each named scenario asserts its outcome exactly: `general-plans-first`, `formation-from-plots`, `clash-cap`, `round-damage-cap`, `decision-round-9` and E1–E8 (`lane-empty-one-side`, `lane-empty-both`, `cap-tie`, `double-wipe`, `emplacements-only-draw`, `emplacement-only-win`, `split-lanes`, `both-heartcaps-zero`) |
+| 5 | T140 | `npm run sim -- --run --seeds 1..20 --player bot:balanced --auto-draft greedy --auto-route random --summary` | Passes on the user's wording: all 20 runs complete, in 3 to 5 battles (a median of 4; seed 1 ends out of lives after 3), and no life is lost in a won battle. 12 runs win (60%), 19 reach the boss (95%) and 12 of the 19 boss fights are won (63%); battle 1 is won in 16 of 20 (80%). Lives left average 1.6, and 2.1 at the boss. Against G14's 70–90% and G15's 40–95% reach and 40–70% boss wins, this bot's runs are inside, at reach's ceiling. The slow suite reads them per commander (step 7) |
+| 6 | T141 | `npx vitest run tests/unit/migrate.test.ts`, and `tests/browser/resume.test.ts` in `npm run test:browser` | 19 of 19, and the browser suite's 147 of 147. A run saved under `RUN_VERSION` 1 loads migrated with its notice, never null ("a migrated v1 run with its notice"), and a v1 battle save in a run that goes on opens at round 1's planning, with the restart notice and the run migrated |
+| 7 | T142 | `npm run test:slow` | Passes in 2 min 51 s on this machine: 6 files, 18 cases. The guardrails assert in round form, and the retired forms are gone from `tests/slow/`. G4's median (7 rounds), its bot (55%) and its 0 rejected commands, G6, G8's two bands, G11, G12 and G13 pass. The ten known misses (T168) assert as expected fails, each printing its numbers (below), as step 7 allows |
+| 8 | T143 | `npm run bench` | Inside §13.7. R1's full-colony clash: a mean tick of 0.27 ms and a p99 of 0.79 ms on one lane (96 units a side), 0.33 ms and 0.82 ms on Twin Roots (120 a side), against 1 and 2.5 ms. The clash's first tick 0.30 ms (5 ms), the general's planning turn 0.40 ms at most (20 ms), a planning command's sim part 0.39 ms (2 ms), a full battle 18 ms (3 s), and the resume replay of a round-9 save 51 ms (about 1 s) |
+| 9 | T144 | `npm run screenshot`, step 9's seven captures with R2a's `r2-aftermath` and `r2-planning-twin`, and the run summary | All ten pass §15.6's assertions, each with the browser's hash equal to Node's, and read right against step 9's checklist (below). Both builds pass |
+
+**Step 1's round rows,** in `tests/unit/`:
+- the order of a round's events: `rounds.test.ts` (round 1's opening, the queue and the step by phase, a round's order);
+- income by round: `economy.test.ts` (income at a round's opening, `incomePreview`);
+- the formation from the plots: `formation.test.ts` (`formationFor`, `formationOf`) and the `formation-from-plots` scenario;
+- how a clash ends: `clash.test.ts` (a lane's end), `scoring.test.ts`, and the `clash-cap` and E1–E6 scenarios;
+- the damage formula: `scoring.test.ts` (the scoring helpers and `scoreRound`) and the `round-damage-cap` scenario;
+- merging at the muster, the preview equal to what fields: `formation.test.ts` (`musterFor`, the muster against the sim's merging, `mergePreview`) and `clash.test.ts` (the muster inside Begin);
+- the Heartcap race and the Decision after round 9: `scoring.test.ts` (the battle's end) and the `decision-round-9` and `both-heartcaps-zero` scenarios;
+- lives: `run.test.ts` (a won battle costs no life; a lost one costs a life and the run ends at 0 or on a boss loss; `bosslives`; the Grove's life; whole runs that lose a life only in a lost battle);
+- refunds by phase: `planning.test.ts` (100% in the phase planted, 60% once fielded);
+- the general planning first and never reading what you plant: `ai.test.ts` (`planningView`, the general's turn in the round's opening, bots planning after the general) and the `general-plans-first` scenario;
+- a save round trip between rounds: `resume.test.ts` (a planning save, an open draft, a Begin save, a power fired in a clash) and `determinism.test.ts` (resume from each save point).
+
+**Step 9's captures** (`artifacts/screenshots/s13/`): `r2-planning-1`, `r2-planning-4` with the Sporeling Burrow's card
+chosen, `r2-clash-start`, `r2-clash`, `r2-aftermath` (`round=4&phase=aftermath`) and `r2-planning-twin`
+(`map=twin-roots&round=2&phase=planning`), each on `scene=battle&seed=1&player=bot:balanced&enemy=general:scripted`;
+`r2-report` (a Rout in round 5); `r2-route` and `r2-run-planning` on seed 7; and `r2-summary`
+(`scene=summary&seed=7&autoplay=run`). Against the checklist:
+- both colonies show their plots, Bogwater Hollow's loam and Twin Roots' loam and stumps drawn as themselves;
+- in planning the general's whole army stands in formation before any command, and assertion 4 holds both previews
+  against the clash's first tick in `r2-clash-start`;
+- the top band shows both Heartcaps, the round of 9 and the round tally, and the clash shows the lane tug;
+- the matchup marks show on the general's squads while the Sporeling Burrow's card is chosen;
+- nothing from the retired list shows: no territory, frontier, Hold, spawn timers, supply chip or countdown;
+- the report shows the round chart, and the route's battle nodes show their generals' kits;
+- `r2-run-planning` shows 3 Regrowths, and its `#hud-lives` (3 lit of 3) equals `__GAME__.run().lives` (A063);
+- the summary reads the run right: seed 7 loses battles 1–3, regains two Regrowths at the Groves between them, and wins
+  the boss by Decision with 2 of 3 left;
+- nothing is clipped at 1280×720.
+
+**Step 7's known misses** (T168), each an expected fail that fails once it passes, with its owner:
+
+| Guardrail | Reading at S13 | Band | Owner |
+|---|---|---|---|
+| G1 | the Sporeling Burrow wins 9 of 10 pairings and never loses clearly; the Rhizomorph Tunnel wins none | ≤ 80%, one win and one clear loss each | S14 (T169) |
+| G2 | the Gill Archer beats no unit | a healthy counter graph | S14 (T169) |
+| G3 | the Sporeling Burrow's mono 75% (worst map 87%), the Rootbreaker Den's 49% (72%), the Capguard Hall's 40% (67%) | mean ≤ 55%, worst map ≤ 60% | R3's copies |
+| G4's round-9 clause | 22% of 200 battles reach round 9 | ≤ 20% | S14 (T169) |
+| G5 | the +150 side wins 89% of 80 | 55–75% | S14 (T169) |
+| G7 | merge-on wins 96% of 200 mirrors; 78% with Slayers at 24% of the supply | 55–70%; ≤ 50% | S14 (T169) |
+| G8's mono clause | of the six monos above the 20% baseline only the Gill Nest's drops 20 points (23). Against the adaptive general the Sporeling Burrow's gains 13, the Veilstalker Hollow's holds, and the Rootbreaker Den's, Hammercap Forge's and Morel Warren's drop 10–13 | each drops ≥ 20 points | R3's copies |
+| G14 | battle 1 won 88% as Vesper and 74% as Armilla, inside, but 100% as Cordis | 70–90% each | S14 (T169), Cordis's rework |
+| G15 | 96% of 300 runs reach the boss, and 71% of 289 boss fights are won (Vesper 66 of 98, Armilla 43 of 91, Cordis 96 of 100) | 40–95%; 40–70% | S14 (T169), Cordis's rework, then the boss re-read |
+| G16 | the formation rule wins 39% of 1,640 clashes | ≥ 60% | R3's combos |
+
+Every reading is S12's after retune B (`docs/balance-backlog.md`, "R2b S12"), so none moved, and nothing new misses.
+
+### What S13 found
+
+- **Step 5's tool check** (fixed): `tools/sim.ts`'s run summary still expected 4–5 battles a run and printed a FAIL for
+  seed 1's 3. It now checks 3 to 5, as the reworded step does. No rule changed, and the runs replay the same.
+- **T138's line** (fixed): it said 15% reach round 9, where SPEC's step 3 has said G4's 20% since #35. Step 3's 40
+  battles read exactly 20%, at the limit, and G4's 200 read 22%, its known miss.
+- **The run golden's description is stale** (not changed): `r2-run-s1` still says "a life lost in battle 2", and the
+  comment above `RUN_REPLAYS` says seed 1's run wins battles 3 and 4 and the boss. Since retune B, seed 1's run loses
+  battles 1, 2 and 3 and ends out of lives after 3. It still holds §15.5's set (drafts after rounds 2, 4 and 6 in battles 1
+  and 2, and a life lost in a run that goes on), but no longer covers a won battle, its spoils, a plot gained or the boss.
+  S14's tuning will move this golden anyway, so S14 can re-pick its seed and rewrite its description then. S13 moved no
+  golden, as its tasks say.
