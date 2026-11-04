@@ -1,0 +1,156 @@
+{
+  "name": "v3-baron-twin-s1",
+  "description": "bot:balanced as Vesper vs the Lichen Baron on Twin Roots by the v3 prototype's rules, seed 1 (v3 prototype T005)",
+  "config": {
+    "seed": 1,
+    "battleIndex": 1,
+    "mapId": "twin-roots",
+    "player": {
+      "faction": "velvet-bloom",
+      "controller": {
+        "kind": "bot",
+        "id": "balanced"
+      },
+      "kit": [
+        {
+          "building": "sporelingBurrow"
+        },
+        {
+          "building": "capguardHall"
+        },
+        {
+          "building": "gillNest"
+        },
+        {
+          "building": "amanitaLodge"
+        },
+        {
+          "building": "hammercapForge"
+        },
+        {
+          "building": "bursterPod"
+        },
+        {
+          "building": "truffleCellar"
+        }
+      ],
+      "relics": [],
+      "plots": 12,
+      "heartcapMaxHp": 3000,
+      "startingGold": 300,
+      "commander": "vesper",
+      "power": "sporeBurst",
+      "powerPolicy": "auto"
+    },
+    "enemy": {
+      "faction": "gray-rot",
+      "controller": {
+        "kind": "general",
+        "id": "lichen-baron"
+      },
+      "kit": [
+        {
+          "building": "sporelingBurrow"
+        },
+        {
+          "building": "capguardHall"
+        },
+        {
+          "building": "gillNest"
+        },
+        {
+          "building": "amanitaLodge"
+        },
+        {
+          "building": "hammercapForge"
+        },
+        {
+          "building": "bursterPod"
+        },
+        {
+          "building": "truffleCellar",
+          "maxOwned": 3
+        }
+      ],
+      "relics": [],
+      "plots": 12,
+      "heartcapMaxHp": 2000,
+      "startingGold": 300
+    },
+    "flags": {
+      "merging": true,
+      "drafts": false,
+      "adaptiveGeneral": true,
+      "powers": true
+    },
+    "rules": "v3",
+    "modifiers": [
+      {
+        "side": "enemy",
+        "source": "general:lichen-baron",
+        "effects": {
+          "modifiers": [
+            {
+              "stat": "unit.hp",
+              "op": "mul",
+              "value": 1.2,
+              "where": {
+                "rank": 0
+              }
+            }
+          ]
+        }
+      },
+      {
+        "side": "player",
+        "source": "commander:vesper",
+        "effects": {
+          "modifiers": [
+            {
+              "stat": "unit.hp",
+              "op": "mul",
+              "value": 1.1,
+              "where": {
+                "rank": 0
+              }
+            },
+            {
+              "stat": "unit.damage",
+              "op": "mul",
+              "value": 1.1,
+              "where": {
+                "rank": 0
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "commands": [],
+  "expected": {
+    "r1.planning": "577398d5201dcf25",
+    "r1.aftermath": "6ce4b8b7749d9d0e",
+    "r2.planning": "8f4d9967fb9e1e75",
+    "r2.clash": "1eef54a315704211",
+    "r2:200": "9711a4dc2e87747e",
+    "r2.aftermath": "7b8ae9de7ddd46b5",
+    "r3.planning": "dfe7673a1e5e81ae",
+    "r3.clash": "ab646204283576b8",
+    "r3:200": "cb986901d8d1e1b2",
+    "r3.aftermath": "c9733fbb47544dcf",
+    "r4.planning": "c2fa09f88a1d6faf",
+    "r4.clash": "6ac3b80e277bd38e",
+    "r4:200": "0a1142cf9f86e453",
+    "r4.aftermath": "a15487832dbb5a4c",
+    "r5.planning": "4cc9122c861292ee",
+    "r5.clash": "b7b16576a658844b",
+    "r5:200": "ac5c61af35461a22",
+    "r5.aftermath": "08f32c037f8dfd1b",
+    "r6.planning": "55b0134a485fad7c",
+    "r6.clash": "1404636b43b6d9bd",
+    "r6:200": "26eac18107a76310",
+    "r6.aftermath": "dfc3d52d0e5542fa",
+    "final": "93c1f3cca504ac76"
+  }
+}

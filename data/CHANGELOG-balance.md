@@ -8,6 +8,19 @@ replaces. None of it is open work, including headings that say "Open:". From mil
 entries measure or tune v2's round battle (SPEC §11, §12). "The backlog" in the entries below means
 v1's, now [archived](../docs/archive/v1/balance-backlog.md).
 
+## v3 prototype S1 (T002): the `v3` block, read only under `rules: 'v3'` (2026-11-04)
+
+**Approved by the user** (2026-11-04, "Start S1" to the hub's summary, relayed by the hub): the audit's V3-Q1–V3-Q13
+("Take them all"), Plan-Q1's recommendation, and the plan's first guesses (`docs/v3-proto-plan.md`, open questions).
+- **New:** `v3` in `data/balance.json`, with its schema in `src/data/schema.ts`: `fruitFromRound` 1 (Plan-Q1: every
+  building fruits a round after it's planted, so round 1's clash is empty), `hideFromRound` 2, `tierStatMult` 2.0
+  (V3-Q10, S14's measure), `plotPrices` 100, 150, 200 and 250 (first guesses, S3 reads them), the seven-card `roster`
+  for both kits, and the four `combos` on (S4 reads them). V3-Q9's levers (the Cellar's cost and gold, the round cap,
+  each Heartcap) are in the schema and unset, for S8.
+- **No v2 outcome moved:** only a battle whose config says `rules: 'v3'` carries the block, so v2's battles, data and
+  `r2-…` goldens are unchanged. v3's own goldens, `v3-mold-bogwater-s1` and `v3-baron-twin-s1`, are new.
+- **Measured:** nothing yet. S7's `--checks v3` measures the first guesses, and S8 tunes the levers.
+
 ## R2b-S14 T171: `bosslives` deleted, with its schema key and the run's read (2026-11-04)
 
 **Approved by the user** (2026-11-04, "Start both" to the hub's plan, relayed by the hub). In R2b's playtest the user's

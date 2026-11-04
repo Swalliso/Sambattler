@@ -29,7 +29,7 @@ export interface Params {
 }
 
 /** Battle parameters: with any of them and no `scene`, the page opens a single battle. */
-export const BATTLE_PARAMS = ['player', 'enemy', 'commander', 'ticks', 'scenario', 'map', 'battleIndex', 'flags', 'paused', 'round', 'phase', 'reveal'];
+export const BATTLE_PARAMS = ['player', 'enemy', 'commander', 'ticks', 'scenario', 'map', 'battleIndex', 'flags', 'paused', 'round', 'phase', 'reveal', 'rules'];
 
 /** The scene a query opens: its `scene`, or with none a battle if it has battle parameters, else the title. */
 export function sceneOf(q: URLSearchParams): string {
@@ -89,6 +89,8 @@ export interface RoundParams {
   measure: 'frames' | null;
   /** `reveal=last` draws the general's colony and squads as it fielded last round, from round 2 (§7.5, T127); `full`, the default, is null. */
   reveal: 'last' | null;
+  /** `rules=v3` plays the v3 prototype's rules (`src/sim/v3.ts`), a temporary switch its S10 removes; `v2`, the default, is null. */
+  rules: 'v3' | null;
   /** Values the battle can't open, each refused with a message. */
   problems: string[];
 }
@@ -109,6 +111,9 @@ export function parseRoundParams(search: string | URLSearchParams): RoundParams 
   // a mistyped A/B would show the full reveal unnoticed (R2-Q1)
   const reveal = q.get('reveal');
   if (reveal !== null && reveal !== 'last' && reveal !== 'full') problems.push(`reveal=${reveal} isn't last or full`);
+  // a mistyped prototype would play v2's rules unnoticed
+  const rules = q.get('rules');
+  if (rules !== null && rules !== 'v2' && rules !== 'v3') problems.push(`rules=${rules} isn't v2 or v3`);
   const flagList = q.get('flags');
   const parsed = parseFlags(flagList ?? BATTLE_DEFAULTS.flags);
   problems.push(...parsed.problems);
@@ -131,6 +136,7 @@ export function parseRoundParams(search: string | URLSearchParams): RoundParams 
     targeting: q.get('targeting') === '1',
     measure: q.get('measure') === 'frames' ? 'frames' : null,
     reveal: reveal === 'last' ? 'last' : null,
+    rules: rules === 'v3' ? 'v3' : null,
     problems,
   };
 }
@@ -149,11 +155,12 @@ function setUp(content: Content, p: RoundParams, seed: number): BattleState {
     if (p.given.has('player')) over.player = p.player;
     if (p.given.has('enemy')) over.enemy = p.enemy;
     if (p.flags) over.flags = p.flags;
+    if (p.rules) over.rules = p.rules;
     return createFromScenario(content, p.scenario, over);
   }
   return createBattle(content, makeRoundConfig(content, {
     seed, mapId: p.map, battleIndex: p.battleIndex, player: p.player, enemy: p.enemy,
-    flags: p.flags ?? parseFlags(BATTLE_DEFAULTS.flags).flags, commander: p.commander,
+    flags: p.flags ?? parseFlags(BATTLE_DEFAULTS.flags).flags, commander: p.commander, ...(p.rules ? { rules: p.rules } : {}),
   }));
 }
 

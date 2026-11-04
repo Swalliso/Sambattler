@@ -5,6 +5,7 @@
 import type { Content } from '../data/registry.ts';
 import type { RequiresDef } from '../data/schema.ts';
 import type { BattleState, BattleConfig, Controller, KitCard, Side } from './state.ts';
+import { isV3 } from './v3.ts';
 
 /**
  * A single battle's kit for a side (§18.1 D45): its faction's roster, but what waits for a feature it lacks
@@ -12,8 +13,10 @@ import type { BattleState, BattleConfig, Controller, KitCard, Side } from './sta
  */
 export function kitOf(content: Content, side: Side, config: BattleConfig): KitCard[] {
   const sc = config[side];
-  const roster = (content.factions[sc.faction]?.buildings ?? []).filter((id) => featureReady(content.buildings[id]?.requires, config.flags));
-  return kitCards(content, sc.controller, roster);
+  const faction = content.factions[sc.faction]?.buildings ?? [];
+  // under v3 both kits are its roster, in its order (the concept's section 4), the general's limits kept
+  const roster = isV3(config) ? (content.balance.v3?.roster ?? []).filter((id) => faction.includes(id)) : faction;
+  return kitCards(content, sc.controller, roster.filter((id) => featureReady(content.buildings[id]?.requires, config.flags)));
 }
 
 /**

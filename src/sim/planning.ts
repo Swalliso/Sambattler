@@ -10,6 +10,7 @@ import { addBuilding } from './create.ts';
 import { atMaxOwned, inKit } from './kit.ts';
 import { startClash } from './round.ts';
 import type { BattleState, Command, Side } from './state.ts';
+import { isV3 } from './v3.ts';
 
 /** The planning commands, which run in the planning phase only (§4.2). */
 export type PlanningCommand = Extract<Command, { type: 'plant' | 'sell' | 'toggleMerge' | 'upgrade' | 'beginClash' }>;
@@ -132,10 +133,12 @@ export function toggleProblem(state: BattleState, side: Side, entityId: number):
 }
 
 /**
- * Why `upgrade` would refuse the entity now, or null (§6.1, §14.5): `toggleMerge`'s checks (one of the side's
- * spawners, its draft closed), then an upgraded building, a colony with a plot still free, or too little gold.
+ * Why `upgrade` would refuse the entity now, or null (§6.1, §14.5): v3's rules, which retire the gold upgrade (C3.3);
+ * `toggleMerge`'s checks (one of the side's spawners, its draft closed), then an upgraded building, a colony with a
+ * plot still free, or too little gold.
  */
 export function upgradeProblem(state: BattleState, side: Side, entityId: number): string | null {
+  if (isV3(state.config)) return 'upgradeRetired';
   const problem = toggleProblem(state, side, entityId);
   if (problem) return problem;
   const b = state.buildings.find((x) => x.id === entityId)!;

@@ -16,6 +16,7 @@ import { roundOutcome } from '../systems/victory.ts';
 import { ANSWER_LEAN, bestAnswer } from './answer.ts';
 import { cheapest, counterKindsOf, doctrineMult, runCycle } from './counter.ts';
 import { choosePlot, freePlots } from './formationScore.ts';
+import { isV3 } from '../v3.ts';
 import { planningView } from './view.ts';
 import type { PlanningView } from './view.ts';
 
@@ -29,6 +30,7 @@ export type PlanBody = Extract<CommandBody, { type: 'plant' | 'sell' | 'toggleMe
 export function planTurn(state: BattleState, side: Side, income = 0): void {
   const ai = state.sides[side].ai;
   if (!ai) throw new Error(`the ${side} side has no AI to plan`);
+  const v3 = isV3(state.config), goldAtStart = state.sides[side].gold;
   const sold: AiPlan['sold'] = [];
   const sellNow = (b: BuildingState): boolean => {
     if (runAtOnce(state, side, { type: 'sell', entityId: b.id })) return false;
@@ -37,15 +39,15 @@ export function planTurn(state: BattleState, side: Side, income = 0): void {
   };
   // 1. a due counter, which may sell for room (§7.4); round 1's opening doctrine came with the profile (§7.6)
   const counter = runCycle(planningView(state, side), ai, sellNow);
-  // 2. buy and plant in a loop, then gold upgrades once no plot is free
+  // 2. buy and plant in a loop, then gold upgrades once no plot is free, which v3 retires (C3.3)
   const planted = buy(state, side, ai);
-  const upgraded = buyUpgrades(state, side);
+  const upgraded = v3 ? [] : buyUpgrades(state, side);
   // 3. set the merge toggles
   setToggles(state, side);
   const plan: AiPlan = {
     round: state.round, planted: planted.map((b) => ({ building: b.buildingId, plot: b.plot })), sold,
     ...(upgraded.length ? { upgraded: upgraded.map((b) => ({ building: b.buildingId, plot: b.plot })) } : {}),
-    income, banked: state.sides[side].gold, ...(counter ? { counter: counter.kind } : {}),
+    income, banked: state.sides[side].gold, ...(v3 ? { goldAtStart } : {}), ...(counter ? { counter: counter.kind } : {}),
   };
   ai.plans.push(plan);
   state.events.push({

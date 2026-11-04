@@ -19,7 +19,9 @@ export { colonyFull, legalPlots, plantProblem, priceOf, sellValue, upgradePrice,
 export { featureReady, inKit, kitCards, kitOf } from './kit.ts';
 export { basePlots, openOrder } from './colony.ts';
 export { analyzeFielded, answersTo, topKinds } from './ai/counter.ts';
-export { planningView } from './ai/view.ts';
+export { planningView, visibleColony } from './ai/view.ts';
+export type { ColonyView } from './ai/view.ts';
+export { isHidden, isSprout, isV3 } from './v3.ts';
 export { formationOf, mergePreview } from './formation.ts';
 export type { MergePreview, MusterTrio, PlanChange, SquadPlan, TierCounts } from './formation.ts';
 export { matchupClass } from './matchups.ts';
