@@ -242,7 +242,7 @@ export function loadContent(raw: RawContent): Content {
     for (const id of g.preferred ?? []) buildingRef(`general ${g.id} preferred`, id);
     spriteRef(`general ${g.id}`, g.sprite);
     const roster = factions[g.faction]?.buildings ?? [];
-    for (const id of [...g.opener, ...(g.preferred ?? [])]) if (!roster.includes(id)) problems.push(`general ${g.id}: ${id} is not in the ${g.faction} roster`);
+    for (const id of [...g.opener, ...(g.moreOpeners ?? []).flat(), ...(g.preferred ?? [])]) if (!roster.includes(id)) problems.push(`general ${g.id}: ${id} is not in the ${g.faction} roster`);
   }
   for (const b of Object.values(bots)) kitRefs(`bot ${b.id}`, b.opener, b.weights, b.limits);
   const effectRefs = (owner: string, fx: EffectBundle | undefined) => {

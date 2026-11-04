@@ -179,7 +179,8 @@ describe('battle setup and rewards (SPEC §4.5, §4.6, §6.1, §6.5, §8.5–8.6
     const mold = (index: number) => generalKit(content, run, { kind: 'battle', map: 'bogwater-hollow', general: 'mother-mold' }, index).kit;
     expect(mold(1)).toEqual(['sporelingBurrow', 'truffleCellar']);
     expect(mold(2)).toEqual(['sporelingBurrow', 'truffleCellar', 'gillNest']);
-    const s = createBattle(content, makeRoundConfig(content, { seed: 3, player: 'human', enemy: 'general:mother-mold' }));
+    // battle 1's kit holds only her first opener, so the draw among her openers can't change it (#69)
+    const s = createBattle(content, battleConfig(content, run, { kind: 'battle', map: 'bogwater-hollow', general: 'mother-mold' }));
     expect(s.sides.enemy.ai!.plans[0]!.planted.slice(0, 2).map((p) => p.building)).toEqual(['sporelingBurrow', 'truffleCellar']);
   });
 

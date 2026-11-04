@@ -6,7 +6,7 @@
 // logs and counts its own refusals as the queue does. Its plan for the round goes in `ai.plans` (plan Call
 // 12). An adaptive general's counter cycle (`counter.ts`) is step 1, and X8's two default-off knobs are read
 // here (§7.2).
-import { nextFloat } from '../rng.ts';
+import { nextFloat, nextInt } from '../rng.ts';
 import { commandStamp, queueCommand } from '../commands.ts';
 import { executeDraft } from '../draft.ts';
 import { plant, sell, sellValue, toggleMerge } from '../planning.ts';
@@ -93,8 +93,9 @@ export function openerFor(view: PlanningView, ai: AiState): string[] {
 }
 
 /**
- * Step 2 (§7.2): in round 1 the opener first (`openerFor`), skipping a card it can't afford or may not plant,
- * then weighted picks with the gold left. A target is planted at its best plot while it's in reach, then it
+ * Step 2 (§7.2): in round 1 the opener first, drawn from its own stream when its kit holds several (§7.7, #69),
+ * with the doctrine shown (`openerFor`), skipping a card it can't afford or may not plant, then weighted picks
+ * with the gold left. A target is planted at its best plot while it's in reach, then it
  * picks again. It stops when the target is out of reach, which it carries into the next planning phase
  * once, or when nothing it buys has a free plot. It keeps no reserve (#29). It returns what it planted.
  */
@@ -102,6 +103,10 @@ function buy(state: BattleState, side: Side, ai: AiState): BuildingState[] {
   const planted: BuildingState[] = [];
   const plantAt = (view: PlanningView, buildingId: string): boolean => plantBest(state, side, view, buildingId, planted);
   if (state.round === 1) {
+    if (ai.openers) {
+      ai.opener = ai.openers[nextInt(state.rng.ai[side], ai.openers.length)]!;
+      delete ai.openers;
+    }
     for (const id of openerFor(planningView(state, side), ai)) {
       const view = planningView(state, side);
       if (canBuy(view, id) && inReach(view, id)) plantAt(view, id);

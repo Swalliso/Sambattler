@@ -689,6 +689,11 @@ const Limit = z.object({ maxOwned: z.number().int().nonnegative().optional(), af
 export const GeneralSchema = z.object({
   id: Id, name: z.string(), sprite: Id, faction: Id, milestone: z.number().int().positive(), description: z.string().optional(),
   opener: z.array(Id), weights: z.record(Id, z.number().nonnegative()), limits: z.record(Id, Limit).optional(),
+  /**
+   * Its other openers (SPEC §7.7, #69): each battle draws one of these and `opener` from its own stream, among those
+   * whose cards its kit holds. Its kit is still built from `opener` (§7.8).
+   */
+  moreOpeners: z.array(z.array(Id).min(1)).optional(),
   /** Blueprints the general adds to its kit, one per battle index, in order (SPEC §7.8). */
   preferred: z.array(Id).optional(),
   laneStyle: z.enum(['defensive', 'aggressive']), appearsIn: z.array(z.number().int().positive()),

@@ -585,6 +585,8 @@ export interface AiState {
   profileId: string;
   /** Round 1's buys, in order, before any weighted pick. */
   opener: string[];
+  /** The openers its round-1 plan draws `opener` from (§7.7, #69), while more than one fits its kit. */
+  openers?: string[][];
   /** Only the cards its weights list (R2-Q4), by building id. */
   weights: AiWeight[];
   mergePolicy: MergePolicy;

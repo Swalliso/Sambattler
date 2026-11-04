@@ -14,8 +14,8 @@ const steps: [string, string[]][] = [
   // a battle against a general that plans first (R2a/T071)
   ['sim smoke (3 seeds)', ['run', 'sim', '--', '--seeds', '1..3', '--player', 'bot:balanced', '--enemy', 'general:scripted', '--summary', '--assert', 'rejectedCommands=0', '--assert', 'rounds<=9']],
   // the counter cycle (R2a/T103): a mono Sporeling colony knits into Elders, which count as elite at their parts' supply
-  // (R2-Q3). Seeds 20 and 21 reach round 4 against Mold's softer opener (T068), which most seeds rout in round 3
-  ['sim smoke, adaptive general (2 seeds)', ['run', 'sim', '--', '--seeds', '20..21', '--player', 'bot:mono:sporelingBurrow', '--enemy', 'general:mother-mold', '--flags', 'merging,adaptive', '--summary',
+  // (R2-Q3). A single battle's Mold draws among all her openers (R2b/T165), and seeds 4 and 5 reach her round-4 counter
+  ['sim smoke, adaptive general (2 seeds)', ['run', 'sim', '--', '--seeds', '4..5', '--player', 'bot:mono:sporelingBurrow', '--enemy', 'general:mother-mold', '--flags', 'merging,adaptive', '--summary',
     '--assert', 'rejectedCommands=0', '--assert', 'counters[0].round=4', '--assert', 'counters[0].kind=elite']],
   // the power once per clash (R2a/T110, R2b/T089), with the adaptive general off so the counter cycle can't move them:
   // Vesper's Spore Burst, Cordis's Puppet Bloom lifting units (R2-Q7) and Armilla's Rhizome Tithe paying gold

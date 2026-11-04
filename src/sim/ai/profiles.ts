@@ -6,7 +6,8 @@
 // knob means nothing under plots and is ignored: `bot:rush` and `bot:turtle` are weight profiles. An adaptive
 // general, with `flags.adaptiveGeneral` on, also gets its counter cycle (§7.4, §7.6), and a bot with `policy:
 // "answer"` leans toward the answer to the general's army (§12.2, X7). A side that drafts keeps its weights for
-// its pool's buildings outside the kit, which its drafts read (§8.3).
+// its pool's buildings outside the kit, which its drafts read (§8.3). A general with several openers keeps those
+// its kit holds whole, for its round-1 plan to draw one (§7.7, #69).
 import type { Content } from '../../data/registry.ts';
 import type { GeneralDef } from '../../data/schema.ts';
 import type { AiState, AiWeight, BattleConfig, Controller, MergePolicy, SideConfig } from '../state.ts';
@@ -21,6 +22,7 @@ type Limits = NonNullable<GeneralDef['limits']>;
 export function resolveProfile(content: Content, ctl: Controller, side: SideConfig, flags?: BattleConfig['flags']): AiState {
   if (ctl.kind === 'human') throw new Error('a human has no AI profile');
   let opener: string[], weights: Record<string, number>, mergePolicy: MergePolicy;
+  let openers: string[][] = [];
   let limits: Limits = {};
   let aggressive = false, adaptive = false, boss = false, answer = false;
   const mono = ctl.kind === 'bot' ? /^mono:(.+)$/.exec(ctl.id) : null;
@@ -28,6 +30,7 @@ export function resolveProfile(content: Content, ctl: Controller, side: SideConf
     const g = content.generals[ctl.id];
     if (!g) throw new Error(`unknown general ${ctl.id}`);
     ({ opener, weights } = g);
+    openers = [g.opener, ...(g.moreOpeners ?? [])];
     limits = g.limits ?? {};
     mergePolicy = g.mergePolicy ?? 'auto';
     aggressive = g.laneStyle === 'aggressive';
@@ -60,9 +63,12 @@ export function resolveProfile(content: Content, ctl: Controller, side: SideConf
       return { building, weight, ...(maxOwned !== undefined ? { maxOwned } : {}), ...(afterRound !== undefined ? { afterRound } : {}) };
     });
   const list = all.filter((w) => kit.has(w.building)), drafts = all.filter((w) => !kit.has(w.building));
+  // a general's openers whose cards its kit holds, one drawn in its round-1 plan (§7.7, #69)
+  const fit = openers.filter((o) => o.every((id) => kit.has(id)));
   return {
     profileId: `${ctl.kind}:${ctl.id}`,
-    opener: opener.filter((id) => kit.has(id)),
+    opener: fit[0] ?? opener.filter((id) => kit.has(id)),
+    ...(fit.length > 1 ? { openers: fit } : {}),
     weights: list,
     mergePolicy,
     ...(aggressive ? { laneStyle: 'aggressive' as const } : {}),
