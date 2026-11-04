@@ -1,7 +1,8 @@
 // Shared fixtures for the unit suite (SPEC §15.7, §4.6, §4.7, §14.4): a battle in rounds in its planning phase,
 // or one built from a scenario, and the planning commands, Begin and the clash's steps on it.
 import { nodeContent } from '../tools/lib/content.ts';
-import { commandStamp, createFromScenario, queueCommand, SIDES, step } from '../src/sim/index.ts';
+import { chooseNode, createRun } from '../src/run/index.ts';
+import { commandStamp, createBattle, createFromScenario, legalPlots, plantProblem, queueCommand, SIDES, step } from '../src/sim/index.ts';
 import type { BattleState, Command, CommandBody, Flags, RoundScenarioOverrides, Side, SimEvent } from '../src/sim/index.ts';
 import type { ScenarioDef } from '../src/data/schema.ts';
 
@@ -76,6 +77,49 @@ export function playerScript(rounds: number, plans: Record<number, CommandBody[]
     for (const body of [...(plans[round] ?? []), { type: 'beginClash' } as const]) out.push({ round, tick: 0, side: 'player', seq: out.length, ...body });
   }
   return out;
+}
+
+/**
+ * A run's first battle as the page opens it, from its config (`createBattle`), with a human player against the
+ * row's general and drafts on: a battle save rebuilds its battle from the config (§8.9, R2b/T091).
+ */
+export function runBattle(seed = 9): BattleState {
+  const run = createRun(content, { seed });
+  chooseNode(content, run, 0);
+  if (run.screen.kind !== 'battle') throw new Error('the first node is not a battle');
+  return createBattle(content, run.screen.config);
+}
+
+/**
+ * A human's planning as the save tests play it: an open draft skipped, the first card of the kit that can go
+ * on a plot planted on the first plot it can, unless one was planted this round, then Begin, with `beforeBegin`
+ * run just before it. It reads only the state, so a battle resumed mid-planning plans on as it would have.
+ */
+export function humanPlan(s: BattleState, beforeBegin?: () => void): void {
+  if (s.sides.player.draft) command(s, 'player', { type: 'draftSkip' });
+  const planted = s.buildings.some((b) => b.side === 'player' && b.plantedRound === s.round);
+  for (const { building } of planted ? [] : s.sides.player.kit) {
+    const plot = legalPlots(s, 'player', building).find((p) => !plantProblem(s, 'player', building, p));
+    if (plot === undefined) continue;
+    command(s, 'player', { type: 'plant', buildingId: building, plot });
+    break;
+  }
+  beforeBegin?.();
+  command(s, 'player', { type: 'beginClash' });
+}
+
+/** Your power aimed at the general's first unit on the field, for the next tick (§6.6). */
+export function powerCommand(s: BattleState): Command {
+  const e = s.units.find((u) => u.side === 'enemy')!;
+  return queueCommand(s, { ...commandStamp(s), side: 'player', type: 'power', x: e.x, y: e.y });
+}
+
+/** Plays the battle on, the human planning each round as `humanPlan` does, until `stop` holds or the battle ends. */
+export function playOn(s: BattleState, stop: (s: BattleState) => boolean = () => false): void {
+  while (s.phase !== 'ended' && !stop(s)) {
+    if (s.phase === 'planning') humanPlan(s);
+    else step(s);
+  }
 }
 
 /** A plot named as §4.6 names it. */
