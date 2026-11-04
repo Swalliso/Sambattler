@@ -2,17 +2,19 @@
 // Writes reports/balance/<timestamp>.{md,json} and prints the guardrail verdicts (SPEC §12.2, §15.3), on battles
 // in rounds: `duel` plays the squad duels as one round clash each and the supply duels with placed units (`--supply
 // 60` re-runs them at army scale); `tournament` plays the four bots against the scripted general by rounds, or with
-// `--commanders` whole runs per commander (SPEC §16 M5); `guardrails` plays the round guardrails (G1–G8, G12, G13,
-// G16) on the pool and prints their verdicts against the `rounds` targets.
+// `--commanders` whole runs per commander on the run pool, `--seeds n` runs each (default G14's 100), under both
+// planning policies, and prints R2b/T122's report with G14, G15 and §16 M5's spread; `guardrails` plays every
+// guardrail the slow suite asserts (G1–G8, G11–G16) and prints their verdicts against the `rounds` targets.
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { nodeContent, protoContent, ROOT } from './lib/content.ts';
 import {
-  commanderTournament, counterBotSpec, duelLines, duels, evaluateG1, evaluateG2, evaluateG3, evaluateG4, evaluateG5, evaluateG6, evaluateG7, evaluateG8,
-  evaluateG12, evaluateG13, evaluateG16, g4Battles, rowLine, spawnerIds, tournament,
+  commanderRuns, counterBotSpec, duelLines, duels, evaluateCommanderSpread, evaluateG1, evaluateG2, evaluateG3, evaluateG4, evaluateG5, evaluateG6, evaluateG7,
+  evaluateG8, evaluateG12, evaluateG13, evaluateG14, evaluateG15, evaluateG16, g4Battles, rowLine, runReportLines, spawnerIds, tournament,
 } from './lib/balance.ts';
 import type { DuelOutcome, Verdict } from './lib/balance.ts';
-import { defaultWorkers, inProcessRounds, roundPool } from './lib/pool.ts';
+import { roundBenchChecks, runRoundBench } from './lib/bench.ts';
+import { defaultWorkers, inProcessRounds, roundPool, runJobPool } from './lib/pool.ts';
 
 const args = process.argv.slice(2);
 const mode = args[0] ?? 'duel';
@@ -60,16 +62,19 @@ if (mode === 'duel') {
   json.supply = d.supply;
   json.edges = d.edges;
 } else if (mode === 'tournament' && commanderList) {
-  const seeds = seedsArg >= 0 ? Number(args[seedsArg + 1]) : 30;
-  const t = commanderTournament(content, commanderList, seeds);
-  md.push(`## Commanders: whole runs (${seeds} seeds each, bot:balanced, greedy drafts, random route, power policy auto)`, '',
-    '| commander | runs won | boss reached | battles won | lives left a run | power uses | power damage | units lifted | power gold |', '|---|---|---|---|---|---|---|---|---|');
-  for (const r of t.rows) {
-    md.push(`| ${r.commander} | ${((100 * r.victories) / r.runs).toFixed(0)}% (${r.victories}/${r.runs}) | ${r.reachedBoss}/${r.runs} | ${r.battlesWon}/${r.battles} | ${(r.livesLeft / Math.max(1, r.runs)).toFixed(1)} | ${r.powerUses} | ${r.powerDamage} | ${r.powerLifts} | ${r.powerGold} |`);
+  // whole runs per commander and planning policy on the run pool (T122, T123), with G14, G15 and M5's spread
+  const runs = seedsArg >= 0 ? Number(args[seedsArg + 1]) : content.targets.rounds.G14.runs;
+  const pool = runJobPool('', defaultWorkers());
+  try {
+    const records = await commanderRuns(content, pool.run, { commanders: commanderList, runs });
+    const lines = runReportLines(content, records);
+    md.push(`## Commanders: whole runs (${runs} seeds each, greedy drafts, a random route, the auto power policy)`, '', ...lines);
+    for (const l of lines) console.log(l);
+    json.runs = records.map(({ battles, ...r }) => ({ ...r, battles: battles.map(({ byRound: _byRound, ...b }) => b) }));
+    verdicts.push(evaluateG14(content, records), evaluateG15(content, records), evaluateCommanderSpread(records));
+  } finally {
+    await pool.close();
   }
-  md.push('');
-  json.commanders = t.rows;
-  verdicts.push(t.verdict);
 } else if (mode === 'tournament') {
   const seeds = seedsArg >= 0 ? Number(args[seedsArg + 1]) : content.targets.G4.seeds;
   const rows = await tournament(content, run, { seeds });
@@ -83,7 +88,7 @@ if (mode === 'duel') {
   md.push('');
   json.vsGeneral = rows;
 } else if (mode === 'guardrails') {
-  // the round guardrails (§12.3, T123) on the pool, with the counter matrix's bots for G12's answers and G16's armies
+  // the slow suite's guardrails (§12.3, T123) on the pool, with the counter matrix's bots for G12's answers and G16's armies
   const spec = counterBotSpec(content);
   const rc = protoContent(spec);
   const pool = roundPool(spec, defaultWorkers());
@@ -93,6 +98,16 @@ if (mode === 'duel') {
     verdicts.push(await evaluateG8(rc, pool.run), await evaluateG12(rc, pool.run, { g3 }), evaluateG13(rc, g4), await evaluateG16(rc, pool.run));
   } finally {
     await pool.close();
+  }
+  // G11 on the round bench (the machine to itself, as the slow suite's perf file plays it), then G14 and G15 on whole runs
+  const g11 = roundBenchChecks(content, runRoundBench(content, { quick: false }));
+  verdicts.push({ id: 'G11', pass: g11.every(([, p]) => p), summary: "the round bench within §13.7's budgets", details: g11.map(([name, p, d]) => `${p ? 'ok  ' : 'FAIL'} ${name}: ${d}`) });
+  const runs = runJobPool('', defaultWorkers());
+  try {
+    const records = await commanderRuns(content, runs.run);
+    verdicts.push(evaluateG14(content, records), evaluateG15(content, records));
+  } finally {
+    await runs.close();
   }
 } else {
   console.error('usage: npm run balance -- duel [--supply n] | tournament [--seeds n] [--commanders all|a,b] | guardrails');

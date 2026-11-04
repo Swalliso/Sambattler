@@ -6,18 +6,20 @@
 // same results as in process. Shared by `npm run balance`, `npm run experiment` and the slow test suite.
 import type { Content } from '../../src/data/registry.ts';
 import type { BotDef, ScenarioDef } from '../../src/data/schema.ts';
-import { createRun, generalKit, mapPool, simulateRun } from '../../src/run/index.ts';
+import { createRun, generalKit, hashRun, mapPool, simulateRun } from '../../src/run/index.ts';
+import type { BattleRecord, RunResult } from '../../src/run/index.ts';
 import { counterKindsOf } from '../../src/sim/ai/counter.ts';
 import { addUnit } from '../../src/sim/create.ts';
 import { COUNTER_KINDS, SIDES, createBattle, createFromScenario, makeRoundConfig, other, planningView, runHeadless } from '../../src/sim/index.ts';
-import type { CounterKind, Flags, Side, Tier } from '../../src/sim/index.ts';
+import type { BattleState, CounterKind, Flags, PowerPolicy, Side, Tier } from '../../src/sim/index.ts';
 import { hash32, nextFloat, seedStream } from '../../src/sim/rng.ts';
 import { CLASH, MIRROR_SEED, armyFromBot, armyOf, clashArmyIds, clashField, clashOpts, lineOf, playRoundClash, squadSize } from './clash.ts';
 import type { Army, ArmyEntry, ArmyOpts, ClashField, ClashJob, ClashOpts, ClashRecord, FieldId, RoundClashJob, RoundClashRecord } from './clash.ts';
 import { rosterIds } from './roster.ts';
 import { budgetRound, raceReport, stormBp } from './roundRace.ts';
 import type { RaceReport } from './roundRace.ts';
-import { median, runRoundBattle } from './run.ts';
+import { median, paceLines, paceReader, runRoundBattle } from './run.ts';
+import type { RoundBattleResult } from './run.ts';
 
 export { rosterIds };
 
@@ -36,7 +38,14 @@ export function duelUnit(ref: string): { unit: string; tier: Tier } {
 
 export interface DuelOutcome { a: string; b: string; seed: number; valueA: number; valueB: number; winner: 'a' | 'b' | 'draw' }
 
-export interface Verdict { id: string; pass: boolean; summary: string; details: string[] }
+export interface Verdict {
+  id: string;
+  pass: boolean;
+  summary: string;
+  details: string[];
+  /** Each clause's pass, where a guardrail has several and one can be a known miss on its own (G4, G8; R2b/T168). */
+  clauses?: Record<string, boolean>;
+}
 
 // ---------------------------------------------------------------- duels
 
@@ -134,6 +143,8 @@ export interface RoundBattleRecord extends RoundBattleJob {
   /** Rounds that dealt Heartcap damage, and how many of them the round's damage cap bound (§6.7 step 4, G4). */
   damageRounds: number;
   cappedRounds: number;
+  /** The Heartcap damage each side dealt, round by round (§6.7), for the engagement readout (R2b/T124). */
+  roundDamage: Record<Side, number>[];
 }
 
 export function playRoundBattle(content: Content, job: RoundBattleJob): RoundBattleRecord {
@@ -168,6 +179,7 @@ export function playRoundBattle(content: Content, job: RoundBattleJob): RoundBat
     supply: { player: supplyOf('player'), enemy: supplyOf('enemy') },
     damageRounds: state.rounds.filter((r) => r.damage.player + r.damage.enemy > 0).length,
     cappedRounds: state.rounds.filter((r) => r.capped).length,
+    roundDamage: state.rounds.map((r) => ({ ...r.damage })),
   };
 }
 
@@ -494,8 +506,9 @@ export function evaluateG4(content: Content, records: readonly RoundBattleRecord
     [row.rejected === 0, `${row.rejected} commands rejected`],
   ];
   const damaging = records.reduce((n, r) => n + r.damageRounds, 0), capped = records.reduce((n, r) => n + r.cappedRounds, 0);
+  const clauses = Object.fromEntries(['median', 'round9', 'botWins', 'rejected'].map((c, i) => [c, checks[i]![0]]));
   return {
-    id: 'G4', pass: checks.every(([p]) => p), row, summary: `rounds per battle: bot:balanced vs the scripted general on ${records[0]?.map}, ${records.length} battles`,
+    id: 'G4', pass: checks.every(([p]) => p), row, clauses, summary: `rounds per battle: bot:balanced vs the scripted general on ${records[0]?.map}, ${records.length} battles`,
     details: [...checks.map(([p, d]) => `${ok(p)} ${d}`), `info the round's damage cap bound in ${capped} of ${damaging} rounds with Heartcap damage, ${rate(capped / Math.max(1, damaging))}`],
   };
 }
@@ -626,6 +639,7 @@ export async function evaluateG8(content: Content, run: RoundRunner): Promise<Ve
   ];
   return {
     id: 'G8', pass: monos.every((r) => r.ok) && bands.every((b) => b.good), rows: monos, policies: Object.fromEntries(bands.map((b) => [b.bot, b.r])),
+    clauses: { monos: monos.every((r) => r.ok), ...Object.fromEntries(bands.map((b) => [`bot:${b.bot}`, b.good])) },
     summary: `adaptation in rounds: every mono bot drops ≥${Math.round(t.minDrop * 100)} points against the adaptive ${t.general}; ${bands.map((b) => `bot:${b.bot} ${b.band}`).join(', ')}`,
     details,
   };
@@ -1945,68 +1959,210 @@ function pct(x: number): string {
   return `${Math.round(x * 100)}%`;
 }
 
-// ---- the commander tournament (SPEC §16 Milestone 5, verification 3) ----
+// ---- whole runs: the run pool's jobs, G14, G15 and the commander tournament (§12.3, §15.3; R2b/T121, T122) ----
 
-/** No commander's run win rate may be more than this many points above another's. */
-export const COMMANDER_SPREAD = 15;
+/**
+ * A whole run to play as a job (§15.2): `player` with greedy drafts, a random route and the auto power policy unless
+ * `powerPolicy` says otherwise, on the run's default flags. The run pool (`tools/lib/pool.ts`) plays them in workers.
+ */
+export interface RunJob {
+  seed: number;
+  player: string;
+  commander?: string;
+  powerPolicy?: PowerPolicy;
+  /** The run's flags, the run's defaults unless set (a measurement's variant, such as powers off). */
+  flags?: Partial<Flags>;
+  /** Stop after this many battles. */
+  maxBattles?: number;
+}
 
-export interface CommanderRow {
+/** One battle of a run as the run guardrails read it, with X8's readouts (§7.2). */
+export interface RunBattleRead extends Pick<RoundBattleResult, 'byRound' | 'fullAt'> {
+  index: number;
+  kind: BattleRecord['kind'];
+  map: string;
+  general: string;
+  winner: Side;
+  by: 'rout' | 'decision';
+  rounds: number;
+  lifeLost: boolean;
+  /** The opener the general drew for the battle (§7.7, #69), by building id. */
+  opener: string[];
+  /** The gold upgrades each side bought (§6.1, #67). */
+  upgrades: Record<Side, number>;
+}
+
+/** A whole run as the run guardrails read it (G14, G15). */
+export interface RunRecord extends RunJob {
   commander: string;
-  runs: number;
-  victories: number;
-  reachedBoss: number;
-  battlesWon: number;
-  battles: number;
-  /** Lives left at each run's end, summed (§8.5). */
-  livesLeft: number;
-  powerUses: number;
-  powerDamage: number;
-  /** Puppet Bloom's units lifted and Rhizome Tithe's gold (§11.10). */
-  powerLifts: number;
-  powerGold: number;
+  outcome: RunResult['outcome'];
+  reachedBoss: boolean;
+  lives: { left: number; max: number };
+  battles: RunBattleRead[];
+  /** The player's power over the run (§11.10): uses, damage, units lifted and gold. */
+  power: { uses: number; damage: number; lifts: number; gold: number };
+  /** The run's hash at its end (§15.5), so a pooled run can be checked against one played in process. */
+  hash: string;
+}
+
+/** Plays whole runs, in process or on the pool, one record per job in job order. */
+export type RunRunner = (jobs: RunJob[]) => Promise<RunRecord[]>;
+
+/** Plays one run job, as a worker does. */
+export function playRunJob(content: Content, job: RunJob): RunRecord {
+  const battles: RunBattleRead[] = [];
+  const power = { uses: 0, damage: 0, lifts: 0, gold: 0 };
+  let pace = paceReader(), watched: BattleState | undefined;
+  const r = simulateRun(content, job.seed, { route: 'random', draft: 'greedy', player: job.player, power: job.powerPolicy ?? 'auto' }, {
+    ...(job.commander ? { commander: job.commander } : {}),
+    ...(job.flags ? { flags: job.flags } : {}),
+    ...(job.maxBattles !== undefined ? { maxBattles: job.maxBattles } : {}),
+    onTick: (s) => { if (s !== watched) { watched = s; pace = paceReader(); } pace.onTick(s); },
+    onBattle: ({ state, record: b }) => {
+      const st = state.stats;
+      power.uses += st.player.powerUses ?? 0;
+      power.damage += st.player.powerDamage ?? 0;
+      power.lifts += st.player.powerLifts ?? 0;
+      power.gold += st.player.powerGold ?? 0;
+      battles.push({
+        index: b.index, kind: b.kind, map: b.map, general: b.general, winner: b.winner, by: b.by, rounds: b.rounds.length, lifeLost: b.lifeLost,
+        opener: [...(state.sides.enemy.ai?.opener ?? [])], upgrades: { player: st.player.upgradesBought ?? 0, enemy: st.enemy.upgradesBought ?? 0 },
+        ...(watched === state ? pace : paceReader()).read(state),
+      });
+    },
+  });
+  return { ...job, commander: r.run.commander, outcome: r.outcome, reachedBoss: r.reachedBoss, lives: { ...r.lives }, battles, power, hash: hashRun(r.run) };
 }
 
 /**
- * Whole runs per commander: `bot:balanced` with greedy drafts, a random route and the auto power policy,
- * on seeds 1..n with the run's default flags (powers on). Each commander plays the same seeds.
+ * G14's and G15's runs (§12.3): every commander with each policy's bot that G14 or G15 names (X7: `bot:balanced` on
+ * fixed weights and `bot:answer`), on seeds 1 to G14's `runs`, with greedy drafts, a random route and the auto power policy.
  */
-export function commanderTournament(content: Content, commanders: string[], seeds: number): { rows: CommanderRow[]; verdict: Verdict } {
-  const rows: CommanderRow[] = [];
-  for (const commander of commanders) {
-    const row: CommanderRow = {
-      commander, runs: 0, victories: 0, reachedBoss: 0, battlesWon: 0, battles: 0, livesLeft: 0, powerUses: 0, powerDamage: 0, powerLifts: 0, powerGold: 0,
-    };
-    for (let seed = 1; seed <= seeds; seed++) {
-      const r = simulateRun(content, seed, { route: 'random', draft: 'greedy', player: 'bot:balanced', power: 'auto' }, {
-        commander,
-        onBattle: ({ state }) => {
-          const st = state.stats.player;
-          row.powerUses += st.powerUses ?? 0;
-          row.powerDamage += st.powerDamage ?? 0;
-          row.powerLifts += st.powerLifts ?? 0;
-          row.powerGold += st.powerGold ?? 0;
-        },
-      });
-      row.runs++;
-      if (r.outcome === 'victory') row.victories++;
-      if (r.reachedBoss) row.reachedBoss++;
-      row.battles += r.battleCount;
-      row.battlesWon += r.battles.filter((b) => b.winner === 'player').length;
-      row.livesLeft += r.lives.left;
+export async function commanderRuns(content: Content, run: RunRunner, opts: { commanders?: string[]; bots?: string[]; runs?: number; flags?: Partial<Flags> } = {}): Promise<RunRecord[]> {
+  const t = content.targets.rounds;
+  const commanders = opts.commanders ?? Object.keys(content.commanders);
+  const bots = opts.bots ?? [...new Set([...t.G14.policies, ...t.G15.policies].map((p) => `bot:${p.bot}`))];
+  const runs = opts.runs ?? t.G14.runs;
+  return run(commanders.flatMap((commander) => bots.flatMap((player) => seedList(runs).map((seed): RunJob => ({ seed, player, commander, ...(opts.flags ? { flags: opts.flags } : {}) })))));
+}
+
+const banded = (min?: number, max?: number) => min !== undefined || max !== undefined;
+const inBand = (x: number, min?: number, max?: number) => (min === undefined || x >= min) && (max === undefined || x <= max);
+const bandText = (min?: number, max?: number) => (min === undefined ? `at most ${rate(max!)}` : max === undefined ? `at least ${rate(min)}` : `${rate(min)}–${rate(max)}`);
+const won = (bs: readonly RunBattleRead[]) => bs.filter((b) => b.winner === 'player').length;
+const tally = (bs: readonly RunBattleRead[]) => `${won(bs)}/${bs.length}`;
+function groupBy<T>(xs: readonly T[], key: (x: T) => string): [string, T[]][] {
+  const m = new Map<string, T[]>();
+  for (const x of xs) m.set(key(x), [...(m.get(key(x)) ?? []), x]);
+  return [...m];
+}
+const bossOf = (rs: readonly RunRecord[]) => rs.flatMap((r) => r.battles.filter((b) => b.kind === 'boss'));
+
+/**
+ * G14 (§12.3, T119): battle 1 of whole runs. For each policy's bot in the targets and each commander, the share of
+ * battle 1s won, with each battle-1 general's tally. A policy with a band holds it for every commander; one without
+ * is reported (X7). S12 sets the bands from these readings (T131).
+ */
+export function evaluateG14(content: Content, records: readonly RunRecord[]): Verdict {
+  const t = content.targets.rounds.G14;
+  const details: string[] = [];
+  let pass = true;
+  for (const p of t.policies) {
+    const bot = `bot:${p.bot}`, asserted = banded(p.min, p.max), rows = groupBy(records.filter((r) => r.player === bot), (r) => r.commander);
+    if (asserted && !rows.length) { pass = false; details.push(`FAIL ${bot}: no runs`); }
+    for (const [commander, rs] of rows) {
+      const first = rs.flatMap((r) => r.battles.slice(0, 1)), r = won(first) / Math.max(1, first.length), good = first.length > 0 && inBand(r, p.min, p.max);
+      if (asserted && !good) pass = false;
+      details.push(`${asserted ? ok(good) : 'info'} ${bot} as ${commander}: battle 1 won ${rate(r)} of ${first.length}${asserted ? ` (band ${bandText(p.min, p.max)})` : ''}`
+        + ` · by its general ${groupBy(first, (b) => b.general).map(([g, bs]) => `${g} ${tally(bs)}`).join(', ')}`);
     }
-    rows.push(row);
   }
-  const rate = (r: CommanderRow) => (100 * r.victories) / Math.max(1, r.runs);
-  const rates = rows.map(rate);
-  const spread = Math.max(...rates) - Math.min(...rates);
-  const pass = spread <= COMMANDER_SPREAD;
+  const bands = t.policies.filter((p) => banded(p.min, p.max)).map((p) => `bot:${p.bot} ${bandText(p.min, p.max)}`);
+  return { id: 'G14', pass, summary: `battle 1 of whole runs, for each commander: ${bands.join(', ') || 'reported only'}`, details };
+}
+
+/**
+ * G15 (§12.3, T119): the boss, in G14's runs, pooled over the commanders: the share of runs that reach it (with
+ * A199's upper bound) and the boss fights won, each against its policy's band; each commander's reading is reported.
+ */
+export function evaluateG15(content: Content, records: readonly RunRecord[]): Verdict {
+  const t = content.targets.rounds.G15;
+  const details: string[] = [];
+  let pass = true;
+  for (const p of t.policies) {
+    const bot = `bot:${p.bot}`, rs = records.filter((r) => r.player === bot), fights = bossOf(rs);
+    const reach = rs.filter((r) => r.reachedBoss).length / Math.max(1, rs.length), win = won(fights) / Math.max(1, fights.length);
+    const reachOk = rs.length > 0 && inBand(reach, p.minReach, p.maxReach), winOk = fights.length > 0 && inBand(win, p.minWin, p.maxWin);
+    const reachAsserted = banded(p.minReach, p.maxReach), winAsserted = banded(p.minWin, p.maxWin);
+    if ((reachAsserted && !reachOk) || (winAsserted && !winOk)) pass = false;
+    details.push(
+      `${reachAsserted ? ok(reachOk) : 'info'} ${bot}: ${rate(reach)} of ${rs.length} runs reach the boss${reachAsserted ? ` (band ${bandText(p.minReach, p.maxReach)})` : ''}`,
+      `${winAsserted ? ok(winOk) : 'info'} ${bot}: boss fights won ${rate(win)} of ${fights.length}${winAsserted ? ` (band ${bandText(p.minWin, p.maxWin)})` : ''}`,
+      ...groupBy(rs, (r) => r.commander).map(([c, cs]) => `info   as ${c}: ${rate(cs.filter((r) => r.reachedBoss).length / cs.length)} reach the boss, boss fights won ${tally(bossOf(cs))}`),
+    );
+  }
+  const bands = t.policies.filter((p) => banded(p.minReach, p.maxReach) || banded(p.minWin, p.maxWin))
+    .map((p) => `bot:${p.bot} reach ${bandText(p.minReach, p.maxReach)}, wins ${bandText(p.minWin, p.maxWin)}`);
+  return { id: 'G15', pass, summary: `the boss in G14's runs, pooled over the commanders: ${bands.join('; ') || 'reported only'}`, details };
+}
+
+/** No commander's run win rate may be more than this many points above another's (§16 Milestone 5, verification 3). */
+export const COMMANDER_SPREAD = 15;
+
+/** §16 M5's spread over `bot:balanced`'s runs: each commander's runs won, within `COMMANDER_SPREAD` points of each other. */
+export function evaluateCommanderSpread(records: readonly RunRecord[]): Verdict {
+  const rows = groupBy(records.filter((r) => r.player === 'bot:balanced'), (r) => r.commander)
+    .map(([c, rs]) => ({ c, r: (100 * rs.filter((x) => x.outcome === 'victory').length) / rs.length, n: rs.length }));
+  const spread = rows.length ? Math.max(...rows.map((x) => x.r)) - Math.min(...rows.map((x) => x.r)) : 0;
   return {
-    rows,
-    verdict: {
-      id: 'M5', pass,
-      summary: `commander run win rates within ${COMMANDER_SPREAD} points (${seeds} seeds each): spread ${spread.toFixed(0)} points`,
-      details: rows.map((r) => `${r.commander}: ${rate(r).toFixed(0)}% runs won (${r.victories}/${r.runs}) · boss reached ${r.reachedBoss}/${r.runs} · ` +
-        `battles won ${r.battlesWon}/${r.battles} · lives left ${(r.livesLeft / Math.max(1, r.runs)).toFixed(1)} a run · power used ${r.powerUses}× (damage ${r.powerDamage}, units lifted ${r.powerLifts}, gold ${r.powerGold})`),
-    },
+    id: 'M5', pass: spread <= COMMANDER_SPREAD, summary: `commander run win rates within ${COMMANDER_SPREAD} points, bot:balanced: spread ${spread.toFixed(0)} points`,
+    details: rows.map((x) => `${x.c}: ${x.r.toFixed(0)}% of ${x.n} runs won`),
   };
+}
+
+const meanOf = (xs: readonly number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : NaN);
+const fixed = (x: number, d = 1) => (Number.isFinite(x) ? x.toFixed(d) : '–');
+
+/**
+ * T122's report on whole runs (§12.3, §15.3, A097, A199), for each policy's bot: per commander, runs won, battle 1 by
+ * general, the boss reached and won, lives lost and the lives left at the boss; by battle index, the battles won,
+ * their rounds and the Decision share, the boss apart; each general's battles by the opener it drew (#69); and
+ * X8's readouts with the upgrades bought (§7.2, #67). Markdown lines, which the CLI prints as they are.
+ */
+export function runReportLines(content: Content, records: readonly RunRecord[]): string[] {
+  const maxRounds = content.balance.rounds.maxRounds;
+  const out: string[] = [];
+  for (const [bot, rs] of groupBy(records, (r) => r.player)) {
+    const generals = [...new Set(rs.map((r) => r.battles[0]?.general).filter((g): g is string => !!g))].sort();
+    out.push(`### ${bot}: ${rs.length} runs (greedy drafts, a random route, the auto power policy)`, '',
+      `| commander | runs | runs won | battle 1 won | ${generals.map((g) => `vs ${g}`).join(' | ')} | boss reached | boss won | lives lost a run | lives left at the boss | battles a run | power: uses · gold · lifted |`,
+      `|---|---|---|---|${generals.map(() => '---').join('|')}|---|---|---|---|---|---|`);
+    for (const [c, cs] of groupBy(rs, (r) => r.commander)) {
+      const first = cs.flatMap((r) => r.battles.slice(0, 1)), boss = bossOf(cs), atBoss = cs.filter((r) => r.reachedBoss);
+      const livesAtBoss = atBoss.map((r) => r.lives.left + (r.battles.find((b) => b.kind === 'boss')?.lifeLost ? 1 : 0));
+      const lost = cs.map((r) => r.battles.filter((b) => b.lifeLost).length);
+      out.push(`| ${c} | ${cs.length} | ${pctOf(cs.filter((r) => r.outcome === 'victory').length, cs.length)} | ${pctOf(won(first), first.length)}`
+        + ` | ${generals.map((g) => tally(first.filter((b) => b.general === g))).join(' | ')} | ${pctOf(atBoss.length, cs.length)} | ${tally(boss)}`
+        + ` | ${fixed(meanOf(lost), 2)} | ${fixed(meanOf(livesAtBoss), 2)} | ${fixed(meanOf(cs.map((r) => r.battles.length)), 2)}`
+        + ` | ${cs.reduce((n, r) => n + r.power.uses, 0)} · ${cs.reduce((n, r) => n + r.power.gold, 0)} · ${cs.reduce((n, r) => n + r.power.lifts, 0)} |`);
+    }
+    const all = rs.flatMap((r) => r.battles);
+    out.push('', `By battle (every commander; the boss apart, A097):`, '',
+      `| battle | battles | won | median rounds | reach round ${maxRounds} | by Decision | lives lost |`, '|---|---|---|---|---|---|---|');
+    const rowOf = (name: string, bs: readonly RunBattleRead[]) => `| ${name} | ${bs.length} | ${pctOf(won(bs), bs.length)} | ${median(bs.map((b) => b.rounds))}`
+      + ` | ${pctOf(bs.filter((b) => b.rounds >= maxRounds).length, bs.length)} | ${pctOf(bs.filter((b) => b.by === 'decision').length, bs.length)} | ${bs.filter((b) => b.lifeLost).length} |`;
+    for (const [i, bs] of groupBy(all.filter((b) => b.kind !== 'boss'), (b) => String(b.index)).sort((a, b) => Number(a[0]) - Number(b[0]))) out.push(rowOf(i, bs));
+    out.push(rowOf('the boss', all.filter((b) => b.kind === 'boss')));
+    out.push('', `Each general's battles by the opener it drew (#69), the boss apart:`, '', '| general | battle | opener | battles | you won | median rounds |', '|---|---|---|---|---|---|');
+    const openers = groupBy(all.filter((b) => b.kind !== 'boss'), (b) => `${b.general}|${b.index}|${b.opener.join(' + ')}`)
+      .sort((a, b) => a[0].localeCompare(b[0]));
+    for (const [key, bs] of openers) {
+      const [g, i, o] = key.split('|');
+      out.push(`| ${g} | ${i} | ${o} | ${bs.length} | ${pctOf(won(bs), bs.length)} | ${median(bs.map((b) => b.rounds))} |`);
+    }
+    const ups = (s: Side) => fixed(meanOf(all.map((b) => b.upgrades[s])), 2);
+    out.push('', `X8's readouts over these ${all.length} battles (§7.2), and the upgrades a battle, you ${ups('player')}, the general ${ups('enemy')} (#67):`, '',
+      ...paceLines(all).map((l) => `- ${l}`), '');
+  }
+  return out;
 }

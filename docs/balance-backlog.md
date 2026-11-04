@@ -29,7 +29,134 @@ v1's backlog is archived at [docs/archive/v1/balance-backlog.md](archive/v1/bala
 - **Gill Archers tie Swarm and Ranged** (R2a S15, below): the noise, not #14's tie order, picks between them. A rule change waits for the user.
 - **The Burster's seat effect** (R2a S17, below): a mirror of Bursters goes to whichever side's ids come first. A rule change waits for the user.
 - **The first fighting tick's frame in Chromium** (R2a S17, below): 4.8–11.4 ms once a page, against §13.7's 8 ms.
-- **Battle 1 misses G14** (R2b S1b, below; for R2-Q13): `bot:balanced` wins 52%, 29% and 45% of battle 1s for Vesper, Armilla and Cordis, against 70–90%. Old Mother Mold wins 73–94% of her pairings. A free blueprint lifts those by at most 21 points, while a softer Mold opener brings Vesper and Cordis inside the band. The user chose the softer opener on 2026-11-03 (R2-Q13), and S5 lands it (T068).
+- **G14 and G15 miss the easy way** (R2b S11, below):
+  - **Battle 1:** `bot:balanced` wins 93%, 59% and 100% for Vesper, Armilla and Cordis, against 70–90%. S1b read 52%, 29% and 45% (R2b S1b, below).
+  - **The boss:** 98% of runs reach it (≤ 85%) and 88% of boss fights are won (40–70%).
+  - **Next** (the user, 2026-11-04: "Yes, retune at S12"): they're known misses until S12's T131. There S12 agrees the bands and proposes a data-only retune before S14's playtest, with Armilla's gap raised as a fix of its own.
+- **G5 misses since S5b's upgrades** (R2b S11, below): the +150-gold side wins 89%, against 55–75%, and no price from 200% to 600% passes. It's the same cause as G4's round-9 clause. It's a known miss until S14 (the user, 2026-11-04), which measures two levers: upgrades from a fixed round, and at most one a side a round.
+- **X8's two knobs show no need** (R2b S11, below): S12 deletes them (T129).
+
+## R2b S11 · whole runs: G14, G15, X8's knobs, Mold's openers, and G5 (2026-11-03)
+
+**Measured** (T128; no rule or number changed):
+- **What:** `npm run balance -- tournament --commanders all`, 100 runs per commander (seeds 1–100) under each planning policy (`bot:balanced` on fixed weights and X7's `bot:answer`), with greedy drafts, a random route and the auto power policy, on the run pool. `tests/slow/runs.test.ts` plays the same runs.
+- **Where:** `develop` after S5b (#129), with S5, S6 and S7 in, and this branch's crash fix (a Spore Cloud in the muster, below).
+- **The guardrails:** G14 and G15, with §12.3's first-guess bands in `data/balance-targets.json`'s `rounds` block. S12 sets the bands with the user (T131).
+
+**G14, battle 1 (70–90% for each commander).** Since S1b, these are in: Old Mother Mold's soft battle-1 opener (T068), drafts in run battles (T067), gold upgrades at 300% with the general's income × 1.05 (S5b), the v2 passives, Armilla's Tithe and Puppet Bloom's lift (S7).
+
+| Commander | S1b (before the fixes) | Battle 1 now | vs Old Mother Mold | vs the Lichen Baron | `bot:answer` |
+|---|---|---|---|---|---|
+| Vesper | 52% | **93%** (above) | 47/52 | 46/48 | 94% |
+| Armilla | 29% | **59%** (below) | 26/52 | 33/48 | 58% |
+| Cordis | 45% | **100%** (above) | 52/52 | 48/48 | 100% |
+
+**G15, the boss (pooled; at least 40% reach it and at most 85%, and 40–70% of boss fights won).**
+- `bot:balanced`: 98% of 300 runs reach the boss, and 88% of boss fights are won. Both are above their bands.
+- By commander: Vesper reaches it in 99% and wins 92 of 99, Armilla 95% and 67 of 95, Cordis 100% and 99 of 100.
+- `bot:answer`: 99% reach it and 89% of boss fights are won.
+
+**The rest of T122's report** (`bot:balanced`; `bot:answer` reads within a few points):
+
+| Commander | Runs won | Lives lost a run | Lives left when the boss battle began | Battles a run |
+|---|---|---|---|---|
+| Vesper | 92% | 0.59 | 2.65 | 4.36 |
+| Armilla | 67% | 1.48 | 2.32 | 4.31 |
+| Cordis | 99% | 0.01 | 3.00 | 4.37 |
+
+| Battle | Battles | Won | Median rounds | Reach round 9 | By Decision |
+|---|---|---|---|---|---|
+| 1 | 300 | 84% | 5 | 6% | 2% |
+| 2 | 300 | 84% | 5 | 5% | 2% |
+| 3 | 300 | 82% | 5 | 4% | 2% |
+| 4 | 110 | 80% | 5 | 6% | 2% |
+| The boss | 294 | 88% | 6 | 10% | 4% |
+
+- **M5's spread:** runs won spread 32 points across the commanders, against §16 M5's 15.
+- **A097:** the boss is no longer nearly always a Decision. Only 4% of boss fights end by one, since run battles end by Rout in a median of 5 rounds.
+- **A199:** lives at the boss are still worth nothing. Runs arrive with 2.3–3.0 of their 3 lives.
+
+**What lifts it** (`bot:balanced`, 100 runs a commander, each variant on the same seeds):
+
+| Variant | Vesper | Armilla | Cordis | Boss reached | Boss fights won |
+|---|---|---|---|---|---|
+| Today | 93% | 59% | 100% | 98% | 88% |
+| Powers off (`flags.powers: false`) | 93% | 55% | 86% | 98% | 77% |
+| No upgrades (`rounds.upgradeCostPct:100000`) | 82% | 64% | 100% | 96% | 78% |
+| No upgrades, the general's income × 1 | 88% | 63% | 100% | 96% | 76% |
+
+- **The powers:** Puppet Bloom's lift accounts for 14 of Cordis's battle-1 points, with 88 units lifted a run. With the powers off, boss fights drop 11 points.
+- **The upgrades:** they add 11 points to Vesper's battle 1 and 10 to the boss fights. They cost Armilla 5, since she fields 1–2 units early while the general upgrades too.
+- **What's left:** neither variant brings any commander back near S1b's numbers. The rest comes from Mold's soft opener, the drafts and the passives.
+
+**Mold's openers from battle 2** (#69, S7 asked S11 to measure them). Your win % by the opener she drew; `bot:answer` in brackets:
+
+| Battle | Sporeling Burrow + Truffle Cellar | Burrow + Gill Archer Nest | Burrow + Burrow + Gill Archer Nest |
+|---|---|---|---|
+| 1 | 80% of 156 (79%) | – | – |
+| 2 | 64% of 36 (69%) | 73% of 33 (76%) | 72% of 18 (83%) |
+| 3 | 60% of 15 (67%) | 67% of 24 (50%) | 67% of 6 (67%) |
+
+- **Her aggressive openers are no harder than her soft one.** From battle 2 the soft opener does best for her, since a Truffle Cellar's gold compounds over a battle.
+- **She is the hardest general from battle 2.** You win 60–73% against her, against the Baron's 81–100% and the Blightwright's 67–88%.
+
+**X8's two knobs** (T128, T172). Readouts over the 1,304 battles of `bot:balanced`'s runs:
+- **Filling up:** the general's colony is full at Begin from round 5, but 788 battles end before it fills. Once full, it banks a median 154 a round, and it buys 0.27 upgrades a battle (you buy 0.51).
+- **Replays:** only 209 of 7,087 rounds replay the last clash exactly (3%), and 76 of 1,073 once both colonies are full (7%). R2a's S15 read 17–23%, and about half once full.
+- **Selling:** it sold 451 buildings.
+
+The same runs with each knob on:
+
+| Knob | Battle 1: Vesper · Armilla · Cordis | Boss fights won | Exact replays (once both full) | Buildings the general sold |
+|---|---|---|---|---|
+| Off (today) | 93% · 59% · 100% | 88% | 209 (76) | 451 |
+| `replaceWhenFull` on | 93% · 59% · 100% | 89% | 188 (55) | 813 |
+| `leanToLastAnswer` 0.5 | 92% · 59% · 100% | 86% | 209 (83) | 465 |
+| `leanToLastAnswer` 1 | 92% · 59% · 100% | 85% | 199 (79) | 453 |
+
+- **No need shown.** Upgrades now spend the banked gold, battles end in a median of 5 rounds, and the clash rarely replays, so neither knob moves G14 or G15.
+- **For T129:** S12 deletes both knobs and their code.
+
+**G5, a new miss** (found by S11's baseline run of `npm run test:slow`):
+- **The reading:** the +150-gold side wins 89% of 80 battles, against G5's 55–75%. R2a's S20 read 63%.
+- **The cause:** a bisect over R2b's merges reads 65% at S0 and 71% from S1 to S7, then 89% at S5b (#129). The upgrades cause it: the richer side fills its colony first and buys the first upgrades, so +150 gold snowballs.
+- **By price** (`--proto rounds.upgradeCostPct:<pct> --checks g5`): no upgrades 69%, 200% 90%, 300% 89%, 400% 81%, 600% 78%. The general's × 1.05 alone moves it 3 points (86% at income × 1).
+- **No price from 200% to 600% passes.** S5b's T163 measured G4, G8 and G13, not G5.
+- **Decided** (the user, 2026-11-04: "Yes, until S14"): G5 is a known miss until S14's tuning, beside G4's round-9 clause, which has the same cause (T168, T169). The hub suggested two levers for S14 to measure, each code on a short-lived branch under the prototype rule:
+  - upgrades unlock at a fixed round for both sides, instead of when the colony fills;
+  - at most one upgrade a side a round.
+
+**A crash, fixed on S11's branch** (commit 9a2fbab, with a regression case in `tests/unit/combat.test.ts`; no golden moved):
+- **What happened:** 3 of Vesper's first 33 runs crashed, as did `npm run sim -- --run --seeds 9..9 --commander vesper --power-policy auto` on `develop`.
+- **Why:** a Spore Cloud from a kill in the muster (her Spore Burst with Spore Cloud's death burst) pulsed on a spatial grid that the muster never rebuilds. That grid held the last clash's indices, from this battle or one played earlier in the same process.
+- **The fix:** the clash tick now builds the grid in the muster whenever hits or clouds will query it.
+
+**The slow suite's runtimes** (T127, R2-Q9). `npx vitest run tests/slow` on the dev machine (an M2 Pro with 12 threads; each file's pool has 6 workers), the files one at a time:
+
+| File | Guardrails | Runtime | Each test's timeout |
+|---|---|---|---|
+| `perf.test.ts` | G11 | 3 s | vitest's 600 s |
+| `battles.test.ts` | G4, G5, G6, G7, G8, G13 | 13 s (G4's 200 battles 3 s, G8 5 s, G7 4 s) | 60 s; 120 s for G7 and G8 |
+| `counters.test.ts` | G3, G12 | 155 s (G3 22 s, G12 133 s) | 120 s for G3; 600 s for G12 |
+| `duels.test.ts` | G1, G2 | 2 s | 60 s |
+| `formation.test.ts` | G16 | 8 s | 60 s |
+| `runs.test.ts` | G14, G15 | 17 s alone, 42 s with S10's browser suite beside it | 180 s |
+
+- **The whole suite** takes 3 min 23 s, against R2-Q9's 15 minutes.
+- **Running the files in parallel** would buy nothing: each file's pool already fills half the machine, and G11's timings need it to themselves. So `fileParallelism` stays off for `tests/slow` (T127's task line says why).
+- **Every guardrail asserts.** The known misses assert as expected fails (T168): G1, G2, G3, G4's round-9 clause, G5, G7, G8's mono clause, G14, G15 and G16. G6, G11, G12 and G13 pass.
+
+**Recommended** (each the user's call):
+- **G14 and G15:** keep §12.3's bands as the target, since the miss is in the content, not the band. The run is too easy for Vesper and Cordis, and battle 1 is too hard for Armilla. S12's T131 sets the bands, and S14's tuning picks the levers:
+  - Puppet Bloom's lift (Cordis);
+  - the upgrades (Vesper's battle 1, the boss fights);
+  - the boss (3,600 HP, its extra cards);
+  - Armilla's battle-1 army (S1b's probe: the Burster Pod or the Gill Archer Nest in her starter lifted her against the Baron from 54% to 79–83%).
+- **G5:** a known miss until S14 (decided, above), tuned beside G4's round-9 clause (T169).
+- **Decided** (the user, 2026-11-04: "Yes, retune at S12"):
+  - G14 and G15 are known misses in the slow suite until S12's T131 (T168).
+  - At T131, S12 agrees their bands with the user, and proposes a data-only retune, measured with `--proto path:value`, that brings both inside them before S14's playtest. The hub suggested three levers: the general's income, its Heartcap and the drafts' generosity.
+  - Armilla's gap is a commander fix of its own, which S12 raises.
 
 ## R2b S5b · the upgrade's price against G4, G8 and G13, for #67 (2026-11-03)
 

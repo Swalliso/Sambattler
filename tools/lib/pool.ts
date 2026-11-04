@@ -1,28 +1,31 @@
 // Plays the long checks' jobs in worker threads: round jobs, the battles, clashes and supply duels the
-// guardrails play (playRoundJob in tools/lib/balance.ts, T117), and R1's clash-check clashes (clashRecord in
-// tools/lib/clash.ts). Every worker builds its content from the same proto spec and every job is deterministic,
+// guardrails play (playRoundJob in tools/lib/balance.ts, T117), R1's clash-check clashes (clashRecord in
+// tools/lib/clash.ts), and whole runs for G14 and G15 (playRunJob, R2b/T121). Every worker builds its content
+// from the same proto spec and every job is deterministic,
 // so a pooled run returns exactly what an in-process run does, in job order. A clash job carries both armies,
 // built in the main thread, so workers need no bot content.
 import { availableParallelism } from 'node:os';
 import { isMainThread, parentPort, Worker, workerData } from 'node:worker_threads';
 import type { Content } from '../../src/data/registry.ts';
-import { playRoundJob } from './balance.ts';
-import type { ClashRunner, RoundJob, RoundJobResult, RoundRunner } from './balance.ts';
+import { playRoundJob, playRunJob } from './balance.ts';
+import type { ClashRunner, RoundJob, RoundJobResult, RoundRunner, RunJob, RunRecord, RunRunner } from './balance.ts';
 import { clashRecord } from './clash.ts';
 import type { ClashJob, ClashRecord } from './clash.ts';
 import { protoContent } from './content.ts';
 
-/** A job for a worker: a round job, or one of the clash check's clashes. */
-export type PoolJob = RoundJob | { kind: 'clashRecord'; job: ClashJob };
+/** A job for a worker: a round job, one of the clash check's clashes, or a whole run (R2b/T121). */
+export type PoolJob = RoundJob | { kind: 'clashRecord'; job: ClashJob } | { kind: 'run'; job: RunJob };
 
 /** The default pool size: half the machine's threads, leaving room for other work. */
 export function defaultWorkers(): number {
   return Math.max(1, Math.floor(availableParallelism() / 2));
 }
 
-/** Plays one job, as a worker does: a round job's result, or a clash check's record. */
-export function dispatch(content: Content, job: PoolJob): RoundJobResult | ClashRecord {
-  return job.kind === 'clashRecord' ? clashRecord(content, job.job) : playRoundJob(content, job);
+/** Plays one job, as a worker does: a round job's result, a clash check's record, or a run's. */
+export function dispatch(content: Content, job: PoolJob): RoundJobResult | ClashRecord | RunRecord {
+  if (job.kind === 'clashRecord') return clashRecord(content, job.job);
+  if (job.kind === 'run') return playRunJob(content, job.job);
+  return playRoundJob(content, job);
 }
 
 /**
@@ -74,6 +77,17 @@ export function roundPool(spec: string, size: number): { run: RoundRunner; close
 /** Plays the round jobs in this thread, with the same results as `roundPool`. */
 export function inProcessRounds(content: Content): RoundRunner {
   return (jobs) => Promise.resolve(jobs.map((job) => playRoundJob(content, job)));
+}
+
+/** `size` workers playing whole runs (R2b/T121, A102), each run's record the same as in process (`inProcessRuns`). */
+export function runJobPool(spec: string, size: number): { run: RunRunner; close: () => Promise<void> } {
+  const pool = jobPool(spec, size);
+  return { run: (jobs) => pool.run(jobs.map((job): PoolJob => ({ kind: 'run', job }))) as Promise<RunRecord[]>, close: pool.close };
+}
+
+/** Plays whole runs in this thread, with the same records as `runJobPool`. */
+export function inProcessRuns(content: Content): RunRunner {
+  return (jobs) => Promise.resolve(jobs.map((job) => playRunJob(content, job)));
 }
 
 const data = workerData as { jobPool?: boolean; spec: string } | null;

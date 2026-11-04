@@ -416,6 +416,20 @@ export const BalanceTargetsSchema = z.object({
       minBuildMean: z.number(), minAnswerRate: z.number(),
     }).strict(),
     G13: z.object({ maxCappedShare: z.number(), clashSecondsMin: Pos, clashSecondsMax: Pos }).strict(),
+    /**
+     * Battle 1 of whole runs (R2b/T119): each policy's bot plays `runs` runs per commander, and a policy with a band
+     * holds it for every commander; one without is reported only (X7). S12 sets the bands (T131).
+     */
+    G14: z.object({
+      runs: z.number().int().positive(),
+      policies: z.array(z.object({ bot: Id, min: z.number().optional(), max: z.number().optional() }).strict()).min(1),
+    }).strict(),
+    /** The boss in G14's runs, pooled over the commanders: the share that reach it, and the boss fights won; a policy without a band is reported only. */
+    G15: z.object({
+      policies: z.array(z.object({
+        bot: Id, minReach: z.number().optional(), maxReach: z.number().optional(), minWin: z.number().optional(), maxWin: z.number().optional(),
+      }).strict()).min(1),
+    }).strict(),
     /** The formation rule against its front and back ranks swapped, pooled over role-split pairs (R2-Q10), a column per budget. */
     G16: z.object({
       seeds: z.number().int().positive(), budgets: z.array(z.number().int().positive()).min(1), minWinRate: z.number(), pairs: z.literal('roleSplit'),
