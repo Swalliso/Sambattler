@@ -1,8 +1,8 @@
 // Prototype knobs (`?proto=`, `--proto`): named presets and `path:value` overrides applied to the raw content
 // before validation, so a knob can be measured by the tools (`--proto`) or playtested in the browser (`?proto=`)
 // without editing data. The preset's key is absent from balance.json by default, so without a spec the rules are
-// unchanged; X8's two AI knobs, the last in the data, went in R2b's T129. Since R2b's S4c one preset is left (SPEC §16 R2, A109): lives at the boss, for R2b's playtest (#16),
-// which S14 adopts as data or deletes. R1's chosen set and the arrival shield are default data since R2a, the
+// unchanged; X8's two AI knobs, the last in the data, went in R2b's T129. No preset is left since R2b's S14 deleted the
+// last, `bosslives` (lives at the boss, #16), which the playtest found changed nothing (T171, A109). R1's chosen set and the arrival shield are default data since R2a, the
 // presets of retired systems are gone (Appendix A), and the user dropped A2, B3 and the flyers (2026-11-03). A spec
 // that names a gone preset reports it as unknown (A117). Add no preset: measure a data change with a `path:value`
 // override, which needs no code here (SPEC §16 R2, .claude/rules/balance.md).
@@ -10,14 +10,8 @@ import type { RawContent } from './registry.ts';
 
 type Json = Record<string, unknown>;
 
-/** Presets: the settings a knob is measured with. No new ones (the user, 2026-11-03). */
-export const PROTO_PRESETS: Record<string, Json> = {
-  /**
-   * Lives left count at the boss (§8.5, #16): +250 to your boss battle's Heartcap for each life left. For R2b's
-   * playtest, after which S14 adopts it as data or deletes it (T149).
-   */
-  bosslives: { livesAtBoss: { heartcapPerLife: 250 } },
-};
+/** Presets: the settings a knob is measured with. None is left, and no new ones (the user, 2026-11-03). */
+export const PROTO_PRESETS: Record<string, Json> = {};
 
 /**
  * Sets a dotted path; `null` removes the setting instead (`cleave:null` turns cleave off). A
@@ -81,7 +75,7 @@ function parseValue(v: string): unknown {
 }
 
 /**
- * A spec's settings in order, as (path, value) pairs: each preset name (`bosslives`) expands to its paths,
+ * A spec's settings in order, as (path, value) pairs: each preset name expands to its paths,
  * and each `path:value` override parses its value as JSON when it can
  * (`cleave.units:["scythecap","hammercap"]`), else as a string. Unknown presets are reported.
  */
@@ -91,7 +85,11 @@ function specItems(spec: string, problems: string[]): [string, unknown][] {
     const colon = raw.indexOf(':');
     if (colon >= 0) { out.push([raw.slice(0, colon), parseValue(raw.slice(colon + 1))]); continue; }
     const preset = presetNamed(raw);
-    if (!preset) { problems.push(`proto: unknown preset "${raw}" (known: ${Object.keys(PROTO_PRESETS).join(', ')})`); continue; }
+    if (!preset) {
+      const known = Object.keys(PROTO_PRESETS);
+      problems.push(`proto: unknown preset "${raw}" (${known.length ? `known: ${known.join(', ')}` : 'there are none: use a path:value override'})`);
+      continue;
+    }
     for (const [k, v] of Object.entries(preset)) out.push([k, structuredClone(v)]);
   }
   return out;
@@ -117,8 +115,8 @@ function entryKind(path: string): string | undefined {
 }
 
 /**
- * Applies a comma-separated prototype spec to a copy of `balance`: preset names (`bosslives`) and
- * `path:value` overrides (`livesAtBoss.heartcapPerLife:300`, `cleave:null`), in order. Paths into
+ * Applies a comma-separated prototype spec to a copy of `balance`: preset names and
+ * `path:value` overrides (`tierStatMult:2.4`, `cleave:null`), in order. Paths into
  * content entries (`unit.…`, `building.…`) need {@link applyProto}; here they are reported, not applied.
  */
 export function applyProtoToBalance(balance: unknown, spec: string): { balance: Json; problems: string[] } {

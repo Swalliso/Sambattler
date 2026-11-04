@@ -38,7 +38,7 @@ export function nodeContent(): Content {
   return cached;
 }
 
-/** Content with a balance-backlog prototype spec applied (`bosslives,livesAtBoss.heartcapPerLife:300`; see src/data/proto.ts). */
+/** Content with a balance-backlog prototype spec applied (`tierStatMult:2.4,cleave:null`; see src/data/proto.ts). */
 export function protoContent(spec: string): Content {
   if (!spec) return loadContent(readRawContent());
   const { raw, problems } = applyProto(readRawContent(), spec);

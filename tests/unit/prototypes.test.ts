@@ -1,6 +1,6 @@
-// Prototype knobs (src/data/proto.ts, SPEC §15.7 Prototypes): since R2b's S4c one default-off preset remains,
-// `bosslives`, absent from data/balance.json, so the shipped rules are unchanged; R2b's playtest (S14) adopts it
-// as data or deletes it (§16 R2, A109). The `proto` spec (tools `--proto`, browser `?proto=`) applies presets and
+// Prototype knobs (src/data/proto.ts, SPEC §15.7 Prototypes): no preset remains since R2b's S14. S4c left one,
+// `bosslives`, and R2b's playtest found it changed nothing the user could see, so S14 deleted it with its key
+// (2026-11-04, #16, A109, T171). The `proto` spec (tools `--proto`, browser `?proto=`) applies presets and
 // `path:value` overrides to the content, and a preset that doesn't exist, such as a retired one, is reported
 // (A117). The user dropped A2 and B3, which no battle in rounds read, and then the flyers, whose rules the round
 // sim never had (2026-11-03: "Cleanup first"), so the content takes no `flying` block or tag.
@@ -20,8 +20,8 @@ function at(obj: unknown, path: string): unknown {
 const CONTENT_PATH = /^(building|unit|bot|general|faction)\./;
 
 describe('the presets are the agreed list (§16 R2, A109)', () => {
-  it("are lives at the boss alone: R1's review kept no knob, the user dropped A2, B3 and the flyers, and the retired systems' presets are gone", () => {
-    expect(Object.keys(PROTO_PRESETS)).toEqual(['bosslives']);
+  it("are none: R1's review kept no knob, the user dropped A2, B3 and the flyers, the retired systems' presets are gone, and S14 deleted `bosslives`", () => {
+    expect(Object.keys(PROTO_PRESETS)).toEqual([]);
   });
 
   it('leave no flyer rules: the content refuses a `flying` block or tag (2026-11-03)', () => {
@@ -41,32 +41,35 @@ describe('the presets are the agreed list (§16 R2, A109)', () => {
     expect(content.balance.ai).not.toHaveProperty('replaceWhenFull');
   });
 
-  it('bosslives sets its key in the content', () => {
-    expect(protoContent('bosslives').balance.livesAtBoss).toEqual({ heartcapPerLife: 250 });
+  it('leave no lives at the boss: `bosslives` is an unknown preset, and the content refuses its key (#16, T171)', () => {
+    expect(unknownPresets('bosslives')).toEqual(['bosslives']);
+    expect(() => protoContent('livesAtBoss.heartcapPerLife:250')).toThrow(/balance\.json: Unrecognized key: "livesAtBoss"/);
+    expect(content.balance).not.toHaveProperty('livesAtBoss');
   });
 });
 
 describe('the proto spec', () => {
-  it('applies presets and path:value overrides in order, parsing JSON values', () => {
-    const { balance, problems } = applyProtoToBalance(content.balance, 'bosslives,livesAtBoss.heartcapPerLife:300,cleave:null');
+  it('applies path:value overrides in order, parsing JSON values', () => {
+    const { balance, problems } = applyProtoToBalance(content.balance, 'mergeRadius:9,mergeRadius:7,cleave:null');
     expect(problems).toEqual([]);
-    expect(balance.livesAtBoss).toEqual({ ...PROTO_PRESETS.bosslives!.livesAtBoss as object, heartcapPerLife: 300 });
+    expect(balance.mergeRadius).toBe(7); // the later override wins
     expect(balance.cleave).toBeUndefined(); // null removes a setting
-    expect([content.balance.livesAtBoss, content.balance.cleave]).toEqual([undefined, { units: ['scythecap'] }]); // a copy, not the shared content
+    expect([content.balance.mergeRadius, content.balance.cleave]).toEqual([1.5, { units: ['scythecap'] }]); // a copy, not the shared content
     const lists = applyProtoToBalance(content.balance, 'cleave.units:["scythecap","hammercap"]').balance;
     expect(at(lists, 'cleave.units')).toEqual(['scythecap', 'hammercap']);
   });
 
   it('reports a preset that does not exist, a retired or dropped one among them, and applies the rest (A117)', () => {
-    const { balance, problems } = applyProtoToBalance(content.balance, 'rework,bosslives,B3,constructor');
+    const { balance, problems } = applyProtoToBalance(content.balance, 'rework,bosslives,B3,constructor,mergeRadius:7');
     expect(problems).toEqual([
-      expect.stringContaining('unknown preset "rework"'), expect.stringContaining('unknown preset "B3"'), expect.stringContaining('unknown preset "constructor"'),
+      expect.stringContaining('unknown preset "rework"'), expect.stringContaining('unknown preset "bosslives"'),
+      expect.stringContaining('unknown preset "B3"'), expect.stringContaining('unknown preset "constructor"'),
     ]);
-    expect(balance.livesAtBoss).toEqual(PROTO_PRESETS.bosslives!.livesAtBoss);
-    expect(unknownPresets('rework,bosslives,B3,a2,hold,constructor,livesAtBoss.heartcapPerLife:300')).toEqual(['rework', 'b3', 'a2', 'hold', 'constructor']);
-    expect(unknownPresets('Flyers,bosslives,livesAtBoss.heartcapPerLife:300')).toEqual(['flyers']);
+    expect(balance.mergeRadius).toBe(7);
+    expect(unknownPresets('rework,bosslives,B3,a2,hold,constructor,mergeRadius:7')).toEqual(['rework', 'bosslives', 'b3', 'a2', 'hold', 'constructor']);
+    expect(unknownPresets('Flyers,BossLives,mergeRadius:7')).toEqual(['flyers', 'bosslives']);
     expect(() => protoContent('rework')).toThrow(/unknown preset "rework"/);
-    expect(() => protoContent('flyers')).toThrow(/unknown preset "flyers" \(known: bosslives\)/);
+    expect(() => protoContent('flyers')).toThrow(/unknown preset "flyers" \(there are none: use a path:value override\)/);
   });
 });
 

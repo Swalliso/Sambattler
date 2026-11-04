@@ -8,6 +8,15 @@ replaces. None of it is open work, including headings that say "Open:". From mil
 entries measure or tune v2's round battle (SPEC §11, §12). "The backlog" in the entries below means
 v1's, now [archived](../docs/archive/v1/balance-backlog.md).
 
+## R2b-S14 T171: `bosslives` deleted, with its schema key and the run's read (2026-11-04)
+
+**Approved by the user** (2026-11-04, "Start both" to the hub's plan, relayed by the hub). In R2b's playtest the user's
+`bosslives` run changed nothing they could see ("I'm not really sure what changed with it"): Cordis lost no life, and her
+boss Heartcap never came close to falling (`docs/playtest-feedback.md`, 2026-11-04). §8.5, §18.2 #16, A199.
+- **Gone:** the preset in `src/data/proto.ts`, which leaves `PROTO_PRESETS` empty; `livesAtBoss` in the schema, so a spec
+  setting it is refused; `playerHeartcapMax`'s per-life term in `src/run/flow.ts`; and the boss node's badge on the route.
+- **No outcome moved:** the key was absent from `data/balance.json`, so the shipped rules and every golden are unchanged.
+
 ## R2b-S13: §16 R2's verification, no data change (2026-11-04)
 
 No data, rule or golden changed. S13 ran SPEC §16 R2's steps 1–9 on the data after retune B, and every step passes, step

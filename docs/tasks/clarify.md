@@ -59,7 +59,7 @@ This is the clarify step for SPEC v2. SPEC.md is the spec, `docs/<milestone>-pla
 | #14 | An Anti-Ranged kind | R1 gate | Yes (decided 2026-11-02) |
 | #15 | Counter sets from the clash matrix? | R1 gate | No, with the three fixes (decided 2026-11-02) |
 | #36 | The sixth archetype | R1 gate (reading), R3 S0 (call) | Lean the Burster Pod (R1's reading, 2026-11-02: the Burster Pod) |
-| X6 | Is 25–35 minutes binding? | R2a S0 | Measure; re-set after R2b's playtest (decided 2026-11-02) |
+| X6 | Is 25–35 minutes binding? | R2a S0, R2b S14 | Measure; re-set after R2b's playtest (decided 2026-11-02): 10–15 minutes at 1× (re-set 2026-11-04) |
 | X7 | Bots that buy the answer (§18.2 #34) | R2a S0 | Yes; G8, G14, G15 under both policies (decided 2026-11-02) |
 | X8 | The general between counter cycles | R2a S0 | Measure; two default-off knobs (decided 2026-11-02) |
 | R2-Q1 | What you see of the general from round 2 | R2a S0 | Full reveal by default; A/B "last fielded" (decided 2026-11-02; the A/B kept the full reveal at R2a's gate, 2026-11-03) |
@@ -236,6 +236,7 @@ These ten calls set how the work after R1 is cut. The task files assume each rec
 - **Alternatives:** A203's order (the curve, a 2× clash default, a 5-row route); or a 35–45 minute target now.
 - **Blocks:** R2a S0; R2b gate; M8 step 6.
 - **Decision:** 2026-11-02 (R2a S0; the user: "Take every recommendation"): the recommendation: measure first. R2a's report shows planning seconds per round (R2a S19, on RB-Q3's clock), R2b's playtest reads the run's minutes, and the target is re-set after R2b's playtest. If runs are long, the levers go in order: rounds per battle (X5), then the route's length. In SPEC §8.2.
+- **Re-set:** 2026-11-04 (R2b S14, T149; the user's playtest, and "Start both" to the hub's plan): the user's runs took about 10 minutes, which they found "fine with the current available options in the game", so the target is 10–15 minutes at 1×, leaving room for the closer battles the tuning aims at. R3's playtest re-reads it. In SPEC §8.2 and M8's step 6.
 
 ### X7 · Bots that buy the answer (§18.2 #34)
 
@@ -831,6 +832,7 @@ The R2a plan settles these itself, with no call from you: A027, A032, A034, A036
 - **Alternatives:** a boss loss costs a life and you fight again; or sprawl yours alone (#21).
 - **Blocks:** R2b's lives.
 - **Decision:** 2026-11-03 (R2b S0; the user: "Take them all"): the recommendation. Losing the boss battle ends the run, as in v1. "Lives left count at the boss" is a default-off knob, `bosslives`, for R2b's playtest, and G15 bounds boss reach (#35). In SPEC §8.5, §8.8 and §18.2 #16.
+- **The knob deleted:** 2026-11-04 (R2b S14, T171; the user's "Start both" to the hub's plan): in the user's `bosslives` run "I'm not really sure what changed with it", since Cordis lost no life and the boss never came close, so the preset goes with its schema key, the run's read and the boss node's badge.
 
 ### #17 · A clean-win bonus, and a Rout's kit
 

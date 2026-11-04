@@ -4,8 +4,8 @@
 import { createServer } from 'vite';
 import type { ViteDevServer } from 'vite';
 
-/** The prototype preset the dev-site cases run: `bosslives`, a preset that stays after R2b's S4 (T055) and changes no content. */
-export const PROTO = 'bosslives';
+/** The prototype spec the dev-site cases run: the shipped tick rate as an override, so it changes no content. No preset is left since R2b's S14 (T171). */
+export const PROTO = 'tickRate:20';
 
 const servers: ViteDevServer[] = [];
 
