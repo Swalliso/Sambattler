@@ -294,7 +294,8 @@ function printRunSummary(results: (RunResult & { wallMs: number })[]): void {
   const boss = results.filter((r) => r.reachedBoss).length;
   const wins = results.filter((r) => r.outcome === 'victory').length;
   const done = results.filter((r) => r.outcome === 'victory' || r.outcome === 'defeat').length;
-  const inCount = counts.filter((c) => c >= 4 && c <= 5).length;
+  // a run has 3 lives, so one that loses its first three battles ends after 3 (§16 R2 step 5, the user, 2026-11-04)
+  const inCount = counts.filter((c) => c >= 3 && c <= 5).length;
   const bossRuns = results.filter((r) => r.reachedBoss);
   // a life is lost only in a lost battle (§8.5)
   const wrongLife = results.flatMap((r) => r.battles.filter((b) => b.lifeLost !== (b.winner !== 'player')).map((b) => `seed ${r.seed} battle ${b.index}`));
@@ -304,7 +305,7 @@ function printRunSummary(results: (RunResult & { wallMs: number })[]): void {
   const ended = (e: ReturnType<typeof runEnded>) => results.filter((r) => runEnded(r) === e).length;
   console.log(`runs ${n} · victories ${wins} (${pct(wins, n)}) · reached the boss ${boss} (${pct(boss, n)})`);
   console.log(`how runs ended: won the boss ${ended('won the boss')} · lost the boss ${ended('lost the boss')} · out of lives ${ended('out of lives')}${ended('stopped') ? ` · stopped ${ended('stopped')}` : ''}`);
-  console.log(`battles per run: median ${median(counts)} · min ${Math.min(...counts)} · max ${Math.max(...counts)} · ${inCount}/${n} runs fought 4–5`);
+  console.log(`battles per run: median ${median(counts)} · min ${Math.min(...counts)} · max ${Math.max(...counts)} · ${inCount}/${n} runs fought 3 to 5`);
   console.log(`lives left at the end: mean ${(lives.reduce((a, b) => a + b, 0) / n).toFixed(1)} · runs that lost one ${results.filter((r) => r.battles.some((b) => b.lifeLost)).length}/${n}` +
     `${livesAtBoss.length ? ` · at the boss: mean ${(livesAtBoss.reduce((a, b) => a + b, 0) / livesAtBoss.length).toFixed(1)}` : ''}`);
   console.log(`clash time per run (planning untimed): median ${median(mins).toFixed(1)} min · min ${Math.min(...mins).toFixed(1)} · max ${Math.max(...mins).toFixed(1)}`);
@@ -312,7 +313,7 @@ function printRunSummary(results: (RunResult & { wallMs: number })[]): void {
   console.log('');
   const expect = (ok: boolean, text: string) => console.log(`${ok ? 'PASS' : 'FAIL'}  expect ${text}`);
   expect(done === n, `every run completes (${done}/${n})`);
-  expect(inCount === n, `4–5 battles per run (${inCount}/${n})`);
+  expect(inCount === n, `3 to 5 battles per run (${inCount}/${n})`);
   expect(wrongLife.length === 0, `a life is lost only in a lost battle${wrongLife.length ? ` (not ${wrongLife.join(', ')})` : ''}`);
   // SPEC §16 Milestone 4, verification 4: the intel file
   const later = results.filter((r) => r.battles.some((b) => b.index >= 2 && b.kind !== 'boss'));

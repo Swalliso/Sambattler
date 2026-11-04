@@ -208,3 +208,31 @@ in the tips store, the migration's repair fields and fixtures, and `scene=deploy
 ## As built
 
 Written by the last session (S13).
+
+### §16 R2's verification (S13, 2026-11-04)
+
+S13 ran SPEC §16 R2's steps 1–9 in their final forms on `feature/r2b-verify`, cut from `develop` once S12 (#134) had
+merged, with no rule, data or golden change.
+
+| Step | Task | Command | Result |
+|---|---|---|---|
+| 1 | T136 | `npm run verify` | Green in 19 s: typecheck, lint, data, 45 unit files with 907 cases passing and one expected fail (T148's Burster seat effect, `seats.test.ts`), the seven goldens, the five sim smokes, the `clash-cap` scenario and the quick bench. Every round row of §15.7 has its cases (below) |
+| 2 | T137 | `npm run golden -- verify` | The seven replays pass, and they are §15.5's set: `r2-balanced-vs-scripted-s1` (the general plans first), `r2-twin-roots-balanced-vs-scripted-s3`, `r2-merge-mirror-s3` (knitting at the muster), `r2-run-s1` (a whole run) and `r2-vesper-power-s3`, `r2-cordis-power-s3` and `r2-armilla-power-s3` (each power once per clash). Since retune B, `r2-run-s1` loses all three of its battles (below) |
+| 3 | T138 | `npm run sim -- --seeds 1..40 --player bot:balanced --enemy general:scripted --summary` | Every expectation passes: all 40 end with 0 rejected commands, a median of 7 rounds, 8 battles (20%) reach round 9 against G4's at most 20%, 23 of 274 clashes (8%) reach the cap, the bot wins 50%, and a battle takes 38 ms of wall time against §13.7's 3 s |
+| 4 | T139 | `npx vitest run tests/unit/scenarios.test.ts` | 34 of 34 pass. Each named scenario asserts its outcome exactly: `general-plans-first`, `formation-from-plots`, `clash-cap`, `round-damage-cap`, `decision-round-9` and E1–E8 (`lane-empty-one-side`, `lane-empty-both`, `cap-tie`, `double-wipe`, `emplacements-only-draw`, `emplacement-only-win`, `split-lanes`, `both-heartcaps-zero`) |
+| 5 | T140 | `npm run sim -- --run --seeds 1..20 --player bot:balanced --auto-draft greedy --auto-route random --summary` | Passes on the user's wording: all 20 runs complete, in 3 to 5 battles (a median of 4; seed 1 ends out of lives after 3), and no life is lost in a won battle. 12 runs win (60%), 19 reach the boss (95%) and 12 of the 19 boss fights are won (63%); battle 1 is won in 16 of 20 (80%). Lives left average 1.6, and 2.1 at the boss. Against G14's 70–90% and G15's 40–95% reach and 40–70% boss wins, this bot's runs are inside, at reach's ceiling. The slow suite reads them per commander (step 7) |
+| 6 | T141 | `npx vitest run tests/unit/migrate.test.ts`, and `tests/browser/resume.test.ts` in `npm run test:browser` | 19 of 19, and the browser suite's 147 of 147. A run saved under `RUN_VERSION` 1 loads migrated with its notice, never null ("a migrated v1 run with its notice"), and a v1 battle save in a run that goes on opens at round 1's planning, with the restart notice and the run migrated |
+| 8 | T143 | `npm run bench` | Inside §13.7. R1's full-colony clash: a mean tick of 0.27 ms and a p99 of 0.79 ms on one lane (96 units a side), 0.33 ms and 0.82 ms on Twin Roots (120 a side), against 1 and 2.5 ms. The clash's first tick 0.30 ms (5 ms), the general's planning turn 0.40 ms at most (20 ms), a planning command's sim part 0.39 ms (2 ms), a full battle 18 ms (3 s), and the resume replay of a round-9 save 51 ms (about 1 s) |
+
+**Step 1's round rows,** in `tests/unit/`:
+- the order of a round's events: `rounds.test.ts` (round 1's opening, the queue and the step by phase, a round's order);
+- income by round: `economy.test.ts` (income at a round's opening, `incomePreview`);
+- the formation from the plots: `formation.test.ts` (`formationFor`, `formationOf`) and the `formation-from-plots` scenario;
+- how a clash ends: `clash.test.ts` (a lane's end), `scoring.test.ts`, and the `clash-cap` and E1–E6 scenarios;
+- the damage formula: `scoring.test.ts` (the scoring helpers and `scoreRound`) and the `round-damage-cap` scenario;
+- merging at the muster, the preview equal to what fields: `formation.test.ts` (`musterFor`, the muster against the sim's merging, `mergePreview`) and `clash.test.ts` (the muster inside Begin);
+- the Heartcap race and the Decision after round 9: `scoring.test.ts` (the battle's end) and the `decision-round-9` and `both-heartcaps-zero` scenarios;
+- lives: `run.test.ts` (a won battle costs no life; a lost one costs a life and the run ends at 0 or on a boss loss; `bosslives`; the Grove's life; whole runs that lose a life only in a lost battle);
+- refunds by phase: `planning.test.ts` (100% in the phase planted, 60% once fielded);
+- the general planning first and never reading what you plant: `ai.test.ts` (`planningView`, the general's turn in the round's opening, bots planning after the general) and the `general-plans-first` scenario;
+- a save round trip between rounds: `resume.test.ts` (a planning save, an open draft, a Begin save, a power fired in a clash) and `determinism.test.ts` (resume from each save point).
