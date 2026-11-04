@@ -3,8 +3,10 @@
 // queued Begin waits for input. The frame renders at alpha 1. Its chrome (§10.2, T095) is Begin, which the
 // view shows, the planning hint pinned in the callout lane, and the general's news as the phase opens, both worded here.
 import type { Content } from '../../data/registry.ts';
+import { formationOf, visibleColony } from '../../sim/index.ts';
 import type { BattleState, Side } from '../../sim/index.ts';
 import { decisionWinner } from '../../sim/systems/victory.ts';
+import { isV3 } from '../../sim/v3.ts';
 import { intentOf, KIND_LABEL } from '../../ui/doctrine.ts';
 import type { RoundSession } from '../session.ts';
 
@@ -22,7 +24,8 @@ export function planningFrame(session: RoundSession, advance: () => void): numbe
 export function planningHint(state: BattleState): string {
   const r = state.rules, gold = state.sides.player.gold;
   if (state.sides.player.draft) return `Round ${state.round} · ${gold} gold · pick a card, reroll or skip the draft, then plan`;
-  if (state.round === 1) return `Round 1 · ${gold} gold · place your opener, then press Begin`;
+  // under v3 the opener sprouts, and fields from round 2 (C3.2, Plan-Q1)
+  if (state.round === 1) return `Round 1 · ${gold} gold · place your opener, then press Begin${isV3(state.config) ? ': it sprouts, and fields from round 2' : ''}`;
   if (state.round < r.maxRounds) return `Round ${state.round} · ${gold} gold · plan, then press Begin`;
   const side = (s: Side) => ({
     dealt: state.rounds.reduce((n, x) => n + x.damage[s], 0), hp: state.sides[s].heartcapHp, maxHp: state.sides[s].heartcapMaxHp,
@@ -32,6 +35,17 @@ export function planningHint(state: BattleState): string {
   const pct = (x: number, max: number) => `${Math.round((100 * x) / max)}%`;
   const by = r.decisionBy === 'damage' ? `${p.dealt} to ${e.dealt} dealt` : `${pct(p.dealt, e.maxHp)} to ${pct(e.dealt, p.maxHp)} of max HP dealt`;
   return `Round ${state.round}, the last round · ${gold} gold · ${lead} on the Decision, ${by} · press Begin`;
+}
+
+/**
+ * The lanes where you'd field nothing and the general fields something (§10.2): on a one-lane map, your whole
+ * formation. The general's is its formation as you may see it (`visibleColony`), so under v3 a planting held
+ * back until Begin doesn't show through the warning (C3.1, T014).
+ */
+export function emptyLanes(state: BattleState): number[] {
+  const mine = new Set(formationOf(state, 'player').map((q) => q.lane));
+  const theirs = new Set(visibleColony(state, 'enemy').formation.map((q) => q.lane));
+  return state.lanes.flatMap((_, i) => (!mine.has(i) && theirs.has(i) ? [i] : []));
 }
 
 /**

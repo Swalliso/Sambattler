@@ -18,6 +18,7 @@ import type { Reveal } from '../../render/preview.ts';
 import { incomePreview, SIDES } from '../../sim/index.ts';
 import type { BattleState, Side } from '../../sim/index.ts';
 import { stormBpFor } from '../../sim/systems/victory.ts';
+import { isV3 } from '../../sim/v3.ts';
 import { h, setText, toggleClass } from '../h.ts';
 import { uiIcon } from '../icons.ts';
 import { reducedMotion } from '../motion.ts';
@@ -260,9 +261,12 @@ export class TopBand implements HudPart {
  * The General's Intent panel (§7.5, §10.2), at the band's right end: its portrait at 48 px, its name and
  * doctrine, its income this round and the gold it banked, and the buildings it planted and sold, from its plan
  * for the round, cut short to fit. There's no countdown. Its tooltip gives the whole plan, the passive and the kit.
+ * Under v3 from `hideFromRound`, while you plan, its gold at the start of its turn stands in for what it banked,
+ * which would give away what it planted, and its plantings wait for Begin; its sales show (C3.1, Plan-Q2, T015).
  */
 export class IntentPanel implements HudPart {
   private doctrine = h('div', { class: 'doctrine', id: 'hud-doctrine' });
+  private gold = h('span', { id: 'intent-gold' });
   private income = h('span', { id: 'intent-income' });
   private banked = h('span', { id: 'intent-banked' });
   private planted = h('span', { id: 'intent-planted' });
@@ -280,7 +284,7 @@ export class IntentPanel implements HudPart {
       h('div', { class: 'title' }, "General's intent"),
       h('div', { class: 'name', id: 'hud-general' }, i.name),
       this.doctrine,
-      h('div', { class: 'econ' }, this.income, this.banked),
+      h('div', { class: 'econ' }, this.gold, this.income, this.banked),
       h('div', { class: 'changes' }, this.planted, this.sold),
     );
     hud.tip.attach(el, intentTip(hud.content, hud.atlas, state, hud.reveal));
@@ -291,12 +295,20 @@ export class IntentPanel implements HudPart {
     const i = intentOf(this.hud.content, state);
     // under `reveal=last` its plantings and sales this round show at Begin, with its colony (§7.5, T127)
     const held = heldUntilBegin(this.hud.reveal, state);
+    // under v3 its gold at the start of its turn is the tell (C3.1, Plan-Q2)
+    const v3 = held && isV3(state.config);
     const key = JSON.stringify([i.doctrine, i.plan, held]);
     if (key === this.key) return;
     this.key = key;
     setText(this.doctrine, i.doctrine);
+    setText(this.gold, v3 ? `gold ${i.plan?.goldAtStart ?? state.sides.enemy.gold}` : '');
     setText(this.income, i.plan ? `income ${i.plan.income}` : '');
-    setText(this.banked, i.plan ? `banked ${i.plan.banked}` : '');
+    setText(this.banked, i.plan && !v3 ? `banked ${i.plan.banked}` : '');
+    if (v3) {
+      setText(this.planted, 'Plantings show at Begin');
+      setText(this.sold, i.sold.length ? `Sold: ${cutShort(i.sold, 1)}` : '');
+      return;
+    }
     // a sale shares the line, so the plantings make room for it; its gold upgrades (§6.1) take the line a sale leaves
     const second = i.sold.length ? `Sold: ${cutShort(i.sold, 1)}` : i.planted.length && i.upgraded.length ? `Upgraded: ${cutShort(i.upgraded, 1)}` : '';
     setText(this.planted, held ? 'Changes show at Begin' : i.planted.length ? `New: ${cutShort(i.planted, second ? 1 : 2)}`

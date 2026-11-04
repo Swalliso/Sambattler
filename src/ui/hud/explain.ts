@@ -11,6 +11,7 @@ import { incomePreview, survivingSupply } from '../../sim/index.ts';
 import type { BattleState, LaneResult, Side } from '../../sim/index.ts';
 import { interestCapOf } from '../../sim/systems/economy.ts';
 import { capFor, roundOutcome, stormBpFor } from '../../sim/systems/victory.ts';
+import { v3Of } from '../../sim/v3.ts';
 import { trayOrder } from '../buildingInfo.ts';
 import { h } from '../h.ts';
 import { uiIcon } from '../icons.ts';
@@ -326,19 +327,23 @@ export function intentTip(content: Content, atlas: Atlas, state: BattleState, re
     key: () => `${state.round}|${state.sides.enemy.ai?.plans.length ?? 0}|${heldUntilBegin(reveal, state)}`,
     build: () => {
       const i = intentOf(content, state);
-      // under `reveal=last` its changes this round show at Begin (T127)
+      // under `reveal=last` its changes this round show at Begin (T127); under v3 its plantings and what it banked
+      // do, its sales show at once, and its gold at the start of its turn is the tell (C3.1, Plan-Q2, T015)
       const held = heldUntilBegin(reveal, state);
+      const v3 = v3Of(state);
+      const v3Held = held && !!v3;
       const out: Node[] = [h('div', { class: 'tip-head' }, h('b', null, i.name), h('span', { class: 'tip-num' }, i.doctrine))];
       if (i.title) out.push(h('p', { class: 'muted' }, i.title));
       if (i.plan) {
         out.push(
           sec(`Round ${i.plan.round}`),
           row('Planted', held ? 'shows at Begin' : i.planted.join(', ') || 'nothing'),
-          row('Sold', held ? 'shows at Begin' : i.sold.join(', ') || 'nothing'),
+          row('Sold', held && !v3 ? 'shows at Begin' : i.sold.join(', ') || 'nothing'),
           // under `reveal=last` an upgrade this round waits for Begin, as a planting does, so the row waits too
           ...(i.upgraded.length && !held ? [row('Upgraded', i.upgraded.join(', '), 'its squad arrives Bloomed')] : []),
+          ...(v3Held ? [row('Gold', String(i.plan.goldAtStart ?? state.sides.enemy.gold), 'at the start of its turn, its income paid')] : []),
           row('Income', plus(i.plan.income), i.plan.round === 1 ? 'none in round 1' : undefined),
-          row('Banked', String(i.plan.banked), 'held at Begin, for interest'),
+          v3Held ? row('Banked', 'shows at Begin') : row('Banked', String(i.plan.banked), 'held at Begin, for interest'),
         );
       }
       const passive = passiveOf(content, state);
@@ -350,7 +355,9 @@ export function intentTip(content: Content, atlas: Atlas, state: BattleState, re
         return `${content.buildings[id]?.name ?? id}${cap !== undefined ? ` (at most ${cap})` : ''}`;
       });
       out.push(sec('Kit'), para(names.join(', ')),
-        h('p', { class: 'muted' }, 'It plays by your rules: its gold is public, and its whole army is on the field before you plan.'));
+        h('p', { class: 'muted' }, v3
+          ? `The v3 prototype: from round ${v3.hideFromRound} its plantings show at Begin, as sprouts, and its gold at the start of its turn is public.`
+          : 'It plays by your rules: its gold is public, and its whole army is on the field before you plan.'));
       return out;
     },
   };
