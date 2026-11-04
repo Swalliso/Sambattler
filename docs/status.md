@@ -96,9 +96,14 @@ Updated 2026-11-03, on `docs/r2b-s4-done` (the hub's docs PR into `develop`). Th
   - **The summary** gives each battle's outcome ("Lost by Rout in round 7", "Won by Decision"), a round sparkline (dealt rising in violet, taken hanging in ash), the kit at the end and the run's play time: its active minutes and median planning seconds a round, on one clock for the run that a reload restarts and the save never holds (X6).
   - **The title and the link previews** describe rounds, and `public/og-image.png` is regenerated from the new title.
   - **`scene=run&round=&phase=`** opens the run's first battle at that checkpoint with Node's hash (T157), and `tools/screenshot.ts` checks the run capture's lives, the route's kits and the summary's battles (T110). No golden moved.
+- **S8** (`feature/r2b-saves`, T091–T100): in review. A run's battle saves between rounds, and its end is recorded before its report:
+  - **Battle saves are `v: 3`,** under the same key: at each planning phase once the general has planned and any draft is set, after each planning command, at Begin, when your power runs, and as the tab hides in planning. A clash or an aftermath writes nothing new.
+  - **A reload resumes** the planning as it was (plantings, gold, an open draft and its offer), or the clash from its first tick with a fired power replaying at its tick, so it can't be fired again (R2-Q22). A save of another version, another battle's, or one whose hash doesn't match restarts round 1's planning with the notice and keeps the run (A089). The battle-save stand-in is lifted.
+  - **The battle's end is the run's node boundary:** the life, Spores, the Amber roll and the spoils are applied and saved before the report, which shows the Spores and the Amber actually rolled in its banner, and on a loss the Regrowth lost and those left. A reload on the report opens the next screen with a one-line notice ("Won by Rout in round 6 · +20 Spores").
+  - **The bench** replays a round-9 planning save in about 50 ms, against about 1 s (A088), so no snapshot or "Restoring the battle…" line is needed. It's report-only.
+  - **Goldens:** `r2-run-s7`'s final run hash moved, since a battle's record now holds the Amber it paid (T098). No battle checkpoint moved.
 - **The stand-ins open on `develop`** from S1 (Call 14), each with the session that lifts it (checked at S4, T152):
   - passives on retired systems do nothing in a round battle until S7, which also ends Rhizome Tithe's refusal (T082) and applies the Sporestorm Sigil to each power (T084); relics have their v2 effects since S6;
-  - a reload mid-battle restarts it at round 1's planning, with the notice when a battle save was found, until S8 (T095, T096);
   - `scene=draft` opens round 1's planning of a run battle, so its capture shows no draft until round 3, until S10 (T115);
   - retired selectors and triggers still in the data compile to no-ops, v1's keys stay in the data and the schema, and R2a's `rounds` data blocks sit beside them, until S12 (T129);
   - the draft is today's centred dialog, which covers the general's formation, until S10 (T116).
