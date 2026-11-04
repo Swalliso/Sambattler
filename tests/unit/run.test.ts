@@ -11,7 +11,6 @@ import { analyzeFielded, basePlots, createBattle, hashState, makeRoundConfig, pl
 import type { BattleConfig, BattleState, IntelProfile, Side } from '../../src/sim/index.ts';
 import { matchupClass } from '../../src/sim/matchups.ts';
 import type { RunJob } from '../../tools/lib/balance.ts';
-import { protoContent } from '../../tools/lib/content.ts';
 import { inProcessRuns, runJobPool } from '../../tools/lib/pool.ts';
 import { content, playOn } from '../helpers.ts';
 
@@ -407,15 +406,13 @@ describe('battle setup and rewards (SPEC §4.5, §4.6, §6.1, §6.5, §8.5–8.6
     expect(s.sides.player.plots.filter((p) => p.open)).toHaveLength(basePlots(map) + 2);
   });
 
-  it('with `bosslives`, each life left adds 250 to your boss Heartcap; off by default (#16)', () => {
+  it('gives the boss battle the same Heartcap whatever lives are left: S14 deleted `bosslives` (#16, T171)', () => {
     const run = createRun(content, { seed: 6 });
-    run.lives.left = 2;
     enter(run, 5, 0);
-    expect(configOf(run).player.heartcapMaxHp).toBe(3000);
-    const knob = protoContent('bosslives');
-    expect(battleConfig(knob, run, run.route[5]![0]!).player.heartcapMaxHp).toBe(3000 + 2 * 250);
-    expect(battleConfig(knob, run, run.route[0]![0]!).player.heartcapMaxHp).toBe(3000);
-    expect(bal.livesAtBoss).toBeUndefined();
+    for (const left of [1, 2, 3]) {
+      run.lives.left = left;
+      expect(battleConfig(content, run, run.route[5]![0]!).player.heartcapMaxHp, `${left} left`).toBe(3000);
+    }
   });
 
   it("intel reads every battle, a lost one too: the mean of each round's kind scores over what you fielded, then ½ / ½ (§7.6)", () => {

@@ -158,7 +158,7 @@ describe('the route', () => {
     expect(await p.locator('#run-lives').getAttribute('title')).toContain('lives');
   });
 
-  it("shows each battle node's general's kit at the index it's fought at, the boss's intel note, and no bosslives bonus by default", async () => {
+  it("shows each battle node's general's kit at the index it's fought at, and the boss's intel note", async () => {
     const p = await open('/?scene=route&seed=4&autoplay=battles:2&test=1');
     const run = mid();
     const row = run.path.length;
@@ -176,14 +176,7 @@ describe('the route', () => {
     }
     expect(nodes).toBeGreaterThanOrEqual(6);
     expect(await p.locator('.route-node.boss .node-note').textContent()).toContain('intel');
-    expect(await p.locator('.node-bosslives').count()).toBe(0);
     expect(await clipped(p)).toEqual([]);
-  });
-
-  it('shows the bosslives bonus on the boss node when the knob is on', async () => {
-    const p = await open('/?scene=route&seed=4&autoplay=battles:2&test=1&proto=bosslives');
-    const lives = await p.evaluate(() => window.__GAME__!.run()!.lives);
-    expect(await p.locator('.route-node.boss .node-bosslives').textContent()).toContain(`+${250 * lives.left}`);
   });
 });
 

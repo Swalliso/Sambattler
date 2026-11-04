@@ -78,13 +78,11 @@ export function chooseNode(content: Content, run: RunState, index: number): void
 
 /**
  * Your Heartcap's max in a battle (§4.5, §8.5, §8.7): the run-long change (Fallen Oak) and the one-battle change
- * (Quiet Clearing's Rest) multiply, and with the `bosslives` knob each life left adds to it at the boss (#16).
+ * (Quiet Clearing's Rest) multiply. Lives left add nothing at the boss since R2b's S14 deleted `bosslives` (#16, T171).
  */
-export function playerHeartcapMax(content: Content, run: RunState, node: RouteNode): number {
+export function playerHeartcapMax(content: Content, run: RunState): number {
   const bal = content.balance;
-  const hp = Math.round(bal.heartcapPlayerHp * (1 + run.heartcapMaxPct) * (1 + run.next.heartcapMaxHpPct));
-  const perLife = node.kind === 'boss' ? bal.livesAtBoss?.heartcapPerLife ?? 0 : 0;
-  return Math.max(1, hp + perLife * run.lives.left);
+  return Math.max(1, Math.round(bal.heartcapPlayerHp * (1 + run.heartcapMaxPct) * (1 + run.next.heartcapMaxHpPct)));
 }
 
 /**
@@ -110,7 +108,7 @@ export function battleConfig(content: Content, run: RunState, node: RouteNode): 
     upgrades: { ...run.upgrades },
     relics: [...run.relics],
     plots,
-    heartcapMaxHp: playerHeartcapMax(content, run, node),
+    heartcapMaxHp: playerHeartcapMax(content, run),
     startingGold: Math.max(0, gold + run.next.startingGold),
     draft: runPool(content, run),
   };

@@ -149,9 +149,6 @@ function nodeView(content: Content, atlas: Atlas, run: RunState, node: RouteNode
   if (node.kind === 'grove') details.push(h('span', { class: 'node-sub' }, 'Regain a Regrowth or graft an upgrade'));
   if (node.kind === 'boss') {
     details.push(h('span', { class: 'node-sub' }, 'Win to end the run victorious'));
-    // the `bosslives` knob (#16): each Regrowth left adds to your Heartcap here
-    const perLife = content.balance.livesAtBoss?.heartcapPerLife ?? 0;
-    if (perLife) details.push(h('span', { class: 'node-bosslives', title: LIVES_TIP }, uiIcon(atlas, 'i-heart'), `+${perLife * run.lives.left} Heartcap: ${perLife} a Regrowth left`));
   }
   const pod = spriteToCanvas(atlas, node.kind === 'boss' ? 'p-pod-boss' : 'p-pod', 'velvet-bloom', POD_FRAME[state]);
   pod.className = 'pod-art';

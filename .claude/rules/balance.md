@@ -27,9 +27,9 @@ paths:
 - **Prototypes:** no new named presets (the user, 2026-11-03). A candidate rule is either a data change,
   measured with the `--proto path:value` override (which needs no code), or code on a short-lived branch,
   measured there and then merged as the default with the user's OK, or deleted. Any temporary switch names
-  the session that removes it. `src/data/proto.ts` holds one preset since R2b's S4c, `bosslives`, which
-  R2b's playtest (S14) adopts as data or deletes; S12 deleted X8's two AI knobs, which S11 measured as
-  moving nothing. A path reaches a content entry by id (`building.`, `unit.`, `bot.`, `general.`,
+  the session that removes it. `src/data/proto.ts` holds no preset since R2b's S14 deleted `bosslives`, the
+  last one, which R2b's playtest found changed nothing (T171); S12 deleted X8's two AI knobs, which S11
+  measured as moving nothing. A path reaches a content entry by id (`building.`, `unit.`, `bot.`, `general.`,
   `faction.` and, since S12, `commander.`). A spec naming any other preset is refused by the tools and
   shown as unknown on the page, which then saves the run nowhere (T061). Adopting a new rule is the user's call, and v2's milestones land on
   `develop` as the new default (CLAUDE.md).

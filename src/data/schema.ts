@@ -152,11 +152,6 @@ export const BalanceSchema = z.object({
   heartcapPlayerHp: z.number().int().positive(),
   heartcapEnemyHp: z.object({ base: z.number().int().positive(), perBattle: z.number().int().nonnegative(), boss: z.number().int().positive() }).strict(),
   lives: z.number().int().positive(),
-  /**
-   * "Lives left count at the boss" (§8.5, §18.2 #16, A199), absent by default: in the boss battle your
-   * Heartcap's max gains `heartcapPerLife` for each life the run has left. A knob for R2b's playtest (`bosslives`).
-   */
-  livesAtBoss: z.object({ heartcapPerLife: z.number().int().positive() }).strict().optional(),
   // ---- the economy per round (§1.3 #12, §6.1, §6.2) ----
   startingGold: z.number().int().nonnegative(),
   startingGoldPerBattle: z.number().int().nonnegative(),

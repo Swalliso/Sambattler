@@ -711,7 +711,6 @@ kbd { font-family: var(--font-mono); font-size: 12px; line-height: 16px; padding
 .route-row:last-child .route-node .node-tip { left: auto; right: calc(100% - 8px); }
 .route-node:hover .node-tip, .route-node:focus-visible .node-tip { display: flex; }
 .route-node .node-note { color: var(--muted); font-style: italic; }
-.route-node .node-bosslives { display: inline-flex; align-items: center; gap: var(--space-1); color: var(--lilac); font-weight: 700; }
 .route-node.past { opacity: .5; }
 .route-node.future .node-title, .route-node.past .node-title { color: var(--text); }
 .route-node.future.elite .node-title { color: var(--danger-soft); }

@@ -37,6 +37,97 @@ v1's backlog is archived at [docs/archive/v1/balance-backlog.md](archive/v1/bala
 - **G5 misses since S5b's upgrades** (R2b S11, below): the +150-gold side wins 89%, against 55–75%, and no price from 200% to 600% passes. It's the same cause as G4's round-9 clause. It's a known miss until S14 (the user, 2026-11-04), which measures two levers: upgrades from a fixed round, and at most one a side a round.
 - **X8's two knobs show no need** (R2b S11, below): S12 deletes them (T129).
 
+## R2b S14 · merging, the Burrow and Cordis's Puppet Bloom, for T169: measured, held for the v3 redesign (2026-11-04)
+
+On `feature/r2b-tune` after the playtest (the hub's list: merging first, then G1 re-read with it, then Puppet Bloom). The user then approved a v3 redesign instead (2026-11-04, "Go with this plan"), so nothing here is built: the numbers stand as v2's last reading. Everything is `npm run experiment` with `--proto`; Puppet Bloom's `liftTo` and `maxUnits` were measured on a short-lived branch whose code reads them. Nothing here is built.
+
+### 1. Merging (G7): `tierStatMult` is the lever
+
+`tierStatMult` multiplies HP and damage per merge tier: a Bloomed unit gets ×2.8 and an Elder ×7.84 (the square), from
+three and six base units' supply (SPEC §5.5).
+
+| `tierStatMult` | G7: the mirror (55–70%) | G7: against Slayers (≤50%) |
+|---|---|---|
+| 2.8 (shipped) | 96% | 78% |
+| 2.4 | 85% | 56% |
+| 2.3 | 80% | 48% |
+| 2.2 | 75% | 49% |
+| **2.1** | **66%** | **39%** |
+| **2.0** | **60%** | **34%** |
+
+200 battles a row, both seats. The perks barely matter: at 2.8, removing the Sporeling Elder's 0.6-tile splash reads 94%
+and 74%.
+
+### 2. The Sporeling Burrow (G1): merging was its edge
+
+G1 passes outright at 2.0 and at 2.1, with no change to the Burrow. The Burrow wins 4 of 10 pairings at 2.0 and 6 at 2.1,
+from 9 (and never losing clearly). The Rhizomorph Tunnel wins 2, from none. G2 doesn't move: the Gill Archer still beats
+nothing, and the Hammercap > Amanita Knight edge holds on 3 of 5 seeds. G2 stays a known miss.
+
+### What else merging moves (the slow suite's checks)
+
+| Check | 2.8 (shipped) | 2.0 | 2.1 |
+|---|---|---|---|
+| G4: battles reaching round 9 (≤20%) | 22% | **31%** | **30%** |
+| G4: median rounds (6–8) | 7 | 7 | 7 |
+| G13: clashes at the cap (≤15%) | 8% | 13% | 13% |
+| G3: mono Sporeling Burrow's mean (≤55%) | 75% | 23% | 31% |
+| G3: the monos that fail (R3's) | Burrow, Capguard Hall, Rootbreaker Den | Rootbreaker Den, Amanita Lodge, Burster Pod | Rootbreaker Den, Amanita Lodge |
+| G5: +150 gold wins (55–75%) | 89% | 78% | 80% |
+| G6: comebacks (20–45%) | 29% | 31% | 29% |
+| G8: `bot:balanced` against the adaptive Baron (40–65%) | 50% | **27%** | **30%** |
+| G8: monos failing their drop (R3's) | 5 | 3 | 3 |
+| G12 | passes | passes | passes |
+| G16 (R3's) | 39% | 41% | 39% |
+
+Merging at 2.0 fixes G7 and G1 and brings G5 closer, but battles last longer: more reach round 9. And `bot:balanced`
+loses more to the adaptive Lichen Baron at battle index 1 (30 battles, so ±9 points). G8's policy clause is asserted
+today, so it would become a new miss.
+
+### Runs (G14, G15)
+
+| | Battle 1 won: Vesper, Armilla, Cordis (70–90%) | Reach the boss, pooled (40–95%) | Boss fights won, pooled (40–70%) |
+|---|---|---|---|
+| 2.8 (shipped) | 88%, 74%, 100% | 96% | 71% |
+| 2.0 | 89%, 95%, 100% | 98% | 61% |
+| 2.1 | 90%, 91%, 100% | 98% | 64% |
+
+### 3. Cordis's Puppet Bloom (at 2.0): the lift to Elder is her edge
+
+Measured on a short-lived branch (`s14/bloom-proto`), where Puppet Bloom's data takes two optional keys: `liftTo`, the
+highest tier a lift reaches, and `maxUnits`, the most units one lift takes, nearest first. Without them the power is
+unchanged.
+
+| Puppet Bloom | Cordis: battle 1 won | Reach the boss | Boss fights won |
+|---|---|---|---|
+| As shipped | 100% | 100% | 89% |
+| Radius 2 (data only) | 100% | 100% | 92% |
+| Radius 1.5 (data only) | 100% | 100% | 88% |
+| At most 4 units | 100% | 100% | 89% |
+| At most 2 units | 100% | 100% | 80% |
+| **Base units only (`liftTo` 2)** | **91%** | 98% | **46%** |
+
+### The package: merging at 2.0 and Puppet Bloom lifting base units only
+
+| | Battle 1 won: Vesper, Armilla, Cordis (70–90%) | Reach the boss, pooled (40–95%) | Boss fights won, pooled (40–70%) |
+|---|---|---|---|
+| The package | 89%, 95%, 91% | 98% | 46% (Vesper 57%, Armilla 36%, Cordis 46%) |
+| With the pace at 115 | 88%, 95%, 92% | 99% | 46% |
+| With the generals' Heartcap at 2500 | 82%, 92%, 88% | 95% | 49% |
+| With the generals' Heartcap at 3000 | 79%, 92%, 86% | 95% | 45% |
+
+Every commander's run now holds about 11 minutes of clashes at 1× (Cordis's held 5–7). The levers tried on the
+regressions, each with merging at 2.0:
+
+| | G4: round 9 (≤20%) | G4: median | G8: `bot:balanced` against the Baron (40–65%) |
+|---|---|---|---|
+| Merging at 2.0 | 31% | 7 | 27% |
+| With the pace at 115 (from 100) | 28% | 7 | 27% |
+| With the general's income × 1.05 (from × 1.10) | 30% | 7 | 33% |
+| With the generals' Heartcap at 3000 (from 2000) | 46% | 8 | 23% |
+
+None brings either back: a bigger Heartcap fits G14 and G15's reach but lengthens battles past G4.
+
 ## R2b S13 · §16 R2's verification on the final data (2026-11-04)
 
 T138, T140 and T142 on `feature/r2b-verify`, cut from `develop` after S12 (#134), with retune B. Nothing was tuned, and
