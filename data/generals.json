@@ -33,7 +33,7 @@
     "sprite": "g-mother-mold",
     "faction": "gray-rot",
     "milestone": 4,
-    "description": "Swarm, early aggression; heavy on swarm spawners (SPEC §7.7, §11.11). Opens with a Sporeling Burrow and a Truffle Cellar (R2-Q13, the user, 2026-11-03), so a Gill Archer Nest joins her kit in battle 2. Passive: her swarm buildings spawn 10% faster.",
+    "description": "Swarm, early aggression; heavy on swarm spawners (SPEC §7.7, §11.11). Opens with a Sporeling Burrow and a Truffle Cellar (R2-Q13, the user, 2026-11-03), so a Gill Archer Nest joins her kit in battle 2. Passive: her swarm units have +10% HP.",
     "opener": ["sporelingBurrow", "truffleCellar"],
     "weights": { "sporelingBurrow": 5, "capguardHall": 1, "gillNest": 2, "truffleCellar": 2, "scythecapGrove": 1, "puffballMortar": 0.5, "bursterPod": 1, "rhizomorphTunnel": 1 },
     "limits": { "truffleCellar": { "maxOwned": 3 } },
@@ -42,7 +42,7 @@
     "appearsIn": [1, 2, 3],
     "mergePolicy": "auto",
     "adaptive": true,
-    "passive": { "modifiers": [{ "stat": "building.spawnInterval", "op": "mul", "value": 0.91, "where": { "tag": "swarm" } }] }
+    "passive": { "modifiers": [{ "stat": "unit.hp", "op": "mul", "value": 1.1, "where": { "tag": "swarm" } }] }
   },
   {
     "id": "lichen-baron",
@@ -51,7 +51,7 @@
     "sprite": "g-lichen-baron",
     "faction": "gray-rot",
     "milestone": 4,
-    "description": "Defensive; towers and Heavy units (SPEC §7.7, §11.11). Passive: his buildings have +20% HP.",
+    "description": "Defensive; towers and Heavy units (SPEC §7.7, §11.11). Passive: the units of his front-rank squads have +20% HP.",
     "opener": ["capguardHall", "truffleCellar"],
     "weights": { "capguardHall": 3, "puffballMortar": 3, "hammercapForge": 2, "truffleCellar": 2, "rootbreakerDen": 1, "gillNest": 1, "bursterPod": 1, "rhizomorphTunnel": 1 },
     "limits": { "truffleCellar": { "maxOwned": 3 }, "puffballMortar": { "maxOwned": 4 } },
@@ -60,7 +60,7 @@
     "appearsIn": [1, 2, 3, 4],
     "mergePolicy": "auto",
     "adaptive": true,
-    "passive": { "modifiers": [{ "stat": "building.hp", "op": "mul", "value": 1.2 }] }
+    "passive": { "modifiers": [{ "stat": "unit.hp", "op": "mul", "value": 1.2, "where": { "rank": 0 } }] }
   },
   {
     "id": "blightwright",
@@ -87,7 +87,7 @@
     "sprite": "g-pale-sovereign",
     "faction": "gray-rot",
     "milestone": 4,
-    "description": "The boss (SPEC §7.6–7.8): even weights over its kit, a dual doctrine from the whole run's intel and an early counter cycle. Passive: Heartcap turrets +25% damage.",
+    "description": "The boss (SPEC §7.6–7.8): even weights over its kit, a dual doctrine from the whole run's intel and an early counter cycle. Passive: units from buildings in its counter sets in force deal +15% damage.",
     "opener": ["capguardHall", "gillNest", "truffleCellar"],
     "weights": {
       "sporelingBurrow": 1, "capguardHall": 1, "gillNest": 1, "rootbreakerDen": 1, "puffballMortar": 1, "truffleCellar": 1,
@@ -101,6 +101,6 @@
     "mergePolicy": "auto",
     "adaptive": true,
     "boss": true,
-    "passive": { "modifiers": [{ "stat": "side.turretDamage", "op": "mul", "value": 1.25 }] }
+    "passive": { "modifiers": [{ "stat": "unit.damage", "op": "mul", "value": 1.15, "where": { "inCounterSet": true } }] }
   }
 ]

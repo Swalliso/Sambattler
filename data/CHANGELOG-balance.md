@@ -8,6 +8,46 @@ replaces. None of it is open work, including headings that say "Open:". From mil
 entries measure or tune v2's round battle (SPEC §11, §12). "The backlog" in the entries below means
 v1's, now [archived](../docs/archive/v1/balance-backlog.md).
 
+## R2b-S7 T079–T090, T154–T156, T165, T166: the commanders, the powers, the generals, the elites and the boss's extra cards in v2 form (2026-11-03)
+
+**Content the user approved at R2b's S0** (2026-11-03, "Take them all": R2-Q7, R2-Q15, R2-Q16, R2-Q17, R2-Q18 and #69,
+SPEC §6.6, §7.6–§7.8, §11.10, §11.11). No unit, building or rule number was retuned.
+- **The commanders' passives** (`data/commanders.json`):
+  - Vesper's Home Brood: `unit.hp` and `unit.damage` ×1.1 on squads at rank 0 (R2-Q15; was home buildings spawning 10%
+    faster). A uniform bonus, so a front-rank squad fields the same count.
+  - Armilla's Landholder: `side.plots` +1, the next closed plot by #19's order, so the first third-rank plot from battle 1
+    (§4.6; was capture +25%). It's on her side only, so the general's colony doesn't gain it.
+  - Cordis: `unit.hp` ×1.1 at tiers 2 and 3, so merged units start with +10% HP, and `side.mergeRadius` 2.0 kept
+    (R2-Q7; knit time −50% is gone, since it acted only after the muster).
+- **The powers** (`data/commanders.json`, `src/data/schema.ts`): `cooldown` and `firstReady` are gone from the data and
+  the schema (§6.6), and so are v1's `tithe` and `surge` kinds.
+  - Rhizome Tithe is `{ kind: harvest, target: none, goldPerSupply: 2 }` (was 30 gold a column held): 2 gold for each
+    supply of enemy units killed so far in the clash (`ClashState.killedSupply`: a merged unit at its own supply, an
+    emplacement at 0), rounded down and credited at once as clash gold (R2-Q16, R2-Q20). It may fire at 0 kills.
+  - Puppet Bloom lifts each of your units within 3 tiles of a point one merge tier where it stands, its HP and shield
+    in proportion (R2-Q7; was merging every same-type trio there). It's no knit: no merge is counted and no `merge`
+    trigger fires. It skips what a knit can't take: emplacements, Bursters, tunnelers underground, a knitting unit,
+    a squad with its toggle off and a lane whose clash is over.
+  - The Sporestorm Sigil's ×1.5 now reaches each power (T084): Spore Burst 135, the Tithe 3 a supply, Puppet Bloom
+    4.5 tiles, and the previews read the scaled values.
+  - The auto power policy: the Tithe fires on the first think from 40 s of clash time, or once either side's surviving
+    supply in a lane still fighting is at most 25% of what it fielded there after the muster (R2-Q16). Puppet Bloom
+    fires on its first think where the lift adds the most supply (an Elder's lift counts twice a Bloomed one's).
+- **The generals' passives** (`data/generals.json`): Old Mother Mold's swarm units `unit.hp` ×1.1 (R2-Q17; was swarm
+  buildings spawning 10% faster); the Lichen Baron's `unit.hp` ×1.2 at rank 0 (was buildings +20% HP); the
+  Blightwright's kept; the Pale Sovereign's `unit.damage` ×1.15 where `inCounterSet`, the union of its dual
+  doctrine's sets and the active counter's, read at each Begin (R2-Q17; was turrets +25%). Their descriptions say so.
+- **The elites** (`data/elites.json`): Swift is `unit.speed` ×1.15 (was an instant first spawn); Fortified and Veteran
+  are kept.
+- **The opening doctrine** swaps the opener's last army card for the cheapest kit card in its counter sets (the boss's
+  two) when the kit holds one and the opener's army holds none (R2-Q18, A042).
+- **The boss's first extra cards** read R2a's counter sets: for each of the run's top two intel kinds, the cheapest
+  card not yet in its kit whose unit beats the armor the kind reads (Swarm light, Line medium, Armor heavy; Elite and
+  Ranged take their set's cheapest), as a missing answer is chosen (A056). Against a Swarm that's the Rhizomorph
+  Tunnel and against a Line the Veilstalker Hollow, where v1's sets gave the Sporeling Burrow and the Morel Warren.
+- **Goldens:** the Vesper and Cordis power replays and `r2-run-s7` moved; `r2-armilla-power-s3` is new (T156). The
+  three replays with no commander or general passive hold their hashes.
+
 ## R2b-S6 T070–T078: the relics in v2 form, the `requires` gates and one path for clash gold (2026-11-03)
 
 **Content the user approved at R2b's S0** (2026-11-03, "Take them all": R2-Q19, R2-Q20, #24 and #26, SPEC §11.7). No

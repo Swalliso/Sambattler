@@ -73,7 +73,7 @@ export interface RoundBattleResult {
    * the clash's first tick, after the muster, and at any of the auto policy's think ticks before the power
    * was used, with whether it fired and the trios it merged.
    */
-  bloom?: { round: number; atMuster: number; best: number; fired: boolean; merged: number }[];
+  bloom?: { round: number; atMuster: number; best: number; fired: boolean; lifted: number }[];
 }
 
 /** X8's readouts for one round (§7.2): the colonies at Begin, an AI side's plan, and whether the clash replayed the last. */
@@ -148,19 +148,19 @@ function roundPace(state: BattleState, begins: Map<number, AtBegin>): { byRound:
   return { byRound, fullAt: per((s) => byRound.find((x) => x.free[s] === 0)?.round ?? null) };
 }
 
-/** The player's Puppet Bloom clash by clash, read after each of the auto policy's think ticks (clash ticks 1, 21, 41 …). */
+/** The player's Puppet Bloom clash by clash, the units its best point would lift, read after each of the auto policy's think ticks (clash ticks 1, 21, 41 …). */
 function bloomReadout(state: BattleState): { onTick: (s: BattleState) => void; clashes: NonNullable<RoundBattleResult['bloom']> } | null {
   if (powerOf(state, 'player')?.kind !== 'bloom') return null;
   const clashes: NonNullable<RoundBattleResult['bloom']> = [];
   const onTick = (s: BattleState) => {
     const t = s.tick - s.clash!.startTick;
     let c = clashes.at(-1);
-    if (c?.round !== s.round) clashes.push(c = { round: s.round, atMuster: 0, best: 0, fired: false, merged: 0 });
-    for (const e of s.events) if (e.t === 'power' && e.side === 'player') { c.fired = true; c.merged += e.merges; }
+    if (c?.round !== s.round) clashes.push(c = { round: s.round, atMuster: 0, best: 0, fired: false, lifted: 0 });
+    for (const e of s.events) if (e.t === 'power' && e.side === 'player') { c.fired = true; c.lifted += e.lifts; }
     if ((t - 1) % 20 !== 0 || s.sides.player.powerUsed) return;
-    const trios = bestBloom(s, 'player')?.trios ?? 0;
-    if (t === 1) c.atMuster = trios;
-    c.best = Math.max(c.best, trios);
+    const lifts = bestBloom(s, 'player')?.lifts ?? 0;
+    if (t === 1) c.atMuster = lifts;
+    c.best = Math.max(c.best, lifts);
   };
   return { onTick, clashes };
 }

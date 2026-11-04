@@ -6,9 +6,10 @@ import {
   groveProblem, hashRun, loadRun, mapPool, outcomeAvailable, promptAnswer, recoverPendingChoice, runPool, saveRun, simulateRun, spoilsPick,
   spoilsReroll,
 } from '../../src/run/index.ts';
-import type { RunState } from '../../src/run/index.ts';
+import type { RouteNode, RunState } from '../../src/run/index.ts';
 import { analyzeFielded, basePlots, createBattle, makeRoundConfig, planningView, runHeadless } from '../../src/sim/index.ts';
-import type { BattleConfig, BattleState, Side } from '../../src/sim/index.ts';
+import type { BattleConfig, BattleState, IntelProfile, Side } from '../../src/sim/index.ts';
+import { matchupClass } from '../../src/sim/matchups.ts';
 import { protoContent } from '../../tools/lib/content.ts';
 import { content } from '../helpers.ts';
 
@@ -206,6 +207,23 @@ describe('battle setup and rewards (SPEC §4.5, §4.6, §6.1, §6.5, §8.5–8.6
     expect(single.config.enemy.aiWeights).toBeUndefined();
     expect(single.sides.enemy.ai!.weights.map((w) => w.building)).not.toContain('scythecapGrove');
     expect(content.generals.scripted!.weights.scythecapGrove).toBeUndefined();
+  });
+
+  it("the boss kit's first extra card answers the run's top intel kind: no swarm building against a Swarm, no Morel Warren against a Line (§7.8, §7.4, A056)", () => {
+    const boss: RouteNode = { kind: 'boss', map: 'stumpfield', general: 'pale-sovereign' };
+    const opener = content.generals['pale-sovereign']!.opener;
+    const firstExtra = (profile: IntelProfile, target: string) => {
+      const run = createRun(content, { seed: 3, player: 'bot:balanced' });
+      run.profiles = [profile];
+      const config = battleConfig(content, run, boss);
+      const state = createBattle(content, config);
+      const id = config.enemy.kit[opener.length]!.building, unit = content.buildings[id]!.squad!.unit;
+      return { id, swarm: content.units[unit]!.tags.includes('swarm'), cls: matchupClass(state, 'enemy', unit, 1, 'player', target, 1) };
+    };
+    // mono Sporeling Burrows read as Swarm: the Capguard Hall is in the opener, so the next answer joins
+    expect(firstExtra({ swarm: 1 }, 'sporeling')).toEqual({ id: 'rhizomorphTunnel', swarm: false, cls: 'strong' });
+    // mono Capguard Halls read as Line: the Gill Nest is in the opener, and the swarm's Morel Warren is no answer
+    expect(firstExtra({ line: 1 }, 'capguard')).toEqual({ id: 'veilstalkerHollow', swarm: false, cls: 'strong' });
   });
 
   it('the boss plants its added Scythecap Grove in ordinary play', () => {

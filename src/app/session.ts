@@ -6,7 +6,7 @@
 import type { Content } from '../data/registry.ts';
 import type { PowerDef } from '../data/schema.ts';
 import {
-  bloomTrios, burstPreview, commandStamp, formationOf, plantProblem, powerOf, powerProblem, priceOf, queueCommand, sellValue,
+  bloomLift, burstPreview, commandStamp, formationOf, harvestGold, killedSupply, plantProblem, powerNow, powerOf, powerProblem, priceOf, queueCommand, sellValue,
 } from '../sim/index.ts';
 import type { BattleState, Command, CommandBody, UnitState } from '../sim/index.ts';
 import { trayOrder } from '../ui/buildingInfo.ts';
@@ -112,23 +112,32 @@ export class RoundSession {
   }
 
   /**
-   * While aiming, what the power would do at the cursor now (§10.3): Spore Burst's targets and their damage, or
-   * Puppet Bloom's trios, with the units it would reach, and why a click there would be refused.
+   * While aiming, what the power would do at the cursor now, the Sporestorm Sigil's boost included (§10.3, A086):
+   * Spore Burst's targets and their damage, or the units Puppet Bloom would lift, with the units it would reach;
+   * or Rhizome Tithe's gold if fired now, for the enemy supply killed so far (§6.6). And why a click there would be refused.
    */
   powerPreview(): { valid: boolean; count: number; value: number; reach: UnitState[]; reason: string | null } | null {
-    const def = powerOf(this.state, 'player');
+    const def = powerNow(this.state, 'player');
     if (!def || !this.targeting || !this.aim) return null;
     const { x, y } = this.aim;
     const reason = powerProblem(this.state, 'player', { x, y });
     const reach: UnitState[] = [];
-    let count = 0, value = 0;
+    let count: number, value = 0;
     if (def.kind === 'burst') ({ targets: count, value } = burstPreview(this.state, 'player', def, x, y, reach));
     else if (def.kind === 'bloom') {
-      const { trios } = bloomTrios(this.state, 'player', x, y, def.radius);
-      count = trios.length;
-      for (const t of trios) reach.push(...t);
+      reach.push(...bloomLift(this.state, 'player', x, y, def.radius));
+      count = reach.length;
+    } else {
+      count = killedSupply(this.state, 'player');
+      value = harvestGold(this.state, 'player', def);
     }
     return { valid: !reason, count, value, reach, reason };
+  }
+
+  /** The power's radius as it would act now: Puppet Bloom's grows under the Sporestorm Sigil (A054); 0 for a power with no aim. */
+  powerRadius(): number {
+    const def = powerNow(this.state, 'player');
+    return def?.target === 'point' ? def.radius : 0;
   }
 
   /** A click while aiming: queues the power at the cursor for the next tick, or returns why it's refused. */

@@ -122,14 +122,17 @@ export function counterSets(view: PlanningView): Record<CounterKind, string[]> {
   return sets;
 }
 
+/** What the counter sets and a missing answer read: the cards, their units, the matrix and the cards on offer. */
+type AnswerView = Pick<PlanningView, 'cards' | 'units' | 'matrix' | 'kit'>;
+
 /** Whether a card's unit beats the armor: a matrix multiplier above 1 (§5.3). */
-const beats = (view: PlanningView, buildingId: string, armor: BodyArmor): boolean => {
+const beats = (view: AnswerView, buildingId: string, armor: BodyArmor): boolean => {
   const u = spawnerUnit(view, buildingId);
   return !!u && view.matrix[u.damageType][armor] > 1;
 };
 
 /** The cheapest card, ties by id (§7.3). */
-function cheapest(view: PlanningView, ids: string[]): string | null {
+export function cheapest(view: Pick<PlanningView, 'cards'>, ids: readonly string[]): string | null {
   let best: string | null = null;
   for (const id of ids) {
     const c = view.cards[id]!.cost, b = best === null ? Infinity : view.cards[best]!.cost;
@@ -142,10 +145,30 @@ function cheapest(view: PlanningView, ids: string[]): string | null {
  * The missing answer (§7.4, #15, A056): the cheapest card of the set whose unit beats the dominant armor, else
  * the set's cheapest. With no card in the set, the cheapest spawner whose unit beats it, if one does.
  */
-export function missingAnswer(view: PlanningView, set: string[], armor: BodyArmor): string | null {
+export function missingAnswer(view: AnswerView, set: string[], armor: BodyArmor): string | null {
   const pool = set.length ? set : view.kit.map((c) => c.building).filter((id) => counterKindsOf(view, id).length > 0);
   const winners = pool.filter((id) => beats(view, id, armor));
   return cheapest(view, winners.length || !set.length ? winners : pool);
+}
+
+/** The armor each kind's score reads (§7.4): Swarm light, Line medium, Armor heavy; Elite and Ranged read none. */
+const KIND_ARMOR: Partial<Record<CounterKind, BodyArmor>> = { swarm: 'light', line: 'medium', armor: 'heavy' };
+
+/**
+ * An answer to each kind from the view's cards outside `have`, for the boss's first extra cards (§7.6, §7.8, A056):
+ * the missing answer from the kind's set, by the armor the kind reads (R2a/T099), or the set's cheapest for Elite
+ * and Ranged, each card once. So a swarm never answers a swarm, nor a Morel Warren a line.
+ */
+export function answersTo(view: AnswerView, kinds: readonly CounterKind[], have: readonly string[]): string[] {
+  const out: string[] = [];
+  for (const k of kinds) {
+    const fresh = view.kit.filter((c) => !have.includes(c.building) && !out.includes(c.building));
+    const set = fresh.map((c) => c.building).filter((id) => counterKindsOf(view, id).includes(k));
+    const armor = KIND_ARMOR[k];
+    const id = armor ? missingAnswer({ ...view, kit: fresh }, set, armor) : cheapest(view, set);
+    if (id) out.push(id);
+  }
+  return out;
 }
 
 /**

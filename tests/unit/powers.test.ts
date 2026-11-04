@@ -1,16 +1,18 @@
 // The commander power in rounds (SPEC §6.6, §11.10, §14.5, §14.6): at most once per clash, from the clash's
 // first tick with the muster's merged units on the field (#25), refused in planning, the aftermath, an ended
-// battle and an ended lane (R2-Q11, A030, A053), dropped rather than rejected when its clash ends first
-// (A046), and Rhizome Tithe refused until R2b (plan Call 19). Spore Burst and Puppet Bloom keep their v1
-// effects on units, emplacements included and buildings never. The auto policy thinks every 20 ticks of the
-// clash clock from its first tick. Cordis's passive is kept: a wider muster, and quicker knits after it.
+// battle and an ended lane (R2-Q11, A030, A053), and dropped rather than rejected when its clash ends first
+// (A046). Spore Burst hits units, emplacements included and buildings never; Puppet Bloom lifts units one tier
+// (R2-Q7); Rhizome Tithe pays for the clash's kills so far (R2-Q16); the Sporestorm Sigil makes each 50% stronger
+// (A054, A086). The auto policy thinks every 20 ticks of the clash clock from its first tick. Cordis's passive is
+// in commanders.test.ts.
 import { describe, expect, it } from 'vitest';
 import type { ScenarioDef } from '../../src/data/schema.ts';
 import {
-  commandStamp, createFromScenario, hashState, mergePreview, queueCommand, restore, runHeadless, SIDES, snapshot, step,
+  bestBloom, burstPreview, commandStamp, createFromScenario, harvestGold, hashState, powerNow, powerOf, queueCommand, restore, runHeadless, SIDES,
+  snapshot, step, survivingSupply,
 } from '../../src/sim/index.ts';
-import type { BattleState, Command, Flags, Side, SimEvent, UnitState } from '../../src/sim/index.ts';
-import { autoPowerTarget, powerProblem } from '../../src/sim/powers.ts';
+import type { BattleState, Command, Flags, LibraryPower, Side, SimEvent, UnitState } from '../../src/sim/index.ts';
+import { powerProblem } from '../../src/sim/powers.ts';
 import { damageFor } from '../../src/sim/systems/combat.ts';
 import { inMuster } from '../../src/sim/systems/clash.ts';
 import { POWER_REFUSALS } from '../../src/app/phases/clash.ts';
@@ -55,6 +57,19 @@ const byKind = <T extends SimEvent['t']>(events: SimEvent[], t: T) => events.fil
 const refusals = (events: SimEvent[]) => byKind(events, 'commandRejected').map((e) => e.reason);
 const mine = (s: BattleState, side: Side): UnitState[] => s.units.filter((u) => u.side === side);
 const clashTickOf = (s: BattleState) => s.tick - s.clash!.startTick;
+const queuedPowers = (s: BattleState) => s.queue.filter((c) => c.type === 'power');
+/** The side's power as it would act now, narrowed to its kind. */
+const now = <K extends LibraryPower['kind']>(s: BattleState, kind: K): Extract<LibraryPower, { kind: K }> => {
+  const def = powerNow(s, 'player');
+  if (def?.kind !== kind) throw new Error(`no ${kind} power`);
+  return def as Extract<LibraryPower, { kind: K }>;
+};
+/** The Sporestorm Sigil in force on the player (§11.7): its modifier, with the storm on its first step. */
+function sigil(s: BattleState): BattleState {
+  s.compiled.player.powerMods = [...content.relics.sporestormSigil!.effects.modifiers!];
+  s.sporestorm = 1;
+  return s;
+}
 
 describe('when the power may fire (§6.6, §14.5)', () => {
   it('is refused in planning, the aftermath and an ended battle', () => {
@@ -99,7 +114,7 @@ describe('when the power may fire (§6.6, §14.5)', () => {
     const events = stepClash(s);
     expect([clashTickOf(s), inMuster(s)]).toEqual([1, true]);
     const [used] = byKind(events, 'power');
-    expect(used).toMatchObject({ side: 'player', power: 'sporeBurst', merges: 0 });
+    expect(used).toMatchObject({ side: 'player', power: 'sporeBurst', lifts: 0 });
     const hits = byKind(events, 'hit');
     expect(hits.length).toBe(used!.hits);
     expect(hits.map((h) => h.target)).toContain(target.id);
@@ -194,24 +209,32 @@ describe('Spore Burst and Puppet Bloom (§11.10, §6.6, §6.7)', () => {
     expect(JSON.stringify(s.buildings)).toBe(buildings);
   });
 
-  it('Puppet Bloom merges every same-type trio within 3 tiles at once, even in combat', () => {
+  it('Puppet Bloom lifts each of your units within 3 tiles one tier where it stands, even in combat, its HP in proportion (R2-Q7)', () => {
     const s = clash('cordis', [
-      // six sporelings in a 3-tile circle, three more 4.7 tiles away
-      { side: 'player', unit: 'sporeling', x: 8, y: 2, count: 6, rows: 2 },
-      { side: 'player', unit: 'sporeling', x: 8, y: 7, count: 3, rows: 1 },
+      // two sporelings and a Bloomed one within 3 tiles of the point, and one 4.5 tiles off
+      { side: 'player', unit: 'sporeling', x: 8, y: 2 },
+      { side: 'player', unit: 'sporeling', x: 8, y: 3 },
+      { side: 'player', unit: 'sporeling', tier: 2, x: 9, y: 2.5 },
+      { side: 'player', unit: 'sporeling', x: 8, y: 7 },
       { side: 'enemy', unit: 'sporeling', x: 28, y: 4 },
     ]);
     hold(s);
     // in combat, so none could knit on its own
     for (const u of mine(s, 'player')) u.lastCombatTick = 0;
-    const far = mine(s, 'player').slice(6).map((u) => u.id);
-    power(s, { x: 8.6, y: 2.3 });
+    const [half, full, bloomed, far] = mine(s, 'player');
+    half!.hp = 36;
+    const ids = mine(s, 'player').map((u) => u.id);
+    power(s, { x: 8.5, y: 2.5 });
     const events = stepClash(s);
-    expect(byKind(events, 'power')[0]).toMatchObject({ power: 'puppetBloom', hits: 0, merges: 2 });
-    expect(byKind(events, 'merged').map((e) => [e.side, e.tier])).toEqual([['player', 2], ['player', 2]]);
-    expect(mine(s, 'player').map((u) => u.tier).sort()).toEqual([1, 1, 1, 2, 2]);
-    expect(mine(s, 'player').filter((u) => u.tier === 1).map((u) => u.id)).toEqual(far);
-    expect(s.stats.player.powerMerges).toBe(2);
+    expect(byKind(events, 'power')[0]).toMatchObject({ power: 'puppetBloom', hits: 0, lifts: 3 });
+    expect([half, full, bloomed, far].map((u) => u!.tier)).toEqual([2, 2, 3, 1]);
+    const [, t2, t3] = s.compiled.player.units.sporeling!.tiers;
+    expect([half!.maxHp, half!.hp, full!.hp, bloomed!.maxHp]).toEqual([t2.hp, Math.round(t2.hp / 2), t2.hp, t3.hp]);
+    expect([full!.supply, bloomed!.supply, far!.supply]).toEqual([2, 4, 1]);
+    // the same units, lifted where they stand: no knit, no merge counted, and the Elder counted alive
+    expect(mine(s, 'player').map((u) => u.id)).toEqual(ids);
+    expect([byKind(events, 'merged'), s.stats.player.merges]).toEqual([[], { '2': 0, '3': 0 }]);
+    expect([s.stats.player.powerLifts, s.clash!.maxElders.player]).toEqual([3, 1]);
   });
 
   it('ends a lane when it kills the side’s last units there (§6.7)', () => {
@@ -240,15 +263,87 @@ describe('Spore Burst and Puppet Bloom (§11.10, §6.6, §6.7)', () => {
     expect(s.stats.player.rejectedCommands).toBe(0);
   });
 
-  it('refuses Rhizome Tithe with notInRoundsYet until R2b, and the auto policy skips it (plan Call 19)', () => {
-    const s = clash('armilla', [{ side: 'player', unit: 'capguard', x: 4, y: 4 }, { side: 'enemy', unit: 'sporeling', x: 20, y: 4 }]);
-    s.config.player.powerPolicy = 'auto';
-    expect(powerProblem(s, 'player', {})).toBe('notInRoundsYet');
-    expect(autoPowerTarget(s, 'player')).toBeNull();
+  it('Rhizome Tithe pays 2 gold per enemy supply killed so far this clash, a Bloomed unit at its own supply and an emplacement at 0, as clash gold (R2-Q16, R2-Q20)', () => {
+    const s = clash('armilla', [
+      { side: 'player', unit: 'capguard', x: 4, y: 4 },
+      { side: 'enemy', unit: 'sporeling', x: 20, y: 2 },
+      { side: 'enemy', unit: 'sporeling', tier: 2, x: 20, y: 4 },
+      { side: 'enemy', unit: 'puffballMortar', x: 24, y: 4 },
+      { side: 'enemy', unit: 'sporeling', x: 28, y: 6 },
+    ]);
+    hold(s);
+    expect(powerOf(s, 'player')).toMatchObject({ kind: 'harvest', target: 'none', goldPerSupply: 2 });
+    const [one, bloomed, mortar] = mine(s, 'enemy');
+    for (const u of [one!, bloomed!, mortar!]) u.hp = 0;
+    stepClash(s);
+    expect(s.clash!.killedSupply).toEqual({ player: 3, enemy: 0 });
+    expect(harvestGold(s, 'player', now(s, 'harvest'))).toBe(6);
+    const gold = s.sides.player.gold, fromClash = s.stats.player.goldEarned.clash;
     power(s);
     const events = stepClash(s);
-    expect(refusals(events)).toEqual(['notInRoundsYet']);
-    expect(s.queue).toEqual([]);
+    expect(byKind(events, 'power')).toEqual([{ t: 'power', side: 'player', power: 'rhizomeTithe', hits: 0, lifts: 0, gold: 6 }]);
+    expect(byKind(events, 'gold')).toEqual([{ t: 'gold', side: 'player', amount: 6, source: 'clash' }]);
+    expect([s.sides.player.gold - gold, s.stats.player.goldEarned.clash - fromClash, s.stats.player.powerGold]).toEqual([6, 6, 6]);
+  });
+
+  it('fires Rhizome Tithe at 0 kills, which pays 0, and counts no kill of its own side', () => {
+    const s = clash('armilla', [{ side: 'player', unit: 'capguard', x: 4, y: 4 }, { side: 'enemy', unit: 'sporeling', x: 20, y: 4 }]);
+    hold(s);
+    expect(powerProblem(s, 'player', {})).toBeNull();
+    power(s);
+    const events = stepClash(s);
+    expect(byKind(events, 'power')[0]).toMatchObject({ power: 'rhizomeTithe', gold: 0 });
+    expect(byKind(events, 'gold')).toEqual([]);
+    expect([s.stats.player.powerUses, s.stats.player.powerGold, s.clash!.killedSupply]).toEqual([1, 0, { player: 0, enemy: 0 }]);
+    // no clash counts kills when no side's power is a harvest
+    expect(clash('vesper', [{ side: 'player', unit: 'capguard', x: 4, y: 4 }]).clash!.killedSupply).toBeUndefined();
+  });
+});
+
+describe('the Sporestorm Sigil per power (§6.6, §11.7, A054, A086)', () => {
+  it('makes Spore Burst deal 135 in the same 2 tiles once the storm is on, and its preview shows it', () => {
+    const units: ClashUnits = [{ side: 'player', unit: 'sporeling', x: 4, y: 4 }, { side: 'enemy', unit: 'capguard', x: 20, y: 4 }];
+    const plain = clash('vesper', units);
+    expect(now(plain, 'burst')).toMatchObject({ damage: 90, radius: 2 });
+    const s = sigil(clash('vesper', units));
+    hold(s);
+    expect(now(s, 'burst')).toMatchObject({ damage: 135, radius: 2 });
+    const dmg = damageFor(s.rules, 135, 'crush', 1, 1, 'medium', 1, 1);
+    expect(burstPreview(s, 'player', now(s, 'burst'), 20, 4)).toEqual({ targets: 1, value: dmg });
+    power(s, { x: 20, y: 4 });
+    expect(byKind(stepClash(s), 'hit').map((h) => h.amount)).toEqual([dmg]);
+    // before the storm's first round it does nothing
+    s.sporestorm = 0;
+    expect(now(s, 'burst').damage).toBe(90);
+  });
+
+  it('makes Rhizome Tithe pay 3 a supply', () => {
+    const s = sigil(clash('armilla', [
+      { side: 'player', unit: 'capguard', x: 4, y: 4 },
+      { side: 'enemy', unit: 'sporeling', x: 20, y: 2, count: 4, rows: 4 },
+      { side: 'enemy', unit: 'sporeling', x: 28, y: 6 },
+    ]));
+    hold(s);
+    for (const u of mine(s, 'enemy').slice(0, 4)) u.hp = 0;
+    stepClash(s);
+    expect([now(s, 'harvest').goldPerSupply, harvestGold(s, 'player', now(s, 'harvest'))]).toEqual([3, 12]);
+    power(s);
+    expect(byKind(stepClash(s), 'power')[0]).toMatchObject({ gold: 12 });
+  });
+
+  it('makes Puppet Bloom reach 4.5 tiles', () => {
+    const units: ClashUnits = [
+      { side: 'player', unit: 'sporeling', x: 8, y: 2 },
+      // 4.5 tiles from the point, its body 0.25 inside 4.5 but outside 3
+      { side: 'player', unit: 'sporeling', x: 8, y: 6.5 },
+      { side: 'enemy', unit: 'sporeling', x: 28, y: 4 },
+    ];
+    const plain = clash('cordis', units), s = sigil(clash('cordis', units));
+    expect([now(plain, 'bloom').radius, now(s, 'bloom').radius]).toEqual([3, 4.5]);
+    expect([bestBloom(plain, 'player')?.lifts, bestBloom(s, 'player')?.lifts]).toEqual([1, 2]);
+    hold(s);
+    power(s, { x: 8, y: 2 });
+    expect(byKind(stepClash(s), 'power')[0]).toMatchObject({ lifts: 2 });
   });
 });
 
@@ -305,33 +400,59 @@ describe('the auto policy (§14.6 clash step 4, plan Call 9)', () => {
   });
 });
 
-describe('Cordis’s passive under the muster (§11.10, R2-Q7)', () => {
-  const gills = [at('gillNest', 0, 0, 1), at('gillNest', 0, 0, 2), at('gillNest', 0, 0, 3)];
-
-  it('a merge radius of 2.0 lets the muster knit across squads it couldn’t reach', () => {
-    const tiers = (s: BattleState) => mine(s, 'player').map((u) => u.tier).sort();
-    const plain = battle(undefined, gills), cordis = battle('cordis', gills);
-    expect([plain.compiled.player.mergeRadius, cordis.compiled.player.mergeRadius]).toEqual([1.5, 2]);
-    const preview = (s: BattleState) => Object.values(mergePreview(s, 'player').byBuilding).reduce((n, b) => [n[0]! + b.elders, n[1]! + b.bloomed, n[2]! + b.base], [0, 0, 0]);
-    expect([preview(plain), preview(cordis)]).toEqual([[0, 4, 0], [1, 1, 0]]);
-    begin(plain);
-    begin(cordis);
-    expect([tiers(plain), tiers(cordis)]).toEqual([[2, 2, 2, 2], [2, 3]]);
+describe('the auto policy for Puppet Bloom and Rhizome Tithe (R2-Q7, R2-Q16)', () => {
+  it('fires Puppet Bloom on its first think, at the point where the lift adds most supply', () => {
+    const s = clash('cordis', [
+      { side: 'player', unit: 'sporeling', x: 6, y: 2 },
+      { side: 'player', unit: 'gillArcher', x: 14, y: 6 },
+      { side: 'player', unit: 'gillArcher', x: 14.5, y: 6.5 },
+      { side: 'enemy', unit: 'sporeling', x: 28, y: 4 },
+    ]);
+    s.config.player.powerPolicy = 'auto';
+    hold(s);
+    expect(bestBloom(s, 'player')).toEqual({ x: 14, y: 6, lifts: 2, value: 4 });
+    stepClash(s);
+    expect(queuedPowers(s)).toMatchObject([{ side: 'player', tick: s.clash!.startTick + 2, x: 14, y: 6 }]);
+    stepClash(s);
+    expect(byKind(s.events, 'power')[0]).toMatchObject({ lifts: 2 });
+    expect(mine(s, 'player').map((u) => u.tier)).toEqual([1, 2, 2]);
   });
 
-  it('halves knit time, which acts only on the field after the muster', () => {
-    // the muster is instant either way: Begin's step leaves nothing knitting
-    const b = battle('cordis', gills);
-    const beginEvents = begin(b);
-    expect([byKind(beginEvents, 'knitStart').length, b.units.some((u) => u.knit)]).toEqual([0, false]);
-    // three sporelings placed together knit on the field from the clash's 10th tick
-    const knitDone = (commander?: string) => {
-      const s = clash(commander, [{ side: 'player', unit: 'sporeling', x: 6, y: 4, count: 3, rows: 3, dy: 0.5 }, { side: 'enemy', unit: 'sporeling', x: 28, y: 4 }]);
-      hold(s);
-      for (let i = 0; i < 60 && !byKind(s.events, 'merged').length; i++) stepClash(s);
-      return [s.compiled.player.knitTicks, clashTickOf(s)];
-    };
-    expect(knitDone()).toEqual([20, 30]);
-    expect(knitDone('cordis')).toEqual([10, 20]);
+  it('fires Rhizome Tithe on the first think once a side in a lane still fighting is down to 25% of the supply it fielded there', () => {
+    const s = battle('armilla', [at('capguardHall', 0, 0, 1)], [at('sporelingBurrow', 0, 0, 1, false), at('sporelingBurrow', 0, 0, 2, false)]);
+    s.config.player.powerPolicy = 'auto';
+    begin(s);
+    hold(s);
+    expect(survivingSupply(s, 'enemy', 0)).toBe(16);
+    const kill = (n: number) => mine(s, 'enemy').filter((u) => u.hp > 0).slice(0, n).forEach((u) => { u.hp = 0; });
+    stepClash(s);
+    kill(11);
+    // 5 of 16 left at clash tick 21's think: 31%
+    stepClash(s, 20);
+    expect([clashTickOf(s), queuedPowers(s)]).toEqual([21, []]);
+    kill(1);
+    // 4 of 16 at clash tick 41's think: 25%, so it fires on the next tick
+    stepClash(s, 20);
+    expect(queuedPowers(s)).toMatchObject([{ side: 'player', tick: s.clash!.startTick + 42 }]);
+    stepClash(s);
+    expect(byKind(s.events, 'power')[0]).toMatchObject({ power: 'rhizomeTithe', gold: 24 });
+  });
+
+  it('fires Rhizome Tithe on the first think from 40 s of clash time, at 0 kills, and replays to the same hash', () => {
+    const s = battle('armilla', [at('capguardHall', 0, 0, 1)], [at('sporelingBurrow', 0, 0, 1)]);
+    s.config.player.powerPolicy = 'auto';
+    begin(s);
+    hold(s);
+    const twin = restore(snapshot(s));
+    const both = (f: (b: BattleState) => void) => { f(s); f(twin); };
+    // the last think before 40 s is clash tick 781
+    both((b) => stepClash(b, 800));
+    expect(queuedPowers(s)).toEqual([]);
+    both((b) => stepClash(b));
+    expect(queuedPowers(s)).toMatchObject([{ side: 'player', tick: s.clash!.startTick + 802 }]);
+    both((b) => stepClash(b));
+    expect(byKind(s.events, 'power')[0]).toMatchObject({ power: 'rhizomeTithe', gold: 0 });
+    expect([s.phase, s.stats.player.powerUses, s.stats.player.powerGold]).toEqual(['clash', 1, 0]);
+    expect(hashState(twin)).toBe(hashState(s));
   });
 });

@@ -20,7 +20,8 @@ import {
 import type { BattleState, CounterKind, FieldedSquad, IntelProfile, PlotState, Side } from '../../src/sim/index.ts';
 import { generalNews } from '../../src/app/phases/planning.ts';
 import { intentOf } from '../../src/ui/doctrine.ts';
-import { content, finishRound, planningState } from '../helpers.ts';
+import { battleConfig, createRun, generalKit } from '../../src/run/index.ts';
+import { begin, content, finishRound, planningState } from '../helpers.ts';
 
 type Colony = NonNullable<ScenarioDef['sides']['enemy']['colony']>;
 
@@ -57,11 +58,13 @@ interface Turn {
   adaptive?: boolean;
   /** The general's intel file (§7.6). */
   intel?: IntelProfile;
+  /** The general's kit by building id: the roster unless set. */
+  kit?: string[];
 }
 
 /** One turn of the general, alone, on a round scenario's state (the player human and planning nothing). */
 function generalTurn(t: Turn = {}): BattleState {
-  const enemy = { colony: t.colony ?? [], ...(t.plots !== undefined ? { plots: t.plots } : {}) };
+  const enemy = { colony: t.colony ?? [], ...(t.plots !== undefined ? { plots: t.plots } : {}), ...(t.kit ? { kit: t.kit } : {}) };
   const s = createFromScenario(content, scenario({ player: {}, enemy }, { map: t.map ?? 'bogwater-hollow', ...(t.round ? { round: t.round } : {}) }), { seed: t.seed ?? 1 });
   if (t.intel) s.config.enemy.intel = t.intel;
   withAi(s, 'enemy', t.controller ?? 'general:scripted', t.adaptive);
@@ -675,9 +678,89 @@ describe('what you see of a counter (§7.4, §7.5, §10.2, T102)', () => {
     expect([s.round, intentOf(content, s).doctrine, generalNews(content, s)]).toEqual([5, 'Countering SWARM', null]);
   });
 
+  it("swaps the opener's last army card for the cheapest kit card in the doctrine's counter set, so round 1's army shows the callout (R2-Q18, A042)", () => {
+    // Mold's battle-3 kit and gold in a run: her Burrow and Cellar, the Burrow swapped for the Anti-Swarm set's cheapest card
+    const mold = (t: Turn) => counterTurn([], { round: 1, gold: 450, controller: 'general:mother-mold', kit: ['sporelingBurrow', 'truffleCellar', 'gillNest', 'scythecapGrove'], ...t });
+    const swarm = mold({ intel: { swarm: 1 } });
+    expect(names(swarm).slice(0, 2)).toEqual(['scythecapGrove', 'truffleCellar']);
+    expect(generalNews(content, swarm)).toBe('The Gray Rot remembers your SWARM.');
+    expect(names(mold({})).slice(0, 2)).toEqual(['sporelingBurrow', 'truffleCellar']);
+    // a kit with no card of the set keeps the opener, as Mold's battle-1 kit does
+    expect(names(mold({ intel: { swarm: 1 }, gold: 300, kit: ['sporelingBurrow', 'truffleCellar'] }))).toEqual(['sporelingBurrow', 'truffleCellar']);
+    // an opener whose army already holds one keeps it: the Baron's Capguard Hall answers a swarm, and the boss's Gill Nest a line
+    const baron = counterTurn([], { round: 1, gold: 300, controller: 'general:lichen-baron', intel: { swarm: 1 } });
+    expect(names(baron).slice(0, 2)).toEqual(['capguardHall', 'truffleCellar']);
+    const boss = counterTurn([], { round: 1, gold: 450, controller: 'general:pale-sovereign', intel: { armor: 0.6, line: 0.4 } });
+    expect(names(boss).slice(0, 3)).toEqual(['capguardHall', 'gillNest', 'truffleCellar']);
+  });
+
   it("calls out round 1's intel: The Gray Rot remembers your SWARM", () => {
     const s = counterTurn([], { round: 1, intel: { swarm: 1 } });
     expect([generalNews(content, s), intentOf(content, s).doctrine]).toEqual(['The Gray Rot remembers your SWARM.', 'Remembers your SWARM']);
     expect(generalNews(content, counterTurn([], { round: 1 }))).toBeNull();
+  });
+});
+
+describe("the generals' passives and the elites in rounds (§7.7, R2-Q17)", () => {
+  /** Round 1's planning with the general's colony planted and no gold, so its turn buys nothing. */
+  const general = (controller: string, colony: Colony, flags: ScenarioDef['flags'] = {}) => createFromScenario(content, scenario(
+    { player: {}, enemy: { colony, gold: 0 } }, { controllers: { enemy: controller }, flags },
+  ));
+  const unitOf = (s: BattleState, side: Side, unit: string) => s.compiled[side].units[unit]!.tiers[0];
+  const squads = (s: BattleState) => s.squads.filter((q) => q.side === 'enemy');
+
+  it("Old Mother Mold's swarm units have +10% HP, phrased by what fields after the muster", () => {
+    const s = general('general:mother-mold', [{ building: 'sporelingBurrow', lane: 0, rank: 0, file: 1 }, { building: 'capguardHall', lane: 0, rank: 0, file: 2 }]);
+    expect(unitOf(s, 'enemy', 'sporeling').hp).toBe(Math.round(unitOf(s, 'player', 'sporeling').hp * 1.1));
+    expect(unitOf(s, 'enemy', 'capguard').hp).toBe(unitOf(s, 'player', 'capguard').hp);
+    finishRound(s);
+    for (const u of s.units.filter((x) => x.side === 'enemy' && x.unitId === 'sporeling')) expect(u.maxHp).toBe(s.compiled.enemy.units.sporeling!.tiers[u.tier - 1]!.hp);
+  });
+
+  it("the Lichen Baron's front-rank units have 1.2× the HP of the same unit in the back rank", () => {
+    const s = general('general:lichen-baron', [
+      { building: 'capguardHall', lane: 0, rank: 0, file: 1 }, { building: 'capguardHall', lane: 0, rank: 1, file: 1 },
+    ]);
+    begin(s);
+    const [front, back] = [0, 1].map((rank) => squads(s).find((q) => q.rank === rank)!);
+    expect([front!.stats?.tiers[0].hp, back!.stats]).toEqual([264, undefined]);
+    // each squad knits at the muster, its merged unit keeping the ratio
+    const hp = (building: number) => s.units.filter((u) => u.side === 'enemy' && u.sourceBuildingId === building).map((u) => u.maxHp);
+    const [f, b] = [hp(front!.building), hp(back!.building)];
+    expect(f.length).toBe(b.length);
+    f.forEach((x, i) => expect(x / b[i]!).toBeCloseTo(1.2, 2));
+  });
+
+  it("the Blightwright's siege units are 15% faster, and nothing else is", () => {
+    const s = general('general:blightwright', []);
+    expect(unitOf(s, 'enemy', 'rootbreaker').speedPerTick).toBeCloseTo(unitOf(s, 'player', 'rootbreaker').speedPerTick * 1.15, 12);
+    expect(unitOf(s, 'enemy', 'capguard').speedPerTick).toBe(unitOf(s, 'player', 'capguard').speedPerTick);
+  });
+
+  it("the Pale Sovereign's units from buildings in its counter sets deal +15% damage, read at Begin; with no doctrine, no bonus (A050)", () => {
+    const colony: Colony = [{ building: 'capguardHall', lane: 0, rank: 0, file: 1 }, { building: 'gillNest', lane: 0, rank: 0, file: 2 }];
+    const boss = (intel?: IntelProfile) => {
+      const s = general('general:pale-sovereign', colony, { adaptiveGeneral: true });
+      if (intel) s.config.enemy.intel = intel;
+      withAi(s, 'enemy', 'general:pale-sovereign', true);
+      begin(s);
+      return Object.fromEntries(squads(s).map((q) => [q.unitId, (q.stats ?? s.compiled.enemy.units[q.unitId]!).tiers[0].damage]));
+    };
+    const plain = { capguard: unitOf(general('general:pale-sovereign', colony), 'enemy', 'capguard').damage, gillArcher: unitOf(general('general:pale-sovereign', colony), 'enemy', 'gillArcher').damage };
+    // its dual doctrine on Swarm and Armor: the Capguard Hall is Anti-Swarm, the Gill Nest in neither set
+    expect(boss({ swarm: 0.6, armor: 0.4 })).toEqual({ capguard: plain.capguard * 1.15, gillArcher: plain.gillArcher });
+    expect(boss()).toEqual(plain);
+  });
+
+  it('elites: Swift gives +15% unit speed, Fortified +30% battle Heartcap, Veteran one more live level on each unit track', () => {
+    const run = createRun(content, { seed: 5 });
+    const node = (elite: string) => ({ kind: 'elite' as const, map: 'stumpfield', general: 'lichen-baron', elite });
+    const plainNode = { kind: 'battle' as const, map: 'stumpfield', general: 'lichen-baron' };
+    const swift = createBattle(content, battleConfig(content, run, node('swift'))), plain = createBattle(content, battleConfig(content, run, plainNode));
+    expect(unitOf(swift, 'enemy', 'capguard').speedPerTick).toBeCloseTo(unitOf(plain, 'enemy', 'capguard').speedPerTick * 1.15, 12);
+    expect(unitOf(swift, 'player', 'capguard').speedPerTick).toBe(unitOf(plain, 'player', 'capguard').speedPerTick);
+    expect(createBattle(content, battleConfig(content, run, node('fortified'))).sides.enemy.heartcapMaxHp).toBe(Math.round(plain.sides.enemy.heartcapMaxHp * 1.3));
+    const vet = generalKit(content, run, node('veteran'), 1).upgrades, levels = generalKit(content, run, { ...node('swift') }, 1).upgrades;
+    for (const id of ['capguardHall']) expect(vet[id]).toBe((levels[id] ?? 0) + 1);
   });
 });

@@ -45,8 +45,7 @@ export function buildingDescription(content: Content, id: string): string {
 
 /** How a commander power is aimed, in plain words ("Aim at a point: 2-tile radius"). */
 export function powerAim(p: PowerDef): string {
-  return p.target === 'point' ? `Aim at a point: ${p.radius}-tile radius`
-    : p.kind === 'tithe' ? 'No aim: pays for all your ground' : 'No aim: every lane at once';
+  return p.target === 'point' ? `Aim at a point: ${p.radius}-tile radius` : "No aim: pays for this clash's kills";
 }
 
 /** A power's timing in plain words: it fires once a clash (§6.6). */

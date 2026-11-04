@@ -1,15 +1,27 @@
 // Commanders in runs (SPEC §8.1, §8.4, §11.10, §16 Milestone 5): the three commanders' pools and
-// starter kits, ban filtering and its rules, core-pool weighting, and the commander in run battles.
+// starter kits, ban filtering and its rules, core-pool weighting, the commander in run battles, and the
+// passives in rounds: Home Brood (R2-Q15), Landholder (§4.6) and Cordis's (R2-Q7). The powers are in powers.test.ts.
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { banProblem, battleConfig, botCoreWeights, createRun, loadRun, MemoryStorage, RUN_KEY, runPool, simulateRun } from '../../src/run/index.ts';
 import type { RouteNode } from '../../src/run/index.ts';
-import { draftLibrary, draftPool, generateOffer, parseCard, seedStream } from '../../src/sim/index.ts';
+import {
+  basePlots, createFromScenario, draftLibrary, draftPool, formationOf, generateOffer, mergePreview, openOrder, parseCard, seedStream,
+} from '../../src/sim/index.ts';
 import { candidates } from '../../src/sim/draft.ts';
 import { createBattle as createRoundBattle } from '../../src/sim/index.ts';
-import type { DraftPool, Loadout } from '../../src/sim/index.ts';
-import { content } from '../helpers.ts';
+import type { BattleState, DraftPool, Loadout } from '../../src/sim/index.ts';
+import type { ScenarioDef } from '../../src/data/schema.ts';
+import { begin, content } from '../helpers.ts';
+
+type Colony = NonNullable<ScenarioDef['sides']['player']['colony']>;
+const at = (building: string, lane: number, rank: number, file: number, merge = true): Colony[number] => ({ building, lane, rank, file, merge });
+
+/** Round 1's planning on Bogwater Hollow with this colony and commander, both sides human. */
+const battle = (commander: string | undefined, colony: Colony): BattleState => createFromScenario(content, {
+  id: 'passives', description: 'A passive test.', map: 'bogwater-hollow', sides: { player: { colony, ...(commander ? { commander } : {}) }, enemy: {} },
+});
 
 const FLAGS = { merging: true, drafts: true, adaptiveGeneral: true, powers: true };
 const ROSTER = content.factions['velvet-bloom']!.buildings;
@@ -17,13 +29,16 @@ const ROSTER = content.factions['velvet-bloom']!.buildings;
 describe('the three commanders (SPEC §11.10)', () => {
   it('each has six core buildings, a starter kit of three from its core, a passive and a power', () => {
     expect(Object.keys(content.commanders)).toEqual(['vesper', 'armilla', 'cordis']);
-    const powers = { vesper: ['sporeBurst', 75, 45], armilla: ['rhizomeTithe', 75, 60], cordis: ['puppetBloom', 80, 60] } as const;
-    for (const [id, [power, cooldown, first]] of Object.entries(powers)) {
+    const powers = { vesper: ['sporeBurst', 'burst'], armilla: ['rhizomeTithe', 'harvest'], cordis: ['puppetBloom', 'bloom'] } as const;
+    for (const [id, [power, kind]] of Object.entries(powers)) {
       const c = content.commanders[id]!;
       expect(c.core).toHaveLength(6);
       for (const b of c.starter) expect(c.core).toContain(b);
       for (const b of c.core) expect(ROSTER).toContain(b);
-      expect(c.power).toMatchObject({ id: power, cooldown, firstReady: first });
+      // once per clash, so v1's cooldown and first-ready time are gone (§6.6)
+      expect(c.power).toMatchObject({ id: power, kind });
+      expect(c.power).not.toHaveProperty('cooldown');
+      expect(c.power).not.toHaveProperty('firstReady');
       expect(c.passive.effects.modifiers?.length).toBeGreaterThan(0);
     }
     expect(content.commanders.armilla!.starter).toEqual(['capguardHall', 'truffleCellar', 'puffballMortar']);
@@ -129,5 +144,60 @@ describe('core-pool weighting (SPEC §8.3–8.4)', () => {
     expect(botCoreWeights(content, createRun(content, { seed: 1, player: 'bot:balanced', commander: 'armilla' }))).toEqual({ hammercapForge: 1, rhizomeVault: 1 });
     expect(botCoreWeights(content, createRun(content, { seed: 1, player: 'bot:balanced', commander: 'cordis' }))).toEqual({ tendersRing: 1 });
     expect(botCoreWeights(content, createRun(content, { seed: 1, commander: 'cordis' }))).toEqual({});
+  });
+});
+
+describe("the commanders' passives in rounds (SPEC §11.10, §4.6)", () => {
+  it("Home Brood: Vesper's front-rank squads have +10% HP and damage, the back rank none, and the preview agrees (R2-Q15)", () => {
+    const s = battle('vesper', [at('capguardHall', 0, 0, 1, false), at('capguardHall', 0, 1, 1, false)]);
+    const preview = formationOf(s, 'player').map((p) => ({ rank: p.rank, units: p.units.length }));
+    begin(s);
+    const plain = s.compiled.player.units.capguard!.tiers[0];
+    const [front, back] = [0, 1].map((rank) => s.squads.find((q) => q.side === 'player' && q.rank === rank)!);
+    expect(front!.stats!.tiers[0]).toMatchObject({ hp: Math.round(plain.hp * 1.1), damage: plain.damage * 1.1 });
+    expect(back!.stats).toBeUndefined();
+    const hp = (sq: typeof front) => s.units.filter((u) => u.side === 'player' && u.sourceBuildingId === sq!.building).map((u) => u.maxHp);
+    expect([hp(front), hp(back)]).toEqual([[242, 242, 242], [220, 220, 220]]);
+    // a uniform bonus, not +1 unit: both squads field as the formation preview showed
+    expect([front, back].map((q) => ({ rank: q!.rank, units: q!.units }))).toEqual(preview);
+    expect(preview.map((p) => p.units)).toEqual([3, 3]);
+  });
+
+  it("Landholder: Armilla's colony opens one more plot from battle 1, the first third-rank plot by #19's order, and the general's doesn't (§4.6)", () => {
+    const map = content.maps['bogwater-hollow']!, order = openOrder(map), base = basePlots(map);
+    const open = (s: BattleState, side: 'player' | 'enemy') => s.sides[side].plots.flatMap((p, i) => (p.open ? [i] : []));
+    const sorted = (ids: number[]) => [...ids].sort((a, b) => a - b);
+    const node: RouteNode = { kind: 'battle', map: 'bogwater-hollow', general: 'scripted' };
+    const armilla = createRoundBattle(content, battleConfig(content, createRun(content, { seed: 4, commander: 'armilla' }), node));
+    expect(open(armilla, 'player')).toEqual(sorted(order.slice(0, base + 1)));
+    expect(armilla.sides.player.plots[order[base]!]).toMatchObject({ rank: 2, open: true });
+    expect(open(armilla, 'enemy')).toEqual(sorted(order.slice(0, base)));
+    const vesper = createRoundBattle(content, battleConfig(content, createRun(content, { seed: 4, commander: 'vesper' }), node));
+    expect(open(vesper, 'player')).toEqual(sorted(order.slice(0, base)));
+  });
+
+  it('Cordis: merged units start with +10% HP, at the muster and on the field, and her knit time is the plain one (R2-Q7)', () => {
+    const gills = [at('gillNest', 0, 0, 1), at('gillNest', 0, 0, 2), at('gillNest', 0, 0, 3)];
+    const plain = battle(undefined, gills), cordis = battle('cordis', gills);
+    const hp = (s: BattleState) => s.compiled.player.units.gillArcher!.tiers.map((t) => t.hp);
+    const [p, c] = [hp(plain), hp(cordis)];
+    expect(c[0]).toBe(p[0]);
+    expect(c[1]! / p[1]!).toBeCloseTo(1.1, 2);
+    expect(c[2]! / p[2]!).toBeCloseTo(1.1, 2);
+    expect(cordis.compiled.player.knitTicks).toBe(plain.compiled.player.knitTicks);
+    begin(cordis);
+    for (const u of cordis.units.filter((x) => x.side === 'player')) expect(u.maxHp).toBe(c[u.tier - 1]);
+  });
+
+  it("Cordis: a merge radius of 2.0 lets the muster knit across squads it couldn't reach", () => {
+    const gills = [at('gillNest', 0, 0, 1), at('gillNest', 0, 0, 2), at('gillNest', 0, 0, 3)];
+    const tiers = (s: BattleState) => s.units.filter((u) => u.side === 'player').map((u) => u.tier).sort();
+    const plain = battle(undefined, gills), cordis = battle('cordis', gills);
+    expect([plain.compiled.player.mergeRadius, cordis.compiled.player.mergeRadius]).toEqual([1.5, 2]);
+    const preview = (s: BattleState) => Object.values(mergePreview(s, 'player').byBuilding).reduce((n, b) => [n[0]! + b.elders, n[1]! + b.bloomed, n[2]! + b.base], [0, 0, 0]);
+    expect([preview(plain), preview(cordis)]).toEqual([[0, 4, 0], [1, 1, 0]]);
+    begin(plain);
+    begin(cordis);
+    expect([tiers(plain), tiers(cordis)]).toEqual([[2, 2, 2, 2], [2, 3]]);
   });
 });

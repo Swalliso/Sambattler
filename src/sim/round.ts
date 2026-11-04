@@ -45,6 +45,7 @@ export function newClash(state: BattleState): ClashState {
     fielded: { player: [], enemy: [] },
     maxElders: { player: 0, enemy: 0 },
     arrived: { player: 0, enemy: 0 },
+    ...(SIDES.some((s) => state.library.powers?.[state.config[s].power ?? '']?.kind === 'harvest') ? { killedSupply: { player: 0, enemy: 0 } } : {}),
   };
 }
 

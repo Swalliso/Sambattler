@@ -230,7 +230,7 @@ function newBattle(content: Content, config: BattleConfig): BattleState {
   };
   if (rules.cloud || rules.burst) state.clouds = [];
   for (const s of SIDES) {
-    if (library.powers?.[config[s].power ?? '']) Object.assign(state.stats[s], { powerUses: 0, powerDamage: 0, powerMerges: 0 });
+    if (library.powers?.[config[s].power ?? '']) Object.assign(state.stats[s], { powerUses: 0, powerDamage: 0, powerLifts: 0, powerGold: 0 });
   }
   return state;
 }

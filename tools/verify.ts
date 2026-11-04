@@ -17,18 +17,17 @@ const steps: [string, string[]][] = [
   // (R2-Q3). Seeds 20 and 21 reach round 4 against Mold's softer opener (T068), which most seeds rout in round 3
   ['sim smoke, adaptive general (2 seeds)', ['run', 'sim', '--', '--seeds', '20..21', '--player', 'bot:mono:sporelingBurrow', '--enemy', 'general:mother-mold', '--flags', 'merging,adaptive', '--summary',
     '--assert', 'rejectedCommands=0', '--assert', 'counters[0].round=4', '--assert', 'counters[0].kind=elite']],
-  // the power once per clash (R2a/T110), with the adaptive general off so the counter cycle can't move them: Vesper's
-  // Spore Burst; Cordis's Puppet Bloom with the starter kit on seed 11, where T107 found trios (R2-Q7); and Armilla's
-  // Rhizome Tithe, which is refused in a battle in rounds until T082, so it asserts only that nothing else is (T089
-  // restores `powerGold`)
+  // the power once per clash (R2a/T110, R2b/T089), with the adaptive general off so the counter cycle can't move them:
+  // Vesper's Spore Burst, Cordis's Puppet Bloom lifting units (R2-Q7) and Armilla's Rhizome Tithe paying gold
+  // (R2-Q16), each used at most once a round
   ...([
     ['vesper', ['--seed', '3'], ['stats.player.powerUses>=1']],
-    ['cordis', ['--seed', '11', '--enemy', 'general:mother-mold', '--kit', 'sporelingBurrow,gillNest,truffleCellar'], ['stats.player.powerMerges>=1']],
-    ['armilla', ['--seed', '3'], []],
+    ['cordis', ['--seed', '11', '--enemy', 'general:mother-mold', '--kit', 'sporelingBurrow,gillNest,truffleCellar'], ['stats.player.powerLifts>=1']],
+    ['armilla', ['--seed', '3'], ['stats.player.powerGold>=1']],
   ] as const).map(([c, args, asserts]): [string, string[]] => [
     `sim smoke, ${c}'s power`,
     ['run', 'sim', '--', ...args, '--player', 'bot:balanced', '--commander', c, '--power-policy', 'auto', '--flags', 'merging,powers', '--summary',
-      '--assert', 'rejectedCommands=0', ...asserts.flatMap((a) => ['--assert', a])],
+      '--assert', 'rejectedCommands=0', '--assert', 'stats.player.powerUses<=rounds', ...asserts.flatMap((a) => ['--assert', a])],
   ]),
   // a rule scenario from the CLI (§16 R2 step 4, R2a/T132): the 45 s cap decides the lane on surviving supply
   ['sim scenario, clash-cap', ['run', 'sim', '--', '--scenario', 'clash-cap', '--until', 'r1', '--assert', 'roundLog[0].lanes[0].capped=true']],
