@@ -362,7 +362,7 @@ Common fields: footprint (every building is 2×2 and fills one plot), cost, and 
 - **Utility buildings:** the Rhizome Vault raised the supply cap, which is gone. Its new effect (R2b S0, 2026-11-03, §18.2 #26): each spawner beside it fields 1 more unit, built in R3 as a combo with a squad-size patch field. Until then the Vault stays out of drafts and kits behind a `requires` flag (§11.2, §11.7).
 - **Merge toggle:** every spawner has one, default **on** (§5.6). It is set in planning, and the planning screen previews what the squad will field ("fields as 2 Bloomed + 2", §10.2), by the same rule the clash's muster runs (§5.6).
 - **Selling** is a planning action only:
-  - **Refund:** **100%** of the price for a building planted in this planning phase; otherwise **60%**, rounded down, once it has been through a clash (modified by refund relics, such as Second Flush).
+  - **Refund:** **100%** of the price for a building planted in this planning phase; otherwise **60%**, rounded down, once it has been through a clash (modified by refund relics, such as Second Flush). A gold upgrade (§6.1) is refunded with its building by the same rule: 100% in the planning phase it was bought, otherwise 60%.
   - The copy returns to your kit and the plot frees up at once. Moving a building is selling it and planting it again, so a pivot costs 40% of its price.
 - **Besieged buildings, spawn timers and destroyed buildings** are retired with the live battle (Appendix A).
 - **The general** plants by the same rules, from a kit of its own (§7.3, §7.8).
@@ -852,7 +852,15 @@ Gold is an integer per side. It carries from round to round within a battle, and
 
 Starting gold for round 1 is `300 + 75 × (battleIndex − 1)`, the same for both sides (`startingGold`, `startingGoldPerBattle` in `data/balance.json`). Traits, relics and events may modify it (Mold Bloom: +150, §8.7). Gold is spent only in planning: on planting (§4.4), and on draft rerolls (§8.3).
 
-**What gold does once the colony is full** (R2b S0, 2026-11-03, §18.2 #67). Once the colony is full, gold buys upgrades, the user's idea, each a real jump rather than a small percentage (DR-7). The first form to measure is a planted building whose squad fields one merge tier up for the rest of the battle. R2b builds it after its drafts (S5b), which first measures what the drafts leave of the banked gold and then sets the price. The general and the bots buy upgrades too. R2a's rough playtest (2026-11-02) ran out of ways to spend gold in a battle's later rounds: R2a has no drafts, so no upgrades, and a full colony's gold bought only swaps (a pivot costs 40% of a building's price, §4.4). Its playtest gate (2026-11-03) found that the first guess, nothing new, no longer held: at the new pace a full colony still leaves few ways to adapt late.
+**What gold does once the colony is full** (R2b S0, 2026-11-03, §18.2 #67; its details at R2b S5b, 2026-11-03). Once its colony is full, a side's gold buys **upgrades**. They were the user's idea, and each is a real jump rather than a small percentage (DR-7):
+
+- **What one does:** for the rest of the battle, an upgraded spawner's squad arrives Bloomed, every unit at tier 2 (§5.5), so its units can knit on to Elders at the muster (§5.6). A Burrow's 8 Sporelings arrive as 8 Bloomed, about 2.8 squads' worth. The Burster takes one too: it arrives Bloomed and never knits.
+- **When:** an `upgrade` command in planning (§14.5), on one of the side's planted spawners that isn't upgraded yet (one upgrade per building per battle), once every open plot of its colony that can take a building has one (§4.6). An upgrade stays if a plot frees up later. Like the rest of planning, it's refused while the side's draft is open (#28).
+- **The price:** 300% of the building's cost (`upgradeCostPct` in `data/balance.json`; the user, 2026-11-03, from S5b's measurement, T163): a Burrow's costs 330, a Capguard Hall's 450. Selling the building refunds the upgrade with it, by the phase rule (§4.4): 100% in the planning phase it was bought, otherwise 60%.
+- **Its balance:** no price of 150–300% kept G4 and G8 in band, since upgrades favour your side. Late rounds get more decisive, and at battle 1 the general has 2,000 HP to your 3,000. The adaptive general also fills its colony later and buys half as many. So the general's income went × 1.05 with them (§6.2). G4's round-9 clause then reads 21% against its 20%, a known miss until R2b's tuning (S14).
+- **The general and the bots** buy them by the same rule, at the end of their planning turn, once no plot is free. They take the spawner their buying weights rate highest first, and keep going while their gold allows, since they keep no reserve (§7.2). The general plans at the round's opening, so it never reads what you buy (§7.1).
+
+R2a's rough playtest (2026-11-02) ran out of ways to spend gold in a battle's later rounds: R2a has no drafts, so no upgrades, and a full colony's gold bought only swaps (a pivot costs 40% of a building's price, §4.4). Its playtest gate (2026-11-03) found that the first guess, nothing new, no longer held: at the new pace a full colony still leaves few ways to adapt late.
 
 ### 6.2 Income per round
 
@@ -870,7 +878,7 @@ Starting gold for round 1 is `300 + 75 × (battleIndex − 1)`, the same for bot
 - **Interest gets a moment.** You plan with your gold in front of you, and the gold chip shows what the next round will pay if you Begin now: hold 140 for +14, or 300 for the cap of +30 (§10.2). Both round 3 testers found v1's interest confusing; planning makes the choice between banking and spending visible.
 - **Why it was raised** (R2a S0, 2026-11-02, R2-Q2): +10 against a stipend of 100 is no choice, since one more building beats it (A205). A real stake gives the Trade pack's banking build a point. R2a's reports show banked gold per round (§10.4, §15.2), and if R2a's playtest still finds interest confusing, cut it.
 - **Comeback gold** is v1's comeback income, paid once a round, like the loss-streak gold in Teamfight Tactics. Winning a round pays nothing extra, so income never snowballs.
-- **The general's income** follows the same rules, times a data value of **1.0**. It gets no extra gold for planning first (§1.3 #3). A blight MAY raise the value later (§9.6, §17 #14).
+- **The general's income** follows the same rules, times a data value of **1.05** (`enemyIncomeMult`). It was 1.0 until R2b's S5b (the user, 2026-11-03), and went up with the gold upgrades, which favoured your side (§6.1). It gets no extra gold for planning first (§1.3 #3). A blight MAY raise the value later (§9.6, §17 #14).
 - Relics and traits may modify any source (§11.7).
 - **Expected income:** about one new spawner a round after the opener, or 1,000–1,300 gold over a 7-round battle ([docs/archive/v1/ideas/rounds.md](docs/archive/v1/ideas/rounds.md), "The run layer"). The balance tools report the actual figure (§12).
 
@@ -1916,7 +1924,7 @@ Key names for new constants are first guesses; §14.2 fixes them.
 | `loamBonus` | 0.5 (kept) | §6.2 |
 | `interestPer` / `interestCap` | 10 / 30 (R2a S0, 2026-11-02, R2-Q2; v1's and the first guess were 20 / 10), on gold banked at the end of planning | §6.2 |
 | `comebackGold` | 40 to the last round's loser | §6.2 |
-| `enemyIncomeMult` | 1.0. A blight may raise it (§11.8) | §7.1 |
+| `enemyIncomeMult` | 1.05 since R2b's S5b, with the gold upgrades (§6.1, §6.2). A blight may raise it (§11.8) | §7.1 |
 | `draftRounds` | [2, 4, 6]: a draft opens in the planning phase after each | §8.3 |
 | `reroll` base / step, `skipGold` | 20 / 10, 40 (kept) | §8.3 |
 
@@ -3315,6 +3323,7 @@ type Command = { round: number; tick: number; side: Side; seq: number } & (
   | { type: 'plant'; buildingId: Id; plot: number }    // spends a free copy and the price
   | { type: 'sell'; entityId: number }                 // returns the copy: 100% this phase, 60% once fielded
   | { type: 'toggleMerge'; entityId: number; on: boolean }
+  | { type: 'upgrade'; entityId: number }              // a spawner's squad arrives Bloomed, once the colony is full (§6.1)
   | { type: 'beginClash' }                             // ends planning; both armies arrive
   | { type: 'draftPick'; cardId: Id } | { type: 'draftReroll' } | { type: 'draftSkip' }
   // clash: executes on its tick
@@ -3332,6 +3341,7 @@ type SimEvent =
   | { t: 'buildingPlanted'; id: number }
   | { t: 'buildingSold'; id: number; side: Side; refund: number }
   | { t: 'mergeToggled'; id: number; on: boolean }
+  | { t: 'buildingUpgraded'; id: number; side: Side; price: number }
   | { t: 'commandRejected'; side: Side; seq: number; reason: string }
   // the clash
   | { t: 'clashStarted'; round: number; supply: Record<Side, number> }
@@ -3362,6 +3372,7 @@ type SimEvent =
 - **Validation happens at execution time.** The state may change between queueing and execution, so a command is re-validated when it runs. An illegal command becomes a `commandRejected` event. Because validation is deterministic, replaying the full log reproduces identical rejections. Among the checks:
   - **the phase:** plant, sell, `toggleMerge` and `beginClash` only in planning; `power` only in a clash, only once in it, and not at a lane whose clash has ended (R2-Q11);
   - **the kit:** `plant` needs a free copy of the card (§8.10), the price in gold and a free plot of the side's colony that isn't a stump (§4.6);
+  - **the upgrade:** `upgrade` needs one of the side's spawners that isn't upgraded, a colony with no free plot and the price in gold (§6.1);
   - **the draft:** `beginClash`, `plant`, `sell` and `toggleMerge` are refused while the side's draft is open, and draft commands only run while one is: you pick, reroll or skip, then plan (R2b S0, 2026-11-03, §18.2 #28; §4.7, §10.2);
   - **the side:** a side can't sell, toggle or target the other side's buildings. The general plans only in the round's opening (§14.6), so an enemy-side `plant`, `sell` or `toggleMerge` after it is refused (`enemyPlanAfterOpening`), and so is `beginClash` from the enemy side (`beginClashNotPlayer`): the player's side begins the clash, a bot or general on that side included (R2a S0, 2026-11-02, A034). Tests build enemy colonies through scenarios, never commands.
 - **Dropped clash commands** (R2a S0, 2026-11-02, A046). A clash command still queued when the clash ends is dropped with a `commandDropped` event. It isn't a rejection, and `rejectedCommands` doesn't count it. The auto power policy thinks every 20 ticks of the clash clock.
@@ -4345,7 +4356,7 @@ Items from 7 on are v2's, one row per question: each is a rule the user hasn't d
 | 64 | Gray Rot counterparts for the healer, fast swarm, tunneler and flyer roles | M7 names them, one per role, each with its role's body and damage type | §11.12 | M7 |
 | 65 | Do surviving flyers count toward Heartcap damage in the aftermath? | Yes, like any living unit | §5.3 | Later (with flyers) |
 | 66 | An Anti-Air counter kind for flyers | None until flyers arrive | §7.4 | Later (with flyers) |
-| 67 | **(closed 2026-11-03)** What does gold do once the colony is full? In R2a's rough playtest (2026-11-02, `docs/playtest-feedback.md`) the user ran out of ways to spend it in a battle's later rounds, and was bored then. At R2a's playtest gate (2026-11-03), at the new pace, they weren't bored, but a full colony still left few ways to adapt late | Decided: upgrades bought with gold (the user's idea), each a real jump, since small percentages measured below noise (DR-7). The first form to measure is a planted building whose squad fields one merge tier up for the rest of the battle. R2b builds it after its drafts (S5b), which first measures what the drafts leave of the banked gold, then sets the price; the general and the bots buy upgrades too | §6.1 | R2b (S0), R3 |
+| 67 | **(closed 2026-11-03)** What does gold do once the colony is full? In R2a's rough playtest (2026-11-02, `docs/playtest-feedback.md`) the user ran out of ways to spend it in a battle's later rounds, and was bored then. At R2a's playtest gate (2026-11-03), at the new pace, they weren't bored, but a full colony still left few ways to adapt late | Decided: upgrades bought with gold (the user's idea), each a real jump, since small percentages measured below noise (DR-7). The first form to measure is a planted building whose squad fields one merge tier up for the rest of the battle. R2b builds it after its drafts (S5b), which first measures what the drafts leave of the banked gold, then sets the price; the general and the bots buy upgrades too. S5b's details (2026-11-03): every unit of an upgraded squad arrives Bloomed; only once the colony is full, for every side; spawners only; the price 300% of the building's cost, with the general's income × 1.05 (the user: "300% and ×1.05") | §6.1 | R2b (S0), R3 |
 | 68 | **(closed 2026-11-03)** Should the round cap be one fixed number for both Heartcaps, rather than 25% of the loser's max HP (X5)? At R2a's playtest gate (2026-11-03) the user found it asymmetric: you deal at most 500 a round to battle 1's general (2000) and take up to 750 (3000), though either side falls after four capped losses. And since the cap binds in 70% of damaging rounds (S18, at 100 a supply), a bigger Heartcap raises its own cap, so D28's bigger Heartcaps for later generals barely matter | Decided: one fixed cap for both Heartcaps, 750 HP a round, in place of X5's 25% of the loser's max HP. R2a's S21b measured it passing G4, G6, G8's bands and G13 (a median of 6 rounds, 13% reaching round 9, the bot winning 65%; `docs/balance-backlog.md`), and it makes D28's bigger Heartcaps cost rounds again | §6.7, D28 | R2b (S0) |
 | 69 | **(closed 2026-11-03)** How varied should the general's openings be? At R2a's playtest gate (2026-11-03) the user wished for "more variety with the opening moves from the opponent", while seeing why each run might start with the same one for now | Decided: several openers per general, one drawn per battle (R2b S7; §11.11). R2b's opening doctrine (R2-Q18) and its several generals add to the variety | §7.7 | R2b (S0) |
 | 70 | **(closed 2026-11-03)** Is a commander power that can cancel a unit too strong? At R2a's playtest gate (2026-11-03) Spore Burst could cancel Bursters, and it dealt 10–21% of the user's damage in the two saved reports. The user: "maybe that's an okay counterplay" | Decided: no change now. R2b's commander work and its playtest watch it, and if it needs a change, its timing is tried first (the user's suggestion) | §6.6 | R2b (its playtest) |

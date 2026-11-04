@@ -63,7 +63,10 @@ export function startClash(state: BattleState): void {
   const begun = state.events.length;
   // the power is ready again from this clash's first tick (§6.6)
   for (const s of SIDES) { state.sides[s].bankedAtBegin = state.sides[s].gold; state.sides[s].powerUsed = false; }
-  for (const b of state.buildings) b.fielded = true;
+  for (const b of state.buildings) {
+    b.fielded = true;
+    if (b.upgrade) b.upgrade.fielded = true;
+  }
   state.phase = 'clash';
   const clash = (state.clash = newClash(state));
   const plans = { player: formationOf(state, 'player'), enemy: formationOf(state, 'enemy') };
@@ -76,7 +79,7 @@ export function startClash(state: BattleState): void {
     const burrow = (unitId: string) => state.compiled[s].units[unitId]!.tags.includes('burrow');
     for (const p of plans[s]) {
       const ids = p.units.map((at, j) => {
-        const u = addUnit(state, s, p.unitId, p.lane, at.x, at.y, p.building);
+        const u = addUnit(state, s, p.unitId, p.lane, at.x, at.y, p.building, p.tier);
         u.mergeOn = p.mergeOn;
         if (burrow(p.unitId)) u.burrowed = true; // a tunneler arrives underground (§5.2)
         partsOf.set(u.id, [{ building: p.building, j }]);
@@ -100,7 +103,7 @@ export function startClash(state: BattleState): void {
 function squadFor(state: BattleState, side: Side, p: SquadPlan, mods: readonly ModifierDef[]): SquadState {
   const b = state.buildings.find((x) => x.id === p.building)!;
   const stats = p.emplacement ? undefined : squadStats(state.library, p.unitId, mods, fieldPlace(state, side, p.plot, b.buildingId, b.plantedRound));
-  const base = (stats ?? state.compiled[side].units[p.unitId]!).tiers[0];
+  const base = (stats ?? state.compiled[side].units[p.unitId]!).tiers[p.tier - 1]!;
   return {
     building: p.building, side, lane: p.lane, unitId: p.unitId, rank: p.rank, file: p.file, slot: p.slot,
     units: p.units.length, supply: p.units.length * base.supply, combos: [], ...(stats ? { stats } : {}),

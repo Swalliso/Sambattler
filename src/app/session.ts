@@ -7,6 +7,7 @@ import type { Content } from '../data/registry.ts';
 import type { PowerDef } from '../data/schema.ts';
 import {
   bloomLift, burstPreview, commandStamp, formationOf, harvestGold, killedSupply, plantProblem, powerNow, powerOf, powerProblem, priceOf, queueCommand, sellValue,
+  upgradePrice, upgradeProblem,
 } from '../sim/index.ts';
 import type { BattleState, Command, CommandBody, UnitState } from '../sim/index.ts';
 import { trayOrder } from '../ui/buildingInfo.ts';
@@ -30,6 +31,14 @@ const REASONS: Record<string, string> = {
   stumpPlot: 'a stump fills this plot',
   plotTaken: 'this plot is taken',
   notInKit: 'not in your kit',
+};
+
+/** `upgradeProblem`'s reasons in the inspect panel's words (§6.1). */
+const UPGRADE_REASONS: Record<string, string> = {
+  draftOpen: 'pick or skip the draft first',
+  notASpawner: 'only a spawner upgrades',
+  alreadyUpgraded: 'upgraded',
+  colonyNotFull: 'fill every plot first',
 };
 
 export class RoundSession {
@@ -175,7 +184,10 @@ export class RoundSession {
   /** Your gold once the queued plants have run. */
   available(): number {
     let g = this.state.sides.player.gold;
-    for (const c of this.pending()) if (c.type === 'plant') g -= priceOf(this.state, 'player', c.buildingId);
+    for (const c of this.pending()) {
+      if (c.type === 'plant') g -= priceOf(this.state, 'player', c.buildingId);
+      else if (c.type === 'upgrade') g -= this.upgradeCostOf(c.entityId);
+    }
     return g;
   }
 
@@ -245,6 +257,31 @@ export class RoundSession {
     if (!b || b.side !== 'player' || this.state.phase !== 'planning') return false;
     if (this.state.compiled.player.buildings[b.buildingId]?.kind !== 'spawner') return false;
     this.issue({ type: 'toggleMerge', entityId: b.id, on: !this.mergeShown(b.id) });
+    return true;
+  }
+
+  /**
+   * Why U on one of your buildings can't buy its gold upgrade now, in words, or null (§6.1): the sim's reasons,
+   * and an upgrade already queued.
+   */
+  upgradeBlock(id: number): string | null {
+    if (this.pending().some((c) => c.type === 'upgrade' && c.entityId === id)) return 'upgraded';
+    const problem = upgradeProblem(this.state, 'player', id);
+    if (problem === 'notEnoughGold' || (!problem && this.upgradeCostOf(id) > this.available())) return `need ${this.upgradeCostOf(id)} gold`;
+    return problem ? (UPGRADE_REASONS[problem] ?? problem) : null;
+  }
+
+  /** A building's gold upgrade price (§6.1), or 0 for no building. */
+  upgradeCostOf(id: number): number {
+    const b = this.state.buildings.find((x) => x.id === id);
+    return b ? upgradePrice(this.state, 'player', b.buildingId) : 0;
+  }
+
+  /** U on the selection: buys one of your spawners its gold upgrade, once your colony is full (§6.1). */
+  upgrade(): boolean {
+    const b = this.state.buildings.find((x) => x.id === this.selected);
+    if (!b || b.side !== 'player' || this.state.phase !== 'planning' || this.upgradeBlock(b.id)) return false;
+    this.issue({ type: 'upgrade', entityId: b.id });
     return true;
   }
 

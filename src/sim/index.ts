@@ -15,7 +15,7 @@ export type { HeadlessOptions, HeadlessResult, HeadlessUntil } from './headless.
 export { queueCommand, commandStamp } from './commands.ts';
 export { aimedLane, autoPowerTarget, bestBloom, bloomLift, bloomTrios, burstPreview, harvestGold, killedSupply, powerNow, powerOf, powerProblem } from './powers.ts';
 export type { QueuedCommand } from './commands.ts';
-export { legalPlots, plantProblem, priceOf, sellValue } from './planning.ts';
+export { colonyFull, legalPlots, plantProblem, priceOf, sellValue, upgradePrice, upgradeProblem } from './planning.ts';
 export { featureReady, inKit, kitCards, kitOf } from './kit.ts';
 export { basePlots, openOrder } from './colony.ts';
 export { analyzeFielded, answersTo, topKinds } from './ai/counter.ts';

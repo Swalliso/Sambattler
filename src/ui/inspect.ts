@@ -1,8 +1,8 @@
 // Inspect for a battle in rounds (SPEC §10.4, §10.2): empty, it shows a short tip. A building, yours or the
 // general's, shows its squad and its merge preview in words ("fields as 2 Bloomed + 2", `mergePreview`), its
 // plot (rank, file, loam), its squad's damage and survivors in the current or last clash (the rounds'
-// per-building records, A064), the gold it has produced, and for yours the merge toggle and its sell value
-// (`sellValue`), where selling takes two presses. A unit shows its tier, HP, armor and damage type with hints,
+// per-building records, A064), the gold it has produced, and for yours the merge toggle, the gold upgrade once
+// the colony is full (§6.1), and its sell value (`sellValue`), where selling takes two presses. A unit shows its tier, HP, armor and damage type with hints,
 // its damage a second over the last 5 s and its kills, from a log the view feeds each step's events. Its
 // buttons stay mounted, so a re-render never loses a click or focus.
 import { mergePreview, sellValue } from '../sim/index.ts';
@@ -22,6 +22,10 @@ export interface InspectHooks {
   mergeShown(id: number): boolean;
   sell(): void;
   toggleMerge(): void;
+  /** U: the gold upgrade (§6.1), why it can't be bought now in words (null when it can), and its price. */
+  upgrade(): void;
+  upgradeBlock(id: number): string | null;
+  upgradeCost(id: number): number;
 }
 
 /** The damage each source dealt over the last few seconds, and its kills, from the clash's `hit` and `died` events. */
@@ -78,6 +82,7 @@ export class RoundInspect implements HudPart {
   private details = h('div', { class: 'details' });
   private buttons: HTMLElement;
   private mergeBtn: HTMLButtonElement;
+  private upgradeBtn: HTMLButtonElement;
   private sellBtn: HTMLButtonElement;
   private key = '';
   /** Each side's merge preview, worked out again only when the colony changes. */
@@ -88,8 +93,9 @@ export class RoundInspect implements HudPart {
       class: 'btn', id: 'merge-btn', title: 'Merge toggle: its squad knits trios at the muster (three base units make a Bloomed, three Bloomed an Elder)',
       onclick: () => hooks.toggleMerge(),
     });
+    this.upgradeBtn = h('button', { class: 'btn', id: 'upgrade-btn', onclick: () => hooks.upgrade() });
     this.sellBtn = h('button', { class: 'btn', id: 'sell-btn', onclick: () => hooks.sell() });
-    this.buttons = h('div', { class: 'buttons', hidden: true }, this.mergeBtn, this.sellBtn);
+    this.buttons = h('div', { class: 'buttons', hidden: true }, this.mergeBtn, this.upgradeBtn, this.sellBtn);
     this.details.append(...emptyTip());
     this.el.append(this.title, this.details, this.buttons);
     mount.append(this.el);
@@ -100,7 +106,7 @@ export class RoundInspect implements HudPart {
     const u = id ? findUnit(state, id) : undefined;
     const b = id && !u ? state.buildings.find((x) => x.id === id) : undefined;
     // a planning command runs before the frame draws, so the toggle it flipped is in the key too
-    const key = `${id}|${state.round}|${state.phase}|${state.tick}|${state.queue.length}|${state.buildings.length}|${b?.mergeOn}|${this.hooks.sellArmed()}`;
+    const key = `${id}|${state.round}|${state.phase}|${state.tick}|${state.queue.length}|${state.buildings.length}|${b?.mergeOn}|${!!b?.upgrade}|${state.sides.player.gold}|${this.hooks.sellArmed()}`;
     if (key === this.key) return;
     this.key = key;
     if (u) this.renderUnit(state, u);
@@ -118,7 +124,7 @@ export class RoundInspect implements HudPart {
   }
 
   private previewOf(state: BattleState, side: Side): MergePreview {
-    const key = `${state.round}|${state.buildings.filter((x) => x.side === side).map((x) => `${x.id}@${x.plot}:${x.mergeOn}`).join(',')}`;
+    const key = `${state.round}|${state.buildings.filter((x) => x.side === side).map((x) => `${x.id}@${x.plot}:${x.mergeOn}${x.upgrade ? '+' : ''}`).join(',')}`;
     const c = this.merge[side];
     if (c?.key === key) return c.preview;
     const preview = mergePreview(state, side);
@@ -134,7 +140,7 @@ export class RoundInspect implements HudPart {
     const pairs: [string, string][] = [];
     if (cb.kind === 'spawner' && cb.squad) {
       const unit = content.units[cb.squad.unit]?.name ?? cb.squad.unit;
-      pairs.push(['Squad', `${cb.squad.count} ${cb.squad.count === 1 ? unit : `${unit}s`}`]);
+      pairs.push(['Squad', `${cb.squad.count} ${cb.squad.count === 1 ? unit : `${unit}s`}${b.upgrade ? ', arriving Bloomed' : ''}`]);
       if (state.config.flags.merging) pairs.push(['Fields as', `${fieldsAs(this.previewOf(state, b.side).byBuilding[b.id])}${b.mergeOn ? '' : ' (merge off)'}`]);
     } else if (cb.kind === 'tower') pairs.push(['Fields', 'one emplacement']);
     else if (cb.economy) pairs.push(['Earns', `${cb.economy.goldPerRound} gold a round${plot.terrain === 'loam' ? `, +${state.compiled[b.side].loamBonusPct}% on this loam` : ''}`]);
@@ -154,6 +160,15 @@ export class RoundInspect implements HudPart {
       toggleClass(this.mergeBtn, 'on', on);
       this.mergeBtn.disabled = !planning;
       setText(this.mergeBtn, `Merge ${on ? 'ON' : 'OFF'} [M]`);
+    }
+    // the gold upgrade (§6.1): once every plot is built on, its squad arrives Bloomed for the rest of the battle
+    this.upgradeBtn.hidden = cb.kind !== 'spawner';
+    if (cb.kind === 'spawner') {
+      const block = b.upgrade ? 'upgraded' : this.hooks.upgradeBlock(b.id);
+      this.upgradeBtn.disabled = !planning || block !== null;
+      this.upgradeBtn.title = b.upgrade ? 'Upgraded: its squad arrives Bloomed for the rest of the battle'
+        : `Upgrade: its squad arrives Bloomed for the rest of the battle${block ? ` (${block})` : ''}`;
+      setText(this.upgradeBtn, b.upgrade ? 'Upgraded' : `Upgrade for ${this.hooks.upgradeCost(b.id)} [U]`);
     }
     const refund = sellValue(state, b.id);
     const armed = this.hooks.sellArmed() === b.id;

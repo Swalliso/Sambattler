@@ -16,7 +16,7 @@ import type { BuildingDef } from '../data/schema.ts';
 import { counterKindsOf, doctrineKinds } from './ai/counter.ts';
 import { buildingMatcher, resolveStat } from './effects.ts';
 import type { Place } from './effects.ts';
-import { plantProblem, sellProblem, toggleProblem } from './planning.ts';
+import { plantProblem, sellProblem, toggleProblem, upgradeProblem } from './planning.ts';
 import type { BattleState, CompiledBuilding, CompiledUnit, Side, Tier } from './state.ts';
 
 /** A field's geometry: its width in tiles, its lanes' tile rows, and the tiles between the two front ranks. */
@@ -248,9 +248,10 @@ export interface FieldingBuilding {
   /**
    * What it fields (§4.6): a spawner's squad, or a tower's emplacement, one unit. An economy or utility
    * building fields nothing. `eligible` is false for a squad whose units can't knit whatever the
-   * toggle: burst units, or units that arrive burrowed (§5.6).
+   * toggle: burst units, or units that arrive burrowed (§5.6). `tier` is the tier its units arrive at: 2 for a
+   * squad with a gold upgrade (§6.1), and 1 if absent.
    */
-  squad?: { unitId: string; count: number; radius: number; eligible?: boolean };
+  squad?: { unitId: string; count: number; radius: number; eligible?: boolean; tier?: Tier };
   mergeOn: boolean;
 }
 
@@ -280,6 +281,8 @@ export interface SquadPlan {
   file: number;
   slot: Slot;
   unitId: string;
+  /** The tier its units arrive at: 1, or 2 for a squad with a gold upgrade (§6.1). */
+  tier: Tier;
   /** A tower's one unit, at its slot's centre. */
   emplacement: boolean;
   mergeOn: boolean;
@@ -313,7 +316,7 @@ export interface TierCounts {
 
 /** One trio the muster knits (plan call 5, A039). */
 export interface MusterTrio {
-  /** Every arrived unit it's made of, as its building and its index j in that squad: 3 for a Bloomed, 9 for an Elder. */
+  /** Every arrived unit it's made of, as its building and its index j in that squad: 3 for a Bloomed and 9 for an Elder, or 3 for an Elder of units that arrived Bloomed (§6.1). */
   parts: { building: number; j: number }[];
   tier: 2 | 3;
   /** Where the merged unit stands. */
@@ -363,7 +366,7 @@ export function formationFor(input: FormationInput): Formation {
     const slot = slots[i]!, lane = geom.lanes[p.lane]!;
     const at = emplacement ? [emplacementPosition(slot)] : slotPositions(squad.count, slot, side);
     squads.push({
-      building: b.id, plot: i, lane: p.lane, rank: p.rank, file: p.file, slot, unitId: squad.unitId, emplacement,
+      building: b.id, plot: i, lane: p.lane, rank: p.rank, file: p.file, slot, unitId: squad.unitId, tier: emplacement ? 1 : squad.tier ?? 1, emplacement,
       mergeOn: b.mergeOn, eligible: !emplacement && squad.eligible !== false, overflows: overflows(squad.count, squad.radius),
       units: at.map((u) => inLane(u, lane, squad.radius, geom.width)),
     });
@@ -384,7 +387,7 @@ export function musterFor(input: MusterInput): MergePreview {
   for (const s of squads) {
     s.units.forEach((at, j) => {
       partsOf.set(units.length, [{ building: s.building, j }]);
-      units.push({ key: units.length, side: input.side, lane: s.lane, unitId: s.unitId, tier: 1, x: at.x, y: at.y, mergeOn: s.mergeOn, eligible: s.eligible, source: s.building });
+      units.push({ key: units.length, side: input.side, lane: s.lane, unitId: s.unitId, tier: s.tier, x: at.x, y: at.y, mergeOn: s.mergeOn, eligible: s.eligible, source: s.building });
     });
   }
   const opts: MusterOpts = {
@@ -413,9 +416,9 @@ export function musterFor(input: MusterInput): MergePreview {
 
 /**
  * A change to a colony that `formationOf` and `mergePreview` preview without touching the state (§14.6,
- * plan call 6, A060): the ghost before a plant, a sale or a toggle.
+ * plan call 6, A060): the ghost before a plant, a sale, a toggle or a gold upgrade (§6.1).
  */
-export type PlanChange = { plant: { buildingId: string; plot: number } } | { sell: number } | { toggle: { id: number; on: boolean } };
+export type PlanChange = { plant: { buildingId: string; plot: number } } | { sell: number } | { toggle: { id: number; on: boolean } } | { upgrade: number };
 
 /**
  * A side's squads as they arrive at the clash (§4.6, §14.6): `formationFor` on its colony as it stands, or
@@ -451,7 +454,7 @@ export function fieldPlace(state: BattleState, side: Side, plot: number, buildin
 function formationInput(state: BattleState, side: Side, change: PlanChange | undefined): FormationInput {
   const plots: FormationPlot[] = state.sides[side].plots.map((p, i) => {
     const b = p.building ? state.buildings.find((x) => x.id === p.building) : undefined;
-    return { lane: p.lane, rank: p.rank, file: p.file, building: b ? fielding(state, side, b.id, b.buildingId, b.mergeOn, i, b.plantedRound) : null };
+    return { lane: p.lane, rank: p.rank, file: p.file, building: b ? fielding(state, side, b.id, b.buildingId, b.mergeOn, i, b.plantedRound, b.upgrade !== undefined) : null };
   });
   if (change) applyChange(state, side, plots, change);
   return { geom: { width: state.map.width, lanes: state.lanes, gapTiles: state.rules.formationGapTiles }, side, plots };
@@ -463,22 +466,32 @@ function applyChange(state: BattleState, side: Side, plots: FormationPlot[], cha
   if ('plant' in change) {
     const { buildingId, plot } = change.plant;
     // with the id `plant` would give it, and its toggle on
-    if (!plantProblem(state, side, buildingId, plot)) plots[plot]!.building = fielding(state, side, state.nextId, buildingId, true, plot, state.round);
+    if (!plantProblem(state, side, buildingId, plot)) plots[plot]!.building = fielding(state, side, state.nextId, buildingId, true, plot, state.round, false);
   } else if ('sell' in change) {
     if (!sellProblem(state, side, change.sell)) at(change.sell).building = null;
+  } else if ('upgrade' in change) {
+    if (upgradeProblem(state, side, change.upgrade)) return;
+    const b = state.buildings.find((x) => x.id === change.upgrade)!;
+    at(b.id).building = fielding(state, side, b.id, b.buildingId, b.mergeOn, b.plot, b.plantedRound, true);
   } else if (!toggleProblem(state, side, change.toggle.id)) {
     const p = at(change.toggle.id);
     p.building = { ...p.building!, mergeOn: change.toggle.on };
   }
 }
 
-/** A building as the formation reads it, from its compiled card (§4.4): a spawner's squad, or a tower's one emplacement. */
-function fielding(state: BattleState, side: Side, id: number, buildingId: string, mergeOn: boolean, plot: number, plantedRound: number): FieldingBuilding {
+/**
+ * A building as the formation reads it, from its compiled card (§4.4): a spawner's squad, Bloomed with a gold
+ * upgrade (§6.1), or a tower's one emplacement.
+ */
+function fielding(
+  state: BattleState, side: Side, id: number, buildingId: string, mergeOn: boolean, plot: number, plantedRound: number, upgraded: boolean,
+): FieldingBuilding {
   const card = state.compiled[side].buildings[buildingId]!;
   if (!card.squad) return { id, kind: card.kind, mergeOn };
   const unit = state.compiled[side].units[card.squad.unit]!;
   const count = squadCount(state, side, card, plot, plantedRound);
-  return { id, kind: card.kind, squad: { unitId: unit.id, count, radius: unit.tiers[0].radius, eligible: knitsAtMuster(state, unit) }, mergeOn };
+  const tier: Tier = upgraded && card.kind === 'spawner' ? 2 : 1;
+  return { id, kind: card.kind, squad: { unitId: unit.id, count, radius: unit.tiers[tier - 1]!.radius, eligible: knitsAtMuster(state, unit), tier }, mergeOn };
 }
 
 /**

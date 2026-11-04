@@ -85,6 +85,7 @@ function execute(state: BattleState, cmd: Command): void {
     case 'plant':
     case 'sell':
     case 'toggleMerge':
+    case 'upgrade':
     case 'beginClash': {
       const problem = executePlanning(state, cmd);
       if (problem) reject(state, cmd, problem);

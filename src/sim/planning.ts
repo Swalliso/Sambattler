@@ -1,17 +1,18 @@
-// Planning in rounds (SPEC §4.4, §4.7 steps 11–12, §14.5, §14.6): the executors of `plant`, `sell`,
-// `toggleMerge` and `beginClash`'s planning half, and the checks the UI's ghost and the AI read. Each
+// Planning in rounds (SPEC §4.4, §4.7 steps 11–12, §6.1, §14.5, §14.6): the executors of `plant`, `sell`,
+// `toggleMerge`, `upgrade` and `beginClash`'s planning half, and the checks the UI's ghost and the AI read. Each
 // executor checks its command again as it runs and returns why it's refused, or null once it has run, so a
 // refusal becomes the queue's `commandRejected` and a replay reproduces it (§13.3 rule 7). The general's
 // turn (T068) runs the executors at once in the round's opening; a queued enemy plan comes after it and is
 // refused (plan Call 8). While a side's draft is open, its planning commands are refused (#28): it picks,
 // rerolls or skips, then plans. Reasons are codes, which the UI words.
+import { buildable } from './colony.ts';
 import { addBuilding } from './create.ts';
 import { atMaxOwned, inKit } from './kit.ts';
 import { startClash } from './round.ts';
 import type { BattleState, Command, Side } from './state.ts';
 
 /** The planning commands, which run in the planning phase only (§4.2). */
-export type PlanningCommand = Extract<Command, { type: 'plant' | 'sell' | 'toggleMerge' | 'beginClash' }>;
+export type PlanningCommand = Extract<Command, { type: 'plant' | 'sell' | 'toggleMerge' | 'upgrade' | 'beginClash' }>;
 
 /**
  * Runs a planning command from the queue, or returns why it's refused; the queue has checked its phase. The
@@ -24,6 +25,7 @@ export function executePlanning(state: BattleState, cmd: PlanningCommand): strin
     case 'plant': return plant(state, cmd.side, cmd.buildingId, cmd.plot);
     case 'sell': return sell(state, cmd.side, cmd.entityId);
     case 'toggleMerge': return toggleMerge(state, cmd.side, cmd.entityId, cmd.on);
+    case 'upgrade': return upgrade(state, cmd.side, cmd.entityId);
     case 'beginClash': return beginClash(state, cmd.side);
   }
 }
@@ -63,6 +65,22 @@ export function toggleMerge(state: BattleState, side: Side, entityId: number, on
   if (problem) return problem;
   state.buildings.find((b) => b.id === entityId)!.mergeOn = on;
   state.events.push({ t: 'mergeToggled', id: entityId, on });
+  return null;
+}
+
+/**
+ * Buys a gold upgrade for one of the side's spawners (§6.1, #67): its price at once, and from the next Begin
+ * its squad arrives Bloomed for the rest of the battle. Or returns why it can't.
+ */
+export function upgrade(state: BattleState, side: Side, entityId: number): string | null {
+  const problem = upgradeProblem(state, side, entityId);
+  if (problem) return problem;
+  const b = state.buildings.find((x) => x.id === entityId)!;
+  const price = upgradePrice(state, side, b.buildingId);
+  state.sides[side].gold -= price;
+  b.upgrade = { paid: price, fielded: false };
+  state.stats[side].upgradesBought = (state.stats[side].upgradesBought ?? 0) + 1;
+  state.events.push({ t: 'buildingUpgraded', id: b.id, side, price });
   return null;
 }
 
@@ -113,6 +131,33 @@ export function toggleProblem(state: BattleState, side: Side, entityId: number):
   return state.compiled[side].buildings[b.buildingId]?.kind === 'spawner' ? null : 'notASpawner';
 }
 
+/**
+ * Why `upgrade` would refuse the entity now, or null (§6.1, §14.5): `toggleMerge`'s checks (one of the side's
+ * spawners, its draft closed), then an upgraded building, a colony with a plot still free, or too little gold.
+ */
+export function upgradeProblem(state: BattleState, side: Side, entityId: number): string | null {
+  const problem = toggleProblem(state, side, entityId);
+  if (problem) return problem;
+  const b = state.buildings.find((x) => x.id === entityId)!;
+  if (b.upgrade) return 'alreadyUpgraded';
+  if (!colonyFull(state, side)) return 'colonyNotFull';
+  if (state.sides[side].gold < upgradePrice(state, side, b.buildingId)) return 'notEnoughGold';
+  return null;
+}
+
+/** True once every open plot of the side's colony that can take a building has one (§4.6, §6.1): a stump takes none. */
+export function colonyFull(state: BattleState, side: Side): boolean {
+  return state.sides[side].plots.every((p) => !buildable(p) || p.building !== 0);
+}
+
+/** A gold upgrade's price for the side's building: `upgradeCostPct` of its price, rounded down (§6.1). */
+export function upgradePrice(state: BattleState, side: Side, buildingId: string): number {
+  return upgradeCost(priceOf(state, side, buildingId), state.library.balance.rounds.upgradeCostPct);
+}
+
+/** `upgradePrice` from a building's price and the percentage, which the planning view carries (§6.1). */
+export const upgradeCost = (price: number, pct: number): number => Math.floor((price * pct) / 100);
+
 /** Every plot of the side's colony `plant` would take the building on now, in plot order (the UI's ghost and the AI). */
 export function legalPlots(state: BattleState, side: Side, buildingId: string): number[] {
   const out: number[] = [];
@@ -127,11 +172,13 @@ export function priceOf(state: BattleState, side: Side, buildingId: string): num
 
 /**
  * What selling a building refunds now (§4.4): 100% of its price in the planning phase it was planted in,
- * before it has fielded, and otherwise 60%, rounded down. 0 for no building.
+ * before it has fielded, and otherwise 60%, rounded down. Its gold upgrade comes back by the same rule, by
+ * whether the upgrade has fielded (§6.1). 0 for no building.
  */
 export function sellValue(state: BattleState, entityId: number): number {
   const b = state.buildings.find((x) => x.id === entityId);
   if (!b) return 0;
   const c = state.compiled[b.side];
-  return Math.floor((b.pricePaid * (b.fielded ? c.sellRefundPct : c.sellRefundPlantedPct)) / 100);
+  const refund = (paid: number, fielded: boolean) => Math.floor((paid * (fielded ? c.sellRefundPct : c.sellRefundPlantedPct)) / 100);
+  return refund(b.pricePaid, b.fielded) + (b.upgrade ? refund(b.upgrade.paid, b.upgrade.fielded) : 0);
 }

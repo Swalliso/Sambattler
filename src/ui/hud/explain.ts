@@ -329,6 +329,8 @@ export function intentTip(content: Content, atlas: Atlas, state: BattleState, re
           sec(`Round ${i.plan.round}`),
           row('Planted', held ? 'shows at Begin' : i.planted.join(', ') || 'nothing'),
           row('Sold', held ? 'shows at Begin' : i.sold.join(', ') || 'nothing'),
+          // under `reveal=last` an upgrade this round waits for Begin, as a planting does, so the row waits too
+          ...(i.upgraded.length && !held ? [row('Upgraded', i.upgraded.join(', '), 'its squad arrives Bloomed')] : []),
           row('Income', plus(i.plan.income), i.plan.round === 1 ? 'none in round 1' : undefined),
           row('Banked', String(i.plan.banked), 'held at Begin, for interest'),
         );

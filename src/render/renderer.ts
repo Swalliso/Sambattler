@@ -16,7 +16,7 @@ import { SIDES, formationOf } from '../sim/index.ts';
 import type { BattleState, PlotState, Side, SquadPlan, UnitState } from '../sim/index.ts';
 import type { Atlas, Faction } from './atlas.ts';
 import { Effects } from './effects.ts';
-import { INK_DEEP, drawUnitSprite } from './unitSprite.ts';
+import { INK_DEEP, PIP_SIZE, drawPips, drawUnitSprite } from './unitSprite.ts';
 import type { UnitSpriteOpts } from './unitSprite.ts';
 import { AftermathView } from './aftermath.ts';
 import type { AftermathPose } from './aftermath.ts';
@@ -331,6 +331,8 @@ export class RoundRenderer {
       // the general's counters land as buildings with a "New" sprout, so you see them before you plan (§7.4, §10.4)
       if (this.preview.sproutOn(state, b)) sprout(g, x + 2, y + 2);
       if (!b.mergeOn && state.compiled[b.side].buildings[b.buildingId]?.kind === 'spawner') knotOff(g, x + 2 * TILE - 9, y + 2 * TILE - 9, this.mat(b.side).glow);
+      // a gold upgrade: its squad arrives Bloomed, so the plot carries a Bloomed pip in its top-right corner (§6.1, §10.4)
+      if (b.upgrade) drawPips(g, this.atlas, x + 2 * TILE - 3 - PIP_SIZE.w / 2, y + 3, 2);
     }
 
     const calm = this.calm();

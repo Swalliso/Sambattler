@@ -89,7 +89,7 @@ export interface LastFielded {
 
 /**
  * The general's colony as it fielded last round, for `reveal=last` (§7.5, T127): from round 2, its colony as it
- * stands minus this round's plantings, plus this round's sales, both read from its plan for the round (plan
+ * stands minus this round's plantings and upgrades, plus this round's sales, read from its plan for the round (plan
  * Call 12), so it holds after a `round=` fast-forward. A building planted and sold again this round never
  * fielded, so it stays out. The plan doesn't record the merge toggles, so they're as they stand, and a sale
  * stands again with its toggle on. Null when the general shows as it stands: in round 1, or with no change in
@@ -97,7 +97,7 @@ export interface LastFielded {
  */
 export function lastFielded(state: BattleState): LastFielded | null {
   const plan = state.round > 1 ? state.sides.enemy.ai?.plans.find((p) => p.round === state.round) : undefined;
-  if (!plan || (!plan.planted.length && !plan.sold.length)) return null;
+  if (!plan || (!plan.planted.length && !plan.sold.length && !plan.upgraded?.length)) return null;
   const plots = state.sides.enemy.plots.map((p) => ({ ...p }));
   const hidden = new Set<number>();
   const sold = [...plan.sold];
@@ -115,10 +115,19 @@ export function lastFielded(state: BattleState): LastFielded | null {
   for (const x of sold) {
     if (plots[x.plot]!.building) continue;
     const id = -1 - restored.length;
-    restored.push({ id, side: 'enemy', buildingId: x.building, plot: x.plot, plantedRound: state.round - 1, pricePaid: 0, fielded: true, mergeOn: true });
+    restored.push({
+      id, side: 'enemy', buildingId: x.building, plot: x.plot, plantedRound: state.round - 1, pricePaid: 0, fielded: true, mergeOn: true,
+      ...(x.upgraded ? { upgrade: { paid: 0, fielded: true } } : {}),
+    });
     plots[x.plot]!.building = id;
   }
-  const buildings = [...restored, ...state.buildings.filter((b) => !hidden.has(b.id))];
+  // this round's upgrades haven't fielded yet, so they wait for Begin too (§6.1)
+  const lastRound = (b: BuildingState): BuildingState => {
+    if (b.side !== 'enemy' || !b.upgrade || b.upgrade.fielded) return b;
+    const { upgrade: _new, ...before } = b;
+    return before;
+  };
+  const buildings = [...restored, ...state.buildings.filter((b) => !hidden.has(b.id)).map(lastRound)];
   return { state: { ...state, sides: { ...state.sides, enemy: { ...state.sides.enemy, plots } }, buildings }, hidden, restored };
 }
 
@@ -319,6 +328,8 @@ export class FormationPreview {
         o.x = sx(at.x);
         o.y = at.y * TILE;
         o.id = q.building * 16 + j;
+        // an upgraded squad arrives Bloomed (§6.1)
+        o.tier = q.tier;
         o.burrowed = state.compiled[side].units[q.unitId]?.tags.includes('burrow');
         o.alpha = q.building === c.ghost ? GHOST_DIM : DIM;
         drawUnitSprite(g, this.atlas, o);

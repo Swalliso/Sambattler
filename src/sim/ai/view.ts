@@ -1,5 +1,5 @@
 // What a planner may read in rounds (SPEC §7.1, §7.2, §7.5): its own side as it stands, the round, and the
-// record of the rounds before. The general never sees what the player plants in the same phase, so its plan
+// record of the rounds before. The general never sees what the player plants or upgrades in the same phase, so its plan
 // is a function of this view and its own AI stream (plan Call 10). A planner on the player's side also sees
 // the general's colony and the formation it will field, as a player does: fixed-weight bots ignore it, and
 // `bot:answer` reads it (T121).
@@ -32,6 +32,8 @@ export interface PlanningView {
   strongAt: number;
   weakAt: number;
   gold: number;
+  /** A gold upgrade's price in percent of its building's (§6.1). */
+  upgradeCostPct: number;
   kit: KitCard[];
   /** Its colony, in plot order, each plot with its building's id or 0. */
   plots: PlotState[];
@@ -65,6 +67,7 @@ export function planningView(state: BattleState, side: Side): PlanningView {
     strongAt: state.rules.strongAt,
     weakAt: state.rules.weakAt,
     gold: ss.gold,
+    upgradeCostPct: bal.rounds.upgradeCostPct,
     kit: ss.kit.map((c) => ({ ...c })),
     ...colonyOf(state, side),
     cards: state.compiled[side].buildings,

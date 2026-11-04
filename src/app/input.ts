@@ -105,6 +105,10 @@ export function bindRoundInput(session: RoundSession, view: RoundsView, hooks: R
         if (!planning) planningOnly();
         else session.toggleMerge();
         break;
+      case 'u': case 'U':
+        if (!planning) planningOnly();
+        else session.upgrade();
+        break;
       case 'q': case 'Q': view.togglePower(); break;
       case 'i': case 'I': view.focusChips(); break;
       case 'h': case 'H': view.toggleHelp(); break;

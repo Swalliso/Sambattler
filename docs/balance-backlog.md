@@ -20,6 +20,7 @@ v1's backlog is archived at [docs/archive/v1/balance-backlog.md](archive/v1/bala
 
 - **The pace after T125** (R2a S18, below): at 100 a supply, agreed on 2026-11-03, battles take a median of 7 rounds, 18.5% of 200 reach round 9 (G4: ≤ 20%), and the damage cap binds in 70% of damaging rounds. S21's playtest reads whether a win's size still counts.
 - **The round guardrails that miss on the final data** (R2a S20, confirming S18's, below): G1, G2, G3, G7, G8's mono drops and G16 (the formation rule loses to its ranks traded). Each waits for the user, G16 best before S21.
+- **G4's round-9 clause after S5b's upgrades** (R2b S5b, below; the user, 2026-11-03): at 300% with the general's income × 1.05, 21% of battles reach round 9 (G4: ≤ 20%), a known miss until S14's tuning.
 - **A fixed round cap** (R2a S21b, below; measurement only): a fixed 750 for both sides passes G4, G6, G8's bands and G13 (6 rounds, 13% reach round 9); a fixed 500 fails G4 (34%). Today's 25% is even in capped rounds (4 each). For R2b's S0.
 - **The Morel Runners** (R2a S21b, below): intended under §5.2, not a bug. A pair charges in a column, so it reads as one runner, and the runners that "pushed in to the enemy base" were striking the invisible Mortar that T160 fixed. A fan-out rule would be the user's call.
 - **G16 after the Burster moved to the front** (R2a S21b, below; the user's OK, 2026-11-03): 40%, from 24%. The Gill Archer and Mortar pairs are what's left (55% and 26%), and only a 2-tile gap fixed them in the levers' entry. They wait for the playtest's calls and R3's combos.
@@ -29,6 +30,48 @@ v1's backlog is archived at [docs/archive/v1/balance-backlog.md](archive/v1/bala
 - **The Burster's seat effect** (R2a S17, below): a mirror of Bursters goes to whichever side's ids come first. A rule change waits for the user.
 - **The first fighting tick's frame in Chromium** (R2a S17, below): 4.8–11.4 ms once a page, against §13.7's 8 ms.
 - **Battle 1 misses G14** (R2b S1b, below; for R2-Q13): `bot:balanced` wins 52%, 29% and 45% of battle 1s for Vesper, Armilla and Cordis, against 70–90%. Old Mother Mold wins 73–94% of her pairings. A free blueprint lifts those by at most 21 points, while a softer Mold opener brings Vesper and Cordis inside the band. The user chose the softer opener on 2026-11-03 (R2-Q13), and S5 lands it (T068).
+
+## R2b S5b · the upgrade's price against G4, G8 and G13, for #67 (2026-11-03)
+
+- **Measured** (T163), on S5b's code:
+  - `npm run experiment -- --proto rounds.upgradeCostPct:<pct> --checks g4,g8` at 150%, 200% and 300%, with 100000% for "no upgrades" (nothing is ever affordable);
+  - then a probe of the same battles with more seeds for G8's two policies: `bot:balanced` against the scripted general over 200 seeds (G4's), and `bot:balanced` and `bot:answer` against the adaptive Lichen Baron over 150 (G8 reads 30);
+  - with `rounds.enemyIncomeMult` beside the price where the table says so.
+- **The user's rule** (2026-11-03): the lowest of 150%, 200% and 300% that keeps G4, G8 and G13 in band. **No price passes it.**
+
+| Variant | G4: bot wins (30–70%) | G4: reach round 9 (≤ 20%) | G8: balanced (40–65%) | G8: answer (≤ 80%) | Upgrades a battle vs scripted, you / general |
+|---|---|---|---|---|---|
+| No upgrades (develop) | 65% | 13% | 51% | 69% | 0 / 0 |
+| 150% (experiment, G8 of 30) | 72% | 16% | 83% | 87% | |
+| 200% | 71% | 18% | 73% | 88% | 1.39 / 1.28 |
+| 300% (experiment, G8 of 30) | 72% | 20% | 67% | 90% | |
+| 400% | 73% | 18% | 63% | 82% | 0.46 / 0.39 |
+| 600% | 70% | 18% | 58% | 74% | 0.22 / 0.14 |
+| 200%, the general's income × 1.05 | 60% | 21% | 66% | 79% | 1.52 / 1.57 |
+| 300%, the general's income × 1.05 | 63% | 21% | 61% | 77% | 0.93 / 0.92 |
+| 200%, the general's income × 1.1 | 45% | 22% | 56% | 68% | 1.64 / 1.95 |
+
+- **G13** holds in every variant: 6–9% of clashes at the cap, a median clash of 18–19.5 s. The medians hold too: 6–7 rounds.
+- **Why upgrades favour you:**
+  - Against the scripted general, both sides buy about as many (1.4 and 1.3 a battle at 200%, mostly Burrows and Capguard Halls), yet you win 6 points more. Upgrades make the late rounds more decisive, and at battle 1 the general has 2,000 HP to your 3,000, so a faster race favours you.
+  - The adaptive general also fills its colony later, since its counter cycle frees two plots at round 4. It is full at round 5's planning in 18% of battles, against your 57%, so it buys half as many upgrades (0.80 against 1.57).
+- **Result:** only 600% keeps every band, and only just (G4 at 70%). An upgrade then costs 660–1,560, and comes in about one battle in five, which does little for #67. A small lift in the general's income (`enemyIncomeMult`, §6.2) brings the win rates back in band, but more battles then reach round 9: 21% at × 1.05, one point over G4's limit, within the noise of 200 battles.
+- **Decided** (the user, 2026-11-03: "300% and ×1.05"): 300%, with the general's income × 1.05. G4's round-9 clause (21%) is a known miss until S14's tuning (T168, T169). `data/CHANGELOG-balance.md` logs it.
+
+## R2b S5b · the late game's gold with drafts on, for #67 (2026-11-03)
+
+- **Measured** (T159): `npm run sim -- --seeds 1..40 --player bot:balanced --enemy general:scripted --flags merging,drafts,adaptive,powers --summary`, on Bogwater Hollow at battle index 1, read from X8's lines (`paceLines`, `tools/lib/run.ts`). The task wrote `--flags drafts`, but `--flags` sets exactly the features it names (`parseFlags`), so that alone turns merging, the adaptive general and the powers off. The game's four flags are named here, with the task's command and the default flags (no drafts) beside them.
+
+| Variant | Full at Begin from, median round (never full) | Banked a round once full, median (mean) | Banked at Begin r6 · r7 · r8 · r9, median |
+|---|---|---|---|
+| The game, drafts on | player 5 (6 of 40), general 5 (5 of 40) | player 329 (400), general 285 (364) | 251/257 · 599/465 · 750/671 · 1002/1006 |
+| Default flags, no drafts | 5 (6), 5 (5) | 306 (366), 273 (340) | 251/257 · 555/404 · 756/596 · 1011/1006 |
+| `--flags drafts` alone | 5 (13), 5 (4) | 410 (496), 291 (398) | 285/231 · 611/464 · 836/715 · 1154/963 |
+
+- **With drafts on:** the player wins 60% (24 of 40), battles take a median of 7 rounds, 18% reach round 9, 10% of clashes reach the cap, and no command is rejected.
+- **Result:** the drafts leave the banked gold almost as it was, at +23 a round for the player, since the greedy policy buys no rerolls. Once full, both sides still bank about 300 a round, and from round 7 they hold 465–1,000 at Begin with nothing to buy.
+- **Touches:** nothing yet. G4, G8 and G13 read the upgrades in T163.
+- **Recommended:** price an upgrade as a share of its building's cost, since spawners cost 110–260. At 200% (220–520), a full colony buys one every round or two, two or three a battle. T163 sweeps the share.
 
 ## R2b S1b · battle 1 per commander and general, for R2-Q13 (2026-11-03)
 
