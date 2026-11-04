@@ -5,9 +5,9 @@
 // on the player's side plans after it and queues `beginClash`, which makes the planning checkpoint (plan
 // Call 14). An adaptive general runs the counter cycle in its turn's step 1 (§7.4, §7.6, §15.7's AI row): it
 // reads only the `fielded` record, at rounds 4 and 7 (the boss also at 3), and its counter lands in the same
-// planning phase (#31), with X8's two default-off knobs beside it (§7.2).
+// planning phase (#31).
 import { describe, expect, it } from 'vitest';
-import type { BalanceDef, ScenarioDef } from '../../src/data/schema.ts';
+import type { ScenarioDef } from '../../src/data/schema.ts';
 import { parseController } from '../../src/sim/create.ts';
 import { planTurn, runAtOnce, targetWeights } from '../../src/sim/ai/controller.ts';
 import { analyzeFielded, counterSets, topKind } from '../../src/sim/ai/counter.ts';
@@ -626,43 +626,6 @@ describe('intel (§7.6)', () => {
     // round 4's Line on top of it
     const w4 = boss(capguards, 4);
     expect([w4.gillNest, w4.capguardHall, w4.hammercapForge, w4.morelWarren].map((x) => +x!.toFixed(6))).toEqual([3, 1.5, 1.5, 0.6]);
-  });
-});
-
-describe("X8's default-off knobs (§7.2, A049, T101)", () => {
-  /** The battle's balance with X8's knobs set: a copy, so content's stays as it is. */
-  const knobs = (over: Partial<BalanceDef['rounds']['ai']>) => (s: BattleState): void => {
-    const b = s.library.balance;
-    s.library.balance = { ...b, rounds: { ...b.rounds, ai: { ...b.rounds.ai, ...over } } };
-  };
-
-  it('ships both off', () => {
-    expect([content.balance.rounds.ai.leanToLastAnswer, content.balance.rounds.ai.replaceWhenFull]).toEqual([0, false]);
-  });
-
-  it("leanToLastAnswer leans from round 2 toward the answer to last round's army", () => {
-    const w = (lean: number, round: number) => targetWeights(planningView(counterTurn(capguards, { round, before: knobs({ leanToLastAnswer: lean }) }), 'enemy'));
-    // your Capguards read Line, so Mold's Gill Nest gains and nothing else does
-    expect(w(0.5, 2).gillNest).toBeCloseTo(w(0, 2).gillNest! * 1.5, 10);
-    expect({ ...w(0.5, 2), gillNest: 0 }).toEqual({ ...w(0, 2), gillNest: 0 });
-    expect(w(0.5, 1)).toEqual(w(0, 1));
-  });
-
-  it('replaceWhenFull sells its lowest-weighted fielded spawner at 60% for a heavier card it can afford, once the colony is full', () => {
-    const colony: Colony = [
-      ...[1, 2, 3, 4].map((file) => ({ building: 'sporelingBurrow', lane: 0, rank: 0, file })),
-      { building: 'gillNest', lane: 0, rank: 1, file: 1 }, { building: 'gillNest', lane: 0, rank: 1, file: 2 },
-      { building: 'bursterPod', lane: 0, rank: 1, file: 3 }, { building: 'rhizomorphTunnel', lane: 0, rank: 1, file: 4 },
-    ];
-    const turn = (on: boolean, gold: number) => counterTurn([], { round: 5, gold, colony, before: knobs({ replaceWhenFull: on }) });
-    expect(turn(false, 100).events.some((e) => e.t === 'buildingSold')).toBe(false);
-    // the Pod and the Tunnel weigh 1, the Pod in the lower file; a Burrow (5) is the heaviest card it can afford
-    const s = turn(true, 100);
-    const plan = s.sides.enemy.ai!.plans.at(-1)!;
-    expect([plan.sold, plan.planted]).toEqual([[{ building: 'bursterPod', plot: plotAt(s, 0, 1, 3) }], [{ building: 'sporelingBurrow', plot: plotAt(s, 0, 1, 3) }]]);
-    expect(s.sides.enemy.gold).toBe(100 + Math.floor(content.buildings.bursterPod!.cost * 0.6) - content.buildings.sporelingBurrow!.cost);
-    // with no gold the refund buys nothing heavier, so it sells nothing
-    expect(turn(true, 0).events.some((e) => e.t === 'buildingSold')).toBe(false);
   });
 });
 

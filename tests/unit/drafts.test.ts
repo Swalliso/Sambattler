@@ -153,7 +153,7 @@ describe('drafts in planning (§4.7 step 10, §8.3)', () => {
   });
 
   it('a battle has one draft for each round in `draftRounds` whose next planning it reached: one that ends in round 4 had 1', () => {
-    expect(content.balance.rounds.draftRounds).toEqual([2, 4, 6]);
+    expect(content.balance.draftRounds).toEqual([2, 4, 6]);
     for (const [hp, end, drafts] of [[2500, 4, 1], [3000, 5, 2]] as const) {
       const config = draftConfig();
       config.player.heartcapMaxHp = hp;

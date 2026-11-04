@@ -11,6 +11,7 @@ import { nodeContent, protoContent, ROOT } from './lib/content.ts';
 import {
   commanderRuns, counterBotSpec, duelLines, duels, evaluateCommanderSpread, evaluateG1, evaluateG2, evaluateG3, evaluateG4, evaluateG5, evaluateG6, evaluateG7,
   evaluateG8, evaluateG12, evaluateG13, evaluateG14, evaluateG15, evaluateG16, g4Battles, rowLine, runReportLines, spawnerIds, tournament,
+  TOURNAMENT_SEEDS,
 } from './lib/balance.ts';
 import type { DuelOutcome, Verdict } from './lib/balance.ts';
 import { roundBenchChecks, runRoundBench } from './lib/bench.ts';
@@ -48,7 +49,7 @@ function matrix(title: string, outcomes: DuelOutcome[], ids: string[], value: (o
 
 // played in process; `npm run experiment` plays them on the pool (T117)
 const run = inProcessRounds(content);
-const maxRounds = content.balance.rounds.maxRounds;
+const maxRounds = content.balance.maxRounds;
 if (mode === 'duel') {
   const d = await duels(content, run, armySupply ? { supply: armySupply } : {});
   const ids = spawnerIds(content);
@@ -63,7 +64,7 @@ if (mode === 'duel') {
   json.edges = d.edges;
 } else if (mode === 'tournament' && commanderList) {
   // whole runs per commander and planning policy on the run pool (T122, T123), with G14, G15 and M5's spread
-  const runs = seedsArg >= 0 ? Number(args[seedsArg + 1]) : content.targets.rounds.G14.runs;
+  const runs = seedsArg >= 0 ? Number(args[seedsArg + 1]) : content.targets.G14.runs;
   const pool = runJobPool('', defaultWorkers());
   try {
     const records = await commanderRuns(content, pool.run, { commanders: commanderList, runs });
@@ -76,7 +77,7 @@ if (mode === 'duel') {
     await pool.close();
   }
 } else if (mode === 'tournament') {
-  const seeds = seedsArg >= 0 ? Number(args[seedsArg + 1]) : content.targets.G4.seeds;
+  const seeds = seedsArg >= 0 ? Number(args[seedsArg + 1]) : TOURNAMENT_SEEDS;
   const rows = await tournament(content, run, { seeds });
   md.push(`## Bots vs the scripted general (${seeds} seeds, Bogwater Hollow)`, '',
     `| bot | win % | median rounds | reached round ${maxRounds} | clashes at the cap | median clash | lead changes | rejected |`, '|---|---|---|---|---|---|---|---|');

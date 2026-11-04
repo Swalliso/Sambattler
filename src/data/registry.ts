@@ -57,18 +57,17 @@ export class ContentError extends Error {
 /** Sprites the renderer always needs, besides those referenced by units and buildings. */
 export const REQUIRED_SPRITES = [
   't-soil', 't-soil2', 't-loam', 't-stump', 't-wall',
-  'heartcap-cap', 'heartcap-stalk', 'heartcap-base', 'turret',
+  'heartcap-cap', 'heartcap-stalk', 'heartcap-base',
   'f-ceiling', 'f-bed', 'f-hyphae', 'f-hyphae-rot', 'f-earth', 'f-side', 'f-crown',
   'i-pip',
 ];
 
 /**
- * Sounds the game plays by id (src/app/sound.ts, src/app/battleSound.ts), besides the ambient drips. The ids of
- * v1's retired events stay until R2b's T129 drops them (§13.9).
+ * Sounds the game plays by id (src/app/sound.ts, src/app/battleSound.ts), besides the ambient drips (§13.9). R2b's
+ * T129 dropped v1's retired events, which `arrive`, `plan`, `counter`, `power`, `lane-won` and `lane-lost` replaced.
  */
 export const REQUIRED_SOUNDS = [
-  'place', 'sell', 'illegal', 'income', 'spawn', 'column-gained', 'column-lost', 'building-lost', 'building-razed',
-  'knit', 'merge', 'merge-elder', 'heartcap-hit', 'counter-warn', 'counter-active', 'sporestorm', 'wave', 'begin',
+  'place', 'sell', 'illegal', 'income', 'knit', 'merge', 'merge-elder', 'heartcap-hit', 'sporestorm', 'begin',
   'draft-open', 'draft-pick', 'win', 'loss', 'ui-hover', 'ui-click', 'ui-node', 'ui-choice', 'ui-toggle',
   'arrive', 'plan', 'counter', 'power', 'lane-won', 'lane-lost',
 ];
@@ -196,7 +195,6 @@ export function loadContent(raw: RawContent): Content {
   for (const u of Object.values(units)) spriteRef(`unit ${u.id}`, u.sprite);
   for (const b of Object.values(buildings)) {
     spriteRef(`building ${b.id}`, b.sprite);
-    if (b.spawn && !(b.spawn.unit in units)) problems.push(`building ${b.id}: spawn unit "${b.spawn.unit}" does not exist`);
     if (b.squad && !(b.squad.unit in units)) problems.push(`building ${b.id}: squad unit "${b.squad.unit}" does not exist`);
   }
   for (const f of Object.values(factions)) for (const id of f.buildings) buildingRef(`faction ${f.id}`, id);

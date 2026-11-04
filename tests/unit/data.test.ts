@@ -18,7 +18,7 @@ describe('data', () => {
     expect(c.maps['bogwater-hollow']).toBeDefined();
     for (const b of Object.values(c.buildings)) {
       expect(c.sprites[b.sprite]).toBeDefined();
-      if (b.spawn) expect(c.units[b.spawn.unit]).toBeDefined();
+      if (b.squad) expect(c.units[b.squad.unit]).toBeDefined();
     }
   });
 
@@ -84,12 +84,54 @@ describe('data', () => {
     expect(createBattle(c, cfg).compiled.player.ignored).toEqual([{ source: 'relic:mycorrhizalLink', stat: 'side.comboCorners' }]);
   });
 
+  // T130 (§11.1, §14.2, §15.7): v1's keys left the schema with T129, and R2a's rounds blocks folded into §11.1's names.
+  describe("v1's retired keys", () => {
+    const rejects = (edit: (r: Loose) => void, why: RegExp) => {
+      const r = structuredClone(raw) as Loose;
+      edit(r);
+      expect(() => loadContent(r)).toThrow(why);
+    };
+
+    it('rejects a modifier on side.supplyCap, a waveStart trigger, a building with hp and a limit with afterSeconds', () => {
+      rejects((r) => { r['relics.json'][0].effects.modifiers[0] = { stat: 'side.supplyCap', op: 'add', value: 6 }; }, /relics\.json: 0\.effects\.modifiers\.0\.stat: Invalid option/);
+      rejects((r) => { r['relics.json'][0].effects = { triggers: [{ on: 'waveStart', do: [{ gainGold: 5 }] }] }; }, /relics\.json: 0\.effects\.triggers\.0\.on: Invalid option/);
+      rejects((r) => { r['factions/velvet-bloom/buildings.json'][0].hp = 450; }, /Unrecognized key: "hp"/);
+      rejects((r) => { r['bots.json'][0].limits.rootbreakerDen = { afterSeconds: 180, afterRound: 4 }; }, /Unrecognized key: "afterSeconds"/);
+    });
+
+    it('rejects the rest of the retired effects: v1 selectors, triggers, actions and stats', () => {
+      for (const where of [{ zone: 'home' }, { adjacentOwnBuildingsGte: 2 }]) {
+        rejects((r) => { r['relics.json'][0].effects.modifiers[0] = { stat: 'unit.hp', op: 'mul', value: 2, where }; }, /Unrecognized key/);
+      }
+      rejects((r) => { r['relics.json'][0].effects = { triggers: [{ on: 'buildingDestroyed', do: [{ gainGold: 5 }] }] }; }, /0\.effects\.triggers\.0\.on: Invalid option/);
+      rejects((r) => { r['relics.json'][0].effects = { triggers: [{ on: 'roundWon', do: [{ repairHeartcapPct: 0.1 }] }] }; }, /0\.effects\.triggers\.0\.do\.0/);
+      for (const stat of ['building.hp', 'building.spawnInterval', 'building.goldPerTick', 'side.turretDamage', 'side.powerCooldown']) {
+        rejects((r) => { r['relics.json'][0].effects.modifiers[0] = { stat, op: 'add', value: 1 }; }, /0\.effects\.modifiers\.0\.stat: Invalid option/);
+      }
+      rejects((r) => { r['factions/velvet-bloom/buildings.json'][0].spawn = { unit: 'sporeling', count: 4, interval: 10 }; }, /Unrecognized key: "spawn"/);
+      rejects((r) => { r['factions/velvet-bloom/buildings.json'].find((b: Loose) => b.id === 'truffleCellar').economy.goldPerTick = 4; }, /Unrecognized key: "goldPerTick"/);
+    });
+
+    it('data/balance.json has no rounds block, nor v1 keys, and a tower keeps its emplacement HP in its attack', () => {
+      expect(raw['balance.json']).not.toHaveProperty('rounds');
+      expect(raw['balance-targets.json']).not.toHaveProperty('rounds');
+      for (const k of ['waveSeconds', 'supplyCap', 'turret', 'captureSeconds', 'timeLimitSeconds', 'routRepair', 'draftWaves', 'laneStance']) {
+        expect(raw['balance.json'], k).not.toHaveProperty(k);
+        rejects((r) => { r['balance.json'][k] = 1; }, new RegExp(`Unrecognized key: "${k}"`));
+      }
+      rejects((r) => { r['balance.json'].rounds = { maxRounds: 9 }; }, /Unrecognized key: "rounds"/);
+      const c = loadContent(raw);
+      expect(c.buildings.puffballMortar!.attack!.hp).toBe(500);
+      rejects((r) => { delete r['factions/velvet-bloom/buildings.json'].find((b: Loose) => b.id === 'puffballMortar').attack.hp; }, /puffballMortar needs "attack\.hp"/);
+    });
+  });
+
   it('rejects malformed effects', () => {
     const bad = structuredClone(raw) as Loose;
     bad['relics.json'][0].effects.modifiers[0].stat = 'unit.armor';
     expect(() => loadContent(bad)).toThrow(ContentError);
     const bad2 = structuredClone(raw) as Loose;
-    bad2['relics.json'][0].effects.modifiers[0] = { stat: 'unit.hp', op: 'mul', value: 2, where: { zone: 'home' } };
+    bad2['relics.json'][0].effects.modifiers[0] = { stat: 'tower.damage', op: 'mul', value: 2, where: { rank: 0 } };
     expect(() => loadContent(bad2)).toThrow(/positional selectors/);
     const bad3 = structuredClone(raw) as Loose;
     bad3['relics.json'][0].effects.modifiers[0].where = { unit: 'nobody' };
@@ -109,9 +151,6 @@ describe('data', () => {
   });
 
   it('rejects dangling references', () => {
-    const bad = structuredClone(raw) as Loose;
-    bad['factions/velvet-bloom/buildings.json'][0].spawn.unit = 'nobody';
-    expect(() => loadContent(bad)).toThrow(/does not exist/);
     const bad2 = structuredClone(raw) as Loose;
     bad2['balance-targets.json'].G7.slayers.mergeBot = 'nobody';
     expect(() => loadContent(bad2)).toThrow(/G7: bot "nobody"/);
@@ -120,8 +159,7 @@ describe('data', () => {
     expect(() => loadContent(bad3)).toThrow(/G2: unit "nobody"/);
   });
 
-  // R2a's rounds data, beside v1's fields (SPEC §11.1, §11.2, §14.2; R2a T007). v1's library leaves it out
-  // (Call 27), so it moves no v1 hash: tests/unit/determinism.test.ts.
+  // The data in rounds (SPEC §11.1, §11.2, §14.2; R2a T007), at §11.1's top-level names since R2b's T129.
   describe('rounds data', () => {
     const c = loadContent(raw);
     /** §11.2's Squad column, with Capguard Hall at 3 (#7, R1's review gate, 2026-11-02). */
@@ -130,10 +168,9 @@ describe('data', () => {
       tendersRing: 3, hammercapForge: 4, amanitaLodge: 2, morelWarren: 6, bursterPod: 6, rhizomorphTunnel: 3,
     };
 
-    it("every spawner fields R1's squad of the unit it spawns, and nothing else fields one", () => {
+    it("every spawner fields R1's squad, and nothing else fields one", () => {
       const spawners = Object.values(c.buildings).filter((b) => b.kind === 'spawner');
       expect(Object.fromEntries(spawners.map((b) => [b.id, b.squad?.count]))).toEqual(SQUADS);
-      for (const b of spawners) expect(b.squad!.unit, b.id).toBe(b.spawn!.unit);
       for (const b of Object.values(c.buildings)) if (b.kind !== 'spawner') expect(b.squad, b.id).toBeUndefined();
       const bad = structuredClone(raw) as Loose;
       bad['factions/velvet-bloom/buildings.json'][0].squad.unit = 'nobody';
@@ -145,27 +182,31 @@ describe('data', () => {
       expect(Object.fromEntries(economy.map((b) => [b.id, b.economy!.goldPerRound]))).toEqual({ truffleCellar: 50, sporeExchange: 12 });
     });
 
-    it("the rounds block validates, with the user's cap, Decision and interest (X5, R2-Q2)", () => {
-      expect(c.balance.rounds).toEqual({
+    it("the round keys validate at §11.1's names, with the user's cap, Decision and interest (X5, R2-Q2)", () => {
+      expect(c.balance).toMatchObject({
         maxRounds: 9, clashCapSeconds: 45, musterSeconds: 1, formationGapTiles: 6, heartcapDamagePerSupply: 100, siegeHeartcapMult: 2,
         arrivalShield: { minTypes: 2, shieldFrac: 0.2 },
         roundDamageCap: { flat: 750 }, decision: { by: 'shareOfMaxHp' }, interestPer: 10, interestCap: 30,
         sporestorm: { startRound: 5, stepBp: 2000, maxBp: 20000 },
-        stipendPerRound: 100, comebackGold: 40, enemyIncomeMult: 1.05, sellRefundPlanted: 1,
+        stipendPerRound: 100, comebackGold: 40, enemyIncomeMult: 1.1, sellRefund: 0.6, sellRefundPlanted: 1,
         draftRounds: [2, 4, 6], upgradeCostPct: 300, lives: 3, plotGrowth: { perWin: 1, max: 4 },
-        ai: {
-          economyEarly: { beforeRound: 3, mult: 1.5 }, economyLate: { fromRound: 7, mult: 0.3 }, towerAfterLossMult: 2,
-          score: { depth: 10, offCentre: 1, besideSame: 2, frontSupport: 3, loam: 8, backThird: 2, noise: 0.5 },
-          counter: { cycles: [{ round: 4, from: 1 }, { round: 7, from: 4 }], bossCycles: [{ round: 3, from: 1 }], freePlots: 2 },
-          // X8's two knobs ship off (R2a/T101)
-          leanToLastAnswer: 0, replaceWhenFull: false,
+      });
+      // the planning AI's round keys beside the counter weights v1's AI had (§7.2–§7.4); X8's two knobs are gone (T172)
+      expect(c.balance.ai).toEqual({
+        mergeOffSlayerShare: 0.25,
+        economyEarly: { beforeRound: 3, mult: 1.5 }, economyLate: { fromRound: 7, mult: 0.3 }, towerAfterLossMult: 2,
+        score: { depth: 10, offCentre: 1, besideSame: 2, frontSupport: 3, loam: 8, backThird: 2, noise: 0.5 },
+        counter: {
+          cycles: [{ round: 4, from: 1 }, { round: 7, from: 4 }], bossCycles: [{ round: 3, from: 1 }], freePlots: 2,
+          scoreNoise: 0.03, swarmEliteDiscount: 0.5, eliteScoreMult: 1.2,
+          counterMult: 3, otherMult: 0.6, openingMult: 2, openingOtherMult: 0.8, dualMult: 2.5, maxSells: 2, intelKeep: 0.5,
         },
       });
       // T124 measures the other caps and the Decision by damage; a cap names one base
       const withCap = (cap: unknown, by = 'damage') => {
         const r = structuredClone(raw) as Loose;
-        Object.assign(r['balance.json'].rounds, { roundDamageCap: cap, decision: { by } });
-        return loadContent(r).balance.rounds;
+        Object.assign(r['balance.json'], { roundDamageCap: cap, decision: { by } });
+        return loadContent(r).balance;
       };
       for (const cap of [{ flat: 500 }, { flat: 500, stormScales: true }, { maxHpBp: 2500, stormScales: true }]) {
         expect(withCap(cap)).toMatchObject({ roundDamageCap: cap, decision: { by: 'damage' } });
@@ -174,13 +215,10 @@ describe('data', () => {
       expect(() => withCap({ maxHpBp: 2500 }, 'lanes')).toThrow(ContentError);
     });
 
-    it('a limit by round sits beside every limit by seconds, one round a minute (§7.2, §7.9)', () => {
-      const limits = [...Object.values(c.bots), ...Object.values(c.generals)].flatMap((p) => Object.values(p.limits ?? {}));
-      const timed = limits.filter((l) => l.afterSeconds !== undefined);
-      expect(timed.length).toBeGreaterThan(0);
-      for (const l of timed) expect(l.afterRound).toBe(l.afterSeconds! / 60 + 1);
-      expect(c.bots.balanced!.limits!.rootbreakerDen).toEqual({ afterSeconds: 180, afterRound: 4 });
-      expect(c.bots.turtle!.limits!.rootbreakerDen).toEqual({ afterSeconds: 240, afterRound: 5 });
+    it('a limit by round, which replaced the limit by seconds one round a minute (§7.2, §7.9)', () => {
+      expect(c.bots.balanced!.limits!.rootbreakerDen).toEqual({ afterRound: 4 });
+      expect(c.bots.turtle!.limits!.rootbreakerDen).toEqual({ afterRound: 5 });
+      expect(c.generals.scripted!.limits!.rootbreakerDen).toEqual({ afterRound: 4 });
       const alone = structuredClone(raw) as Loose;
       alone['bots.json'][0].limits.rootbreakerDen = { afterRound: 3 };
       expect(loadContent(alone).bots.balanced!.limits!.rootbreakerDen).toEqual({ afterRound: 3 });

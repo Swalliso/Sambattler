@@ -278,7 +278,7 @@ export function finishBattle(content: Content, run: RunState, state: BattleState
   run.xp += r.spores + (winner === 'player' ? 25 : 0);
   run.next = freshNext();
   const lifeLost = winner !== 'player';
-  const growth = content.balance.rounds.plotGrowth;
+  const growth = content.balance.plotGrowth;
   if (lifeLost) run.lives.left = Math.max(0, run.lives.left - 1);
   else run.plotsGained = Math.min(growth.max, run.plotsGained + growth.perWin);
   const st = state.stats.player;
@@ -338,7 +338,7 @@ export function finishBattle(content: Content, run: RunState, state: BattleState
  */
 function skippedDrafts(content: Content, state: BattleState, kind: RouteNode['kind']): SpoilsSpec[] {
   if (!state.config.flags.drafts) return [];
-  const skipped = content.balance.rounds.draftRounds.filter((r) => r >= state.outcome!.round).length;
+  const skipped = content.balance.draftRounds.filter((r) => r >= state.outcome!.round).length;
   const rareBonus = kind === 'elite' ? content.balance.draft.eliteRareBonus : 0;
   return Array.from({ length: skipped }, () => ({ label: 'Spoils', cards: content.balance.draft.cards, rareBonus, freeRerolls: 0, relicsOnly: false }));
 }

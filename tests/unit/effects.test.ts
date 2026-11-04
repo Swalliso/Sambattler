@@ -180,14 +180,14 @@ describe('the schema in rounds (SPEC §14.2)', () => {
 
   it('accepts a rank of 0 to 2, positional as onLoam is: where POSITIONAL_STATS allows, and with onLoam on unit stats (T046)', () => {
     const ok = (stat: string, where: object) => ModifierSchema.safeParse({ stat, op: 'mul', value: 1.2, where }).success;
-    for (const rank of [0, 1, 2]) expect(ok('building.goldPerTick', { rank }), `rank ${rank}`).toBe(true);
-    expect(ok('building.spawnInterval', { rank: 0, tag: 'swarm' })).toBe(true);
-    expect(ok('building.goldPerTick', { rank: 3 })).toBe(false);
-    expect(ok('building.goldPerTick', { rank: -1 })).toBe(false);
+    for (const rank of [0, 1, 2]) expect(ok('building.squadCount', { rank }), `rank ${rank}`).toBe(true);
+    expect(ok('building.squadCount', { rank: 0, tag: 'swarm' })).toBe(true);
+    expect(ok('building.squadCount', { rank: 3 })).toBe(false);
+    expect(ok('building.squadCount', { rank: -1 })).toBe(false);
     for (const where of [{ rank: 0 }, { onLoam: true }, { rank: 1, tag: 'swarm', tier: 2 }]) expect(ok('unit.hp', where), JSON.stringify(where)).toBe(true);
-    // a unit stat still takes no zone or adjacency, and tower and other building stats no plot
+    // v1's zone and adjacency left the schema (T129), and tower and other building stats take no plot
     for (const where of [{ zone: 'home' }, { adjacentOwnBuildingsGte: 2 }]) expect(ok('unit.damage', where), JSON.stringify(where)).toBe(false);
-    for (const stat of ['tower.damage', 'building.spawnCount', 'building.goldPerRound']) expect(ok(stat, { rank: 0 }), stat).toBe(false);
+    for (const stat of ['tower.damage', 'building.goldPerRound']) expect(ok(stat, { rank: 0 }), stat).toBe(false);
   });
 
   it("selects a squad by its plot, its planting and the general's counter sets: on unit stats and a squad's count (§14.2)", () => {
@@ -268,19 +268,13 @@ describe('triggers in rounds (SPEC §14.2, §14.6)', () => {
     expect(golds(s)).toEqual([211, 100]);
   });
 
-  it("a trigger rounds don't fire, or an action they don't run, compiles to nothing and is listed (plan Call 19)", () => {
+  it("every trigger compiles with its actions, on its own side: v1's triggers and actions left the schema (T129)", () => {
     const compiled = compile([{
       side: 'player', source: 'relic:test',
-      effects: { triggers: [
-        { on: 'waveStart', do: [{ gainGold: 1 }] }, { on: 'merge', do: [{ gainGold: 2 }, { repairHeartcapPct: 0.1 }] },
-        { on: 'buildingDestroyed', do: [{ explode: { damage: 10, damageType: 'crush', radius: 1 } }] },
-      ] },
+      effects: { triggers: [{ on: 'merge', do: [{ gainGold: 2 }, { explode: { damage: 10, damageType: 'crush', radius: 1 } }] }] },
     }]);
-    expect(compiled.player.triggers).toEqual([{ on: 'merge', do: [{ gainGold: 2 }] }]);
-    expect(compiled.player.ignored).toEqual([
-      { source: 'relic:test', trigger: 'waveStart' }, { source: 'relic:test', action: 'repairHeartcapPct' }, { source: 'relic:test', trigger: 'buildingDestroyed' },
-    ]);
-    expect(compiled.enemy.triggers).toEqual([]);
+    expect(compiled.player.triggers).toEqual([{ on: 'merge', do: [{ gainGold: 2 }, { explode: { damage: 10, damageType: 'crush', radius: 1 } }] }]);
+    expect([compiled.player.ignored, compiled.enemy.triggers]).toEqual([[], []]);
   });
 
   it('enemyUnitKilled fires for the killer’s side at each enemy death in a clash, the killed unit as its cause', () => {
@@ -323,7 +317,7 @@ describe('rank, onLoam and plantedThisRound select squads by their plot (SPEC §
     expect(units(placed)).toEqual(units(plain));
   });
 
-  it("a building's selector reads its plot too, and v1's zone and adjacency, retired with territory, never match", () => {
+  it("a building's selector reads its plot too", () => {
     const loam: SelectorDef = { onLoam: true };
     expect([buildingMatcher(lib, 'truffleCellar', backLoam)(loam), buildingMatcher(lib, 'truffleCellar', front)(loam), buildingMatcher(lib, 'truffleCellar')(loam)])
       .toEqual([true, false, false]);
@@ -331,10 +325,6 @@ describe('rank, onLoam and plantedThisRound select squads by their plot (SPEC §
     expect(buildingMatcher(lib, 'capguardHall', front)({ rank: 0, tag: 'swarm' })).toBe(false);
     expect(buildingMatcher(lib, 'capguardHall', { ...front, planted: true })({ plantedThisRound: true })).toBe(true);
     expect(buildingMatcher(lib, 'capguardHall', front)({ plantedThisRound: true })).toBe(false);
-    for (const w of [{ zone: 'home' }, { adjacentOwnBuildingsGte: 1 }] as SelectorDef[]) {
-      expect(unitMatcher(lib, capguard, 1, front)(w)).toBe(false);
-      expect(buildingMatcher(lib, 'capguardHall', front)(w)).toBe(false);
-    }
   });
 
   it('a rank-0 modifier changes only front-rank squads’ units, and the formation preview equals the arrival (Thick Caps, A028)', () => {
@@ -509,10 +499,11 @@ describe('clash gold takes one path (SPEC §6.2, R2-Q20)', () => {
 });
 
 describe('the `requires` gates (SPEC §8.4, §11.7, A083, #26)', () => {
-  it("Mycorrhizal Link and the Rhizome Vault wait for R3's combos: no draft, spoils or event offers them, so Armilla's core offers five", () => {
+  it("Mycorrhizal Link and the Rhizome Vault wait for R3's combos: no draft, spoils or event offers them, and no core holds the Vault", () => {
     const pool = draftPool(content, 'velvet-bloom', 'armilla', DEFAULT_FLAGS);
-    expect(pool.core).toEqual(content.commanders.armilla!.core.filter((id) => id !== 'rhizomeVault'));
-    expect(pool.core).toHaveLength(5);
+    // Armilla's core traded the Vault for the Burster Pod (T131), so it offers all six
+    expect(pool.core).toEqual(content.commanders.armilla!.core);
+    for (const c of Object.values(content.commanders)) expect(c.core, c.id).not.toContain('rhizomeVault');
     expect(pool.shared).not.toContain('rhizomeVault');
     expect(pool.relics).not.toContain('mycorrhizalLink');
     expect(pool.relics).toContain('sporestormSigil');

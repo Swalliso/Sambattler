@@ -19,8 +19,8 @@
   {
     "id": "armilla", "sprite": "c-armilla", "name": "Armilla the Vast", "milestone": 5, "title": "The landholder",
     "description": "Slow, heavy and greedy for ground: her colony has an extra plot from the first battle, and her roots draw gold from every kill in a clash.",
-    "core": ["capguardHall", "rootbreakerDen", "puffballMortar", "truffleCellar", "hammercapForge", "rhizomeVault"],
-    "starter": ["capguardHall", "truffleCellar", "puffballMortar"],
+    "core": ["capguardHall", "rootbreakerDen", "puffballMortar", "truffleCellar", "hammercapForge", "bursterPod"],
+    "starter": ["capguardHall", "truffleCellar", "bursterPod"],
     "passive": {
       "text": "Landholder: your colony has 1 more plot, in the third rank, from battle 1.",
       "effects": { "modifiers": [{ "stat": "side.plots", "op": "add", "value": 1 }] }

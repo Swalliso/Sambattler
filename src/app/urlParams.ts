@@ -207,7 +207,7 @@ export function forwardBattle(state: BattleState, p: Checkpoint): BattleState {
 export function runCheckpoint(search: string | URLSearchParams, content: Content): RoundParams | null {
   const q = typeof search === 'string' ? new URLSearchParams(search) : search;
   const scene = sceneOf(q);
-  const first = content.balance.rounds.draftRounds[0];
+  const first = content.balance.draftRounds[0];
   if (scene === 'draft') return first === undefined ? null : { ...parseRoundParams(q), round: first + 1, phase: 'planning', ticks: null };
   return scene === 'run' && (q.has('round') || q.has('phase')) ? parseRoundParams(q) : null;
 }

@@ -1,7 +1,7 @@
 // The modifier DSL in rounds (SPEC §14.2, §14.6): v1's stat resolution over the stats, selectors, triggers
 // and actions a battle in rounds reads. Modifiers resolve in v1's order: sum every `add`, multiply every
-// `mul`, then the last `set` wins (§14.1). Content on a stat rounds retire, or on a trigger or action they
-// don't run, compiles to nothing and is listed by its source (plan Call 19). R2b adds what §11.7's relics need:
+// `mul`, then the last `set` wins (§14.1). A modifier on a stat a battle doesn't read compiles to nothing and
+// is listed by its source (plan Call 19); v1's stats, triggers and actions left the schema in R2b's T129. R2b adds what §11.7's relics need:
 // a squad's planting and the counter sets as selectors, conditions by round and storm, and the actions that
 // burst, cloud and heal, with gold earned in a clash on one path (R2-Q20).
 import { UNIT_STATS } from '../data/schema.ts';
@@ -9,7 +9,7 @@ import type { ModifierDef, SelectorDef } from '../data/schema.ts';
 import type { Terrain } from './colony.ts';
 import { formationBox } from './formation.ts';
 import { insertHit } from './hits.ts';
-import { ROUND_TRIGGERS, SIDES, other } from './state.ts';
+import { SIDES, other } from './state.ts';
 import type {
   BattleConfig, BattleModifier, BattleState, IgnoredEffect, KitCard, Library, LibraryUnit, RoundAction, RoundTrigger, RoundTriggerOn, Side,
 } from './state.ts';
@@ -42,9 +42,8 @@ export function resolveStat(base: number, mods: readonly ModifierDef[], stat: st
 /**
  * The stats a battle in rounds reads (§14.2): v1's unit and tower stats, the side and battle stats v2 keeps,
  * and v2's own: a squad's count, an economy building's gold a round, the colony's plots, the Heartcap's damage
- * taken, income and the power's effect. A modifier on any other compiles to nothing and is listed: v1's
- * building HP, spawn timers, spawn counts and gold a tick, the supply cap, capture, supply lines, turrets,
- * power cooldowns and waves, and R3's corner combos.
+ * taken, income and the power's effect. A modifier on any other compiles to nothing and is listed: R3's corner
+ * combos, and the run's stats (`run.*`), which the run reads.
  */
 export const ROUND_STATS: readonly string[] = [
   ...UNIT_STATS, 'tower.damage', 'tower.range', 'tower.splashRadius', 'building.squadCount', 'building.goldPerRound',
@@ -75,13 +74,11 @@ export function roundModifiers(lib: Library, config: BattleConfig, sides: Record
 /** A side's kit, upgrade levels and relics, as its config gives them or its state holds them once it has drafted (§8.3). */
 export interface RoundLoadout { kit: readonly KitCard[]; upgrades?: Record<string, number>; relics: readonly string[] }
 
-const isRoundTrigger = (on: string): on is RoundTriggerOn => (ROUND_TRIGGERS as readonly string[]).includes(on);
-
 /**
  * Every modifier and trigger in force for each side, from the battle's modifiers in order. A modifier
  * marked `side: opponent` lands on the other side; `battle.*` stats are left to `battleModifiers`. A
- * trigger keeps only the actions rounds run. Each thing set aside is listed once, on the side it would
- * have reached. A run's relics and upgrade levels arrive among them (`roundModifiers`).
+ * modifier on a stat a battle doesn't read is listed once, on the side it would have reached. A run's relics
+ * and upgrade levels arrive among them (`roundModifiers`).
  */
 export function collectRoundEffects(battle: readonly BattleModifier[] = []): Record<Side, RoundEffects> {
   const out: Record<Side, RoundEffects> = { player: { mods: [], triggers: [], ignored: [] }, enemy: { mods: [], triggers: [], ignored: [] } };
@@ -98,15 +95,7 @@ export function collectRoundEffects(battle: readonly BattleModifier[] = []): Rec
         if (ROUND_STATS.includes(m.stat)) out[to].mods.push(m);
         else ignore(to, { source: bm.source, stat: m.stat });
       }
-      for (const t of bm.effects.triggers ?? []) {
-        if (!isRoundTrigger(t.on)) { ignore(s, { source: bm.source, trigger: t.on }); continue; }
-        const run: RoundAction[] = [];
-        for (const a of t.do) {
-          if ('repairHeartcapPct' in a) ignore(s, { source: bm.source, action: 'repairHeartcapPct' });
-          else run.push(a);
-        }
-        if (run.length) out[s].triggers.push({ on: t.on, ...(t.if ? { if: t.if } : {}), do: run });
-      }
+      for (const t of bm.effects.triggers ?? []) out[s].triggers.push({ on: t.on, ...(t.if ? { if: t.if } : {}), do: [...t.do] });
     }
   }
   return out;
@@ -134,11 +123,9 @@ export const onPlot = (w: SelectorDef | undefined): boolean =>
 /**
  * Does a selector's place part hold at `place`: `rank` the plot's rank, `onLoam` whether it's a loam plot,
  * `plantedThisRound` and `inCounterSet` what holds for its building. Without a place it never does, so a
- * side-wide compile leaves the modifier to each squad's place (T046). v1's `zone` and adjacency went with
- * territory (§14.2): they never match in rounds.
+ * side-wide compile leaves the modifier to each squad's place (T046).
  */
 export function placeMatches(w: SelectorDef, place?: Place): boolean {
-  if (w.zone !== undefined || w.adjacentOwnBuildingsGte !== undefined) return false;
   if (!onPlot(w)) return true;
   if (!place) return false;
   if (w.rank !== undefined && w.rank !== place.rank) return false;

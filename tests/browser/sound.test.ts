@@ -5,6 +5,7 @@ import { chromium } from 'playwright';
 import type { Browser, Page } from 'playwright';
 import { createServer } from 'vite';
 import type { ViteDevServer } from 'vite';
+import { readRawContent } from '../../tools/lib/content.ts';
 
 let server: ViteDevServer | undefined;
 let browser: Browser | undefined;
@@ -125,7 +126,8 @@ describe('sound', () => {
     await page.goto(`${base}/?scene=sounds&sound=1`);
     const plays = page.locator('.sb-play');
     const n = await plays.count();
-    expect(n).toBeGreaterThanOrEqual(30);
+    // one row a sound in the bank: 28 since R2b's S12 dropped v1's events (T129)
+    expect(n).toBe((readRawContent()['sounds.json'] as { sounds: unknown[] }).sounds.length);
     for (let i = 0; i < n; i++) await plays.nth(i).click();
     expect(await page.evaluate(() => window.__audioContexts)).toBe(1);
     await expect.poll(() => page!.locator('#sb-voices').textContent()).toMatch(/^voices \d+\/12$/);

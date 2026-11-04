@@ -2,109 +2,96 @@
   {
     "id": "sporelingBurrow", "name": "Sporeling Burrow", "sprite": "b-sporelingBurrow", "milestone": 1,
     "description": "A warm burrow that buds two Sporelings at a time. Cheap bodies that hold ground.",
-    "kind": "spawner", "footprint": { "w": 2, "h": 2 }, "cost": 110, "hp": 450,
-    "spawn": { "unit": "sporeling", "count": 2, "interval": 16 },
+    "kind": "spawner", "footprint": { "w": 2, "h": 2 }, "cost": 110,
     "squad": { "unit": "sporeling", "count": 8 }
   },
   {
     "id": "capguardHall", "name": "Capguard Hall", "sprite": "b-capguardHall", "milestone": 1,
     "description": "Trains Capguards: sturdy line troops that shred Light swarms.",
-    "kind": "spawner", "footprint": { "w": 2, "h": 2 }, "cost": 150, "hp": 600,
-    "spawn": { "unit": "capguard", "count": 1, "interval": 15 },
+    "kind": "spawner", "footprint": { "w": 2, "h": 2 }, "cost": 150,
     "squad": { "unit": "capguard", "count": 3 }
   },
   {
     "id": "gillNest", "name": "Gill Archer Nest", "sprite": "b-gillNest", "milestone": 1,
     "description": "Gill Archers loose spore darts from range. Pierce breaks Medium line troops.",
-    "kind": "spawner", "footprint": { "w": 2, "h": 2 }, "cost": 150, "hp": 450,
-    "spawn": { "unit": "gillArcher", "count": 1, "interval": 15 },
+    "kind": "spawner", "footprint": { "w": 2, "h": 2 }, "cost": 150,
     "squad": { "unit": "gillArcher", "count": 4 }
   },
   {
     "id": "rootbreakerDen", "name": "Rootbreaker Den", "sprite": "b-rootbreakerDen", "milestone": 1,
     "description": "Rootbreakers are slow rams that crack buildings and Heartcaps (siege).",
-    "kind": "spawner", "footprint": { "w": 2, "h": 2 }, "cost": 200, "hp": 650,
-    "spawn": { "unit": "rootbreaker", "count": 1, "interval": 20 },
+    "kind": "spawner", "footprint": { "w": 2, "h": 2 }, "cost": 200,
     "squad": { "unit": "rootbreaker", "count": 3 }
   },
   {
     "id": "puffballMortar", "name": "Puffball Mortar", "sprite": "b-puffballMortar", "milestone": 1,
-    "description": "A tower that lobs bursting puffballs. Crush splash; cannot hit units hugging it.",
-    "kind": "tower", "footprint": { "w": 2, "h": 2 }, "cost": 160, "hp": 500,
-    "attack": { "damage": 24, "damageType": "crush", "interval": 3.0, "range": 6, "minRange": 1.5, "splashRadius": 1.0, "projectileSpeed": 6 }
+    "description": "A tower that lobs bursting puffballs: Crush damage to everything near where they land. It can't hit units right next to it.",
+    "kind": "tower", "footprint": { "w": 2, "h": 2 }, "cost": 160,
+    "attack": { "damage": 24, "damageType": "crush", "interval": 3.0, "range": 6, "minRange": 1.5, "splashRadius": 1.0, "projectileSpeed": 6, "hp": 500 }
   },
   {
     "id": "truffleCellar", "name": "Truffle Cellar", "sprite": "b-truffleCellar", "milestone": 1,
-    "description": "Grows truffles for gold every income tick. +50% on Rich Loam.",
-    "kind": "economy", "footprint": { "w": 2, "h": 2 }, "cost": 150, "hp": 400,
-    "economy": { "goldPerTick": 4, "goldPerRound": 50 }
+    "description": "Grows truffles: 50 gold every round. +50% on a Rich Loam plot.",
+    "kind": "economy", "footprint": { "w": 2, "h": 2 }, "cost": 150,
+    "economy": { "goldPerRound": 50 }
   },
   {
     "id": "scythecapGrove", "name": "Scythecap Grove", "sprite": "b-scythecapGrove", "milestone": 2, "rarity": "uncommon",
     "description": "Scythecaps swing curved blades that cleave through Light swarms (splash).",
-    "kind": "spawner", "footprint": { "w": 2, "h": 2 }, "cost": 170, "hp": 550,
-    "spawn": { "unit": "scythecap", "count": 1, "interval": 18 },
+    "kind": "spawner", "footprint": { "w": 2, "h": 2 }, "cost": 170,
     "squad": { "unit": "scythecap", "count": 3 }
   },
   {
     "id": "veilstalkerHollow", "name": "Veilstalker Hollow", "sprite": "b-veilstalkerHollow", "milestone": 2, "rarity": "uncommon",
     "description": "Veilstalkers hunt in pairs: fast Slayers that deal ×3 damage to Bloomed and Elder units.",
-    "kind": "spawner", "footprint": { "w": 2, "h": 2 }, "cost": 160, "hp": 450,
-    "spawn": { "unit": "veilstalker", "count": 2, "interval": 18 },
+    "kind": "spawner", "footprint": { "w": 2, "h": 2 }, "cost": 160,
     "squad": { "unit": "veilstalker", "count": 6 }
   },
   {
     "id": "tendersRing", "name": "Tender's Ring", "sprite": "b-tendersRing", "milestone": 3, "rarity": "uncommon",
     "description": "A fairy ring that sends out Tenders: support units that heal the most-hurt ally nearby instead of fighting.",
-    "kind": "spawner", "footprint": { "w": 2, "h": 2 }, "cost": 180, "hp": 450,
-    "spawn": { "unit": "tender", "count": 1, "interval": 20 },
+    "kind": "spawner", "footprint": { "w": 2, "h": 2 }, "cost": 180,
     "squad": { "unit": "tender", "count": 3 }
   },
   {
     "id": "hammercapForge", "name": "Hammercap Forge", "sprite": "b-hammercapForge", "milestone": 4, "rarity": "uncommon",
     "description": "Hammercaps swing crushing mauls: line troops that crack Heavy armor.",
-    "kind": "spawner", "footprint": { "w": 2, "h": 2 }, "cost": 170, "hp": 600,
-    "spawn": { "unit": "hammercap", "count": 1, "interval": 17 },
+    "kind": "spawner", "footprint": { "w": 2, "h": 2 }, "cost": 170,
     "squad": { "unit": "hammercap", "count": 4 }
   },
   {
     "id": "amanitaLodge", "name": "Amanita Lodge", "sprite": "b-amanitaLodge", "milestone": 4, "rarity": "rare",
     "description": "Amanita Knights: slow, Heavy-armored champions that shrug off Slash and Pierce. Crush breaks them.",
-    "kind": "spawner", "footprint": { "w": 2, "h": 2 }, "cost": 260, "hp": 750,
-    "spawn": { "unit": "amanitaKnight", "count": 1, "interval": 30 },
+    "kind": "spawner", "footprint": { "w": 2, "h": 2 }, "cost": 260,
     "squad": { "unit": "amanitaKnight", "count": 2 }
   },
   {
     "id": "morelWarren", "name": "Morel Warren", "sprite": "b-morelWarren", "milestone": 4,
     "description": "Morel Runners dart out in pairs: fast Medium skirmishers with piercing spears.",
-    "kind": "spawner", "footprint": { "w": 2, "h": 2 }, "cost": 130, "hp": 450,
-    "spawn": { "unit": "morelRunner", "count": 2, "interval": 18 },
+    "kind": "spawner", "footprint": { "w": 2, "h": 2 }, "cost": 130,
     "squad": { "unit": "morelRunner", "count": 6 }
   },
   {
     "id": "rhizomeVault", "name": "Rhizome Vault", "sprite": "b-rhizomeVault", "milestone": 4, "rarity": "uncommon", "requires": "combos",
     "description": "Stores nutrients in a root mass: +6 supply cap while it stands (at most 2 Vaults count).",
-    "kind": "utility", "footprint": { "w": 2, "h": 2 }, "cost": 140, "hp": 500,
-    "utility": { "supplyCapAdd": 6, "maxCount": 2 }
+    "kind": "utility", "footprint": { "w": 2, "h": 2 }, "cost": 140
   },
   {
     "id": "sporeExchange", "name": "Spore Exchange", "sprite": "b-sporeExchange", "milestone": 4, "rarity": "uncommon",
-    "description": "Trades spores for interest: +1 gold per income tick and +10 to your interest cap while it stands.",
-    "kind": "economy", "footprint": { "w": 2, "h": 2 }, "cost": 160, "hp": 400,
-    "economy": { "goldPerTick": 1, "interestCapAdd": 10, "goldPerRound": 12 }
+    "description": "Trades spores for interest: 12 gold every round, and +10 to your interest cap while it stands.",
+    "kind": "economy", "footprint": { "w": 2, "h": 2 }, "cost": 160,
+    "economy": { "interestCapAdd": 10, "goldPerRound": 12 }
   },
   {
     "id": "bursterPod", "name": "Burster Pod", "sprite": "b-bursterPod", "milestone": 5, "rarity": "uncommon",
     "description": "Bursters roll at the thickest knot of enemy units and burst: damage through any armor, and a spore cloud.",
-    "kind": "spawner", "footprint": { "w": 2, "h": 2 }, "cost": 130, "hp": 450,
-    "spawn": { "unit": "burster", "count": 1, "interval": 10 },
+    "kind": "spawner", "footprint": { "w": 2, "h": 2 }, "cost": 130,
     "squad": { "unit": "burster", "count": 6 }
   },
   {
     "id": "rhizomorphTunnel", "name": "Rhizomorph Tunnel", "sprite": "b-rhizomorphTunnel", "milestone": 5, "rarity": "uncommon",
     "description": "Rhizomorphs tunnel under the front line and surface beside the archers or spawners behind it.",
-    "kind": "spawner", "footprint": { "w": 2, "h": 2 }, "cost": 160, "hp": 450,
-    "spawn": { "unit": "rhizomorph", "count": 1, "interval": 18 },
+    "kind": "spawner", "footprint": { "w": 2, "h": 2 }, "cost": 160,
     "squad": { "unit": "rhizomorph", "count": 3 }
   }
 ]

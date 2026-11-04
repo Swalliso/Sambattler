@@ -36,9 +36,9 @@ describe('the presets are the agreed list (§16 R2, A109)', () => {
     }
   });
 
-  it("keeps X8's data knobs in data/balance.json, both off (R2a/T101)", () => {
-    expect(content.balance.rounds.ai.leanToLastAnswer).toBe(0);
-    expect(content.balance.rounds.ai.replaceWhenFull).toBe(false);
+  it("drops X8's two data knobs, which S11 measured as moving neither G14 nor G15 (T129, T172)", () => {
+    expect(content.balance.ai).not.toHaveProperty('leanToLastAnswer');
+    expect(content.balance.ai).not.toHaveProperty('replaceWhenFull');
   });
 
   it('bosslives sets its key in the content', () => {
@@ -82,5 +82,13 @@ describe('proto overrides of buildings, units and bots', () => {
     expect(c.bots.balanced).toEqual(content.bots.balanced);
     expect(content.buildings.gillNest!.squad!.count).toBe(4); // the shared content is untouched
     expect(raw['balance.json']).toEqual(readRawContent()['balance.json']);
+  });
+
+  it("patch a commander by id, so a commander's data can be measured as a path (R2b/T131)", () => {
+    const c = protoContent('commander.armilla.starter:["capguardHall","truffleCellar","gillNest"],commander.armilla.core.5:"gillNest",commander.cordis.power.radius:2');
+    expect(c.commanders.armilla!.starter).toEqual(['capguardHall', 'truffleCellar', 'gillNest']);
+    expect(c.commanders.armilla!.core).toContain('gillNest');
+    expect(c.commanders.cordis!.power).toMatchObject({ kind: 'bloom', radius: 2 });
+    expect(content.commanders.armilla!.starter).toEqual(['capguardHall', 'truffleCellar', 'bursterPod']);
   });
 });

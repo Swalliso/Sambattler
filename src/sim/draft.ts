@@ -225,7 +225,7 @@ function offerFor(state: BattleState, side: Side): DraftCard[] {
  * draws from the battle's draft stream (A093). It returns whether a draft opened.
  */
 export function openDraft(state: BattleState, side: Side): boolean {
-  if (!drafting(state.config, side) || !state.library.balance.rounds.draftRounds.includes(state.round - 1)) return false;
+  if (!drafting(state.config, side) || !state.library.balance.draftRounds.includes(state.round - 1)) return false;
   const offer = offerFor(state, side);
   if (!offer.length) return false;
   const ss = state.sides[side];

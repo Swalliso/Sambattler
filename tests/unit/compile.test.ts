@@ -1,5 +1,5 @@
 // A battle in rounds' library and compiled sides (SPEC §11.2, §14.2, §14.4, §13.3): squads from each
-// building's `squad`, towers as emplacement units, gold a round, the rules from `balance.rounds`, content on
+// building's `squad`, towers as emplacement units, gold a round, the round rules from the balance, content on
 // retired stats compiled to nothing and listed (plan Call 19), and no display text (R2-Q8). These need no
 // battle: only a config, as `createBattle` (T027) will pass it.
 import { describe, expect, it } from 'vitest';
@@ -109,7 +109,7 @@ describe('compiled sides in rounds (SPEC §11.2, §14.2)', () => {
     expect(() => compile([], config(), bare)).toThrow(/gillNest.*squad/);
   });
 
-  it("a tower compiles to an emplacement unit with structure armor and its building's hp", () => {
+  it("a tower compiles to an emplacement unit with structure armor and its attack's hp", () => {
     const { player } = compile();
     const mortar = content.buildings.puffballMortar!, attack = mortar.attack!;
     expect(player.buildings.puffballMortar!.squad).toEqual({ unit: 'puffballMortar', count: 1 });
@@ -119,7 +119,7 @@ describe('compiled sides in rounds (SPEC §11.2, §14.2)', () => {
     // the Mortar's shells leave spore clouds, and reach the clouds' range (§5.3, §11.2)
     expect(e.emplacement).toEqual({ minRange: attack.minRange, clouds: true });
     for (const t of e.tiers) {
-      expect(t.hp).toBe(mortar.hp);
+      expect(t.hp).toBe(attack.hp);
       expect([t.damage, t.attackTicks, t.range, t.splashRadius]).toEqual([attack.damage, secToTicks(attack.interval), content.balance.sporeCloud!.range, attack.splashRadius]);
       expect([t.supply, t.speedPerTick, t.healAmount]).toEqual([0, 0, 0]);
     }
@@ -131,9 +131,9 @@ describe('compiled sides in rounds (SPEC §11.2, §14.2)', () => {
     expect(player.buildings.sporeExchange!.economy).toEqual({ goldPerRound: 12, interestCapAdd: 10 });
   });
 
-  it("holds the rules from balance.rounds: the stipend, the interest cap, the refunds and the general's income", () => {
+  it("holds the round rules from the balance: the stipend, the interest cap, the refunds and the general's income", () => {
     const { player, enemy } = compile();
-    const r = content.balance.rounds;
+    const r = content.balance;
     for (const s of [player, enemy]) {
       expect([s.stipend, s.interestCap, s.sellRefundPlantedPct, s.sellRefundPct]).toEqual([r.stipendPerRound, r.interestCap, 100, 60]);
       expect([s.comebackEnabled, s.loamBonusPct]).toEqual([true, 50]);
@@ -141,13 +141,10 @@ describe('compiled sides in rounds (SPEC §11.2, §14.2)', () => {
     expect([player.incomeBp, enemy.incomeBp]).toEqual([10000, Math.round(r.enemyIncomeMult * 10000)]);
   });
 
-  it('a modifier on a retired stat compiles to nothing and is listed, and no passive or elite uses one (plan Call 19, §7.7, §11.10)', () => {
+  it("a modifier on a stat a battle doesn't read compiles to nothing and is listed, and no passive or elite uses one (plan Call 19, §7.7, §11.10)", () => {
     const plain = compile();
-    // v1's passives' stats, which R2b's S7 rewrote
-    const retired: [Side, StatKeyT][] = [
-      ['player', 'building.spawnInterval'], ['player', 'side.captureSpeed'], ['enemy', 'building.hp'], ['enemy', 'side.turretDamage'],
-      ['enemy', 'building.firstSpawnFraction'],
-    ];
+    // R3's corner combos and the run's lives; v1's stats left the schema in R2b's T129
+    const retired: [Side, StatKeyT][] = [['player', 'side.comboCorners'], ['enemy', 'run.maxLives']];
     for (const [side, stat] of retired) {
       const mod: BattleModifier = { side, source: `test:${stat}`, effects: { modifiers: [{ stat, op: 'mul', value: 2 }] } };
       const sides = compile([mod]);
@@ -187,7 +184,7 @@ describe('compiled sides in rounds (SPEC §11.2, §14.2)', () => {
 
 describe('the rules in rounds (SPEC §5.6, §6.4, §6.7, §11.1)', () => {
   it('holds the clash cap and the muster in ticks, and the storm by round, which battle.sporestormStart moves', () => {
-    const c = config(), r = content.balance.rounds;
+    const c = config(), r = content.balance;
     const rules = compileRoundRules(buildRoundLibrary(content, c), c);
     expect([rules.clashCapTicks, rules.musterTicks, rules.maxRounds]).toEqual([900, 20, r.maxRounds]);
     expect(rules.storm).toEqual({ startRound: 5, stepBp: 2000, maxBp: 20000 });

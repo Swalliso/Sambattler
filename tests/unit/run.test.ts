@@ -102,7 +102,7 @@ describe('route (SPEC §8.2)', () => {
 });
 
 describe('battle setup and rewards (SPEC §4.5, §4.6, §6.1, §6.5, §8.5–8.6)', () => {
-  it('battle configs are in rounds and scale with the battle index; the boss has 3600 HP; elites carry their modifier', () => {
+  it('battle configs are in rounds and scale with the battle index; the boss has its own Heartcap; elites carry their modifier', () => {
     const run = createRun(content, { seed: 3 });
     chooseNode(content, run, 0);
     const c1 = configOf(run);
@@ -139,17 +139,20 @@ describe('battle setup and rewards (SPEC §4.5, §4.6, §6.1, §6.5, §8.5–8.6
     expect(levels(k1.upgrades)).toBe(0);
     const k3 = generalKit(content, run, { kind: 'battle', map: 'stumpfield', general: 'scripted' }, 3);
     expect(k3.kit).toEqual([...g.opener, ...g.preferred!.slice(0, 2)]);
-    expect(levels(k3.upgrades)).toBe(2);
+    const k = bal.enemyKit;
+    expect(levels(k3.upgrades)).toBe(2 * k.upgradesPerBattle);
     for (const id of Object.keys(k3.upgrades)) expect(k3.kit).toContain(id);
     const e3 = generalKit(content, run, { kind: 'elite', map: 'stumpfield', general: 'scripted', elite: 'swift' }, 3);
-    expect(levels(e3.upgrades)).toBe(3);
+    expect(levels(e3.upgrades)).toBe(2 * k.upgradesPerBattle + k.eliteUpgrades);
     const boss = generalKit(content, run, { kind: 'boss', map: 'stumpfield', general: 'scripted' }, 4);
     expect(boss.kit).toHaveLength(bal.enemyKit.bossBuildings);
     expect(levels(boss.upgrades)).toBe(bal.enemyKit.bossUpgrades);
     const vet = generalKit(content, run, { kind: 'elite', map: 'stumpfield', general: 'scripted', elite: 'veteran' }, 2);
-    const spawners = vet.kit.filter((id) => content.buildings[id]!.spawn);
+    const spawners = vet.kit.filter((id) => content.buildings[id]!.squad);
     for (const id of spawners) expect(vet.upgrades[id]).toBeGreaterThanOrEqual(1); // Veteran: +1 on every unit track
-    expect(levels(vet.upgrades)).toBe(spawners.length + 2); // plus (i − 1) + elite random levels
+    // plus (i − 1) × 3 + the elite's random levels, less any +1 a track already full couldn't take
+    expect(levels(vet.upgrades)).toBeGreaterThanOrEqual(Math.max(spawners.length, k.upgradesPerBattle + k.eliteUpgrades));
+    expect(levels(vet.upgrades)).toBeLessThanOrEqual(spawners.length + k.upgradesPerBattle + k.eliteUpgrades);
     expect(generalKit(content, run, { kind: 'battle', map: 'stumpfield', general: 'scripted' }, 3)).toEqual(k3); // deterministic
   });
 
@@ -701,7 +704,7 @@ describe('Grove and events (SPEC §8.7)', () => {
     chooseNode(content, run, 0);
     const c = configOf(run);
     expect(c.player.startingGold).toBe(bal.startingGold + 150);
-    expect(createBattle(content, c).rules.storm.startRound).toBe(bal.rounds.sporestorm.startRound - 1);
+    expect(createBattle(content, c).rules.storm.startRound).toBe(bal.sporestorm.startRound - 1);
     finishBattle(content, run, ended(run, 'player', 'decision'));
     expect(run.next).toEqual({ startingGold: 0, sporestormShiftRounds: 0, heartcapMaxHpPct: 0 });
   });

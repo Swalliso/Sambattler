@@ -257,22 +257,20 @@ export interface CompiledBuilding {
   economy?: { goldPerRound: number; interestCapAdd?: number };
 }
 
-/** The triggers a battle in rounds fires (§14.2, §14.6). */
-export const ROUND_TRIGGERS = ['battleStart', 'roundStart', 'clashStart', 'unitDeath', 'enemyUnitKilled', 'squadWiped', 'merge', 'roundWon'] as const;
-export type RoundTriggerOn = (typeof ROUND_TRIGGERS)[number];
+/** The triggers a battle in rounds fires (§14.2, §14.6): every trigger the schema has, since v1's left it in R2b's T129. */
+export type RoundTriggerOn = TriggerDef['on'];
 /**
  * The actions rounds run (§14.2): `gainGold` pays its own side at once, `explode` bursts where it fired,
  * `cloud` leaves a spore cloud there or on the enemy's front rank, and `healHeartcap` heals its side's Heartcap.
  */
-export type RoundAction = Exclude<EffectAction, { repairHeartcapPct: number }>;
+export type RoundAction = EffectAction;
 export interface RoundTrigger { on: RoundTriggerOn; if?: TriggerDef['if']; do: RoundAction[] }
 
 /**
- * Content a battle in rounds compiles to nothing until R2b gives it a v2 effect (plan Call 19): a modifier
- * on a stat rounds retire, or a trigger or action rounds don't run. Its source is the battle modifier's,
- * such as `commander:vesper`.
+ * A modifier a battle in rounds compiles to nothing (plan Call 19): one on a stat a battle doesn't read, R3's
+ * corner combos or the run's. Its source is the battle modifier's, such as `relic:mycorrhizalLink`.
  */
-export type IgnoredEffect = { source: string } & ({ stat: string } | { trigger: string } | { action: string });
+export interface IgnoredEffect { source: string; stat: string }
 
 export interface CompiledSide {
   /** Its squads' units, and its towers' emplacements under each tower's id. */
@@ -577,7 +575,7 @@ export interface AiWeight {
   weight: number;
   /** At most this many of it standing at once. */
   maxOwned?: number;
-  /** Bought only from this round on, v1's `afterSeconds` read one round a minute (§7.2, §14.2). */
+  /** Bought only from this round on (§7.2, §14.2). */
   afterRound?: number;
 }
 

@@ -36,8 +36,8 @@ function fromV1(content: Content, v1: Loose): LoadedRun {
   const bal = content.balance;
   const battles = (v1.battles as Loose[]).map(battleFromV1);
   const lost = battles.filter((b) => b.lifeLost).length;
-  const lives = bal.rounds.lives;
-  const growth = bal.rounds.plotGrowth;
+  const lives = bal.lives;
+  const growth = bal.plotGrowth;
   const {
     v: _v, heartcap, next, battles: _battles, pending, screen, bans, ...kept
   } = v1;

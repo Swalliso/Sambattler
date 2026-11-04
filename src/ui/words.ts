@@ -2,8 +2,8 @@
 // "income tick", "surcharge" and "knit" read as jargon). v1's battles copied the data's own text into their
 // state, so its plain wording lived here, keyed by id, and every screen reads relics, upgrade levels and
 // building descriptions through it. A battle in rounds holds no text (R2-Q8), so wording moves into the data:
-// relics' since R2b's S6, in their v2 form (T077). tests/unit/words.test.ts checks that each rewording left
-// keeps the data's numbers.
+// relics' since R2b's S6, in their v2 form (T077), and buildings' since R2b's S12 (T132). tests/unit/words.test.ts
+// checks that each rewording left keeps the data's numbers.
 import type { Content } from '../data/registry.ts';
 import type { PowerDef } from '../data/schema.ts';
 import type { BattleRecord } from '../run/index.ts';
@@ -22,11 +22,8 @@ const UPGRADES: Record<string, string> = {
   'sporeExchange:3': "Interest cap +10: each round's interest can pay up to 10 more gold",
 };
 
-const BUILDINGS: Record<string, string> = {
-  truffleCellar: 'Grows truffles: gold every 5 s, all battle. +50% on Rich Loam.',
-  sporeExchange: 'Trades spores for interest: +1 gold every 5 s, and each new wave can pay up to 10 more gold of interest while it stands.',
-  puffballMortar: 'A tower that lobs bursting puffballs: Crush damage to everything near where they land. It can\'t hit units right next to it.',
-};
+/** Buildings' rewordings: none since T132 moved them into the data, in v2's words. */
+const BUILDINGS: Record<string, string> = {};
 
 /** The relic's effect in plain words: its data's text, written for v2 (§11.7). */
 export function relicText(content: Content, id: string): string {

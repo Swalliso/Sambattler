@@ -22,11 +22,11 @@ export interface PlanningView {
   round: number;
   /** False when the battle doesn't merge at all (§5.6). */
   merging: boolean;
-  /** The planner's knobs (§7.2, §7.3), and the Slayer share above which swarm merging goes off. */
-  knobs: BalanceDef['rounds']['ai'];
-  mergeOffSlayerShare: number;
-  /** The counter cycle's multipliers, noise and sells (§7.4, §7.6), which keep their v1 meaning (plan Call 1). */
-  counterKnobs: BalanceDef['ai']['counter'];
+  /**
+   * The planner's knobs (§7.2, §7.3): its economy by round, placement score and the Slayer share above which swarm
+   * merging goes off, and the counter cycle's rounds, multipliers, noise and sells (§7.4, §7.6).
+   */
+  knobs: BalanceDef['ai'];
   /** The damage matrix (§5.3), which the counter cycle reads for what beats the dominant armor, and its classes' thresholds, which the answer bot reads. */
   matrix: BattleState['rules']['matrix'];
   strongAt: number;
@@ -60,14 +60,12 @@ export function planningView(state: BattleState, side: Side): PlanningView {
     side,
     round: state.round,
     merging: state.config.flags.merging,
-    knobs: bal.rounds.ai,
-    mergeOffSlayerShare: bal.ai.mergeOffSlayerShare,
-    counterKnobs: bal.ai.counter,
+    knobs: bal.ai,
     matrix: state.rules.matrix,
     strongAt: state.rules.strongAt,
     weakAt: state.rules.weakAt,
     gold: ss.gold,
-    upgradeCostPct: bal.rounds.upgradeCostPct,
+    upgradeCostPct: bal.upgradeCostPct,
     kit: ss.kit.map((c) => ({ ...c })),
     ...colonyOf(state, side),
     cards: state.compiled[side].buildings,

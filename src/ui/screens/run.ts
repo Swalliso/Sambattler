@@ -346,7 +346,7 @@ export function outcomeChips(content: Content, run: RunState, outcome: readonly 
 
 /** A shift in the next battle's storm, as the round it starts in (§6.4). */
 function stormShift(content: Content, rounds: number): string {
-  return `Sporestorm at round ${content.balance.rounds.sporestorm.startRound + rounds} next battle`;
+  return `Sporestorm at round ${content.balance.sporestorm.startRound + rounds} next battle`;
 }
 
 function chipEl(atlas: Atlas, c: Chip): HTMLElement {

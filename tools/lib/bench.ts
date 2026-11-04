@@ -172,7 +172,7 @@ function colonyClash(content: Content, field: ColonyField): FullColonyCase {
   const units = Math.max(...SIDES.map((s) => per(s).length)), supply = Math.max(...SIDES.map((s) => per(s).reduce((n, u) => n + u.supply, 0)));
   const squad = state.compiled.player.buildings[buildingId]!.squad!.count;
   const plots = def.sides.player.colony!.length;
-  const budget = content.targets.rounds.G11.colonyUnits;
+  const budget = content.targets.G11.colonyUnits;
   const fits = units <= budget;
   const levers = fits ? [] : [`squads of at most ${Math.floor(budget / plots)}`, `at most ${Math.floor(budget / squad)} plots`];
   const times: number[] = [];
@@ -349,7 +349,7 @@ export interface RoundBench {
 
 /** Every case, `quick` with G11's quick ticks, one seed a general and fewer plants (verify's run, §15.1). */
 export function runRoundBench(content: Content, opts: { quick: boolean }): RoundBench {
-  const g = content.targets.rounds.G11;
+  const g = content.targets.G11;
   return {
     quick: opts.quick,
     bench: bench300(content, opts.quick ? g.quickTicks : g.benchTicks),
@@ -369,7 +369,7 @@ export const CI_GUARD = 3;
 
 /** G11's round checks (§13.7): each with whether it passed and its numbers against the budget, or against CI's guard under `process.env.CI`. */
 export function roundBenchChecks(content: Content, r: RoundBench): [string, boolean, string][] {
-  const g = content.targets.rounds.G11;
+  const g = content.targets.G11;
   const guard = process.env.CI ? CI_GUARD : 1;
   const ms = (x: number) => `${x.toFixed(3)} ms`;
   /** A timing within its budget, or within CI's guard, with the bound it was held to. */

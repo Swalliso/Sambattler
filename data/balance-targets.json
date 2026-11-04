@@ -1,5 +1,4 @@
 {
-  "G1": { "seeds": 3, "goldBudget": 600, "maxPairingWinShare": 0.8, "clearLossRatio": 1.3 },
   "G2": {
     "seeds": 5, "supply": 12, "minSeedsForEdge": 4, "maxSeconds": 180,
     "intendedEdges": [
@@ -10,39 +9,27 @@
     ],
     "assertedEdges": [["hammercap", "amanitaKnight"], ["amanitaKnight", "gillArcher"]]
   },
+  "G1": { "seeds": 3, "goldBudget": 600, "maxPairingWinShare": 0.8, "clearLossRatio": 1.3 },
   "G3": { "seeds": 50, "maxMeanWinRate": 0.55, "maxMapWinRate": 0.60 },
-  "G4": { "seeds": 40, "botWinMin": 0.3, "botWinMax": 0.7 },
-  "G5": { "seeds": 20, "bonusGold": 150, "minWinRate": 0.55, "maxWinRate": 0.75 },
+  "G4": { "seeds": 200, "medianMinRounds": 6, "medianMaxRounds": 8, "maxRound9Share": 0.2, "botWinMin": 0.3, "botWinMax": 0.7 },
+  "G5": { "seeds": 40, "bonusGold": 150, "minWinRate": 0.55, "maxWinRate": 0.75 },
+  "G6": { "seeds": 40, "scenario": "comeback-r4", "bot": "balanced", "minBehindWinRate": 0.2, "maxBehindWinRate": 0.45, "winnerHitShare": 0.5 },
   "G7": {
     "seeds": 100,
     "mirror": { "mergeBot": "balanced", "noMergeBot": "balanced-nomerge", "minWinRate": 0.55, "maxWinRate": 0.70 },
-    "slayers": { "mergeBot": "slayer", "noMergeBot": "slayer-nomerge", "share": 0.25, "maxWinRate": 0.50 }
+    "slayers": { "mergeBot": "slayer-rounds", "noMergeBot": "slayer-rounds-nomerge", "share": 0.25, "maxWinRate": 0.50 }
   },
-  "G8": { "seeds": 30, "general": "lichen-baron", "minDrop": 0.2, "minBaseline": 0.2, "balancedMin": 0.4, "balancedMax": 0.65 },
-  "G11": { "tickMeanMs": 1.0, "tickP99Ms": 2.5, "battleWallMs": 3000, "benchTicks": 2000, "quickTicks": 400 },
-  "rounds": {
-    "G1": { "seeds": 3, "goldBudget": 600, "maxPairingWinShare": 0.8, "clearLossRatio": 1.3 },
-    "G3": { "seeds": 50, "maxMeanWinRate": 0.55, "maxMapWinRate": 0.60 },
-    "G4": { "seeds": 200, "medianMinRounds": 6, "medianMaxRounds": 8, "maxRound9Share": 0.2, "botWinMin": 0.3, "botWinMax": 0.7 },
-    "G5": { "seeds": 40, "bonusGold": 150, "minWinRate": 0.55, "maxWinRate": 0.75 },
-    "G6": { "seeds": 40, "scenario": "comeback-r4", "bot": "balanced", "minBehindWinRate": 0.2, "maxBehindWinRate": 0.45, "winnerHitShare": 0.5 },
-    "G7": {
-      "seeds": 100,
-      "mirror": { "mergeBot": "balanced", "noMergeBot": "balanced-nomerge", "minWinRate": 0.55, "maxWinRate": 0.70 },
-      "slayers": { "mergeBot": "slayer-rounds", "noMergeBot": "slayer-rounds-nomerge", "share": 0.25, "maxWinRate": 0.50 }
-    },
-    "G8": {
-      "seeds": 30, "general": "lichen-baron", "minDrop": 0.2, "minBaseline": 0.2,
-      "policies": [{ "bot": "balanced", "min": 0.4, "max": 0.65 }, { "bot": "answer", "max": 0.8 }]
-    },
-    "G11": {
-      "tickMeanMs": 1.0, "tickP99Ms": 2.5, "battleWallMs": 3000, "benchTicks": 2000, "quickTicks": 400,
-      "arrivalMs": 5, "generalTurnMs": 20, "planCommandMs": 2, "colonyUnits": 150
-    },
-    "G12": { "screenSeeds": 10, "confirmSeeds": 50, "top": 3, "minBuildMean": 0.4, "minAnswerRate": 0.6 },
-    "G13": { "maxCappedShare": 0.15, "clashSecondsMin": 15, "clashSecondsMax": 40 },
-    "G14": { "runs": 100, "policies": [{ "bot": "balanced", "min": 0.7, "max": 0.9 }, { "bot": "answer" }] },
-    "G15": { "policies": [{ "bot": "balanced", "minReach": 0.4, "maxReach": 0.85, "minWin": 0.4, "maxWin": 0.7 }, { "bot": "answer" }] },
-    "G16": { "seeds": 10, "budgets": [300, 600, 900, 1200, 1500], "minWinRate": 0.6, "pairs": "roleSplit" }
-  }
+  "G8": {
+    "seeds": 30, "general": "lichen-baron", "minDrop": 0.2, "minBaseline": 0.2,
+    "policies": [{ "bot": "balanced", "min": 0.4, "max": 0.65 }, { "bot": "answer", "max": 0.8 }]
+  },
+  "G11": {
+    "tickMeanMs": 1.0, "tickP99Ms": 2.5, "battleWallMs": 3000, "benchTicks": 2000, "quickTicks": 400,
+    "arrivalMs": 5, "generalTurnMs": 20, "planCommandMs": 2, "colonyUnits": 150
+  },
+  "G12": { "screenSeeds": 10, "confirmSeeds": 50, "top": 3, "minBuildMean": 0.4, "minAnswerRate": 0.6 },
+  "G13": { "maxCappedShare": 0.15, "clashSecondsMin": 15, "clashSecondsMax": 40 },
+  "G14": { "runs": 100, "policies": [{ "bot": "balanced", "min": 0.7, "max": 0.9 }, { "bot": "answer" }] },
+  "G15": { "policies": [{ "bot": "balanced", "minReach": 0.4, "maxReach": 0.95, "minWin": 0.4, "maxWin": 0.7 }, { "bot": "answer" }] },
+  "G16": { "seeds": 10, "budgets": [300, 600, 900, 1200, 1500], "minWinRate": 0.6, "pairs": "roleSplit" }
 }

@@ -33,8 +33,96 @@ v1's backlog is archived at [docs/archive/v1/balance-backlog.md](archive/v1/bala
   - **Battle 1:** `bot:balanced` wins 93%, 59% and 100% for Vesper, Armilla and Cordis, against 70–90%. S1b read 52%, 29% and 45% (R2b S1b, below).
   - **The boss:** 98% of runs reach it (≤ 85%) and 88% of boss fights are won (40–70%).
   - **Next** (the user, 2026-11-04: "Yes, retune at S12"): they're known misses until S12's T131. There S12 agrees the bands and proposes a data-only retune before S14's playtest, with Armilla's gap raised as a fix of its own.
+  - **S12's reading** (R2b S12, below): the bands as §12.3 has them, but reach at most 95%; the general's income × 1.10 and Armilla's Burster Pod bring Vesper and Armilla into band; Cordis needs a rework (a rule change) that data can't do. Waiting on the user.
 - **G5 misses since S5b's upgrades** (R2b S11, below): the +150-gold side wins 89%, against 55–75%, and no price from 200% to 600% passes. It's the same cause as G4's round-9 clause. It's a known miss until S14 (the user, 2026-11-04), which measures two levers: upgrades from a fixed round, and at most one a side a round.
 - **X8's two knobs show no need** (R2b S11, below): S12 deletes them (T129).
+
+## R2b S12 · G14's and G15's bands, and a data-only retune, for T131 (2026-11-04)
+
+**Measured** (T131; no data changed yet, the choice is the user's):
+- **What:** G14's runs, `bot:balanced` only (the policy the bands assert), 100 runs per commander on seeds 1–100, with
+  greedy drafts, a random route and the auto power, each variant a `--proto` spec on the run pool (a scratch script over
+  `commanderRuns`, read as `evaluateG14` and `evaluateG15` read). The battle-level guardrails with
+  `npm run experiment -- --proto <spec> --checks g4,g5,g6,g7,g8`.
+- **Where:** this branch after T129's fold. The baseline reproduces S11's readings to the run (93%, 59%, 100%; 98%;
+  88%), so the fold moved no outcome. `--proto` reaches `commanders.json` since this branch (`commander.<id>.…`).
+- **Noise:** 100 runs read a battle-1 rate of 90% within about ±6 points (95%), so a commander near a band's edge flaps.
+
+**Single levers** (battle 1 for Vesper, Armilla and Cordis; battles 2–4 won, pooled; the boss; runs won):
+
+| Variant | Battle 1 V · A · C | Battles 2 · 3 · 4 | Reach the boss | Boss fights won | Runs won V · A · C |
+|---|---|---|---|---|---|
+| Today | 93 · 59 · 100 | 84 · 82 · 80 | 98% | 88% | 92 · 67 · 99 |
+| The general's income × 1.15 (`enemyIncomeMult:1.15`) | 84 · 40 · 100 | 80 · 72 · 82 | 95% | 83% | 81 · 58 · 98 |
+| × 1.25 | 70 · 30 · 100 | 73 · 68 · 76 | 94% | 77% | 75 · 43 · 98 |
+| Its Heartcap 2500 (`heartcapEnemyHp.base`) | 92 · 54 · 100 | 81 · 80 · 78 | 97% | 87% | 89 · 65 · 99 |
+| +500 a battle (`heartcapEnemyHp.perBattle`) | 93 · 59 · 100 | 83 · 80 · 75 | 98% | 87% | 88 · 69 · 99 |
+| The boss's 6000 (`heartcapEnemyHp.boss`) | 93 · 59 · 100 | 84 · 82 · 80 | 98% | 79% | 81 · 53 · 99 |
+| The boss's upgrades 8 (`enemyKit.bossUpgrades`) | 93 · 59 · 100 | 84 · 82 · 80 | 98% | 83% | 82 · 62 · 100 |
+| Drafts after rounds 3 and 6 (`draftRounds:[3,6]`) | 94 · 57 · 100 | 79 · 73 · 80 | 97% | 84% | 85 · 58 · 100 |
+| Two cards a draft (`draft.cards:2`) | 91 · 63 · 100 | 84 · 83 · 82 | 98% | 88% | 86 · 75 · 99 |
+| Armilla's Burster Pod (below) | 93 · 86 · 100 | 87 · 78 · 83 | 99% | 90% | 92 · 76 · 99 |
+| Armilla's Gill Archer Nest | 93 · 74 · 100 | 86 · 79 · 83 | 99% | 87% | 92 · 67 · 99 |
+| Armilla's Hammercap Forge in her starter | 93 · 68 · 100 | 84 · 77 · 82 | 97% | 88% | 92 · 66 · 99 |
+
+- **The general's income** is the battle-1 lever: −9 points for Vesper a 0.10, and −20 for Armilla, who fields 1–2 units
+  early. Its Heartcap, the drafts and the boss's kit barely move battle 1.
+- **A boss above 4,500 HP is a Decision fight:** at 750 a round, 6,000 can't be routed before round 8, and A097 wants the
+  boss routable. Its upgrades move it less.
+
+**Cordis can't be tuned into G14 with data.** Her battle 1, alone:
+
+| Cordis variant | Battle 1 | Lifts a run |
+|---|---|---|
+| Today | 100% | 88 |
+| Puppet Bloom's radius 2, or 1 | 100%, 100% | 78, 69 |
+| Her passive off (no +10% HP, merge radius 1.5) | 100% | 91 |
+| Vesper's core and starter, with Cordis's passive and power | 100% | 87 |
+| Her passive off and Puppet Bloom's radius 0.01 (a lift a clash) | 96% | 20 |
+| The same, with the general's income × 1.15 | 91% | 21 |
+| Puppet Bloom on Seedlings only (a rule change, measured on a local edit, not kept), income × 1.10 | 94% | 48 |
+
+- A lift is a merge tier, × 2.8 a unit's stats, and she lifts about four a clash. Her cards alone, with no passive and
+  next to no power, still win 96%, against Vesper's 93%. Battle 1 is easy for every commander but Armilla, and Cordis's
+  passive and power lift her the rest of the way.
+- **The fix is a commander rework:** her starter or core, and a Puppet Bloom that lifts less, which is a rule change
+  (code). It's S14's, on a short-lived branch under the prototype rule.
+
+**Combined** (on × 1.10 with Armilla's Burster Pod unless named):
+
+| Variant | Battle 1 V · A · C | Battles 2 · 3 · 4 | Reach | Boss won | Runs won V · A · C |
+|---|---|---|---|---|---|
+| × 1.10, Armilla's Burster Pod (**A**) | 88 · 74 · 100 | 83 · 78 · 85 | 98% | 89% | 89 · 74 · 99 |
+| × 1.15, Armilla's Burster Pod | 84 · 66 · 100 | 79 · 75 · 81 | 98% | 85% | 81 · 72 · 98 |
+| A, the general's upgrades 2 a battle, the boss's 8 | 88 · 74 · 100 | 82 · 71 · 78 | 98% | 82% | 77 · 63 · 100 |
+| A, upgrades 3 a battle, the boss's 12, its Heartcap 4,500 (**B**) | 88 · 74 · 100 | 78 · 68 · 69 | 96% | 71% | 66 · 43 · 96 |
+
+**The battle-level guardrails** don't move out of band with the income (no commander, so Armilla's fix doesn't touch them):
+
+| Income | G4: the bot wins · median rounds · round 9 | G8: `bot:balanced` · `bot:answer` | G5 | G6, G13 | G7's mirror |
+|---|---|---|---|---|---|
+| × 1.05 (today) | 63% · 7 · 21% | 57% · 77% | 89% | pass | 95% |
+| × 1.10 | 55% · 7 · 22% | 50% · 63% | 89% | pass | 96% |
+| × 1.15 | 44% · 7 · 22% | 47% · 50% | 86% | pass | 95% |
+
+- **G8 beside G14 (A204):** G8's `bot:balanced` wins 57% against the adaptive Lichen Baron at battle index 1, with no
+  drafts and no commander. In runs, battle 1 against the Baron is won 88% (127 of 144) and against Mold 80% (125 of
+  156): drafts and a commander lift it about 30 points. G8 stays in band; no battle-level band needs re-opening.
+
+**Recommended** (each the user's call):
+- **G14's band:** keep 70–90% of battle 1s for each commander, `bot:balanced` asserted and `bot:answer` reported.
+- **G15's bands:** keep 40–70% of boss fights won, and at least 40% reaching the boss, but bound reach at **95%**, not
+  85% (A199):
+  - With 3 lives over 3–4 battles before the boss, a run misses the boss only after 3 losses. At most 85% reaching it
+    needs battles 2–4 won about 45% of the time, far below G14's battle 1.
+  - At 95%, about 1 run in 20 still ends before the boss, where today's 98–99% means lives almost never bind.
+- **The retune, A:** the general's income × 1.05 → × 1.10, and Armilla's Burster Pod: in her core in place of the Rhizome
+  Vault (never dealt before R3's combos) and in her starter in place of the Puffball Mortar.
+  - Vesper and Armilla come into G14's band; G4, G6, G8 and G13 stay in theirs.
+  - Leave the boss to S14. Tuned now, against Cordis's 96–100%, B's boss fights read 71% pooled but leave Vesper's runs
+    at 66% and Armilla's at 43%, and M5's spread at 53 points, from 32.
+- **Cordis:** a commander rework at S14 (a rule change, with the user's OK). Until then G14 misses on her alone, and G15
+  on reach and boss wins, which her runs hold up; both stay known misses, owned by S14.
 
 ## R2b S11 · whole runs: G14, G15, X8's knobs, Mold's openers, and G5 (2026-11-03)
 
@@ -949,9 +1037,9 @@ R1's runs (S7, T040–T048, T052), measured on `develop` at `fd9621f` (#62), wit
 
 **Not measured, or left for later:** `--proto rework` (refused, not R1's variant); the late-run colony and the three-lane screen are leads outside the bars (in the screens table); and R2-Q13's table is on today's combat, not on R2a's set.
 
-## Until R2
+## The guardrails after R2
 
-- **The guardrails** in `npm run test:slow` are still v1's, and they measure the v1 battle.
-  - Keep them passing after a code change.
-  - Don't tune the v1 battle to improve them, because R2 replaces it.
-  - A v1 miss isn't open work.
+- **`npm run test:slow` asserts the round guardrails** since R2b's S3, when v1's went with its battle (SPEC §12.3).
+  - Keep them passing after a code change, but for T168's ten known misses, which print their numbers and fail once
+    they pass (the Open list above has each one's owner).
+  - v1's misses and tuning are history, in `docs/archive/v1/balance-backlog.md`.

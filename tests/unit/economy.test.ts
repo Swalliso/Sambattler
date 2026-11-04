@@ -15,10 +15,8 @@ type Planted = NonNullable<Sides['player']['colony']>[number];
 const LOAM: PlotPlace = { lane: 0, rank: 1, file: 2 }, SOIL: PlotPlace = { lane: 0, rank: 1, file: 1 };
 const on = (building: string, at: PlotPlace): Planted => ({ building, ...at });
 
-/** Content whose `balance.rounds` has these values. */
-const withRounds = (over: Partial<Content['balance']['rounds']>): Content => ({
-  ...content, balance: { ...content.balance, rounds: { ...content.balance.rounds, ...over } },
-});
+/** Content whose balance has these values. */
+const withRounds = (over: Partial<Content['balance']>): Content => ({ ...content, balance: { ...content.balance, ...over } });
 
 /** A battle on Bogwater Hollow from a round scenario: its round's opening has paid that round's income. */
 function opened(sides: Partial<Sides>, over: Partial<ScenarioDef> = {}, from: Content = content): BattleState {

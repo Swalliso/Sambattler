@@ -33,10 +33,10 @@ describe('sound bank', () => {
     expect(content.audio.maxVoices).toBe(12);
   });
 
-  it('keeps the player louder than the enemy, and the spawn puff and hover tick quiet', () => {
+  it('keeps the player louder than the enemy, and the arrival puff and hover tick quiet', () => {
     expect(content.audio.enemyGain).toBeLessThan(1);
-    expect(content.sounds.spawn!.frequent).toBe(true);
-    expect(content.sounds.spawn!.gain).toBeLessThan(content.sounds.place!.gain);
+    expect(content.sounds.arrive!.frequent).toBe(true);
+    expect(content.sounds.arrive!.gain).toBeLessThan(content.sounds.place!.gain);
     expect(content.sounds['ui-hover']!.gain).toBeLessThan(content.sounds['ui-click']!.gain);
     expect(content.sounds['heartcap-hit']!.cooldownMs).toBe(1500);
   });
@@ -213,7 +213,10 @@ describe('battle sounds (§13.9), by phase', () => {
     for (const id of ['place', 'income', 'plan', 'begin', 'arrive', 'heartcap-hit']) expect(ids.has(id), id).toBe(true);
     expect(ids.has('lane-won') || ids.has('lane-lost')).toBe(true);
     expect(played.filter((p) => p.id === 'win' || p.id === 'loss')).toHaveLength(1);
-    for (const id of ['spawn', 'column-gained', 'column-lost', 'building-lost', 'building-razed', 'counter-warn', 'wave']) expect(ids.has(id), id).toBe(false);
+    // v1's retired events left the bank with T129
+    for (const id of ['spawn', 'column-gained', 'column-lost', 'building-lost', 'building-razed', 'counter-warn', 'counter-active', 'wave']) {
+      expect(content.sounds[id], id).toBeUndefined();
+    }
   });
 
   it("plays the enemy quieter, the player's income once a round, and no hit sounds but the Heartcaps'", () => {

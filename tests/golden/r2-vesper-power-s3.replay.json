@@ -124,17 +124,17 @@
   },
   "commands": [],
   "expected": {
-    "r1.planning": "21cd39c5498a8305",
-    "r1.clash": "6e2a532d8e691d58",
-    "r1.aftermath": "ac76c204bfbcac6c",
-    "r2.planning": "4df306fc7537abb1",
-    "r2.clash": "be57505d2d60633f",
-    "r2:200": "9f2f7f66976217ba",
-    "r2.aftermath": "e3c8869b211cc125",
-    "r3.planning": "888f1d98ae90444d",
-    "r3.clash": "8f53af3f36758163",
-    "r3:200": "cf78f7a6c379e92d",
-    "r3.aftermath": "1910f99f2a181af4",
-    "final": "6044ff74998cbc12"
+    "r1.planning": "f4ae17963c4edf49",
+    "r1.clash": "8d1436aca307bc94",
+    "r1.aftermath": "5f1bc34d4ad6efb4",
+    "r2.planning": "780e11237d4b8258",
+    "r2.clash": "3d59c09b62788ce6",
+    "r2:200": "40daaec7c9667d2b",
+    "r2.aftermath": "83e79c8fb816a80a",
+    "r3.planning": "4ef985cac1c4d79a",
+    "r3.clash": "bd5623a3eb4da453",
+    "r3:200": "2b66a3cff6cb8597",
+    "r3.aftermath": "6d7fb5c05f3dd2e3",
+    "final": "12835261aa5bf30b"
   }
 }
