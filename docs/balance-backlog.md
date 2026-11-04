@@ -30,6 +30,33 @@ v1's backlog is archived at [docs/archive/v1/balance-backlog.md](archive/v1/bala
 - **The first fighting tick's frame in Chromium** (R2a S17, below): 4.8–11.4 ms once a page, against §13.7's 8 ms.
 - **Battle 1 misses G14** (R2b S1b, below; for R2-Q13): `bot:balanced` wins 52%, 29% and 45% of battle 1s for Vesper, Armilla and Cordis, against 70–90%. Old Mother Mold wins 73–94% of her pairings. A free blueprint lifts those by at most 21 points, while a softer Mold opener brings Vesper and Cordis inside the band. The user chose the softer opener on 2026-11-03 (R2-Q13), and S5 lands it (T068).
 
+## R2b S5b · the upgrade's price against G4, G8 and G13, for #67 (2026-11-03)
+
+- **Measured** (T163), on S5b's code:
+  - `npm run experiment -- --proto rounds.upgradeCostPct:<pct> --checks g4,g8` at 150%, 200% and 300%, with 100000% for "no upgrades" (nothing is ever affordable);
+  - then a probe of the same battles with more seeds for G8's two policies: `bot:balanced` against the scripted general over 200 seeds (G4's), and `bot:balanced` and `bot:answer` against the adaptive Lichen Baron over 150 (G8 reads 30);
+  - with `rounds.enemyIncomeMult` beside the price where the table says so.
+- **The user's rule** (2026-11-03): the lowest of 150%, 200% and 300% that keeps G4, G8 and G13 in band. **No price passes it.**
+
+| Variant | G4: bot wins (30–70%) | G4: reach round 9 (≤ 20%) | G8: balanced (40–65%) | G8: answer (≤ 80%) | Upgrades a battle vs scripted, you / general |
+|---|---|---|---|---|---|
+| No upgrades (develop) | 65% | 13% | 51% | 69% | 0 / 0 |
+| 150% (experiment, G8 of 30) | 72% | 16% | 83% | 87% | |
+| 200% | 71% | 18% | 73% | 88% | 1.39 / 1.28 |
+| 300% (experiment, G8 of 30) | 72% | 20% | 67% | 90% | |
+| 400% | 73% | 18% | 63% | 82% | 0.46 / 0.39 |
+| 600% | 70% | 18% | 58% | 74% | 0.22 / 0.14 |
+| 200%, the general's income × 1.05 | 60% | 21% | 66% | 79% | 1.52 / 1.57 |
+| 300%, the general's income × 1.05 | 63% | 21% | 61% | 77% | 0.93 / 0.92 |
+| 200%, the general's income × 1.1 | 45% | 22% | 56% | 68% | 1.64 / 1.95 |
+
+- **G13** holds in every variant: 6–9% of clashes at the cap, a median clash of 18–19.5 s. The medians hold too: 6–7 rounds.
+- **Why upgrades favour you:**
+  - Against the scripted general, both sides buy about as many (1.4 and 1.3 a battle at 200%, mostly Burrows and Capguard Halls), yet you win 6 points more. Upgrades make the late rounds more decisive, and at battle 1 the general has 2,000 HP to your 3,000, so a faster race favours you.
+  - The adaptive general also fills its colony later, since its counter cycle frees two plots at round 4. It is full at round 5's planning in 18% of battles, against your 57%, so it buys half as many upgrades (0.80 against 1.57).
+- **Result:** only 600% keeps every band, and only just (G4 at 70%). An upgrade then costs 660–1,560, and comes in about one battle in five, which does little for #67. A small lift in the general's income (`enemyIncomeMult`, §6.2) brings the win rates back in band, but more battles then reach round 9: 21% at × 1.05, one point over G4's limit, within the noise of 200 battles.
+- **Waits on the user.**
+
 ## R2b S5b · the late game's gold with drafts on, for #67 (2026-11-03)
 
 - **Measured** (T159): `npm run sim -- --seeds 1..40 --player bot:balanced --enemy general:scripted --flags merging,drafts,adaptive,powers --summary`, on Bogwater Hollow at battle index 1, read from X8's lines (`paceLines`, `tools/lib/run.ts`). The task wrote `--flags drafts`, but `--flags` sets exactly the features it names (`parseFlags`), so that alone turns merging, the adaptive general and the powers off. The game's four flags are named here, with the task's command and the default flags (no drafts) beside them.
