@@ -1,6 +1,6 @@
 # Where things stand
 
-Updated 2026-11-04, on `docs/v3-brief` (the hub's docs PR into `develop`). This is the hand-over page. It covers what we're working on, what's waiting on the user's decision, and where each piece lives. Update it when work lands or the user decides something. Keep the detail in the docs it links to.
+Updated 2026-11-04, on `docs/v3-audit-done` (the hub's docs PR into `develop`). This is the hand-over page. It covers what we're working on, what's waiting on the user's decision, and where each piece lives. Update it when work lands or the user decides something. Keep the detail in the docs it links to.
 
 ## In short
 
@@ -466,10 +466,16 @@ Updated 2026-11-04, on `docs/v3-brief` (the hub's docs PR into `develop`). This 
 ## Waiting on the user
 
 1. **The v3 redesign** (2026-11-04). You adopted [design-brief.md](design-brief.md) and the hub's plan ("Go with this plan"):
-   - **Now, session A, the audit:** it checks SPEC v2 against each pillar and marks each section keep, change or cut. It judges every placement rule as a real decision or a flat buff. It brings you 10–15 ranked questions with recommendations, starting with how to settle rounds against continuous battles. Your answers shape the concept.
+   - **Done, session A, the audit** ([#142](https://github.com/Swalliso/Sambattler/pull/142), [spec-v3-audit.md](spec-v3-audit.md)). It found v2's problems structural, and that most of v2 survives.
+     - You took all 13 of its recommendations on 2026-11-04 ("Take them all").
+     - Three of them the hub had flagged:
+       - hidden plantings reverse your R2a call on the full reveal;
+       - in the first prototype only the Heartcaps carry over between rounds, with a moving front as the fallback;
+       - the shop is the next prototype if rounds still feel the same.
+   - **Now, session B:** `docs/spec-v3-concept.md`, the prototype's plan and its task list, for your review.
    - **Then:**
-     - session B writes `docs/spec-v3-concept.md`, only as big as the prototype needs, for your review;
-     - session C builds the smallest playable prototype on the existing engine, behind a preview link on the dev site, with pass/fail checks and a playtest checklist;
+     - session C builds the prototype from B's task list, on the existing engine behind a preview link on the dev site, probably over two sessions;
+     - you playtest it against the plan's checklist;
      - then SPEC v3 and re-scoped milestones, if the prototype passes "would I play another round?".
    - **Paused:** R3, R4b, records-2, M6, M7 and M8.
    - **R2b closes** with your playtest's record, the tray fix ([#137](https://github.com/Swalliso/Sambattler/pull/137)) and `bosslives` deleted. S14's tuning is measured and held, not built:
@@ -512,6 +518,7 @@ Updated 2026-11-04, on `docs/v3-brief` (the hub's docs PR into `develop`). This 
 
 | Work | Where | State |
 |---|---|---|
+| The v3 audit (2026-11-04) | [#142](https://github.com/Swalliso/Sambattler/pull/142) ([spec-v3-audit.md](spec-v3-audit.md)) | Merged. v2's causes are structural: the full reveal, plots that run out before gold, placement rules with one obvious answer, and merging as a flat buff. You took all 13 recommendations, so the prototype is one battle in rounds with hidden plantings, fruiting, plots bought with gold and four combos, with merging at ×2.0. Session B writes its concept and plan |
 | R2b S14, the design review and the brief (2026-11-04) | [#137](https://github.com/Swalliso/Sambattler/pull/137) (the tray fix); S14's PR (the playtest record, `bosslives` deleted); [#138](https://github.com/Swalliso/Sambattler/pull/138) and [#139](https://github.com/Swalliso/Sambattler/pull/139) (more decisions each round); this PR (the brief) | The tray fix merged, and S14's PR is in review. Your playtest found the loop working, but a round holds one decision: plant the counter to a general you can fully see. S14 measured its tuning and holds it for v3. The design review found that R3 as planned adds variety but not decisions each round. You then adopted [design-brief.md](design-brief.md) and a v3 redesign, with R3 onward paused |
 | R2b S12 and S13 (2026-11-04) | [#134](https://github.com/Swalliso/Sambattler/pull/134) (cleanup, bands and retune B), [#135](https://github.com/Swalliso/Sambattler/pull/135) (verification) | Both merged: S12 after the hub's review, S13 on your "Open and merge". S12 retired v1's data keys, folded the `rounds` blocks, deleted X8's settings, set G14's and G15's bands, applied retune B (the general's income ×1.10, Armilla's Burster Pod, the general's upgrade levels 3 a battle and the boss's 12, the boss's Heartcap 4,500) and regenerated the seven goldens. S13 ran §16 R2's steps 1–9, and all pass, step 7 with the ten known misses. Its only code change is `tools/sim.ts`'s run check, now 3 to 5 battles. Cordis keeps G14 and G15 out of their bands until S14 reworks her |
 | R2b S10 and S11 (2026-11-04) | [#131](https://github.com/Swalliso/Sambattler/pull/131) (teaching), [#132](https://github.com/Swalliso/Sambattler/pull/132) (the run tools) | Merged after the hub's review. The draft opens as a bottom sheet, Help has six tabs, the round tips are back, and so is the relics-and-upgrades popover (T175). The run pool and G14 and G15 assert, the slow suite runs in about 3 minutes with ten known misses as expected fails, and a muster crash in about 1 in 11 of Vesper's runs is fixed. S11 found the run too easy: 98% of runs reach the boss and 88% beat it |
