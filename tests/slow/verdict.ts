@@ -11,7 +11,7 @@ import { defaultWorkers, roundPool, runJobPool } from '../../tools/lib/pool.ts';
  * fails once it passes, so a fix shows and its owner turns it back into an assert.
  */
 export interface KnownMiss {
-  /** Who fixes it: S14's tuning (T169), R3's copies or R3's combos. */
+  /** Who fixes it: S12's retune (T131), S14's tuning (T169), R3's copies or R3's combos. */
   owner: string;
   /** The clauses that miss, when the rest of the verdict must pass (`Verdict.clauses`); the whole verdict when unset. */
   clauses?: string[];
@@ -35,7 +35,7 @@ export function assertVerdict(v: Verdict, known?: KnownMiss): void {
 }
 
 /** The owners of T168's known misses. */
-export const S14 = "S14's tuning (T169)", R3_COPIES = "R3's copies", R3_COMBOS = "R3's combos";
+export const S12 = "S12's retune (T131)", S14 = "S14's tuning (T169)", R3_COPIES = "R3's copies", R3_COMBOS = "R3's combos";
 
 /** A pool of round workers for the file, built from the proto `spec`, opened before its tests and closed after them. */
 export function filePool(spec = ''): { run: RoundRunner } {

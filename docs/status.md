@@ -114,6 +114,19 @@ Updated 2026-11-03, on `docs/r2b-s6-done` (the hub's docs PR into `develop`). Th
   - **The general and the bots** buy upgrades once no plot is free, their weights' favourite spawner first, and the general's plan shows them. Its income is × 1.05, since upgrades favoured your side (T163).
   - **T159:** with drafts on, both colonies fill at round 5, then bank about 300 a round. **T163:** no price of 150–300% kept G4 and G8 in band. At 300% with × 1.05, G4 reads 63%, G8 61% and 77%, and G13 holds. G4's round-9 clause (21% against ≤ 20%) is a new known miss until S14 (T168, T169).
   - **Goldens:** regenerated with S7 merged. All seven moved at round 1, since the battle's library carries the new key. `r2-balanced-vs-scripted-s1` now ends in round 5, not 6, and `r2-armilla-power-s3` in round 9, not 7.
+- **S11** (`feature/r2b-run-tools`, T119–T128 and T168): in review. The run tools and the run guardrails, measured in [balance-backlog.md](balance-backlog.md) ("R2b S11"):
+  - **The run pool:** `runJobPool` plays whole runs in worker threads, each with the same record as in process (T121). G14 and G15 assert in `tests/slow/runs.test.ts` on §12.3's first-guess bands, with `bot:answer` reported (T119, T122).
+  - **The tools:** `npm run balance -- tournament --commanders all` prints the run report (T123). `balance guardrails` adds G11, G14 and G15. `experiment` gains `--checks engagement` in round terms, `spread` as an alias of `formation`, and lives in `runs` and `boss` (T124). `sim --run --summary` says how each run ended (T125).
+  - **The run golden** is `r2-run-s1` (T126): seed 7's run reached no round 7, so it never opened the draft after round 6.
+  - **G14 and G15 miss the easy way.** Battle 1 is won 93%, 59% and 100% for Vesper, Armilla and Cordis, against 70–90% (S1b read 52%, 29% and 45%). 98% of runs reach the boss and win 88% of boss fights.
+    - **You decided** (2026-11-04, "Yes, retune at S12"): they're known misses until S12's T131.
+    - **At T131:** S12 agrees their bands with you and proposes a data-only retune before S14's playtest, through the general's income, its Heartcap or the drafts' generosity.
+    - **Armilla's gap** is a commander fix of its own.
+  - **G5 misses since S5b's upgrades:** 89% against 55–75%, with no price from 200% to 600% passing. You made it a known miss until S14 (2026-11-04, "Yes, until S14"), beside G4's round-9 clause (T169).
+  - **X8's knobs show no need,** so S12 deletes them (T129).
+  - **Mold's openers from battle 2** are no harder than her soft one, and she's the hardest general from battle 2.
+  - **A crash fixed:** a Spore Cloud from a kill in the muster read a stale spatial grid. Vesper's runs with the auto power crashed about 1 in 11. No golden moved.
+  - **T168:** T133's six misses, G4's round-9 clause, G5, G14 and G15 assert as expected fails, each printing its numbers and failing once it passes.
 - **The stand-ins open on `develop`** from S1 (Call 14), each with the session that lifts it (checked at S4, T152):
   - `scene=draft` opens round 1's planning of a run battle, so its capture shows no draft until round 3, until S10 (T115);
   - retired selectors and triggers still in the data compile to no-ops, v1's keys stay in the data and the schema, and R2a's `rounds` data blocks sit beside them, until S12 (T129);
