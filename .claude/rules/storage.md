@@ -41,6 +41,8 @@ paths:
     `spore-sprawl/profile/v1.bak` before defaults load.
 - The run layer only sees the `Storage` interface (`src/run/storage.ts`). The browser passes the
   localStorage store in `src/app/run.ts`; tests and tools use `MemoryStorage`.
-- SPEC v2's milestone R2 changes what a run save holds: lives instead of a run-long Heartcap, rounds,
-  and later the kit's copies. The keys still don't change. A save written before R2 is migrated, or
-  its run ends with a notice; it MUST NOT be lost silently (SPEC §8.9, §13.8, §18.2).
+- R2's run save holds lives instead of a run-long Heartcap, and its battle saves between rounds:
+  `RUN_VERSION` 2 (`src/run/runState.ts`) and BattleSave `v: 3` (`src/run/resume.ts`). The keys didn't
+  change. `migrateRun` (`src/run/migrate.ts`) is pure and chained by version: a save written before R2
+  is migrated, or its run ends with a notice, and MUST NOT be lost silently (SPEC §8.9, §13.8, §18.2).
+  R3 adds its own steps for the kit's copies, again under the same keys.
