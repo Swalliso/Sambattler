@@ -107,6 +107,7 @@ const ENTRY_FILES: Record<string, (path: string) => boolean> = {
   bot: (f) => f === 'bots.json',
   general: (f) => f === 'generals.json',
   faction: (f) => /^factions\/[^/]+\/faction\.json$/.test(f),
+  commander: (f) => f === 'commanders.json',
 };
 
 /** The entry kind a path reaches (`unit.rhizomorph.hp` → unit), or undefined for a balance path. */
