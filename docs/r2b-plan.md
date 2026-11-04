@@ -161,6 +161,10 @@ Where sessions may run side by side is in the task list's "Dependencies and para
 - **S1b (T029):** R2-Q13, on battle 1's pairing table. Answered 2026-11-03: soften Mold's opener.
 - **S5b (T163):** the upgrades' price, from its measurement (#67).
 - **S12 (T131):** G14's and G15's bands, from S11's measurement (#35).
+- **S13 (T140):** §16 R2 step 5's wording. It read "every run completes with 4–5 battles", but a run has 3 lives, so one
+  that loses its first three battles ends after 3, as seed 4's did in S1's and S4's 20 runs. Answered 2026-11-04: "Yes,
+  both", to the hub's "with step 5 reading '3 to 5 battles'". Step 5 and T140 now read "every run completes, in 3 to 5
+  battles".
 - **S14 (T148, T149, T169):** the playtest gate, the tuning (G1, G2 and G7 among it), #17's clean-win half, #33, and X6's target.
 
 ## What S3 left (T054)
