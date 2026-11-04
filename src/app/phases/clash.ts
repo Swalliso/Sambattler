@@ -7,7 +7,6 @@
 // the commander power's (§6.6, §10.3, T109): its button's state, its tooltip's and the aim's words, and why
 // Q or a click is refused. The power is once per clash, so nothing here speaks of a cooldown.
 import type { PowerDef } from '../../data/schema.ts';
-import { powerOf } from '../../sim/index.ts';
 import type { BattleState, SimEvent } from '../../sim/index.ts';
 import type { RoundSession } from '../session.ts';
 
@@ -19,7 +18,6 @@ export const POWER_REFUSALS: Record<string, string> = {
   wrongPhase: 'only in a clash',
   powerUsed: 'used this clash',
   laneEnded: "this lane's clash is over",
-  notInRoundsYet: 'not in a battle in rounds yet',
   needsTarget: 'aim at a point on the field',
   offField: 'aim at a point on the field',
   mergingOff: 'merging is off in this battle',
@@ -31,8 +29,6 @@ export const powerRefusal = (name: string, reason: string): string => `${name}: 
 
 /** The power button's state (its `data-state`) and label (§10.2): lit only in a clash, from its first tick (§6.6). */
 export function powerButton(state: BattleState, session: Pick<RoundSession, 'targeting' | 'powerPending'>): { state: 'ready' | 'aiming' | 'pending' | 'used' | 'idle'; label: string } {
-  const kind = powerOf(state, 'player')?.kind;
-  if (kind === 'tithe' || kind === 'surge') return { state: 'idle', label: 'Not in rounds yet' };
   if (state.phase !== 'clash') return { state: 'idle', label: 'Next clash' };
   if (session.powerPending()) return { state: 'pending', label: 'Next tick' };
   if (state.sides.player.powerUsed) return { state: 'used', label: 'Used this clash' };
@@ -41,30 +37,33 @@ export function powerButton(state: BattleState, session: Pick<RoundSession, 'tar
 }
 
 /**
- * The power's rule in rounds, from its numbers (R2-Q8): the data's text is v1's, which hit buildings and paid
- * for columns, until R2b rewords it. Rhizome Tithe has no effect in rounds yet (plan Call 19).
+ * The power's rule in rounds, from its numbers (R2-Q8), as the data has it: the Sporestorm Sigil's ×1.5 shows in
+ * the aim's preview, which reads the power as it would act now (`powerNow`).
  */
 export function powerText(p: PowerDef): string {
   if (p.kind === 'burst') return `${p.damage} ${p.damageType} damage to every enemy unit within ${p.radius} tiles of a point, emplacements included. Buildings can't be hit.`;
-  if (p.kind === 'bloom') return `Every trio of the same unit within ${p.radius} tiles of a point merges at once, even in combat.`;
-  return `${p.name} isn't in a battle in rounds yet: R2b gives it a new effect.`;
+  if (p.kind === 'bloom') return `Lifts each of your units within ${p.radius} tiles of a point one merge tier, even in combat: a unit becomes Bloomed, a Bloomed unit an Elder.`;
+  return `+${p.goldPerSupply} gold for each supply of enemy units killed so far in this clash, credited at once. Fire it late for more, but before the last kill.`;
 }
 
 /** How it's aimed and when it fires, for the tooltip. */
 export const powerUse = (p: PowerDef): string =>
-  `${p.target === 'point' ? `Q, then click a point: a ${'radius' in p ? p.radius : 0}-tile radius` : 'Q, then click the field'}. It fires once per clash, from the clash's first tick, the muster's included.`;
+  `${p.target === 'point' ? `Q, then click a point: a ${p.radius}-tile radius` : 'Q, then click the field'}. It fires once per clash, from the clash's first tick, the muster's included.`;
 
-/** The aim callout's words after the power's name: what it would do at the cursor, then the click's result. */
+/** The aim callout's words after the power's name: what it would do at the cursor, or the Tithe's gold if fired now, then the click's result. */
 export function aimText(p: PowerDef, preview: { valid: boolean; count: number; value: number; reason: string | null } | null): string {
   if (!preview) return 'move over the field';
   const what = p.kind === 'burst' ? `${preview.count} target${preview.count === 1 ? '' : 's'} · ${preview.value} damage`
-    : `${preview.count} trio${preview.count === 1 ? '' : 's'} to merge`;
+    : p.kind === 'bloom' ? `${preview.count} unit${preview.count === 1 ? '' : 's'} to lift`
+    : `${preview.value} gold if fired now, for ${preview.count} supply killed · fire it before the last kill`;
   return `${what} · ${preview.valid ? 'click to fire' : POWER_REFUSALS[preview.reason ?? ''] ?? preview.reason}`;
 }
 
-/** The callout as your power goes off: "Spore Burst hit 5 units", "Puppet Bloom merged 2 trios". */
+/** The callout as your power goes off: "Spore Burst hit 5 units", "Puppet Bloom lifted 4 units", "Rhizome Tithe paid 36 gold". */
 export function powerNews(name: string, e: Extract<SimEvent, { t: 'power' }>, kind: PowerDef['kind'] | undefined): string {
-  return kind === 'bloom' ? `${name} merged ${e.merges} trio${e.merges === 1 ? '' : 's'}` : `${name} hit ${e.hits} unit${e.hits === 1 ? '' : 's'}`;
+  if (kind === 'bloom') return `${name} lifted ${e.lifts} unit${e.lifts === 1 ? '' : 's'}`;
+  if (kind === 'harvest') return `${name} paid ${e.gold ?? 0} gold`;
+  return `${name} hit ${e.hits} unit${e.hits === 1 ? '' : 's'}`;
 }
 
 export class ClashPhase {

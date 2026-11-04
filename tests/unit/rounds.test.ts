@@ -241,14 +241,19 @@ describe('round scenarios (§15.2, plan Call 18, A106)', () => {
 });
 
 describe("a round's order (§4.7, §14.6's opening steps 1–7, §15.7 Rounds)", () => {
-  /** Battle 1 against Mother Mold, who plans each round, with a player's passive that pays 7 gold at battleStart and 5 at roundStart. */
+  /**
+   * Battle 1 against Mother Mold, who plans each round, with a player's passive that pays 7 gold at battleStart and 5 at
+   * roundStart. She keeps her first opener, a Burrow and a Truffle Cellar, so her plans don't rest on the draw (#69).
+   */
   function ordered(): BattleState {
-    const config = makeRoundConfig(content, { seed: 7, enemy: 'general:mother-mold' });
+    const { moreOpeners: _more, ...mold } = content.generals['mother-mold']!;
+    const firstOpener = { ...content, generals: { ...content.generals, 'mother-mold': mold } };
+    const config = makeRoundConfig(firstOpener, { seed: 7, enemy: 'general:mother-mold' });
     config.modifiers = [...(config.modifiers ?? []), {
       side: 'player', source: 'test:order',
       effects: { triggers: [{ on: 'battleStart', do: [{ gainGold: 7 }] }, { on: 'roundStart', do: [{ gainGold: 5 }] }] },
     }];
-    return createBattle(content, config);
+    return createBattle(firstOpener, config);
   }
   const kinds = (s: BattleState) => s.events.map((e) => (e.t === 'gold' ? `${e.t}:${e.amount}` : e.t));
   const scenario = (round: number, sides: ScenarioDef['sides'] = { player: {}, enemy: {} }): ScenarioDef => ({
@@ -257,7 +262,7 @@ describe("a round's order (§4.7, §14.6's opening steps 1–7, §15.7 Rounds)",
 
   it("opens round 1 with its storm, then battleStart and roundStart, then the general's plan, then the player's planning", () => {
     const s = ordered();
-    // the general's opener, two Sporeling Burrows, runs at once before generalPlanned (T068)
+    // the general's opener, a Burrow and a Truffle Cellar, runs at once before generalPlanned (T068)
     expect(kinds(s)).toEqual(['roundStarted', 'gold:7', 'gold:5', 'buildingPlanted', 'buildingPlanted', 'generalPlanned']);
     expect([s.events[0], s.sporestorm, s.phase]).toEqual([{ t: 'roundStarted', round: 1, stormBp: 10000 }, 0, 'planning']);
   });

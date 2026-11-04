@@ -9,7 +9,7 @@ import { addUnit } from '../create.ts';
 import { fireTriggers } from '../effects.ts';
 import { SIDES } from '../state.ts';
 import type { BattleState, Side, Tier, UnitState } from '../state.ts';
-import { clampToLane, clashTick, frozen, placeOf, unitDef, unitRadius } from '../world.ts';
+import { clampToLane, clashTick, frozen, placeOf, tierDef, unitDef, unitRadius } from '../world.ts';
 
 // Reused scratch (no allocation in the hot loop once warm). `eligible` may hold stale entries past
 // the count in use; they are overwritten on the next pass.
@@ -80,6 +80,25 @@ export function mergeTriosNow(state: BattleState, trios: UnitState[][]): void {
   for (let i = 0; i < units.length; i++) if (!removed.includes(units[i]!.id)) units[w++] = units[i]!;
   units.length = w;
   if (elders) noteElders(state);
+}
+
+/**
+ * Lifts each unit one merge tier where it stands (Puppet Bloom, §11.10, R2-Q7): a unit becomes Bloomed and a
+ * Bloomed unit an Elder, of its own type, with its new tier's stats and its HP and arrival shield in proportion,
+ * as a knit keeps them. It's no knit: no merge is counted and no `merge` trigger fires.
+ */
+export function liftNow(state: BattleState, units: readonly UnitState[]): void {
+  for (const u of units) {
+    const was = u.maxHp;
+    u.tier = (u.tier + 1) as Tier;
+    const t = tierDef(state, u);
+    u.maxHp = t.hp;
+    u.supply = t.supply;
+    u.hp = Math.max(1, Math.round((t.hp * u.hp) / was));
+    if (u.shield) u.shield = Math.round((t.hp * u.shield) / was);
+    clampToLane(state, u, unitRadius(state, u));
+  }
+  if (units.some((u) => u.tier === 3)) noteElders(state);
 }
 
 /** Records the most Elders each side has had alive at once, in the battle and in this clash (§5.7). */

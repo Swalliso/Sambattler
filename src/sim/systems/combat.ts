@@ -206,10 +206,11 @@ function burstFallen(state: BattleState): void {
 }
 
 /**
- * Removes dead units after all hits resolve (SPEC §5.3), then fires `unitDeath` triggers for each, and the other
- * side's `enemyUnitKilled` (Rot-Eater). A squad is its units by source building after the muster (A099): when
- * its last unit dies, its side's `squadWiped` triggers fire once, where that unit fell (Martyr's Bloom). A
- * squad the muster absorbed whole has no units left to die, and one that has died out can't again.
+ * Removes dead units after all hits resolve (SPEC §5.3), counting each one's supply as killed for Rhizome Tithe
+ * (`killedSupply`, R2-Q16), then fires `unitDeath` triggers for each, and the other side's `enemyUnitKilled`
+ * (Rot-Eater). A squad is its units by source building after the muster (A099): when its last unit dies, its
+ * side's `squadWiped` triggers fire once, where that unit fell (Martyr's Bloom). A squad the muster absorbed
+ * whole has no units left to die, and one that has died out can't again.
  */
 export function deathSystem(state: BattleState): void {
   const units = state.units;
@@ -220,6 +221,8 @@ export function deathSystem(state: BattleState): void {
     const u = units[i]!;
     if (u.hp > 0) { units[w++] = u; continue; }
     state.stats[u.side].unitsLost++;
+    const killed = state.clash?.killedSupply;
+    if (killed) killed[other(u.side)] += u.supply;
     state.events.push({ t: 'died', id: u.id, side: u.side, unitId: u.unitId, x: u.x, y: u.y });
     for (const h of state.hits) if (h.targetId === u.id) { h.x = u.x; h.y = u.y; }
     const def = unitDef(state, u);

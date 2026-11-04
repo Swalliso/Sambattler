@@ -4,6 +4,7 @@
 // battle: only a config, as `createBattle` (T027) will pass it.
 import { describe, expect, it } from 'vitest';
 import type { Content } from '../../src/data/registry.ts';
+import type { StatKeyT } from '../../src/data/schema.ts';
 import { secToTicks } from '../../src/sim/compile.ts';
 import { buildRoundLibrary, compileRoundRules, compileRoundSides } from '../../src/sim/compile.ts';
 import { SIDES } from '../../src/sim/state.ts';
@@ -140,28 +141,36 @@ describe('compiled sides in rounds (SPEC §11.2, §14.2)', () => {
     expect([player.incomeBp, enemy.incomeBp]).toEqual([10000, Math.round(r.enemyIncomeMult * 10000)]);
   });
 
-  it('a modifier on a retired stat compiles to nothing and is listed (plan Call 19)', () => {
+  it('a modifier on a retired stat compiles to nothing and is listed, and no passive or elite uses one (plan Call 19, §7.7, §11.10)', () => {
     const plain = compile();
-    const retired: [BattleModifier, Side, string][] = [
-      [commander('vesper'), 'player', 'building.spawnInterval'],
-      [commander('armilla'), 'player', 'side.captureSpeed'],
-      [general('mother-mold'), 'enemy', 'building.spawnInterval'],
-      [general('lichen-baron'), 'enemy', 'building.hp'],
-      [general('pale-sovereign'), 'enemy', 'side.turretDamage'],
+    // v1's passives' stats, which R2b's S7 rewrote
+    const retired: [Side, StatKeyT][] = [
+      ['player', 'building.spawnInterval'], ['player', 'side.captureSpeed'], ['enemy', 'building.hp'], ['enemy', 'side.turretDamage'],
+      ['enemy', 'building.firstSpawnFraction'],
     ];
-    for (const [mod, side, stat] of retired) {
+    for (const [side, stat] of retired) {
+      const mod: BattleModifier = { side, source: `test:${stat}`, effects: { modifiers: [{ stat, op: 'mul', value: 2 }] } };
       const sides = compile([mod]);
-      expect(sides[side].ignored, mod.source).toEqual([{ source: mod.source, stat }]);
-      for (const s of SIDES) expect({ ...sides[s], ignored: [] }, mod.source).toEqual(plain[s]);
+      expect(sides[side].ignored, stat).toEqual([{ source: mod.source, stat }]);
+      for (const s of SIDES) expect({ ...sides[s], ignored: [] }, stat).toEqual(plain[s]);
     }
     expect(plain.player.ignored).toEqual([]);
+    const all: BattleModifier[] = [
+      ...Object.keys(content.commanders).map(commander), ...Object.keys(content.generals).filter((id) => content.generals[id]!.passive).map(general),
+      ...Object.values(content.elites).filter((e) => e.effects).map((e): BattleModifier => ({ side: 'enemy', source: `elite:${e.id}`, effects: e.effects! })),
+    ];
+    for (const mod of all) for (const s of SIDES) expect(compile([mod])[s].ignored, mod.source).toEqual([]);
   });
 
-  it("Cordis's side.knitTicks and side.mergeRadius apply (§11.10: knit time −50%, merge radius 2)", () => {
+  it("Cordis's merged units have +10% HP and her merge radius is 2, with the plain knit time (§11.10, R2-Q7)", () => {
     const b = content.balance;
     const plain = compile().player, cordis = compile([commander('cordis')]).player;
     expect([plain.knitTicks, plain.mergeRadius]).toEqual([secToTicks(b.mergeKnitSeconds), b.mergeRadius]);
-    expect([cordis.knitTicks, cordis.mergeRadius]).toEqual([secToTicks(b.mergeKnitSeconds * 0.5), 2]);
+    expect([cordis.knitTicks, cordis.mergeRadius]).toEqual([secToTicks(b.mergeKnitSeconds), 2]);
+    const hp = (side: CompiledSide) => side.units.sporeling!.tiers.map((t) => t.hp);
+    const [p, c] = [hp(plain), hp(cordis)];
+    expect(c[0]).toBe(p[0]);
+    expect([c[1]! / p[1]!, c[2]! / p[2]!].map((x) => +x.toFixed(2))).toEqual([1.1, 1.1]);
     expect(cordis.ignored).toEqual([]);
   });
 
