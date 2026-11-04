@@ -4,7 +4,8 @@
 // which `step` adds and `clash.test.ts` tests.
 import { describe, expect, it } from 'vitest';
 import type { ScenarioDef } from '../../src/data/schema.ts';
-import { addUnit, createFromScenario, formationOf, survivingSupply } from '../../src/sim/index.ts';
+import { addUnit, createFromScenario, formationOf, step, survivingSupply } from '../../src/sim/index.ts';
+import { inMuster } from '../../src/sim/systems/clash.ts';
 import type { Armor, BattleState, Content, DamageType, Flags, Side, Tier, UnitState } from '../../src/sim/index.ts';
 import { attackSystem, burstAt, damageFor, deathSystem, resolveHitsSystem } from '../../src/sim/systems/combat.ts';
 import { addCloud, cloudSystem } from '../../src/sim/systems/clouds.ts';
@@ -413,6 +414,21 @@ describe('damage in rounds (SPEC §5.3)', () => {
     expect([dealt(outside), dealt(friend)]).toEqual([0, 0]);
     expect(s.clouds).toEqual([]);
     expect(s.stats.player.damageBySource.sporeCloud).toBe(120);
+  });
+
+  it("a cloud pulses in the muster on this clash's own units, though the muster builds no grid (R2b S11)", () => {
+    // a bigger clash first, so the spatial grid indexes 40 units when the next clash's muster begins
+    const big = clash();
+    for (let i = 0; i < 40; i++) unit(big, 'enemy', 'sporeling', 4 + (i % 10), 1 + Math.floor(i / 10));
+    tick(big);
+    // then a power's kill leaves a cloud in the muster, as Vesper's Spore Burst and Spore Cloud's death burst can
+    const s = clash();
+    const knight = unit(s, 'enemy', 'amanitaKnight', 10, 3);
+    unit(s, 'player', 'sporeling', 2, 3);
+    addCloud(s, 'player', 0, 10, 3, 0, s.rules.cloud!);
+    for (let i = 0; i < s.rules.musterTicks; i++) step(s);
+    expect(inMuster(s)).toBe(true);
+    expect(dealt(knight)).toBe(s.rules.cloud!.damage);
   });
 
   it("cleave: a Scythecap's swing deals full damage within 1.0, 1.2 and 1.4 tiles by tier", () => {

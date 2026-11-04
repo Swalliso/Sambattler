@@ -3,6 +3,7 @@
 // ends the battle, and an ended battle does nothing.
 import { dropClashCommands, executeCommands } from './commands.ts';
 import { powerThink } from './powers.ts';
+import { buildGrid } from './spatial.ts';
 import { endClash, openRound } from './round.ts';
 import type { BattleState } from './state.ts';
 import { clashOver, inMuster, laneEndSystem } from './systems/clash.ts';
@@ -49,6 +50,10 @@ function clashTick(state: BattleState): void {
     targetingSystem(state);
     movementSystem(state);
     attackSystem(state);
+  } else if (state.hits.length || state.clouds?.length) {
+    // the muster runs neither targeting nor movement, which build the spatial grid, yet a power's hits and the clouds
+    // its kills leave query it: build it from this clash's units, since the last clash's grid holds other indices
+    buildGrid(state);
   }
   // 8. hits due this tick, then the spore clouds' pulses
   resolveHitsSystem(state);
