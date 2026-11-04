@@ -29,9 +29,10 @@ export interface Intent {
   doctrine: string;
   /** Its plan for the round on screen, or null for a side with no AI. */
   plan: AiPlan | null;
-  /** What it planted and sold this round, by name and grouped: "Capguard Hall ×2". */
+  /** What it planted, sold and upgraded with gold (§6.1) this round, by name and grouped: "Capguard Hall ×2". */
   planted: string[];
   sold: string[];
+  upgraded: string[];
 }
 
 /** Names grouped by building, in the order first planted. */
@@ -61,6 +62,7 @@ export function intentOf(content: Content, state: BattleState): Intent {
     plan,
     planted: plan ? grouped(content, plan.planted) : [],
     sold: plan ? grouped(content, plan.sold) : [],
+    upgraded: plan?.upgraded ? grouped(content, plan.upgraded) : [],
   };
 }
 

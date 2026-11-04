@@ -65,6 +65,7 @@ export function helpOverlay(content: Content, state: BattleState, onClose: () =>
     [caps(['[', ']']), 'speed 1× / 2× / 3×'],
     [caps(['Tab']), 'cycle your buildings'],
     [caps(['M']), 'merge toggle on the selected spawner'],
+    [caps(['U']), 'upgrade the selected spawner, once every plot is built on'],
     [caps(['X', 'Delete']), 'sell (press twice)'],
     [upTo(b.draft.cards), 'pick a draft card'],
   ];
@@ -140,7 +141,11 @@ export function helpOverlay(content: Content, state: BattleState, onClose: () =>
           exchange ? h('h3', null, `The ${exchange.name}`) : null,
           exchange ? h('p', null, `While it stands it raises your interest cap by ${exAdd}, so interest can pay up to ${cs.interestCap + exAdd} if you hold ${(cs.interestCap + exAdd) * r.interestPer} gold. It also pays +${exchange.economy?.goldPerRound ?? 0} gold a round. It earns most when you save.`) : null,
           h('h3', null, 'Other gold'),
-          h('p', null, `Skipping a draft pays +${b.skipGold} gold. Gold doesn't carry from one battle to the next.`))),
+          h('p', null, `Skipping a draft pays +${b.skipGold} gold. Gold doesn't carry from one battle to the next.`),
+          // §6.1's gold upgrades; R2b's T117 moves this line to the planning tab it writes
+          h('h3', null, 'Upgrades'),
+          h('p', { id: 'help-upgrades' }, `Once every plot is built on, gold buys upgrades. Select a spawner and press `, h('kbd', null, 'U'),
+            `: for ${b.rounds.upgradeCostPct}% of its price, its squad arrives ${TIER_NAME[1]} for the rest of the battle, and can knit on to ${TIER_NAME[2]}s. Selling it refunds the upgrade as it does the building. The general upgrades too, once its own plots are full.`))),
     ],
     storm: [
       h('div', { class: 'helpgrid' },

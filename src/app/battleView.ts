@@ -155,6 +155,7 @@ export class RoundsView {
     this.bands.push(new RoundTray(this.mounts.tray, hud, state, { available: () => session.available(), placing: () => session.placing, pick: (id) => session.pick(id) }));
     this.bands.push(new RoundInspect(this.mounts.inspect, hud, this.log, {
       selected: () => session.selected, sellArmed: () => session.sellArmed, mergeShown: (id) => session.mergeShown(id), sell: () => this.sell(), toggleMerge: () => { session.toggleMerge(); },
+      upgrade: () => { session.upgrade(); }, upgradeBlock: (id) => session.upgradeBlock(id), upgradeCost: (id) => session.upgradeCostOf(id),
     }));
     this.top = h('header', { class: 'top rounds-top' }, this.mounts.top, this.mounts.tally, this.mounts.intent);
     this.field = h('main', { class: 'field' }, this.frameArt.el, h('div', { class: 'fieldwrap' }, this.canvas, this.tip));
@@ -353,7 +354,7 @@ export class RoundsView {
     this.log.onTick(state);
     this.sound.onTick(state);
     for (const e of state.events) {
-      if (e.t === 'buildingPlanted' || e.t === 'buildingSold' || e.t === 'mergeToggled' || e.t === 'roundStarted') this.colonyVersion++;
+      if (e.t === 'buildingPlanted' || e.t === 'buildingSold' || e.t === 'mergeToggled' || e.t === 'buildingUpgraded' || e.t === 'roundStarted') this.colonyVersion++;
       if (e.t === 'generalPlanned') {
         const news = e.side === 'enemy' ? generalNews(this.content, state) : null;
         if (news) this.say('counter', news);

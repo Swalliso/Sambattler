@@ -289,9 +289,11 @@ export class IntentPanel implements HudPart {
     setText(this.doctrine, i.doctrine);
     setText(this.income, i.plan ? `income ${i.plan.income}` : '');
     setText(this.banked, i.plan ? `banked ${i.plan.banked}` : '');
-    // a sale shares the line, so the plantings make room for it
-    setText(this.planted, held ? 'Changes show at Begin' : i.planted.length ? `New: ${cutShort(i.planted, i.sold.length ? 1 : 2)}` : 'Nothing new');
-    setText(this.sold, !held && i.sold.length ? `Sold: ${cutShort(i.sold, 1)}` : '');
+    // a sale shares the line, so the plantings make room for it; its gold upgrades (§6.1) take the line a sale leaves
+    const second = i.sold.length ? `Sold: ${cutShort(i.sold, 1)}` : i.planted.length && i.upgraded.length ? `Upgraded: ${cutShort(i.upgraded, 1)}` : '';
+    setText(this.planted, held ? 'Changes show at Begin' : i.planted.length ? `New: ${cutShort(i.planted, second ? 1 : 2)}`
+      : i.upgraded.length && !i.sold.length ? `Upgraded: ${cutShort(i.upgraded, 2)}` : 'Nothing new');
+    setText(this.sold, held ? '' : second);
   }
 
   dispose(): void {}

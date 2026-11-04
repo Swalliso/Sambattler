@@ -32,7 +32,7 @@ export function planTurn(state: BattleState, side: Side, income = 0): void {
   const sold: AiPlan['sold'] = [];
   const sellNow = (b: BuildingState): boolean => {
     if (runAtOnce(state, side, { type: 'sell', entityId: b.id })) return false;
-    sold.push({ building: b.buildingId, plot: b.plot });
+    sold.push({ building: b.buildingId, plot: b.plot, ...(b.upgrade ? { upgraded: true as const } : {}) });
     return true;
   };
   // 1. a due counter, which may sell for room (§7.4); round 1's opening doctrine came with the profile (§7.6)

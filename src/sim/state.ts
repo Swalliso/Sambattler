@@ -531,7 +531,8 @@ export interface UnitState {
 export interface AiPlan {
   round: number;
   planted: { building: string; plot: number }[];
-  sold: { building: string; plot: number }[];
+  /** `upgraded` marks a sale of a building with a gold upgrade (§6.1), which `reveal=last` stands again as it fielded. */
+  sold: { building: string; plot: number; upgraded?: true }[];
   /** The spawners it upgraded with gold once its colony was full (§6.1), in order; absent when none. */
   upgraded?: { building: string; plot: number }[];
   income: number;
