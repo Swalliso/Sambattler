@@ -38,6 +38,8 @@ export interface BattleRecord {
   /** Cards picked in this battle's drafts. */
   drafted: string[];
   spores: number;
+  /** The Amber the battle paid, an elite's chance included, as its end rolled it (§8.9, R2-Q22); missing on a battle recorded before R2b's S8. */
+  amber?: number;
   /** The general's opening doctrine from intel (the boss's is dual). */
   opening?: { kinds: CounterKind[]; dual: boolean };
   /** The counters the general activated, by round (SPEC §7.4). */
@@ -135,6 +137,11 @@ export interface RunState {
   rng: Record<'route' | 'events' | 'draft' | 'meta', Rng4>;
   screen: RunScreen;
   outcome?: 'victory' | 'defeat';
+  /**
+   * The last battle's report is open (§8.9, R2-Q22): the run moved on as the battle ended, so a reload opens the
+   * next screen with the battle's result. The app sets it at the battle's end and clears it on Continue.
+   */
+  reportOpen?: boolean;
 }
 
 export interface NextBattle { startingGold: number; sporestormShiftRounds: number; heartcapMaxHpPct: number }

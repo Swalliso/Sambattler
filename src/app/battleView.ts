@@ -34,6 +34,7 @@ import { RoundTally } from '../ui/hud/tally.ts';
 import { RoundTray } from '../ui/hud/tray.ts';
 import { RoundCombatLog, RoundInspect } from '../ui/inspect.ts';
 import { roundsReport } from '../ui/report.ts';
+import type { RunLines } from '../ui/report.ts';
 import type { PlayTimeReadout } from '../ui/report.ts';
 import { loadSettings, onSettings, settingsStore } from './settings.ts';
 import { BattleSound } from './battleSound.ts';
@@ -58,9 +59,10 @@ export interface RoundViewActions {
   /** A single battle's report buttons: the same seed, or a new one, on the same parameters (§10.4). */
   again?(): void;
   rematch?(): void;
-  /** A run's battle: the report's Continue, and its line on what the battle meant for the run (R2b). */
+  /** A run's battle: the report's Continue (R2b). */
   continueRun?(): void;
-  runNote?(state: BattleState): string;
+  /** In a run: what the battle paid and cost, from the record its end wrote (T098). */
+  runLines?(): RunLines | null;
   /** The play clock's readout, which the report shows (X6, T128). */
   playTime?(): PlayTimeReadout;
 }
@@ -478,8 +480,9 @@ export class RoundsView {
     if (this.settingsShown) closeSettings();
     this.session.placing = null;
     const a = this.actions;
+    const run = a.runLines?.();
     const buttons = a.continueRun
-      ? { continueRun: a.continueRun, ...(a.runNote ? { runNote: a.runNote(state) } : {}) }
+      ? { continueRun: a.continueRun, ...(run ? { run } : {}) }
       : { ...(a.again ? { again: a.again } : {}), ...(a.rematch ? { rematch: a.rematch } : {}) };
     const report = roundsReport(this.content, state, buttons, this.atlas, a.playTime?.());
     this.report = report;

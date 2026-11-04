@@ -29,6 +29,8 @@ export class RoundLoop {
   readonly aftermath: AftermathPhase;
   debugOverlay = false;
   onFrame: (() => void) | null = null;
+  /** After each step, before the view takes its events: a run's saves between rounds and its battle's end (§8.9). */
+  onStep: ((was: BattleState['phase']) => void) | null = null;
   /** With `measure=frames`: each frame's work in ms, the last `FRAMES_KEPT` (T115). */
   readonly frameTimes: number[] | null;
 
@@ -55,6 +57,7 @@ export class RoundLoop {
     const state = this.session.state;
     const was = state.phase;
     step(state);
+    this.onStep?.(was);
     this.view.onTick(state, now);
     if (state.phase === was) return;
     this.session.phaseOpened(now);
@@ -134,6 +137,8 @@ export interface RoundBattleOptions {
   lives?: { left: number; max: number };
   /** A run's battle: the run's play clock (T109), fed the battle's phases and input beside the battle's own. */
   runClock?: PlayClock;
+  /** A run's battle: after each step, with the phase it left (§8.9, T096, T097). */
+  onStep?: (state: BattleState, was: BattleState['phase']) => void;
 }
 
 /** A battle on screen, and how to take it down. */
@@ -163,6 +168,7 @@ export function openRoundBattle(content: Content, atlas: Atlas, state: BattleSta
     toggleDebug: () => { if (o.debug) loop.debugOverlay = !loop.debugOverlay; },
   });
   loop.debugOverlay = o.debug;
+  if (o.onStep) loop.onStep = (was) => o.onStep!(state, was);
   loop.onFrame = () => {
     played.frame();
     o.onFrame?.();
