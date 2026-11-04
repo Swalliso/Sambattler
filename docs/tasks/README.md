@@ -27,6 +27,7 @@ R1, R4a, records-1 and R2a are done. R2a's playtest gate passed on 2026-11-03 (S
 | M6, meta-progression | [m6-meta-progression.md](m6-meta-progression.md) | S0–S9 | Paused for the v3 redesign | One PR per session into `develop` |
 | M7, the Gray Rot and content | [m7-gray-rot-and-content.md](m7-gray-rot-and-content.md) | S0–S7 | Paused for the v3 redesign | One PR per session into `develop` |
 | M8, release | [m8-release.md](m8-release.md) | S0–S7 | Paused for the v3 redesign | S7 is the release PR into `main`, only when the user asks |
+| v3 prototype, one battle by v3's rules | [v3-prototype.md](v3-prototype.md), plan [v3-proto-plan.md](../v3-proto-plan.md), concept [spec-v3-concept.md](../spec-v3-concept.md) | S0–S10 (S9 the playtest) | Drafted 2026-11-04; waits for the user's review of the concept | One PR per session into `develop`, beside v2 behind `rules=v3` (S10 removes it) |
 
 The order, with the gates the user holds:
 

@@ -1,6 +1,8 @@
 # SPEC v2 against the v3 brief: the audit
 
-**Status:** step A of the v3 plan in [design-brief.md](design-brief.md). It's docs only: no code, data, rule or test changed. Written on 2026-11-04 against `develop` at `1676282`. The hub records it in `docs/status.md`. The concept, `docs/spec-v3-concept.md`, starts from the user's answers to section 5.
+**Status:** step A of the v3 plan in [design-brief.md](design-brief.md). It's docs only: no code, data, rule or test changed. Written on 2026-11-04 against `develop` at `1676282`. The hub records it in `docs/status.md`. The concept, [spec-v3-concept.md](spec-v3-concept.md), starts from the user's answers to section 5.
+
+**Decided 2026-11-04:** the user took all 13 recommendations ("Take them all"), the three the hub flagged among them (V3-Q2, V3-Q5 and V3-Q8). Each question's **Decision** line records it.
 
 **Sources:**
 - the brief;
@@ -216,6 +218,7 @@ They're ranked by how much the answer changes the prototype. Each has a recommen
   - The continuous option's own idea, commitment through fruiting time, can be tested inside rounds (V3-Q3).
 - **Alternatives:** both, side by side, the second a rebuild; continuous first.
 - **What it changes:** every question below assumes rounds.
+- **Decision:** 2026-11-04 (the hub session; the user: "Take them all"): the recommendation. Rounds first, on their own. A continuous prototype comes only if the rounds prototype's playtest still fails pillar 1 or 4.
 
 ### V3-Q2 · Hide the rival's additions this round
 
@@ -235,6 +238,7 @@ They're ranked by how much the answer changes the prototype. Each has a recommen
   - keep the full reveal, and find prediction somewhere else;
   - hide from round 1 too, so the opener itself becomes a blind bet on rush or greed. The P3 playtest called that kind of opener gambling (F18).
 - **What it changes:** the view exists, behind `reveal=last`, with S19's four gaps. The sim only needs the reveal at Begin, since the general already never sees what you plant this round.
+- **Decision:** 2026-11-04 (the hub session; the user: "Take them all", with this one flagged as reversing R2-Q1): the recommendation. From round 2 the rival's plantings this round stay hidden until Begin, together with fruiting (V3-Q3), and round 1's opener stays in view. This reverses R2a's full-reveal call (F18, R2-Q1, 2026-11-03) for the prototype. v2's game on `develop` keeps the full reveal until SPEC v3.
 
 ### V3-Q3 · Fruiting time
 
@@ -248,6 +252,7 @@ They're ranked by how much the answer changes the prototype. Each has a recommen
   - growth stages, where a growing building fields part of its squad;
   - economy that fruits too.
 - **What it changes:** a sim rule: a building's first round, with unfruited plots left empty in `formationOf`. Plus a sprout drawn on the field.
+- **Decision:** 2026-11-04 (the hub session; the user: "Take them all"): the recommendation. One round for every building planted from round 2, shown as a sprout with a timer. Round 1's opener fields at once, and economy pays as today. The concept found that under this timing round 2's clash replays round 1's, and asks one follow-up before the prototype builds it ([v3-proto-plan.md](v3-proto-plan.md), open question 1).
 
 ### V3-Q4 · The prototype's size: one battle or a run
 
@@ -257,6 +262,7 @@ They're ranked by how much the answer changes the prototype. Each has a recommen
   - Runs, drafts, relics and meta (pillars 5 and 6) get redone for v3 anyway, and would double the prototype.
   - The battle scene already opens a single battle with parameters (§15.6).
 - **Alternatives:** a short run of 3 battles with spoils, to test pillar 6 as well.
+- **Decision:** 2026-11-04 (the hub session; the user: "Take them all"): the recommendation. One battle from a preview link, against three generals (a rusher, a greedy one and a counter-builder), on Bogwater Hollow and Twin Roots, with Vesper.
 
 ### V3-Q5 · A second purchase: what gold buys besides a building
 
@@ -275,6 +281,7 @@ They're ranked by how much the answer changes the prototype. Each has a recommen
   - plots and techs together, though two changes at once blur what the playtest measures;
   - a cheaper upgrade, which pushed G5 to 89–90%.
 - **What it changes:** a command to buy a plot, with its price. The general's doctrines weigh plots too.
+- **Decision:** 2026-11-04 (the hub session; the user: "Take them all", with the shop's absence flagged): the recommendation. Gold buys the next closed plot, up to 4 more, and the gold upgrade goes. Techs come after, with R3's augments.
 
 ### V3-Q6 · What to borrow from TFT
 
@@ -300,6 +307,7 @@ They're ranked by how much the answer changes the prototype. Each has a recommen
   - **Star-ups: no.** Merging is v3's three-become-one (V3-Q10).
   - **The shared pool and scouting:** don't apply with one rival. The general's visible base is the scouting.
 - **Alternatives:** the shop in the first prototype, in place of plots.
+- **Decision:** 2026-11-04 (the hub session; the user: "Take them all"): the recommendation. Levels as plots (V3-Q5), interest as built, and big picks later, as Keystones. No shop in the first prototype: if its playtest still finds every round the same, a shop prototype comes next. No streak gold or star-ups.
 
 ### V3-Q7 · The placement rules in the prototype
 
@@ -318,6 +326,7 @@ They're ranked by how much the answer changes the prototype. Each has a recommen
 - **Alternatives:**
   - all seven;
   - new fungal rules designed in the concept, such as links along a file or fairy rings of one building.
+- **Decision:** 2026-11-04 (the hub session; the user: "Take them all"): the recommendation. Shield Wall, Spotted Screen, Chain Burst and Truffle Hunters, each shown on hover before you place, and the general places by them too.
 
 ### V3-Q8 · What "the front persists between rounds" means
 
@@ -329,6 +338,7 @@ They're ranked by how much the answer changes the prototype. Each has a recommen
   - Fresh squads are v2's snowball brake (§1.1), and battles are already one-sided. (a) would deepen that.
   - (b) brings back a kind of territory. v1's testers found column capture awkward (F6), and holding more ground predicted the winner only about 40% of the time (§0.1).
 - **Alternatives:** (a) or (b).
+- **Decision:** 2026-11-04 (the hub session; the user: "Take them all", with this one flagged as departing from the brief): (c) for the prototype, departing from the brief's "front persists" lean. Only the Heartcaps carry over between rounds, beside the colony and gold, and every squad fields fresh. (b), a moving front, is the fallback if battles still don't swing.
 
 ### V3-Q9 · Rush and greed: the economy's numbers
 
@@ -343,6 +353,7 @@ They're ranked by how much the answer changes the prototype. Each has a recommen
 
   **Why:** pillar 3 asks that both can win. Today's rules can't show it while late gold has no use, so measure once V3-Q5 gives it one, as the review advised.
 - **Alternatives:** an income that rises each round (the review's ramp); fast-fruiting rush buildings (V3-Q3).
+- **Decision:** 2026-11-04 (the hub session; the user: "Take them all"): the recommendation. Three scripted openers on both sides (rush, greed and counter), with the economy's numbers tuned as data, headless, before the playtest, until each opener wins 30–70% against each of the others and greed fields the bigger army by round 6.
 
 ### V3-Q10 · Merging in the prototype
 
@@ -360,6 +371,7 @@ They're ranked by how much the answer changes the prototype. Each has a recommen
   - ×2.1, S14's other passing value;
   - merging off;
   - buildings that merge: three copies make one bigger building, TFT's star-up. That frees plots, so merging joins the colony's choices.
+- **Decision:** 2026-11-04 (the hub session; the user: "Take them all"): the recommendation. Merging at ×2.0 (S14's measure), as data, with its rule unchanged.
 
 ### V3-Q11 · The general under hidden plans
 
@@ -371,6 +383,7 @@ They're ranked by how much the answer changes the prototype. Each has a recommen
 
   **Why:** pillar 1 needs tells you can read, and pillar 3 says the rival makes the same choice. The code already has the counter cycle, doctrines, intel and several openers per general (R2b S7).
 - **Alternatives:** today's general, which answers only what you fielded (§7.4).
+- **Decision:** 2026-11-04 (the hub session; the user: "Take them all"): the recommendation. Its tells are what v2 shows, less this round's plan. Each general has a rush opener and a greed opener, picked by its personality and your intel, and it answers your sprouts.
 
 ### V3-Q12 · The brief's success checks in round form
 
@@ -388,6 +401,7 @@ They're ranked by how much the answer changes the prototype. Each has a recommen
   - the first round is a choice;
   - battle 1 bites without ending the run;
   - prediction pays.
+- **Decision:** 2026-11-04 (the hub session; the user: "Take them all"): the recommendation. The table's round forms, as first guesses that the prototype measures.
 
 ### V3-Q13 · Measure build variety, not single-building ceilings
 
@@ -400,3 +414,4 @@ They're ranked by how much the answer changes the prototype. Each has a recommen
 
   **Why:** the brief's checks are "no building or archetype dominates" and "the best spot clearly beats a median spot". G3 caps mono bots, which copies were meant to make impossible anyway.
 - **Alternatives:** keep §12.3 as it is until SPEC v3.
+- **Decision:** 2026-11-04 (the hub session; the user: "Take them all"): the recommendation. G12 stays the main bar, G1 and G3 report, a damage-share variety measure joins them, and G16 becomes "the best spot beats the median spot". The guardrail changes land with SPEC v3; the prototype measures G16's new form for its combos.
