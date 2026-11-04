@@ -25,8 +25,63 @@ and §11.1.
   - At 300% with × 1.05: 63%, 21%, then 61% and 77%, with about one upgrade a battle each side.
   - G13 holds throughout, with 6–9% of clashes at the cap and a median clash of 18–19.5 s.
 - **A new known miss:** G4's round-9 clause, at 21% against ≤ 20%, until S14's tuning (T168, T169).
-- **Goldens:** all six moved at round 1's first checkpoint, since the battle's library carries the new key. The battle
-  replays move further where a colony fills and buys upgrades, and with the general's income.
+- **Goldens:** regenerated on `develop` with S7's commanders merged. All seven moved at round 1's first checkpoint, since
+  the battle's library carries the new key. The battle replays move further where a colony fills and buys upgrades, and
+  with the general's income: `r2-balanced-vs-scripted-s1` now ends in round 5, not 6, and S7's `r2-armilla-power-s3` in
+  round 9, not 7.
+
+## R2b-S7 T079–T090, T154–T156, T165, T166: the commanders, the powers, the generals, the elites and the boss's extra cards in v2 form (2026-11-03)
+
+**Content the user approved at R2b's S0** (2026-11-03, "Take them all": R2-Q7, R2-Q15, R2-Q16, R2-Q17, R2-Q18 and #69,
+SPEC §6.6, §7.6–§7.8, §11.10, §11.11), with #69's draw settled in S7 (2026-11-03, "Take both"). No unit, building or
+rule number was retuned.
+- **The commanders' passives** (`data/commanders.json`):
+  - Vesper's Home Brood: `unit.hp` and `unit.damage` ×1.1 on squads at rank 0 (R2-Q15; was home buildings spawning 10%
+    faster). A uniform bonus, so a front-rank squad fields the same count.
+  - Armilla's Landholder: `side.plots` +1, the next closed plot by #19's order, so the first third-rank plot from battle 1
+    (§4.6; was capture +25%). It's on her side only, so the general's colony doesn't gain it.
+  - Cordis: `unit.hp` ×1.1 at tiers 2 and 3, so merged units start with +10% HP, and `side.mergeRadius` 2.0 kept
+    (R2-Q7; knit time −50% is gone, since it acted only after the muster).
+- **The powers** (`data/commanders.json`, `src/data/schema.ts`): `cooldown` and `firstReady` are gone from the data and
+  the schema (§6.6), and so are v1's `tithe` and `surge` kinds.
+  - Rhizome Tithe is `{ kind: harvest, target: none, goldPerSupply: 2 }` (was 30 gold a column held): 2 gold for each
+    supply of enemy units killed so far in the clash (`ClashState.killedSupply`: a merged unit at its own supply, an
+    emplacement at 0), rounded down and credited at once as clash gold (R2-Q16, R2-Q20). It may fire at 0 kills.
+  - Puppet Bloom lifts each of your units within 3 tiles of a point one merge tier where it stands, its HP and shield
+    in proportion (R2-Q7; was merging every same-type trio there). It's no knit: no merge is counted and no `merge`
+    trigger fires. It skips what a knit can't take: emplacements, Bursters, tunnelers underground, a knitting unit,
+    a squad with its toggle off and a lane whose clash is over.
+  - The Sporestorm Sigil's ×1.5 now reaches each power (T084): Spore Burst 135, the Tithe 3 a supply, Puppet Bloom
+    4.5 tiles, and the previews read the scaled values.
+  - The auto power policy: the Tithe fires on the first think from 40 s of clash time, or once either side's surviving
+    supply in a lane still fighting is at most 25% of what it fielded there after the muster (R2-Q16). Puppet Bloom
+    fires on its first think where the lift adds the most supply (an Elder's lift counts twice a Bloomed one's).
+- **The generals' passives** (`data/generals.json`): Old Mother Mold's swarm units `unit.hp` ×1.1 (R2-Q17; was swarm
+  buildings spawning 10% faster); the Lichen Baron's `unit.hp` ×1.2 at rank 0 (was buildings +20% HP); the
+  Blightwright's kept; the Pale Sovereign's `unit.damage` ×1.15 where `inCounterSet`, the union of its dual
+  doctrine's sets and the active counter's, read at each Begin (R2-Q17; was turrets +25%). Their descriptions say so.
+- **The elites** (`data/elites.json`): Swift is `unit.speed` ×1.15 (was an instant first spawn); Fortified and Veteran
+  are kept.
+- **Several openers per general** (`data/generals.json`, `moreOpeners`, #69): each battle draws one, from the general's
+  own stream, among the openers whose cards its kit holds; the kit is still built from the first. Old Mother Mold: a
+  Sporeling Burrow and a Gill Archer Nest, or two Burrows and the Nest, both from battle 2, so her battle 1 keeps
+  R2-Q13's Burrow and Cellar. The Lichen Baron: a Capguard Hall and a Puffball Mortar (battle 2), or a Hammercap Forge and
+  a Truffle Cellar (battle 3). The Blightwright: the Rootbreaker Den with a Capguard Hall (battle 2) or a Gill Archer Nest
+  (battle 3). The Pale Sovereign: a Capguard Hall, a Puffball Mortar and a Truffle Cellar, or a Gill Archer Nest, a
+  Sporeling Burrow and a Cellar. The scripted general keeps its one opener. Not measured yet: S11's run tools read
+  what the new openers do to battles 2–4 and the boss.
+- **The opening doctrine** swaps the opener's last army card for the cheapest kit card in its counter sets (the boss's
+  two) when the kit holds one and the opener's army holds none (R2-Q18, A042). It applies to the drawn opener.
+- **The boss's first extra cards** read R2a's counter sets: for each of the run's top two intel kinds, the cheapest
+  card not yet in its kit whose unit beats the armor the kind reads (Swarm light, Line medium, Armor heavy; Elite and
+  Ranged take their set's cheapest), as a missing answer is chosen (A056). Against a Swarm that's the Rhizomorph
+  Tunnel and against a Line the Veilstalker Hollow, where v1's sets gave the Sporeling Burrow and the Morel Warren.
+- **Goldens:** the Vesper and Cordis power replays and `r2-run-s7` moved (the run again with the openers); `r2-armilla-power-s3` is new (T156). The
+  three replays with no commander or general passive hold their hashes, byte for byte. On seed 3 with the starter
+  kits, Vesper and Cordis rout the scripted general in round 3 (Puppet Bloom lifting 11 units), and Armilla falls in
+  round 7, her five Tithes paying 100 gold. Verify's adaptive-general smoke moved from seeds 20–21 to 4–5: a single
+  battle's Mold draws among all her openers, and 44 of seeds 1–60 reach her round-4 counter, as before S5's softer
+  opener.
 
 ## R2b-S6 T070–T078: the relics in v2 form, the `requires` gates and one path for clash gold (2026-11-03)
 

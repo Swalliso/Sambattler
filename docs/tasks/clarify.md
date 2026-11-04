@@ -952,6 +952,7 @@ The R2a plan settles these itself, with no call from you: A027, A032, A034, A036
 - **Alternatives:** one opener per general until R3's kit.
 - **Blocks:** R2b's general content.
 - **Decision:** 2026-11-03 (R2b S0; the user: "Take them all"): the recommendation. Several openers per general, one drawn per battle (R2b S7). R2b's opening doctrine (R2-Q18) and its several generals add to it. In SPEC §7.7, §11.11 and §18.2 #69.
+- **The draw (R2b S7, T165):** 2026-11-03 (the user, through the hub: "Take both"): the recommendation. A battle draws its opener, from the general's own stream, only among the openers whose cards its kit holds, and the kit is still built from the first opener (§7.8). Old Mother Mold's first opener stays a Sporeling Burrow and a Truffle Cellar, so her battle 1 always draws it (R2-Q13); her other openers use the Gill Archer Nest, which joins her kit in battle 2. A single battle's general has the whole roster, so it can draw any opener. The `scripted` general keeps its one opener. The alternative was a battle-index rule: battle 1 always plays the first opener, and the draw starts in battle 2. In SPEC §7.7 and §7.8.
 
 ### #70 · The commander power against some units
 

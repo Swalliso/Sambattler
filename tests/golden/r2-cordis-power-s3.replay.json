@@ -102,9 +102,20 @@
         "effects": {
           "modifiers": [
             {
-              "stat": "side.knitTicks",
+              "stat": "unit.hp",
               "op": "mul",
-              "value": 0.5
+              "value": 1.1,
+              "where": {
+                "tier": 2
+              }
+            },
+            {
+              "stat": "unit.hp",
+              "op": "mul",
+              "value": 1.1,
+              "where": {
+                "tier": 3
+              }
             },
             {
               "stat": "side.mergeRadius",
@@ -118,22 +129,17 @@
   },
   "commands": [],
   "expected": {
-    "r1.planning": "7b752627b5486f2f",
-    "r1.clash": "ea0664ef57f84431",
-    "r1:200": "578cd73894f78239",
-    "r1.aftermath": "79437cb3a1684e29",
-    "r2.planning": "97efb13dc0a8413d",
-    "r2.clash": "ec8d1e582ce4e714",
-    "r2:200": "d2d6770756eee90f",
-    "r2.aftermath": "8ff949824213d303",
-    "r3.planning": "400b6aa35435ad2b",
-    "r3.clash": "3f441854364ec68a",
-    "r3:200": "4353aa8aa4fa250b",
-    "r3.aftermath": "93df1787d3fdd688",
-    "r4.planning": "58935f697e611e31",
-    "r4.clash": "b8744b9b7db45bf5",
-    "r4:200": "ee005e2c7605a8d0",
-    "r4.aftermath": "4ff9255518a18e60",
-    "final": "9bbea86544b2ea70"
+    "r1.planning": "101d20639ba28116",
+    "r1.clash": "9f675be2d3647c4a",
+    "r1.aftermath": "8c6a046eb2504432",
+    "r2.planning": "58d642f1ac30dc11",
+    "r2.clash": "b4d887152099b0c1",
+    "r2:200": "5971a94d5e147e7c",
+    "r2.aftermath": "bbb7519a0c3ad936",
+    "r3.planning": "5df49290a33ab41e",
+    "r3.clash": "4ad15df48afc059d",
+    "r3:200": "c4e0e8b6ea50047e",
+    "r3.aftermath": "27251a0948bb024d",
+    "final": "d054a27ae3e5aaf3"
   }
 }

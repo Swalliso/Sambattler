@@ -217,7 +217,7 @@ export function printRoundSummary(results: RoundBattleResult[], maxRounds: numbe
   if (blooms.length) {
     const atMuster = blooms.map((b) => b.atMuster), best = blooms.map((b) => b.best);
     const some = (xs: number[]) => `${median(xs)} (mean ${(xs.reduce((a, x) => a + x, 0) / xs.length).toFixed(2)}, ≥1 in ${pct(xs.filter((x) => x >= 1).length, xs.length)})`;
-    console.log(`Puppet Bloom trios a clash: after the muster ${some(atMuster)} · best before use ${some(best)} · fired in ${blooms.filter((b) => b.fired).length} of ${blooms.length} clashes, ${blooms.reduce((a, b) => a + b.merged, 0)} trios merged`);
+    console.log(`Puppet Bloom's lift a clash, in units: after the muster ${some(atMuster)} · best before use ${some(best)} · fired in ${blooms.filter((b) => b.fired).length} of ${blooms.length} clashes, ${blooms.reduce((a, b) => a + b.lifted, 0)} units lifted`);
   }
   for (const l of paceLines(results)) console.log(l);
 }

@@ -691,6 +691,11 @@ const Limit = z.object({ maxOwned: z.number().int().nonnegative().optional(), af
 export const GeneralSchema = z.object({
   id: Id, name: z.string(), sprite: Id, faction: Id, milestone: z.number().int().positive(), description: z.string().optional(),
   opener: z.array(Id), weights: z.record(Id, z.number().nonnegative()), limits: z.record(Id, Limit).optional(),
+  /**
+   * Its other openers (SPEC §7.7, #69): each battle draws one of these and `opener` from its own stream, among those
+   * whose cards its kit holds. Its kit is still built from `opener` (§7.8).
+   */
+  moreOpeners: z.array(z.array(Id).min(1)).optional(),
   /** Blueprints the general adds to its kit, one per battle index, in order (SPEC §7.8). */
   preferred: z.array(Id).optional(),
   laneStyle: z.enum(['defensive', 'aggressive']), appearsIn: z.array(z.number().int().positive()),
@@ -829,17 +834,16 @@ export const EliteSchema = z.object({
 }).strict();
 
 /**
- * A commander's active power (SPEC §6.6, §11.10). `burst` deals damage to every enemy unit and building
- * within `radius` of a point; `surge` captures the side's frontier column in every lane where no enemy
- * building stands; `bloom` merges every same-type trio within `radius` of a point at once; `tithe` pays
- * `goldPerColumn` for every column the side holds past its home columns.
+ * A commander's active power (SPEC §6.6, §11.10), once per clash: `burst` deals damage to every enemy unit within
+ * `radius` of a point, emplacements included; `bloom` lifts each of the side's units within `radius` of a point one
+ * merge tier (R2-Q7); `harvest` pays `goldPerSupply` for each supply of enemy units killed so far in this clash
+ * (R2-Q16). v1's cooldowns, Rhizome Surge and the Tithe's gold per column are gone.
  */
-const PowerBase = { id: Id, name: z.string().min(1), text: z.string().min(1), cooldown: Pos, firstReady: Seconds };
+const PowerBase = { id: Id, name: z.string().min(1), text: z.string().min(1) };
 export const PowerSchema = z.discriminatedUnion('kind', [
   z.object({ ...PowerBase, kind: z.literal('burst'), target: z.literal('point'), radius: Pos, damage: Pos, damageType: DamageType }).strict(),
-  z.object({ ...PowerBase, kind: z.literal('surge'), target: z.literal('global') }).strict(),
   z.object({ ...PowerBase, kind: z.literal('bloom'), target: z.literal('point'), radius: Pos }).strict(),
-  z.object({ ...PowerBase, kind: z.literal('tithe'), target: z.literal('global'), goldPerColumn: z.number().int().positive() }).strict(),
+  z.object({ ...PowerBase, kind: z.literal('harvest'), target: z.literal('none'), goldPerSupply: z.number().int().positive() }).strict(),
 ]);
 
 /** Commanders (SPEC §11.10): a core pool, a starter kit, a passive and an active power. */

@@ -1,5 +1,6 @@
 // `--assert "<path>[@<checkpoint>]<op><value>"` (SPEC §15.2): a checkpoint is the end of round n, `@r<n>`, or tick
-// t of its clash, `@r<n>:<t>` (R2a plan Call 17).
+// t of its clash, `@r<n>:<t>` (R2a plan Call 17). A value may name another number in the result, as in
+// `stats.player.powerUses<=rounds` (R2b/T089).
 
 export interface Assertion { text: string; path: string; checkpoint?: string; op: string; value: string }
 
@@ -30,11 +31,13 @@ export function checkAssert(result: Record<string, unknown>, a: Assertion): stri
     source = at;
   }
   let actual = getPath(source, a.path);
-  const numeric = /^-?\d+(\.\d+)?$/.test(a.value);
+  const literal = /^-?\d+(\.\d+)?$/.test(a.value);
+  const named = literal ? undefined : getPath(source, a.value);
+  const numeric = literal || typeof named === 'number';
   if (actual === undefined && numeric && /(merges|events|stats)/.test(a.path)) actual = 0;
   let ok: boolean;
   if (numeric && typeof actual === 'number') {
-    const v = Number(a.value);
+    const v = literal ? Number(a.value) : (named as number);
     ok = a.op === '=' ? actual === v : a.op === '!=' ? actual !== v : a.op === '<' ? actual < v
       : a.op === '<=' ? actual <= v : a.op === '>' ? actual > v : actual >= v;
   } else {

@@ -78,8 +78,8 @@ export class BattleSound {
           this.side(e.tier === 3 ? 'merge-elder' : 'merge', e.side, this.pan(state, e.x));
           break;
         case 'power':
-          // the commander power: an Elder bloom for Puppet Bloom's knits, a crash for Spore Burst
-          this.side(e.merges ? 'merge-elder' : 'power', e.side, e.x === undefined ? 0 : this.pan(state, e.x));
+          // the commander power: an Elder bloom for Puppet Bloom's lift, a crash for Spore Burst and the Tithe
+          this.side(e.lifts ? 'merge-elder' : 'power', e.side, e.x === undefined ? 0 : this.pan(state, e.x));
           break;
         case 'laneWon':
           if (e.winner) this.play(e.winner === 'player' ? 'lane-won' : 'lane-lost');

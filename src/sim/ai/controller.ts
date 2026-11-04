@@ -6,7 +6,7 @@
 // logs and counts its own refusals as the queue does. Its plan for the round goes in `ai.plans` (plan Call
 // 12). An adaptive general's counter cycle (`counter.ts`) is step 1, and X8's two default-off knobs are read
 // here (§7.2). Once no plot is free, its gold buys upgrades (§6.1, #67).
-import { nextFloat } from '../rng.ts';
+import { nextFloat, nextInt } from '../rng.ts';
 import { commandStamp, queueCommand } from '../commands.ts';
 import { executeDraft } from '../draft.ts';
 import { plant, sell, sellValue, toggleMerge, upgrade, upgradeCost } from '../planning.ts';
@@ -14,7 +14,7 @@ import { other } from '../state.ts';
 import type { AiPlan, AiState, AiWeight, BattleState, BuildingState, Command, CommandBody, Side } from '../state.ts';
 import { roundOutcome } from '../systems/victory.ts';
 import { ANSWER_LEAN, bestAnswer } from './answer.ts';
-import { counterKindsOf, doctrineMult, lastAnswer, runCycle } from './counter.ts';
+import { cheapest, counterKindsOf, doctrineMult, lastAnswer, runCycle } from './counter.ts';
 import { choosePlot, freePlots } from './formationScore.ts';
 import { planningView } from './view.ts';
 import type { PlanningView } from './view.ts';
@@ -74,12 +74,6 @@ export function runAtOnce(state: BattleState, side: Side, body: PlanBody): strin
   return problem;
 }
 
-/**
- * Step 2 (§7.2): in round 1 the opener first, skipping a card it can't afford or may not plant, then
- * weighted picks with the gold left. A target is planted at its best plot while it's in reach, then it
- * picks again. It stops when the target is out of reach, which it carries into the next planning phase
- * once, or when nothing it buys has a free plot. It keeps no reserve (#29). It returns what it planted.
- */
 /** Plants the card at its best plot (§7.3), adding it to `planted`; false when it has no plot or was refused. */
 function plantBest(state: BattleState, side: Side, view: PlanningView, buildingId: string, planted: BuildingState[]): boolean {
   const plot = choosePlot(view, buildingId, merges(view, buildingId));
@@ -88,11 +82,38 @@ function plantBest(state: BattleState, side: Side, view: PlanningView, buildingI
   return true;
 }
 
+/**
+ * Round 1's opener with the opening doctrine shown (§7.6, R2-Q18, A042): when the opener's army holds no card of
+ * the doctrine's counter sets (the boss's two), its last army card becomes the cheapest kit card in them, if the
+ * kit holds one. Without an opening doctrine it's the profile's opener.
+ */
+export function openerFor(view: PlanningView, ai: AiState): string[] {
+  const kinds = ai.counter?.opening?.kinds ?? [];
+  if (!kinds.length) return ai.opener;
+  const inSets = (id: string) => counterKindsOf(view, id).some((k) => kinds.includes(k));
+  const army = (id: string) => view.cards[id]?.kind === 'spawner' || view.cards[id]?.kind === 'tower';
+  const last = ai.opener.map(army).lastIndexOf(true);
+  if (last < 0 || ai.opener.some((id) => army(id) && inSets(id))) return ai.opener;
+  const swap = cheapest(view, view.kit.map((c) => c.building).filter(inSets));
+  return swap ? ai.opener.map((id, i) => (i === last ? swap : id)) : ai.opener;
+}
+
+/**
+ * Step 2 (§7.2): in round 1 the opener first, drawn from its own stream when its kit holds several (§7.7, #69),
+ * with the doctrine shown (`openerFor`), skipping a card it can't afford or may not plant, then weighted picks
+ * with the gold left. A target is planted at its best plot while it's in reach, then it
+ * picks again. It stops when the target is out of reach, which it carries into the next planning phase
+ * once, or when nothing it buys has a free plot. It keeps no reserve (#29). It returns what it planted.
+ */
 function buy(state: BattleState, side: Side, ai: AiState): BuildingState[] {
   const planted: BuildingState[] = [];
   const plantAt = (view: PlanningView, buildingId: string): boolean => plantBest(state, side, view, buildingId, planted);
   if (state.round === 1) {
-    for (const id of ai.opener) {
+    if (ai.openers) {
+      ai.opener = ai.openers[nextInt(state.rng.ai[side], ai.openers.length)]!;
+      delete ai.openers;
+    }
+    for (const id of openerFor(planningView(state, side), ai)) {
       const view = planningView(state, side);
       if (canBuy(view, id) && inReach(view, id)) plantAt(view, id);
     }

@@ -444,6 +444,11 @@ export interface ClashState {
   maxElders: Record<Side, number>;
   /** The units each side has put on the field this clash, merged ones included: the next one's `arrival`. */
   arrived: Record<Side, number>;
+  /**
+   * The enemy supply each side has killed in this clash, which Rhizome Tithe pays for (§11.10, R2-Q16): a merged
+   * unit at its own supply, an emplacement at 0. Only in a battle where a side's power is a harvest.
+   */
+  killedSupply?: Record<Side, number>;
 }
 
 export interface LaneResult {
@@ -585,6 +590,8 @@ export interface AiState {
   profileId: string;
   /** Round 1's buys, in order, before any weighted pick. */
   opener: string[];
+  /** The openers its round-1 plan draws `opener` from (§7.7, #69), while more than one fits its kit. */
+  openers?: string[][];
   /** Only the cards its weights list (R2-Q4), by building id. */
   weights: AiWeight[];
   mergePolicy: MergePolicy;
@@ -670,10 +677,11 @@ export interface RoundStats {
   maxEconomyOnLoam: number;
   /** M6-Q1: the side's own Heartcap's lowest HP fraction, in basis points of its max HP, as the round leaves it. */
   lowestHeartcapBp: number;
-  /** Commander power use, for a side with a power: uses, damage dealt and trios merged (§6.6). */
+  /** Commander power use, for a side with a power: uses, damage dealt, units lifted and gold paid (§6.6, §11.10). */
   powerUses?: number;
   powerDamage?: number;
-  powerMerges?: number;
+  powerLifts?: number;
+  powerGold?: number;
 }
 
 /** A side's figures for the battle so far (§5.7): the systems count into it as they run, and each round's record closes from it. */
@@ -736,7 +744,7 @@ export type SimEvent =
   | { t: 'burst'; side: Side; id: number; x: number; y: number; radius: number }
   /** An effect's gold, credited at once: `clash` in a clash, else `effects` (§6.2, R2-Q20). */
   | { t: 'gold'; side: Side; amount: number; source: 'clash' | 'effects' }
-  | { t: 'power'; side: Side; power: string; x?: number; y?: number; hits: number; merges: number }
+  | { t: 'power'; side: Side; power: string; x?: number; y?: number; hits: number; lifts: number; gold?: number }
   /** R3: icon flashes (§13.6). */
   | { t: 'augmentActed' | 'comboActed'; side: Side; id: string; x: number; y: number }
   | { t: 'laneWon'; lane: number; winner: Side | null; survivors: Record<Side, number>; capped: boolean }

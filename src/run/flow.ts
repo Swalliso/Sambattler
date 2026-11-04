@@ -4,11 +4,12 @@
 // Battles themselves run in the sim; the run only sees their final state.
 import type { RunEffect } from '../data/schema.ts';
 import {
-  POWER_SOURCE_ID, RARITIES, applyCard, basePlots, draftLibrary, draftPool, featureReady, generateOffer, hashState, kitCards, levelsLeft, nextFloat,
-  nextInt, nextLevel, openOrder, parseCard, parseController, seedStream, setCommander, setPassives, topKinds,
+  POWER_SOURCE_ID, RARITIES, answersTo, applyCard, basePlots, compileRoundUnit, draftLibrary, draftPool, featureReady, generateOffer, hashState,
+  kitCards, levelsLeft, nextFloat, nextInt, nextLevel, openOrder, parseCard, parseController, seedStream, setCommander, setPassives, topKinds,
 } from '../sim/index.ts';
 import type {
-  BattleConfig, BattleState, Content, Controller, DraftLibrary, DraftPool, IntelProfile, Loadout, Rarity, SideConfig,
+  BattleConfig, BattleState, CompiledBuilding, CompiledUnit, Content, Controller, DraftLibrary, DraftPool, IntelProfile, Library, Loadout, Rarity,
+  SideConfig,
 } from '../sim/index.ts';
 import { averageProfile, battleProfile, scaleProfile, updateIntel } from './intel.ts';
 import { battleRewards } from './rewards.ts';
@@ -186,7 +187,7 @@ export function generalKit(content: Content, run: RunState, node: RouteNode, ind
   else {
     kit = [...new Set(g.opener)].filter((id) => roster.includes(id));
     const size = boss ? rules.bossBuildings : kit.length + rules.blueprintsPerBattle * (index - 1);
-    for (const id of [...bossCounters(content, run, node, roster), ...g.preferred]) {
+    for (const id of [...bossCounters(content, run, node, roster, kit), ...g.preferred]) {
       if (kit.length >= size) break;
       if (!kit.includes(id) && roster.includes(id)) kit.push(id);
     }
@@ -211,41 +212,29 @@ export function generalKit(content: Content, run: RunState, node: RouteNode, ind
 }
 
 /**
- * v1's four counter sets within a roster, in roster order, by each spawner's unit (Anti-Swarm: splash or
- * slash; Anti-Line: pierce; Anti-Armor: crush or siege; Anti-Elite: slayer; healers in none), until R2b's
- * T154 reads the round ones.
+ * The roster as the counter sets read it outside a battle (§7.4): its cards, and their squads' units compiled as a
+ * battle compiles them with no modifier.
  */
-function v1CounterSets(content: Content, roster: readonly string[]): Record<'swarm' | 'line' | 'armor' | 'elite', string[]> {
-  const sets = { swarm: [] as string[], line: [] as string[], armor: [] as string[], elite: [] as string[] };
+function rosterView(content: Content, roster: readonly string[]): Parameters<typeof answersTo>[0] {
+  const lib: Library = { balance: content.balance, buildings: content.buildings, units: content.units };
+  const cards: Record<string, CompiledBuilding> = {}, units: Record<string, CompiledUnit> = {};
   for (const id of roster) {
-    const sq = content.buildings[id]?.squad;
-    const u = sq ? content.units[sq.unit] : undefined;
-    if (!u || u.heal) continue;
-    if ((u.splashRadius ?? 0) > 0 || u.damageType === 'slash') sets.swarm.push(id);
-    if (u.damageType === 'pierce') sets.line.push(id);
-    if (u.damageType === 'crush' || u.tags.includes('siege')) sets.armor.push(id);
-    if (u.tags.includes('slayer')) sets.elite.push(id);
+    const b = content.buildings[id]!;
+    cards[id] = { id, kind: b.kind, cost: b.cost, ...(b.squad ? { squad: { unit: b.squad.unit, count: b.squad.count } } : {}) };
+    if (b.kind === 'spawner' && b.squad) units[b.squad.unit] ??= compileRoundUnit(lib, b.squad.unit);
   }
-  return sets;
+  return { cards, units, matrix: content.balance.matrix, kit: roster.map((building) => ({ building })) };
 }
 
 /**
- * The boss's first extra blueprints: the cheapest counters to the run's top two intel kinds, so its
- * dual doctrine has buildings to lean on (empty for other generals or without intel).
+ * The boss's first extra blueprints (§7.6, §7.8, A056): for each of the run's top two intel kinds, the cheapest
+ * card of its round counter set not already in the kit whose unit beats the armor that kind reads, as a
+ * counter's missing answer is chosen (R2a/T099), so its dual doctrine has real answers to lean on. Empty for
+ * other generals or without intel.
  */
-function bossCounters(content: Content, run: RunState, node: RouteNode, roster: readonly string[]): string[] {
+function bossCounters(content: Content, run: RunState, node: RouteNode, roster: readonly string[], kit: readonly string[]): string[] {
   const intel = node.kind === 'boss' ? generalIntel(content, run, node) : null;
-  if (!intel) return [];
-  const sets: Partial<Record<string, readonly string[]>> = v1CounterSets(content, roster);
-  const out: string[] = [];
-  // v1's counter sets, which have no Anti-Ranged set until R2b's T154 reads the round ones
-  for (const k of topKinds(intel, 2)) {
-    const set = sets[k];
-    if (!set) continue;
-    const cheapest = [...set].sort((a, b) => content.buildings[a]!.cost - content.buildings[b]!.cost)[0];
-    if (cheapest && !out.includes(cheapest)) out.push(cheapest);
-  }
-  return out;
+  return intel ? answersTo(rosterView(content, roster), topKinds(intel, 2), kit) : [];
 }
 
 // ---- after a battle ----

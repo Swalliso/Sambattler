@@ -390,7 +390,8 @@ export class RoundsView {
     if (s.targeting && s.aimProblem()) s.targeting = false;
     const preview = s.powerPreview();
     const def = s.power();
-    const reticle = preview && def?.target === 'point' && s.aim ? { x: s.aim.x, y: s.aim.y, radius: def.radius, valid: preview.valid } : null;
+    const radius = s.powerRadius();
+    const reticle = preview && def?.target === 'point' && s.aim ? { x: s.aim.x, y: s.aim.y, radius, valid: preview.valid } : null;
     this.renderer.draw(state, alpha, {
       ghost: ghost ? { buildingId: ghost.buildingId, plot: ghost.plot, legal: ghost.legal } : null,
       lit: s.lit(),
@@ -404,7 +405,7 @@ export class RoundsView {
       power: def ? {
         reticle,
         marks: preview?.reach.map((u) => ({ x: u.x, y: u.y, r: state.compiled[u.side].units[u.unitId]!.tiers[u.tier - 1]!.radius })) ?? [],
-        pending: def.target === 'point' ? state.queue.flatMap((c) => (c.side === 'player' && c.type === 'power' && c.x !== undefined && c.y !== undefined ? [{ x: c.x, y: c.y, radius: def.radius }] : [])) : [],
+        pending: def.target === 'point' ? state.queue.flatMap((c) => (c.side === 'player' && c.type === 'power' && c.x !== undefined && c.y !== undefined ? [{ x: c.x, y: c.y, radius }] : [])) : [],
       } : null,
     });
     toggleClass(this.canvas, 'aiming', s.targeting);

@@ -33,4 +33,13 @@ describe('--assert (SPEC §15.2)', () => {
     expect(check('x@r2:200>=3')).toBe('x@r2:200>=3: actual 2');
     expect(check('hash@r5=9f2c41d07ab35e18')).toBe('hash@r5=9f2c41d07ab35e18: no summary recorded at r5 (the battle reached round 4)');
   });
+
+  it('compares with another number in the result when the value names one (R2b/T089)', () => {
+    const result = { rounds: 4, winner: 'player', stats: { player: { powerUses: 4 } } };
+    const check = (text: string) => checkAssert(result, parseAssert(text));
+    expect(check('stats.player.powerUses<=rounds')).toBeNull();
+    expect(check('stats.player.powerUses<rounds')).toBe('stats.player.powerUses<rounds: actual 4');
+    // a value naming no number stays a string
+    expect(check('winner=player')).toBeNull();
+  });
 });
