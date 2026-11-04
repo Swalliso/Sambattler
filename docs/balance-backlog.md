@@ -37,9 +37,9 @@ v1's backlog is archived at [docs/archive/v1/balance-backlog.md](archive/v1/bala
 - **G5 misses since S5b's upgrades** (R2b S11, below): the +150-gold side wins 89%, against 55–75%, and no price from 200% to 600% passes. It's the same cause as G4's round-9 clause. It's a known miss until S14 (the user, 2026-11-04), which measures two levers: upgrades from a fixed round, and at most one a side a round.
 - **X8's two knobs show no need** (R2b S11, below): S12 deletes them (T129).
 
-## R2b S14 · merging, the Burrow and Cordis's Puppet Bloom, for T169 (2026-11-04)
+## R2b S14 · merging, the Burrow and Cordis's Puppet Bloom, for T169: measured, held for the v3 redesign (2026-11-04)
 
-On `feature/r2b-tune` after the playtest, for the user's OK (the hub's list: merging first, then G1 re-read with it, then Puppet Bloom). Everything is `npm run experiment` with `--proto`; Puppet Bloom's `liftTo` and `maxUnits` were measured on a short-lived branch whose code reads them. Nothing here is built.
+On `feature/r2b-tune` after the playtest (the hub's list: merging first, then G1 re-read with it, then Puppet Bloom). The user then approved a v3 redesign instead (2026-11-04, "Go with this plan"), so nothing here is built: the numbers stand as v2's last reading. Everything is `npm run experiment` with `--proto`; Puppet Bloom's `liftTo` and `maxUnits` were measured on a short-lived branch whose code reads them. Nothing here is built.
 
 ### 1. Merging (G7): `tierStatMult` is the lever
 

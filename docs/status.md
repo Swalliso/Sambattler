@@ -150,6 +150,19 @@ Updated 2026-11-04, on `docs/r2b-s13-done` (the hub's docs PR into `develop`). T
   - **For S14:** since retune B, the run golden `r2-run-s1` loses all three of its battles, so its description is stale
     and it covers no won battle. S14 re-picks its seed when its tuning moves the golden.
   - **No rule, data or golden changed.**
+- **S14** (`feature/r2b-tune`, T148, T149, T169 and T171): the playtest gate and the tuning, closed on 2026-11-04 when
+  you approved the v3 redesign ("Go with this plan"):
+  - **The playtest (T148):** your answers are in [playtest-feedback.md](playtest-feedback.md)'s 2026-11-04 entry. The tray
+    bug it found is fixed ([#137](https://github.com/Swalliso/Sambattler/pull/137)): a drafted blueprint plants in the phase
+    it's picked.
+  - **`bosslives` is deleted** (T171), with its schema key and the run's read, since your run with it changed nothing you
+    could see. No preset is left.
+  - **X6's target** is 10–15 minutes at 1× (SPEC §8.2), and SPEC §16 R2 step 7 says the slow suite takes about 3 minutes.
+  - **The tuning (T149, T169) is measured, not built, and held for the v3 redesign** ([balance-backlog.md](balance-backlog.md),
+    "R2b S14"). Merging at `tierStatMult` 2.0 passes G7 and G1, and Puppet Bloom lifting base units only brings Cordis's
+    battle 1 to 91%. The package costs G4's round 9 (31%) and G8's `bot:balanced` clause (27%). T168's ten known misses
+    stand.
+  - **No rule, data or golden changed:** `bosslives`' key was absent from the data.
 - **The stand-ins open on `develop`** from S1 (Call 14), each with the session that lifts it (checked at S4, T152):
   - ~~`scene=draft` opens round 1's planning of a run battle, so its capture shows no draft until round 3~~: lifted by S10 (T115);
   - ~~retired selectors and triggers still in the data compile to no-ops, v1's keys stay in the data and the schema, and R2a's `rounds` data blocks sit beside them~~: lifted by S12 (T129);
